@@ -365,6 +365,9 @@ Local testing should verify:
 * expected output files are written
 * failure messages are understandable
 
+When adding or modifying scripts, add or update committed regression tests where practical.
+Prefer tests that can run locally on tiny synthetic fixtures without cluster access.
+
 ---
 
 ## Bioinformatics context

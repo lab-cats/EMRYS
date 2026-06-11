@@ -75,23 +75,36 @@ module load ...
 ls ...
 ```
 
-## 3. Run step1
+## 3. Validate the sample manifest
+
+Run this as a lightweight preflight check before submitting workflow jobs:
+
+```bash
+python3 scripts/validate_manifest.py \
+  --manifest samples.example.tsv \
+  --base-dir . \
+  --check-files
+```
+
+Use the cluster manifest and cluster project/data path when running full-scale jobs.
+
+## 4. Run step1
 
 ```bash
 sbatch jobs/step_01_align.slurm
 ```
 
-## 4. Check logs
+## 5. Check logs
 
 ```bash
 squeue -u <username>
 tail -f logs/...
 ```
 
-## 5. Verify outputs
+## 6. Verify outputs
 
 ```bash
 ls results/...
 ```
 
-## 6. Continue to next step
+## 7. Continue to next step

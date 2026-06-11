@@ -210,6 +210,30 @@ python scripts/process_sample.py \
 
 Config files in `configs/` may be used to separate local test paths from cluster-scale paths.
 
+### Validate a sample manifest
+
+Before running workflow steps, validate the tab-separated sample manifest:
+
+```bash
+python3 scripts/validate_manifest.py \
+  --manifest samples.example.tsv
+```
+
+To also confirm that FASTQ files exist, add `--check-files`. Relative FASTQ paths are resolved against `--base-dir`.
+
+```bash
+python3 scripts/validate_manifest.py \
+  --manifest samples.example.tsv \
+  --base-dir . \
+  --check-files
+```
+
+After activating the project virtual environment, run the committed regression tests with:
+
+```bash
+python -m pytest
+```
+
 ---
 
 ## SLURM job pattern
