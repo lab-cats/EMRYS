@@ -24,4 +24,3 @@ module list || true
 # Run workflow step here.
 
 echo "Finished: $(date)"
-EOF
