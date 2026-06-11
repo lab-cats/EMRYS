@@ -11,7 +11,7 @@ set -euo pipefail
 echo "Job ID: ${SLURM_JOB_ID:-local/no-slurm}"
 echo "Node: $(hostname)"
 echo "Started: $(date)"
-echo "Directory: $PWD"
+echo "Working directory: $PWD"
 
 python scripts/hello.py
 

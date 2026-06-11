@@ -1,6 +1,13 @@
-# scripts/hello.py
-import socket
-from datetime import datetime
+#!/usr/bin/env python3
 
-print("hello from", socket.gethostname())
-print("time:", datetime.now())
+from datetime import datetime
+import socket
+
+
+def main() -> None:
+    print(f"Hello from {socket.gethostname()}")
+    print(f"Time: {datetime.now()}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,8 +1,10 @@
 .venv/
 data/raw/
 data/full/
-results/
-logs/
+results/*
+!results/.gitkeep
+logs/*
+!logs/.gitkeep
 *.out
 *.err
 *.bam
