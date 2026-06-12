@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Validate a tab-separated RNA-seq sample manifest."""
 
+from __future__ import annotations
+
 import argparse
 import csv
 import sys

@@ -1,5 +1,8 @@
 # Open questions
 
+- No visible `gatk` module found with `module avail gatk`.
+- Need to ask whether GATK is installed elsewhere, should be installed in a project environment, or should be run via jar/container/conda.
+
 ## Cluster
 
 - What is the correct login node?

@@ -1,5 +1,51 @@
 # Runbook
 
+# Discovered info
+
+## Confirmed bioinformatics modules
+
+- `star/2.7.11b`
+  - executable: `STAR`
+
+- `samtools/1.19.2`
+  - executable: `samtools`
+
+- `picard/3.1.1`
+  - loads `java/17.0.10`
+  - sets `PICARD=/cm/shared/apps/picard/picard/build/libs/picard.jar`
+  - invoke with: `java -jar "$PICARD" <PicardCommand>`
+
+- `python39`
+  - preferred current Python module unless changed later
+
+## Still unresolved
+
+- GATK module/location
+- R/Rscript module/location
+- reference genome / STAR index paths
+- RNA-seq input data location
+- SLURM memory/partition/account rules
+
+## Available CSU modules discovered
+
+Known available modules:
+
+- `slurm/slurm/21.08.8`
+- `star/2.7.11b`
+- `samtools/1.19.2`
+- `picard/3.1.1`
+- `python3`
+- `python39`
+- `python314`
+
+Still need to identify:
+
+- GATK module
+- R module
+- preferred Python version
+- reference genome / STAR index paths
+- full RNA-seq data location
+
 # Cluster first login checklist
 
 ## 1. Confirm identity and location
@@ -62,6 +108,9 @@ module names/versions
 SLURM partition/account
 reference genome paths
 data locations
+
+
+# Prep list
 
 ## 1. Prepare environment
 

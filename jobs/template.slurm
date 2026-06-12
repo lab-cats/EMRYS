@@ -24,9 +24,22 @@ echo "Working directory: $PWD"
 module list || true
 
 # Load modules here, e.g.:
-# module load python
-# module load R
-# module load samtools
+# CSU modules discovered so far.
+module load star/2.7.11b
+module load samtools/1.19.2
+module load picard/3.1.1
+module load python39
+# module load gatk/...
+# module load R/...
+
+module list || true
+
+echo "Tool versions:"
+python --version
+STAR --version
+samtools --version | head -1
+java -version
+echo "PICARD: ${PICARD:-not set}"
 
 # Run workflow step here.
 
