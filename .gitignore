@@ -26,3 +26,4 @@ __pycache__/
 *.pyc
 .Rhistory
 .RData
+docs/CLUSTER_DISCOVERY.md
