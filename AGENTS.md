@@ -1,103 +1,162 @@
-# NORAD / CSU HPC dev context
+# NORAD / CSU HPC agent instructions
+
+This file defines how coding agents should work in this repository.
+
+It should stay mostly stable over time. Do not use this file to track current pipeline status, job IDs, sample-specific results, or transient TODOs.
+
+For current project state, consult:
+
+```text
+docs/HANDOFF.md
+docs/PIPELINE_PLAN.md
+docs/QUESTIONS.md
+docs/RUNBOOK.md
+TROUBLESHOOTING.md
+DECISIONS.md
+TODO.md
+```
 
 ## Purpose
 
-This repository supports RNA-seq / lncRNA / NORAD-related analysis.
+This repository supports a local-first, SLURM-scaled bioinformatics workflow for RNA-seq / lncRNA / NORAD-related analysis.
 
-The project should be developed locally on macOS in VS Code, then executed at scale on CSU's SLURM cluster.
+The project should be developed as maintainable research software, not as a pile of one-off scripts.
 
 Prioritize:
 
 * reproducible workflows
 * parameterized scripts
+* explicit inputs and outputs
 * clear local vs cluster execution paths
-* small test-data development before full-scale cluster runs
-* debuggable logs and outputs
+* small local tests before full-scale cluster execution
+* debuggable logs
+* documented assumptions
+* boring, understandable code
 
----
+## Development model
 
-## Environment
-
-### Local development
-
-Local environment:
-
-* macOS
-* VS Code
-* Git
-* local test data subset
-* ChatGPT/Codex may be used for code assistance
-
-Local workflow:
+Use a gated workflow:
 
 ```text
-1. Develop/debug locally on tiny representative data
-2. Run local smoke tests
-3. Commit changes to Git
-4. Sync or pull code on the cluster
-5. Submit full-scale jobs through SLURM
-6. Inspect logs/results
-7. Iterate
+implement locally
+-> run local checks/tests
+-> commit/push
+-> pull on cluster
+-> run SLURM dry-run
+-> inspect logs
+-> run SLURM execute mode
+-> inspect outputs
+-> update docs
+-> proceed
 ```
 
-Do not assume that local paths match cluster paths.
+Do not skip gates.
 
----
+Do not implement multiple major pipeline steps at once unless explicitly requested.
 
-## Cluster environment
+Do not run heavy computation on the cluster login node.
 
-Cluster:
+## State belongs elsewhere
 
-* CSU HPC / supercomputer environment
-* uses SLURM
-* uses environment modules via `module load`
-* real jobs should run through `jobs/*.slurm`
-* do not run heavy computation on the login node
+Do not put transient project state in `AGENTS.md`.
 
-The login node is for:
+Avoid adding:
 
-* editing files
-* moving data
+* current validation sample
+* current next step
+* job IDs
+* current output sizes
+* current cluster validation status
+* temporary blockers
+* sample-specific biological results
+* recently discovered module versions unless they define a durable coding convention
+
+Use these files instead:
+
+```text
+docs/HANDOFF.md        current project handoff and big-picture state
+docs/PIPELINE_PLAN.md  current pipeline map and step validation status
+docs/QUESTIONS.md      answered and unresolved questions
+docs/RUNBOOK.md        operational commands and cluster procedure
+TROUBLESHOOTING.md     symptom -> cause -> fix
+DECISIONS.md           durable decisions and rationale
+TODO.md                tactical next work
+README.md              project overview and entrypoint
+```
+
+`AGENTS.md` is for behavior and standards.
+
+## Local development expectations
+
+Local development happens on macOS, usually in VS Code.
+
+Local work should focus on:
+
+* editing source code
+* writing tests
+* validating command construction
+* using tiny fixtures or mocks
+* checking shell/Python syntax
+* committing and pushing changes
+
+Do not assume local paths match cluster paths.
+
+Do not require full FASTQ/BAM data for local tests.
+
+## Cluster expectations
+
+The cluster uses SLURM and environment modules.
+
+Heavy computation must run through `jobs/*.slurm`.
+
+The login node is only for:
+
 * Git operations
-* inspecting logs
+* small file transfers
+* light file inspection
+* editing
+* checking logs
 * submitting jobs
-* light smoke tests only
+* small smoke tests
 
-Heavy computation must happen through SLURM.
-
----
+Do not run full alignment, sorting, mpileup, or large analysis directly on the login node.
 
 ## Repository conventions
 
 Expected structure:
 
 ```text
-scripts/        # Python, R, or shell scripts
-jobs/           # SLURM job scripts
-configs/        # local and cluster config files
-data/test/      # tiny local test fixtures only
-data/raw/       # large/raw data; not committed
-data/full/      # full cluster-scale data; not committed
+scripts/        # Python, shell, and later R scripts
+jobs/           # SLURM job wrappers
+tests/          # active tests and pending test plans
+configs/        # optional local/cluster config files
+data/test/      # tiny committed fixtures only
+data/raw/       # symlinks or raw data paths; not committed
+data/full/      # optional full-scale data paths; not committed
 results/        # generated outputs; not committed
-logs/           # SLURM stdout/stderr logs; not committed
-docs/           # notes and project documentation
+logs/           # SLURM logs; not committed
+docs/           # project documentation
 ```
 
-Prefer adding new executable workflow steps as scripts in `scripts/` and corresponding SLURM wrappers in `jobs/`.
+Prefer adding each executable workflow step as:
 
----
+```text
+scripts/step_XX_<name>.sh
+jobs/step_XX_<name>.slurm
+tests/shell/test_step_XX_<name>.sh
+```
+
+Use `tests/pending/` only for future test plans that are not active yet.
 
 ## Git and data rules
 
 Use Git for:
 
 * source code
-* SLURM scripts
+* SLURM job wrappers
 * configs
 * documentation
 * small safe test fixtures
-
-Do not commit large data or generated outputs.
 
 Never commit:
 
@@ -112,9 +171,7 @@ Never commit:
 * private SSH keys
 * `.env` files
 
-Tiny synthetic or representative test fixtures may be committed only if they are small, safe, and non-sensitive.
-
----
+Tiny synthetic or representative fixtures may be committed only if they are small, safe, and non-sensitive.
 
 ## Path and configuration rules
 
@@ -123,45 +180,135 @@ Do not hardcode machine-specific paths inside analysis scripts.
 Prefer:
 
 * command-line arguments
-* config files in `configs/`
-* explicit input/output paths
-* separate local and cluster configs when useful
+* config files
+* explicit input paths
+* explicit output paths
+* manifest-driven sample selection
+* documented local and cluster examples
 
-Scripts should be able to run both locally and on the cluster by changing arguments/configs, not by editing source code.
-
-Example local pattern:
-
-```bash
-python scripts/process_sample.py \
-  --input data/test/sample.bam \
-  --output results/test/
-```
-
-Example cluster pattern:
-
-```bash
-python scripts/process_sample.py \
-  --input /cluster/path/to/full/sample.bam \
-  --output /cluster/path/to/results/sample/
-```
+Scripts should run locally or on the cluster by changing arguments/configs, not by editing source code.
 
 Avoid hidden assumptions about the current working directory unless clearly documented.
 
----
+## Manifest conventions
+
+The manifest should remain the source of truth for sample metadata.
+
+Prefer tab-separated manifest files for workflow metadata.
+
+Reasons:
+
+* robust with file paths
+* easy to parse in Python, R, and shell
+* avoids CSV quoting problems
+* easy to inspect manually
+
+Future multi-sample execution should use manifest-driven selection rather than hardcoded sample lists.
+
+Do not overbuild orchestration before the underlying step is proven on one sample.
+
+## Script conventions
+
+Scripts should:
+
+* live in `scripts/`
+* accept explicit command-line arguments
+* provide useful `--help`
+* validate required inputs before expensive work
+* create output directories intentionally
+* write outputs to explicit paths
+* fail loudly with useful error messages
+* print resolved context
+* print exact commands before execution
+* avoid hidden global state
+* avoid hardcoded sample names
+* avoid hardcoded machine-specific paths
+* support tiny local tests or mocked tools
+* validate expected outputs after execution
+
+For bash scripts:
+
+* use `#!/usr/bin/env bash` or `#!/bin/bash` consistently
+* use `set -euo pipefail`
+* quote variables
+* use arrays for command construction where helpful
+* avoid zsh-only syntax
+* make dry-run behavior explicit
+* keep tool invocation logic in scripts, not SLURM wrappers
+
+For Python scripts:
+
+* use `argparse`
+* prefer `pathlib.Path`
+* use `if __name__ == "__main__":`
+* keep parsing, computation, and file writing separable where reasonable
+* use type hints when helpful
+* avoid over-engineering
+
+For R scripts:
+
+* use `commandArgs(trailingOnly = TRUE)`
+* validate the expected number of arguments
+* document argument order clearly
+* avoid hardcoded working directories
+* print resolved input/output paths
+* fail clearly when inputs are missing
+
+## Dry-run / execute convention
+
+Dry-run should be the default for workflow scripts and SLURM wrappers.
+
+Script-level pattern:
+
+```bash
+scripts/some_step.sh ...          # dry-run
+scripts/some_step.sh ... --execute
+```
+
+SLURM-level pattern:
+
+```bash
+sbatch jobs/some_step.slurm
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/some_step.slurm
+```
+
+Convention:
+
+```text
+EXECUTE=0 -> dry-run
+EXECUTE=1 -> execute
+any other value -> fail clearly
+```
+
+Dry-run should print:
+
+* resolved inputs
+* resolved outputs
+* selected sample information
+* selected tool paths
+* exact command that would run
+
+Dry-run should not create final output files.
+
+For steps where accidental directory creation could confuse validation, dry-run should avoid creating output directories too.
 
 ## SLURM job conventions
 
-SLURM scripts should:
+SLURM wrappers should:
 
 * live in `jobs/`
-* write stdout and stderr to `logs/`
-* use explicit resource requests
+* call scripts from `scripts/`
+* avoid embedding analysis logic directly in the SLURM file
 * use `set -euo pipefail`
-* print useful debugging context
+* write stdout/stderr to `logs/`
+* print job ID, job name, node, start time, working directory, and TMPDIR
+* print selected inputs and outputs
 * load required modules inside the job script
 * avoid relying on the interactive shell environment
-* call scripts from `scripts/`
-* avoid embedding large amounts of analysis logic directly in the SLURM file
+* default to dry-run mode
+* use `EXECUTE=1` for real execution
+* fail on invalid `EXECUTE` values
+* avoid explicit memory requests unless known to work for the cluster/partition
 
 Preferred log pattern:
 
@@ -170,363 +317,91 @@ Preferred log pattern:
 #SBATCH --error=logs/%x-%j.err
 ```
 
-Preferred job header:
+Use:
 
 ```bash
-#!/bin/bash
-#SBATCH --job-name=norad-job
-#SBATCH --output=logs/%x-%j.out
-#SBATCH --error=logs/%x-%j.err
-#SBATCH --time=01:00:00
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
-
-set -euo pipefail
-
-echo "Job ID: ${SLURM_JOB_ID:-none}"
-echo "Job name: ${SLURM_JOB_NAME:-none}"
-echo "Node: $(hostname)"
-echo "Started: $(date)"
-echo "Working directory: $PWD"
-module list || true
+module list 2>&1 || true
 ```
 
-Use SLURM arrays when applying the same operation across many samples.
-
-Example array pattern:
+instead of plain:
 
 ```bash
-#SBATCH --array=1-10
-
-SAMPLE=$(sed -n "${SLURM_ARRAY_TASK_ID}p" samples.txt)
-python scripts/process_sample.py --sample "$SAMPLE"
+module list
 ```
 
----
+because module output often goes to stderr.
 
-## Code expectations
+## Testing expectations
 
-When writing or modifying scripts:
+Before committing changes, run the local validation gate used by this project.
 
-* use clear command-line interfaces
-* prefer `argparse` for Python scripts
-* validate input paths before expensive operations
-* fail loudly with useful error messages
-* write outputs to explicit output directories
-* make scripts runnable on tiny local test data
-* avoid hidden global state
-* avoid hardcoded sample names
-* avoid unnecessary cleverness
-* keep functions small enough to debug
-* print or log enough context to reproduce failures
-
-For Python scripts:
-
-* prefer `pathlib.Path`
-* use `if __name__ == "__main__":`
-* keep parsing, computation, and file writing separable when reasonable
-* use type hints where helpful, but do not over-engineer
-
-For R scripts:
-
-* use `commandArgs(trailingOnly = TRUE)` for script arguments
-* document argument order clearly
-* remember that `<-` is assignment in R
-* avoid hardcoded working directories
-* write outputs to explicit paths
-
----
-
-
-
----
-
-## Self-documenting script expectations
-
-Build scripts as if another researcher will eventually run, debug, and modify them without the original author present.
-
-Every substantial script should be self-documenting from the command line.
-
-For Python scripts:
-
-* use `argparse`
-* include a clear `description`
-* make required inputs explicit
-* provide helpful `help=` text for every argument
-* use meaningful argument names like `--input-bam`, `--output-dir`, `--sample-id`
-* validate that input files/directories exist before expensive processing
-* create output directories intentionally
-* print or log enough context to reproduce the run
-* expose a useful `--help` interface
-
-A future user should be able to run:
+At minimum, check:
 
 ```bash
-python scripts/some_step.py --help
+git diff --check
+bash -n scripts/*.sh
+bash -n jobs/*.slurm
+python -m compileall scripts tests
+python -m pytest
+make shell-test
+git status --short
+git diff --name-status
 ```
 
-and understand:
+When adding or modifying a workflow step:
 
-* what the script does
-* what inputs it expects
-* what outputs it writes
-* which arguments are required
-* how to run it on test data
+* add or update local tests
+* prefer fake/mocked external tools where real cluster tools are unavailable locally
+* test dry-run behavior
+* test execute-mode command construction if possible
+* test failure behavior for missing inputs
+* test that expected output paths are validated
 
-Example pattern:
-
-```python
-import argparse
-from pathlib import Path
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Process a single RNA-seq BAM file for downstream NORAD analysis."
-    )
-
-    parser.add_argument(
-        "--input-bam",
-        required=True,
-        type=Path,
-        help="Input BAM file to process.",
-    )
-
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        type=Path,
-        help="Directory where processed outputs will be written.",
-    )
-
-    parser.add_argument(
-        "--sample-id",
-        required=True,
-        help="Sample identifier used in output filenames.",
-    )
-
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-
-    if not args.input_bam.exists():
-        raise FileNotFoundError(f"Input BAM does not exist: {args.input_bam}")
-
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    print(f"Sample ID: {args.sample_id}")
-    print(f"Input BAM: {args.input_bam}")
-    print(f"Output directory: {args.output_dir}")
-
-    # Analysis logic goes here.
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Prefer this kind of self-documenting interface over relying only on README instructions, because README examples can drift out of date.
-
-For R scripts:
-
-* use `commandArgs(trailingOnly = TRUE)`
-* validate the expected number of arguments
-* document argument order in a header comment
-* print the resolved input/output paths at runtime
-* fail with clear messages when inputs are missing
-
-General rule:
+Active implemented-step tests should live under:
 
 ```text
-A script is not handoff-ready until a new user can run its --help or read its header and know how to execute it safely.
+tests/shell/
 ```
 
----
-
-## Local testing expectations
-
-Before writing or modifying a full cluster job, prefer creating a tiny representative test case.
-
-Good test data should include:
-
-* a small number of reads/records
-* representative file naming
-* paired-end structure when relevant
-* edge cases if known
-* enough data to exercise the code path without requiring cluster resources
-
-Local testing should verify:
-
-* argument parsing works
-* input files are found
-* output directories are created
-* expected output files are written
-* failure messages are understandable
-
-When adding or modifying scripts, add or update committed regression tests where practical.
-Prefer tests that can run locally on tiny synthetic fixtures without cluster access.
-
----
-
-## Bioinformatics context
-
-This project processes RNA-seq data.
-
-High-level pipeline:
+Future-step test plans may live under:
 
 ```text
-FASTQ(.gz)
-    ↓
-STAR alignment
-    ↓
-SAM/BAM
-    ↓
-samtools preprocessing
-    ↓
-Picard duplicate marking
-    ↓
-GATK RNA preprocessing
-    ↓
-strand-aware BAM generation
-    ↓
-downstream analysis
+tests/pending/
 ```
 
----
+Pending tests must not be wired into active test runners.
 
-## File formats
+## Documentation expectations
 
-### FASTQ (`.fastq`, `.fastq.gz`)
+When changing workflow behavior, update the relevant docs.
 
-Raw sequencing reads.
+Use the docs according to purpose:
 
-Contains:
+```text
+README.md              entrypoint / overview
+docs/HANDOFF.md        big project-state handoff
+docs/PIPELINE_PLAN.md  tactical step map and validation status
+docs/QUESTIONS.md      answered/open project questions
+docs/RUNBOOK.md        operational commands and cluster procedure
+TROUBLESHOOTING.md     symptom -> cause -> fix
+DECISIONS.md           decisions and reasons
+TODO.md                tactical next work
+AGENTS.md              coding-agent instructions
+```
 
-* read identifier
-* nucleotide sequence
-* per-base quality scores
+Do not turn one document into an everything-bucket.
 
-For paired-end sequencing:
+When a step becomes implemented, update the pipeline plan.
 
-* `R1` = first read
-* `R2` = second read
+When a step becomes cluster-proven, update the pipeline plan and handoff notes.
 
-### SAM (`.sam`)
+When a new cluster quirk is discovered, update troubleshooting or the runbook.
 
-Human-readable alignment format.
+When a durable choice is made, update decisions.
 
-### BAM (`.bam`)
-
-Compressed binary alignment format.
-
-### BAI (`.bai`)
-
-Index for BAM files.
-
----
-
-## Tooling
-
-### STAR
-
-Purpose:
-
-* splice-aware RNA-seq aligner
-
-Role:
-
-* aligns RNA-seq reads to a reference genome
-* handles exon-exon junctions
-
-Input:
-
-* FASTQ
-
-Output:
-
-* SAM/BAM
-
-### samtools
-
-Purpose:
-
-* manipulate alignment files
-
-Common operations:
-
-* convert SAM ↔ BAM
-* sort BAM
-* index BAM
-* merge BAM
-* filter reads by flags
-
-### Picard
-
-Purpose:
-
-* preprocessing / QC
-
-Common use:
-
-* `MarkDuplicates`
-
-### GATK
-
-Purpose:
-
-* genomics processing toolkit
-
-Current use:
-
-* `SplitNCigarReads` for RNA-seq preprocessing
-
-### R
-
-Purpose:
-
-* downstream analysis
-* statistics
-* visualization
-* tables
-
----
-
----
-
-
-## Engineering standard
-
-Treat this repository as long-lived research software.
-
-Prefer designs that are:
-
-* easy to run
-* easy to test
-* easy to debug
-* easy to hand off
-* explicit about assumptions
-* resistant to user error
-* stable across local and cluster environments
-
-Avoid cleverness that makes the workflow harder to understand later. The best solution is usually the boring one that a future researcher can run safely and modify confidently.
-
-## Handoff and maintainability expectations
+## Handoff readiness
 
 Develop this repository as if another researcher will take over and run or modify the workflow later.
-
-Prioritize:
-
-* clear project structure
-* readable code over clever code
-* explicit inputs and outputs
-* documented assumptions
-* reproducible commands
-* useful error messages
-* small test examples
-* version-controlled configs
-* minimal hidden state
 
 A future user should be able to understand:
 
@@ -541,7 +416,7 @@ A future user should be able to understand:
 
 When adding or modifying a script, include:
 
-* a short module/script docstring or header comment
+* a short module/script docstring or header comment when the purpose is not obvious from the filename and CLI
 * command-line arguments with `--help`
 * an example command in the README or relevant docs
 * validation for required input files/directories
@@ -558,34 +433,55 @@ Avoid:
 * one-off scripts with unclear purpose
 * undocumented manual steps
 
-Prefer workflows where a new user can run:
+## Legacy workflow handling
 
-```bash
-python scripts/example_step.py --help
-```
-and
+Legacy uploaded scripts should be treated as protocol references.
 
-```bash
-sbatch jobs/example_step.slurm
-```
-without needing private context.
+Do not directly copy:
 
-## Development assistance expectations
+* hardcoded paths
+* hardcoded sample names
+* undocumented assumptions
+* brittle one-off command sequences
 
-When helping with code in this repository:
+Instead, translate legacy behavior into:
 
-* preserve cluster compatibility
-* distinguish local vs cluster paths
-* prefer small local test subsets first
-* assume final execution happens through SLURM
-* avoid login-node heavy compute
-* explain genomics tooling when useful
-* favor debuggable, reproducible workflows
-* prefer parameterized scripts over hardcoded paths
-* do not commit or suggest committing large biological data
-* do not assume software is available unless loaded via module or documented
-* when uncertain about cluster-specific behavior, make the uncertainty explicit
-* When choosing between a clever compact solution and a boring explicit solution, prefer the boring explicit solution unless performance requires otherwise.
+* parameterized scripts
+* explicit inputs
+* explicit outputs
+* local tests
+* SLURM wrappers
+* documented assumptions
+
+## Biological interpretation caution
+
+Be careful with terminology around:
+
+* library strandedness
+* read orientation
+* biological transcript strand
+* sense/antisense interpretation
+* editing-site interpretation
+
+Do not assume read-orientation labels directly equal biological strand labels unless the workflow explicitly documents why.
+
+When uncertain, preserve neutral orientation labels and document the uncertainty.
+
+## Engineering standard
+
+Treat this repository as long-lived research software.
+
+Prefer designs that are:
+
+* easy to run
+* easy to test
+* easy to debug
+* easy to hand off
+* explicit about assumptions
+* resistant to user error
+* stable across local and cluster environments
+
+Avoid cleverness that makes the workflow harder to understand later.
 
 Default preference:
 
