@@ -2,7 +2,9 @@
 data/raw/
 data/full/
 refs/*
-~refs/.gitkeep
+!refs/.gitkeep
+!refs/test_star_index/
+!refs/test_star_index/.gitkeep
 results/*
 !results/.gitkeep
 logs/*
