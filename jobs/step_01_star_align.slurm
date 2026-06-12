@@ -1,18 +1,55 @@
-#!/bin/bash
-#SBATCH --job-name=norad-star-dry-run
+#!/usr/bin/env bash
+#SBATCH --job-name=norad-star-align
+#SBATCH --partition=long
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
-#SBATCH --time=00:10:00
-#SBATCH --cpus-per-task=4
+#SBATCH --time=08:00:00
+#SBATCH --cpus-per-task=8
 #SBATCH --export=ALL,TMPDIR=/tmp
 
 set -euo pipefail
+
+die() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+print_command() {
+    printf '%q ' "$@"
+    printf '\n'
+}
+
+# Defaults support a safe dry-run smoke test.
+SAMPLE_ID="${SAMPLE_ID:-sample_001}"
+R1_FASTQ="${R1_FASTQ:-data/test/sample_001_R1.fastq.gz}"
+R2_FASTQ="${R2_FASTQ:-data/test/sample_001_R2.fastq.gz}"
+STAR_INDEX="${STAR_INDEX:-refs/test_star_index}"
+OUTPUT_DIR="${OUTPUT_DIR:-results/test/sample_001/star}"
+EXECUTE="${EXECUTE:-0}"
+
+if [[ "$EXECUTE" != "0" && "$EXECUTE" != "1" ]]; then
+    die "EXECUTE must be 0 or 1."
+fi
+
+default_fixture_mode=0
+if [[ "$SAMPLE_ID" == "sample_001" \
+   && "$R1_FASTQ" == "data/test/sample_001_R1.fastq.gz" \
+   && "$R2_FASTQ" == "data/test/sample_001_R2.fastq.gz" \
+   && "$STAR_INDEX" == "refs/test_star_index" ]]; then
+    default_fixture_mode=1
+fi
+
+if [[ "$EXECUTE" == "1" && "$default_fixture_mode" == "1" ]]; then
+    die "Refusing to execute with default dry-run fixture parameters. Pass real SAMPLE_ID/R1_FASTQ/R2_FASTQ/STAR_INDEX/OUTPUT_DIR."
+fi
 
 # Ensure TMPDIR points somewhere writable.
 if [[ -z "${TMPDIR:-}" || ! -w "${TMPDIR:-}" ]]; then
     export TMPDIR="/tmp/${USER}/${SLURM_JOB_ID:-manual}"
     mkdir -p "$TMPDIR"
 fi
+
+threads="${SLURM_CPUS_PER_TASK:-8}"
 
 echo "Job ID: ${SLURM_JOB_ID:-none}"
 echo "Job name: ${SLURM_JOB_NAME:-none}"
@@ -29,29 +66,40 @@ module load star/2.7.11b
 echo "Loaded modules after STAR load:"
 module list 2>&1 || true
 
-sample_id="sample_001"
-r1_fastq="data/test/sample_001_R1.fastq.gz"
-r2_fastq="data/test/sample_001_R2.fastq.gz"
-star_index="refs/test_star_index"
-output_dir="results/test/sample_001/star"
-threads="${SLURM_CPUS_PER_TASK:-4}"
-
-# Dry-run fixtures only: create placeholders if absent so validation can pass
-# without committing real FASTQ or STAR reference data.
-mkdir -p "$(dirname "$r1_fastq")" "$star_index"
-if [[ ! -f "$r1_fastq" ]]; then
-    : > "$r1_fastq"
-fi
-if [[ ! -f "$r2_fastq" ]]; then
-    : > "$r2_fastq"
+# Default dry-run fixture support only.
+if [[ "$default_fixture_mode" == "1" && "$EXECUTE" == "0" ]]; then
+    echo "Using default dry-run fixtures."
+    mkdir -p "$(dirname "$R1_FASTQ")" "$STAR_INDEX"
+    [[ -f "$R1_FASTQ" ]] || : > "$R1_FASTQ"
+    [[ -f "$R2_FASTQ" ]] || : > "$R2_FASTQ"
 fi
 
-bash scripts/step_01_star_align.sh \
-    --sample-id "$sample_id" \
-    --r1-fastq "$r1_fastq" \
-    --r2-fastq "$r2_fastq" \
-    --star-index "$star_index" \
-    --output-dir "$output_dir" \
+echo "Resolved STAR SLURM parameters:"
+echo "  SAMPLE_ID:  $SAMPLE_ID"
+echo "  R1_FASTQ:   $R1_FASTQ"
+echo "  R2_FASTQ:   $R2_FASTQ"
+echo "  STAR_INDEX: $STAR_INDEX"
+echo "  OUTPUT_DIR: $OUTPUT_DIR"
+echo "  THREADS:    $threads"
+echo "  EXECUTE:    $EXECUTE"
+
+cmd=(
+    bash scripts/step_01_star_align.sh
+    --sample-id "$SAMPLE_ID"
+    --r1-fastq "$R1_FASTQ"
+    --r2-fastq "$R2_FASTQ"
+    --star-index "$STAR_INDEX"
+    --output-dir "$OUTPUT_DIR"
     --threads "$threads"
+)
+
+if [[ "$EXECUTE" == "1" ]]; then
+    cmd+=(--execute)
+fi
+
+echo "Wrapper command:"
+print_command "${cmd[@]}"
+
+"${cmd[@]}"
 
 echo "Finished: $(date)"
