@@ -5,6 +5,16 @@ This repository contains code, configuration, and SLURM job scripts for RNA-seq 
 The workflow is designed for **local development on macOS** and **full-scale execution on CSU's SLURM cluster**.
 
 ---
+## Quick Start
+
+```
+git clone https://github.com/Glen-Cocoa/norad.git .
+cd norad
+make all-checks
+python scripts/validate_manifest.py --manifest samples.example.tsv
+sbatch jobs/hello.slurm
+sbatch jobs/step_01_star_align.slurm
+```
 
 ## Project goals
 

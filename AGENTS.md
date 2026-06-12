@@ -495,6 +495,23 @@ Purpose:
 
 ---
 
+
+## Engineering standard
+
+Treat this repository as long-lived research software.
+
+Prefer designs that are:
+
+* easy to run
+* easy to test
+* easy to debug
+* easy to hand off
+* explicit about assumptions
+* resistant to user error
+* stable across local and cluster environments
+
+Avoid cleverness that makes the workflow harder to understand later. The best solution is usually the boring one that a future researcher can run safely and modify confidently.
+
 ## Handoff and maintainability expectations
 
 Develop this repository as if another researcher will take over and run or modify the workflow later.
