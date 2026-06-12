@@ -107,6 +107,9 @@ bash "$SCRIPT" \
 assert_contains "$dry_output" "Mode: dry-run"
 assert_contains "$dry_output" "--outFileNamePrefix"
 assert_contains "$dry_output" "$dry_output_dir/sample_001."
+assert_contains "$dry_output" "--outSAMtype"
+assert_contains "$dry_output" "BAM"
+assert_contains "$dry_output" "SortedByCoordinate"
 assert_not_contains "$dry_output" "--readFilesCommand"
 
 printf 'Running execute check...\n'
@@ -128,6 +131,9 @@ assert_contains "$star_log" "STAR invoked"
 assert_contains "$star_log" "--runThreadN"
 assert_contains "$star_log" "2"
 assert_contains "$star_log" "$execute_output_dir/sample_002."
+assert_contains "$star_log" "--outSAMtype"
+assert_contains "$star_log" "BAM"
+assert_contains "$star_log" "SortedByCoordinate"
 assert_contains "$execute_output" "Mode: execute"
 
 printf 'Running paired gzip dry-run check...\n'

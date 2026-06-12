@@ -158,14 +158,14 @@ printf '  Output directory: %s\n' "$output_dir"
 printf '  Threads: %s\n' "$threads"
 printf '  Mode: %s\n' "$mode"
 
-# TODO: Revisit STAR output settings before full-scale execution. STAR defaults
-# may produce very large SAM files, which can be expensive on cluster storage.
+# Write coordinate-sorted BAM directly to avoid large default SAM output.
 star_command=(
     STAR
     --runThreadN "$threads"
     --genomeDir "$star_index"
     --readFilesIn "$r1_fastq" "$r2_fastq"
     --outFileNamePrefix "$output_dir/${sample_id}."
+    --outSAMtype BAM SortedByCoordinate
 )
 
 if [[ "$r1_is_gz" == true ]]; then
