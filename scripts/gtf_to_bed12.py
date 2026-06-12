@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Convert GTF transcript exon models to BED12 for RSeQC infer_experiment.py."""
+"""Convert GTF transcript exon models to BED12 for RSeQC infer_experiment.py.
+
+This prepares a transcript-model reference for downstream strandness checks.
+Input is a GTF annotation; output is a BED12 file with one row per transcript.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +18,7 @@ from typing import TextIO
 VALID_STRANDS = {"+", "-", "."}
 
 
+# Small records keep parsing, validation, and BED serialization easy to inspect.
 @dataclass(frozen=True)
 class Exon:
     """One exon in BED coordinate space."""
@@ -71,6 +76,7 @@ class BedRecord:
 
 
 def parse_args() -> argparse.Namespace:
+    # Expose all input/output choices through the CLI so paths stay portable.
     parser = argparse.ArgumentParser(
         description=(
             "Convert a GTF annotation file to BED12 transcript models suitable "
@@ -121,6 +127,7 @@ def strip_quotes(value: str) -> str:
 def parse_gtf_attributes(attribute_text: str) -> dict[str, str]:
     attributes: dict[str, str] = {}
 
+    # Accept common GTF/GFF-style attribute separators without guessing elsewhere.
     for segment in attribute_text.strip().rstrip(";").split(";"):
         segment = segment.strip()
         if not segment:
@@ -165,6 +172,7 @@ def add_exon(
     row_number: int,
     stderr: TextIO,
 ) -> None:
+    # Collect rows by transcript, marking transcripts invalid if core metadata conflicts.
     transcript = transcripts.get(transcript_id)
     if transcript is None:
         transcripts[transcript_id] = Transcript(
@@ -203,6 +211,7 @@ def parse_gtf(
     gene_attribute: str,
     stderr: TextIO,
 ) -> dict[str, Transcript]:
+    # Validate the input file before scanning rows so failures are immediate.
     if not gtf_path.exists():
         raise FileNotFoundError(f"Input GTF does not exist: {gtf_path}")
     if not gtf_path.is_file():
@@ -210,6 +219,7 @@ def parse_gtf(
 
     transcripts: dict[str, Transcript] = {}
 
+    # Skip malformed rows with warnings so one bad annotation row does not stop conversion.
     with gtf_path.open() as handle:
         for row_number, raw_line in enumerate(handle, start=1):
             line = raw_line.rstrip("\n")
@@ -264,6 +274,7 @@ def parse_gtf(
 def build_bed_records(transcripts: dict[str, Transcript], stderr: TextIO) -> list[BedRecord]:
     records: list[BedRecord] = []
 
+    # Convert each valid transcript into BED12 block sizes and starts.
     for transcript in transcripts.values():
         if transcript.invalid_reason:
             warn(f"{transcript.invalid_reason}; skipping entire transcript", stderr)
@@ -293,6 +304,7 @@ def build_bed_records(transcripts: dict[str, Transcript], stderr: TextIO) -> lis
 
 
 def write_bed(records: list[BedRecord], bed_path: Path) -> None:
+    # Create the destination directory intentionally for local and cluster runs.
     bed_path.parent.mkdir(parents=True, exist_ok=True)
     with bed_path.open("w") as handle:
         for record in records:
@@ -303,6 +315,7 @@ def write_bed(records: list[BedRecord], bed_path: Path) -> None:
 def main() -> int:
     args = parse_args()
 
+    # Keep orchestration here: parse GTF, build records, write BED, and report failures.
     try:
         transcripts = parse_gtf(
             args.gtf,

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
+# Sort and index one SAM/BAM alignment file with samtools.
+#
+# The script validates inputs and prints the samtools commands in dry-run mode
+# by default. Passing --execute runs the same commands after validation.
 set -euo pipefail
 
+# Print the command-line contract used by local smoke tests and SLURM wrappers.
 usage() {
     cat <<'USAGE'
 Usage:
@@ -47,12 +52,14 @@ require_value() {
     fi
 }
 
+# Defaults are empty so missing required arguments fail loudly below.
 sample_id=""
 input_alignment=""
 output_dir=""
 threads=""
 execute=false
 
+# Parse explicit input/output paths and execution mode from the command line.
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id)
@@ -89,6 +96,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate required arguments and external tool availability before output setup.
 [[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
 [[ -n "$input_alignment" ]] || die "Missing required argument: --input-alignment."
 [[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
@@ -103,9 +111,11 @@ fi
 
 mkdir -p "$output_dir"
 
+# Use deterministic output names so downstream steps can locate sorted BAMs.
 output_bam="$output_dir/${sample_id}.sorted.bam"
 output_bai="$output_bam.bai"
 
+# Report the resolved run context so cluster logs are reproducible.
 mode="dry-run"
 if [[ "$execute" == true ]]; then
     mode="execute"
@@ -120,6 +130,7 @@ printf '  Output BAI: %s\n' "$output_bai"
 printf '  Threads: %s\n' "$threads"
 printf '  Mode: %s\n' "$mode"
 
+# Build commands as arrays to preserve argument boundaries and make dry-run output exact.
 sort_command=(
     samtools
     sort
@@ -140,10 +151,12 @@ print_command "${sort_command[@]}"
 printf 'samtools index command:\n'
 print_command "${index_command[@]}"
 
+# Dry-run mode is the default safety path for local development and wrapper tests.
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. Add --execute to run samtools.\n'
     exit 0
 fi
 
+# Execute only after validation and command logging are complete.
 "${sort_command[@]}"
 "${index_command[@]}"

@@ -6,6 +6,10 @@
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
 
+# Template for future NORAD SLURM wrappers.
+#
+# Keep analysis logic in scripts/ and use this file as a resource/module/logging
+# pattern when adding new cluster jobs.
 set -euo pipefail
 
 # Ensure TMPDIR points somewhere writable.
@@ -21,6 +25,7 @@ echo "Node: $(hostname)"
 echo "Started: $(date)"
 echo "Working directory: $PWD"
 
+# Show the inherited module state before the job loads its own requirements.
 module list || true
 
 # Load modules here, e.g.:
@@ -32,6 +37,7 @@ module load python39
 # module load gatk/...
 # module load R/...
 
+# Show the final module state and basic tool versions for debugging logs.
 module list || true
 
 echo "Tool versions:"

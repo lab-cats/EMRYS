@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
+# Run STAR alignment for one paired-end RNA-seq sample.
+#
+# The script validates inputs and prints the STAR command in dry-run mode by
+# default. Passing --execute runs STAR with the same validated parameters.
 set -euo pipefail
 
+# Print the command-line contract used by local smoke tests and SLURM wrappers.
 usage() {
     cat <<'USAGE'
 Usage:
@@ -55,6 +60,7 @@ is_gzip_path() {
     [[ "$1" == *.gz ]]
 }
 
+# Defaults are empty so missing required arguments fail loudly below.
 sample_id=""
 r1_fastq=""
 r2_fastq=""
@@ -63,6 +69,7 @@ output_dir=""
 threads=""
 execute=false
 
+# Parse explicit paths and execution mode from the command line.
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id)
@@ -109,6 +116,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate required arguments and external tool availability before any work starts.
 [[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
 [[ -n "$r1_fastq" ]] || die "Missing required argument: --r1-fastq."
 [[ -n "$r2_fastq" ]] || die "Missing required argument: --r2-fastq."
@@ -125,6 +133,7 @@ if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
     die "--threads must be a positive integer; got: $threads"
 fi
 
+# STAR needs --readFilesCommand only when both FASTQ inputs are gzip-compressed.
 r1_is_gz=false
 r2_is_gz=false
 if is_gzip_path "$r1_fastq"; then
@@ -144,6 +153,7 @@ fi
 
 mkdir -p "$output_dir"
 
+# Report the resolved run context so cluster logs are reproducible.
 mode="dry-run"
 if [[ "$execute" == true ]]; then
     mode="execute"
@@ -175,9 +185,11 @@ fi
 printf 'STAR command:\n'
 print_command "${star_command[@]}"
 
+# Dry-run mode is the default safety path for local development and wrapper tests.
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. Add --execute to run STAR.\n'
     exit 0
 fi
 
+# Execute only after validation and command logging are complete.
 "${star_command[@]}"

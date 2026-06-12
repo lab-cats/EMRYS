@@ -7,6 +7,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --export=ALL,TMPDIR=/tmp
 
+# SLURM wrapper for Step 01 STAR alignment.
+#
+# Defaults support a dry-run smoke test. Real cluster execution should pass
+# sample-specific paths through environment variables and set EXECUTE=1.
 set -euo pipefail
 
 die() {
@@ -27,6 +31,7 @@ STAR_INDEX="${STAR_INDEX:-refs/test_star_index}"
 OUTPUT_DIR="${OUTPUT_DIR:-results/test/sample_001/star}"
 EXECUTE="${EXECUTE:-0}"
 
+# Guard the execution flag before creating fixtures or invoking STAR.
 if [[ "$EXECUTE" != "0" && "$EXECUTE" != "1" ]]; then
     die "EXECUTE must be 0 or 1."
 fi
@@ -39,6 +44,7 @@ if [[ "$SAMPLE_ID" == "sample_001" \
     default_fixture_mode=1
 fi
 
+# Prevent accidental real execution with placeholder dry-run fixture paths.
 if [[ "$EXECUTE" == "1" && "$default_fixture_mode" == "1" ]]; then
     die "Refusing to execute with default dry-run fixture parameters. Pass real SAMPLE_ID/R1_FASTQ/R2_FASTQ/STAR_INDEX/OUTPUT_DIR."
 fi
@@ -51,6 +57,7 @@ fi
 
 threads="${SLURM_CPUS_PER_TASK:-8}"
 
+# Print job context before loading modules or invoking the step script.
 echo "Job ID: ${SLURM_JOB_ID:-none}"
 echo "Job name: ${SLURM_JOB_NAME:-none}"
 echo "Node: $(hostname)"
@@ -61,6 +68,7 @@ echo "TMPDIR: $TMPDIR"
 echo "Loaded modules before STAR load:"
 module list 2>&1 || true
 
+# Load STAR inside the job so the wrapper does not rely on an interactive shell.
 module load star/2.7.11b
 
 echo "Loaded modules after STAR load:"
@@ -83,6 +91,7 @@ echo "  OUTPUT_DIR: $OUTPUT_DIR"
 echo "  THREADS:    $threads"
 echo "  EXECUTE:    $EXECUTE"
 
+# Delegate workflow logic to the script in scripts/; keep SLURM as a wrapper.
 cmd=(
     bash scripts/step_01_star_align.sh
     --sample-id "$SAMPLE_ID"
@@ -100,6 +109,7 @@ fi
 echo "Wrapper command:"
 print_command "${cmd[@]}"
 
+# Run the step script after logging the exact wrapper command.
 "${cmd[@]}"
 
 echo "Finished: $(date)"

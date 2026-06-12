@@ -7,8 +7,13 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --export=ALL,TMPDIR=/tmp
 
+# Build the Novogene STAR genome index on a compute node.
+#
+# Inputs are the compressed reference FASTA/GTF under data/raw; outputs are the
+# uncompressed working reference and STAR index under refs/.
 set -euo pipefail
 
+# Print cluster context early so SLURM logs show where the job ran.
 echo "Job ID: ${SLURM_JOB_ID:-NA}"
 echo "Node: ${SLURMD_NODENAME:-NA}"
 echo "Working dir: $(pwd)"
@@ -17,6 +22,7 @@ echo "TMPDIR: ${TMPDIR:-NA}"
 module load star/2.7.11b
 module list 2>&1
 
+# Keep reference and index paths together for easier cluster handoff.
 REF_DIR="data/raw/novogene_remora/04.Ref"
 WORK_REF="refs/novogene_ref"
 STAR_INDEX="refs/novogene_star_index"
@@ -24,10 +30,12 @@ THREADS="${SLURM_CPUS_PER_TASK:-8}"
 
 SJDB_OVERHANG=149
 
+# Create output locations before decompressing reference inputs.
 mkdir -p "$WORK_REF" "$STAR_INDEX"
 
 echo "Preparing uncompressed reference files..."
 
+# Reuse already-prepared reference files so reruns do not decompress needlessly.
 if [[ ! -s "$WORK_REF/genome.fa" ]]; then
   gunzip -c "$REF_DIR/genome.fa.gz" > "$WORK_REF/genome.fa"
 fi
@@ -43,6 +51,7 @@ echo "STAR index dir:  $STAR_INDEX"
 echo "Threads:         $THREADS"
 echo "sjdbOverhang:    $SJDB_OVERHANG"
 
+# Run STAR genomeGenerate with the resolved reference paths and requested CPUs.
 STAR \
   --runThreadN "$THREADS" \
   --runMode genomeGenerate \

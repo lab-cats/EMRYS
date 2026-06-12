@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Validate a tab-separated RNA-seq sample manifest."""
+"""Validate a tab-separated RNA-seq sample manifest.
+
+The manifest is the workflow contract between sample metadata and pipeline
+steps. This script checks schema, sample IDs, strandedness values, and optional
+FASTQ path existence before cluster jobs depend on the file.
+"""
 
 from __future__ import annotations
 
@@ -15,11 +20,13 @@ ALLOWED_COLUMNS = set(REQUIRED_COLUMNS) | set(OPTIONAL_COLUMNS)
 VALID_STRANDEDNESS = {"forward", "reverse", "unstranded", "unknown"}
 
 
+# Keep the manifest schema explicit so future workflow steps share one contract.
 class ManifestValidationError(Exception):
     """Raised when a sample manifest fails validation."""
 
 
 def parse_args() -> argparse.Namespace:
+    # Expose file checking as an option so schema validation can run without data access.
     parser = argparse.ArgumentParser(
         description=(
             "Validate a tab-separated RNA-seq sample manifest before running "
@@ -60,6 +67,7 @@ def resolve_path(path_value: str, base_dir: Path) -> Path:
 
 
 def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict[str, set[str] | int]:
+    # Validate the manifest path before opening it so path failures are clear.
     if not manifest.exists():
         raise ManifestValidationError(f"Manifest does not exist: {manifest}")
     if not manifest.is_file():
@@ -71,6 +79,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
     strandedness_values: set[str] = set()
     sample_count = 0
 
+    # Check the header first; row validation depends on a known column contract.
     with manifest.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         if reader.fieldnames is None:
@@ -99,6 +108,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
         if errors:
             raise ManifestValidationError(format_errors(errors))
 
+        # Validate each sample row while accumulating a small run summary.
         for row_number, row in enumerate(reader, start=2):
             if None in row:
                 extra_values = [value.strip() for value in row[None] if value.strip()]
@@ -164,6 +174,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
     if sample_count == 0:
         errors.append("Manifest must contain at least one sample row")
 
+    # Report all row-level errors together so users can fix the manifest in one pass.
     if errors:
         raise ManifestValidationError(format_errors(errors))
 
@@ -191,6 +202,7 @@ def print_summary(summary: dict[str, set[str] | int]) -> None:
 def main() -> int:
     args = parse_args()
 
+    # Return a nonzero exit code for SLURM wrappers and local smoke tests.
     try:
         summary = validate_manifest(args.manifest, args.base_dir, args.check_files)
     except ManifestValidationError as error:
