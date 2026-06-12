@@ -6,6 +6,7 @@ test:
 shell-test:
 	bash tests/shell/test_step_01_star_align.sh
 	bash tests/shell/test_step_02_sort_index_bam.sh
+	bash tests/shell/test_step_02b_bam_qc.sh
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv

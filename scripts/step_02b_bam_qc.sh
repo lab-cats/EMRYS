@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# Run basic integrity/QC checks on one canonical sorted BAM with samtools.
+#
+# The script validates the BAM and index, then prints the samtools commands in
+# dry-run mode by default. Passing --execute runs the same commands.
+set -euo pipefail
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  scripts/step_02b_bam_qc.sh \
+    --sample-id SAMPLE_ID \
+    --bam BAM \
+    --output-dir OUTPUT_DIR \
+    [--execute]
+
+Run basic BAM integrity/QC checks on a canonical sorted BAM from Step 02.
+
+By default this script runs in dry-run mode: it validates inputs and prints the
+samtools commands without executing them. Add --execute to run samtools.
+
+Required arguments:
+  --sample-id    Sample identifier used in output filenames.
+  --bam          Input sorted BAM file from Step 02.
+  --output-dir   Directory where BAM QC outputs will be written.
+
+Options:
+  --execute      Execute samtools after validation. Without this, dry-run only.
+  -h, --help     Show this help message and exit.
+USAGE
+}
+
+die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+print_command() {
+    printf '%q ' "$@"
+    printf '\n'
+}
+
+require_value() {
+    local option="$1"
+    local value="${2:-}"
+
+    if [[ -z "$value" || "$value" == --* ]]; then
+        die "$option requires a value."
+    fi
+}
+
+sample_id=""
+bam=""
+output_dir=""
+execute=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --sample-id)
+            require_value "$1" "${2:-}"
+            sample_id="$2"
+            shift 2
+            ;;
+        --bam)
+            require_value "$1" "${2:-}"
+            bam="$2"
+            shift 2
+            ;;
+        --output-dir)
+            require_value "$1" "${2:-}"
+            output_dir="$2"
+            shift 2
+            ;;
+        --execute)
+            execute=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: $1. Run with --help for usage."
+            ;;
+    esac
+done
+
+[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
+[[ -n "$bam" ]] || die "Missing required argument: --bam."
+[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
+
+[[ -f "$bam" ]] || die "BAM does not exist or is not a file: $bam"
+
+bam_index=""
+if [[ -f "$bam.bai" ]]; then
+    bam_index="$bam.bai"
+elif [[ -f "${bam%.bam}.bai" ]]; then
+    bam_index="${bam%.bam}.bai"
+else
+    die "BAM index does not exist. Expected either: $bam.bai or ${bam%.bam}.bai"
+fi
+
+command -v samtools >/dev/null 2>&1 || die "samtools executable was not found on PATH. Load the samtools module or update PATH."
+
+mkdir -p "$output_dir"
+
+QUICKCHECK_OUT="$output_dir/${sample_id}.quickcheck.txt"
+FLAGSTAT_OUT="$output_dir/${sample_id}.flagstat.txt"
+
+mode="dry-run"
+if [[ "$execute" == true ]]; then
+    mode="execute"
+fi
+
+printf 'BAM QC context\n'
+printf '  Sample ID: %s\n' "$sample_id"
+printf '  BAM: %s\n' "$bam"
+printf '  BAM index found: %s\n' "$bam_index"
+printf '  Output directory: %s\n' "$output_dir"
+printf '  Quickcheck output: %s\n' "$QUICKCHECK_OUT"
+printf '  Flagstat output: %s\n' "$FLAGSTAT_OUT"
+printf '  Mode: %s\n' "$mode"
+
+quickcheck_command=(
+    samtools
+    quickcheck
+    -v
+    "$bam"
+)
+
+flagstat_command=(
+    samtools
+    flagstat
+    "$bam"
+)
+
+printf 'samtools quickcheck command:\n'
+print_command "${quickcheck_command[@]}"
+
+printf 'samtools flagstat command:\n'
+print_command "${flagstat_command[@]}"
+
+if [[ "$execute" != true ]]; then
+    printf 'Dry-run only. Add --execute to run samtools.\n'
+    exit 0
+fi
+
+if ! "${quickcheck_command[@]}" >"$QUICKCHECK_OUT" 2>&1; then
+    printf 'ERROR: samtools quickcheck failed. Output preserved at: %s\n' "$QUICKCHECK_OUT" >&2
+    exit 1
+fi
+
+if [[ ! -s "$QUICKCHECK_OUT" ]]; then
+    printf 'PASS: samtools quickcheck completed with no errors.\n' >"$QUICKCHECK_OUT"
+fi
+
+"${flagstat_command[@]}" >"$FLAGSTAT_OUT"
+
+printf 'BAM QC output details:\n'
+ls -lh "$QUICKCHECK_OUT" "$FLAGSTAT_OUT"
+
+printf 'samtools flagstat output:\n'
+cat "$FLAGSTAT_OUT"
