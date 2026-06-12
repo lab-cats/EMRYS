@@ -1,7 +1,7 @@
 .PHONY: test validate lint
 
 test:
-	pytest
+	python -m pytest
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
