@@ -11,7 +11,7 @@ implemented.
 | 01 | Align paired-end FASTQs to the reference. | FASTQ R1/R2 files, STAR index | STAR alignment output under `results/star/` | implemented | STAR |
 | 02 | Sort and index canonical BAMs. | STAR SAM/BAM alignment | `results/bam/<sample_id>/<sample_id>.sorted.bam` and index | implemented | samtools |
 | 02b | Run BAM integrity/QC checks. | `results/bam/<sample_id>/<sample_id>.sorted.bam` | QC summaries under `results/qc/bam/` | implemented | samtools |
-| 03 | Infer strandedness and read orientation. | sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | pending | RSeQC `infer_experiment.py` |
+| 03 | Infer strandedness and read orientation. | sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | implemented / pending cluster validation | RSeQC `infer_experiment.py` |
 | 04 | Mark PCR/optical duplicates. | `results/bam/<sample_id>/<sample_id>.sorted.bam` | duplicate-marked BAM and Picard metrics | pending | Picard MarkDuplicates |
 | 05 | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM | `results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam` | pending | GATK SplitNCigarReads |
 | 06 | Split processed BAMs by read orientation. | split-N-cigar BAM | FWD/REV orientation-specific BAMs and indexes | pending | samtools |
