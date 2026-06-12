@@ -22,12 +22,12 @@ echo "Working directory: $PWD"
 echo "TMPDIR: $TMPDIR"
 
 echo "Loaded modules before STAR load:"
-module list || true
+module list 2>&1 || true
 
 module load star/2.7.11b
 
 echo "Loaded modules after STAR load:"
-module list || true
+module list 2>&1 || true
 
 sample_id="sample_001"
 r1_fastq="data/test/sample_001_R1.fastq.gz"
