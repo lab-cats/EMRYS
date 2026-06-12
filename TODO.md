@@ -57,7 +57,7 @@ Continue with Step 04 on ABE_EV_2 for development speed.
 Later, run Steps 01-03 across all six samples before final global assumptions.
 ```
 
-### 2. Implement Step 04: Picard MarkDuplicates
+### 2. Validate Step 04: Picard MarkDuplicates on cluster
 
 Expected input:
 
@@ -81,19 +81,19 @@ module load picard/3.1.1
 java -jar "$PICARD" MarkDuplicates ...
 ```
 
-Implementation requirements:
+Implemented local behavior:
 
 ```text
 - dry-run by default
 - execute only with --execute / EXECUTE=1
 - validate input BAM and BAI
 - validate Picard jar through $PICARD
-- write duplicate-marked BAM
+- write duplicate-marked BAM with REMOVE_DUPLICATES=false
 - write metrics file
+- validate duplicate-marked BAM with samtools quickcheck
 - index output BAM
 - validate output BAM, BAI, and metrics
-- add local shell tests with fake Picard/Java if needed
-- update docs/PIPELINE_PLAN.md status to implemented / pending cluster validation
+- local shell tests use fake java/Picard and fake samtools
 ```
 
 Decision already made:

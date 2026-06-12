@@ -41,7 +41,7 @@ ABE_PUM1_4
 | 02   | Sort and index canonical downstream BAMs.                      | STAR alignment BAM                                             | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai`                            | implemented / cluster-proven for `ABE_EV_2` | samtools                    |
 | 02b  | Run BAM integrity/QC checks.                                   | canonical sorted BAM                                           | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented / cluster-proven for `ABE_EV_2` | samtools                    |
 | 03   | Infer strandedness and read orientation.                       | canonical sorted BAM, `refs/novogene_ref/genome.bed`           | `results/qc/strandedness/<sample_id>.infer_experiment.txt`                             | implemented / cluster-proven for `ABE_EV_2` | RSeQC `infer_experiment.py` |
-| 04   | Mark PCR/optical duplicates.                                   | canonical sorted BAM                                           | duplicate-marked BAM, index, Picard metrics                                            | pending / scaffold only                     | Picard MarkDuplicates       |
+| 04   | Mark PCR/optical duplicates.                                   | canonical sorted BAM                                           | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics       | implemented / pending cluster validation    | Picard MarkDuplicates       |
 | 05   | Run RNA-seq SplitNCigarReads.                                  | duplicate-marked BAM, reference FASTA                          | split-N-cigar BAM and index                                                            | pending / scaffold only                     | GATK SplitNCigarReads       |
 | 06   | Split processed BAMs by read orientation.                      | split-N-cigar BAM                                              | orientation-specific BAMs and indexes                                                  | pending / scaffold only                     | samtools                    |
 | 07   | Run mpileup by chromosome and orientation/strand.              | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files                                               | pending / scaffold only                     | bcftools                    |
@@ -175,10 +175,10 @@ Because Step 03 indicates reverse-stranded / first-strand behavior for `ABE_EV_2
 
 ## Current next decision
 
-The next likely implementation target is:
+The next validation target is:
 
 ```text
-Step 04: Picard MarkDuplicates
+Step 04: Picard MarkDuplicates cluster dry-run and execute validation
 ```
 
 Expected Step 04 input:
@@ -188,7 +188,7 @@ results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
 results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
 ```
 
-Likely Step 04 outputs:
+Expected Step 04 outputs:
 
 ```text
 results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam
@@ -196,7 +196,7 @@ results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai
 results/qc/markdup/ABE_EV_2.markdup.metrics.txt
 ```
 
-Step 04 should mark duplicates, not remove them, unless there is a specific reason to change that behavior.
+Step 04 is implemented as a dry-run-first Picard MarkDuplicates wrapper. It marks duplicates, does not remove them, writes Picard metrics, runs `samtools quickcheck`, and indexes the duplicate-marked BAM.
 
 Before implementing later biological interpretation steps, decide whether to:
 

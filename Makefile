@@ -8,6 +8,7 @@ shell-test:
 	bash tests/shell/test_step_02_sort_index_bam.sh
 	bash tests/shell/test_step_02b_bam_qc.sh
 	bash tests/shell/test_step_03_infer_strandedness_and_orientation.sh
+	bash tests/shell/test_step_04_mark_duplicates.sh
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
