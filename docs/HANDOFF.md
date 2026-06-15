@@ -166,6 +166,20 @@ TODO.md                tactical next work
 README.md              concise entrypoint
 ```
 
+### Operator Checklist
+
+- **Dry-run by default:** SLURM job wrappers default to dry-run; submit a dry-run first to validate resolved inputs and printed commands.
+- **Execute on cluster:** When ready to run, submit with `EXECUTE=1` exported to the job, for example:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
+```
+
+- **Script-level execution:** Local scripts print resolved context by default and only run tool commands when passed `--execute` (e.g., `scripts/step_02b_bam_qc.sh --execute`).
+- **Where to validate:** Use `docs/RUNBOOK.md` for per-step dry-run/execute checks, `DECISIONS.md` for the execution policy, and `docs/PIPELINE_PLAN.md` for step status.
+- **Quick post-run checks:** Confirm expected outputs appear under `results/` (star, bam, qc, markdup) and inspect SLURM logs under `logs/`.
+
+
 ## Data Locations
 
 Local development repo:
