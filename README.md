@@ -24,14 +24,14 @@ Current development/validation sample:
 ABE_EV_2
 ```
 
-Implemented and cluster-proven for `ABE_EV_2`:
+Implemented steps for `ABE_EV_2`:
 
 | Step  | Purpose                                   | Status                        |
 | ----- | ----------------------------------------- | ----------------------------- |
 | `00a` | Build Novogene STAR index                 | cluster-proven                |
 | `00b` | Convert GTF to BED12 for RSeQC            | cluster-proven                |
 | `01`  | STAR alignment                            | cluster-proven for `ABE_EV_2` |
-| `02`  | Create canonical sorted/indexed BAM       | cluster-proven for `ABE_EV_2` |
+| `02`  | Create canonical sorted/read-group/indexed BAM | pending cluster revalidation after read-group hardening |
 | `02b` | BAM QC with samtools                      | cluster-proven for `ABE_EV_2` |
 | `03`  | Infer strandedness/orientation with RSeQC | cluster-proven for `ABE_EV_2` |
 
@@ -59,7 +59,7 @@ FASTQ(.gz)
     ↓
 STAR alignment
     ↓
-canonical sorted/indexed BAM
+canonical sorted/read-group/indexed BAM
     ↓
 BAM QC
     ↓
@@ -418,7 +418,7 @@ Status:
 implemented / cluster-proven for ABE_EV_2
 ```
 
-### Step 02: canonical sort/index BAM
+### Step 02: canonical sort/read-group/index BAM
 
 Script:
 
@@ -432,17 +432,21 @@ Job:
 jobs/step_02_sort_index_bam.slurm
 ```
 
-Validated output for `ABE_EV_2`:
+Canonical output for `ABE_EV_2`:
 
 ```text
 results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
 results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
 ```
 
+Step 02 now enforces coordinate sort order, one-sample read-group metadata,
+record-level `RG` tags, BAM/index validation, per-sample locking, and rollback
+protection before publishing the canonical BAM/BAI pair.
+
 Status:
 
 ```text
-implemented / cluster-proven for ABE_EV_2
+implemented / pending cluster revalidation after read-group hardening
 ```
 
 ### Step 02b: BAM QC

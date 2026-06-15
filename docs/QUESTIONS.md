@@ -62,6 +62,21 @@ Structured artifacts and reporting are planned, deferred, and non-runnable. Open
 * Which responsibilities belong to Jinja2 versus Quarto or R Markdown?
 * What final CMH/editing-site results, plots, and interpretation notes belong in the report?
 
+### Read-group library metadata
+
+Step `02` currently uses the provisional read-group convention:
+
+```text
+ID=<sample_id>
+SM=<sample_id>
+LB=<sample_id>
+PL=ILLUMINA
+```
+
+Need to determine whether true Novogene library, lane, or platform-unit
+metadata can be recovered from delivery records and should replace the
+provisional `LB=<sample_id>` convention later.
+
 ## Cluster
 
 ### What is the correct login node?

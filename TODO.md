@@ -15,13 +15,14 @@ TROUBLESHOOTING.md
 
 ## Current state
 
-Implemented and cluster-proven for `ABE_EV_2`:
+Implemented and cluster-proven for `ABE_EV_2`, except hardened Step 02 which
+is pending cluster revalidation:
 
 ```text
 00a  Build STAR index
 00b  Convert GTF to BED12
 01   STAR alignment
-02   Canonical sort/index BAM
+02   Canonical sort/read-group/index BAM
 02b  BAM QC
 03   RSeQC strandedness/orientation inference
 ```
@@ -41,7 +42,39 @@ Step 03 result for `ABE_EV_2` indicates strong reverse-stranded / first-strand-s
 
 ## Immediate next TODO
 
-### 1. Decide next development move
+### 1. Revalidate hardened Step 02 on cluster
+
+After local implementation and commit/push:
+
+```bash
+ssh csu-hpc
+norad
+git pull
+git status --short
+mkdir -p logs
+```
+
+Dry-run:
+
+```bash
+sbatch jobs/step_02_sort_index_bam.slurm
+```
+
+Execute:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02_sort_index_bam.slurm
+```
+
+Inspect the canonical BAM and BAI before treating Step 02 as cluster-proven.
+
+Status:
+
+```text
+implemented / pending cluster revalidation after read-group hardening
+```
+
+### 2. Decide next development move
 
 Choose one:
 
@@ -57,7 +90,7 @@ Continue with Step 04 on ABE_EV_2 for development speed.
 Later, run Steps 01-03 across all six samples before final global assumptions.
 ```
 
-### 2. Validate Step 04: Picard MarkDuplicates on cluster
+### 3. Validate Step 04: Picard MarkDuplicates on cluster
 
 Expected input:
 
@@ -400,11 +433,13 @@ Resolved.
 
 Step 01 has been implemented and cluster-proven for `ABE_EV_2`.
 
-### Step 02 samtools sort/index wrapper
+### Step 02 samtools sort/read-group/index wrapper
 
-Resolved.
+Implemented locally.
 
-Step 02 has been implemented and cluster-proven for `ABE_EV_2`.
+The original Step 02 sort/index implementation was successfully exercised on
+the cluster, but its BAMs lacked required read-group metadata. Hardened Step 02
+supersedes those outputs and is pending cluster revalidation.
 
 ### Step 02b BAM QC
 

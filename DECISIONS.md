@@ -165,18 +165,31 @@ Reason: one-sample validation keeps cluster iteration fast and makes failures ea
 Caution: final workflow assumptions must eventually be validated across all six samples.
 
 
-## Step 02 canonical BAMs must be coordinate-sorted, indexed, and carry calid read-group materials
+## Step 02 enforces canonical read-group metadata
 
-provisional convention:
+Decision: Step `02` is the boundary that creates canonical downstream BAMs.
+Those BAMs must be coordinate sorted, indexed, and carry exactly one read group
+for the current one-sample-per-BAM contract.
 
-```
+Read-group convention:
+
+```text
 ID=<sample_id>
 SM=<sample_id>
 LB=<sample_id>
 PL=ILLUMINA
 ```
 
-Picard requires records to resolve to an `@RG`, and step 02 is the enforcement boundary.
+`LB=<sample_id>` is provisional until true Novogene library, lane, or platform
+unit metadata is recovered.
+
+Reason: Picard and downstream tools require records to resolve to a valid
+`@RG`. Missing read groups caused Picard MarkDuplicates to fail, so Step `04`
+must not work around missing canonical metadata.
+
+Implementation requirement: Step `02` validates the replacement BAM and index
+before publishing, uses a per-sample lock, and restores the previous canonical
+BAM/BAI pair if publication fails after backups begin.
 
 ## Step 03 result indicates reverse-stranded / first-strand behavior for `ABE_EV_2`
 

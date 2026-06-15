@@ -38,7 +38,7 @@ ABE_PUM1_4
 | 00a  | Build the Novogene STAR index.                                 | Novogene reference FASTA/GTF under `refs/novogene_ref/`        | `refs/novogene_star_index/`                                                            | implemented / cluster-proven                | STAR                        |
 | 00b  | Convert reference GTF to sorted BED12 for strandedness checks. | `refs/novogene_ref/genome.gtf`                                 | `refs/novogene_ref/genome.bed`                                                         | implemented / cluster-proven                | Python, bedtools            |
 | 01   | Align paired-end FASTQs to the reference.                      | FASTQ R1/R2 files, STAR index                                  | STAR output under `results/star/<sample_id>/`                                          | implemented / cluster-proven for `ABE_EV_2` | STAR                        |
-| 02   | Create canonical coordinate-sorted, read-group-tagged, indexed BAMs.  | STAR alignment BAM                                             | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai`                            | implemented / pending cluster validation after read group hardening for `ABE_EV_2` | samtools                    |
+| 02   | Create canonical coordinate-sorted, read-group-tagged, indexed BAMs.  | STAR alignment BAM                                             | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai`                            | implemented / pending cluster revalidation after read-group hardening | samtools                    |
 | 02b  | Run BAM integrity/QC checks.                                   | canonical sorted BAM                                           | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented / cluster-proven for `ABE_EV_2` | samtools                    |
 | 03   | Infer strandedness and read orientation.                       | canonical sorted BAM, `refs/novogene_ref/genome.bed`           | `results/qc/strandedness/<sample_id>.infer_experiment.txt`                             | implemented / cluster-proven for `ABE_EV_2` | RSeQC `infer_experiment.py` |
 | 04   | Mark PCR/optical duplicates.                                   | canonical sorted BAM                                           | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics       | implemented / pending cluster validation    | Picard MarkDuplicates       |
@@ -94,14 +94,18 @@ results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
 results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
 ```
 
-Cluster validation:
+Hardened Step `02` sorts the input alignment, adds the sample read group with
+`samtools addreplacerg`, validates strict one-sample read-group metadata,
+indexes the replacement BAM, and publishes the canonical BAM/BAI under a
+per-sample lock with rollback protection.
 
-```text
-Job 594748: Step 02 dry-run, completed 0:0
-Job 594749: Step 02 execute, completed 0:0
-```
+The original Step 02 sort/index implementation was successfully exercised on
+the cluster before read-group hardening. Those pre-hardening outputs lacked
+required read-group metadata and are superseded by the hardened Step 02
+contract.
 
-Step 02 execute used approximately 6.8G MaxRSS and completed in about 3 minutes 46 seconds.
+Pre-hardening Step 02 execution used approximately 6.8G MaxRSS and completed
+in about 3 minutes 46 seconds.
 
 ### Step 02b for ABE_EV_2
 
@@ -110,13 +114,7 @@ results/qc/bam/ABE_EV_2.quickcheck.txt
 results/qc/bam/ABE_EV_2.flagstat.txt
 ```
 
-Step 02b dry-run job:
-
-```text
-Job 594750: completed 0:0
-```
-
-Step 02b execute also completed successfully with no stderr noted.
+Step 02b execute completed successfully with no stderr noted.
 
 ### Step 03 for ABE_EV_2
 

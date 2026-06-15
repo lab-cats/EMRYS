@@ -22,16 +22,20 @@ assert_contains() {
     fi
 }
 
-assert_not_contains() {
-    local file="$1"
-    local unexpected="$2"
+assert_not_exists() {
+    local path="$1"
 
-    if grep -Fq -- "$unexpected" "$file"; then
-        printf 'Did not expect to find: %s\n' "$unexpected" >&2
-        printf 'Actual output:\n' >&2
-        cat "$file" >&2
-        fail "unexpected output present"
-    fi
+    [[ ! -e "$path" ]] || fail "path should not exist: $path"
+}
+
+assert_file_equals() {
+    local path="$1"
+    local expected="$2"
+    local actual
+
+    [[ -f "$path" ]] || fail "expected file does not exist: $path"
+    actual="$(cat "$path")"
+    [[ "$actual" == "$expected" ]] || fail "unexpected content in $path: $actual"
 }
 
 assert_fails() {
@@ -44,6 +48,15 @@ assert_fails() {
     fi
 }
 
+assert_no_step02_scratch() {
+    local output_dir="$1"
+
+    if find "$output_dir" -mindepth 1 -maxdepth 1 -name '.*step02*' | grep -q .; then
+        find "$output_dir" -mindepth 1 -maxdepth 1 -name '.*step02*' >&2
+        fail "step02 scratch files were not cleaned from $output_dir"
+    fi
+}
+
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -51,12 +64,53 @@ fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
 
 samtools_log="$tmp_dir/samtools_invocations.log"
+mv_log="$tmp_dir/mv_invocations.log"
+
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'samtools invoked\n' >> "$samtools_log"
-printf '%s\n' "\$@" >> "$samtools_log"
+printf 'samtools invoked\\n' >> "$samtools_log"
+printf '%s\\n' "\$@" >> "$samtools_log"
+
+write_fake_bam() {
+    local path="\$1"
+    local rg_mode="\${FAKE_RG_MODE:-valid}"
+    local tagged_mode="\${FAKE_TAGGED_MODE:-all}"
+    local sort_mode="\${FAKE_SORT_MODE:-coordinate}"
+    local sample="\${FAKE_SAMPLE_ID:-sample_execute}"
+    local total="\${FAKE_TOTAL_RECORDS:-10}"
+    local tagged="\$total"
+
+    if [[ "\$tagged_mode" == "partial" ]]; then
+        tagged=5
+    fi
+
+    {
+        case "\$sort_mode" in
+            coordinate) printf '@HD\\tVN:1.6\\tSO:coordinate\\n' ;;
+            unknown) printf '@HD\\tVN:1.6\\tSO:unknown\\n' ;;
+        esac
+
+        case "\$rg_mode" in
+            valid)
+                printf '@RG\\tID:%s\\tSM:%s\\tLB:%s\\tPL:ILLUMINA\\n' "\$sample" "\$sample" "\$sample"
+                ;;
+            missing)
+                ;;
+            extra)
+                printf '@RG\\tID:%s\\tSM:%s\\tLB:%s\\tPL:ILLUMINA\\n' "\$sample" "\$sample" "\$sample"
+                printf '@RG\\tID:extra\\tSM:extra\\tLB:extra\\tPL:ILLUMINA\\n'
+                ;;
+            malformed)
+                printf '@RG\\tID:%s\\tSM:WRONG\\tLB:%s\\tPL:ILLUMINA\\n' "\$sample" "\$sample"
+                ;;
+        esac
+
+        printf 'TOTAL:%s\\n' "\$total"
+        printf 'TAGGED:%s\\n' "\$tagged"
+    } > "\$path"
+}
 
 subcommand="\${1:-}"
 shift || true
@@ -79,29 +133,111 @@ case "\$subcommand" in
             esac
         done
 
-        if [[ -z "\$output_bam" ]]; then
-            printf 'fake samtools sort missing -o output\n' >&2
+        [[ -n "\$output_bam" ]] || { printf 'fake samtools sort missing -o output\\n' >&2; exit 64; }
+        printf 'fake sorted bam\\n' > "\$output_bam"
+        ;;
+    addreplacerg)
+        output_bam=""
+        input_bam=""
+        saw_w=false
+        saw_id=false
+        saw_sm=false
+        saw_lb=false
+        saw_pl=false
+
+        while [[ \$# -gt 0 ]]; do
+            case "\$1" in
+                -o)
+                    output_bam="\${2:-}"
+                    shift 2
+                    ;;
+                -@|-m)
+                    shift 2
+                    ;;
+                -w)
+                    saw_w=true
+                    shift
+                    ;;
+                -r)
+                    case "\${2:-}" in
+                        ID:*) saw_id=true ;;
+                        SM:*) saw_sm=true ;;
+                        LB:*) saw_lb=true ;;
+                        PL:ILLUMINA) saw_pl=true ;;
+                    esac
+                    shift 2
+                    ;;
+                *)
+                    input_bam="\$1"
+                    shift
+                    ;;
+            esac
+        done
+
+        [[ "\$saw_w" == true ]] || { printf 'fake samtools addreplacerg missing -w\\n' >&2; exit 64; }
+        [[ "\$saw_id" == true && "\$saw_sm" == true && "\$saw_lb" == true && "\$saw_pl" == true ]] || {
+            printf 'fake samtools addreplacerg missing repeated -r RG fields\\n' >&2
+            exit 64
+        }
+        [[ -n "\$output_bam" && -n "\$input_bam" ]] || { printf 'fake samtools addreplacerg missing input/output\\n' >&2; exit 64; }
+        write_fake_bam "\$output_bam"
+        ;;
+    quickcheck)
+        input_bam="\${1:-}"
+        [[ -n "\$input_bam" ]] || { printf 'fake samtools quickcheck missing input BAM\\n' >&2; exit 64; }
+        [[ -s "\$input_bam" ]] || exit 1
+        if [[ -n "\${FAKE_QUICKCHECK_FAIL_MATCH:-}" && "\$input_bam" == *"\$FAKE_QUICKCHECK_FAIL_MATCH"* ]]; then
+            exit 1
+        fi
+        ;;
+    view)
+        if [[ "\${1:-}" == "-H" ]]; then
+            input_bam="\${2:-}"
+            grep '^@' "\$input_bam"
+        elif [[ "\${1:-}" == "-c" && "\${2:-}" == "-d" ]]; then
+            input_bam="\${4:-}"
+            grep '^TAGGED:' "\$input_bam" | cut -d: -f2
+        elif [[ "\${1:-}" == "-c" ]]; then
+            input_bam="\${2:-}"
+            grep '^TOTAL:' "\$input_bam" | cut -d: -f2
+        else
+            printf 'fake samtools unsupported view args\\n' >&2
             exit 64
         fi
-
-        mkdir -p "\$(dirname "\$output_bam")"
-        printf 'fake sorted bam\n' > "\$output_bam"
         ;;
     index)
         input_bam="\${1:-}"
-        if [[ -z "\$input_bam" ]]; then
-            printf 'fake samtools index missing input BAM\n' >&2
-            exit 64
-        fi
-        printf 'fake bam index\n' > "\$input_bam.bai"
+        [[ -n "\$input_bam" ]] || { printf 'fake samtools index missing input BAM\\n' >&2; exit 64; }
+        printf 'fake bam index\\n' > "\$input_bam.bai"
         ;;
     *)
-        printf 'fake samtools unknown subcommand: %s\n' "\$subcommand" >&2
+        printf 'fake samtools unknown subcommand: %s\\n' "\$subcommand" >&2
         exit 64
         ;;
 esac
 EOF_SAMTOOLS
 chmod +x "$fake_bin/samtools"
+
+cat >"$fake_bin/mv" <<EOF_MV
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'mv invoked\\n' >> "$mv_log"
+printf '%s\\n' "\$@" >> "$mv_log"
+
+src="\${1:-}"
+dest="\${2:-}"
+
+fail_marker="${tmp_dir}/fake_mv_failed.\${FAKE_MV_FAIL_DEST_MATCH:-none}"
+if [[ -n "\${FAKE_MV_FAIL_DEST_MATCH:-}" && "\$dest" == *"\$FAKE_MV_FAIL_DEST_MATCH"* && ! -e "\$fail_marker" ]]; then
+    printf 'failed\\n' > "\$fail_marker"
+    printf 'fake mv forced failure for destination: %s\\n' "\$dest" >&2
+    exit 65
+fi
+
+/bin/mv "\$@"
+EOF_MV
+chmod +x "$fake_bin/mv"
 
 export PATH="$fake_bin:$PATH"
 
@@ -113,6 +249,21 @@ input_bam="$fixture_dir/sample.bam"
 
 printf '@HD\tVN:1.6\tSO:unknown\n' >"$input_sam"
 printf 'placeholder bam\n' >"$input_bam"
+
+run_step02() {
+    local sample="$1"
+    local input="$2"
+    local output_dir="$3"
+    local threads="$4"
+    shift 4
+
+    env FAKE_SAMPLE_ID="$sample" SLURM_JOB_ID="${SLURM_JOB_ID:-testjob}" bash "$SCRIPT" \
+        --sample-id "$sample" \
+        --input-alignment "$input" \
+        --output-dir "$output_dir" \
+        --threads "$threads" \
+        "$@"
+}
 
 printf 'Running syntax check...\n'
 bash -n "$SCRIPT"
@@ -153,10 +304,10 @@ assert_fails "$threads_output" bash "$SCRIPT" \
     --threads 0
 assert_contains "$threads_output" "--threads must be a positive integer"
 
-printf 'Running SAM dry-run check...\n'
+printf 'Running dry-run no-output check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-bash "$SCRIPT" \
+env FAKE_SAMPLE_ID=sample_dry SLURM_JOB_ID=drytoken bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-alignment "$input_sam" \
     --output-dir "$dry_output_dir" \
@@ -164,63 +315,201 @@ bash "$SCRIPT" \
     >"$dry_output"
 
 dry_bam="$dry_output_dir/sample_dry.sorted.bam"
-[[ -d "$dry_output_dir" ]] || fail "dry-run did not create output directory"
+assert_not_exists "$dry_output_dir"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
-assert_contains "$dry_output" "samtools"
-assert_contains "$dry_output" "sort"
-assert_contains "$dry_output" "-@"
-assert_contains "$dry_output" "4"
-assert_contains "$dry_output" "-o"
+assert_contains "$dry_output" "Run token: drytoken"
+assert_contains "$dry_output" "Lock directory: $dry_output_dir/.sample_dry.step02.lock"
+assert_contains "$dry_output" ".sample_dry.step02.drytoken.sorted.tmp.bam"
+assert_contains "$dry_output" ".sample_dry.step02.drytoken.rg.tmp.bam"
+assert_contains "$dry_output" "addreplacerg"
+assert_contains "$dry_output" "-w"
+assert_contains "$dry_output" "ID:sample_dry"
+assert_contains "$dry_output" "SM:sample_dry"
+assert_contains "$dry_output" "LB:sample_dry"
+assert_contains "$dry_output" "PL:ILLUMINA"
 assert_contains "$dry_output" "$dry_bam"
-assert_contains "$dry_output" "$input_sam"
-assert_contains "$dry_output" "index"
+assert_contains "$dry_output" "Rollback plan:"
 assert_contains "$dry_output" "Dry-run only"
-assert_not_contains "$dry_output" "--execute --execute"
 
-printf 'Running SAM execute check...\n'
-execute_sam_output="$tmp_dir/execute_sam.out"
-execute_sam_output_dir="$tmp_dir/results/execute_sam"
-bash "$SCRIPT" \
-    --sample-id sample_sam \
+printf 'Running successful execute check...\n'
+execute_output="$tmp_dir/execute.out"
+execute_output_dir="$tmp_dir/results/execute"
+SLURM_JOB_ID=exec001 run_step02 sample_execute "$input_sam" "$execute_output_dir" 2 --execute >"$execute_output"
+
+execute_bam="$execute_output_dir/sample_execute.sorted.bam"
+execute_bai="$execute_bam.bai"
+[[ -s "$execute_bam" ]] || fail "execute did not create non-empty canonical BAM"
+[[ -s "$execute_bai" ]] || fail "execute did not create non-empty canonical BAI"
+assert_contains "$execute_bam" $'@RG\tID:sample_execute\tSM:sample_execute\tLB:sample_execute\tPL:ILLUMINA'
+assert_contains "$execute_bam" "TAGGED:10"
+assert_contains "$samtools_log" "addreplacerg"
+assert_contains "$samtools_log" "-w"
+assert_contains "$samtools_log" "ID:sample_execute"
+assert_contains "$samtools_log" "SM:sample_execute"
+assert_contains "$samtools_log" "LB:sample_execute"
+assert_contains "$samtools_log" "PL:ILLUMINA"
+assert_contains "$execute_output" "Canonical Step 02 output details:"
+assert_not_exists "$execute_output_dir/.sample_execute.step02.lock"
+assert_no_step02_scratch "$execute_output_dir"
+
+printf 'Running existing lock failure check...\n'
+lock_output_dir="$tmp_dir/results/locked"
+mkdir -p "$lock_output_dir/.sample_locked.step02.lock"
+printf 'run_token=other-job\n' >"$lock_output_dir/.sample_locked.step02.lock/owner"
+printf 'old bam\n' >"$lock_output_dir/sample_locked.sorted.bam"
+printf 'old bai\n' >"$lock_output_dir/sample_locked.sorted.bam.bai"
+lock_output="$tmp_dir/lock.out"
+assert_fails "$lock_output" env FAKE_SAMPLE_ID=sample_locked SLURM_JOB_ID=lock001 bash "$SCRIPT" \
+    --sample-id sample_locked \
     --input-alignment "$input_sam" \
-    --output-dir "$execute_sam_output_dir" \
-    --threads 2 \
-    --execute \
-    >"$execute_sam_output"
+    --output-dir "$lock_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$lock_output" "Step 02 lock already exists"
+assert_contains "$lock_output" "run_token=other-job"
+assert_file_equals "$lock_output_dir/sample_locked.sorted.bam" "old bam"
+assert_file_equals "$lock_output_dir/sample_locked.sorted.bam.bai" "old bai"
+[[ -d "$lock_output_dir/.sample_locked.step02.lock" ]] || fail "foreign lock should remain"
 
-execute_sam_bam="$execute_sam_output_dir/sample_sam.sorted.bam"
-[[ -d "$execute_sam_output_dir" ]] || fail "SAM execute did not create output directory"
-[[ -f "$execute_sam_bam" ]] || fail "SAM execute did not create sorted BAM"
-[[ -f "$execute_sam_bam.bai" ]] || fail "SAM execute did not create BAM index"
-assert_contains "$samtools_log" "samtools invoked"
-assert_contains "$samtools_log" "sort"
-assert_contains "$samtools_log" "-@"
-assert_contains "$samtools_log" "2"
-assert_contains "$samtools_log" "-o"
-assert_contains "$samtools_log" "$execute_sam_bam"
-assert_contains "$samtools_log" "$input_sam"
-assert_contains "$samtools_log" "index"
-assert_contains "$execute_sam_output" "Mode: execute"
+printf 'Running validation failure cleanup check...\n'
+validation_output_dir="$tmp_dir/results/validation_failure"
+validation_output="$tmp_dir/validation_failure.out"
+assert_fails "$validation_output" env FAKE_SAMPLE_ID=sample_bad_rg FAKE_RG_MODE=missing SLURM_JOB_ID=val001 bash "$SCRIPT" \
+    --sample-id sample_bad_rg \
+    --input-alignment "$input_sam" \
+    --output-dir "$validation_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$validation_output" "must contain exactly one @RG line"
+assert_not_exists "$validation_output_dir/.sample_bad_rg.step02.lock"
+assert_not_exists "$validation_output_dir/sample_bad_rg.sorted.bam"
+assert_not_exists "$validation_output_dir/sample_bad_rg.sorted.bam.bai"
+assert_no_step02_scratch "$validation_output_dir"
 
-printf 'Running BAM execute check...\n'
-execute_bam_output="$tmp_dir/execute_bam.out"
-execute_bam_output_dir="$tmp_dir/results/execute_bam"
-bash "$SCRIPT" \
-    --sample-id sample_bam \
-    --input-alignment "$input_bam" \
-    --output-dir "$execute_bam_output_dir" \
-    --threads 3 \
-    --execute \
-    >"$execute_bam_output"
+printf 'Running malformed and extra @RG validation checks...\n'
+bad_rg_output="$tmp_dir/bad_rg.out"
+assert_fails "$bad_rg_output" env FAKE_SAMPLE_ID=sample_malformed FAKE_RG_MODE=malformed SLURM_JOB_ID=bad001 bash "$SCRIPT" \
+    --sample-id sample_malformed \
+    --input-alignment "$input_sam" \
+    --output-dir "$tmp_dir/results/malformed" \
+    --threads 1 \
+    --execute
+assert_contains "$bad_rg_output" "missing SM:sample_malformed"
 
-execute_bam="$execute_bam_output_dir/sample_bam.sorted.bam"
-[[ -d "$execute_bam_output_dir" ]] || fail "BAM execute did not create output directory"
-[[ -f "$execute_bam" ]] || fail "BAM execute did not create sorted BAM"
-[[ -f "$execute_bam.bai" ]] || fail "BAM execute did not create BAM index"
-assert_contains "$samtools_log" "3"
-assert_contains "$samtools_log" "$execute_bam"
-assert_contains "$samtools_log" "$input_bam"
-assert_contains "$execute_bam_output" "Mode: execute"
+extra_rg_output="$tmp_dir/extra_rg.out"
+assert_fails "$extra_rg_output" env FAKE_SAMPLE_ID=sample_extra FAKE_RG_MODE=extra SLURM_JOB_ID=extra001 bash "$SCRIPT" \
+    --sample-id sample_extra \
+    --input-alignment "$input_sam" \
+    --output-dir "$tmp_dir/results/extra" \
+    --threads 1 \
+    --execute
+assert_contains "$extra_rg_output" "must contain exactly one @RG line"
 
-printf 'All step_02 samtools sort/index smoke tests passed.\n'
+printf 'Running partial RG tagging failure check...\n'
+partial_output="$tmp_dir/partial.out"
+assert_fails "$partial_output" env FAKE_SAMPLE_ID=sample_partial FAKE_TAGGED_MODE=partial SLURM_JOB_ID=partial001 bash "$SCRIPT" \
+    --sample-id sample_partial \
+    --input-alignment "$input_sam" \
+    --output-dir "$tmp_dir/results/partial" \
+    --threads 1 \
+    --execute
+assert_contains "$partial_output" "records tagged RG:sample_partial"
+
+printf 'Running coordinate sort validation failure check...\n'
+sort_output="$tmp_dir/sort_validation.out"
+assert_fails "$sort_output" env FAKE_SAMPLE_ID=sample_sort FAKE_SORT_MODE=unknown SLURM_JOB_ID=sort001 bash "$SCRIPT" \
+    --sample-id sample_sort \
+    --input-alignment "$input_sam" \
+    --output-dir "$tmp_dir/results/sort_validation" \
+    --threads 1 \
+    --execute
+assert_contains "$sort_output" "header is not coordinate sorted"
+
+printf 'Running inconsistent canonical pair failure check...\n'
+inconsistent_output_dir="$tmp_dir/results/inconsistent"
+mkdir -p "$inconsistent_output_dir"
+printf 'old bam\n' >"$inconsistent_output_dir/sample_inconsistent.sorted.bam"
+inconsistent_output="$tmp_dir/inconsistent.out"
+assert_fails "$inconsistent_output" env FAKE_SAMPLE_ID=sample_inconsistent SLURM_JOB_ID=incon001 bash "$SCRIPT" \
+    --sample-id sample_inconsistent \
+    --input-alignment "$input_sam" \
+    --output-dir "$inconsistent_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$inconsistent_output" "Canonical outputs are inconsistent"
+assert_file_equals "$inconsistent_output_dir/sample_inconsistent.sorted.bam" "old bam"
+assert_not_exists "$inconsistent_output_dir/sample_inconsistent.sorted.bam.bai"
+assert_not_exists "$inconsistent_output_dir/.sample_inconsistent.step02.lock"
+assert_no_step02_scratch "$inconsistent_output_dir"
+
+printf 'Running backup failure rollback check...\n'
+backup_output_dir="$tmp_dir/results/backup_failure"
+mkdir -p "$backup_output_dir"
+printf 'previous bam\n' >"$backup_output_dir/sample_backup.sorted.bam"
+printf 'previous bai\n' >"$backup_output_dir/sample_backup.sorted.bam.bai"
+backup_output="$tmp_dir/backup_failure.out"
+assert_fails "$backup_output" env FAKE_SAMPLE_ID=sample_backup FAKE_MV_FAIL_DEST_MATCH=".sample_backup.step02.backup001.previous.bam.bai" SLURM_JOB_ID=backup001 bash "$SCRIPT" \
+    --sample-id sample_backup \
+    --input-alignment "$input_sam" \
+    --output-dir "$backup_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$backup_output" "fake mv forced failure"
+assert_file_equals "$backup_output_dir/sample_backup.sorted.bam" "previous bam"
+assert_file_equals "$backup_output_dir/sample_backup.sorted.bam.bai" "previous bai"
+assert_not_exists "$backup_output_dir/.sample_backup.step02.lock"
+assert_no_step02_scratch "$backup_output_dir"
+
+printf 'Running publish failure rollback check with previous pair...\n'
+publish_output_dir="$tmp_dir/results/publish_failure"
+mkdir -p "$publish_output_dir"
+printf 'previous bam\n' >"$publish_output_dir/sample_publish.sorted.bam"
+printf 'previous bai\n' >"$publish_output_dir/sample_publish.sorted.bam.bai"
+publish_output="$tmp_dir/publish_failure.out"
+assert_fails "$publish_output" env FAKE_SAMPLE_ID=sample_publish FAKE_MV_FAIL_DEST_MATCH="sample_publish.sorted.bam.bai" SLURM_JOB_ID=pub001 bash "$SCRIPT" \
+    --sample-id sample_publish \
+    --input-alignment "$input_sam" \
+    --output-dir "$publish_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$publish_output" "Rolling back Step 02 canonical outputs"
+assert_file_equals "$publish_output_dir/sample_publish.sorted.bam" "previous bam"
+assert_file_equals "$publish_output_dir/sample_publish.sorted.bam.bai" "previous bai"
+assert_not_exists "$publish_output_dir/.sample_publish.step02.lock"
+assert_no_step02_scratch "$publish_output_dir"
+
+printf 'Running publish failure rollback check with no previous pair...\n'
+no_previous_output_dir="$tmp_dir/results/no_previous_publish_failure"
+no_previous_output="$tmp_dir/no_previous_publish_failure.out"
+assert_fails "$no_previous_output" env FAKE_SAMPLE_ID=sample_new FAKE_MV_FAIL_DEST_MATCH="sample_new.sorted.bam.bai" SLURM_JOB_ID=new001 bash "$SCRIPT" \
+    --sample-id sample_new \
+    --input-alignment "$input_sam" \
+    --output-dir "$no_previous_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$no_previous_output" "Rolling back Step 02 canonical outputs"
+assert_not_exists "$no_previous_output_dir/sample_new.sorted.bam"
+assert_not_exists "$no_previous_output_dir/sample_new.sorted.bam.bai"
+assert_not_exists "$no_previous_output_dir/.sample_new.step02.lock"
+assert_no_step02_scratch "$no_previous_output_dir"
+
+printf 'Running final validation rollback check...\n'
+final_output_dir="$tmp_dir/results/final_validation_failure"
+mkdir -p "$final_output_dir"
+printf 'previous bam\n' >"$final_output_dir/sample_final.sorted.bam"
+printf 'previous bai\n' >"$final_output_dir/sample_final.sorted.bam.bai"
+final_output="$tmp_dir/final_validation_failure.out"
+assert_fails "$final_output" env FAKE_SAMPLE_ID=sample_final FAKE_QUICKCHECK_FAIL_MATCH="sample_final.sorted.bam" SLURM_JOB_ID=final001 bash "$SCRIPT" \
+    --sample-id sample_final \
+    --input-alignment "$input_sam" \
+    --output-dir "$final_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$final_output" "Rolling back Step 02 canonical outputs"
+assert_file_equals "$final_output_dir/sample_final.sorted.bam" "previous bam"
+assert_file_equals "$final_output_dir/sample_final.sorted.bam.bai" "previous bai"
+assert_not_exists "$final_output_dir/.sample_final.step02.lock"
+assert_no_step02_scratch "$final_output_dir"
+
+printf 'All step_02 canonical BAM hardening smoke tests passed.\n'

@@ -140,7 +140,7 @@ mkdir -p logs
 A job completed, but tailing the expected log fails:
 
 ```text
-tail: cannot open 'logs/norad-sort-index-bam-594750.out' for reading: No such file or directory
+tail: cannot open 'logs/norad-sort-index-bam-<JOBID>.out' for reading: No such file or directory
 ```
 
 ### Cause
@@ -392,20 +392,36 @@ COMPLETED 0:0
 
 and expected output files exist and are non-empty where appropriate.
 
+## Picard `SAMRecord.getReadGroup() is null`
+
 ### Symptom
-Picard MarkDuplicates fails immediately with
+
+Picard MarkDuplicates fails immediately with:
+
+```text
 SAMRecord.getReadGroup() is null
+```
 
 ### Cause
-BAM records lack valid RG tags and/or the BAM header lacks @RG.
+
+The canonical BAM lacks valid read-group metadata. Either the header has no
+matching `@RG` line, records lack `RG` tags, or both.
 
 ### Diagnose
+
+```bash
 samtools view -H <bam> | grep '^@RG'
-samtools view <bam> | sed -n '1p' | tr '\t' '\n' | grep '^RG:Z:'
+samtools view -c <bam>
+samtools view -c -d "RG:<sample_id>" <bam>
+```
+
+The current one-sample-per-BAM contract expects exactly one `@RG` line and all
+alignment records tagged with `RG:<sample_id>`.
 
 ### Fix
-Regenerate the canonical BAM through hardened Step 02.
-Do not patch around it in Step 04.
+
+Regenerate the canonical BAM through hardened Step 02. Do not patch around
+missing read groups in Step 04.
 
 ## General success checklist
 

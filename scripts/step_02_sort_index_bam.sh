@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Sort and index one SAM/BAM alignment file with samtools.
+# Step 02: create one canonical coordinate-sorted, read-group-tagged BAM.
 #
-# The script validates inputs and prints the samtools commands in dry-run mode
-# by default. Passing --execute runs the same commands after validation.
+# Dry-run mode validates inputs and prints the exact samtools, validation,
+# locking, and publish actions without creating directories or files. Passing
+# --execute runs the workflow and publishes the canonical BAM/BAI only after
+# replacement files pass validation.
 set -euo pipefail
 
-# Print the command-line contract used by local smoke tests and SLURM wrappers.
 usage() {
     cat <<'USAGE'
 Usage:
@@ -16,16 +17,17 @@ Usage:
     --threads THREADS \
     [--execute]
 
-Sort and index one SAM or BAM alignment file with samtools.
+Sort, read-group tag, validate, index, and publish one canonical BAM.
 
 By default this script runs in dry-run mode: it validates inputs and prints the
-samtools commands without executing them. Add --execute to run samtools.
+samtools commands and publish plan without executing them. Add --execute to run
+samtools and publish outputs after validation.
 
 Required arguments:
-  --sample-id         Sample identifier used in output filenames.
+  --sample-id         Sample identifier used in output filenames and RG fields.
   --input-alignment  Input SAM or BAM alignment file to sort.
-  --output-dir       Directory where sorted BAM and BAI outputs will be written.
-  --threads          Number of threads for samtools sort; must be a positive integer.
+  --output-dir       Directory where canonical BAM and BAI outputs are written.
+  --threads          Number of threads for samtools; must be a positive integer.
 
 Options:
   --execute          Execute samtools after validation. Without this, dry-run only.
@@ -52,14 +54,12 @@ require_value() {
     fi
 }
 
-# Defaults are empty so missing required arguments fail loudly below.
 sample_id=""
 input_alignment=""
 output_dir=""
 threads=""
 execute=false
 
-# Parse explicit input/output paths and execution mode from the command line.
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id)
@@ -96,7 +96,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate required arguments and external tool availability before output setup.
 [[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
 [[ -n "$input_alignment" ]] || die "Missing required argument: --input-alignment."
 [[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
@@ -109,54 +108,300 @@ if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
     die "--threads must be a positive integer; got: $threads"
 fi
 
-mkdir -p "$output_dir"
+samtools_bin="samtools"
+run_token="${SLURM_JOB_ID:-$$}"
 
-# Use deterministic output names so downstream steps can locate sorted BAMs.
 output_bam="$output_dir/${sample_id}.sorted.bam"
 output_bai="$output_bam.bai"
 
-# Report the resolved run context so cluster logs are reproducible.
+lock_path="$output_dir/.${sample_id}.step02.lock"
+lock_owner_file="$lock_path/owner"
+
+tmp_sorted_bam="$output_dir/.${sample_id}.step02.${run_token}.sorted.tmp.bam"
+tmp_rg_bam="$output_dir/.${sample_id}.step02.${run_token}.rg.tmp.bam"
+tmp_rg_bai="$tmp_rg_bam.bai"
+
+backup_bam="$output_dir/.${sample_id}.step02.${run_token}.previous.bam"
+backup_bai="$output_dir/.${sample_id}.step02.${run_token}.previous.bam.bai"
+
+lock_acquired=false
+previous_pair_present=false
+backup_started=false
+bam_backed_up=false
+bai_backed_up=false
+published_bam=false
+published_bai=false
+final_publish_complete=false
+
+sort_command=(
+    "$samtools_bin"
+    sort
+    -@ "$threads"
+    -o "$tmp_sorted_bam"
+    "$input_alignment"
+)
+
+addreplacerg_command=(
+    "$samtools_bin"
+    addreplacerg
+    -@ "$threads"
+    -m overwrite_all
+    -w
+    -r "ID:$sample_id"
+    -r "SM:$sample_id"
+    -r "LB:$sample_id"
+    -r "PL:ILLUMINA"
+    -o "$tmp_rg_bam"
+    "$tmp_sorted_bam"
+)
+
+quickcheck_command=(
+    "$samtools_bin"
+    quickcheck
+    "$tmp_rg_bam"
+)
+
+header_command=(
+    "$samtools_bin"
+    view
+    -H
+    "$tmp_rg_bam"
+)
+
+count_command=(
+    "$samtools_bin"
+    view
+    -c
+    "$tmp_rg_bam"
+)
+
+tagged_count_command=(
+    "$samtools_bin"
+    view
+    -c
+    -d "RG:$sample_id"
+    "$tmp_rg_bam"
+)
+
+index_command=(
+    "$samtools_bin"
+    index
+    "$tmp_rg_bam"
+)
+
+validate_bam_pair() {
+    local bam="$1"
+    local bai="$2"
+    local label="$3"
+    local header
+    local rg_lines
+    local rg_count
+    local rg_line
+    local total_records
+    local tagged_records
+
+    [[ -s "$bam" ]] || die "$label BAM is missing or empty: $bam"
+    "$samtools_bin" quickcheck "$bam" || die "$label BAM failed samtools quickcheck: $bam"
+
+    header="$("$samtools_bin" view -H "$bam")"
+    rg_lines="$(printf '%s\n' "$header" | grep '^@RG' || true)"
+    rg_count="$(printf '%s\n' "$rg_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+    [[ "$rg_count" == "1" ]] || die "$label BAM must contain exactly one @RG line; found: $rg_count"
+
+    rg_line="$rg_lines"
+    [[ "$rg_line" == *"ID:$sample_id"* ]] || die "$label @RG line is missing ID:$sample_id"
+    [[ "$rg_line" == *"SM:$sample_id"* ]] || die "$label @RG line is missing SM:$sample_id"
+    [[ "$rg_line" == *"LB:$sample_id"* ]] || die "$label @RG line is missing LB:$sample_id"
+    [[ "$rg_line" == *"PL:ILLUMINA"* ]] || die "$label @RG line is missing PL:ILLUMINA"
+    printf '%s\n' "$header" | grep -q '^@HD.*SO:coordinate' || die "$label BAM header is not coordinate sorted"
+
+    total_records="$("$samtools_bin" view -c "$bam")"
+    [[ "$total_records" =~ ^[0-9]+$ ]] || die "$label total alignment count is not numeric: $total_records"
+    [[ "$total_records" -gt 0 ]] || die "$label BAM contains no alignment records"
+
+    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$bam")"
+    [[ "$tagged_records" =~ ^[0-9]+$ ]] || die "$label tagged alignment count is not numeric: $tagged_records"
+    [[ "$tagged_records" -eq "$total_records" ]] || die "$label BAM has $tagged_records of $total_records records tagged RG:$sample_id"
+
+    [[ -s "$bai" ]] || die "$label BAI is missing or empty: $bai"
+}
+
+confirm_canonical_pair_state() {
+    if [[ -e "$output_bam" && -e "$output_bai" ]]; then
+        previous_pair_present=true
+    elif [[ ! -e "$output_bam" && ! -e "$output_bai" ]]; then
+        previous_pair_present=false
+    else
+        die "Canonical outputs are inconsistent; expected both BAM and BAI or neither: $output_bam $output_bai"
+    fi
+}
+
+acquire_lock() {
+    local owner="run_token=$run_token"
+
+    if mkdir "$lock_path" 2>/dev/null; then
+        printf '%s\n' "$owner" > "$lock_owner_file"
+        lock_acquired=true
+        return
+    fi
+
+    if [[ -f "$lock_owner_file" ]]; then
+        die "Step 02 lock already exists at $lock_path; owner: $(cat "$lock_owner_file")"
+    fi
+
+    die "Step 02 lock already exists at $lock_path; owner: unknown"
+}
+
+remove_owned_lock() {
+    if [[ "$lock_acquired" != true ]]; then
+        return
+    fi
+
+    if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
+        rm -f "$lock_owner_file"
+        rmdir "$lock_path" 2>/dev/null || true
+        lock_acquired=false
+    fi
+}
+
+rollback_publish() {
+    if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
+        return
+    fi
+
+    printf 'Rolling back Step 02 canonical outputs...\n' >&2
+
+    if [[ "$previous_pair_present" == true ]]; then
+        if [[ "$bam_backed_up" == true && -e "$backup_bam" ]]; then
+            rm -f "$output_bam"
+            mv "$backup_bam" "$output_bam" || true
+            bam_backed_up=false
+        fi
+
+        if [[ "$bai_backed_up" == true && -e "$backup_bai" ]]; then
+            rm -f "$output_bai"
+            mv "$backup_bai" "$output_bai" || true
+            bai_backed_up=false
+        fi
+    else
+        rm -f "$output_bam" "$output_bai"
+    fi
+}
+
+cleanup() {
+    local status=$?
+
+    if [[ "$status" -ne 0 ]]; then
+        rollback_publish
+    fi
+
+    rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
+
+    if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
+        rm -f "$backup_bam" "$backup_bai"
+    fi
+
+    remove_owned_lock
+}
+
 mode="dry-run"
 if [[ "$execute" == true ]]; then
     mode="execute"
 fi
 
-printf 'samtools sort/index context\n'
+printf 'samtools canonical BAM context\n'
 printf '  Sample ID: %s\n' "$sample_id"
 printf '  Input alignment: %s\n' "$input_alignment"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Output BAM: %s\n' "$output_bam"
 printf '  Output BAI: %s\n' "$output_bai"
 printf '  Threads: %s\n' "$threads"
+printf '  Run token: %s\n' "$run_token"
+printf '  Lock directory: %s\n' "$lock_path"
+printf '  Lock owner file: %s\n' "$lock_owner_file"
+printf '  Temporary sorted BAM: %s\n' "$tmp_sorted_bam"
+printf '  Temporary read-group BAM: %s\n' "$tmp_rg_bam"
+printf '  Temporary read-group BAI: %s\n' "$tmp_rg_bai"
+printf '  Backup BAM: %s\n' "$backup_bam"
+printf '  Backup BAI: %s\n' "$backup_bai"
+printf '  Read group: ID=%s SM=%s LB=%s PL=ILLUMINA\n' "$sample_id" "$sample_id" "$sample_id"
 printf '  Mode: %s\n' "$mode"
 
-# Build commands as arrays to preserve argument boundaries and make dry-run output exact.
-sort_command=(
-    samtools
-    sort
-    -@ "$threads"
-    -o "$output_bam"
-    "$input_alignment"
-)
-
-index_command=(
-    samtools
-    index
-    "$output_bam"
-)
+printf 'Lock acquisition action:\n'
+printf 'mkdir %q\n' "$lock_path"
+printf 'Lock owner write action:\n'
+printf 'printf %q %q %q\n' '%s\n' "run_token=$run_token" "$lock_owner_file"
 
 printf 'samtools sort command:\n'
 print_command "${sort_command[@]}"
 
+printf 'samtools addreplacerg command:\n'
+print_command "${addreplacerg_command[@]}"
+
+printf 'samtools quickcheck validation command:\n'
+print_command "${quickcheck_command[@]}"
+
+printf 'samtools header validation command:\n'
+print_command "${header_command[@]}"
+
+printf 'samtools total-record validation command:\n'
+print_command "${count_command[@]}"
+
+printf 'samtools read-group-tag validation command:\n'
+print_command "${tagged_count_command[@]}"
+
 printf 'samtools index command:\n'
 print_command "${index_command[@]}"
 
-# Dry-run mode is the default safety path for local development and wrapper tests.
+printf 'Publish plan:\n'
+printf '  1. Validate replacement BAM and BAI: %s %s\n' "$tmp_rg_bam" "$tmp_rg_bai"
+printf '  2. Confirm canonical outputs are a complete pair or both absent.\n'
+printf '  3. Back up existing pair to: %s %s\n' "$backup_bam" "$backup_bai"
+printf '  4. Move replacement BAM to: %s\n' "$output_bam"
+printf '  5. Move replacement BAI to: %s\n' "$output_bai"
+printf '  6. Revalidate published canonical BAM and BAI.\n'
+printf '  7. Remove backups and owned lock after successful final validation.\n'
+printf 'Rollback plan:\n'
+printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
+
 if [[ "$execute" != true ]]; then
-    printf 'Dry-run only. Add --execute to run samtools.\n'
+    printf 'Dry-run only. Add --execute to run samtools and publish canonical outputs.\n'
     exit 0
 fi
 
-# Execute only after validation and command logging are complete.
+mkdir -p "$output_dir"
+trap cleanup EXIT
+acquire_lock
+
 "${sort_command[@]}"
+"${addreplacerg_command[@]}"
+[[ -s "$tmp_rg_bam" ]] || die "Temporary read-group BAM is missing or empty: $tmp_rg_bam"
 "${index_command[@]}"
+validate_bam_pair "$tmp_rg_bam" "$tmp_rg_bai" "Replacement"
+
+confirm_canonical_pair_state
+
+if [[ "$previous_pair_present" == true ]]; then
+    backup_started=true
+    mv "$output_bam" "$backup_bam"
+    bam_backed_up=true
+    mv "$output_bai" "$backup_bai"
+    bai_backed_up=true
+else
+    backup_started=true
+fi
+
+mv "$tmp_rg_bam" "$output_bam"
+published_bam=true
+mv "$tmp_rg_bai" "$output_bai"
+published_bai=true
+
+validate_bam_pair "$output_bam" "$output_bai" "Canonical"
+final_publish_complete=true
+
+rm -f "$backup_bam" "$backup_bai"
+bam_backed_up=false
+bai_backed_up=false
+
+printf 'Canonical Step 02 output details:\n'
+ls -lh "$output_bam" "$output_bai"

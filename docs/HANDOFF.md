@@ -25,16 +25,17 @@ The pipeline is being rebuilt one validated step at a time.
 
 ## Current status
 
-### Proven on cluster
+### Implemented / cluster validation status
 
-The following steps have been implemented, committed, pushed, pulled on the cluster, and validated for sample `ABE_EV_2`:
+The following upstream steps have been implemented. Hardened Step `02` must be
+revalidated on the cluster before it is treated as proven again:
 
 | Step                                          | Status                | Notes                                                                   |
 | --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- |
 | `00a` STAR index                              | Proven                | Built Novogene STAR index at `refs/novogene_star_index`.                |
 | `00b` GTF to BED12                            | Proven                | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
 | `01` STAR alignment                           | Proven for `ABE_EV_2` | Produced STAR coordinate-sorted BAM.                                    |
-| `02` canonical sort/index BAM                 | Proven for `ABE_EV_2` | Produced canonical downstream BAM and BAI.                              |
+| `02` canonical sort/read-group/index BAM      | Pending revalidation  | Hardened Step 02 supersedes earlier BAMs that lacked read groups.        |
 | `02b` BAM QC                                  | Proven for `ABE_EV_2` | Produces quickcheck and flagstat outputs.                               |
 | `03` RSeQC strandedness/orientation inference | Proven for `ABE_EV_2` | Strong reverse-stranded / first-strand signal.                          |
 
@@ -440,21 +441,6 @@ results/editing/...
 
   * `.venv/bin/infer_experiment.py`
 * GATK availability has not yet been validated.
-
-## Known job IDs from development
-
-Useful historical job IDs:
-
-```text
-594742  Step 01 STAR alignment for ABE_EV_2; completed successfully.
-594746  First Step 00b GTF-to-BED12 attempt; had issue.
-594747  Fixed Step 00b GTF-to-BED12; completed successfully.
-594748  Step 02 dry-run; completed successfully.
-594749  Step 02 execute; completed successfully.
-594750  Step 02b dry-run; completed successfully.
-```
-
-Step 02b execute and Step 03 execute also completed successfully, but their job IDs were not recorded in the visible notes.
 
 ## Known issues/TODOs
 
