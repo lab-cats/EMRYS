@@ -125,7 +125,7 @@ Reason: RSeQC `infer_experiment.py` expects BED-style gene/transcript models, no
 
 ## GATK Reference Sidecars Are Step 00c
 
-Decision: reference FASTA sidecars are a dedicated planned Step `00c`, not hidden per-sample Step `05` work.
+Decision: reference FASTA sidecars are a dedicated Step `00c`, not hidden per-sample Step `05` work.
 
 Expected outputs:
 
@@ -136,7 +136,7 @@ refs/novogene_ref/genome.dict
 
 Reason: `SplitNCigarReads` needs the FASTA index and sequence dictionary, and shared reference files should be prepared and validated once instead of silently created inside per-sample jobs.
 
-Current evidence: an ad hoc cluster prep task generated both sidecars successfully with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `00c` is still planned / not implemented because no repo script/job exists yet.
+Current evidence: an ad hoc cluster prep task generated both sidecars successfully with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `00c` is implemented locally with a dry-run-first script, SLURM wrapper, reference-level lock, temp-file publication, and shell tests; the formal Step `00c` job is pending cluster validation.
 
 ## STAR Outputs Feed Canonical Step 02 BAMs
 

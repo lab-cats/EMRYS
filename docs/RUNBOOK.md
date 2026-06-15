@@ -509,10 +509,16 @@ cluster-proven
 
 ### Step 00c: GATK Reference Sidecars
 
-Planned script/job:
+Script:
 
-```text
-not implemented yet
+```bash
+scripts/step_00c_prepare_gatk_reference.sh
+```
+
+Job:
+
+```bash
+jobs/step_00c_prepare_gatk_reference.slurm
 ```
 
 Purpose:
@@ -538,13 +544,44 @@ BAM header contigs: 194
 Reference/BAM SQ check: PASS
 ```
 
+Dry-run:
+
+```bash
+sbatch jobs/step_00c_prepare_gatk_reference.slurm
+```
+
+Execute:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_00c_prepare_gatk_reference.slurm
+```
+
+Direct script dry-run with explicit cluster tools:
+
+```bash
+scripts/step_00c_prepare_gatk_reference.sh \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
+```
+
+Direct script execute with explicit cluster tools:
+
+```bash
+scripts/step_00c_prepare_gatk_reference.sh \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
+  --execute
+```
+
 Status:
 
 ```text
-planned / not implemented
+implemented locally; pending formal cluster validation
 ```
 
-Step `00c` should formalize the ad hoc prep before Step `05` becomes runnable. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+Step `00c` formalizes the ad hoc prep before Step `05` becomes runnable. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Step 01: STAR Alignment
 

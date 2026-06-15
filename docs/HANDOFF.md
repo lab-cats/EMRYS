@@ -27,7 +27,7 @@ The intended high-level workflow is:
 | ---- | ------ | ----- |
 | `00a` STAR index | cluster-proven | Built Novogene STAR index at `refs/novogene_star_index`. |
 | `00b` GTF to BED12 | cluster-proven | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
-| `00c` GATK reference sidecars | planned / not implemented | Ad hoc cluster prep generated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`; no repo script/job exists yet. |
+| `00c` GATK reference sidecars | implemented locally; pending formal cluster validation | Script/job/test now formalize creation and validation of `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`; ad hoc cluster prep previously succeeded. |
 | `01` STAR alignment | complete and cluster-proven across all six samples | `ABE_EV_2` is a mapping outlier but not a pipeline blocker. |
 | `02` canonical sort/read-group/index BAM | hardened and cluster-proven across all six samples | Final canonical BAMs have coordinate sort order, sample-specific RG metadata, BAI files, and `quickcheck` PASS. |
 | `02b` BAM QC | implemented and refreshed across all six final hardened Step 02 BAMs | Initial cohort attempt exposed a samtools `PATH` inconsistency; rerun succeeded after prepending the known samtools bin path. |
@@ -80,6 +80,7 @@ Implemented scripts:
 ```text
 scripts/validate_manifest.py
 scripts/gtf_to_bed12.py
+scripts/step_00c_prepare_gatk_reference.sh
 scripts/step_01_star_align.sh
 scripts/step_02_sort_index_bam.sh
 scripts/step_02b_bam_qc.sh
@@ -92,6 +93,7 @@ Implemented SLURM jobs:
 ```text
 jobs/step_00a_build_novogene_star_index.slurm
 jobs/step_00b_gtf_to_bed12.slurm
+jobs/step_00c_prepare_gatk_reference.slurm
 jobs/step_01_star_align.slurm
 jobs/step_02_sort_index_bam.slurm
 jobs/step_02b_bam_qc.slurm
@@ -219,7 +221,7 @@ refs/novogene_ref/genome.dict
 refs/novogene_star_index/
 ```
 
-The GATK reference sidecars were generated successfully as an ad hoc cluster prep task with exit code `0:0`. Reference/BAM compatibility passed with 194 FAI contigs, 194 DICT contigs, 194 BAM header contigs, and reference/BAM SQ check `PASS`. This prep should become Step `00c`; Step `05` should require these files rather than creating shared reference sidecars inside per-sample jobs.
+The GATK reference sidecars were generated successfully as an ad hoc cluster prep task with exit code `0:0`. Reference/BAM compatibility passed with 194 FAI contigs, 194 DICT contigs, 194 BAM header contigs, and reference/BAM SQ check `PASS`. Step `00c` now exists locally as a dry-run-first script and SLURM wrapper; the formal Step `00c` cluster dry-run/execute gate is still pending. Step `05` should require these files rather than creating shared reference sidecars inside per-sample jobs.
 
 ## Step 02b Current State
 
@@ -314,7 +316,7 @@ GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GAT
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
-2. Formalize Step `00c` so it creates/validates `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`.
+2. Run formal Step `00c` dry-run and execute validation on the cluster.
 3. Decide the Step `05` processed-BAM output layout before implementation.
 4. Inspect and implement or harden Step `05` using the confirmed GATK path and validated reference sidecars.
 5. Continue Steps `06`-`09` after each upstream gate is proven.

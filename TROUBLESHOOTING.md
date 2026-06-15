@@ -457,6 +457,22 @@ Still log and validate the actual Java runtime. The historical Java inconsistenc
 
 Step `05` remains scaffolded and intentionally non-runnable until implemented.
 
+## Step 00c FAI/DICT validation fails
+
+### Symptom
+
+Step `00c` fails with a message that the FASTA index and sequence dictionary contigs/lengths do not agree.
+
+### Cause
+
+`refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` are shared reference sidecars. If either file is stale, empty, partially written, or generated from a different FASTA, GATK-compatible reference validation is unsafe.
+
+### Fix
+
+Do not let Step `05` create or repair these files inside a per-sample job. Inspect the existing sidecars, confirm they belong to `refs/novogene_ref/genome.fa`, and rerun formal Step `00c` only after deciding how to handle the invalid shared reference files.
+
+Step `00c` intentionally does not overwrite invalid existing sidecars by default.
+
 ## Scaffolded downstream job accidentally submitted
 
 ### Symptom

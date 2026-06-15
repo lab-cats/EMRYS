@@ -27,7 +27,7 @@ Cluster-proven:
 04   Picard MarkDuplicates across all six samples
 ```
 
-Planned / not implemented:
+Implemented locally; pending formal cluster validation:
 
 ```text
 00c  GATK reference sidecars / reference FASTA index and sequence dictionary
@@ -67,7 +67,26 @@ Temporary node pinning to `node003` is operational mitigation, not architecture.
 
 Do not copy a JDK from the head node or another compute node.
 
-### 2. Inspect And Implement Step 05
+### 2. Run Formal Step 00c Cluster Validation
+
+Step `00c` now has:
+
+```text
+scripts/step_00c_prepare_gatk_reference.sh
+jobs/step_00c_prepare_gatk_reference.slurm
+tests/shell/test_step_00c_prepare_gatk_reference.sh
+```
+
+Next gate:
+
+```bash
+sbatch jobs/step_00c_prepare_gatk_reference.slurm
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_00c_prepare_gatk_reference.slurm
+```
+
+Inspect logs and confirm `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` remain valid before declaring formal Step `00c` cluster-proven.
+
+### 3. Inspect And Implement Step 05
 
 Step `05` remains scaffolded and intentionally non-runnable; not cluster-proven.
 
@@ -79,7 +98,7 @@ duplicate-marked BAM
 reference FASTA
 FASTA .fai
 sequence dictionary .dict
-Step 00c sidecar validation
+validated Step 00c sidecars
 processed-BAM output layout decision
 local tests / dry-run behavior
 SLURM wrapper validation
@@ -89,7 +108,7 @@ Current Step `05` scaffold files intentionally exit with code `2`, print that St
 
 GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
 
-Before Step `05`, formalize Step `00c` so it creates and validates:
+Before Step `05`, complete formal cluster validation for Step `00c`, which creates and validates:
 
 ```text
 refs/novogene_ref/genome.fa.fai

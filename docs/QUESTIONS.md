@@ -285,12 +285,7 @@ Cluster-proven:
 02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
-```
-
-Planned / not implemented:
-
-```text
-00c  GATK reference sidecars / reference FASTA index and sequence dictionary
+00c  GATK reference sidecars implemented locally; pending formal cluster validation
 ```
 
 Scaffolded and intentionally non-runnable; not cluster-proven:
@@ -391,7 +386,7 @@ scripts/step_05_split_n_cigar_reads.sh
 
 They exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The stale `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are not current interfaces. Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable.
 
-When implemented, Step `05` should treat `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+When implemented, Step `05` should treat the Step `00c` outputs `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ### GATK Availability
 

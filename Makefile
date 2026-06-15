@@ -4,6 +4,7 @@ test:
 	python -m pytest
 
 shell-test:
+	bash tests/shell/test_step_00c_prepare_gatk_reference.sh
 	bash tests/shell/test_step_01_star_align.sh
 	bash tests/shell/test_step_02_sort_index_bam.sh
 	bash tests/shell/test_step_02b_bam_qc.sh

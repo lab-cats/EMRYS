@@ -36,7 +36,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | ---- | ------- | --------------- | ---------------- | ------ | ------------ |
 | `00a` | Build the Novogene STAR index. | Novogene reference FASTA/GTF under `refs/novogene_ref/` | `refs/novogene_star_index/` | cluster-proven | STAR |
 | `00b` | Convert reference GTF to sorted BED12 for strandedness checks. | `refs/novogene_ref/genome.gtf` | `refs/novogene_ref/genome.bed` | cluster-proven | Python, bedtools |
-| `00c` | Create/validate GATK reference sidecars. | `refs/novogene_ref/genome.fa` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | planned / not implemented | samtools, GATK |
+| `00c` | Create/validate GATK reference sidecars. | `refs/novogene_ref/genome.fa` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | implemented locally; pending formal cluster validation | samtools, GATK |
 | `01` | Align paired-end FASTQs to the reference. | FASTQ R1/R2 files, STAR index | `results/star/<sample_id>/` | complete and cluster-proven across all six samples | STAR |
 | `02` | Create canonical coordinate-sorted, read-group-tagged, indexed BAMs. | STAR alignment BAM | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai` | hardened and cluster-proven across all six samples | samtools |
 | `02b` | Run BAM integrity/QC checks. | canonical sorted BAM | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented and refreshed across all six final hardened Step 02 BAMs | samtools |
@@ -68,7 +68,7 @@ The BED12 file contains 206,601 transcript records.
 
 ### Step 00c
 
-Planned purpose:
+Purpose:
 
 ```text
 GATK reference sidecars / reference FASTA index and sequence dictionary
@@ -81,7 +81,17 @@ refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.dict
 ```
 
-The sidecars were generated successfully as an ad hoc cluster prep task; the sidecar job completed successfully with exit code `0:0`.
+Implemented entry points:
+
+```text
+scripts/step_00c_prepare_gatk_reference.sh
+jobs/step_00c_prepare_gatk_reference.slurm
+tests/shell/test_step_00c_prepare_gatk_reference.sh
+```
+
+The formal Step `00c` implementation is dry-run by default, creates only missing sidecars in execute mode, uses a reference-level lock, publishes run-token temp files only after validation, and fails rather than overwriting invalid existing sidecars.
+
+The sidecars were also generated successfully before this implementation as an ad hoc cluster prep task; the ad hoc sidecar job completed successfully with exit code `0:0`.
 
 Reference/BAM compatibility check:
 
@@ -92,7 +102,11 @@ BAM header contigs: 194
 Reference/BAM SQ check: PASS
 ```
 
-Step `00c` should formalize creation and validation of these sidecars. It is not implemented yet because no `scripts/step_00c_*` or `jobs/step_00c_*` files exist in the repo.
+Status:
+
+```text
+implemented locally; pending formal cluster validation
+```
 
 ### Step 01
 
@@ -415,7 +429,7 @@ multiple-testing method
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability.
-2. Implement Step `00c` to create/validate GATK reference sidecars.
+2. Run formal Step `00c` dry-run and execute validation on the cluster.
 3. Decide the Step `05` processed-BAM output layout.
 4. Inspect and implement or harden Step `05` using the confirmed GATK path and Step `00c` sidecars.
 5. Continue Steps `06`-`09` one gate at a time.

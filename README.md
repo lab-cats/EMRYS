@@ -22,7 +22,7 @@ The upstream preprocessing workflow is now proven through duplicate marking acro
 | ---- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
 | `00b` | Convert GTF to BED12 for RSeQC | cluster-proven |
-| `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | planned / not implemented |
+| `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | implemented locally; pending formal cluster validation |
 | `01` | STAR alignment | complete and cluster-proven across all six samples |
 | `02` | Canonical sorted/read-group/indexed BAM | hardened and cluster-proven across all six samples |
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
@@ -306,7 +306,7 @@ Reference notes:
 * FASTA and GTF chromosome names match.
 * STAR index was built with `sjdbOverhang=149` for 150 bp reads.
 * BED12 annotation was generated from the GTF for RSeQC.
-* `genome.fa.fai` and `genome.dict` were generated successfully by an ad hoc cluster prep task for future GATK use; Step `00c` should formalize that prep before Step `05` becomes runnable.
+* Step `00c` now formalizes GATK sidecar prep with `scripts/step_00c_prepare_gatk_reference.sh` and `jobs/step_00c_prepare_gatk_reference.slurm`; the formal job is pending cluster validation.
 
 ## Confirmed Tools On CSU
 
