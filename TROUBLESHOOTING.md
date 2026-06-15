@@ -434,23 +434,28 @@ module avail gatk
 
 ### Cause
 
-GATK may not be installed as a module, may be under another name, or may require jar/conda/container usage.
+GATK may not be exposed through `module avail gatk`, even though a direct cluster installation exists.
 
 ### Fix
 
-This is unresolved.
-
-Before implementing Step 05, determine whether GATK should be run through:
+Use the validated direct path when Step `05` is implemented:
 
 ```text
-different module name
-jar
-conda/mamba environment
-container
-project-local install
+/cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 ```
 
-Do not assume a GATK invocation pattern yet.
+Confirmed probe evidence:
+
+```text
+node: node002
+Java: OpenJDK 17.0.14
+GATK: 4.6.1.0
+tool probe exit code: 0:0
+```
+
+Still log and validate the actual Java runtime. The historical Java inconsistency remains relevant: `node002` and `node003` have provided Java 17, while `node007` previously exposed Java 11 / a missing Java 17 path.
+
+Step `05` remains scaffolded and intentionally non-runnable until implemented.
 
 ## Scaffolded downstream job accidentally submitted
 

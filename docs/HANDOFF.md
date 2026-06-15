@@ -27,6 +27,7 @@ The intended high-level workflow is:
 | ---- | ------ | ----- |
 | `00a` STAR index | cluster-proven | Built Novogene STAR index at `refs/novogene_star_index`. |
 | `00b` GTF to BED12 | cluster-proven | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
+| `00c` GATK reference sidecars | planned / not implemented | Ad hoc cluster prep generated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`; no repo script/job exists yet. |
 | `01` STAR alignment | complete and cluster-proven across all six samples | `ABE_EV_2` is a mapping outlier but not a pipeline blocker. |
 | `02` canonical sort/read-group/index BAM | hardened and cluster-proven across all six samples | Final canonical BAMs have coordinate sort order, sample-specific RG metadata, BAI files, and `quickcheck` PASS. |
 | `02b` BAM QC | implemented and refreshed across all six final hardened Step 02 BAMs | Initial cohort attempt exposed a samtools `PATH` inconsistency; rerun succeeded after prepending the known samtools bin path. |
@@ -211,10 +212,14 @@ Prepared references:
 
 ```text
 refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.gtf
 refs/novogene_ref/genome.bed
+refs/novogene_ref/genome.dict
 refs/novogene_star_index/
 ```
+
+The GATK reference sidecars were generated successfully as an ad hoc cluster prep task with exit code `0:0`. Reference/BAM compatibility passed with 194 FAI contigs, 194 DICT contigs, 194 BAM header contigs, and reference/BAM SQ check `PASS`. This prep should become Step `00c`; Step `05` should require these files rather than creating shared reference sidecars inside per-sample jobs.
 
 ## Step 02b Current State
 
@@ -304,13 +309,16 @@ Step `05` implementation should explicitly decide and document the processed-BAM
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
 ```
 
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`. Step `05` still remains scaffolded and intentionally non-runnable; not cluster-proven.
+
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
-2. Resolve GATK availability and decide the Step `05` processed-BAM output layout before implementation.
-3. Inspect and implement or harden Step `05` after GATK availability is resolved.
-4. Continue Steps `06`-`09` after each upstream gate is proven.
-5. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
+2. Formalize Step `00c` so it creates/validates `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`.
+3. Decide the Step `05` processed-BAM output layout before implementation.
+4. Inspect and implement or harden Step `05` using the confirmed GATK path and validated reference sidecars.
+5. Continue Steps `06`-`09` after each upstream gate is proven.
+6. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
 
 ## Java And Picard Handoff
 
@@ -324,11 +332,12 @@ The wrapper then verifies the selected executable exists, logs the actual `java 
 
 Known cluster issue:
 
+* `node002` provided Java 17, completed the GATK/bcftools tool probe successfully, and ran OpenJDK `17.0.14`.
 * `node003` provided working Java 17 via `/usr/bin/java` and completed `ABE_EV_2` MarkDuplicates.
 * `node007` reported Java 11 at `/usr/bin/java`; Picard classes require Java 17 class-file version 61.
 * The Java 17 module's advertised `JAVA_HOME` path was missing on `node007`.
 
-Do not infer the effective Java runtime from the module name or `JAVA_HOME` alone. `--nodelist=node003` is a temporary operational workaround, not a durable architecture decision.
+Do not infer the effective Java runtime from the module name or `JAVA_HOME` alone. Scripts should continue logging and validating the actual Java runtime. Node-specific success is evidence, not a durable architecture decision.
 
 ## Local Validation Gate
 

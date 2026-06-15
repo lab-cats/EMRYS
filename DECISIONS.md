@@ -123,6 +123,21 @@ refs/novogene_ref/genome.bed
 
 Reason: RSeQC `infer_experiment.py` expects BED-style gene/transcript models, not raw GTF.
 
+## GATK Reference Sidecars Are Step 00c
+
+Decision: reference FASTA sidecars are a dedicated planned Step `00c`, not hidden per-sample Step `05` work.
+
+Expected outputs:
+
+```text
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
+```
+
+Reason: `SplitNCigarReads` needs the FASTA index and sequence dictionary, and shared reference files should be prepared and validated once instead of silently created inside per-sample jobs.
+
+Current evidence: an ad hoc cluster prep task generated both sidecars successfully with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `00c` is still planned / not implemented because no repo script/job exists yet.
+
 ## STAR Outputs Feed Canonical Step 02 BAMs
 
 Decision: even though STAR can output coordinate-sorted BAM directly, Step `02` creates the canonical downstream BAM path.
@@ -259,7 +274,7 @@ results/qc/markdup/<sample_id>.markdup.metrics.txt
 
 Decision: pinning Step `04` to `node003` is a temporary operational workaround, not a durable architecture choice.
 
-Reason: `node003` has provided working Java 17, while another node exposed Java 11 and a missing advertised Java 17 `JAVA_HOME`. The durable fix is an HPC-supported cluster-wide Java 17 executable/path or administrator remediation.
+Reason: `node002` has provided Java 17 and completed the GATK/bcftools probe, `node003` has provided working Java 17 for Step `04`, while `node007` exposed Java 11 and a missing advertised Java 17 `JAVA_HOME`. The durable fix is an HPC-supported cluster-wide Java 17 executable/path or administrator remediation.
 
 Do not copy a JDK from another compute node or from the head node.
 
@@ -303,33 +318,40 @@ module list 2>&1 || true
 
 Reason: Environment Modules writes `module list` output to stderr, which can otherwise make logs confusing or interact badly with strict shell settings.
 
-## GATK Availability Is Not Decided
+## GATK Path Is Confirmed But Step 05 Is Not Implemented
 
-Decision: do not implement Step `05` until GATK availability is resolved.
+Decision: use the validated CSU GATK path when Step `05` is implemented, but keep Step `05` scaffolded and intentionally non-runnable until real script/job behavior and tests exist.
 
-Known issue:
-
-```bash
-module avail gatk
-```
-
-did not reveal a visible GATK module.
-
-Possible future options:
+Confirmed evidence:
 
 ```text
-different module name
-jar
-conda/mamba environment
-container
-project-local install
+node: node002
+Java: OpenJDK 17.0.14
+GATK: 4.6.1.0
+GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
+tool probe exit code: 0:0
 ```
 
-## R/Rscript And bcftools Availability Are Not Decided
+Step `05` must consume validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fail clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs.
 
-Decision: do not assume final module names or invocation patterns for R/Rscript or bcftools until validated on the cluster.
+## bcftools Path Is Confirmed But Step 07 Is Not Implemented
 
-These are needed for Steps `07`, `08`, and `09`.
+Decision: use the validated CSU bcftools path when Step `07` is implemented, but keep Step `07` scaffolded / not implemented / not cluster-proven until real script/job behavior and tests exist.
+
+Confirmed evidence:
+
+```text
+node: node002
+bcftools: 1.21
+bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
+tool probe exit code: 0:0
+```
+
+## R/Rscript Availability Is Not Decided
+
+Decision: do not assume final module names or invocation patterns for R/Rscript until validated on the cluster.
+
+These are needed for Steps `08` and `09`.
 
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 

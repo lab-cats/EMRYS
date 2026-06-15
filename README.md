@@ -22,6 +22,7 @@ The upstream preprocessing workflow is now proven through duplicate marking acro
 | ---- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
 | `00b` | Convert GTF to BED12 for RSeQC | cluster-proven |
+| `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | planned / not implemented |
 | `01` | STAR alignment | complete and cluster-proven across all six samples |
 | `02` | Canonical sorted/read-group/indexed BAM | hardened and cluster-proven across all six samples |
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
@@ -83,6 +84,8 @@ BAM QC
 RSeQC strandedness/orientation inference
     ->
 Picard duplicate marking
+    ->
+GATK reference sidecar validation
     ->
 GATK SplitNCigarReads
     ->
@@ -289,8 +292,10 @@ Prepared reference files:
 
 ```text
 refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.gtf
 refs/novogene_ref/genome.bed
+refs/novogene_ref/genome.dict
 refs/novogene_star_index/
 ```
 
@@ -301,6 +306,7 @@ Reference notes:
 * FASTA and GTF chromosome names match.
 * STAR index was built with `sjdbOverhang=149` for 150 bp reads.
 * BED12 annotation was generated from the GTF for RSeQC.
+* `genome.fa.fai` and `genome.dict` were generated successfully by an ad hoc cluster prep task for future GATK use; Step `00c` should formalize that prep before Step `05` becomes runnable.
 
 ## Confirmed Tools On CSU
 
@@ -313,6 +319,8 @@ bedtools/2.31.1
 picard/3.1.1
 python39
 java/17.0.10
+GATK 4.6.1.0: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
+bcftools 1.21: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 ```
 
 Picard is exposed through the jar path set by the module. Step `04` validates the selected Java executable and actual runtime version before Picard starts.
@@ -323,12 +331,12 @@ RSeQC is available through the project virtual environment:
 .venv/bin/infer_experiment.py
 ```
 
+GATK and bcftools were validated on compute node `node002`; the tool probe completed successfully with exit code `0:0`.
+
 Still unresolved:
 
 ```text
-GATK
 R / Rscript
-bcftools
 ```
 
 ## Beginner Glossary
@@ -347,7 +355,7 @@ bcftools
 
 `Picard`: preprocessing/QC toolkit; current use here is duplicate marking with `MarkDuplicates`.
 
-`GATK`: genomics toolkit; expected future use is RNA-seq preprocessing with `SplitNCigarReads`, pending cluster availability.
+`GATK`: genomics toolkit; expected future use is RNA-seq preprocessing with `SplitNCigarReads`, pending Step `05` implementation.
 
 `R`: downstream analysis, statistics, visualization, and tables.
 

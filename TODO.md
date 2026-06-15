@@ -27,6 +27,12 @@ Cluster-proven:
 04   Picard MarkDuplicates across all six samples
 ```
 
+Planned / not implemented:
+
+```text
+00c  GATK reference sidecars / reference FASTA index and sequence dictionary
+```
+
 Scaffolded and intentionally non-runnable; not cluster-proven:
 
 ```text
@@ -63,22 +69,34 @@ Do not copy a JDK from the head node or another compute node.
 
 ### 2. Inspect And Implement Step 05
 
-Step `05` remains scaffolded until GATK availability and invocation are resolved.
+Step `05` remains scaffolded and intentionally non-runnable; not cluster-proven.
 
 Needs:
 
 ```text
-GATK invocation method
+confirmed GATK invocation path
 duplicate-marked BAM
 reference FASTA
 FASTA .fai
 sequence dictionary .dict
+Step 00c sidecar validation
 processed-BAM output layout decision
 local tests / dry-run behavior
 SLURM wrapper validation
 ```
 
 Current Step `05` scaffold files intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The old `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are stale and not current interfaces.
+
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
+
+Before Step `05`, formalize Step `00c` so it creates and validates:
+
+```text
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
+```
+
+The sidecars already exist from an ad hoc cluster prep task that completed with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Architecture Reminders
 
@@ -131,34 +149,6 @@ Confirm this before implementing Steps `05` and `06` too deeply.
 
 ## External Blockers / Unresolved Items
 
-### GATK Availability
-
-Still unresolved.
-
-Known:
-
-```bash
-module avail gatk
-```
-
-did not show a visible GATK module.
-
-Need to determine whether GATK should be run through:
-
-```text
-different module name
-jar
-conda/mamba
-container
-project-local install
-```
-
-Blocks:
-
-```text
-Step 05: SplitNCigarReads
-```
-
 ### R / Rscript Availability
 
 Still unresolved.
@@ -168,16 +158,6 @@ Needed for:
 ```text
 Step 08: VCF preprocessing
 Step 09: CMH editing-site calling
-```
-
-### bcftools Availability
-
-Still unresolved.
-
-Needed for:
-
-```text
-Step 07: bcftools mpileup
 ```
 
 ### Storage Quotas
@@ -236,7 +216,7 @@ Step `06` must clearly document read orientation versus transcript strand.
 Needs decisions:
 
 ```text
-bcftools module/location
+use confirmed bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 chromosome/region handling
 reference FASTA path
 per-sample vs grouped mpileup strategy
@@ -294,6 +274,7 @@ Resolved:
 ```text
 Build STAR reference index.
 Convert annotation to BED12.
+Generate GATK reference sidecars as an ad hoc cluster prep task.
 Align all six samples.
 Harden Step 02.
 Add sample-specific read groups.
@@ -306,6 +287,8 @@ Implement Step 04.
 Prove Step 04 on ABE_EV_2.
 Prove Step 04 across all six samples.
 Compare Step 04 duplication metrics across all six samples.
+Confirm GATK availability on node002.
+Confirm bcftools availability on node002.
 ```
 
 ## Development Rule

@@ -36,6 +36,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | ---- | ------- | --------------- | ---------------- | ------ | ------------ |
 | `00a` | Build the Novogene STAR index. | Novogene reference FASTA/GTF under `refs/novogene_ref/` | `refs/novogene_star_index/` | cluster-proven | STAR |
 | `00b` | Convert reference GTF to sorted BED12 for strandedness checks. | `refs/novogene_ref/genome.gtf` | `refs/novogene_ref/genome.bed` | cluster-proven | Python, bedtools |
+| `00c` | Create/validate GATK reference sidecars. | `refs/novogene_ref/genome.fa` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | planned / not implemented | samtools, GATK |
 | `01` | Align paired-end FASTQs to the reference. | FASTQ R1/R2 files, STAR index | `results/star/<sample_id>/` | complete and cluster-proven across all six samples | STAR |
 | `02` | Create canonical coordinate-sorted, read-group-tagged, indexed BAMs. | STAR alignment BAM | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai` | hardened and cluster-proven across all six samples | samtools |
 | `02b` | Run BAM integrity/QC checks. | canonical sorted BAM | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented and refreshed across all six final hardened Step 02 BAMs | samtools |
@@ -64,6 +65,34 @@ refs/novogene_ref/genome.bed
 ```
 
 The BED12 file contains 206,601 transcript records.
+
+### Step 00c
+
+Planned purpose:
+
+```text
+GATK reference sidecars / reference FASTA index and sequence dictionary
+```
+
+Expected outputs:
+
+```text
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
+```
+
+The sidecars were generated successfully as an ad hoc cluster prep task; the sidecar job completed successfully with exit code `0:0`.
+
+Reference/BAM compatibility check:
+
+```text
+FAI contigs: 194
+DICT contigs: 194
+BAM header contigs: 194
+Reference/BAM SQ check: PASS
+```
+
+Step `00c` should formalize creation and validation of these sidecars. It is not implemented yet because no `scripts/step_00c_*` or `jobs/step_00c_*` files exist in the repo.
 
 ### Step 01
 
@@ -264,7 +293,9 @@ Step `05` implementation should explicitly decide and document the processed-BAM
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
 ```
 
-GATK availability remains unresolved.
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
+
+Step `05` remains scaffolded and intentionally non-runnable; not cluster-proven. When implemented, it should treat `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Reference Workflow Alignment
 
@@ -384,9 +415,10 @@ multiple-testing method
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability.
-2. Resolve GATK availability and decide the Step `05` processed-BAM output layout.
-3. Inspect and implement or harden Step `05` after GATK availability is resolved.
-4. Continue Steps `06`-`09` one gate at a time.
+2. Implement Step `00c` to create/validate GATK reference sidecars.
+3. Decide the Step `05` processed-BAM output layout.
+4. Inspect and implement or harden Step `05` using the confirmed GATK path and Step `00c` sidecars.
+5. Continue Steps `06`-`09` one gate at a time.
 
 ## Local Validation Gate
 
@@ -414,4 +446,7 @@ git diff --name-status
 * Known useful modules include `star/2.7.11b`, `samtools/1.19.2`, `bedtools/2.31.1`, `picard/3.1.1`, `python39`, and `java/17.0.10`.
 * Step `04` validates the selected Java executable and actual runtime version; loading a module or reading `JAVA_HOME` alone is not enough.
 * RSeQC is available through `.venv/bin/infer_experiment.py`.
-* GATK availability still needs validation.
+* GATK is available at `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the confirmed version is `4.6.1.0`.
+* bcftools is available at `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools`; the confirmed version is `1.21`.
+* The GATK/bcftools tool probe succeeded on `node002` with exit code `0:0`; `node002` used OpenJDK `17.0.14`.
+* The Java inconsistency remains relevant: `node002` and `node003` have provided Java 17, while `node007` previously exposed Java 11 / a missing Java 17 path.

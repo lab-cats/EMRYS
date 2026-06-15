@@ -142,17 +142,38 @@ RSeQC is available through the project virtual environment on the cluster:
 .venv/bin/infer_experiment.py
 ```
 
+### GATK
+
+GATK availability is confirmed on compute node `node002`:
+
+```text
+Java: OpenJDK 17.0.14
+GATK: 4.6.1.0
+GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
+tool probe exit code: 0:0
+```
+
+Step `05` remains scaffolded and intentionally non-runnable until implemented.
+
+### bcftools
+
+bcftools availability is confirmed on compute node `node002`:
+
+```text
+bcftools: 1.21
+bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
+tool probe exit code: 0:0
+```
+
+Step `07` remains scaffolded / not implemented / not cluster-proven until implemented.
+
 ### Still Unresolved Tools
 
 The following have not yet been validated in the rebuilt pipeline:
 
 ```text
-GATK
 R / Rscript
-bcftools
 ```
-
-`module avail gatk` did not show a visible GATK module. Resolve GATK before implementing Step `05`.
 
 ## Cluster Facts And Quirks
 
@@ -408,8 +429,10 @@ Prepared reference paths:
 
 ```text
 refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.gtf
 refs/novogene_ref/genome.bed
+refs/novogene_ref/genome.dict
 refs/novogene_star_index/
 ```
 
@@ -483,6 +506,45 @@ Status:
 ```text
 cluster-proven
 ```
+
+### Step 00c: GATK Reference Sidecars
+
+Planned script/job:
+
+```text
+not implemented yet
+```
+
+Purpose:
+
+```text
+Create and validate the FASTA index and sequence dictionary required by GATK.
+```
+
+Expected outputs:
+
+```bash
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
+```
+
+Current evidence:
+
+```text
+Ad hoc sidecar prep completed with exit code 0:0.
+FAI contigs: 194
+DICT contigs: 194
+BAM header contigs: 194
+Reference/BAM SQ check: PASS
+```
+
+Status:
+
+```text
+planned / not implemented
+```
+
+Step `00c` should formalize the ad hoc prep before Step `05` becomes runnable. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Step 01: STAR Alignment
 
@@ -893,7 +955,7 @@ Expected tool:
 GATK SplitNCigarReads
 ```
 
-GATK availability remains unresolved.
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
 
 Scaffold files exist:
 
@@ -923,6 +985,16 @@ Step `05` implementation should explicitly decide the processed-BAM output layou
 results/split_ncigar/<sample_id>/
 ```
 
+When implemented, Step `05` should require:
+
+```text
+refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
+```
+
+It should fail clearly if the sidecars are missing and must not create shared reference sidecars inside per-sample jobs.
+
 ## Step 06: Split BAM By Read Orientation
 
 Status:
@@ -948,7 +1020,7 @@ Status:
 scaffolded / not implemented / not cluster-proven
 ```
 
-bcftools availability and invocation remain unresolved.
+bcftools availability is confirmed on compute node `node002`: bcftools `1.21`, path `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools`; the tool probe completed successfully with exit code `0:0`. Step `07` remains scaffolded / not implemented / not cluster-proven.
 
 ## Step 08: VCF Preprocessing
 
@@ -972,16 +1044,16 @@ Future work should port and parameterize the reference `Edit_call_cmh.R`.
 
 ## Temporary Java Workaround
 
-`--nodelist=node003` is currently a temporary operational workaround because `node003` has been verified to provide a working Java 17 runtime.
+Node-specific Java evidence is mixed: `node002` has Java 17 and worked for the GATK/bcftools probe, `node003` previously worked with Java 17 for Step `04`, and `node007` previously exposed Java 11 / a missing Java 17 path.
 
 Do not:
 
 * embed `node003` as a permanent default in the SLURM script
 * describe node pinning as a pipeline architecture requirement
-* assume node003 will remain the long-term solution
+* assume any single working node will remain the long-term solution
 * recommend copying a JDK from the head node or another compute node
 
-The durable action is to report or clarify the inconsistent Java 17 installation with CSU HPC and identify a supported cluster-wide Java 17 executable or installation path.
+Scripts should continue logging and validating the actual Java runtime instead of trusting module names or `JAVA_HOME` alone. The durable action is to report or clarify the inconsistent Java 17 installation with CSU HPC and identify a supported cluster-wide Java 17 executable or installation path.
 
 ## Reference Workflow Alignment
 
