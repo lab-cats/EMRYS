@@ -1,19 +1,78 @@
-# Questions and answers
+# Questions And Answers
 
 This file tracks project questions that were open during pipeline reconstruction, what has been answered, and what remains unresolved.
 
-## Still open / unresolved
+## Still Open / Unresolved
 
-### GATK availability
+### Step 04 Cohort Validation
 
-* `module avail gatk` did not show a visible GATK module.
-* Need to determine whether GATK is:
+Step `04` is implemented and cluster-proven for `ABE_EV_2`; cohort-wide validation remains pending.
 
-  * installed under a different module name,
-  * available as a jar,
-  * available through conda/mamba,
-  * available through a container,
-  * or should be installed into a project environment.
+Promotion requires, for each remaining sample:
+
+```text
+confirmed scheduler completion
+exit code 0:0
+nonempty BAM/BAI/metrics
+samtools quickcheck PASS
+retained coordinate sorting
+retained sample-specific read group
+```
+
+Remaining samples:
+
+```text
+ABE_EV_3
+ABE_EV4
+ABE_PUM1_2
+ABE_PUM1_3
+ABE_PUM1_4
+```
+
+### Step 04 Duplication Interpretation
+
+`ABE_EV_2` has an elevated duplication fraction:
+
+```text
+PERCENT_DUPLICATION = 0.664166
+```
+
+Need to determine whether this is a cohort outlier after all six Step `04` metrics are available. Do not label it a pipeline failure without cohort context.
+
+### Step 02b Final-BAM QC Refresh
+
+Step `02b` is implemented and useful for BAM QC/provenance, but a clean refresh against the final hardened Step `02` BAMs remains pending.
+
+Do not assume older Step `02b` reports all correspond to the final published BAMs.
+
+### Java 17 Availability
+
+Step `04` validates the actual selected Java runtime, but cluster-wide Java 17 availability remains unresolved.
+
+Need one durable answer:
+
+```text
+HPC-supported Java 17 module that works consistently across nodes
+administrator-provided cluster-wide Java 17 path
+explicit verified executable supplied through JAVA_BIN_OVERRIDE
+administrator remediation of inconsistent node images
+```
+
+Temporary node pinning to `node003` is not a durable architecture decision.
+
+### GATK Availability
+
+`module avail gatk` did not show a visible GATK module.
+
+Need to determine whether GATK is:
+
+```text
+installed under a different module name
+available as a jar
+available through conda/mamba
+available through a container
+or should be installed into a project environment
+```
 
 This blocks final implementation of:
 
@@ -21,48 +80,67 @@ This blocks final implementation of:
 Step 05: SplitNCigarReads
 ```
 
-### Full-scale execution across all samples
+### R / Rscript And bcftools Availability
 
-Only `ABE_EV_2` has been carried through Steps `01`, `02`, `02b`, and `03`.
+Unresolved:
 
-Need to decide whether to:
+```text
+R
+Rscript
+bcftools
+```
 
-1. Continue developing downstream steps on `ABE_EV_2`, or
-2. Generalize/run Steps `01` through `03` across all six samples before implementing further downstream logic.
+These are needed for Steps `07`, `08`, and `09`.
 
-Current recommendation: continue developing on `ABE_EV_2`, but confirm strandedness across all six samples before making final global assumptions.
-
-### Storage quotas
+### Storage Quotas
 
 Storage is being used successfully under project/storage paths, but exact quotas have not been documented.
 
 Need to determine:
 
-* quota for home directory
-* quota for `/mnt/stor-pool-01/users/2609214`
-* whether there is scratch storage
-* whether scratch should be used for temporary files
+```text
+home directory quota
+/mnt/stor-pool-01/users/2609214 quota
+scratch storage availability
+whether scratch should be used for temporary files
+```
 
-### Final deliverables
+### Exact Annotation Version
+
+The GTF came from the Novogene `04.Ref` delivery, but the exact annotation version has not yet been recorded.
+
+### Final Deliverables
 
 The broad final deliverables are expected to be RNA-editing / variant-like site summaries and CMH result tables/plots, but the exact final table/plot formats are not yet specified.
 
-Need to define expected Step `09` outputs before porting the old R scripts.
+Need to define expected Step `09` outputs before porting the old R scripts:
 
-### Future artifact and reporting design
+```text
+exact output file names
+exact columns
+expected comparison structure
+whether outputs are per chromosome, per orientation, per condition, or combined
+plotting requirements
+```
 
-Structured artifacts and reporting are planned, deferred, and non-runnable. Open questions:
+### Future Artifact And Reporting Design
 
-* What is the exact versioned JSON schema for per-step sidecars?
-* What are the run ID semantics across dry-runs, execute runs, reruns, and partial reruns?
-* How should provenance and git commit capture work on local machines and CSU SLURM?
-* Should artifacts describe failed and incomplete runs, or only successful runs?
-* How should reruns, schema-version conflicts, and pipeline-version conflicts be represented?
-* What are the exact HTML, PDF, and TSV report deliverables?
-* Which responsibilities belong to Jinja2 versus Quarto or R Markdown?
-* What final CMH/editing-site results, plots, and interpretation notes belong in the report?
+Structured artifacts and reporting are planned, deferred, and non-runnable.
 
-### Read-group library metadata
+Open questions:
+
+```text
+exact versioned JSON schema for per-step sidecars
+run ID semantics across dry-runs, execute runs, reruns, and partial reruns
+provenance and git commit capture on local machines and CSU SLURM
+whether artifacts describe failed and incomplete runs, or only successful runs
+rerun, schema-version conflict, and pipeline-version conflict representation
+exact HTML, PDF, and TSV report deliverables
+Jinja2 versus Quarto/R Markdown responsibilities
+final CMH/editing-site results, plots, and interpretation notes
+```
+
+### Read-Group Library Metadata
 
 Step `02` currently uses the provisional read-group convention:
 
@@ -73,13 +151,11 @@ LB=<sample_id>
 PL=ILLUMINA
 ```
 
-Need to determine whether true Novogene library, lane, or platform-unit
-metadata can be recovered from delivery records and should replace the
-provisional `LB=<sample_id>` convention later.
+Need to determine whether true Novogene library, lane, or platform-unit metadata can be recovered from delivery records and should replace provisional `LB=<sample_id>` later.
 
-## Cluster
+## Answered / Resolved
 
-### What is the correct login node?
+### What Is The Correct Login Node?
 
 Answered operationally.
 
@@ -96,13 +172,13 @@ The shell helper assumes the cluster repo is available at:
 /mnt/stor-pool-01/users/2609214/norad
 ```
 
-### Is VPN required?
+### Is VPN Required?
 
 Answered operationally.
 
 VPN was needed/used to access the cluster. The user found the correct VPN instructions and successfully connected.
 
-### What are the exact module names?
+### What Are The Known Module Names?
 
 Partially answered.
 
@@ -123,17 +199,9 @@ RSeQC is available through the project virtual environment:
 .venv/bin/infer_experiment.py
 ```
 
-Unresolved:
+Known caveat: module names and `JAVA_HOME` are not sufficient proof of effective Java runtime on every compute node.
 
-```text
-GATK
-R
-bcftools
-```
-
-`bcftools` and `R` have not yet been validated in the rebuilt pipeline.
-
-### Where should full data live?
+### Where Should Full Data Live?
 
 Answered operationally.
 
@@ -151,7 +219,23 @@ The working repo and generated outputs live under:
 
 Do not copy full raw data into Git.
 
-### What partition/account should jobs use?
+### Sample Manifest Source
+
+Answered.
+
+Manifest file:
+
+```text
+samples.tsv
+```
+
+Validated by:
+
+```text
+scripts/validate_manifest.py
+```
+
+### What Partition / Account Should Jobs Use?
 
 Partially answered.
 
@@ -162,113 +246,20 @@ short: approximately 3 hour max walltime
 long: approximately 3 day max walltime
 ```
 
-Current implemented jobs use `short` where appropriate.
-
-Known working examples:
-
-* STAR alignment completed on `short`
-* samtools sort/index completed on `short`
-* BAM QC completed on `short`
-* RSeQC infer_experiment completed on `short`
-
 No special account setting has been required so far.
 
-### Cluster quirks
+### Reference Files
 
-Known:
-
-* `logs/` must exist before `sbatch` when jobs write to `logs/%x-%j.out`.
-* Use/export `TMPDIR=/tmp`.
-* Cluster may warn:
+Answered:
 
 ```text
-slurmstepd: error: TMPDIR [/local/tmp] is not writeable
-slurmstepd: error: Setting TMPDIR to /tmp
+STAR index: refs/novogene_star_index/
+FASTA: refs/novogene_ref/genome.fa
+GTF: refs/novogene_ref/genome.gtf
+BED12: refs/novogene_ref/genome.bed
 ```
 
-This has not been fatal when the job itself logs `TMPDIR: /tmp`.
-
-* `module list` writes to stderr, so scripts should use:
-
-```bash
-module list 2>&1 || true
-```
-
-## Reference files
-
-### Genome build
-
-Partially answered.
-
-The Novogene reference is GRCh38-like.
-
-Exact annotation release/version has not yet been documented.
-
-### Annotation version
-
-Still open.
-
-The GTF came from the Novogene `04.Ref` delivery, but the exact annotation version has not yet been recorded.
-
-### STAR index path
-
-Answered.
-
-```text
-refs/novogene_star_index/
-```
-
-Built successfully with:
-
-```text
-sjdbOverhang=149
-```
-
-because reads are 150 bp.
-
-### FASTA path
-
-Answered.
-
-Prepared reference FASTA path:
-
-```text
-refs/novogene_ref/genome.fa
-```
-
-Original compressed Novogene FASTA:
-
-```text
-genome.fa.gz
-```
-
-### GTF/GFF path
-
-Answered.
-
-Prepared GTF path:
-
-```text
-refs/novogene_ref/genome.gtf
-```
-
-Original compressed Novogene GTF:
-
-```text
-genome.gtf.gz
-```
-
-### BED12 annotation path
-
-Answered.
-
-RSeQC BED12 annotation:
-
-```text
-refs/novogene_ref/genome.bed
-```
-
-Generated by:
+The BED12 annotation was generated by:
 
 ```text
 scripts/gtf_to_bed12.py
@@ -276,11 +267,11 @@ scripts/gtf_to_bed12.py
 
 Cluster validation wrote 206,601 transcript BED12 records.
 
-### Chromosome naming
+### Chromosome Naming
 
 Answered.
 
-Reference uses numeric-style chromosome names such as:
+The reference uses numeric-style chromosome names such as:
 
 ```text
 1
@@ -298,51 +289,13 @@ chr3
 
 The FASTA and GTF naming match.
 
-## Sequencing data
-
-### Paired-end or single-end?
+### Paired-End Or Single-End?
 
 Answered.
 
-The data are paired-end.
+The data are paired-end. RSeQC confirmed paired-end behavior across all six samples.
 
-RSeQC confirmed:
-
-```text
-This is PairEnd Data
-```
-
-### Strandedness?
-
-Answered for `ABE_EV_2`.
-
-RSeQC `infer_experiment.py` output:
-
-```text
-Fraction of reads failed to determine: 0.0828
-Fraction of reads explained by "1++,1--,2+-,2-+": 0.0432
-Fraction of reads explained by "1+-,1-+,2++,2--": 0.8740
-```
-
-Interpretation:
-
-```text
-ABE_EV_2 appears strongly reverse-stranded / first-strand-style.
-```
-
-Common equivalent settings:
-
-```text
-featureCounts -s 2
-HTSeq stranded=reverse
-fr-firststrand
-```
-
-Still open:
-
-* Confirm strandedness across all six samples once their canonical BAMs exist.
-
-### Read length?
+### Read Length
 
 Answered.
 
@@ -354,65 +307,50 @@ STAR index was built with:
 sjdbOverhang=149
 ```
 
-### Sample manifest source?
+### Strandedness?
 
 Answered.
 
-Manifest file:
+All six Novogene Remora libraries are paired-end and reverse-stranded / first-strand-style.
 
-```text
-samples.tsv
-```
+Confirmed Step `03` results:
 
-Validated by:
+| Sample | Failed to determine | `1++,1--,2+-,2-+` | `1+-,1-+,2++,2--` |
+| ------ | ------------------: | ----------------: | ----------------: |
+| `ABE_EV_2` | 0.0828 | 0.0432 | 0.8740 |
+| `ABE_EV_3` | 0.0964 | 0.0420 | 0.8617 |
+| `ABE_EV4` | 0.0908 | 0.0433 | 0.8658 |
+| `ABE_PUM1_2` | 0.1063 | 0.0374 | 0.8562 |
+| `ABE_PUM1_3` | 0.0955 | 0.0407 | 0.8639 |
+| `ABE_PUM1_4` | 0.0926 | 0.0402 | 0.8672 |
 
-```text
-scripts/validate_manifest.py
-```
+### Which Steps Are Already Done?
 
-### Naming convention?
-
-Answered for current data.
-
-Known samples:
-
-```text
-ABE_EV_2
-ABE_EV_3
-ABE_EV4
-ABE_PUM1_2
-ABE_PUM1_3
-ABE_PUM1_4
-```
-
-Conditions:
-
-```text
-EV:   ABE_EV_2, ABE_EV_3, ABE_EV4
-PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
-```
-
-Note that `ABE_EV4` lacks the underscore before `4`, unlike `ABE_EV_2` and `ABE_EV_3`.
-
-## Pipeline
-
-### Which steps are already done?
-
-Implemented and cluster-proven:
+Cluster-proven:
 
 ```text
 00a  Build STAR index
 00b  Convert GTF to BED12
-01   STAR alignment for ABE_EV_2
-02   Sort/index canonical BAM for ABE_EV_2
-02b  BAM QC for ABE_EV_2
-03   RSeQC strandedness/orientation inference for ABE_EV_2
+01   STAR alignment across all six samples
+02   Hardened canonical sort/read-group/index BAM across all six samples
+03   RSeQC strandedness/orientation inference across all six samples
 ```
 
-Scaffolded only / pending:
+Implemented and useful, with refresh pending:
 
 ```text
-04   MarkDuplicates
+02b  BAM QC against final hardened BAMs
+```
+
+Implemented and single-sample cluster-proven:
+
+```text
+04   Picard MarkDuplicates for ABE_EV_2
+```
+
+Scaffolded / not implemented / not cluster-proven:
+
+```text
 05   SplitNCigarReads
 06   Split BAM by read orientation
 07   bcftools mpileup by chromosome and orientation/strand
@@ -420,12 +358,11 @@ Scaffolded only / pending:
 09   CMH editing-site calling
 ```
 
-### Which steps need to be reproduced from the reference workflow?
+### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
 The uploaded/reference workflow indicates these downstream steps still need clean reimplementation:
 
 ```text
-MarkDuplicates
 SplitNCigarReads
 Split BAM by read orientation
 bcftools mpileup by chromosome and strand/orientation
@@ -435,54 +372,7 @@ CMH editing-site calling
 
 The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
-### Expected final deliverables?
-
-Partially answered.
-
-Expected broad deliverables:
-
-```text
-CMH/editing-site result tables
-editing-site summary tables
-plots from downstream R analysis
-```
-
-Still needs definition:
-
-* exact output file names
-* exact columns
-* expected comparison structure
-* whether final outputs are per chromosome, per strand/orientation, per condition, or combined
-* plotting requirements
-
-### What is the next implementation target?
-
-Likely next target:
-
-```text
-Step 04: Picard MarkDuplicates
-```
-
-Expected input:
-
-```text
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
-
-Likely outputs:
-
-```text
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai
-results/qc/markdup/ABE_EV_2.markdup.metrics.txt
-```
-
-Implementation assumption:
-
-* Mark duplicates, do not remove duplicates, unless there is a specific documented reason to change that.
-
-### What needs special care later?
+### What Needs Special Care Later?
 
 Step `06` and downstream interpretation need special care.
 
@@ -493,7 +383,7 @@ FWD-like: 99 and 147
 REV-like: 83 and 163
 ```
 
-Because Step `03` indicates reverse-stranded / first-strand behavior for `ABE_EV_2`, future steps must document the difference between:
+Because the cohort is reverse-stranded / first-strand-style, future steps must document the difference between:
 
 ```text
 read orientation labels

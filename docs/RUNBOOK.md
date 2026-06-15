@@ -7,27 +7,27 @@ This project is developed locally and executed at full scale on the CSU SLURM cl
 Core workflow rule:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> proceed
+implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
 ```
 
-Do not skip gates. Do not run future scaffold jobs. Keep the pipeline boring.
+Do not skip gates. Do not run scaffolded future jobs. Keep the pipeline boring.
 
-## Project locations
+## Project Locations
 
-### Local repo
+Local repo:
 
 ```bash
 /Users/elisteiger/dev/norad
 ```
 
-### Cluster repo
+Cluster repo:
 
 ```bash
 ~/norad
 /mnt/stor-pool-01/users/2609214/norad
 ```
 
-### Raw data symlink on cluster
+Raw data symlink on cluster:
 
 ```bash
 data/raw/novogene_remora -> /mnt/stor-pool-01/users/2832917/Novogene_Remora_raw_data
@@ -39,7 +39,7 @@ FASTQs are under:
 data/raw/novogene_remora/01.RawData/*.fq.gz
 ```
 
-### Manifest
+Manifest:
 
 ```bash
 samples.tsv
@@ -65,19 +65,13 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 
 Note: `ABE_EV4` does not have an underscore before `4`.
 
-## Confirmed cluster tools/modules
+## Confirmed Cluster Tools / Modules
 
 ### STAR
 
 ```bash
 module load star/2.7.11b
 STAR --version
-```
-
-Executable:
-
-```bash
-STAR
 ```
 
 ### samtools
@@ -87,12 +81,6 @@ module load samtools/1.19.2
 samtools --version
 ```
 
-Executable:
-
-```bash
-samtools
-```
-
 ### bedtools
 
 ```bash
@@ -100,40 +88,47 @@ module load bedtools/2.31.1
 bedtools --version
 ```
 
-Executable:
-
-```bash
-bedtools
-```
-
-### Picard
+### Picard And Java
 
 ```bash
 module load picard/3.1.1
 ```
 
-Known behavior:
+Known module behavior:
 
 ```text
-loads java/17.0.10
 sets PICARD=/cm/shared/apps/picard/picard/build/libs/picard.jar
+may load java/17.0.10
 ```
 
-Invocation:
+Do not infer the effective Java runtime from the module name or `JAVA_HOME` alone. Step `04` logs and validates the selected executable's actual `java -version` before Picard starts.
 
-```bash
-java -jar "$PICARD" <PicardCommand>
-```
+Step `04` Java resolution order:
 
-Expected Step 04 tool:
+1. Use `JAVA_BIN_OVERRIDE`, when explicitly provided.
+2. Use `$JAVA_HOME/bin/java`, only if that path exists and is executable.
+3. Fall back to `command -v java`.
 
-```bash
-java -jar "$PICARD" MarkDuplicates ...
-```
+The wrapper then:
 
-### Python
+* verifies the selected Java path exists and is executable
+* runs the selected executable with `-version`
+* parses the actual major Java version
+* fails clearly before Picard starts if the version is below 17
 
-Known available modules:
+Step `04` logs should retain:
+
+* compute-node name
+* loaded modules
+* `JAVA_HOME`
+* selected Java executable
+* actual `java -version`
+* resolved Picard JAR
+* resolved samtools executable
+
+### Python And RSeQC
+
+Known Python modules:
 
 ```bash
 python39
@@ -141,27 +136,13 @@ python3
 python314
 ```
 
-Preferred/current project Python module unless changed later:
-
-```bash
-module load python39
-```
-
-### RSeQC
-
 RSeQC is available through the project virtual environment on the cluster:
 
 ```bash
 .venv/bin/infer_experiment.py
 ```
 
-Step 03 uses:
-
-```bash
-.venv/bin/infer_experiment.py -r refs/novogene_ref/genome.bed -i results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-```
-
-## Still unresolved tools
+### Still Unresolved Tools
 
 The following have not yet been validated in the rebuilt pipeline:
 
@@ -171,35 +152,16 @@ R / Rscript
 bcftools
 ```
 
-Specific unresolved issue:
+`module avail gatk` did not show a visible GATK module. Resolve GATK before implementing Step `05`.
 
-```text
-module avail gatk
-```
+## Cluster Facts And Quirks
 
-did not show a visible GATK module. Need to determine whether GATK is available through another module name, jar, conda/mamba, or container.
-
-This matters for:
-
-```text
-Step 05: GATK SplitNCigarReads
-```
-
-## Cluster facts and quirks
-
-### First login / fresh checkout
-
-Confirm identity and location:
+### First Login / Fresh Checkout
 
 ```bash
 hostname
 whoami
 pwd
-```
-
-Check SLURM and module availability:
-
-```bash
 which sbatch
 which squeue
 which sinfo
@@ -222,24 +184,21 @@ If the repository is not already cloned:
 git clone https://github.com/Glen-Cocoa/norad.git .
 ```
 
+After cloning or before running jobs:
+
+```bash
+git pull
+git status --short
+mkdir -p logs
+```
+
 Run a lightweight manifest-validation smoke job after cloning or pulling:
 
 ```bash
-mkdir -p logs
 sbatch jobs/validate_manifest.slurm
 ```
 
 ### SLURM
-
-Known working SLURM commands:
-
-```bash
-which sbatch
-which squeue
-which sinfo
-squeue -u "$USER"
-sinfo
-```
 
 Known partition behavior:
 
@@ -248,9 +207,7 @@ short: about 3 hour max walltime
 long: about 3 day max walltime
 ```
 
-Most current development jobs use `short`.
-
-No special account setting has been required so far.
+Most current development jobs use `short`. No special account setting has been required so far.
 
 ### Logs
 
@@ -288,11 +245,7 @@ slurmstepd: error: TMPDIR [/local/tmp] is not writeable
 slurmstepd: error: Setting TMPDIR to /tmp
 ```
 
-This has not been fatal when the job itself logs:
-
-```text
-TMPDIR: /tmp
-```
+This has not been fatal when the job itself logs `TMPDIR: /tmp`.
 
 ### module list
 
@@ -302,7 +255,7 @@ TMPDIR: /tmp
 module list 2>&1 || true
 ```
 
-## Optional cluster shell helpers
+## Optional Cluster Shell Helpers
 
 The cluster shell is bash, not zsh.
 
@@ -329,7 +282,7 @@ sjtail <JOBID>
 
 If helpers are not installed, use the manual commands in the next section.
 
-## Manual job checking
+## Manual Job Checking
 
 Recent logs:
 
@@ -363,14 +316,14 @@ squeue -j <JOBID>
 squeue -u "$USER"
 ```
 
-Watch output directory while a job runs:
+Watch an output directory while a job runs:
 
 ```bash
 du -sh <output_dir>
 ls -lh <output_dir>
 ```
 
-## Local validation gate
+## Local Validation Gate
 
 Run from the local repo root before committing:
 
@@ -389,7 +342,7 @@ git diff --name-status
 
 Only commit after the local gate passes.
 
-## Cluster execution pattern
+## Cluster Execution Pattern
 
 On local:
 
@@ -441,9 +394,7 @@ tail -120 logs/<log-prefix>-<JOBID>.err
 
 Inspect outputs before declaring the step proven.
 
-## Reference prep
-
-### Reference inputs
+## Reference Prep
 
 Novogene reference source files:
 
@@ -472,7 +423,7 @@ Not chr1, chr2, chr3
 
 FASTA and GTF chromosome naming match.
 
-### Step 00a: STAR index
+### Step 00a: STAR Index
 
 Job:
 
@@ -497,10 +448,10 @@ because reads are 150 bp.
 Status:
 
 ```text
-implemented / cluster-proven
+cluster-proven
 ```
 
-### Step 00b: GTF to BED12
+### Step 00b: GTF To BED12
 
 Script:
 
@@ -530,10 +481,10 @@ Validated output:
 Status:
 
 ```text
-implemented / cluster-proven
+cluster-proven
 ```
 
-## Step 01: STAR alignment
+## Step 01: STAR Alignment
 
 Script:
 
@@ -553,45 +504,39 @@ Purpose:
 Align paired-end FASTQs to the STAR index and write coordinate-sorted BAM output.
 ```
 
-Validated sample:
-
-```text
-ABE_EV_2
-```
-
-Main output:
+Main output family:
 
 ```bash
-results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam
+results/star/<sample>/<sample>.Aligned.sortedByCoord.out.bam
 ```
 
-Other STAR outputs:
+Other STAR output families:
 
 ```bash
-results/star/ABE_EV_2/ABE_EV_2.Log.final.out
-results/star/ABE_EV_2/ABE_EV_2.Log.out
-results/star/ABE_EV_2/ABE_EV_2.Log.progress.out
-results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab
-```
-
-Known STAR stats for `ABE_EV_2`:
-
-```text
-Input reads: 21,358,987
-Unique mapped: 58.50%
-Multi-mapped: 24.19%
-Too many loci: 0.52%
-Unmapped too short: 16.55%
-Approximate total mapped: 83.21%
+results/star/<sample>/<sample>.Log.final.out
+results/star/<sample>/<sample>.Log.out
+results/star/<sample>/<sample>.Log.progress.out
+results/star/<sample>/<sample>.SJ.out.tab
 ```
 
 Status:
 
 ```text
-implemented / cluster-proven for ABE_EV_2
+complete and cluster-proven across all six samples
 ```
 
-## Step 02: canonical sort, read-group tagging, and BAM indexing
+Known alignment summaries:
+
+| Sample | Approximate input reads | Unique mapping rate |
+| ------ | ----------------------: | ------------------: |
+| `ABE_EV_2` | 21.36 million | 58.50% |
+| `ABE_EV_3` | 20.5 million | 82.95% |
+| `ABE_EV4` | 26.6 million | 71.06% |
+| `ABE_PUM1_2` | 21.1 million | 77.51% |
+| `ABE_PUM1_3` | 23.2 million | 85.38% |
+| `ABE_PUM1_4` | 22.5 million | 70.96% |
+
+## Step 02: Canonical Sort, Read-Group Tagging, And BAM Indexing
 
 Script:
 
@@ -605,17 +550,17 @@ Job:
 jobs/step_02_sort_index_bam.slurm
 ```
 
-Purpose:
+Status:
 
 ```text
-Create the canonical downstream BAM for one sample.
+hardened and cluster-proven across all six samples
+```
 
-The canonical BAM must:
-- be coordinate sorted
-- contain exactly one @RG header for the sample
-- assign every alignment record to that read group
-- pass samtools quickcheck
-- have a valid BAM index
+Canonical outputs:
+
+```bash
+results/bam/<sample>/<sample>.sorted.bam
+results/bam/<sample>/<sample>.sorted.bam.bai
 ```
 
 Read-group convention:
@@ -627,21 +572,7 @@ LB=<sample_id>
 PL=ILLUMINA
 ```
 
-`LB=<sample_id>` is the current provisional convention until more specific
-library or lane metadata is recovered from the sequencing delivery records.
-
-Input for `ABE_EV_2`:
-
-```bash
-results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam
-```
-
-Outputs:
-
-```bash
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
+`LB=<sample_id>` is provisional until more specific library or lane metadata is recovered.
 
 Dry-run:
 
@@ -673,51 +604,40 @@ Hardened execution flow:
 11. Remove backups and the owned lock only after successful final validation.
 ```
 
-Publication uses rollback protection, but the BAM/BAI pair is not a single
-indivisible atomic operation. If a failure occurs after backups begin, Step 02
-restores the previous complete canonical pair. If no prior pair existed, it
-removes any partially published canonical outputs.
+Publication uses rollback protection, but the BAM/BAI pair is not a single indivisible atomic operation. If a failure occurs after backups begin, Step `02` restores the previous complete canonical pair. If no prior pair existed, it removes any partially published canonical outputs.
 
-Post-run validation:
+Validation checklist for each final canonical BAM:
 
 ```bash
 module load samtools/1.19.2
 
-sample=ABE_EV_2
+sample=<sample_id>
 bam="results/bam/$sample/$sample.sorted.bam"
 
 samtools quickcheck "$bam"
-
+samtools view -H "$bam" | grep '^@HD.*SO:coordinate'
 samtools view -H "$bam" | grep '^@RG'
 
 total_records="$(samtools view -c "$bam")"
 tagged_records="$(samtools view -c -d "RG:$sample" "$bam")"
 
-printf 'Total records: %s\n' "$total_records"
-printf 'Records tagged RG:%s: %s\n' "$sample" "$tagged_records"
-
 test "$total_records" -gt 0
 test "$tagged_records" -eq "$total_records"
-
 ls -lh "$bam" "$bam.bai"
 ```
 
-Expected read-group header for `ABE_EV_2`:
+Confirmed final canonical BAM sizes were approximately:
 
-```text
-@RG	ID:ABE_EV_2	SM:ABE_EV_2	LB:ABE_EV_2	PL:ILLUMINA
-```
+| Sample | BAM size |
+| ------ | -------: |
+| `ABE_EV_2` | 3.0 GB |
+| `ABE_EV_3` | 2.0 GB |
+| `ABE_EV4` | 2.9 GB |
+| `ABE_PUM1_2` | 2.2 GB |
+| `ABE_PUM1_3` | 2.1 GB |
+| `ABE_PUM1_4` | 2.5 GB |
 
-Durable history:
-
-```text
-The original Step 02 sort/index implementation was successfully exercised on
-the cluster before read-group hardening. Those pre-hardening BAMs lacked
-required read-group metadata and are superseded by the hardened Step 02
-contract.
-```
-
-Pre-hardening resource measurements:
+Historical resource observations from the pre-hardening `ABE_EV_2` Step `02` run:
 
 ```text
 Elapsed: about 3 minutes 46 seconds
@@ -726,16 +646,12 @@ Output BAM: about 3.0G
 Output BAI: about 3.3M
 ```
 
-Normal samtools stderr observed:
+These observations are historical, not guaranteed resource requirements for future cohort runs.
+
+Normal tool progress may appear on stderr. For example, samtools sort can emit:
 
 ```text
 [bam_sort_core] merging from 4 files and 8 in-memory blocks...
-```
-
-Status:
-
-```text
-implemented / pending cluster revalidation after read-group hardening
 ```
 
 ## Step 02b: BAM QC
@@ -752,23 +668,17 @@ Job:
 jobs/step_02b_bam_qc.slurm
 ```
 
-Purpose:
+Status:
 
 ```text
-Validate canonical BAM integrity and write samtools flagstat summary.
-```
-
-Input:
-
-```bash
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
+implemented and useful for cohort QC/provenance; clean refresh against final hardened BAMs pending
 ```
 
 Outputs:
 
 ```bash
-results/qc/bam/ABE_EV_2.quickcheck.txt
-results/qc/bam/ABE_EV_2.flagstat.txt
+results/qc/bam/<sample>.quickcheck.txt
+results/qc/bam/<sample>.flagstat.txt
 ```
 
 Dry-run:
@@ -783,24 +693,19 @@ Execute:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02b_bam_qc.slurm
 ```
 
-The execute job also completed successfully with no stderr noted.
-
-Useful output inspection:
+Validation checklist:
 
 ```bash
-ls -lh results/qc/bam
-cat results/qc/bam/ABE_EV_2.quickcheck.txt
-head -40 results/qc/bam/ABE_EV_2.flagstat.txt
-grep -E "in total|primary|secondary|mapped|properly paired|duplicates" results/qc/bam/ABE_EV_2.flagstat.txt
+sample=<sample_id>
+cat "results/qc/bam/$sample.quickcheck.txt"
+head -40 "results/qc/bam/$sample.flagstat.txt"
+grep -E "in total|primary|secondary|mapped|properly paired|duplicates" \
+  "results/qc/bam/$sample.flagstat.txt"
 ```
 
-Status:
+Important nuance: the current Step `02b` script creates the requested output directory before dry-run exit. It should not be described as side-effect-free.
 
-```text
-implemented / cluster-proven for ABE_EV_2
-```
-
-## Step 03: RSeQC strandedness/orientation inference
+## Step 03: RSeQC Strandedness / Orientation Inference
 
 Script:
 
@@ -814,24 +719,16 @@ Job:
 jobs/step_03_infer_strandedness_and_orientation.slurm
 ```
 
-Purpose:
+Status:
 
 ```text
-Run RSeQC infer_experiment.py on canonical BAM to infer library strandedness/read orientation.
-```
-
-Inputs:
-
-```bash
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-refs/novogene_ref/genome.bed
+cluster-proven across all six samples
 ```
 
 Output:
 
 ```bash
-results/qc/strandedness/ABE_EV_2.infer_experiment.txt
+results/qc/strandedness/<sample>.infer_experiment.txt
 ```
 
 Dry-run:
@@ -846,90 +743,105 @@ Execute:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_03_infer_strandedness_and_orientation.slurm
 ```
 
-Output observed:
+Validation checklist:
 
-```text
-This is PairEnd Data
-Fraction of reads failed to determine: 0.0828
-Fraction of reads explained by "1++,1--,2+-,2-+": 0.0432
-Fraction of reads explained by "1+-,1-+,2++,2--": 0.8740
+```bash
+sample=<sample_id>
+cat "results/qc/strandedness/$sample.infer_experiment.txt"
 ```
 
-Interpretation:
+Confirmed result:
 
 ```text
-ABE_EV_2 appears strongly reverse-stranded / first-strand-style.
+All six Novogene Remora libraries are paired-end and reverse-stranded / first-strand-style.
 ```
 
-Equivalent common settings:
+Tool-specific examples:
 
 ```text
 featureCounts -s 2
-HTSeq stranded=reverse
-fr-firststrand
-```
-
-Caution:
-
-```text
-Only ABE_EV_2 has been checked so far.
-Confirm strandedness across all six samples before treating this as a global library-prep assumption.
-```
-
-Status:
-
-```text
-implemented / cluster-proven for ABE_EV_2
+HTSeq --stranded=reverse
+Salmon paired-end convention ISR
 ```
 
 ## Step 04: MarkDuplicates
 
+Script:
+
+```bash
+scripts/step_04_mark_duplicates.sh
+```
+
+Job:
+
+```bash
+jobs/step_04_mark_duplicates.slurm
+```
+
 Status:
 
 ```text
-pending / scaffold only
+implemented and cluster-proven for ABE_EV_2; cohort-wide validation pending
 ```
 
-Expected next implementation target.
-
-Expected input:
+Inputs:
 
 ```bash
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
+results/bam/<sample>/<sample>.sorted.bam
+results/bam/<sample>/<sample>.sorted.bam.bai
 ```
 
-Likely outputs:
+Outputs:
 
 ```bash
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai
-results/qc/markdup/ABE_EV_2.markdup.metrics.txt
+results/markdup/<sample>/<sample>.markdup.bam
+results/markdup/<sample>/<sample>.markdup.bam.bai
+results/qc/markdup/<sample>.markdup.metrics.txt
 ```
 
-Expected tool:
+Dry-run:
 
 ```bash
-module load picard/3.1.1
-java -jar "$PICARD" MarkDuplicates
+sbatch jobs/step_04_mark_duplicates.slurm
 ```
 
-Implementation notes:
+Execute:
 
-```text
-Mark duplicates; do not remove duplicates unless there is a documented reason.
-Write metrics file.
-Index output BAM.
-Use dry-run-first behavior.
-Use local tests with fake Picard/Java if real Picard is unavailable locally.
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_04_mark_duplicates.slurm
 ```
+
+If a supported Java 17 executable is known, pass it explicitly:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
+  jobs/step_04_mark_duplicates.slurm
+```
+
+Validation checklist for promotion of each sample:
+
+```bash
+sample=<sample_id>
+bam="results/markdup/$sample/$sample.markdup.bam"
+metrics="results/qc/markdup/$sample.markdup.metrics.txt"
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+samtools quickcheck "$bam"
+samtools view -H "$bam" | grep '^@HD.*SO:coordinate'
+samtools view -H "$bam" | grep '^@RG'
+ls -lh "$bam" "$bam.bai" "$metrics"
+```
+
+Before updating Step `04` status for all six samples, the remaining five samples require confirmed scheduler completion, exit code `0:0`, nonempty BAM/BAI/metrics, passing `samtools quickcheck`, retained coordinate sorting, and retained sample-specific read groups.
+
+Step `04` uses `REMOVE_DUPLICATES=false`; duplicate reads remain present with the duplicate flag set.
 
 ## Step 05: SplitNCigarReads
 
 Status:
 
 ```text
-pending / scaffold only
+scaffolded / not implemented / not cluster-proven
 ```
 
 Expected tool:
@@ -938,27 +850,14 @@ Expected tool:
 GATK SplitNCigarReads
 ```
 
-Blocking question:
+GATK availability remains unresolved.
 
-```text
-GATK module/location not yet identified.
-```
-
-Needs:
-
-```text
-reference FASTA
-FASTA .fai
-sequence dictionary .dict
-duplicate-marked BAM
-```
-
-## Step 06: split BAM by read orientation
+## Step 06: Split BAM By Read Orientation
 
 Status:
 
 ```text
-pending / scaffold only
+scaffolded / not implemented / not cluster-proven
 ```
 
 Old reference workflow used samtools flags similar to:
@@ -968,78 +867,52 @@ FWD-like: 99 and 147
 REV-like: 83 and 163
 ```
 
-Important caution:
-
-```text
 Do not assume old FWD/REV labels directly equal biological sense/antisense.
-Step 03 indicates reverse-stranded / first-strand behavior for ABE_EV_2.
-Document read-orientation labels separately from biological transcript strand.
-```
 
 ## Step 07: bcftools mpileup
 
 Status:
 
 ```text
-pending / scaffold only
+scaffolded / not implemented / not cluster-proven
 ```
 
-Needs validation:
+bcftools availability and invocation remain unresolved.
 
-```text
-bcftools module/location
-reference FASTA path
-chromosome/region strategy
-sample grouping
-output naming
-```
-
-## Step 08: VCF preprocessing
+## Step 08: VCF Preprocessing
 
 Status:
 
 ```text
-pending / scaffold only
+scaffolded / not implemented / not cluster-proven
 ```
 
-Reference source:
+Future work should port and parameterize the reference `vcf_preprocess1.R`.
 
-```text
-uploaded old vcf_preprocess1.R
-```
-
-Needs:
-
-```text
-remove hardcoded paths
-convert to CLI/manifest-driven behavior
-document strand/orientation assumptions
-```
-
-## Step 09: CMH editing-site calling
+## Step 09: CMH Editing-Site Calling
 
 Status:
 
 ```text
-pending / scaffold only
+scaffolded / not implemented / not cluster-proven
 ```
 
-Reference source:
+Future work should port and parameterize the reference `Edit_call_cmh.R`.
 
-```text
-uploaded old Edit_call_cmh.R
-```
+## Temporary Java Workaround
 
-Needs:
+`--nodelist=node003` is currently a temporary operational workaround because `node003` has been verified to provide a working Java 17 runtime.
 
-```text
-remove hardcoded paths
-convert to CLI/manifest-driven behavior
-define expected final tables/plots
-document statistical assumptions
-```
+Do not:
 
-## Reference workflow alignment
+* embed `node003` as a permanent default in the SLURM script
+* describe node pinning as a pipeline architecture requirement
+* assume node003 will remain the long-term solution
+* recommend copying a JDK from the head node or another compute node
+
+The durable action is to report or clarify the inconsistent Java 17 installation with CSU HPC and identify a supported cluster-wide Java 17 executable or installation path.
+
+## Reference Workflow Alignment
 
 The uploaded/reference workflow sequence is:
 
@@ -1054,5 +927,3 @@ STAR alignment
 ```
 
 This repo is rebuilding that workflow in a cleaner SLURM/script/testable structure.
-
-The uploaded legacy scripts should be treated as protocol references, not as runnable production scripts.

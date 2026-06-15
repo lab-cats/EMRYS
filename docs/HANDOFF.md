@@ -1,6 +1,6 @@
-# Project handoff notes
+# Project Handoff Notes
 
-## What this project does
+## What This Project Does
 
 This repository rebuilds a Novogene Remora RNA-seq / RNA-editing workflow into a cleaner, manifest-driven, testable pipeline for local development and CSU SLURM execution.
 
@@ -11,7 +11,7 @@ The intended high-level workflow is:
 1. Build STAR index from the Novogene reference.
 2. Convert GTF annotation to BED12 for RSeQC.
 3. Align paired-end RNA-seq reads with STAR.
-4. Sort/index canonical BAMs.
+4. Create canonical coordinate-sorted, read-group-tagged, indexed BAMs.
 5. QC canonical BAMs.
 6. Infer library strandedness/orientation with RSeQC.
 7. Mark duplicates.
@@ -21,147 +21,20 @@ The intended high-level workflow is:
 11. Preprocess VCFs.
 12. Run CMH/editing-site calling.
 
-The pipeline is being rebuilt one validated step at a time.
+## Current Status
 
-## Current status
+| Step | Status | Notes |
+| ---- | ------ | ----- |
+| `00a` STAR index | cluster-proven | Built Novogene STAR index at `refs/novogene_star_index`. |
+| `00b` GTF to BED12 | cluster-proven | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
+| `01` STAR alignment | complete and cluster-proven across all six samples | `ABE_EV_2` is a mapping outlier but not a pipeline blocker. |
+| `02` canonical sort/read-group/index BAM | hardened and cluster-proven across all six samples | Final canonical BAMs have coordinate sort order, sample-specific RG metadata, BAI files, and `quickcheck` PASS. |
+| `02b` BAM QC | implemented and useful for cohort QC/provenance; clean refresh against final hardened BAMs pending | Do not assume older reports all correspond to final hardened BAMs. |
+| `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
+| `04` Picard MarkDuplicates | implemented and cluster-proven for `ABE_EV_2`; cohort-wide validation pending | Remaining five samples must be validated before promotion. |
+| `05`-`09` downstream editing workflow | scaffolded / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
 
-### Implemented / cluster validation status
-
-The following upstream steps have been implemented. Hardened Step `02` must be
-revalidated on the cluster before it is treated as proven again:
-
-| Step                                          | Status                | Notes                                                                   |
-| --------------------------------------------- | --------------------- | ----------------------------------------------------------------------- |
-| `00a` STAR index                              | Proven                | Built Novogene STAR index at `refs/novogene_star_index`.                |
-| `00b` GTF to BED12                            | Proven                | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
-| `01` STAR alignment                           | Proven for `ABE_EV_2` | Produced STAR coordinate-sorted BAM.                                    |
-| `02` canonical sort/read-group/index BAM      | Pending revalidation  | Hardened Step 02 supersedes earlier BAMs that lacked read groups.        |
-| `02b` BAM QC                                  | Proven for `ABE_EV_2` | Produces quickcheck and flagstat outputs.                               |
-| `03` RSeQC strandedness/orientation inference | Proven for `ABE_EV_2` | Strong reverse-stranded / first-strand signal.                          |
-
-### Current Step 03 result
-
-RSeQC `infer_experiment.py` output for `ABE_EV_2`:
-
-```text
-This is PairEnd Data
-Fraction of reads failed to determine: 0.0828
-Fraction of reads explained by "1++,1--,2+-,2-+": 0.0432
-Fraction of reads explained by "1+-,1-+,2++,2--": 0.8740
-```
-
-Interpretation:
-
-* The library appears strongly reverse-stranded / first-strand-style for `ABE_EV_2`.
-* Read 1 is mostly antisense to annotated transcript.
-* Read 2 is mostly sense.
-* Common tool settings implied by this result:
-
-  * `featureCounts -s 2`
-  * `HTSeq stranded=reverse`
-  * `fr-firststrand`
-
-Caution: this has only been confirmed on `ABE_EV_2`. Before making a global library-prep assumption, run Step 03 on all six samples once their canonical BAMs exist.
-
-### Pending / incomplete
-
-Steps `04` through `09` are scaffolded only and should remain non-runnable until implemented.
-
-Pending steps:
-
-| Step | Planned purpose                                       |
-| ---- | ----------------------------------------------------- |
-| `04` | Picard MarkDuplicates                                 |
-| `05` | GATK SplitNCigarReads                                 |
-| `06` | Split BAMs by read orientation                        |
-| `07` | bcftools mpileup by chromosome and orientation/strand |
-| `08` | VCF preprocessing                                     |
-| `09` | CMH editing-site calling                              |
-
-The next likely implementation target is Step `04`: Picard MarkDuplicates.
-
-## Main entry points
-
-### Implemented scripts
-
-```text
-scripts/validate_manifest.py
-scripts/gtf_to_bed12.py
-scripts/step_01_star_align.sh
-scripts/step_02_sort_index_bam.sh
-scripts/step_02b_bam_qc.sh
-scripts/step_03_infer_strandedness_and_orientation.sh
-```
-
-### Implemented SLURM jobs
-
-```text
-jobs/step_00a_build_novogene_star_index.slurm
-jobs/step_00b_gtf_to_bed12.slurm
-jobs/step_01_star_align.slurm
-jobs/step_02_sort_index_bam.slurm
-jobs/step_02b_bam_qc.slurm
-jobs/step_03_infer_strandedness_and_orientation.slurm
-```
-
-### Pending scaffold jobs
-
-```text
-jobs/step_04_mark_duplicates.slurm
-jobs/step_05_split_n_cigar_reads.slurm
-jobs/step_06_split_bam_by_read_orientation.slurm
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
-jobs/step_08_vcf_preprocessing.slurm
-jobs/step_09_cmh_editing_site_calling.slurm
-```
-
-These future jobs are intentionally pending/non-runnable until implemented.
-
-### Documentation
-
-```text
-docs/PIPELINE_PLAN.md
-docs/HANDOFF.md
-```
-
-`docs/PIPELINE_PLAN.md` is the canonical roadmap for steps `00a` through `09`.
-
-## Data locations
-
-### Local development repo
-
-```text
-/Users/elisteiger/dev/norad
-```
-
-### Cluster repo
-
-```text
-~/norad
-/mnt/stor-pool-01/users/2609214/norad
-```
-
-### Raw data on cluster
-
-The repo uses a symlink:
-
-```text
-data/raw/novogene_remora -> /mnt/stor-pool-01/users/2832917/Novogene_Remora_raw_data
-```
-
-FASTQs are under:
-
-```text
-data/raw/novogene_remora/01.RawData/*.fq.gz
-```
-
-### Samples
-
-The manifest is:
-
-```text
-samples.tsv
-```
+## Cohort
 
 Known paired-end samples:
 
@@ -181,17 +54,146 @@ EV:   ABE_EV_2, ABE_EV_3, ABE_EV4
 PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 ```
 
-### Reference files
+Note that `ABE_EV4` lacks the underscore before `4`.
 
-Novogene reference source files came from `04.Ref`:
+## Current Scientific And Workflow Conclusions
+
+Step `03` confirmed all six libraries are paired-end and reverse-stranded / first-strand-style.
+
+| Sample | Failed to determine | `1++,1--,2+-,2-+` | `1+-,1-+,2++,2--` |
+| ------ | ------------------: | ----------------: | ----------------: |
+| `ABE_EV_2` | 0.0828 | 0.0432 | 0.8740 |
+| `ABE_EV_3` | 0.0964 | 0.0420 | 0.8617 |
+| `ABE_EV4` | 0.0908 | 0.0433 | 0.8658 |
+| `ABE_PUM1_2` | 0.1063 | 0.0374 | 0.8562 |
+| `ABE_PUM1_3` | 0.0955 | 0.0407 | 0.8639 |
+| `ABE_PUM1_4` | 0.0926 | 0.0402 | 0.8672 |
+
+The `ABE_EV_2` Step `03` output was rerun after Step `02` hardening and matched the previous report exactly. Step `02` changed operational metadata and publication safety without changing the biological orientation inference.
+
+## Main Entry Points
+
+Implemented scripts:
 
 ```text
-genome.fa.gz
-genome.gtf.gz
-genome_gene.fa.gz
+scripts/validate_manifest.py
+scripts/gtf_to_bed12.py
+scripts/step_01_star_align.sh
+scripts/step_02_sort_index_bam.sh
+scripts/step_02b_bam_qc.sh
+scripts/step_03_infer_strandedness_and_orientation.sh
+scripts/step_04_mark_duplicates.sh
 ```
 
-Prepared reference outputs:
+Implemented SLURM jobs:
+
+```text
+jobs/step_00a_build_novogene_star_index.slurm
+jobs/step_00b_gtf_to_bed12.slurm
+jobs/step_01_star_align.slurm
+jobs/step_02_sort_index_bam.slurm
+jobs/step_02b_bam_qc.slurm
+jobs/step_03_infer_strandedness_and_orientation.slurm
+jobs/step_04_mark_duplicates.slurm
+```
+
+Scaffolded downstream files:
+
+```text
+jobs/step_05_split_n_cigar_reads.slurm
+jobs/step_06_split_bam_by_read_orientation.slurm
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+jobs/step_08_vcf_preprocessing.slurm
+jobs/step_09_cmh_editing_site_calling.slurm
+scripts/step_05_split_n_cigar_reads.sh
+scripts/step_06_split_bam_by_read_orientation.sh
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_09_cmh_editing_site_calling.sh
+```
+
+These future steps are intentionally non-runnable and exit as not implemented.
+
+## Operator Pointers
+
+For operational commands, validation checklists, cluster setup, and per-step run examples, start with `docs/RUNBOOK.md`.
+
+Useful optional cluster helper commands, when installed:
+
+```text
+norad
+nlogs
+sqme
+sj <jobid>
+sjtail <jobid>
+sjcheck <jobid>
+```
+
+Expected output families:
+
+```text
+results/star/<sample>/
+results/bam/<sample>/<sample>.sorted.bam
+results/bam/<sample>/<sample>.sorted.bam.bai
+results/qc/bam/<sample>.quickcheck.txt
+results/qc/bam/<sample>.flagstat.txt
+results/qc/strandedness/<sample>.infer_experiment.txt
+results/markdup/<sample>/<sample>.markdup.bam
+results/markdup/<sample>/<sample>.markdup.bam.bai
+results/qc/markdup/<sample>.markdup.metrics.txt
+```
+
+Expected future output families, once implemented:
+
+```text
+results/splitncigar/
+results/orientation/
+results/vcf/
+results/editing/
+results/artifacts/
+results/reports/
+```
+
+Where to look:
+
+```text
+docs/PIPELINE_PLAN.md  current step status and validation detail
+docs/RUNBOOK.md        how to run and validate jobs
+DECISIONS.md           durable decisions and rationale
+TROUBLESHOOTING.md     symptom -> cause -> fix
+docs/QUESTIONS.md      unresolved and answered questions
+TODO.md                tactical next work
+README.md              concise entrypoint
+```
+
+## Data Locations
+
+Local development repo:
+
+```text
+/Users/elisteiger/dev/norad
+```
+
+Cluster repo:
+
+```text
+~/norad
+/mnt/stor-pool-01/users/2609214/norad
+```
+
+Raw data symlink on cluster:
+
+```text
+data/raw/novogene_remora -> /mnt/stor-pool-01/users/2832917/Novogene_Remora_raw_data
+```
+
+FASTQs are under:
+
+```text
+data/raw/novogene_remora/01.RawData/*.fq.gz
+```
+
+Prepared references:
 
 ```text
 refs/novogene_ref/genome.fa
@@ -200,13 +202,60 @@ refs/novogene_ref/genome.bed
 refs/novogene_star_index/
 ```
 
-Reference notes:
+## Step 04 Current State
 
-* Genome is GRCh38-like.
-* Chromosome names look like `1`, `2`, etc., not `chr1`, `chr2`.
-* FASTA and GTF chromosome naming match.
+Step `04` is proven for `ABE_EV_2` with:
 
-## How to run local validation
+* completed scheduler state and exit code `0:0`
+* nonempty duplicate-marked BAM, BAI, and Picard metrics
+* passing `samtools quickcheck`
+* coordinate sorting retained
+* sample-specific read group retained
+* duplicates marked, not removed
+* `REMOVE_DUPLICATES=false`
+
+`ABE_EV_2` duplication metrics:
+
+| Metric | Value |
+| ------ | ----: |
+| Read pairs examined | 17,663,180 |
+| Duplicate read pairs | 11,731,288 |
+| Individual records marked duplicate | 23,462,576 |
+| Optical duplicate pairs | 120,669 |
+| Percent duplication | 0.664166 |
+| Estimated library size | 6,327,403 |
+
+The duplication fraction is elevated and should be compared across the cohort before interpretation. It is not currently labeled a pipeline failure.
+
+## Current Next Work
+
+1. Validate Step `04` across the remaining five samples.
+2. Collect and compare duplication metrics across all six samples, including whether `ABE_EV_2` is a duplication outlier.
+3. Refresh Step `02b` quickcheck/flagstat reports against the final hardened Step `02` BAMs.
+4. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
+5. Inspect and implement or harden Step `05` after GATK availability is resolved.
+6. Continue Steps `06`-`09` after each upstream gate is proven.
+7. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
+
+## Java And Picard Handoff
+
+Step `04` resolves Java in the local checkout as:
+
+1. `JAVA_BIN_OVERRIDE`, when provided.
+2. `$JAVA_HOME/bin/java`, only if that path exists and is executable.
+3. `command -v java`.
+
+The wrapper then verifies the selected executable exists, logs the actual `java -version`, parses the runtime major version, and fails before Picard starts if the runtime is below Java 17.
+
+Known cluster issue:
+
+* `node003` provided working Java 17 via `/usr/bin/java` and completed `ABE_EV_2` MarkDuplicates.
+* `node007` reported Java 11 at `/usr/bin/java`; Picard classes require Java 17 class-file version 61.
+* The Java 17 module's advertised `JAVA_HOME` path was missing on `node007`.
+
+Do not infer the effective Java runtime from the module name or `JAVA_HOME` alone. `--nodelist=node003` is a temporary operational workaround, not a durable architecture decision.
+
+## Local Validation Gate
 
 Run from the local repo root:
 
@@ -225,325 +274,10 @@ git diff --name-status
 
 Local tests are lightweight and should not require real full-size BAM/FASTQ data.
 
-## Cluster execution pattern
-
-The project uses a gated local-to-cluster workflow:
-
-1. Implement locally.
-2. Run local validation.
-3. Commit and push.
-4. Pull on cluster.
-5. Run SLURM dry-run.
-6. Inspect logs.
-7. Run SLURM execute mode.
-8. Inspect outputs.
-9. Only then proceed to the next step.
-
-Cluster setup:
-
-```bash
-ssh csu-hpc
-cd ~/norad
-git pull
-git status --short
-mkdir -p logs
-```
-
-Dry-run pattern:
-
-```bash
-sbatch jobs/<step>.slurm
-```
-
-Execute pattern:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
-```
-
-Manual job check:
-
-```bash
-ls -ltr logs | tail
-sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
-tail -120 logs/<log-prefix>-<JOBID>.out
-tail -120 logs/<log-prefix>-<JOBID>.err
-```
-
-Optional cluster shell helpers may exist in `~/.bashrc`:
-
-```bash
-norad       # cd to repo
-nlogs       # show recent logs
-sqme        # show user's SLURM queue
-sj <jobid>  # sacct summary
-sjtail <jobid>
-sjcheck <jobid>
-```
-
-These helpers are convenience only and are not required by the repo.
-
-## Step-specific cluster commands used so far
-
-### Step 02 sort/index BAM
-
-Dry-run:
-
-```bash
-sbatch jobs/step_02_sort_index_bam.slurm
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02_sort_index_bam.slurm
-```
-
-Validated output:
-
-```text
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
-
-### Step 02b BAM QC
-
-Dry-run:
-
-```bash
-sbatch jobs/step_02b_bam_qc.slurm
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02b_bam_qc.slurm
-```
-
-Expected output:
-
-```text
-results/qc/bam/ABE_EV_2.quickcheck.txt
-results/qc/bam/ABE_EV_2.flagstat.txt
-```
-
-### Step 03 strandedness/orientation inference
-
-Dry-run:
-
-```bash
-sbatch jobs/step_03_infer_strandedness_and_orientation.slurm
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_03_infer_strandedness_and_orientation.slurm
-```
-
-Validated output:
-
-```text
-results/qc/strandedness/ABE_EV_2.infer_experiment.txt
-```
-
-## Expected outputs
-
-### STAR alignment
-
-For sample `ABE_EV_2`:
-
-```text
-results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam
-results/star/ABE_EV_2/ABE_EV_2.Log.final.out
-results/star/ABE_EV_2/ABE_EV_2.Log.out
-results/star/ABE_EV_2/ABE_EV_2.Log.progress.out
-results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab
-```
-
-### Canonical BAM
-
-```text
-results/bam/<sample>/<sample>.sorted.bam
-results/bam/<sample>/<sample>.sorted.bam.bai
-```
-
-Current proven example:
-
-```text
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
-
-### BAM QC
-
-```text
-results/qc/bam/<sample>.quickcheck.txt
-results/qc/bam/<sample>.flagstat.txt
-```
-
-### RSeQC strandedness/orientation
-
-```text
-results/qc/strandedness/<sample>.infer_experiment.txt
-```
-
-### Future expected outputs
-
-Likely future output paths, subject to implementation:
-
-```text
-results/markdup/<sample>/<sample>.markdup.bam
-results/markdup/<sample>/<sample>.markdup.bam.bai
-results/qc/markdup/<sample>.markdup.metrics.txt
-
-results/splitncigar/<sample>/<sample>.splitncigar.bam
-results/splitncigar/<sample>/<sample>.splitncigar.bam.bai
-
-results/orientation/<sample>/<sample>.<orientation>.bam
-results/orientation/<sample>/<sample>.<orientation>.bam.bai
-
-results/vcf/...
-results/editing/...
-```
-
-## Known assumptions
-
-* Data are paired-end RNA-seq.
-* Primary development/validation sample is currently `ABE_EV_2`.
-* Full sample set has six samples.
-* Genome/reference is Novogene-provided GRCh38-like reference.
-* Chromosome names are numeric-style, for example `1`, not `chr1`.
-* STAR index was built with `sjdbOverhang=149`, matching 150 bp reads.
-* RSeQC Step 03 for `ABE_EV_2` strongly supports reverse-stranded / first-strand-style library behavior.
-* Do not yet assume this strandedness globally until additional samples are checked.
-* Dry-run mode should not create final outputs.
-* Execute mode should validate required inputs and outputs.
-* Future RNA-editing steps should preserve the distinction between read orientation and biological transcript strand.
-* Old workflow orientation labels such as FWD/REV need careful interpretation in light of Step 03.
-
-## Known cluster/tool assumptions
-
-* SLURM is available on the CSU cluster.
-* `short` partition supports jobs up to about 3 hours.
-* `long` partition supports jobs up to about 3 days.
-* `TMPDIR=/tmp` should be exported for jobs.
-* `logs/` must exist before `sbatch`.
-* Known modules:
-
-  * `star/2.7.11b`
-  * `samtools/1.19.2`
-  * `bedtools/2.31.1`
-  * `picard/3.1.1`
-  * `python39`
-  * `java/17.0.10`
-* RSeQC is available through the project virtual environment:
-
-  * `.venv/bin/infer_experiment.py`
-* GATK availability has not yet been validated.
-
-## Known issues/TODOs
-
-### Near-term
-
-* Decide whether to implement Step 04 MarkDuplicates next or first generalize/run Steps 01–03 across all six samples.
-* Recommended next implementation target is Step 04 MarkDuplicates on `ABE_EV_2`.
-* Before any global strandedness assumption, run Step 03 on all six samples once their canonical BAMs exist.
-
-### Step 04 TODO
-
-Implement Picard MarkDuplicates.
-
-Expected input:
-
-```text
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
-
-Likely outputs:
-
-```text
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai
-results/qc/markdup/ABE_EV_2.markdup.metrics.txt
-```
-
-Expected tool:
-
-```text
-picard/3.1.1
-```
-
-Implementation notes:
-
-* Use Picard MarkDuplicates.
-* Mark duplicates; do not remove duplicates unless explicitly justified.
-* Write metrics file.
-* Index output BAM.
-* Preserve dry-run-first behavior.
-* Use local tests with fake Picard/Java if needed.
-
-### Step 05 TODO
-
-Implement GATK SplitNCigarReads.
-
-Needs validation:
-
-* GATK availability on cluster.
-* Reference FASTA path.
-* FASTA `.fai`.
-* Picard/GATK sequence dictionary `.dict`.
-
-### Step 06 TODO
-
-Implement read-orientation BAM splitting.
-
-Old workflow used samtools flags:
-
-```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
-```
-
-Do not assume these labels directly equal biological sense/antisense without documenting the interpretation, especially because Step 03 indicates reverse-stranded library behavior.
-
-### Step 07 TODO
-
-Implement bcftools mpileup by chromosome and orientation/strand.
-
-Needs decisions:
-
-* chromosome/region handling
-* grouping EV vs PUM1 samples
-* reference FASTA path
-* output naming
-
-### Step 08 TODO
-
-Port/customize VCF preprocessing from old `vcf_preprocess1.R`.
-
-Needs work:
-
-* remove hardcoded paths
-* make CLI/manifest-driven
-* document assumptions about strand/orientation
-
-### Step 09 TODO
-
-Port/customize CMH editing-site calling from old `Edit_call_cmh.R`.
-
-Needs work:
-
-* remove hardcoded paths
-* make CLI/manifest-driven
-* document statistical assumptions
-* define expected final tables/plots
-
-## Development rule
+## Development Rule
 
 Do not jump ahead. The pipeline should continue to be developed as:
 
 ```text
-implement locally -> local tests -> commit/push -> pull cluster -> dry-run -> execute -> inspect outputs -> proceed
+implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
 ```

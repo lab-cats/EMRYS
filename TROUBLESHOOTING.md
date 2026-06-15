@@ -77,6 +77,95 @@ picard/3.1.1 loads java/17.0.10
 PICARD=/cm/shared/apps/picard/picard/build/libs/picard.jar
 ```
 
+The module name alone does not prove the effective Java runtime. For Step `04`,
+inspect the selected Java executable and its actual `java -version` output.
+
+## Picard `UnsupportedClassVersionError`
+
+### Symptom
+
+Step `04` fails before or during Picard startup with an error like:
+
+```text
+UnsupportedClassVersionError
+```
+
+The observed Java class-file mismatch was:
+
+```text
+Picard requires class-file version 61
+selected runtime supports class-file version 55
+```
+
+Class-file version 61 corresponds to Java 17. Class-file version 55 corresponds
+to Java 11.
+
+### Cause
+
+Picard 3.1.1 requires Java 17, but the selected runtime on the compute node was
+Java 11. This is not a Picard algorithm defect and not a pipeline-logic defect;
+it exposes inconsistent Java availability across compute nodes.
+
+Observed node-specific behavior:
+
+```text
+node003:
+  selected executable: /usr/bin/java
+  actual runtime: OpenJDK 17.0.15
+  Picard 3.1.1 launched successfully
+  ABE_EV_2 MarkDuplicates completed successfully
+
+node007:
+  /usr/bin/java reported OpenJDK 11.0.24
+  Java 11 could not run Picard classes compiled for Java 17
+  the Java 17 module's advertised JAVA_HOME path did not exist
+```
+
+The Java module advertised:
+
+```text
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-17.0.10.0.7-2.el9.x86_64
+```
+
+That path was missing on `node007`. On the successful `node003` run,
+`JAVA_HOME` still referred to the advertised Java 17.0.10 path, but the selected
+executable was `/usr/bin/java` and its actual runtime was Java 17.0.15.
+
+### Fix
+
+Do not infer the effective Java runtime from the module name or `JAVA_HOME`
+alone. The selected executable and actual `java -version` output must be logged
+and validated.
+
+Step `04` resolves Java in this order:
+
+```text
+1. JAVA_BIN_OVERRIDE, when explicitly provided
+2. $JAVA_HOME/bin/java, only if it exists and is executable
+3. command -v java
+```
+
+The wrapper then fails before Picard starts if the selected runtime is below
+Java 17.
+
+If CSU HPC provides a supported Java 17 executable, pass it explicitly:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
+  jobs/step_04_mark_duplicates.slurm
+```
+
+Temporary workaround:
+
+```text
+--nodelist=node003
+```
+
+This is only an operational workaround while Java 17 availability is clarified.
+Do not embed `node003` as a permanent default, describe node pinning as a
+pipeline architecture requirement, assume node003 will remain the solution, or
+recommend copying a JDK from the head node or another compute node.
+
 ## `#SBATCH --mem=1G` fails
 
 ### Symptom
@@ -339,24 +428,25 @@ project-local install
 
 Do not assume a GATK invocation pattern yet.
 
-## Pending scaffold job accidentally submitted
+## Scaffolded downstream job accidentally submitted
 
 ### Symptom
 
-A future job like Step 04–09 is submitted but exits immediately or says “not implemented.”
+A downstream job like Step `05`-`09` is submitted but exits immediately or says
+`not implemented`.
 
 ### Cause
 
-Future steps are scaffold-only until implemented.
+Steps `05`-`09` are scaffolded and intentionally non-runnable until
+implemented.
 
 ### Fix
 
-Do not run pending scaffold jobs.
+Do not run scaffolded downstream jobs.
 
-Current pending steps:
+Current scaffolded steps:
 
 ```text
-04 MarkDuplicates
 05 SplitNCigarReads
 06 split BAM by read orientation
 07 bcftools mpileup
@@ -364,7 +454,8 @@ Current pending steps:
 09 CMH editing-site calling
 ```
 
-Implement locally, test, commit/push, pull on cluster, then dry-run/execute only after the step is active.
+Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
+after the step is active.
 
 ## Wrong log interpretation: empty `.err` file
 

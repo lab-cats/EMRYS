@@ -13,24 +13,33 @@ DECISIONS.md
 TROUBLESHOOTING.md
 ```
 
-## Current state
+## Current State
 
-Implemented and cluster-proven for `ABE_EV_2`, except hardened Step 02 which
-is pending cluster revalidation:
+Cluster-proven:
 
 ```text
 00a  Build STAR index
 00b  Convert GTF to BED12
-01   STAR alignment
-02   Canonical sort/read-group/index BAM
-02b  BAM QC
-03   RSeQC strandedness/orientation inference
+01   STAR alignment across all six samples
+02   Hardened canonical sort/read-group/index BAM across all six samples
+03   RSeQC strandedness/orientation inference across all six samples
 ```
 
-Pending / scaffold-only:
+Implemented and useful, with refresh pending:
 
 ```text
-04   MarkDuplicates
+02b  BAM QC against final hardened BAMs
+```
+
+Implemented and single-sample cluster-proven:
+
+```text
+04   Picard MarkDuplicates for ABE_EV_2
+```
+
+Scaffolded / not implemented / not cluster-proven:
+
+```text
 05   SplitNCigarReads
 06   Split BAM by read orientation
 07   bcftools mpileup
@@ -38,137 +47,15 @@ Pending / scaffold-only:
 09   CMH editing-site calling
 ```
 
-Step 03 result for `ABE_EV_2` indicates strong reverse-stranded / first-strand-style behavior.
+All six libraries are paired-end and reverse-stranded / first-strand-style.
 
-## Immediate next TODO
+## Immediate TODOs
 
-### 1. Revalidate hardened Step 02 on cluster
+### 1. Validate Step 04 Across Remaining Samples
 
-After local implementation and commit/push:
-
-```bash
-ssh csu-hpc
-norad
-git pull
-git status --short
-mkdir -p logs
-```
-
-Dry-run:
-
-```bash
-sbatch jobs/step_02_sort_index_bam.slurm
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02_sort_index_bam.slurm
-```
-
-Inspect the canonical BAM and BAI before treating Step 02 as cluster-proven.
-
-Status:
+Run and validate Step `04` for:
 
 ```text
-implemented / pending cluster revalidation after read-group hardening
-```
-
-### 2. Decide next development move
-
-Choose one:
-
-```text
-A. Continue downstream development on ABE_EV_2 with Step 04 MarkDuplicates.
-B. Pause and generalize/run Steps 01-03 across all six samples first.
-```
-
-Current recommendation:
-
-```text
-Continue with Step 04 on ABE_EV_2 for development speed.
-Later, run Steps 01-03 across all six samples before final global assumptions.
-```
-
-### 3. Validate Step 04: Picard MarkDuplicates on cluster
-
-Expected input:
-
-```text
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
-results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-```
-
-Likely outputs:
-
-```text
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam
-results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai
-results/qc/markdup/ABE_EV_2.markdup.metrics.txt
-```
-
-Expected tool:
-
-```bash
-module load picard/3.1.1
-java -jar "$PICARD" MarkDuplicates ...
-```
-
-Implemented local behavior:
-
-```text
-- dry-run by default
-- execute only with --execute / EXECUTE=1
-- validate input BAM and BAI
-- validate Picard jar through $PICARD
-- write duplicate-marked BAM with REMOVE_DUPLICATES=false
-- write metrics file
-- validate duplicate-marked BAM with samtools quickcheck
-- index output BAM
-- validate output BAM, BAI, and metrics
-- local shell tests use fake java/Picard and fake samtools
-```
-
-Decision already made:
-
-```text
-Mark duplicates; do not remove duplicates unless a specific reason is documented.
-```
-
-Cluster validation sequence after Step 02 has been revalidated:
-
-```bash
-ssh csu-hpc
-norad
-git pull
-git status --short
-mkdir -p logs
-```
-
-Dry-run:
-
-```bash
-sbatch jobs/step_04_mark_duplicates.slurm
-sjcheck <JOBID>
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_04_mark_duplicates.slurm
-sjcheck <JOBID>
-```
-
-Inspect expected outputs before declaring Step 04 proven.
-
-## Near-term TODOs
-
-### Run Steps 01-03 across all six samples
-
-Eventually run implemented upstream steps for:
-
-```text
-ABE_EV_2
 ABE_EV_3
 ABE_EV4
 ABE_PUM1_2
@@ -176,19 +63,79 @@ ABE_PUM1_3
 ABE_PUM1_4
 ```
 
+Promotion requires, for each remaining sample:
+
+```text
+confirmed scheduler completion
+exit code 0:0
+nonempty BAM/BAI/metrics
+samtools quickcheck PASS
+retained coordinate sorting
+retained sample-specific read group
+```
+
+Do not promote Step `04` to cohort-wide status until all five remaining samples meet those checks.
+
+### 2. Compare Step 04 Duplication Metrics
+
+Collect and compare duplicate metrics across all six samples.
+
+Specific question:
+
+```text
+Is ABE_EV_2's 66.42% duplication fraction a cohort outlier?
+```
+
+Do not label elevated duplication as a pipeline failure without cohort context.
+
+### 3. Refresh Step 02b QC Against Final Hardened BAMs
+
+Run `samtools quickcheck` and `flagstat` through Step `02b` against the final hardened canonical BAMs.
+
 Purpose:
 
 ```text
-- produce canonical BAMs for all samples
-- run BAM QC for all samples
-- confirm strandedness/orientation across all samples
+ensure Step 02b reports correspond to final Step 02 published artifacts
 ```
 
-Do this before finalizing global strandedness assumptions.
+Remember: current Step `02b` dry-run creates the requested output directory before exiting, so do not describe it as side-effect-free.
 
-### Begin designing manifest-driven execution
+### 4. Resolve Java 17 Availability
 
-The next architectural piece is manifest-driven sample selection for SLURM arrays.
+Work with CSU HPC or cluster documentation to identify one durable Java 17 path:
+
+```text
+HPC-supported Java 17 module that works consistently across nodes
+administrator-provided cluster-wide Java 17 path
+explicit verified executable supplied through JAVA_BIN_OVERRIDE
+administrator remediation of inconsistent node images
+```
+
+Temporary node pinning to `node003` is operational mitigation, not architecture.
+
+Do not copy a JDK from the head node or another compute node.
+
+### 5. Inspect And Implement Step 05
+
+Step `05` remains scaffolded until GATK availability and invocation are resolved.
+
+Needs:
+
+```text
+GATK invocation method
+duplicate-marked BAM
+reference FASTA
+FASTA .fai
+sequence dictionary .dict
+local tests / dry-run behavior
+SLURM wrapper validation
+```
+
+## Architecture Reminders
+
+### Design Manifest-Driven Sample Selection Helpers
+
+The next orchestration piece is manifest-driven sample selection for SLURM arrays or targeted per-sample runs.
 
 Eventually needed:
 
@@ -210,18 +157,12 @@ Purpose:
 
 ```text
 Allow SLURM array task N to select sample N from samples.tsv.
+Allow explicit single-sample reruns without hardcoding sample IDs in wrappers.
 ```
 
-Do not overbuild this yet.
+Do not overbuild this before the relevant per-step behavior is proven. Revisit before broader cohort-scale reruns or downstream array execution.
 
-Recommended timing:
-
-```text
-After Step 04 is proven on ABE_EV_2, begin designing sample-selection helpers.
-Before running the full six-sample workflow at scale, implement manifest-driven arrays.
-```
-
-### Decide output layout for downstream processed BAMs
+### Decide Durable Processed-BAM Output Layout
 
 Current likely layout:
 
@@ -237,11 +178,11 @@ results/orientation/<sample>/<sample>.<orientation>.bam
 results/orientation/<sample>/<sample>.<orientation>.bam.bai
 ```
 
-Confirm this before implementing Step 04/05/06 too deeply.
+Confirm this before implementing Steps `05` and `06` too deeply.
 
-## External blockers / unresolved items
+## External Blockers / Unresolved Items
 
-### GATK availability
+### GATK Availability
 
 Still unresolved.
 
@@ -256,11 +197,11 @@ did not show a visible GATK module.
 Need to determine whether GATK should be run through:
 
 ```text
-- a differently named module
-- a jar
-- conda/mamba
-- container
-- project-local install
+different module name
+jar
+conda/mamba
+container
+project-local install
 ```
 
 Blocks:
@@ -269,7 +210,7 @@ Blocks:
 Step 05: SplitNCigarReads
 ```
 
-### R / Rscript availability
+### R / Rscript Availability
 
 Still unresolved.
 
@@ -280,9 +221,7 @@ Step 08: VCF preprocessing
 Step 09: CMH editing-site calling
 ```
 
-Need to identify module name, environment, or project-local installation plan.
-
-### bcftools availability
+### bcftools Availability
 
 Still unresolved.
 
@@ -292,22 +231,20 @@ Needed for:
 Step 07: bcftools mpileup
 ```
 
-Need to identify module name or installation path.
-
-### Storage quotas
+### Storage Quotas
 
 Still unresolved.
 
 Need to document:
 
 ```text
-- home quota
-- /mnt/stor-pool-01/users/2609214 quota
-- scratch availability
-- whether temp files should use scratch or /tmp
+home quota
+/mnt/stor-pool-01/users/2609214 quota
+scratch availability
+whether temp files should use scratch or /tmp
 ```
 
-### Exact annotation version
+### Exact Annotation Version
 
 Partially unresolved.
 
@@ -327,21 +264,7 @@ Exact annotation release/version if recoverable from files or Novogene docs.
 
 ## Later TODOs
 
-### Step 05: SplitNCigarReads
-
-Implement after GATK availability is resolved.
-
-Needs:
-
-```text
-- duplicate-marked BAM
-- reference FASTA
-- FASTA .fai
-- sequence dictionary .dict
-- GATK invocation method
-```
-
-### Step 06: split BAM by read orientation
+### Step 06: Split BAM By Read Orientation
 
 Old workflow used samtools flag groupings similar to:
 
@@ -354,62 +277,54 @@ Important:
 
 ```text
 Do not assume old FWD/REV labels equal biological sense/antisense.
-Step 03 indicates reverse-stranded / first-strand behavior for ABE_EV_2.
+The cohort is reverse-stranded / first-strand-style.
 ```
 
-Step 06 must clearly document read orientation versus transcript strand.
+Step `06` must clearly document read orientation versus transcript strand.
 
 ### Step 07: bcftools mpileup
 
 Needs decisions:
 
 ```text
-- bcftools module/location
-- chromosome/region handling
-- reference FASTA path
-- per-sample vs grouped mpileup strategy
-- FWD/REV or orientation-specific output naming
+bcftools module/location
+chromosome/region handling
+reference FASTA path
+per-sample vs grouped mpileup strategy
+FWD/REV or orientation-specific output naming
 ```
 
-### Step 08: VCF preprocessing
+### Step 08: VCF Preprocessing
 
 Port from uploaded `vcf_preprocess1.R`.
 
 Needs:
 
 ```text
-- remove hardcoded paths
-- make CLI-driven
-- make manifest-driven where appropriate
-- document strand/orientation assumptions
-- define output table format
+remove hardcoded paths
+make CLI-driven
+make manifest-driven where appropriate
+document strand/orientation assumptions
+define output table format
 ```
 
-### Step 09: CMH editing-site calling
+### Step 09: CMH Editing-Site Calling
 
 Port from uploaded `Edit_call_cmh.R`.
 
 Needs:
 
 ```text
-- remove hardcoded paths
-- define expected input tables
-- define comparison structure
-- define final output tables/plots
-- document statistical assumptions
+remove hardcoded paths
+define expected input tables
+define comparison structure
+define final output tables/plots
+document statistical assumptions
 ```
 
-## Deferred roadmap: structured artifacts and reporting
+## Deferred Roadmap: Structured Artifacts And Reporting
 
 This work should begin only after the core computational workflow is substantially proven. It is planned, deferred, and non-runnable for now. Do not create schema files, placeholder scripts, templates, report directories, sidecar files, or SLURM jobs until this roadmap is explicitly activated.
-
-The future layers should remain distinct:
-
-```text
-per-step JSON sidecars: future cross-cutting pipeline capability
-run_summary.json aggregation: future downstream phase
-HTML/PDF/TSV rendering: separate report layer
-```
 
 Deferred phases:
 
@@ -423,157 +338,32 @@ F. Implement HTML reporting.
 G. Add PDF and TSV renderers.
 ```
 
-## Resolved items
+## Resolved Items
 
-### Step 01 STAR wrapper
-
-Resolved.
-
-Step 01 has been implemented and cluster-proven for `ABE_EV_2`.
-
-### Step 02 samtools sort/read-group/index wrapper
-
-Implemented locally.
-
-The original Step 02 sort/index implementation was successfully exercised on
-the cluster, but its BAMs lacked required read-group metadata. Hardened Step 02
-supersedes those outputs and is pending cluster revalidation.
-
-### Step 02b BAM QC
-
-Resolved.
-
-Step 02b has been implemented and cluster-proven for `ABE_EV_2`.
-
-### Step 03 strandedness/orientation inference
-
-Resolved for `ABE_EV_2`.
-
-RSeQC indicates strong reverse-stranded / first-strand behavior.
-
-Still need to run on all samples before final global assumption.
-
-### Real data location
-
-Resolved operationally.
-
-Raw data symlink:
+Resolved:
 
 ```text
-data/raw/novogene_remora -> /mnt/stor-pool-01/users/2832917/Novogene_Remora_raw_data
+Build STAR reference index.
+Convert annotation to BED12.
+Align all six samples.
+Harden Step 02.
+Add sample-specific read groups.
+Validate Step 02 across all six samples.
+Determine strandedness.
+Confirm strandedness across all six samples.
+Confirm ABE_EV_2 Step 03 output remains unchanged after Step 02 hardening.
+Implement Step 04.
+Prove Step 04 on ABE_EV_2.
 ```
 
-FASTQs:
-
-```text
-data/raw/novogene_remora/01.RawData/*.fq.gz
-```
-
-### STAR index path
-
-Resolved.
-
-```text
-refs/novogene_star_index/
-```
-
-### FASTA/GTF paths
-
-Resolved.
-
-```text
-refs/novogene_ref/genome.fa
-refs/novogene_ref/genome.gtf
-refs/novogene_ref/genome.bed
-```
-
-### Genome/reference naming
-
-Resolved enough for current workflow.
-
-Known:
-
-```text
-GRCh38-like Novogene reference
-numeric-style chromosome names such as 1, 2, 3
-FASTA and GTF chromosome names match
-```
-
-### Read length
-
-Resolved.
-
-Reads are 150 bp.
-
-STAR index used:
-
-```text
-sjdbOverhang=149
-```
-
-### Manifest format
-
-Resolved.
-
-TSV is canonical.
-
-Current manifest:
-
-```text
-samples.tsv
-```
-
-### Cluster TMPDIR behavior
-
-Resolved operationally.
-
-Use:
-
-```text
-TMPDIR=/tmp
-```
-
-Submit execute jobs with:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
-```
-
-### Picard invocation
-
-Resolved.
-
-Use:
-
-```bash
-module load picard/3.1.1
-java -jar "$PICARD" <PicardCommand>
-```
-
-### Stop condition from earlier TODO
-
-Old stop condition was:
-
-```text
-Stop when Step 02 is green.
-```
-
-Resolved.
-
-Current state is beyond that:
-
-```text
-Steps 00a, 00b, 01, 02, 02b, and 03 are green for ABE_EV_2.
-```
-
-## Development rule
+## Development Rule
 
 Do not jump ahead.
 
 Continue using:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> proceed
+implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
 ```
 
 A TODO is not done until the relevant outputs have been inspected and the docs are updated.
