@@ -671,7 +671,7 @@ jobs/step_02b_bam_qc.slurm
 Status:
 
 ```text
-implemented and useful for cohort QC/provenance; clean refresh against final hardened BAMs pending
+implemented and refreshed across all six final hardened Step 02 BAMs
 ```
 
 Outputs:
@@ -704,6 +704,14 @@ grep -E "in total|primary|secondary|mapped|properly paired|duplicates" \
 ```
 
 Important nuance: the current Step `02b` script creates the requested output directory before dry-run exit. It should not be described as side-effect-free.
+
+Cluster PATH note: the first Step `02b` cohort attempt failed immediately because `samtools` was not found on `PATH`, despite module output listing `samtools/1.19.2`. The successful rerun prepended the known samtools bin directory:
+
+```text
+/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin
+```
+
+This is a cluster environment/PATH inconsistency, not a BAM/QC failure.
 
 ## Step 03: RSeQC Strandedness / Orientation Inference
 
@@ -781,7 +789,7 @@ jobs/step_04_mark_duplicates.slurm
 Status:
 
 ```text
-implemented and cluster-proven for ABE_EV_2; cohort-wide validation pending
+cluster-proven across all six samples
 ```
 
 Inputs:
@@ -832,16 +840,51 @@ samtools view -H "$bam" | grep '^@RG'
 ls -lh "$bam" "$bam.bai" "$metrics"
 ```
 
-Before updating Step `04` status for all six samples, the remaining five samples require confirmed scheduler completion, exit code `0:0`, nonempty BAM/BAI/metrics, passing `samtools quickcheck`, retained coordinate sorting, and retained sample-specific read groups.
-
 Step `04` uses `REMOVE_DUPLICATES=false`; duplicate reads remain present with the duplicate flag set.
+
+All six samples have duplicate-marked BAM, BAM index, Picard metrics, `samtools quickcheck: PASS`, retained `@HD SO:coordinate`, retained sample-specific `@RG`, and a populated Picard metrics row.
+
+Confirmed final Step `04` outputs:
+
+| Sample | Markdup BAM size | Metrics size |
+| ------ | ---------------: | -----------: |
+| `ABE_EV_2` | 3.1G | 16K |
+| `ABE_EV_3` | 2.1G | 7.8K |
+| `ABE_EV4` | 3.0G | 15K |
+| `ABE_PUM1_2` | 2.3G | 12K |
+| `ABE_PUM1_3` | 2.1G | 8.5K |
+| `ABE_PUM1_4` | 2.5G | 13K |
+
+Confirmed Step `04` runtime/resource observations:
+
+| Sample | Runtime | MaxRSS |
+| ------ | ------: | -----: |
+| `ABE_EV_2` | 00:08:29 | 22,660,004K |
+| `ABE_EV_3` | 00:06:06 | 23,912,380K |
+| `ABE_EV4` | 00:08:52 | 23,287,592K |
+| `ABE_PUM1_2` | 00:06:40 | 24,293,400K |
+| `ABE_PUM1_3` | 00:06:33 | 24,341,032K |
+| `ABE_PUM1_4` | 00:07:32 | 23,376,504K |
+
+Confirmed MarkDuplicates metrics:
+
+| Sample | Read pairs examined | Duplicate read pairs | Optical duplicate pairs | Percent duplication | Estimated library size |
+| ------ | ------------------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| `ABE_EV_2` | 17,663,180 | 11,731,288 | 120,669 | 0.664166 | 6,327,403 |
+| `ABE_EV_3` | 18,867,589 | 11,371,887 | 130,069 | 0.602721 | 8,397,468 |
+| `ABE_EV4` | 23,240,508 | 19,860,628 | 177,257 | 0.854569 | 3,383,587 |
+| `ABE_PUM1_2` | 19,087,654 | 13,522,128 | 128,791 | 0.708423 | 5,783,576 |
+| `ABE_PUM1_3` | 21,657,503 | 14,809,440 | 150,924 | 0.683802 | 7,214,041 |
+| `ABE_PUM1_4` | 19,424,683 | 16,348,986 | 132,657 | 0.841660 | 3,081,584 |
+
+Duplication is high across the cohort and should be tracked as a library/QC feature, not treated as a pipeline failure. `ABE_EV4` and `ABE_PUM1_4` have the highest duplication; `ABE_EV_3` has the lowest duplication and largest estimated library size. The observed Step `04` memory range was about 22.7-24.3 GB MaxRSS; this is observed evidence, not a guaranteed resource requirement.
 
 ## Step 05: SplitNCigarReads
 
 Status:
 
 ```text
-scaffolded / not implemented / not cluster-proven
+scaffolded and intentionally non-runnable; not cluster-proven
 ```
 
 Expected tool:
@@ -851,6 +894,34 @@ GATK SplitNCigarReads
 ```
 
 GATK availability remains unresolved.
+
+Scaffold files exist:
+
+```text
+jobs/step_05_split_n_cigar_reads.slurm
+scripts/step_05_split_n_cigar_reads.sh
+```
+
+They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis.
+
+The old scaffold path examples are stale and not current interfaces:
+
+```text
+results/bam/<sample_id>/<sample_id>.sorted.md.bam
+results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
+```
+
+Current real Step `04` outputs are under:
+
+```text
+results/markdup/<sample_id>/
+```
+
+Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable, likely under:
+
+```text
+results/split_ncigar/<sample_id>/
+```
 
 ## Step 06: Split BAM By Read Orientation
 

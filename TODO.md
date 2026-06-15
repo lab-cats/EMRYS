@@ -22,25 +22,20 @@ Cluster-proven:
 00b  Convert GTF to BED12
 01   STAR alignment across all six samples
 02   Hardened canonical sort/read-group/index BAM across all six samples
+02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
+04   Picard MarkDuplicates across all six samples
 ```
 
-Implemented and useful, with refresh pending:
+Scaffolded and intentionally non-runnable; not cluster-proven:
 
 ```text
-02b  BAM QC against final hardened BAMs
-```
-
-Implemented and single-sample cluster-proven:
-
-```text
-04   Picard MarkDuplicates for ABE_EV_2
+05   SplitNCigarReads
 ```
 
 Scaffolded / not implemented / not cluster-proven:
 
 ```text
-05   SplitNCigarReads
 06   Split BAM by read orientation
 07   bcftools mpileup
 08   VCF preprocessing
@@ -51,56 +46,7 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Validate Step 04 Across Remaining Samples
-
-Run and validate Step `04` for:
-
-```text
-ABE_EV_3
-ABE_EV4
-ABE_PUM1_2
-ABE_PUM1_3
-ABE_PUM1_4
-```
-
-Promotion requires, for each remaining sample:
-
-```text
-confirmed scheduler completion
-exit code 0:0
-nonempty BAM/BAI/metrics
-samtools quickcheck PASS
-retained coordinate sorting
-retained sample-specific read group
-```
-
-Do not promote Step `04` to cohort-wide status until all five remaining samples meet those checks.
-
-### 2. Compare Step 04 Duplication Metrics
-
-Collect and compare duplicate metrics across all six samples.
-
-Specific question:
-
-```text
-Is ABE_EV_2's 66.42% duplication fraction a cohort outlier?
-```
-
-Do not label elevated duplication as a pipeline failure without cohort context.
-
-### 3. Refresh Step 02b QC Against Final Hardened BAMs
-
-Run `samtools quickcheck` and `flagstat` through Step `02b` against the final hardened canonical BAMs.
-
-Purpose:
-
-```text
-ensure Step 02b reports correspond to final Step 02 published artifacts
-```
-
-Remember: current Step `02b` dry-run creates the requested output directory before exiting, so do not describe it as side-effect-free.
-
-### 4. Resolve Java 17 Availability
+### 1. Resolve Java 17 Availability
 
 Work with CSU HPC or cluster documentation to identify one durable Java 17 path:
 
@@ -115,7 +61,7 @@ Temporary node pinning to `node003` is operational mitigation, not architecture.
 
 Do not copy a JDK from the head node or another compute node.
 
-### 5. Inspect And Implement Step 05
+### 2. Inspect And Implement Step 05
 
 Step `05` remains scaffolded until GATK availability and invocation are resolved.
 
@@ -127,9 +73,12 @@ duplicate-marked BAM
 reference FASTA
 FASTA .fai
 sequence dictionary .dict
+processed-BAM output layout decision
 local tests / dry-run behavior
 SLURM wrapper validation
 ```
+
+Current Step `05` scaffold files intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The old `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are stale and not current interfaces.
 
 ## Architecture Reminders
 
@@ -171,8 +120,8 @@ results/markdup/<sample>/<sample>.markdup.bam
 results/markdup/<sample>/<sample>.markdup.bam.bai
 results/qc/markdup/<sample>.markdup.metrics.txt
 
-results/splitncigar/<sample>/<sample>.splitncigar.bam
-results/splitncigar/<sample>/<sample>.splitncigar.bam.bai
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 
 results/orientation/<sample>/<sample>.<orientation>.bam
 results/orientation/<sample>/<sample>.<orientation>.bam.bai
@@ -352,8 +301,11 @@ Validate Step 02 across all six samples.
 Determine strandedness.
 Confirm strandedness across all six samples.
 Confirm ABE_EV_2 Step 03 output remains unchanged after Step 02 hardening.
+Refresh Step 02b across all six final hardened Step 02 BAMs.
 Implement Step 04.
 Prove Step 04 on ABE_EV_2.
+Prove Step 04 across all six samples.
+Compare Step 04 duplication metrics across all six samples.
 ```
 
 ## Development Rule

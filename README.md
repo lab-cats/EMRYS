@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-The upstream preprocessing workflow is now proven through strandedness inference across the six-sample cohort. Duplicate marking is proven on the first sample and is awaiting cohort-wide validation.
+The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort. Downstream editing-prep steps remain scaffolded and intentionally non-runnable until implemented.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -24,16 +24,16 @@ The upstream preprocessing workflow is now proven through strandedness inference
 | `00b` | Convert GTF to BED12 for RSeQC | cluster-proven |
 | `01` | STAR alignment | complete and cluster-proven across all six samples |
 | `02` | Canonical sorted/read-group/indexed BAM | hardened and cluster-proven across all six samples |
-| `02b` | BAM QC with samtools | implemented and useful for cohort QC/provenance; clean refresh against final hardened BAMs pending |
+| `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
-| `04` | Picard MarkDuplicates | implemented and cluster-proven for `ABE_EV_2`; cohort-wide validation pending |
-| `05` | GATK SplitNCigarReads | scaffolded / not implemented / not cluster-proven |
+| `04` | Picard MarkDuplicates | cluster-proven across all six samples |
+| `05` | GATK SplitNCigarReads | scaffolded and intentionally non-runnable; not cluster-proven |
 | `06` | Split BAMs by read orientation | scaffolded / not implemented / not cluster-proven |
 | `07` | bcftools mpileup by chromosome and orientation/strand | scaffolded / not implemented / not cluster-proven |
 | `08` | VCF preprocessing | scaffolded / not implemented / not cluster-proven |
 | `09` | CMH editing-site calling | scaffolded / not implemented / not cluster-proven |
 
-Step `02b` currently creates its output directory before dry-run exit, so do not describe that dry-run as side-effect-free. It remains useful for final BAM QC, but the clean cohort refresh must be tied to the final hardened Step `02` BAMs.
+Step `02b` currently creates its output directory before dry-run exit, so do not describe that dry-run as side-effect-free. Its final cohort refresh succeeded after prepending the known samtools bin directory to `PATH`; the first failed attempt was a cluster environment/PATH issue, not a BAM/QC failure.
 
 ## Cohort And Key Results
 

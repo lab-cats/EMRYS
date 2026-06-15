@@ -29,10 +29,11 @@ The intended high-level workflow is:
 | `00b` GTF to BED12 | cluster-proven | Wrote `refs/novogene_ref/genome.bed`; 206,601 BED12 transcript records. |
 | `01` STAR alignment | complete and cluster-proven across all six samples | `ABE_EV_2` is a mapping outlier but not a pipeline blocker. |
 | `02` canonical sort/read-group/index BAM | hardened and cluster-proven across all six samples | Final canonical BAMs have coordinate sort order, sample-specific RG metadata, BAI files, and `quickcheck` PASS. |
-| `02b` BAM QC | implemented and useful for cohort QC/provenance; clean refresh against final hardened BAMs pending | Do not assume older reports all correspond to final hardened BAMs. |
+| `02b` BAM QC | implemented and refreshed across all six final hardened Step 02 BAMs | Initial cohort attempt exposed a samtools `PATH` inconsistency; rerun succeeded after prepending the known samtools bin path. |
 | `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
-| `04` Picard MarkDuplicates | implemented and cluster-proven for `ABE_EV_2`; cohort-wide validation pending | Remaining five samples must be validated before promotion. |
-| `05`-`09` downstream editing workflow | scaffolded / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
+| `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
+| `05` GATK SplitNCigarReads | scaffolded and intentionally non-runnable; not cluster-proven | Real scaffold files exist, intentionally exit with code `2`, and perform no analysis. |
+| `06`-`09` downstream editing workflow | scaffolded / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
 
 ## Cohort
 
@@ -146,7 +147,7 @@ results/qc/markdup/<sample>.markdup.metrics.txt
 Expected future output families, once implemented:
 
 ```text
-results/splitncigar/
+results/split_ncigar/
 results/orientation/
 results/vcf/
 results/editing/
@@ -215,9 +216,21 @@ refs/novogene_ref/genome.bed
 refs/novogene_star_index/
 ```
 
+## Step 02b Current State
+
+Step `02b` is implemented and refreshed across all six final hardened Step `02` BAMs.
+
+The first cohort attempt failed immediately because `samtools` was not found on `PATH` even though module output listed `samtools/1.19.2`. The successful rerun prepended the known samtools bin directory:
+
+```text
+/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin
+```
+
+This is a cluster environment/PATH inconsistency, not a BAM/QC failure. The current Step `02b` script creates the requested output directory before dry-run exit, so do not describe that dry-run as side-effect-free.
+
 ## Step 04 Current State
 
-Step `04` is proven for `ABE_EV_2` with:
+Step `04` is cluster-proven across all six samples with:
 
 * completed scheduler state and exit code `0:0`
 * nonempty duplicate-marked BAM, BAI, and Picard metrics
@@ -227,28 +240,77 @@ Step `04` is proven for `ABE_EV_2` with:
 * duplicates marked, not removed
 * `REMOVE_DUPLICATES=false`
 
-`ABE_EV_2` duplication metrics:
+Confirmed final Step `04` outputs:
 
-| Metric | Value |
-| ------ | ----: |
-| Read pairs examined | 17,663,180 |
-| Duplicate read pairs | 11,731,288 |
-| Individual records marked duplicate | 23,462,576 |
-| Optical duplicate pairs | 120,669 |
-| Percent duplication | 0.664166 |
-| Estimated library size | 6,327,403 |
+| Sample | Markdup BAM size | Metrics size |
+| ------ | ---------------: | -----------: |
+| `ABE_EV_2` | 3.1G | 16K |
+| `ABE_EV_3` | 2.1G | 7.8K |
+| `ABE_EV4` | 3.0G | 15K |
+| `ABE_PUM1_2` | 2.3G | 12K |
+| `ABE_PUM1_3` | 2.1G | 8.5K |
+| `ABE_PUM1_4` | 2.5G | 13K |
 
-The duplication fraction is elevated and should be compared across the cohort before interpretation. It is not currently labeled a pipeline failure.
+Confirmed Step `04` runtime/resource observations:
+
+| Sample | Runtime | MaxRSS |
+| ------ | ------: | -----: |
+| `ABE_EV_2` | 00:08:29 | 22,660,004K |
+| `ABE_EV_3` | 00:06:06 | 23,912,380K |
+| `ABE_EV4` | 00:08:52 | 23,287,592K |
+| `ABE_PUM1_2` | 00:06:40 | 24,293,400K |
+| `ABE_PUM1_3` | 00:06:33 | 24,341,032K |
+| `ABE_PUM1_4` | 00:07:32 | 23,376,504K |
+
+Confirmed MarkDuplicates metrics:
+
+| Sample | Read pairs examined | Duplicate read pairs | Optical duplicate pairs | Percent duplication | Estimated library size |
+| ------ | ------------------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| `ABE_EV_2` | 17,663,180 | 11,731,288 | 120,669 | 0.664166 | 6,327,403 |
+| `ABE_EV_3` | 18,867,589 | 11,371,887 | 130,069 | 0.602721 | 8,397,468 |
+| `ABE_EV4` | 23,240,508 | 19,860,628 | 177,257 | 0.854569 | 3,383,587 |
+| `ABE_PUM1_2` | 19,087,654 | 13,522,128 | 128,791 | 0.708423 | 5,783,576 |
+| `ABE_PUM1_3` | 21,657,503 | 14,809,440 | 150,924 | 0.683802 | 7,214,041 |
+| `ABE_PUM1_4` | 19,424,683 | 16,348,986 | 132,657 | 0.841660 | 3,081,584 |
+
+Duplicate reads were marked, not removed. Duplication is high across the cohort and should be tracked as a library/QC feature, not treated as a pipeline failure. `ABE_EV4` and `ABE_PUM1_4` have the highest duplication; `ABE_EV_3` has the lowest duplication and largest estimated library size. The observed Step `04` memory range was about 22.7-24.3 GB MaxRSS; this is observed evidence, not a guaranteed resource requirement.
+
+## Step 05 Current State
+
+Step `05` has real scaffold files:
+
+```text
+jobs/step_05_split_n_cigar_reads.slurm
+scripts/step_05_split_n_cigar_reads.sh
+```
+
+They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The scaffold contains stale future path examples:
+
+```text
+results/bam/<sample_id>/<sample_id>.sorted.md.bam
+results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
+```
+
+Those are stale scaffold examples, not current interfaces. Current real Step `04` outputs are:
+
+```text
+results/markdup/<sample_id>/<sample_id>.markdup.bam
+results/markdup/<sample_id>/<sample_id>.markdup.bam.bai
+```
+
+Step `05` implementation should explicitly decide and document the processed-BAM output layout before becoming runnable, likely under:
+
+```text
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+```
 
 ## Current Next Work
 
-1. Validate Step `04` across the remaining five samples.
-2. Collect and compare duplication metrics across all six samples, including whether `ABE_EV_2` is a duplication outlier.
-3. Refresh Step `02b` quickcheck/flagstat reports against the final hardened Step `02` BAMs.
-4. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
-5. Inspect and implement or harden Step `05` after GATK availability is resolved.
-6. Continue Steps `06`-`09` after each upstream gate is proven.
-7. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
+1. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
+2. Resolve GATK availability and decide the Step `05` processed-BAM output layout before implementation.
+3. Inspect and implement or harden Step `05` after GATK availability is resolved.
+4. Continue Steps `06`-`09` after each upstream gate is proven.
+5. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
 
 ## Java And Picard Handoff
 

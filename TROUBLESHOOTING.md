@@ -299,6 +299,30 @@ Approximate total mapped: 83.21%
 
 `flagstat` is still useful for BAM-level QC, but interpret total records carefully when secondary alignments are present.
 
+## Step 02b `samtools: command not found` despite loaded module
+
+### Symptom
+
+Step `02b` fails immediately because `samtools` is not found on `PATH`, even though module output lists:
+
+```text
+samtools/1.19.2
+```
+
+### Cause
+
+This is a cluster environment/PATH inconsistency, not a BAM/QC failure.
+
+### Fix
+
+Prepend the known samtools bin directory to `PATH` before rerunning:
+
+```bash
+export PATH="/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin:$PATH"
+```
+
+The Step `02b` cohort rerun succeeded across all six final hardened Step `02` BAMs with that path available.
+
 ## RSeQC `infer_experiment.py` not found
 
 ### Symptom
@@ -432,13 +456,21 @@ Do not assume a GATK invocation pattern yet.
 
 ### Symptom
 
-A downstream job like Step `05`-`09` is submitted but exits immediately or says
-`not implemented`.
+A downstream job like Step `05`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
 
 ### Cause
 
 Steps `05`-`09` are scaffolded and intentionally non-runnable until
 implemented.
+
+For Step `05`, the real scaffold files exist:
+
+```text
+jobs/step_05_split_n_cigar_reads.slurm
+scripts/step_05_split_n_cigar_reads.sh
+```
+
+They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis.
 
 ### Fix
 
@@ -456,6 +488,15 @@ Current scaffolded steps:
 
 Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
 after the step is active.
+
+The old Step `05` scaffold path examples using:
+
+```text
+results/bam/<sample_id>/<sample_id>.sorted.md.bam
+results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
+```
+
+are stale scaffold examples, not current interfaces. Current Step `04` outputs are under `results/markdup/<sample_id>/`. Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable.
 
 ## Wrong log interpretation: empty `.err` file
 

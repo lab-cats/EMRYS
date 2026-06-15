@@ -4,47 +4,6 @@ This file tracks project questions that were open during pipeline reconstruction
 
 ## Still Open / Unresolved
 
-### Step 04 Cohort Validation
-
-Step `04` is implemented and cluster-proven for `ABE_EV_2`; cohort-wide validation remains pending.
-
-Promotion requires, for each remaining sample:
-
-```text
-confirmed scheduler completion
-exit code 0:0
-nonempty BAM/BAI/metrics
-samtools quickcheck PASS
-retained coordinate sorting
-retained sample-specific read group
-```
-
-Remaining samples:
-
-```text
-ABE_EV_3
-ABE_EV4
-ABE_PUM1_2
-ABE_PUM1_3
-ABE_PUM1_4
-```
-
-### Step 04 Duplication Interpretation
-
-`ABE_EV_2` has an elevated duplication fraction:
-
-```text
-PERCENT_DUPLICATION = 0.664166
-```
-
-Need to determine whether this is a cohort outlier after all six Step `04` metrics are available. Do not label it a pipeline failure without cohort context.
-
-### Step 02b Final-BAM QC Refresh
-
-Step `02b` is implemented and useful for BAM QC/provenance, but a clean refresh against the final hardened Step `02` BAMs remains pending.
-
-Do not assume older Step `02b` reports all correspond to the final published BAMs.
-
 ### Java 17 Availability
 
 Step `04` validates the actual selected Java runtime, but cluster-wide Java 17 availability remains unresolved.
@@ -333,25 +292,20 @@ Cluster-proven:
 00b  Convert GTF to BED12
 01   STAR alignment across all six samples
 02   Hardened canonical sort/read-group/index BAM across all six samples
+02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
+04   Picard MarkDuplicates across all six samples
 ```
 
-Implemented and useful, with refresh pending:
+Scaffolded and intentionally non-runnable; not cluster-proven:
 
 ```text
-02b  BAM QC against final hardened BAMs
-```
-
-Implemented and single-sample cluster-proven:
-
-```text
-04   Picard MarkDuplicates for ABE_EV_2
+05   SplitNCigarReads
 ```
 
 Scaffolded / not implemented / not cluster-proven:
 
 ```text
-05   SplitNCigarReads
 06   Split BAM by read orientation
 07   bcftools mpileup by chromosome and orientation/strand
 08   VCF preprocessing
@@ -392,3 +346,51 @@ editing interpretation
 ```
 
 Do not silently assume old `FWD` / `REV` labels equal biological sense / antisense.
+
+### Step 02b Final-BAM QC Refresh
+
+Answered.
+
+Step `02b` is implemented and refreshed across all six final hardened Step `02` BAMs.
+
+The first cohort attempt failed immediately because `samtools` was not found on `PATH`, despite module output listing `samtools/1.19.2`. The successful rerun prepended:
+
+```text
+/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin
+```
+
+This was a cluster environment/PATH inconsistency, not a BAM/QC failure. The current Step `02b` script creates the requested output directory before dry-run exit, so do not describe that dry-run as side-effect-free.
+
+### Step 04 Cohort Validation And Duplication Interpretation
+
+Answered.
+
+Step `04` is cluster-proven across all six samples.
+
+Confirmed MarkDuplicates metrics:
+
+| Sample | Read pairs examined | Duplicate read pairs | Optical duplicate pairs | Percent duplication | Estimated library size |
+| ------ | ------------------: | -------------------: | ----------------------: | ------------------: | ---------------------: |
+| `ABE_EV_2` | 17,663,180 | 11,731,288 | 120,669 | 0.664166 | 6,327,403 |
+| `ABE_EV_3` | 18,867,589 | 11,371,887 | 130,069 | 0.602721 | 8,397,468 |
+| `ABE_EV4` | 23,240,508 | 19,860,628 | 177,257 | 0.854569 | 3,383,587 |
+| `ABE_PUM1_2` | 19,087,654 | 13,522,128 | 128,791 | 0.708423 | 5,783,576 |
+| `ABE_PUM1_3` | 21,657,503 | 14,809,440 | 150,924 | 0.683802 | 7,214,041 |
+| `ABE_PUM1_4` | 19,424,683 | 16,348,986 | 132,657 | 0.841660 | 3,081,584 |
+
+Duplication is high across the cohort and should be tracked as a library/QC feature, not treated as a pipeline failure. `ABE_EV4` and `ABE_PUM1_4` have the highest duplication; `ABE_EV_3` has the lowest duplication and largest estimated library size.
+
+Observed Step `04` MaxRSS ranged from about 22.7-24.3 GB. This is observed evidence, not a guaranteed resource requirement.
+
+### Step 05 Scaffold Status
+
+Answered operationally.
+
+Step `05` has real scaffold files, but they are intentionally non-runnable and not cluster-proven:
+
+```text
+jobs/step_05_split_n_cigar_reads.slurm
+scripts/step_05_split_n_cigar_reads.sh
+```
+
+They exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The stale `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are not current interfaces. Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable.
