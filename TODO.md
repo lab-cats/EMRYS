@@ -135,9 +135,7 @@ Decision already made:
 Mark duplicates; do not remove duplicates unless a specific reason is documented.
 ```
 
-### 3. Validate Step 04 on cluster
-
-After local implementation and commit/push:
+Cluster validation sequence after Step 02 has been revalidated:
 
 ```bash
 ssh csu-hpc

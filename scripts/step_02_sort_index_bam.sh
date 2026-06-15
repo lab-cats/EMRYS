@@ -54,12 +54,14 @@ require_value() {
     fi
 }
 
+# Defaults are empty so missing required arguments fail loudly below.
 sample_id=""
 input_alignment=""
 output_dir=""
 threads=""
 execute=false
 
+# Keep the CLI explicit so the same script works locally and under SLURM.
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id)
@@ -111,12 +113,15 @@ fi
 samtools_bin="samtools"
 run_token="${SLURM_JOB_ID:-$$}"
 
+# Canonical output names are stable by design; downstream steps depend on them.
 output_bam="$output_dir/${sample_id}.sorted.bam"
 output_bai="$output_bam.bai"
 
+# The per-sample lock prevents two jobs from publishing the same canonical pair.
 lock_path="$output_dir/.${sample_id}.step02.lock"
 lock_owner_file="$lock_path/owner"
 
+# Temporary and backup paths include the current run token to avoid collisions.
 tmp_sorted_bam="$output_dir/.${sample_id}.step02.${run_token}.sorted.tmp.bam"
 tmp_rg_bam="$output_dir/.${sample_id}.step02.${run_token}.rg.tmp.bam"
 tmp_rg_bai="$tmp_rg_bam.bai"
@@ -124,6 +129,7 @@ tmp_rg_bai="$tmp_rg_bam.bai"
 backup_bam="$output_dir/.${sample_id}.step02.${run_token}.previous.bam"
 backup_bai="$output_dir/.${sample_id}.step02.${run_token}.previous.bam.bai"
 
+# Track publish state explicitly so cleanup can rollback before deleting backups.
 lock_acquired=false
 previous_pair_present=false
 backup_started=false
@@ -133,6 +139,7 @@ published_bam=false
 published_bai=false
 final_publish_complete=false
 
+# Build tool commands as arrays to preserve argument boundaries in dry-run logs.
 sort_command=(
     "$samtools_bin"
     sort
@@ -155,6 +162,8 @@ addreplacerg_command=(
     "$tmp_sorted_bam"
 )
 
+# These validation commands are printed in dry-run mode and mirrored by
+# validate_bam_pair during execution.
 quickcheck_command=(
     "$samtools_bin"
     quickcheck
@@ -200,6 +209,7 @@ validate_bam_pair() {
     local total_records
     local tagged_records
 
+    # Validate both metadata and record-level RG tags before any publish step.
     [[ -s "$bam" ]] || die "$label BAM is missing or empty: $bam"
     "$samtools_bin" quickcheck "$bam" || die "$label BAM failed samtools quickcheck: $bam"
 
@@ -227,6 +237,7 @@ validate_bam_pair() {
 }
 
 confirm_canonical_pair_state() {
+    # A single existing file is unsafe: there would be no complete rollback target.
     if [[ -e "$output_bam" && -e "$output_bai" ]]; then
         previous_pair_present=true
     elif [[ ! -e "$output_bam" && ! -e "$output_bai" ]]; then
@@ -239,6 +250,7 @@ confirm_canonical_pair_state() {
 acquire_lock() {
     local owner="run_token=$run_token"
 
+    # mkdir is atomic for the lock directory; never break another invocation's lock.
     if mkdir "$lock_path" 2>/dev/null; then
         printf '%s\n' "$owner" > "$lock_owner_file"
         lock_acquired=true
@@ -257,6 +269,7 @@ remove_owned_lock() {
         return
     fi
 
+    # Only the invocation that wrote the owner file may remove this lock.
     if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
         rm -f "$lock_owner_file"
         rmdir "$lock_path" 2>/dev/null || true
@@ -272,6 +285,7 @@ rollback_publish() {
     printf 'Rolling back Step 02 canonical outputs...\n' >&2
 
     if [[ "$previous_pair_present" == true ]]; then
+        # Restore only the files that were actually moved to backup.
         if [[ "$bam_backed_up" == true && -e "$backup_bam" ]]; then
             rm -f "$output_bam"
             mv "$backup_bam" "$output_bam" || true
@@ -284,6 +298,7 @@ rollback_publish() {
             bai_backed_up=false
         fi
     else
+        # With no prior pair, rollback means no canonical files should remain.
         rm -f "$output_bam" "$output_bai"
     fi
 }
@@ -291,6 +306,7 @@ rollback_publish() {
 cleanup() {
     local status=$?
 
+    # Rollback must run before backup cleanup so prior canonical files are usable.
     if [[ "$status" -ne 0 ]]; then
         rollback_publish
     fi
@@ -365,6 +381,7 @@ printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
 
 if [[ "$execute" != true ]]; then
+    # Dry-runs are intentionally side-effect-free: no output directory or lock.
     printf 'Dry-run only. Add --execute to run samtools and publish canonical outputs.\n'
     exit 0
 fi
@@ -373,6 +390,7 @@ mkdir -p "$output_dir"
 trap cleanup EXIT
 acquire_lock
 
+# Build and validate the replacement completely before touching canonical paths.
 "${sort_command[@]}"
 "${addreplacerg_command[@]}"
 [[ -s "$tmp_rg_bam" ]] || die "Temporary read-group BAM is missing or empty: $tmp_rg_bam"
@@ -381,6 +399,7 @@ validate_bam_pair "$tmp_rg_bam" "$tmp_rg_bai" "Replacement"
 
 confirm_canonical_pair_state
 
+# Backups begin the rollback-protected region.
 if [[ "$previous_pair_present" == true ]]; then
     backup_started=true
     mv "$output_bam" "$backup_bam"
@@ -396,6 +415,7 @@ published_bam=true
 mv "$tmp_rg_bai" "$output_bai"
 published_bai=true
 
+# Revalidate after publish so a copied/moved pair is known-good at final paths.
 validate_bam_pair "$output_bam" "$output_bai" "Canonical"
 final_publish_complete=true
 

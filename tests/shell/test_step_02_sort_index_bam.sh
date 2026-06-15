@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SCRIPT="$REPO_ROOT/scripts/step_02_sort_index_bam.sh"
 
+# Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
     exit 1
@@ -66,6 +67,8 @@ mkdir -p "$fake_bin"
 samtools_log="$tmp_dir/samtools_invocations.log"
 mv_log="$tmp_dir/mv_invocations.log"
 
+# Fake samtools stores just enough header/count metadata in text files for the
+# Step 02 wrapper to exercise command construction, validation, and rollback.
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
 #!/usr/bin/env bash
 set -euo pipefail
@@ -87,6 +90,7 @@ write_fake_bam() {
     fi
 
     {
+        # The wrapper validates @HD SO:coordinate and exactly one strict @RG.
         case "\$sort_mode" in
             coordinate) printf '@HD\\tVN:1.6\\tSO:coordinate\\n' ;;
             unknown) printf '@HD\\tVN:1.6\\tSO:unknown\\n' ;;
@@ -107,6 +111,7 @@ write_fake_bam() {
                 ;;
         esac
 
+        # TOTAL/TAGGED lines let fake "samtools view -c" behave predictably.
         printf 'TOTAL:%s\\n' "\$total"
         printf 'TAGGED:%s\\n' "\$tagged"
     } > "\$path"
@@ -174,6 +179,7 @@ case "\$subcommand" in
             esac
         done
 
+        # Enforce the production contract: repeated -r arguments plus -w.
         [[ "\$saw_w" == true ]] || { printf 'fake samtools addreplacerg missing -w\\n' >&2; exit 64; }
         [[ "\$saw_id" == true && "\$saw_sm" == true && "\$saw_lb" == true && "\$saw_pl" == true ]] || {
             printf 'fake samtools addreplacerg missing repeated -r RG fields\\n' >&2
@@ -229,6 +235,7 @@ src="\${1:-}"
 dest="\${2:-}"
 
 fail_marker="${tmp_dir}/fake_mv_failed.\${FAKE_MV_FAIL_DEST_MATCH:-none}"
+# Forced mv failures are one-shot so rollback moves can still restore files.
 if [[ -n "\${FAKE_MV_FAIL_DEST_MATCH:-}" && "\$dest" == *"\$FAKE_MV_FAIL_DEST_MATCH"* && ! -e "\$fail_marker" ]]; then
     printf 'failed\\n' > "\$fail_marker"
     printf 'fake mv forced failure for destination: %s\\n' "\$dest" >&2
@@ -257,6 +264,7 @@ run_step02() {
     local threads="$4"
     shift 4
 
+    # A wrapper helper keeps the sample ID aligned between the script and fake samtools.
     env FAKE_SAMPLE_ID="$sample" SLURM_JOB_ID="${SLURM_JOB_ID:-testjob}" bash "$SCRIPT" \
         --sample-id "$sample" \
         --input-alignment "$input" \
@@ -356,6 +364,7 @@ assert_no_step02_scratch "$execute_output_dir"
 printf 'Running existing lock failure check...\n'
 lock_output_dir="$tmp_dir/results/locked"
 mkdir -p "$lock_output_dir/.sample_locked.step02.lock"
+# A foreign lock must be reported and preserved; Step 02 must not break it.
 printf 'run_token=other-job\n' >"$lock_output_dir/.sample_locked.step02.lock/owner"
 printf 'old bam\n' >"$lock_output_dir/sample_locked.sorted.bam"
 printf 'old bai\n' >"$lock_output_dir/sample_locked.sorted.bam.bai"
@@ -449,6 +458,7 @@ mkdir -p "$backup_output_dir"
 printf 'previous bam\n' >"$backup_output_dir/sample_backup.sorted.bam"
 printf 'previous bai\n' >"$backup_output_dir/sample_backup.sorted.bam.bai"
 backup_output="$tmp_dir/backup_failure.out"
+# Fail while moving the old BAI to backup; the old BAM must be restored.
 assert_fails "$backup_output" env FAKE_SAMPLE_ID=sample_backup FAKE_MV_FAIL_DEST_MATCH=".sample_backup.step02.backup001.previous.bam.bai" SLURM_JOB_ID=backup001 bash "$SCRIPT" \
     --sample-id sample_backup \
     --input-alignment "$input_sam" \
@@ -467,6 +477,7 @@ mkdir -p "$publish_output_dir"
 printf 'previous bam\n' >"$publish_output_dir/sample_publish.sorted.bam"
 printf 'previous bai\n' >"$publish_output_dir/sample_publish.sorted.bam.bai"
 publish_output="$tmp_dir/publish_failure.out"
+# Fail after the new BAM is published but before the new BAI is published.
 assert_fails "$publish_output" env FAKE_SAMPLE_ID=sample_publish FAKE_MV_FAIL_DEST_MATCH="sample_publish.sorted.bam.bai" SLURM_JOB_ID=pub001 bash "$SCRIPT" \
     --sample-id sample_publish \
     --input-alignment "$input_sam" \
@@ -482,6 +493,7 @@ assert_no_step02_scratch "$publish_output_dir"
 printf 'Running publish failure rollback check with no previous pair...\n'
 no_previous_output_dir="$tmp_dir/results/no_previous_publish_failure"
 no_previous_output="$tmp_dir/no_previous_publish_failure.out"
+# With no previous pair, rollback should leave no canonical outputs at all.
 assert_fails "$no_previous_output" env FAKE_SAMPLE_ID=sample_new FAKE_MV_FAIL_DEST_MATCH="sample_new.sorted.bam.bai" SLURM_JOB_ID=new001 bash "$SCRIPT" \
     --sample-id sample_new \
     --input-alignment "$input_sam" \
@@ -500,6 +512,7 @@ mkdir -p "$final_output_dir"
 printf 'previous bam\n' >"$final_output_dir/sample_final.sorted.bam"
 printf 'previous bai\n' >"$final_output_dir/sample_final.sorted.bam.bai"
 final_output="$tmp_dir/final_validation_failure.out"
+# Final validation failure happens after both publish moves, so backup restore is required.
 assert_fails "$final_output" env FAKE_SAMPLE_ID=sample_final FAKE_QUICKCHECK_FAIL_MATCH="sample_final.sorted.bam" SLURM_JOB_ID=final001 bash "$SCRIPT" \
     --sample-id sample_final \
     --input-alignment "$input_sam" \
