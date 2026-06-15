@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort. Downstream editing-prep steps remain scaffolded and intentionally non-runnable until implemented.
+The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort. Step `05` SplitNCigarReads is implemented locally and awaits cluster validation; later editing-prep steps remain scaffolded until implemented.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -28,7 +28,7 @@ The upstream preprocessing workflow is now proven through duplicate marking acro
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
-| `05` | GATK SplitNCigarReads | scaffolded and intentionally non-runnable; not cluster-proven |
+| `05` | GATK SplitNCigarReads | implemented locally; pending cluster validation |
 | `06` | Split BAMs by read orientation | scaffolded / not implemented / not cluster-proven |
 | `07` | bcftools mpileup by chromosome and orientation/strand | scaffolded / not implemented / not cluster-proven |
 | `08` | VCF preprocessing | scaffolded / not implemented / not cluster-proven |
@@ -355,7 +355,7 @@ R / Rscript
 
 `Picard`: preprocessing/QC toolkit; current use here is duplicate marking with `MarkDuplicates`.
 
-`GATK`: genomics toolkit; expected future use is RNA-seq preprocessing with `SplitNCigarReads`, pending Step `05` implementation.
+`GATK`: genomics toolkit; Step `05` uses `SplitNCigarReads` for RNA-seq preprocessing after duplicate marking.
 
 `R`: downstream analysis, statistics, visualization, and tables.
 

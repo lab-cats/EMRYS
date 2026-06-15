@@ -318,9 +318,9 @@ module list 2>&1 || true
 
 Reason: Environment Modules writes `module list` output to stderr, which can otherwise make logs confusing or interact badly with strict shell settings.
 
-## GATK Path Is Confirmed But Step 05 Is Not Implemented
+## Step 05 Uses The Confirmed GATK Path And Split-N-Cigar Layout
 
-Decision: use the validated CSU GATK path when Step `05` is implemented, but keep Step `05` scaffolded and intentionally non-runnable until real script/job behavior and tests exist.
+Decision: Step `05` uses the validated CSU GATK path in its SLURM wrapper and writes split-N-cigar outputs under `results/split_ncigar/<sample_id>/`.
 
 Confirmed evidence:
 
@@ -332,7 +332,14 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-Step `05` must consume validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fail clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs.
+Expected outputs:
+
+```text
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
+```
+
+Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It remains pending cluster validation until a SLURM dry-run and execute job are inspected.
 
 ## bcftools Path Is Confirmed But Step 07 Is Not Implemented
 

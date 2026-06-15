@@ -288,7 +288,7 @@ Cluster-proven:
 00c  GATK reference sidecars implemented locally; pending formal cluster validation
 ```
 
-Scaffolded and intentionally non-runnable; not cluster-proven:
+Implemented locally; pending cluster validation:
 
 ```text
 05   SplitNCigarReads
@@ -373,20 +373,28 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 
 Observed Step `04` MaxRSS ranged from about 22.7-24.3 GB. This is observed evidence, not a guaranteed resource requirement.
 
-### Step 05 Scaffold Status
+### Step 05 Local Implementation Status
 
 Answered operationally.
 
-Step `05` has real scaffold files, but they are intentionally non-runnable and not cluster-proven:
+Step `05` is implemented locally and pending cluster validation:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
 scripts/step_05_split_n_cigar_reads.sh
+tests/shell/test_step_05_split_n_cigar_reads.sh
 ```
 
-They exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The stale `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are not current interfaces. Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable.
+The output layout is:
 
-When implemented, Step `05` should treat the Step `00c` outputs `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+```text
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
+```
+
+Step `05` treats the Step `00c` outputs `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+
+Cluster validation is still pending.
 
 ### GATK Availability
 
@@ -401,7 +409,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-This resolves the GATK availability question, but Step `05` remains scaffolded and intentionally non-runnable until implemented.
+This resolves the GATK availability question. Step `05` uses this path by default in its SLURM wrapper, but remains pending cluster validation.
 
 ### bcftools Availability
 

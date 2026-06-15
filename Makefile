@@ -10,6 +10,7 @@ shell-test:
 	bash tests/shell/test_step_02b_bam_qc.sh
 	bash tests/shell/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/shell/test_step_04_mark_duplicates.sh
+	bash tests/shell/test_step_05_split_n_cigar_reads.sh
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv

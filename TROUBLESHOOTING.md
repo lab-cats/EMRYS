@@ -438,7 +438,7 @@ GATK may not be exposed through `module avail gatk`, even though a direct cluste
 
 ### Fix
 
-Use the validated direct path when Step `05` is implemented:
+Use the validated direct path used by the Step `05` SLURM wrapper:
 
 ```text
 /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
@@ -455,7 +455,7 @@ tool probe exit code: 0:0
 
 Still log and validate the actual Java runtime. The historical Java inconsistency remains relevant: `node002` and `node003` have provided Java 17, while `node007` previously exposed Java 11 / a missing Java 17 path.
 
-Step `05` remains scaffolded and intentionally non-runnable until implemented.
+Step `05` still validates the actual Java runtime before execute-mode GATK use.
 
 ## Step 00c FAI/DICT validation fails
 
@@ -477,21 +477,21 @@ Step `00c` intentionally does not overwrite invalid existing sidecars by default
 
 ### Symptom
 
-A downstream job like Step `05`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
+A downstream job like Step `06`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
 
 ### Cause
 
-Steps `05`-`09` are scaffolded and intentionally non-runnable until
+Steps `06`-`09` are scaffolded and intentionally non-runnable until
 implemented.
 
-For Step `05`, the real scaffold files exist:
+Step `05` is now implemented locally and pending cluster validation. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
+
+Current scaffolded files include:
 
 ```text
-jobs/step_05_split_n_cigar_reads.slurm
-scripts/step_05_split_n_cigar_reads.sh
+jobs/step_06_split_bam_by_read_orientation.slurm
+scripts/step_06_split_bam_by_read_orientation.sh
 ```
-
-They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis.
 
 ### Fix
 
@@ -500,7 +500,6 @@ Do not run scaffolded downstream jobs.
 Current scaffolded steps:
 
 ```text
-05 SplitNCigarReads
 06 split BAM by read orientation
 07 bcftools mpileup
 08 VCF preprocessing
@@ -510,14 +509,7 @@ Current scaffolded steps:
 Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
 after the step is active.
 
-The old Step `05` scaffold path examples using:
-
-```text
-results/bam/<sample_id>/<sample_id>.sorted.md.bam
-results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
-```
-
-are stale scaffold examples, not current interfaces. Current Step `04` outputs are under `results/markdup/<sample_id>/`. Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable.
+Step `05` outputs now use `results/split_ncigar/<sample_id>/` and consume Step `04` outputs under `results/markdup/<sample_id>/`.
 
 ## Wrong log interpretation: empty `.err` file
 

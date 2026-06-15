@@ -33,7 +33,7 @@ The intended high-level workflow is:
 | `02b` BAM QC | implemented and refreshed across all six final hardened Step 02 BAMs | Initial cohort attempt exposed a samtools `PATH` inconsistency; rerun succeeded after prepending the known samtools bin path. |
 | `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
 | `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
-| `05` GATK SplitNCigarReads | scaffolded and intentionally non-runnable; not cluster-proven | Real scaffold files exist, intentionally exit with code `2`, and perform no analysis. |
+| `05` GATK SplitNCigarReads | implemented locally; pending cluster validation | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and validate Java/GATK/samtools at runtime. |
 | `06`-`09` downstream editing workflow | scaffolded / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
 
 ## Cohort
@@ -86,6 +86,7 @@ scripts/step_02_sort_index_bam.sh
 scripts/step_02b_bam_qc.sh
 scripts/step_03_infer_strandedness_and_orientation.sh
 scripts/step_04_mark_duplicates.sh
+scripts/step_05_split_n_cigar_reads.sh
 ```
 
 Implemented SLURM jobs:
@@ -99,17 +100,16 @@ jobs/step_02_sort_index_bam.slurm
 jobs/step_02b_bam_qc.slurm
 jobs/step_03_infer_strandedness_and_orientation.slurm
 jobs/step_04_mark_duplicates.slurm
+jobs/step_05_split_n_cigar_reads.slurm
 ```
 
 Scaffolded downstream files:
 
 ```text
-jobs/step_05_split_n_cigar_reads.slurm
 jobs/step_06_split_bam_by_read_orientation.slurm
 jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_05_split_n_cigar_reads.sh
 scripts/step_06_split_bam_by_read_orientation.sh
 scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 scripts/step_08_vcf_preprocessing.sh
@@ -145,12 +145,13 @@ results/qc/strandedness/<sample>.infer_experiment.txt
 results/markdup/<sample>/<sample>.markdup.bam
 results/markdup/<sample>/<sample>.markdup.bam.bai
 results/qc/markdup/<sample>.markdup.metrics.txt
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
 Expected future output families, once implemented:
 
 ```text
-results/split_ncigar/
 results/orientation/
 results/vcf/
 results/editing/
@@ -221,7 +222,7 @@ refs/novogene_ref/genome.dict
 refs/novogene_star_index/
 ```
 
-The GATK reference sidecars were generated successfully as an ad hoc cluster prep task with exit code `0:0`. Reference/BAM compatibility passed with 194 FAI contigs, 194 DICT contigs, 194 BAM header contigs, and reference/BAM SQ check `PASS`. Step `00c` now exists locally as a dry-run-first script and SLURM wrapper; the formal Step `00c` cluster dry-run/execute gate is still pending. Step `05` should require these files rather than creating shared reference sidecars inside per-sample jobs.
+The GATK reference sidecars were generated successfully as an ad hoc cluster prep task with exit code `0:0`. Reference/BAM compatibility passed with 194 FAI contigs, 194 DICT contigs, 194 BAM header contigs, and reference/BAM SQ check `PASS`. Step `00c` now exists locally as a dry-run-first script and SLURM wrapper; the formal Step `00c` cluster dry-run/execute gate is still pending. Step `05` requires these files rather than creating shared reference sidecars inside per-sample jobs.
 
 ## Step 02b Current State
 
@@ -284,43 +285,44 @@ Duplicate reads were marked, not removed. Duplication is high across the cohort 
 
 ## Step 05 Current State
 
-Step `05` has real scaffold files:
+Step `05` is implemented locally and pending cluster validation.
+
+Entry points:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
 scripts/step_05_split_n_cigar_reads.sh
+tests/shell/test_step_05_split_n_cigar_reads.sh
 ```
 
-They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The scaffold contains stale future path examples:
-
-```text
-results/bam/<sample_id>/<sample_id>.sorted.md.bam
-results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
-```
-
-Those are stale scaffold examples, not current interfaces. Current real Step `04` outputs are:
+Inputs:
 
 ```text
 results/markdup/<sample_id>/<sample_id>.markdup.bam
 results/markdup/<sample_id>/<sample_id>.markdup.bam.bai
+refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
 ```
 
-Step `05` implementation should explicitly decide and document the processed-BAM output layout before becoming runnable, likely under:
+Outputs:
 
 ```text
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 ```
 
-GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`. Step `05` still remains scaffolded and intentionally non-runnable; not cluster-proven.
+The Step `05` script is dry-run by default, creates no files in dry-run mode, requires Step `00c` sidecars instead of creating them, validates Java `>=17`, uses run-token temp outputs, validates the split BAM/index before publication, and rolls back an existing final BAM/BAI pair if publication fails after backups begin.
+
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`. Step `05` is not cluster-proven until a SLURM dry-run and execute job are inspected.
 
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability or a supported `JAVA_BIN_OVERRIDE` path.
 2. Run formal Step `00c` dry-run and execute validation on the cluster.
-3. Decide the Step `05` processed-BAM output layout before implementation.
-4. Inspect and implement or harden Step `05` using the confirmed GATK path and validated reference sidecars.
-5. Continue Steps `06`-`09` after each upstream gate is proven.
-6. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
+3. Run Step `05` SLURM dry-run and execute validation for `ABE_EV_2`, then inspect the split-N-cigar BAM and index before declaring it cluster-proven.
+4. Continue Steps `06`-`09` after each upstream gate is proven.
+5. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
 
 ## Java And Picard Handoff
 

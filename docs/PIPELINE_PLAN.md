@@ -42,7 +42,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `02b` | Run BAM integrity/QC checks. | canonical sorted BAM | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented and refreshed across all six final hardened Step 02 BAMs | samtools |
 | `03` | Infer strandedness and read orientation. | canonical sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | cluster-proven across all six samples | RSeQC `infer_experiment.py` |
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
-| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, reference FASTA | split-N-cigar BAM and index | scaffolded and intentionally non-runnable; not cluster-proven | GATK SplitNCigarReads |
+| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented locally; pending cluster validation | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read orientation. | split-N-cigar BAM | orientation-specific BAMs and indexes | scaffolded / not implemented / not cluster-proven | samtools |
 | `07` | Run mpileup by chromosome and orientation/strand. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
 | `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
@@ -276,40 +276,38 @@ The observed Step `04` memory range was about 22.7-24.3 GB MaxRSS. This is an ob
 
 ### Step 05
 
-Step `05` is scaffolded and intentionally non-runnable; it is not cluster-proven.
+Step `05` is implemented locally and pending cluster validation.
 
-The real scaffold files exist:
+Implemented entry points:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
 scripts/step_05_split_n_cigar_reads.sh
+tests/shell/test_step_05_split_n_cigar_reads.sh
 ```
 
-The SLURM wrapper and script intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis.
-
-The scaffold contains stale future path examples:
-
-```text
-results/bam/<sample_id>/<sample_id>.sorted.md.bam
-results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
-```
-
-These are stale scaffold examples, not current interfaces. Current real Step `04` outputs are:
+Inputs:
 
 ```text
 results/markdup/<sample_id>/<sample_id>.markdup.bam
 results/markdup/<sample_id>/<sample_id>.markdup.bam.bai
+refs/novogene_ref/genome.fa
+refs/novogene_ref/genome.fa.fai
+refs/novogene_ref/genome.dict
 ```
 
-Step `05` implementation should explicitly decide and document the processed-BAM output layout before becoming runnable, likely something like:
+Outputs:
 
 ```text
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 ```
 
 GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
 
-Step `05` remains scaffolded and intentionally non-runnable; not cluster-proven. When implemented, it should treat `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+Step `05` treats `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+
+The implementation is dry-run by default, side-effect-free in dry-run mode, validates the selected Java runtime is at least Java 17 in execute mode, writes GATK output to a run-token temp BAM, indexes and validates the temp pair with samtools, checks coordinate sort order and sample read-group preservation, and publishes final BAM/BAI only after validation succeeds.
 
 ## Reference Workflow Alignment
 
@@ -430,9 +428,8 @@ multiple-testing method
 
 1. Resolve supported cluster-wide Java 17 availability.
 2. Run formal Step `00c` dry-run and execute validation on the cluster.
-3. Decide the Step `05` processed-BAM output layout.
-4. Inspect and implement or harden Step `05` using the confirmed GATK path and Step `00c` sidecars.
-5. Continue Steps `06`-`09` one gate at a time.
+3. Run Step `05` SLURM dry-run and execute validation for `ABE_EV_2`, then inspect outputs before declaring it cluster-proven.
+4. Continue Steps `06`-`09` one gate at a time.
 
 ## Local Validation Gate
 

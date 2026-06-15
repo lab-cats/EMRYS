@@ -153,7 +153,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-Step `05` remains scaffolded and intentionally non-runnable until implemented.
+Step `05` is implemented locally and pending cluster validation.
 
 ### bcftools
 
@@ -581,7 +581,7 @@ Status:
 implemented locally; pending formal cluster validation
 ```
 
-Step `00c` formalizes the ad hoc prep before Step `05` becomes runnable. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+Step `00c` formalizes the ad hoc prep required before Step `05` execute-mode validation. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` treats these files as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Step 01: STAR Alignment
 
@@ -983,7 +983,7 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 Status:
 
 ```text
-scaffolded and intentionally non-runnable; not cluster-proven
+implemented locally; pending cluster validation
 ```
 
 Expected tool:
@@ -994,43 +994,89 @@ GATK SplitNCigarReads
 
 GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
 
-Scaffold files exist:
+Entry points:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
 scripts/step_05_split_n_cigar_reads.sh
+tests/shell/test_step_05_split_n_cigar_reads.sh
 ```
 
-They intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis.
-
-The old scaffold path examples are stale and not current interfaces:
+Inputs:
 
 ```text
-results/bam/<sample_id>/<sample_id>.sorted.md.bam
-results/bam/<sample_id>/<sample_id>.sorted.md.splitncigar.bam
-```
-
-Current real Step `04` outputs are under:
-
-```text
-results/markdup/<sample_id>/
-```
-
-Step `05` implementation should explicitly decide the processed-BAM output layout before becoming runnable, likely under:
-
-```text
-results/split_ncigar/<sample_id>/
-```
-
-When implemented, Step `05` should require:
-
-```text
+results/markdup/<sample_id>/<sample_id>.markdup.bam
+results/markdup/<sample_id>/<sample_id>.markdup.bam.bai
 refs/novogene_ref/genome.fa
 refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.dict
 ```
 
-It should fail clearly if the sidecars are missing and must not create shared reference sidecars inside per-sample jobs.
+Outputs:
+
+```text
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
+```
+
+Dry-run:
+
+```bash
+sbatch jobs/step_05_split_n_cigar_reads.slurm
+```
+
+Execute:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_05_split_n_cigar_reads.slurm
+```
+
+If a supported Java 17 executable is known, pass it explicitly:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
+  jobs/step_05_split_n_cigar_reads.slurm
+```
+
+Direct script dry-run with explicit cluster tools:
+
+```bash
+scripts/step_05_split_n_cigar_reads.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --output-dir results/split_ncigar/ABE_EV_2 \
+  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools
+```
+
+Direct script execute with explicit cluster tools:
+
+```bash
+scripts/step_05_split_n_cigar_reads.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --output-dir results/split_ncigar/ABE_EV_2 \
+  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --execute
+```
+
+Validation checklist for promotion of each sample:
+
+```bash
+sample=<sample_id>
+bam="results/split_ncigar/$sample/$sample.split_ncigar.bam"
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+samtools quickcheck "$bam"
+samtools view -H "$bam" | grep '^@HD.*SO:coordinate'
+samtools view -H "$bam" | grep '^@RG'
+ls -lh "$bam" "$bam.bai"
+```
+
+Step `05` requires the Step `00c` sidecars, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is dry-run by default, writes GATK output to run-token temporary paths in execute mode, validates the temporary BAM/BAI pair before publication, and rolls back an existing final pair if publication fails after backups begin.
 
 ## Step 06: Split BAM By Read Orientation
 

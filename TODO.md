@@ -31,11 +31,6 @@ Implemented locally; pending formal cluster validation:
 
 ```text
 00c  GATK reference sidecars / reference FASTA index and sequence dictionary
-```
-
-Scaffolded and intentionally non-runnable; not cluster-proven:
-
-```text
 05   SplitNCigarReads
 ```
 
@@ -86,36 +81,43 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_00c_prepare_gatk_reference.s
 
 Inspect logs and confirm `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` remain valid before declaring formal Step `00c` cluster-proven.
 
-### 3. Inspect And Implement Step 05
+### 3. Run Step 05 Cluster Validation
 
-Step `05` remains scaffolded and intentionally non-runnable; not cluster-proven.
+Step `05` is implemented locally and pending cluster validation.
 
-Needs:
+Current entry points:
 
 ```text
-confirmed GATK invocation path
-duplicate-marked BAM
-reference FASTA
-FASTA .fai
-sequence dictionary .dict
-validated Step 00c sidecars
-processed-BAM output layout decision
-local tests / dry-run behavior
-SLURM wrapper validation
+scripts/step_05_split_n_cigar_reads.sh
+jobs/step_05_split_n_cigar_reads.slurm
+tests/shell/test_step_05_split_n_cigar_reads.sh
 ```
 
-Current Step `05` scaffold files intentionally exit with code `2`, print that Step `05` is not implemented, and perform no analysis. The old `sorted.md.bam` and `sorted.md.splitncigar.bam` scaffold path examples are stale and not current interfaces.
-
-GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
-
-Before Step `05`, complete formal cluster validation for Step `00c`, which creates and validates:
+Inputs:
 
 ```text
+results/markdup/<sample>/<sample>.markdup.bam
+results/markdup/<sample>/<sample>.markdup.bam.bai
+refs/novogene_ref/genome.fa
 refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.dict
 ```
 
-The sidecars already exist from an ad hoc cluster prep task that completed with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `05` should treat these files as prerequisites, fail clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+Outputs:
+
+```text
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
+```
+
+Next gate:
+
+```bash
+sbatch jobs/step_05_split_n_cigar_reads.slurm
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_05_split_n_cigar_reads.slurm
+```
+
+Inspect logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` ran, and validate the final BAM/BAI before declaring Step `05` cluster-proven.
 
 ## Architecture Reminders
 
@@ -148,7 +150,7 @@ Allow explicit single-sample reruns without hardcoding sample IDs in wrappers.
 
 Do not overbuild this before the relevant per-step behavior is proven. Revisit before broader cohort-scale reruns or downstream array execution.
 
-### Decide Durable Processed-BAM Output Layout
+### Durable Processed-BAM Output Layout
 
 Current likely layout:
 
@@ -164,7 +166,7 @@ results/orientation/<sample>/<sample>.<orientation>.bam
 results/orientation/<sample>/<sample>.<orientation>.bam.bai
 ```
 
-Confirm this before implementing Steps `05` and `06` too deeply.
+The Step `05` portion of this layout is now implemented locally. Revisit the Step `06` orientation output names before implementing Step `06`.
 
 ## External Blockers / Unresolved Items
 
@@ -308,6 +310,7 @@ Prove Step 04 across all six samples.
 Compare Step 04 duplication metrics across all six samples.
 Confirm GATK availability on node002.
 Confirm bcftools availability on node002.
+Implement Step 05 locally with dry-run-first GATK SplitNCigarReads script, SLURM wrapper, and shell tests.
 ```
 
 ## Development Rule
