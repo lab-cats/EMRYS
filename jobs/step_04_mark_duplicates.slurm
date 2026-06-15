@@ -75,11 +75,53 @@ fi
 
 module load samtools/1.19.2
 
+# Resolve Java explicitly. The CSU Java module may set JAVA_HOME to a path that
+# is unavailable on compute nodes, so allow a caller-provided override.
+JAVA_BIN="${JAVA_BIN_OVERRIDE:-}"
+
+if [[ -z "$JAVA_BIN" && -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
+    JAVA_BIN="$JAVA_HOME/bin/java"
+fi
+
+if [[ -z "$JAVA_BIN" ]]; then
+    JAVA_BIN="$(command -v java || true)"
+fi
+
+if [[ -z "$JAVA_BIN" || ! -x "$JAVA_BIN" ]]; then
+    echo "ERROR: No usable Java executable was found." >&2
+    echo "Set JAVA_BIN_OVERRIDE to a Java 17 executable." >&2
+    exit 2
+fi
+
+java_version_output="$("$JAVA_BIN" -version 2>&1)"
+java_version_line="$(printf '%s\n' "$java_version_output" | head -n 1)"
+
+echo "JAVA_HOME: ${JAVA_HOME:-<unset>}"
+echo "Java: $JAVA_BIN"
+printf '%s\n' "$java_version_output"
+
+if [[ "$java_version_line" =~ version\ \"1\.([0-9]+) ]]; then
+    java_major="${BASH_REMATCH[1]}"
+elif [[ "$java_version_line" =~ version\ \"([0-9]+) ]]; then
+    java_major="${BASH_REMATCH[1]}"
+else
+    echo "ERROR: Could not determine Java version from: $java_version_line" >&2
+    exit 2
+fi
+
+if (( java_major < 17 )); then
+    echo "ERROR: Picard requires Java 17 or newer; found Java $java_major at $JAVA_BIN" >&2
+    echo "Set JAVA_BIN_OVERRIDE to a Java 17 executable available on compute nodes." >&2
+    exit 2
+fi
+
 echo "Loaded modules after Picard/samtools load:"
 module list 2>&1 || true
 
 echo "PICARD: $PICARD"
-echo "Java: $(command -v java || true)"
+echo "JAVA_HOME: $JAVA_HOME"
+echo "Java: $JAVA_BIN"
+"$JAVA_BIN" -version
 echo "samtools: $(command -v samtools || true)"
 
 cmd=(
@@ -90,6 +132,7 @@ cmd=(
     --output-dir "$OUTPUT_DIR"
     --metrics-dir "$METRICS_DIR"
     --picard-jar "$PICARD"
+    --java-bin "$JAVA_BIN"
     "${execute_args[@]}"
 )
 
