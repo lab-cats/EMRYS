@@ -213,6 +213,20 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
 
 Then inspect outputs before proceeding.
 
+## Operator Checklist
+
+- **Default dry-run:** Job wrappers and SLURM wrappers default to dry-run. Submit a dry-run first to verify resolved inputs, printed commands, and logs.
+- **Submit execute jobs explicitly:** Use `EXECUTE=1` when ready, e.g.:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
+```
+
+- **Script-level execution flag:** Local scripts accept `--execute` to actually run tool commands (e.g., `scripts/step_02b_bam_qc.sh --execute`).
+- **Validation locations:** Use `docs/RUNBOOK.md` for per-step dry-run/execute checks, `docs/PIPELINE_PLAN.md` for step status, and `DECISIONS.md` for execution policy.
+- **Quick checks after execute:** Confirm expected outputs under `results/` and check SLURM logs under `logs/` and `sacct`/`scontrol` for job state.
+
+
 ## Repository Layout
 
 ```text
