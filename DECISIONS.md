@@ -164,6 +164,20 @@ Reason: one-sample validation keeps cluster iteration fast and makes failures ea
 
 Caution: final workflow assumptions must eventually be validated across all six samples.
 
+
+## Step 02 canonical BAMs must be coordinate-sorted, indexed, and carry calid read-group materials
+
+provisional convention:
+
+```
+ID=<sample_id>
+SM=<sample_id>
+LB=<sample_id>
+PL=ILLUMINA
+```
+
+Picard requires records to resolve to an `@RG`, and step 02 is the enforcement boundary.
+
 ## Step 03 result indicates reverse-stranded / first-strand behavior for `ABE_EV_2`
 
 Decision: record the Step `03` result as strong evidence that `ABE_EV_2` is reverse-stranded / first-strand-style.

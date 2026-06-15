@@ -597,7 +597,141 @@ Status:
 implemented / cluster-proven for ABE_EV_2
 ```
 
-## Step 02: canonical sort/index BAM
+## Step 02: canonical sort, read-group tagging, and BAM indexing
+
+Script:
+
+```bash
+scripts/step_02_sort_index_bam.sh
+```
+
+Job:
+
+```bash
+jobs/step_02_sort_index_bam.slurm
+```
+
+Purpose:
+
+```text
+Create the canonical downstream BAM for one sample.
+
+The canonical BAM must:
+- be coordinate sorted
+- contain an @RG header for the sample
+- assign every alignment record to that read group
+- pass samtools quickcheck
+- have a valid BAM index
+```
+
+Read-group convention:
+
+```text
+ID=<sample_id>
+SM=<sample_id>
+LB=<sample_id>
+PL=ILLUMINA
+```
+
+`LB=<sample_id>` is the current provisional convention until more specific
+library or lane metadata is recovered from the sequencing delivery records.
+
+Input for `ABE_EV_2`:
+
+```bash
+results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam
+```
+
+Outputs:
+
+```bash
+results/bam/ABE_EV_2/ABE_EV_2.sorted.bam
+results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
+```
+
+Dry-run:
+
+```bash
+sbatch jobs/step_02_sort_index_bam.slurm
+```
+
+Execute:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 \
+  jobs/step_02_sort_index_bam.slurm
+```
+
+Post-run validation:
+
+```bash
+module load samtools/1.19.2
+
+sample=ABE_EV_2
+bam="results/bam/$sample/$sample.sorted.bam"
+
+samtools quickcheck "$bam"
+
+samtools view -H "$bam" | grep '^@RG'
+
+total_records="$(samtools view -c "$bam")"
+tagged_records="$(samtools view -c -d "RG:$sample" "$bam")"
+
+printf 'Total records: %s\n' "$total_records"
+printf 'Records tagged RG:%s: %s\n' "$sample" "$tagged_records"
+
+test "$total_records" -gt 0
+test "$tagged_records" -eq "$total_records"
+
+ls -lh "$bam" "$bam.bai"
+```
+
+Expected read-group header for `ABE_EV_2`:
+
+```text
+@RG	ID:ABE_EV_2	SM:ABE_EV_2	LB:ABE_EV_2	PL:ILLUMINA
+```
+
+Historical pre-hardening jobs:
+
+```text
+594748: dry-run, completed 0:0
+594749: execute, completed 0:0
+```
+
+Historical pre-hardening execute details:
+
+```text
+Elapsed: 00:03:46
+MaxRSS: about 6.8G
+Output BAM: 3.0G
+Output BAI: 3.3M
+```
+
+Normal samtools stderr observed:
+
+```text
+[bam_sort_core] merging from 4 files and 8 in-memory blocks...
+```
+
+Important:
+
+```text
+Jobs 594748 and 594749 validated the original sort/index implementation only.
+
+The resulting BAM did not contain read-group metadata. Picard MarkDuplicates
+later failed because records could not be associated with an @RG entry.
+
+Step 02 was therefore hardened to add and validate read groups before publishing
+the canonical BAM. The hardened implementation must be revalidated on the
+cluster before Step 02 is considered cluster-proven again.
+```
+
+Status:
+
+```text
+implemented / pending cluster revalidation after read-group hardening
+```
 
 Script:
 

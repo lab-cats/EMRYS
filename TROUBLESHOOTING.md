@@ -392,6 +392,21 @@ COMPLETED 0:0
 
 and expected output files exist and are non-empty where appropriate.
 
+### Symptom
+Picard MarkDuplicates fails immediately with
+SAMRecord.getReadGroup() is null
+
+### Cause
+BAM records lack valid RG tags and/or the BAM header lacks @RG.
+
+### Diagnose
+samtools view -H <bam> | grep '^@RG'
+samtools view <bam> | sed -n '1p' | tr '\t' '\n' | grep '^RG:Z:'
+
+### Fix
+Regenerate the canonical BAM through hardened Step 02.
+Do not patch around it in Step 04.
+
 ## General success checklist
 
 A job is only “proven” when all of these are true:
