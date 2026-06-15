@@ -49,6 +49,19 @@ The broad final deliverables are expected to be RNA-editing / variant-like site 
 
 Need to define expected Step `09` outputs before porting the old R scripts.
 
+### Future artifact and reporting design
+
+Structured artifacts and reporting are planned, deferred, and non-runnable. Open questions:
+
+* What is the exact versioned JSON schema for per-step sidecars?
+* What are the run ID semantics across dry-runs, execute runs, reruns, and partial reruns?
+* How should provenance and git commit capture work on local machines and CSU SLURM?
+* Should artifacts describe failed and incomplete runs, or only successful runs?
+* How should reruns, schema-version conflicts, and pipeline-version conflicts be represented?
+* What are the exact HTML, PDF, and TSV report deliverables?
+* Which responsibilities belong to Jinja2 versus Quarto or R Markdown?
+* What final CMH/editing-site results, plots, and interpretation notes belong in the report?
+
 ## Cluster
 
 ### What is the correct login node?

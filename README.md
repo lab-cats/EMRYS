@@ -12,6 +12,8 @@ The project is being rebuilt as a maintainable, manifest-driven, dry-run-first p
 
 The uploaded legacy workflow is treated as a protocol reference, not as production code.
 
+A future decoupled reporting layer will consume structured pipeline artifacts to generate reusable HTML, PDF, and TSV outputs without rerunning computation.
+
 ## Current status
 
 The pipeline is being developed one validated step at a time.

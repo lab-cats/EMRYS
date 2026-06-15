@@ -52,6 +52,22 @@ Pending steps should not look submit-ready. Placeholder jobs should not load mod
 
 Reason: prevents accidentally submitting placeholder jobs and mistaking scaffolding for working pipeline logic.
 
+## Reporting is decoupled from computation through structured artifacts
+
+Decision: compute steps and report rendering should remain decoupled.
+
+Future pipeline results should be exposed through versioned structured JSON artifacts. Per-step JSON sidecars are planned as a cross-cutting capability, and a future aggregation phase should combine them into:
+
+```text
+results/artifacts/run_summary.json
+```
+
+`run_summary.json` is intended to become the report layer's single structured input. HTML, PDF, TSV, or other renderers should consume that summary and final result tables without rerunning STAR, samtools, Picard, GATK, bcftools, or CMH computation.
+
+Reason: reports should be reproducible and replaceable without changing or rerunning the computational pipeline.
+
+This decision does not require immediate retrofitting of currently implemented steps. Artifact emission, aggregation, and rendering remain planned, deferred, and non-runnable until the core computational workflow is substantially proven.
+
 ## Active tests live under `tests/shell/`; future test plans live under `tests/pending/`
 
 Decision: implemented steps get active tests under `tests/shell/`.

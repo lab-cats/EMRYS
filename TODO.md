@@ -368,6 +368,30 @@ Needs:
 - document statistical assumptions
 ```
 
+## Deferred roadmap: structured artifacts and reporting
+
+This work should begin only after the core computational workflow is substantially proven. It is planned, deferred, and non-runnable for now. Do not create schema files, placeholder scripts, templates, report directories, sidecar files, or SLURM jobs until this roadmap is explicitly activated.
+
+The future layers should remain distinct:
+
+```text
+per-step JSON sidecars: future cross-cutting pipeline capability
+run_summary.json aggregation: future downstream phase
+HTML/PDF/TSV rendering: separate report layer
+```
+
+Deferred phases:
+
+```text
+A. Define and version the artifact schema.
+B. Add shared artifact-writing utilities.
+C. Retrofit proven steps to emit sidecars.
+D. Define the richer CMH/editing-site artifact schema.
+E. Aggregate sidecars into run_summary.json.
+F. Implement HTML reporting.
+G. Add PDF and TSV renderers.
+```
+
 ## Resolved items
 
 ### Step 01 STAR wrapper

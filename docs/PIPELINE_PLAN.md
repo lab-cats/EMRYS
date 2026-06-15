@@ -173,6 +173,62 @@ REV-like: 83 and 163
 
 Because Step 03 indicates reverse-stranded / first-strand behavior for `ABE_EV_2`, future steps should document the difference between read orientation labels and biological transcript strand.
 
+## Future artifact and reporting layer
+
+This layer is planned, deferred, and non-runnable. It should not be treated as a new core pipeline step or as a runnable Step 10. The existing Steps 00a-09 remain the core computational pipeline.
+
+The intended future separation is:
+
+```text
+core computation: Steps 00a-09
+    -> future per-step JSON sidecars
+    -> future aggregation into results/artifacts/run_summary.json
+    -> future report rendering from structured artifacts
+```
+
+Per-step JSON sidecars are a future cross-cutting pipeline capability. They should eventually describe each completed or attempted step without changing the core output paths. A future layout may look like:
+
+```text
+results/
+  bam/ABE_EV_2/ABE_EV_2.sorted.bam
+  bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
+
+  artifacts/
+    ABE_EV_2/
+      01_star_align.json
+      02_sort_index.json
+      02b_bam_qc.json
+      03_strandedness.json
+      04_mark_duplicates.json
+      ...
+    run_summary.json
+
+  reports/
+    run_report.html
+    run_report.pdf
+    run_summary.tsv
+```
+
+Future sidecars should use a consistent, versioned JSON schema. The minimum shared fields are expected to include schema version, pipeline version or git commit, run ID, step ID/name, sample ID when applicable, status, timing, inputs, outputs, tool names and versions, resolved parameters, key metrics, warnings, and exit status.
+
+The future aggregation phase should discover or receive expected sidecars, validate schema versions, combine sample-level and run-level information, record missing/failed/incomplete steps explicitly, and write:
+
+```text
+results/artifacts/run_summary.json
+```
+
+The future report layer should read only structured artifacts and final result tables. It must not require rerunning STAR, samtools, Picard, GATK, bcftools, or CMH computation. It should support multiple renderers from the same underlying data, initially targeting:
+
+```text
+results/reports/run_report.html
+results/reports/run_report.pdf
+results/reports/run_summary.tsv
+```
+
+Jinja2 may be a good fit for HTML rendering. Quarto or R Markdown may be useful for publication-quality biological figures and PDF output. The renderer layer should remain replaceable without modifying compute steps.
+
+Step 09 CMH/editing-site results should eventually receive a richer, domain-specific artifact schema rather than being flattened into generic key/value metrics. That schema may include comparison definitions, editing type, filter thresholds, site counts, significant up/down site counts, effect-size summaries, coverage summaries, result-table paths, plot paths, annotation/reference metadata, and multiple-testing method.
+
 ## Current next decision
 
 The next validation target is:
