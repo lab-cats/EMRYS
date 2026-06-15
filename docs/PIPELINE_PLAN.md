@@ -424,6 +424,19 @@ annotation/reference metadata
 multiple-testing method
 ```
 
+## Future Cross-Cutting Engineering Roadmap
+
+Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for Step `00c`, Step `05`, or the remaining compute pipeline.
+
+Future cross-cutting capabilities may include:
+
+* manifest-driven submission and validation helpers, followed later by SLURM job arrays after single-sample behavior is stable
+* environment/tool probes, reference provenance and checksums, output retention policy, standardized validation reports, cohort QC summaries, and demo/reporting artifacts
+* shared shell/SLURM helper libraries after behavior is covered by tests and output contracts are stable
+* conservative handoff/admin utilities such as tool-path config, troubleshooting taxonomy, and stale-lock inspection or cleanup helpers
+
+Candidate helper names and interfaces are not decided unless a later implementation task explicitly promotes them. Future refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
+
 ## Current Next Work
 
 1. Resolve supported cluster-wide Java 17 availability.

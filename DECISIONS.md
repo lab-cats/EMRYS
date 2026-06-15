@@ -360,6 +360,14 @@ Decision: do not assume final module names or invocation patterns for R/Rscript 
 
 These are needed for Steps `08` and `09`.
 
+## Future Refactors Must Preserve Proven Interfaces
+
+Decision: future helper-library, orchestration, validation-reporting, and admin-utility refactors must preserve existing step command-line interfaces, output paths, dry-run/execute semantics, and proven cluster contracts unless a later task explicitly decides otherwise.
+
+Reason: the current pipeline is intentionally gated and handoff-oriented. Deferred engineering improvements should reduce duplication and improve operability without changing the behavior that downstream steps and cluster runbooks already depend on.
+
+Candidate helper names, config filenames, validator names, Makefile targets, and admin utilities remain roadmap ideas until separately implemented and tested.
+
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 
 Decision: compute steps and report rendering should remain decoupled.

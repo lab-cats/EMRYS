@@ -121,35 +121,6 @@ Inspect logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` ran, and vali
 
 ## Architecture Reminders
 
-### Design Manifest-Driven Sample Selection Helpers
-
-The next orchestration piece is manifest-driven sample selection for SLURM arrays or targeted per-sample runs.
-
-Eventually needed:
-
-```bash
-scripts/get_manifest_row.py \
-  --manifest samples.tsv \
-  --row "$SLURM_ARRAY_TASK_ID"
-```
-
-or:
-
-```bash
-scripts/get_sample_from_manifest.py \
-  --manifest samples.tsv \
-  --sample-id ABE_EV_2
-```
-
-Purpose:
-
-```text
-Allow SLURM array task N to select sample N from samples.tsv.
-Allow explicit single-sample reruns without hardcoding sample IDs in wrappers.
-```
-
-Do not overbuild this before the relevant per-step behavior is proven. Revisit before broader cohort-scale reruns or downstream array execution.
-
 ### Durable Processed-BAM Output Layout
 
 Current likely layout:
@@ -272,9 +243,24 @@ define final output tables/plots
 document statistical assumptions
 ```
 
-## Deferred Roadmap: Structured Artifacts And Reporting
+## Deferred Roadmap: Engineering Improvements
 
-This work should begin only after the core computational workflow is substantially proven. It is planned, deferred, and non-runnable for now. Do not create schema files, placeholder scripts, templates, report directories, sidecar files, or SLURM jobs until this roadmap is explicitly activated.
+These are deferred engineering improvements and roadmap ideas. They do not block Step `00c`, Step `05`, or the remaining compute pipeline. Do not create schemas, helper libraries, validators, Makefile targets, config files, JSON sidecars, cleanup utilities, report templates, report directories, or new SLURM jobs until a roadmap item is explicitly activated.
+
+### After Steps 00c-09 Are Proven
+
+These items belong after the full compute path is substantially proven:
+
+* Add manifest-driven submission and validation helpers for targeted sample reruns and later cohort-scale execution. Possible future helpers include `scripts/submit_step.sh --step ... --manifest ...` and `scripts/validate_step.sh --step ... --manifest ...`, but their names and interfaces are not decided.
+* Add SLURM job-array support only after single-sample behavior is stable and manifest-driven sample lookup is clear.
+* Add an environment/tool probe step for STAR, samtools, bedtools, Picard, Java, GATK, bcftools, R/Rscript, required R packages, and Python/RSeQC. This should be a preflight report, not a replacement for per-step validation.
+* Add reference provenance and checksum tracking for `genome.fa`, `genome.gtf`, `genome.bed`, the STAR index, `genome.fa.fai`, and `genome.dict` to reduce reference mismatch risk.
+* Define output retention and cleanup policy for raw FASTQs, STAR BAMs, canonical BAMs, markdup BAMs, split-N-cigar BAMs, pileups/VCFs, temp files, backups, and logs.
+* Add standardized validation reports after the existing per-step validation behavior is stable. Decide later whether these are per-step validators, a generic dispatcher, or both.
+
+### Reporting And Artifact Layer
+
+This layer remains planned, deferred, and non-runnable. It should not be implemented until the core compute workflow is substantially proven.
 
 Deferred phases:
 
@@ -287,6 +273,33 @@ E. Aggregate sidecars into run_summary.json.
 F. Implement HTML reporting.
 G. Add PDF and TSV renderers.
 ```
+
+Roadmap ideas:
+
+* Future per-step JSON sidecars may eventually record command context, inputs, outputs, tool versions, runtime, node, validation results, and metrics.
+* A future aggregation layer may combine sidecars into `results/artifacts/run_summary.json`.
+* Future cohort QC summary tables may include alignment, strandedness, and duplication summaries for handoff and sanity checks.
+* Future demo/reporting artifacts may include HTML/PDF summaries, but report generation should remain decoupled from compute steps.
+
+### Later Maintainability And Refactor Work
+
+These are refactor candidates, not active implementation requirements:
+
+* Consider shared shell helper libraries only after behavior is covered by tests and outputs are stable. Candidate future files include `scripts/lib/norad_common.sh` and `scripts/lib/norad_slurm_common.sh`.
+* Candidate shared helpers include repo-root detection, strict-mode/logging conventions, dry-run/execute handling, tool resolution and version logging, Java runtime validation, common file/path validation, lock handling, temp-path cleanup traps, samtools quickcheck/index validation, standardized error messages, and SLURM job context logging.
+* Future helper-library refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
+* Expand shell coverage only after inspecting the current `Makefile`, `tests/shell/`, and `tests/pending/`. In this checkout, `make shell-test` wires Step `00c` and Steps `01`-`05`, while no Step `00a` or Step `00b` shell test exists under `tests/shell/` or `tests/pending/`; adding Step `00a` / `00b` shell coverage is deferred future work.
+* Keep active runnable tests under `tests/shell/` and non-runnable future test plans under `tests/pending/`.
+* Possible future Makefile targets may include validation/reporting conveniences, but do not add targets until the underlying commands exist and are stable.
+
+### Long-Term Handoff And Admin Utilities
+
+These ideas are for later handoff and maintenance:
+
+* Decide whether a cluster tool-path config file is useful. Candidate names and variables are not decided; scripts should remain portable through CLI/env overrides.
+* Add a compact failure taxonomy or troubleshooting index that maps symptom to likely cause, confirmation command, and fix once enough repeated failures exist.
+* Consider conservative stale-lock inspection and cleanup utilities after lock behavior is stable and safety rules are documented.
+* Keep any admin utility cautious by default; do not delete or repair shared outputs without explicit operator intent.
 
 ## Resolved Items
 

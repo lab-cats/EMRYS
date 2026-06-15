@@ -78,6 +78,25 @@ Jinja2 versus Quarto/R Markdown responsibilities
 final CMH/editing-site results, plots, and interpretation notes
 ```
 
+### Deferred Engineering Roadmap Decisions
+
+The deferred engineering roadmap is tracked canonically in `TODO.md`. These questions do not block Step `00c`, Step `05`, or the remaining compute pipeline.
+
+Open questions:
+
+```text
+when to activate manifest-driven submission and validation helpers
+whether future sample selection helpers should be step-specific or generic
+when SLURM arrays become useful enough to replace manual cohort loops
+which reference files need checksums and where provenance should be recorded
+which generated outputs are long-term retained versus disposable
+whether validation reports should be per-step scripts, a generic dispatcher, or both
+whether cluster tool paths need a config file, and which paths belong there
+how stale-lock inspection and cleanup should prove safety before changing anything
+which failure categories belong in a troubleshooting taxonomy
+which Makefile conveniences are worthwhile after underlying commands exist
+```
+
 ### Read-Group Library Metadata
 
 Step `02` currently uses the provisional read-group convention:

@@ -303,6 +303,12 @@ sjtail <JOBID>
 
 If helpers are not installed, use the manual commands in the next section.
 
+## Future Operational Helpers
+
+The deferred engineering roadmap in `TODO.md` includes possible future operational helpers for manifest-driven submission/validation, environment probes, standardized validation reports, reference provenance checks, retention/cleanup policy, and conservative admin utilities.
+
+These helpers are roadmap ideas unless their scripts, tests, and runbook commands exist in the repo. Do not treat candidate helper names, config files, Makefile targets, validators, reports, or cleanup utilities as available commands.
+
 ## Manual Job Checking
 
 Recent logs:

@@ -568,6 +568,10 @@ alignment records tagged with `RG:<sample_id>`.
 Regenerate the canonical BAM through hardened Step 02. Do not patch around
 missing read groups in Step 04.
 
+## Future Troubleshooting Taxonomy
+
+A future troubleshooting index may summarize repeated failure patterns as symptom, likely cause, confirmation command, and fix. Keep this as a deferred roadmap idea until enough real failures exist; do not add entries for helpers, validators, cleanup tools, reports, or config files that are not implemented.
+
 ## General success checklist
 
 A job is only “proven” when all of these are true:
