@@ -34,6 +34,50 @@ Reference preparation steps `00a` through `00c` are cluster-proven. Sample-proce
 
 Step `05` is cluster-proven/cohort-proven across all six samples based on final split-N-cigar BAM/BAI output inspection.
 
+## Approximate Runtime Profile
+
+| Stage | Scope | Runtime profile | Notes |
+| ----- | ----- | --------------- | ----- |
+| `00a` STAR index | one-time reference prep | heavier one-time setup job; exact elapsed not recorded in this report | Builds the STAR genome index. |
+| `00b` GTF -> BED12 | one-time reference prep | short one-time annotation conversion; exact elapsed not recorded in this report | Produces RSeQC-compatible BED12 annotation. |
+| `00c` GATK reference sidecars | one-time reference prep | ~25 seconds | Creates/validates FASTA `.fai` and sequence dictionary sidecars. |
+| `01` STAR alignment | per sample | alignment-heavy per-sample step; exact elapsed not recorded in this report | Produces coordinate-sorted STAR BAMs. |
+| `02` canonical BAM | per sample | a few minutes; `ABE_EV_2` observed ~3 min 46 sec | Publishes stable sorted/indexed downstream BAMs. |
+| `02b` BAM QC | per sample | short QC step; exact elapsed not recorded in this report | Runs samtools integrity/QC checks. |
+| `03` strandedness | per sample | short QC/inference step; exact elapsed not recorded in this report | Runs RSeQC strandedness inference. |
+| `04` MarkDuplicates | per sample | ~6-9 minutes per sample | Picard duplicate marking across all six samples. |
+| `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
+| `06` read-orientation split | per sample | `ABE_EV_3` observed ~25 min 27 sec | I/O-heavy samtools filtering/merging/indexing; not cohort-proven in this report. |
+
+These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
+
+Exact Step `04` per-sample runtimes:
+
+| Sample | Runtime |
+| ------ | ------: |
+| `ABE_EV_2` | 00:08:29 |
+| `ABE_EV_3` | 00:06:06 |
+| `ABE_EV4` | 00:08:52 |
+| `ABE_PUM1_2` | 00:06:40 |
+| `ABE_PUM1_3` | 00:06:33 |
+| `ABE_PUM1_4` | 00:07:32 |
+
+Recovered Step `05` GATK elapsed examples:
+
+| Sample | GATK elapsed |
+| ------ | -----------: |
+| `ABE_EV_3` | ~32.96 min |
+| `ABE_PUM1_2` | ~35.84 min |
+| `ABE_PUM1_4` | ~39.71 min |
+
+`ABE_EV_2` and `ABE_EV4` were heavier/slower Step `05` samples, but exact elapsed times are not recorded in this report.
+
+Observed Step `06` example:
+
+| Sample | Runtime |
+| ------ | ------: |
+| `ABE_EV_3` | 00:25:27 |
+
 ## Sample Set
 
 | Condition | Samples |
