@@ -1,4 +1,6 @@
-.PHONY: test validate lint
+DEMO_SAMPLE ?= ABE_EV_2
+
+.PHONY: test validate lint demo-step03
 
 test:
 	python -m pytest
@@ -24,3 +26,13 @@ lint:
 	python -m compileall scripts tests
 
 all-checks: test shell-test validate smoke
+
+demo-step03-dry-run:
+	mkdir -p logs
+	sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=$(DEMO_SAMPLE) \
+		jobs/step_03_infer_strandedness_and_orientation.slurm
+
+demo-step03:
+	mkdir -p logs
+	sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,SAMPLE_ID=$(DEMO_SAMPLE) \
+		jobs/step_03_infer_strandedness_and_orientation.slurm
