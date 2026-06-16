@@ -2,7 +2,7 @@
 
 This is a preliminary pipeline validation and handoff/demo report for the NORAD / Novogene Remora RNA-seq workflow rebuild. It is not a final biological analysis report.
 
-This report reflects the already-documented project state only. It does not inspect live Step `05` job status, cluster logs, or generated outputs.
+This report reflects the already-documented project state only. It does not inspect live cluster job status or rerun generated-output checks.
 
 ## Executive Summary
 
@@ -10,7 +10,7 @@ This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a l
 
 The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream goal is RNA-editing / variant-like site analysis, not simple gene-count differential expression.
 
-Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `04` are validated across all six samples. Step `05` is implemented/local-tested and currently undergoing six-sample cluster revalidation after temp-space hardening; final outputs remain pending inspection. Step `06` read-orientation BAM splitting is the next implementation target.
+Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `05` are validated across all six samples. Step `05` SplitNCigarReads is cluster-proven after temp-space hardening and output inspection. Step `06` read-orientation BAM splitting is the next implementation target.
 
 ## Pipeline Status
 
@@ -24,13 +24,13 @@ Reference preparation steps `00a` through `00c` are cluster-proven. Sample-proce
 | `02b` | BAM QC | cluster-proven across all six |
 | `03` | strandedness | cluster-proven across all six |
 | `04` | MarkDuplicates | cluster-proven across all six |
-| `05` | SplitNCigarReads | implemented/local-tested; six-sample cluster revalidation submitted/running; outputs pending inspection |
+| `05` | SplitNCigarReads | cluster-proven across all six |
 | `06` | read-orientation BAM split | next implementation target |
 | `07` | bcftools mpileup | pending |
 | `08` | VCF preprocessing | pending |
 | `09` | CMH editing-site calling | pending |
 
-Step `05` should not be described as cluster-proven or cohort-proven until the submitted/running revalidation completes and final split-N-cigar BAM/BAI outputs are inspected.
+Step `05` is cluster-proven/cohort-proven across all six samples based on final split-N-cigar BAM/BAI output inspection.
 
 ## Sample Set
 
@@ -92,7 +92,7 @@ Step `04` Picard MarkDuplicates is cluster-proven across all six samples. Duplic
 
 Duplication is high across the cohort, especially `ABE_EV4` and `ABE_PUM1_4`. This is a preliminary QC observation and should be interpreted with PI guidance.
 
-## Step 05 Current Status And Hardening
+## Step 05 Validation And Hardening
 
 Step `05` uses GATK `SplitNCigarReads` after duplicate marking.
 
@@ -110,7 +110,26 @@ TMPDIR for the GATK process
 
 Cleanup was also hardened for owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
 
-Six-sample Step `05` revalidation has been submitted/running. Final outputs still need inspection before Step `05` can be promoted to cluster-proven or cohort-proven.
+Six-sample Step `05` revalidation completed successfully. Output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
+
+All six samples have final split-N-cigar BAM/BAI files, passing `samtools quickcheck`, `@HD` with `SO:coordinate`, sample-matching `@RG`, and no Step `05` scratch files remaining.
+
+Confirmed final Step `05` output sizes:
+
+| Sample | Split-N-cigar BAM size | BAI size |
+| ------ | ---------------------: | -------: |
+| `ABE_EV_2` | 4.4G | 2.0M |
+| `ABE_EV_3` | 3.5G | 1.6M |
+| `ABE_EV4` | 4.4G | 1.8M |
+| `ABE_PUM1_2` | 3.7G | 1.6M |
+| `ABE_PUM1_3` | 3.7G | 1.6M |
+| `ABE_PUM1_4` | 3.8G | 1.8M |
 
 ## Engineering And Reproducibility Features
 
@@ -135,7 +154,7 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - Each step has defined inputs, outputs, validation checks, and cluster execution gates.
 - The pipeline has already produced useful QC signals across all six samples.
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
-- The current state is honest: preprocessing is nearly through the legacy SplitNCigarReads/orientation split boundary, while editing-site calling remains downstream.
+- The current state is honest: preprocessing is through SplitNCigarReads, while read-orientation splitting and editing-site calling remain downstream.
 
 ## Questions For PI Discussion
 
@@ -146,18 +165,16 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 
 ## Next Steps
 
-1. Inspect Step `05` six-sample revalidation outputs.
-2. If Step `05` passes, update docs to mark it cohort-proven.
-3. Implement Step `06` read-orientation BAM split.
-4. Validate Step `06` locally and then on the cluster.
-5. Continue to Step `07` bcftools mpileup, Step `08` VCF preprocessing, and Step `09` CMH calling.
+1. Implement Step `06` read-orientation BAM split.
+2. Validate Step `06` locally and then on the cluster.
+3. Continue to Step `07` bcftools mpileup, Step `08` VCF preprocessing, and Step `09` CMH calling.
 
 ## Demo Talking Points
 
 - We are rebuilding the legacy workflow into maintainable research software with explicit inputs, outputs, dry-runs, and tests.
-- The current pipeline has been validated through duplicate marking across all six samples.
+- The current pipeline has been validated through SplitNCigarReads across all six samples.
 - The cohort is consistently reverse-stranded / first-strand-style by RSeQC.
 - STAR and duplicate-marking summaries already provide useful preliminary QC observations.
 - Step `05` exposed a real cluster temp-space issue and was hardened rather than papered over.
-- Step `05` remains pending final output inspection, so we are not overclaiming its validation status.
+- Step `05` is now cohort-proven after final BAM/BAI output inspection.
 - The next technical milestone is Step `06`, which will preserve read-orientation groups without making unsupported biological strand claims.

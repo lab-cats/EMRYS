@@ -474,7 +474,7 @@ The failure may mention `SortingCollection` temporary spill files under `/tmp`.
 
 GATK/HTSJDK used node-local `/tmp` for internal `SortingCollection` spill files; node-local `/tmp` was too small.
 
-This is useful partial evidence that the Step `05` inputs, tools, and reference sidecars were mostly working, but it is not Step `05` cluster proof because final split-N-cigar BAM/BAI outputs were not validated.
+This was useful partial evidence that the Step `05` inputs, tools, and reference sidecars were mostly working. It is now resolved hardening context because the later six-sample Step `05` revalidation passed final split-N-cigar BAM/BAI output inspection.
 
 ### Fix
 
@@ -488,7 +488,7 @@ TMPDIR=<project temp dir> for the GATK process
 
 After failure, cleanup should remove only owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
 
-Do not call Step `05` cluster-proven until a rerun completes and final `results/split_ncigar/<sample>/<sample>.split_ncigar.bam` plus `.bai` outputs pass validation.
+The later Step `05` revalidation is cluster-proven across all six samples; keep this entry as the record of why GATK temp files must stay on project storage.
 
 ## Step 00c FAI/DICT validation fails
 
@@ -517,7 +517,7 @@ A downstream job like Step `06`-`09` is submitted but exits immediately, says `n
 Steps `06`-`09` are scaffolded and intentionally non-runnable until
 implemented.
 
-Step `05` is implemented and locally tested, with cluster revalidation submitted/running but final outputs not yet inspected. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
+Step `05` is implemented and cluster-proven across all six samples. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
 
 Current scaffolded files include:
 

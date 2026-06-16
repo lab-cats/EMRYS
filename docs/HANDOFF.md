@@ -33,14 +33,13 @@ The intended high-level workflow is:
 | `02b` BAM QC | implemented and refreshed across all six final hardened Step 02 BAMs | Initial cohort attempt exposed a samtools `PATH` inconsistency; rerun succeeded after prepending the known samtools bin path. |
 | `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
 | `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
-| `05` GATK SplitNCigarReads | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
+| `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
 | `06` read-orientation BAM split | next implementation target | Should consume Step `05` split-N-cigar BAMs and write `FWD_like` / `REV_like` mechanical flag-group BAMs. |
 | `07`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
 
 Current demo state:
 
-* Proven: Steps `00a`-`04`; Steps `01`-`04` are proven across all six samples.
-* Implemented and revalidating: Step `05`; do not call it cluster-proven until final split-N-cigar BAM/BAI outputs are inspected.
+* Proven: Steps `00a`-`05`; Steps `01`-`05` are proven across all six samples.
 * Next: Step `06` read-orientation BAM split from Step `05` outputs.
 * Pending: Steps `07`-`09` downstream editing workflow.
 
@@ -299,7 +298,13 @@ Duplicate reads were marked, not removed. Duplication is high across the cohort 
 
 ## Step 05 Current State
 
-Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected in this interim status patch. Do not describe Step `05` as cluster-proven or cohort-proven yet.
+Step `05` is implemented and cluster-proven across all six samples. The six-sample revalidation completed successfully and output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
 
 Entry points:
 
@@ -328,19 +333,37 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 
 The Step `05` script is dry-run by default, creates no files in dry-run mode, requires Step `00c` sidecars instead of creating them, validates Java `>=17`, uses run-token temp outputs, validates the split BAM/index before publication, and rolls back an existing final BAM/BAI pair if publication fails after backups begin.
 
+All six final Step `05` outputs have:
+
+* final `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`
+* final `.bam.bai`
+* passing `samtools quickcheck`
+* `@HD` with `SO:coordinate`
+* sample-matching `@RG`
+* no Step `05` scratch files remaining
+
+Confirmed final Step `05` output sizes:
+
+| Sample | Split-N-cigar BAM size | BAI size |
+| ------ | ---------------------: | -------: |
+| `ABE_EV_2` | 4.4G | 2.0M |
+| `ABE_EV_3` | 3.5G | 1.6M |
+| `ABE_EV4` | 4.4G | 1.8M |
+| `ABE_PUM1_2` | 3.7G | 1.6M |
+| `ABE_PUM1_3` | 3.7G | 1.6M |
+| `ABE_PUM1_4` | 3.8G | 1.8M |
+
 The first Step `05` `ABE_EV_2` cluster execute attempt reached useful GATK `SplitNCigarReads` behavior: inputs, tools, and reference sidecars were far enough along for GATK to complete traversal pass 1 and enter traversal pass 2. It later failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`.
 
 Step `05` was hardened so GATK uses a per-run project-storage temp directory through `--java-options -Djava.io.tmpdir=...`, `--tmp-dir ...`, and `TMPDIR` for the GATK process. Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
 
-GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`. Step `05` is not cluster-proven until the submitted/running revalidation completes and final split-N-cigar BAM/BAI outputs are inspected.
+GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
 
 ## Current Next Work
 
-1. Inspect the submitted/running Step `05` six-sample cluster revalidation outputs and logs.
-2. If Step `05` passes, mark Step `05` cohort-proven in the docs.
-3. Implement Step `06` against the Step `05` output contract.
-4. Cluster-validate Step `06` after local tests.
-5. Continue Steps `07`-`09` after each upstream gate is proven.
+1. Implement Step `06` against the Step `05` output contract.
+2. Cluster-validate Step `06` after local tests.
+3. Continue Steps `07`-`09` after each upstream gate is proven.
 
 ## Java And Picard Handoff
 

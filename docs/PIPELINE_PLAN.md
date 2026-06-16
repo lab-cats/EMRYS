@@ -42,7 +42,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `02b` | Run BAM integrity/QC checks. | canonical sorted BAM | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented and refreshed across all six final hardened Step 02 BAMs | samtools |
 | `03` | Infer strandedness and read orientation. | canonical sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | cluster-proven across all six samples | RSeQC `infer_experiment.py` |
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
-| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected | GATK SplitNCigarReads |
+| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | next implementation target / not cluster-proven | samtools |
 | `07` | Run mpileup by chromosome and read-orientation group. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
 | `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
@@ -278,7 +278,13 @@ The observed Step `04` memory range was about 22.7-24.3 GB MaxRSS. This is an ob
 
 ### Step 05
 
-Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected in this interim status patch. Do not describe Step `05` as cluster-proven or cohort-proven yet.
+Step `05` is implemented and cluster-proven across all six samples. The six-sample revalidation completed successfully and output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
 
 Implemented entry points:
 
@@ -310,6 +316,26 @@ GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GAT
 Step `05` treats `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 The implementation is dry-run by default, side-effect-free in dry-run mode, validates the selected Java runtime is at least Java 17 in execute mode, writes GATK output to a run-token temp BAM, indexes and validates the temp pair with samtools, checks coordinate sort order and sample read-group preservation, and publishes final BAM/BAI only after validation succeeds.
+
+All six final Step `05` outputs have:
+
+* final `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`
+* final `.bam.bai`
+* passing `samtools quickcheck`
+* `@HD` with `SO:coordinate`
+* sample-matching `@RG`
+* no Step `05` scratch files remaining
+
+Confirmed final Step `05` output sizes:
+
+| Sample | Split-N-cigar BAM size | BAI size |
+| ------ | ---------------------: | -------: |
+| `ABE_EV_2` | 4.4G | 2.0M |
+| `ABE_EV_3` | 3.5G | 1.6M |
+| `ABE_EV4` | 4.4G | 1.8M |
+| `ABE_PUM1_2` | 3.7G | 1.6M |
+| `ABE_PUM1_3` | 3.7G | 1.6M |
+| `ABE_PUM1_4` | 3.8G | 1.8M |
 
 The first `ABE_EV_2` cluster execute attempt provided useful partial evidence: GATK completed traversal pass 1, entered traversal pass 2, and then failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`.
 
@@ -482,10 +508,9 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Inspect the submitted/running Step `05` six-sample cluster revalidation outputs and logs.
-2. Confirm each final split-N-cigar BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
-3. Implement Step `06` against the Step `05` output contract.
-4. Continue Steps `07`-`09` one gate at a time.
+1. Implement Step `06` against the Step `05` output contract.
+2. Cluster-validate Step `06` after local tests.
+3. Continue Steps `07`-`09` one gate at a time.
 
 ## Local Validation Gate
 

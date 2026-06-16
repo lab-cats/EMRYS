@@ -99,7 +99,8 @@ for path in \
   results/bam \
   results/qc/bam \
   results/qc/strandedness \
-  results/markdup
+  results/markdup \
+  results/split_ncigar
 do
   if [ -e "$path" ]; then
     ls -ld "$path"
@@ -109,7 +110,7 @@ do
 done
 ```
 
-5. Show Step `05` status and logs without promoting it:
+5. Show Step `05` validation status and resolved temp-spill hardening:
 
 ```bash
 squeue -u "$USER"
@@ -118,7 +119,7 @@ grep -n "SplitNCigarReads\|No space left on device\|tmp-dir\|java.io.tmpdir" \
   logs/norad-split-n-cigar-*.out logs/norad-split-n-cigar-*.err 2>/dev/null | tail -40
 ```
 
-Step `05` outputs are pending inspection until each final split-N-cigar BAM/BAI is validated.
+Step `05` is cluster-proven across all six samples after final split-N-cigar BAM/BAI validation.
 
 6. Show the dry-run/execute gate:
 
@@ -218,7 +219,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected.
+Step `05` is implemented and cluster-proven across all six samples.
 
 ### bcftools
 
@@ -1056,7 +1057,7 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 Status:
 
 ```text
-implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected
+implemented and cluster-proven across all six samples
 ```
 
 Expected tool:
@@ -1159,9 +1160,30 @@ ls -lh "$bam" "$bam.bai"
 
 Step `05` requires the Step `00c` sidecars, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is dry-run by default, writes GATK output to run-token temporary paths in execute mode, validates the temporary BAM/BAI pair before publication, and rolls back an existing final pair if publication fails after backups begin.
 
-The first `ABE_EV_2` cluster execute attempt confirmed that GATK reached useful traversal behavior: pass 1 completed and pass 2 started. It later failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`. Do not treat that failed attempt as Step `05` cluster proof.
+The six-sample Step `05` output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
 
-Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks. After the submitted/running six-sample revalidation completes, inspect logs and validate each final split-N-cigar BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
+
+All six final Step `05` outputs have final BAM/BAI files, passing `samtools quickcheck`, `@HD` with `SO:coordinate`, sample-matching `@RG`, and no remaining Step `05` scratch files.
+
+Confirmed final Step `05` output sizes:
+
+| Sample | Split-N-cigar BAM size | BAI size |
+| ------ | ---------------------: | -------: |
+| `ABE_EV_2` | 4.4G | 2.0M |
+| `ABE_EV_3` | 3.5G | 1.6M |
+| `ABE_EV4` | 4.4G | 1.8M |
+| `ABE_PUM1_2` | 3.7G | 1.6M |
+| `ABE_PUM1_3` | 3.7G | 1.6M |
+| `ABE_PUM1_4` | 3.8G | 1.8M |
+
+The first `ABE_EV_2` cluster execute attempt confirmed that GATK reached useful traversal behavior: pass 1 completed and pass 2 started. It later failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`. Treat that failed attempt as resolved hardening context, not as current blocker language.
+
+Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
 
 ## Step 06: Split BAM By Read Orientation
 

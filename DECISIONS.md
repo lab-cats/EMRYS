@@ -353,7 +353,7 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 ```
 
-Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It remains pending final output inspection before it can be called cluster-proven.
+Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is cluster-proven across all six samples after final BAM/BAI output inspection.
 
 ## bcftools Path Is Confirmed But Step 07 Is Not Implemented
 

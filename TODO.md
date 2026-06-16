@@ -26,12 +26,7 @@ Cluster-proven:
 02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
-```
-
-Implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected:
-
-```text
-05   SplitNCigarReads
+05   SplitNCigarReads across all six samples
 ```
 
 Scaffolded / not implemented / not cluster-proven:
@@ -47,9 +42,15 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Inspect Step 05 Six-Sample Revalidation
+### 1. Implement Step 06 Read-Orientation BAM Split
 
-Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected.
+Step `05` is implemented and cluster-proven across all six samples. The six-sample output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
 
 Current entry points:
 
@@ -76,15 +77,7 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
-The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 completion and traversal pass 2 startup, then failed because HTSJDK `SortingCollection` temp files spilled to node-local `/tmp` and hit `No space left on device`. Step `05` has since been hardened to use project-storage GATK temp space and stricter failure cleanup.
-
-Next gate: inspect the submitted/running revalidation logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` completed, and validate every final BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
-
-### 2. If Step 05 Passes, Promote It In Docs
-
-If all six Step `05` final split-N-cigar BAM/BAI pairs pass validation, update `README.md`, `docs/HANDOFF.md`, `docs/PIPELINE_PLAN.md`, `docs/RUNBOOK.md`, `docs/QUESTIONS.md`, and `TODO.md` to mark Step `05` cohort-proven.
-
-### 3. Implement Step 06 Read-Orientation BAM Split
+The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 completion and traversal pass 2 startup, then failed because HTSJDK `SortingCollection` temp files spilled to node-local `/tmp` and hit `No space left on device`. Step `05` has since been hardened to use project-storage GATK temp space and stricter failure cleanup; that failure is resolved hardening context, not a current blocker.
 
 Step `06` should consume:
 
@@ -112,7 +105,7 @@ REV_like = samtools -f 83 plus samtools -f 163
 
 Remember that `samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not describe these outputs as biological strand calls.
 
-### 4. Cluster-Validate Step 06 After Local Tests
+### 2. Cluster-Validate Step 06 After Local Tests
 
 After Step `06` is implemented locally, use the normal gate:
 
@@ -120,7 +113,7 @@ After Step `06` is implemented locally, use the normal gate:
 local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs
 ```
 
-Do not implement downstream Steps `07`-`09` until Step `05` outputs are inspected and Step `06` is proven.
+Do not implement downstream Steps `07`-`09` until Step `06` is proven.
 
 ## Architecture Reminders
 
@@ -143,7 +136,7 @@ results/orientation/<sample>/<sample>.REV_like.bam.bai
 results/qc/orientation/<sample>.orientation_counts.tsv
 ```
 
-The Step `05` portion of this layout is now implemented locally. The Step `06` names above are the intended next contract.
+The Step `05` portion of this layout is now implemented and cluster-proven across all six samples. The Step `06` names above are the intended next contract.
 
 ## External Blockers / Unresolved Items
 
@@ -334,6 +327,7 @@ Confirm bcftools availability on node002.
 Implement Step 05 locally with dry-run-first GATK SplitNCigarReads script, SLURM wrapper, and shell tests.
 Harden Step 05 GATK temp handling to use project-storage per-run temp space.
 Harden Step 05 failure cleanup for owned temp files, sidecars, temp directories, and locks.
+Prove Step 05 across all six samples.
 ```
 
 ## Development Rule

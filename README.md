@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-Steps `00a`-`04` are cluster-proven, including all six samples for Steps `01`-`04`. Step `05` SplitNCigarReads is implemented and locally tested; six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected. Step `06` is the next implementation target and will preserve the legacy read-orientation split without claiming biological strand interpretation.
+Steps `00a`-`05` are cluster-proven, including all six samples for Steps `01`-`05`. Step `05` SplitNCigarReads passed six-sample output validation after temp-space hardening. Step `06` is the next implementation target and will preserve the legacy read-orientation split without claiming biological strand interpretation.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -28,7 +28,7 @@ Steps `00a`-`04` are cluster-proven, including all six samples for Steps `01`-`0
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
-| `05` | SplitNCigarReads | implemented/local-tested; cluster revalidation submitted/running; outputs pending inspection |
+| `05` | SplitNCigarReads | implemented and cluster-proven across all six samples |
 | `06` | read-orientation BAM split | next implementation target |
 | `07`-`09` | downstream editing workflow | pending |
 

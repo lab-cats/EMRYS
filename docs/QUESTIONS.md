@@ -307,12 +307,7 @@ Cluster-proven:
 02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
-```
-
-Implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected:
-
-```text
-05   SplitNCigarReads
+05   SplitNCigarReads across all six samples
 ```
 
 Scaffolded / not implemented / not cluster-proven:
@@ -335,7 +330,7 @@ VCF preprocessing
 CMH editing-site calling
 ```
 
-Step `05` SplitNCigarReads is already implemented and locally tested, with six-sample cluster revalidation submitted/running and final outputs pending inspection. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
+Step `05` SplitNCigarReads is already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
 ### What Needs Special Care Later?
 
@@ -393,11 +388,11 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 
 Observed Step `04` MaxRSS ranged from about 22.7-24.3 GB. This is observed evidence, not a guaranteed resource requirement.
 
-### Step 05 Implementation And Interim Cluster Status
+### Step 05 Cohort Validation
 
 Answered operationally.
 
-Step `05` is implemented and locally tested:
+Step `05` is implemented and cluster-proven across all six samples:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
@@ -416,7 +411,26 @@ Step `05` treats the Step `00c` outputs `refs/novogene_ref/genome.fa.fai` and `r
 
 The first `ABE_EV_2` cluster execute attempt reached GATK `SplitNCigarReads` traversal pass 1 completion and traversal pass 2 startup before failing because HTSJDK `SortingCollection` spill files used node-local `/tmp` and hit `No space left on device`. Step `05` was hardened to route GATK temp files to project storage and to clean owned temp files, sidecars, temp directories, and locks on failure.
 
-Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected. Step `05` is not cluster-proven or cohort-proven yet.
+Six-sample cluster revalidation completed successfully. Output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+
+```text
+PASS=6
+PENDING_OR_RUNNING=0
+FAIL=0
+```
+
+All six samples have final split-N-cigar BAM/BAI files, passing `samtools quickcheck`, `@HD` with `SO:coordinate`, sample-matching `@RG`, and no Step `05` scratch files remaining.
+
+Confirmed final Step `05` output sizes:
+
+| Sample | Split-N-cigar BAM size | BAI size |
+| ------ | ---------------------: | -------: |
+| `ABE_EV_2` | 4.4G | 2.0M |
+| `ABE_EV_3` | 3.5G | 1.6M |
+| `ABE_EV4` | 4.4G | 1.8M |
+| `ABE_PUM1_2` | 3.7G | 1.6M |
+| `ABE_PUM1_3` | 3.7G | 1.6M |
+| `ABE_PUM1_4` | 3.8G | 1.8M |
 
 ### GATK Availability
 
@@ -431,7 +445,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-This resolves the GATK availability question. Step `05` uses this path by default in its SLURM wrapper, but remains pending final output inspection before it can be called cluster-proven.
+This resolves the GATK availability question. Step `05` uses this path by default in its SLURM wrapper and is cluster-proven across all six samples.
 
 ### bcftools Availability
 
