@@ -350,7 +350,15 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 
 ### Step 06
 
-Step `06` is the next implementation target. It is not implemented and not cluster-proven.
+Step `06` is implemented and locally tested. It is not cluster-proven.
+
+Implemented entry points:
+
+```text
+jobs/step_06_split_bam_by_read_orientation.slurm
+scripts/step_06_split_bam_by_read_orientation.sh
+tests/shell/test_step_06_split_bam_by_read_orientation.sh
+```
 
 Input contract:
 
@@ -377,6 +385,8 @@ REV_like = samtools -f 83 plus samtools -f 163
 ```
 
 These are mechanical flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not describe `FWD_like` or `REV_like` as biological sense, antisense, transcript-strand, or biological-strand calls.
+
+The implementation is dry-run by default, side-effect-free in dry-run mode, writes run-token temp outputs first, validates the temp BAMs/BAIs/counts TSV before publication, protects existing final outputs with rollback, and computes `assigned_fraction` in the counts TSV with `awk`.
 
 ## Reference Workflow Alignment
 

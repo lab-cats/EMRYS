@@ -94,6 +94,7 @@ scripts/step_02b_bam_qc.sh
 scripts/step_03_infer_strandedness_and_orientation.sh
 scripts/step_04_mark_duplicates.sh
 scripts/step_05_split_n_cigar_reads.sh
+scripts/step_06_split_bam_by_read_orientation.sh
 ```
 
 Implemented SLURM jobs:
@@ -108,16 +109,15 @@ jobs/step_02b_bam_qc.slurm
 jobs/step_03_infer_strandedness_and_orientation.slurm
 jobs/step_04_mark_duplicates.slurm
 jobs/step_05_split_n_cigar_reads.slurm
+jobs/step_06_split_bam_by_read_orientation.slurm
 ```
 
 Scaffolded downstream files:
 
 ```text
-jobs/step_06_split_bam_by_read_orientation.slurm
 jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_06_split_bam_by_read_orientation.sh
 scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 scripts/step_08_vcf_preprocessing.sh
 scripts/step_09_cmh_editing_site_calling.sh
@@ -358,6 +358,29 @@ The first Step `05` `ABE_EV_2` cluster execute attempt reached useful GATK `Spli
 Step `05` was hardened so GATK uses a per-run project-storage temp directory through `--java-options -Djava.io.tmpdir=...`, `--tmp-dir ...`, and `TMPDIR` for the GATK process. Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
 
 GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
+
+## Step 06 Current State
+
+Step `06` is implemented and locally tested. It consumes the Step `05` output contract:
+
+```text
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
+results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
+```
+
+It writes:
+
+```text
+results/orientation/<sample_id>/<sample_id>.FWD_like.bam
+results/orientation/<sample_id>/<sample_id>.FWD_like.bam.bai
+results/orientation/<sample_id>/<sample_id>.REV_like.bam
+results/orientation/<sample_id>/<sample_id>.REV_like.bam.bai
+results/qc/orientation/<sample_id>.orientation_counts.tsv
+```
+
+The implementation is dry-run by default, creates no files in dry-run mode, uses run-token temp outputs, validates temp BAMs/indexes/counts before publication, protects existing final outputs with rollback, and has active shell tests under `tests/shell/test_step_06_split_bam_by_read_orientation.sh`.
+
+`FWD_like` and `REV_like` are mechanical read-orientation groups built from the legacy `samtools view -f 99`, `-f 147`, `-f 83`, and `-f 163` filters. They are not biological strand, transcript strand, sense, or antisense labels.
 
 ## Current Next Work
 

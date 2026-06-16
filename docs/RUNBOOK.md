@@ -1190,7 +1190,15 @@ Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sid
 Status:
 
 ```text
-scaffolded / not implemented / not cluster-proven
+implemented and locally tested; pending cluster validation
+```
+
+Entry points:
+
+```text
+jobs/step_06_split_bam_by_read_orientation.slurm
+scripts/step_06_split_bam_by_read_orientation.sh
+tests/shell/test_step_06_split_bam_by_read_orientation.sh
 ```
 
 Old reference workflow used samtools flags similar to:
@@ -1202,7 +1210,7 @@ REV_like = samtools -f 83 plus samtools -f 163
 
 These are mechanical read-orientation flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not assume `FWD_like` / `REV_like` labels directly equal biological sense/antisense.
 
-Step `06` should consume the Step `05` output contract:
+Step `06` consumes the Step `05` output contract:
 
 ```text
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
@@ -1218,6 +1226,62 @@ results/orientation/<sample>/<sample>.REV_like.bam
 results/orientation/<sample>/<sample>.REV_like.bam.bai
 results/qc/orientation/<sample>.orientation_counts.tsv
 ```
+
+Dry-run:
+
+```bash
+sbatch jobs/step_06_split_bam_by_read_orientation.slurm
+```
+
+Execute:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_06_split_bam_by_read_orientation.slurm
+```
+
+Direct script dry-run with explicit cluster samtools:
+
+```bash
+scripts/step_06_split_bam_by_read_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
+  --output-dir results/orientation/ABE_EV_2 \
+  --qc-dir results/qc/orientation \
+  --threads 1 \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools
+```
+
+Direct script execute with explicit cluster samtools:
+
+```bash
+scripts/step_06_split_bam_by_read_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
+  --output-dir results/orientation/ABE_EV_2 \
+  --qc-dir results/qc/orientation \
+  --threads 1 \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --execute
+```
+
+Validation checklist for promotion of each sample:
+
+```bash
+sample=<sample_id>
+fwd="results/orientation/$sample/$sample.FWD_like.bam"
+rev="results/orientation/$sample/$sample.REV_like.bam"
+counts="results/qc/orientation/$sample.orientation_counts.tsv"
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+samtools quickcheck "$fwd"
+samtools quickcheck "$rev"
+ls -lh "$fwd" "$fwd.bai" "$rev" "$rev.bai" "$counts"
+cat "$counts"
+```
+
+The counts TSV includes `input_records`, per-flag counts for `99`, `147`, `83`, and `163`, merged `fwd_like_records` and `rev_like_records`, `assigned_records`, `unassigned_records`, and `assigned_fraction`.
+
+Step `06` is not cluster-proven until a SLURM dry-run, execute run, and final output inspection have completed successfully.
 
 ## Step 07: bcftools mpileup
 

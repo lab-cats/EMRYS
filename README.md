@@ -98,7 +98,7 @@ CMH/editing-site calling
 
 This is not currently a simple gene-count differential-expression workflow. The downstream reference workflow points toward RNA-editing / variant-like site analysis.
 
-Step `06` should split Step `05` BAMs into `FWD_like` and `REV_like` read-orientation groups using the legacy mechanical flag groups. These labels are not biological sense/antisense claims.
+Step `06` splits Step `05` BAMs into `FWD_like` and `REV_like` read-orientation groups using the legacy mechanical flag groups and writes an orientation counts TSV. These labels are not biological sense/antisense claims.
 
 ## Development Model
 

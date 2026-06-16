@@ -32,7 +32,6 @@ Cluster-proven:
 Scaffolded / not implemented / not cluster-proven:
 
 ```text
-06   Split BAM by read orientation
 07   bcftools mpileup
 08   VCF preprocessing
 09   CMH editing-site calling
@@ -79,14 +78,14 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 
 The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 completion and traversal pass 2 startup, then failed because HTSJDK `SortingCollection` temp files spilled to node-local `/tmp` and hit `No space left on device`. Step `05` has since been hardened to use project-storage GATK temp space and stricter failure cleanup; that failure is resolved hardening context, not a current blocker.
 
-Step `06` should consume:
+Step `06` is implemented and locally tested. It consumes:
 
 ```text
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
-Step `06` should write:
+Step `06` writes:
 
 ```text
 results/orientation/<sample>/<sample>.FWD_like.bam
@@ -184,7 +183,7 @@ Exact annotation release/version if recoverable from files or Novogene docs.
 
 ## Later TODOs
 
-### Step 06: Split BAM By Read Orientation
+### Step 06: Cluster Validation
 
 Old workflow used samtools flag groupings similar to:
 
@@ -201,7 +200,7 @@ The cohort is reverse-stranded / first-strand-style.
 samtools view -f FLAG means has all bits in FLAG, not exact flag equality.
 ```
 
-Step `06` must clearly document read-orientation/mechanical flag groups without making unsupported transcript-strand claims.
+Step `06` is now implemented locally and must be cluster-validated before downstream Steps `07`-`09` are implemented. It must continue to document read-orientation/mechanical flag groups without making unsupported transcript-strand claims.
 
 ### Step 07: bcftools mpileup
 
