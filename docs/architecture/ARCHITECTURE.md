@@ -1,19 +1,20 @@
 # NORAD Pipeline Architecture
 
-This page is a compact visual map for PI demo use. It summarizes the pipeline shape, validated boundaries, output contracts, and reliability pattern without replacing `docs/PIPELINE_PLAN.md` or `docs/RUNBOOK.md` as the detailed sources of truth.
+This page is a compact visual map for PI demo use. It summarizes the pipeline shape, validated boundaries, output contracts, and reliability pattern without replacing `docs/design/PIPELINE_PLAN.md` or `docs/operations/RUNBOOK.md` as the detailed sources of truth.
 
 ## One-Screen Summary
 
 This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`05` are cluster-proven across all six samples. Step `06` read-orientation splitting is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation. Steps `07`-`09` are pending / not implemented / not cluster-proven.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Steps `07`-`09` are pending / not implemented / not cluster-proven, and Step `07` is the next implementation boundary.
 
 Current boundary:
 
 ```text
-cluster-proven preprocessing through Step 05
--> Step 06 cohort validation
--> Steps 07-09 editing-site calling path
+cluster-proven reference prep through Steps 00a-00c
+-> cluster-proven sample workflow through Step 06
+-> Step 07 next pending boundary
+-> Steps 08-09 pending editing-site path
 ```
 
 ## Pipeline Dataflow
@@ -41,12 +42,12 @@ flowchart LR
         s03["03 strandedness<br/>cluster-proven"]
         s04["04 MarkDuplicates<br/>cluster-proven"]
         s05["05 SplitNCigarReads<br/>cluster-proven"]
-        s06["06 read-orientation split<br/>implemented/local-tested<br/>ABE_EV_3 cluster-validated<br/>cohort pending"]
+        s06["06 read-orientation split<br/>cluster-proven"]
     end
 
     subgraph downstream["Downstream editing workflow"]
         direction TB
-        s07["07 bcftools mpileup<br/>pending"]
+        s07["07 bcftools mpileup<br/>next boundary<br/>pending"]
         s08["08 VCF preprocessing<br/>pending"]
         s09["09 CMH/editing-site calling<br/>pending"]
     end
@@ -60,12 +61,12 @@ flowchart LR
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
 
     class fastq input
-    class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05 proven
-    class s06 boundary
-    class s07,s08,s09 pending
+    class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
+    class s07 boundary
+    class s08,s09 pending
 ```
 
-Standalone Mermaid source: `docs/architecture_pipeline.mmd`.
+Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 
 ## Step Status Matrix
 
@@ -80,8 +81,8 @@ Standalone Mermaid source: `docs/architecture_pipeline.mmd`.
 | `03` | `results/qc/strandedness/<sample>.infer_experiment.txt` | cluster-proven across all six samples | All six libraries are reverse-stranded / first-strand-style. |
 | `04` | `results/markdup/<sample>/<sample>.markdup.bam(.bai)` | cluster-proven across all six samples | Duplicate reads are marked, not removed. |
 | `05` | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` | cluster-proven across all six samples | GATK temp handling hardened to project storage. |
-| `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | implemented and locally tested; cluster-validated on `ABE_EV_3`; cohort validation pending | Mechanical `FWD_like` / `REV_like` split. |
-| `07` | per-chromosome/per-orientation VCF files | pending / not implemented / not cluster-proven | bcftools path is known; workflow behavior still pending. |
+| `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | cluster-proven across all six samples | Mechanical `FWD_like` / `REV_like` split. |
+| `07` | per-chromosome/per-orientation VCF files | pending / not implemented / not cluster-proven | Next implementation boundary; bcftools path is known, but workflow behavior is still pending. |
 | `08` | cleaned/annotated VCF-like tables | pending / not implemented / not cluster-proven | R/Rscript availability still unresolved. |
 | `09` | CMH/editing-site result tables and plots | pending / not implemented / not cluster-proven | Final deliverable format still needs PI-guided definition. |
 
@@ -142,7 +143,7 @@ flowchart LR
     class docupdate docs
 ```
 
-Standalone Mermaid source: `docs/architecture_reliability.mmd`.
+Standalone Mermaid source: `docs/architecture/diagrams/reliability.mmd`.
 
 Safeguards:
 
@@ -178,8 +179,8 @@ REV_like = samtools view -f 83 plus samtools view -f 163
 
 ## What Remains
 
-1. Finish Step `06` cohort validation.
-2. Implement Step `07` bcftools mpileup.
+1. Implement Step `07` bcftools mpileup.
+2. Validate Step `07` on a narrow scope before full-cohort execution.
 3. Port Step `08` VCF preprocessing.
 4. Port Step `09` CMH/editing-site calling.
 5. Review QC and biological interpretation with PI guidance.

@@ -401,12 +401,10 @@ This decision does not require immediate retrofitting of currently implemented s
 Decision: keep documentation roles distinct.
 
 ```text
-docs/HANDOFF.md        big context handoff / project state
-docs/PIPELINE_PLAN.md  tactical step map and validation status
-docs/QUESTIONS.md      answered/open project questions
-docs/RUNBOOK.md        operational commands and cluster procedure
-TROUBLESHOOTING.md     symptom -> cause -> fix
-DECISIONS.md           decisions and reasons
+docs/operations/       handoff, runbook, and troubleshooting
+docs/design/           pipeline plan, questions, and decisions
+docs/demo/             PI demo walkthrough and report
+docs/architecture/     visual pipeline/dataflow architecture and diagrams
 TODO.md                tactical next work
 README.md              entrypoint / overview
 ```

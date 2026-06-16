@@ -308,12 +308,12 @@ Cluster-proven:
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
 05   SplitNCigarReads across all six samples
+06   Read-orientation BAM split across all six samples
 ```
 
 Scaffolded / not implemented / not cluster-proven:
 
 ```text
-06   Split BAM by read orientation
 07   bcftools mpileup by chromosome and orientation/strand
 08   VCF preprocessing
 09   CMH editing-site calling
@@ -324,17 +324,16 @@ Scaffolded / not implemented / not cluster-proven:
 The uploaded/reference workflow indicates these downstream steps still need clean reimplementation:
 
 ```text
-Split BAM by read orientation
 bcftools mpileup by chromosome and read-orientation group
 VCF preprocessing
 CMH editing-site calling
 ```
 
-Step `05` SplitNCigarReads is already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
+Steps `05` SplitNCigarReads and `06` read-orientation BAM splitting are already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
 ### What Needs Special Care Later?
 
-Step `06` and downstream interpretation need special care.
+Read-orientation and downstream interpretation need special care.
 
 The old workflow split read orientation using samtools flags similar to:
 

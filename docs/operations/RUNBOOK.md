@@ -79,7 +79,7 @@ sed -n '1,90p' README.md
 2. Show the tactical pipeline map:
 
 ```bash
-sed -n '1,120p' docs/PIPELINE_PLAN.md
+sed -n '1,120p' docs/design/PIPELINE_PLAN.md
 ```
 
 3. Show the sample manifest:
@@ -98,9 +98,11 @@ for path in \
   refs/novogene_ref/genome.dict \
   results/bam \
   results/qc/bam \
-  results/qc/strandedness \
-  results/markdup \
-  results/split_ncigar
+	  results/qc/strandedness \
+	  results/markdup \
+	  results/split_ncigar \
+	  results/orientation \
+	  results/qc/orientation
 do
   if [ -e "$path" ]; then
     ls -ld "$path"
@@ -129,7 +131,7 @@ grep -n "EXECUTE\|--execute\|dry-run" \
   scripts/step_05_split_n_cigar_reads.sh | head -60
 ```
 
-Do not run scaffolded Steps `06`-`09` during the demo.
+Do not run scaffolded Steps `07`-`09` during the demo.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -1190,7 +1192,7 @@ Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sid
 Status:
 
 ```text
-implemented and locally tested; pending cluster validation
+cluster-proven across all six samples
 ```
 
 Entry points:
@@ -1264,7 +1266,7 @@ scripts/step_06_split_bam_by_read_orientation.sh \
   --execute
 ```
 
-Validation checklist for promotion of each sample:
+Validation checklist for rerun or spot inspection:
 
 ```bash
 sample=<sample_id>
@@ -1281,7 +1283,7 @@ cat "$counts"
 
 The counts TSV includes `input_records`, per-flag counts for `99`, `147`, `83`, and `163`, merged `fwd_like_records` and `rev_like_records`, `assigned_records`, `unassigned_records`, and `assigned_fraction`.
 
-Step `06` is not cluster-proven until a SLURM dry-run, execute run, and final output inspection have completed successfully.
+All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
 
 ## Step 07: bcftools mpileup
 

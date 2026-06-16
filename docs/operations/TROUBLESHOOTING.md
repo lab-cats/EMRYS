@@ -2,7 +2,7 @@
 
 Troubleshooting notes for the NORAD / Novogene Remora RNA-seq pipeline.
 
-Use this file when something fails or behaves weirdly. For normal operation, see `docs/RUNBOOK.md`.
+Use this file when something fails or behaves weirdly. For normal operation, see `docs/operations/RUNBOOK.md`.
 
 ## `TMPDIR [/local/tmp] is not writeable`
 
@@ -510,30 +510,33 @@ Step `00c` intentionally does not overwrite invalid existing sidecars by default
 
 ### Symptom
 
-A downstream job like Step `06`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
+A downstream job like Step `07`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
 
 ### Cause
 
-Steps `06`-`09` are scaffolded and intentionally non-runnable until
+Steps `07`-`09` are scaffolded and intentionally non-runnable until
 implemented.
 
-Step `05` is implemented and cluster-proven across all six samples. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
+Steps `05` and `06` are implemented and cluster-proven across all six samples. If Step `05` or Step `06` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
 
-Current scaffolded files include:
+Scaffolded files include:
 
 ```text
-jobs/step_06_split_bam_by_read_orientation.slurm
-scripts/step_06_split_bam_by_read_orientation.sh
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+jobs/step_08_vcf_preprocessing.slurm
+jobs/step_09_cmh_editing_site_calling.slurm
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_09_cmh_editing_site_calling.sh
 ```
 
 ### Fix
 
 Do not run scaffolded downstream jobs.
 
-Current scaffolded steps:
+Scaffolded steps:
 
 ```text
-06 split BAM by read orientation
 07 bcftools mpileup
 08 VCF preprocessing
 09 CMH editing-site calling

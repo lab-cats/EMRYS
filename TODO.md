@@ -5,12 +5,12 @@ Current tactical TODOs for the NORAD / Novogene Remora RNA-seq pipeline.
 This file is for actionable next work. For broader context, see:
 
 ```text
-docs/HANDOFF.md
-docs/PIPELINE_PLAN.md
-docs/QUESTIONS.md
-docs/RUNBOOK.md
-DECISIONS.md
-TROUBLESHOOTING.md
+docs/operations/HANDOFF.md
+docs/design/PIPELINE_PLAN.md
+docs/design/QUESTIONS.md
+docs/operations/RUNBOOK.md
+docs/design/ decision records
+docs/operations/ troubleshooting guide
 ```
 
 ## Current State
@@ -27,6 +27,7 @@ Cluster-proven:
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
 05   SplitNCigarReads across all six samples
+06   Read-orientation BAM split across all six samples
 ```
 
 Scaffolded / not implemented / not cluster-proven:
@@ -41,51 +42,9 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Implement Step 06 Read-Orientation BAM Split
+### 1. Implement Step 07 bcftools mpileup
 
-Step `05` is implemented and cluster-proven across all six samples. The six-sample output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
-
-```text
-PASS=6
-PENDING_OR_RUNNING=0
-FAIL=0
-```
-
-Current entry points:
-
-```text
-scripts/step_05_split_n_cigar_reads.sh
-jobs/step_05_split_n_cigar_reads.slurm
-tests/shell/test_step_05_split_n_cigar_reads.sh
-```
-
-Inputs:
-
-```text
-results/markdup/<sample>/<sample>.markdup.bam
-results/markdup/<sample>/<sample>.markdup.bam.bai
-refs/novogene_ref/genome.fa
-refs/novogene_ref/genome.fa.fai
-refs/novogene_ref/genome.dict
-```
-
-Outputs:
-
-```text
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
-```
-
-The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 completion and traversal pass 2 startup, then failed because HTSJDK `SortingCollection` temp files spilled to node-local `/tmp` and hit `No space left on device`. Step `05` has since been hardened to use project-storage GATK temp space and stricter failure cleanup; that failure is resolved hardening context, not a current blocker.
-
-Step `06` is implemented and locally tested. It consumes:
-
-```text
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
-```
-
-Step `06` writes:
+Step `06` is cluster-proven across all six samples and publishes the orientation-specific BAM/BAI inputs for Step `07`:
 
 ```text
 results/orientation/<sample>/<sample>.FWD_like.bam
@@ -102,17 +61,13 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Remember that `samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not describe these outputs as biological strand calls.
-
-### 2. Cluster-Validate Step 06 After Local Tests
-
-After Step `06` is implemented locally, use the normal gate:
+Preserve the normal gate:
 
 ```text
 local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs
 ```
 
-Do not implement downstream Steps `07`-`09` until Step `06` is proven.
+Implement Step `07` narrowly before full-cohort execution. Do not implement Steps `08`-`09` until Step `07` behavior is proven.
 
 ## Architecture Reminders
 
@@ -135,7 +90,7 @@ results/orientation/<sample>/<sample>.REV_like.bam.bai
 results/qc/orientation/<sample>.orientation_counts.tsv
 ```
 
-The Step `05` portion of this layout is now implemented and cluster-proven across all six samples. The Step `06` names above are the intended next contract.
+The Step `05` and Step `06` portions of this layout are now implemented and cluster-proven across all six samples. Continue to treat `FWD_like` / `REV_like` as mechanical read-orientation groups, not biological strand calls.
 
 ## External Blockers / Unresolved Items
 
@@ -183,7 +138,7 @@ Exact annotation release/version if recoverable from files or Novogene docs.
 
 ## Later TODOs
 
-### Step 06: Cluster Validation
+### Read-Orientation Interpretation Caution
 
 Old workflow used samtools flag groupings similar to:
 
@@ -200,7 +155,7 @@ The cohort is reverse-stranded / first-strand-style.
 samtools view -f FLAG means has all bits in FLAG, not exact flag equality.
 ```
 
-Step `06` is now implemented locally and must be cluster-validated before downstream Steps `07`-`09` are implemented. It must continue to document read-orientation/mechanical flag groups without making unsupported transcript-strand claims.
+Step `06` is cluster-proven across all six samples. Downstream Steps `07`-`09` must continue to document read-orientation/mechanical flag groups without making unsupported transcript-strand claims.
 
 ### Step 07: bcftools mpileup
 
@@ -327,6 +282,8 @@ Implement Step 05 locally with dry-run-first GATK SplitNCigarReads script, SLURM
 Harden Step 05 GATK temp handling to use project-storage per-run temp space.
 Harden Step 05 failure cleanup for owned temp files, sidecars, temp directories, and locks.
 Prove Step 05 across all six samples.
+Implement Step 06 locally with dry-run-first read-orientation splitting.
+Prove Step 06 across all six samples.
 ```
 
 ## Development Rule

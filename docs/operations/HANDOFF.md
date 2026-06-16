@@ -34,13 +34,13 @@ The intended high-level workflow is:
 | `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
 | `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
 | `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
-| `06` read-orientation BAM split | next implementation target | Should consume Step `05` split-N-cigar BAMs and write `FWD_like` / `REV_like` mechanical flag-group BAMs. |
+| `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
 | `07`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
 
 Current demo state:
 
-* Proven: Steps `00a`-`05`; Steps `01`-`05` are proven across all six samples.
-* Next: Step `06` read-orientation BAM split from Step `05` outputs.
+* Proven: Steps `00a`-`00c`; Steps `01`-`06` are proven across all six samples.
+* Next: Step `07` bcftools mpileup from Step `06` orientation outputs.
 * Pending: Steps `07`-`09` downstream editing workflow.
 
 ## Cohort
@@ -127,7 +127,7 @@ These future steps are intentionally non-runnable and exit as not implemented.
 
 ## Operator Pointers
 
-For operational commands, validation checklists, cluster setup, and per-step run examples, start with `docs/RUNBOOK.md`.
+For operational commands, validation checklists, cluster setup, and per-step run examples, start with `docs/operations/RUNBOOK.md`.
 
 Useful optional cluster helper commands, when installed:
 
@@ -154,16 +154,16 @@ results/markdup/<sample>/<sample>.markdup.bam.bai
 results/qc/markdup/<sample>.markdup.metrics.txt
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
-```
-
-Expected future output families, once implemented:
-
-```text
 results/orientation/<sample>/<sample>.FWD_like.bam
 results/orientation/<sample>/<sample>.FWD_like.bam.bai
 results/orientation/<sample>/<sample>.REV_like.bam
 results/orientation/<sample>/<sample>.REV_like.bam.bai
 results/qc/orientation/<sample>.orientation_counts.tsv
+```
+
+Expected downstream output families, once implemented:
+
+```text
 results/vcf/
 results/editing/
 results/artifacts/
@@ -173,11 +173,11 @@ results/reports/
 Where to look:
 
 ```text
-docs/PIPELINE_PLAN.md  current step status and validation detail
-docs/RUNBOOK.md        how to run and validate jobs
-DECISIONS.md           durable decisions and rationale
-TROUBLESHOOTING.md     symptom -> cause -> fix
-docs/QUESTIONS.md      unresolved and answered questions
+docs/design/PIPELINE_PLAN.md        current step status and validation detail
+docs/operations/RUNBOOK.md          how to run and validate jobs
+docs/design/                       durable decisions and rationale
+docs/operations/                   symptom -> cause -> fix
+docs/design/QUESTIONS.md            unresolved and answered questions
 TODO.md                tactical next work
 README.md              concise entrypoint
 ```
@@ -192,7 +192,7 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
 ```
 
 - **Script-level execution:** Workflow shell scripts print resolved context by default and only run tool commands when passed `--execute`; include all required step arguments when invoking a script directly.
-- **Where to validate:** Use `docs/RUNBOOK.md` for per-step dry-run/execute checks, `DECISIONS.md` for the execution policy, and `docs/PIPELINE_PLAN.md` for step status.
+- **Where to validate:** Use `docs/operations/RUNBOOK.md` for per-step dry-run/execute checks, the design decisions log for the execution policy, and `docs/design/PIPELINE_PLAN.md` for step status.
 - **Quick post-run checks:** Confirm expected outputs appear under `results/` (star, bam, qc, markdup) and inspect SLURM logs under `logs/`.
 
 ## Data Locations
@@ -361,7 +361,7 @@ GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GAT
 
 ## Step 06 Current State
 
-Step `06` is implemented and locally tested. It consumes the Step `05` output contract:
+Step `06` is cluster-proven across all six samples. It consumes the Step `05` output contract:
 
 ```text
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
@@ -380,13 +380,15 @@ results/qc/orientation/<sample_id>.orientation_counts.tsv
 
 The implementation is dry-run by default, creates no files in dry-run mode, uses run-token temp outputs, validates temp BAMs/indexes/counts before publication, protects existing final outputs with rollback, and has active shell tests under `tests/shell/test_step_06_split_bam_by_read_orientation.sh`.
 
+All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
+
 `FWD_like` and `REV_like` are mechanical read-orientation groups built from the legacy `samtools view -f 99`, `-f 147`, `-f 83`, and `-f 163` filters. They are not biological strand, transcript strand, sense, or antisense labels.
 
 ## Current Next Work
 
-1. Implement Step `06` against the Step `05` output contract.
-2. Cluster-validate Step `06` after local tests.
-3. Continue Steps `07`-`09` after each upstream gate is proven.
+1. Implement Step `07` bcftools mpileup against the Step `06` orientation output contract.
+2. Validate Step `07` on a narrow scope before full-cohort execution.
+3. Continue Steps `08`-`09` after each upstream gate is proven.
 
 ## Java And Picard Handoff
 

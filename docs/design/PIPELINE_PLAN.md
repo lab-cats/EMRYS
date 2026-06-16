@@ -43,7 +43,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `03` | Infer strandedness and read orientation. | canonical sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | cluster-proven across all six samples | RSeQC `infer_experiment.py` |
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
-| `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | next implementation target / not cluster-proven | samtools |
+| `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
 | `07` | Run mpileup by chromosome and read-orientation group. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
 | `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
 | `09` | Call CMH editing sites and write summaries. | Step `08` preprocessed tables | CMH/editing-site result tables and plots | scaffolded / not implemented / not cluster-proven | R |
@@ -341,7 +341,7 @@ The first `ABE_EV_2` cluster execute attempt provided useful partial evidence: G
 
 Step `05` was hardened to use a per-run project-storage GATK temp directory via `--java-options -Djava.io.tmpdir=...`, `--tmp-dir ...`, and `TMPDIR` for the GATK process. Cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks on failure.
 
-Step `06` should consume the Step `05` output contract:
+Step `06` consumes the Step `05` output contract:
 
 ```text
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
@@ -350,7 +350,7 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 
 ### Step 06
 
-Step `06` is implemented and locally tested. It is not cluster-proven.
+Step `06` is cluster-proven across all six samples.
 
 Implemented entry points:
 
@@ -387,6 +387,8 @@ REV_like = samtools -f 83 plus samtools -f 163
 These are mechanical flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not describe `FWD_like` or `REV_like` as biological sense, antisense, transcript-strand, or biological-strand calls.
 
 The implementation is dry-run by default, side-effect-free in dry-run mode, writes run-token temp outputs first, validates the temp BAMs/BAIs/counts TSV before publication, protects existing final outputs with rollback, and computes `assigned_fraction` in the counts TSV with `awk`.
+
+All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
 
 ## Reference Workflow Alignment
 
@@ -518,9 +520,9 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Implement Step `06` against the Step `05` output contract.
-2. Cluster-validate Step `06` after local tests.
-3. Continue Steps `07`-`09` one gate at a time.
+1. Implement Step `07` bcftools mpileup against the Step `06` orientation output contract.
+2. Validate Step `07` on a narrow scope before full-cohort execution.
+3. Continue Steps `08`-`09` one gate at a time.
 
 ## Local Validation Gate
 

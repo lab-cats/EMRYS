@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`05` are cluster-proven across all six samples. Step `05` SplitNCigarReads passed six-sample output validation after temp-space hardening. Step `06` is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation. It preserves the legacy read-orientation split without claiming biological strand interpretation.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Steps `07`-`09` remain pending / not implemented / not cluster-proven, and the next implementation boundary is Step `07`.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -29,10 +29,10 @@ Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`05` are cluster
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
 | `05` | SplitNCigarReads | implemented and cluster-proven across all six samples |
-| `06` | read-orientation BAM split | implemented and locally tested; cluster-validated on `ABE_EV_3`; cohort validation pending |
+| `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07`-`09` | downstream editing workflow | pending / not implemented / not cluster-proven |
 
-For demo details, start with `docs/DEMO_WALKTHROUGH.md`, then use `docs/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/PIPELINE_PLAN.md` as the tactical map, `docs/HANDOFF.md` for current state, `docs/RUNBOOK.md` for safe inspection commands, `TROUBLESHOOTING.md` for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture_pipeline.mmd` and `docs/architecture_reliability.mmd`.
+For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
 
 ## Cohort And Key Results
 
@@ -226,7 +226,7 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
 ```
 
 - **Script-level execution flag:** Workflow shell scripts use `--execute` to run tool commands; include all required step arguments when invoking a script directly.
-- **Validation locations:** Use `docs/RUNBOOK.md` for per-step dry-run/execute checks, `docs/PIPELINE_PLAN.md` for step status, and `DECISIONS.md` for execution policy.
+- **Validation locations:** Use `docs/operations/RUNBOOK.md` for per-step dry-run/execute checks, `docs/design/PIPELINE_PLAN.md` for step status, and the design decisions log for execution policy.
 - **Quick checks after execute:** Confirm expected outputs under `results/`, inspect SLURM logs under `logs/`, and use `sacct` for job state.
 
 ## Repository Layout
@@ -249,15 +249,10 @@ Large data files and generated outputs should stay out of Git.
 ## Important Documentation Files
 
 ```text
-docs/HANDOFF.md        big project-state handoff
-docs/PIPELINE_PLAN.md  tactical step map and validation status
-docs/QUESTIONS.md      answered/open project questions
-docs/RUNBOOK.md        operational commands and cluster procedure
-docs/DEMO_WALKTHROUGH.md  5-10 minute PI demo path
-docs/ARCHITECTURE.md   visual pipeline/dataflow architecture
-docs/PI_DEMO_REPORT.md preliminary PI demo validation and QC summary
-TROUBLESHOOTING.md     symptom -> cause -> fix
-DECISIONS.md           decisions and reasons
+docs/operations/       handoff, runbook, and troubleshooting
+docs/design/           pipeline plan, questions, and decisions
+docs/demo/             PI demo walkthrough and report
+docs/architecture/     visual pipeline/dataflow architecture and diagrams
 TODO.md                tactical next work
 README.md              entrypoint / overview
 ```
