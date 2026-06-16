@@ -153,7 +153,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-Step `05` is implemented locally and pending cluster validation.
+Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected.
 
 ### bcftools
 
@@ -267,6 +267,8 @@ slurmstepd: error: Setting TMPDIR to /tmp
 ```
 
 This has not been fatal when the job itself logs `TMPDIR: /tmp`.
+
+Exception: Step `05` GATK `SplitNCigarReads` must route Java/HTSJDK/GATK temp files to a per-run project-storage temp directory rather than relying on node-local `/tmp`.
 
 ### module list
 
@@ -584,10 +586,10 @@ scripts/step_00c_prepare_gatk_reference.sh \
 Status:
 
 ```text
-implemented locally; pending formal cluster validation
+cluster-proven
 ```
 
-Step `00c` formalizes the ad hoc prep required before Step `05` execute-mode validation. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` treats these files as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+Step `00c` formalizes the prep required before Step `05` execute-mode validation. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` treats these files as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 ## Step 01: STAR Alignment
 
@@ -989,7 +991,7 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 Status:
 
 ```text
-implemented locally; pending cluster validation
+implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected
 ```
 
 Expected tool:
@@ -1035,6 +1037,14 @@ Execute:
 
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_05_split_n_cigar_reads.slurm
+```
+
+Step `05` still follows the normal dry-run/execute submission pattern, but the GATK process must use a per-run project-storage temp directory. The hardened script passes that directory through:
+
+```text
+--java-options -Djava.io.tmpdir=...
+--tmp-dir ...
+TMPDIR
 ```
 
 If a supported Java 17 executable is known, pass it explicitly:
@@ -1084,6 +1094,10 @@ ls -lh "$bam" "$bam.bai"
 
 Step `05` requires the Step `00c` sidecars, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is dry-run by default, writes GATK output to run-token temporary paths in execute mode, validates the temporary BAM/BAI pair before publication, and rolls back an existing final pair if publication fails after backups begin.
 
+The first `ABE_EV_2` cluster execute attempt confirmed that GATK reached useful traversal behavior: pass 1 completed and pass 2 started. It later failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`. Do not treat that failed attempt as Step `05` cluster proof.
+
+Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks. After the submitted/running six-sample revalidation completes, inspect logs and validate each final split-N-cigar BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
+
 ## Step 06: Split BAM By Read Orientation
 
 Status:
@@ -1100,6 +1114,13 @@ REV-like: 83 and 163
 ```
 
 Do not assume old FWD/REV labels directly equal biological sense/antisense.
+
+Step `06` should consume the Step `05` output contract:
+
+```text
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
+```
 
 ## Step 07: bcftools mpileup
 

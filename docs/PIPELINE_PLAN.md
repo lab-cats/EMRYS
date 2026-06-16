@@ -36,13 +36,13 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | ---- | ------- | --------------- | ---------------- | ------ | ------------ |
 | `00a` | Build the Novogene STAR index. | Novogene reference FASTA/GTF under `refs/novogene_ref/` | `refs/novogene_star_index/` | cluster-proven | STAR |
 | `00b` | Convert reference GTF to sorted BED12 for strandedness checks. | `refs/novogene_ref/genome.gtf` | `refs/novogene_ref/genome.bed` | cluster-proven | Python, bedtools |
-| `00c` | Create/validate GATK reference sidecars. | `refs/novogene_ref/genome.fa` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | implemented locally; pending formal cluster validation | samtools, GATK |
+| `00c` | Create/validate GATK reference sidecars. | `refs/novogene_ref/genome.fa` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | cluster-proven | samtools, GATK |
 | `01` | Align paired-end FASTQs to the reference. | FASTQ R1/R2 files, STAR index | `results/star/<sample_id>/` | complete and cluster-proven across all six samples | STAR |
 | `02` | Create canonical coordinate-sorted, read-group-tagged, indexed BAMs. | STAR alignment BAM | `results/bam/<sample_id>/<sample_id>.sorted.bam` and `.bai` | hardened and cluster-proven across all six samples | samtools |
 | `02b` | Run BAM integrity/QC checks. | canonical sorted BAM | `results/qc/bam/<sample_id>.quickcheck.txt`, `results/qc/bam/<sample_id>.flagstat.txt` | implemented and refreshed across all six final hardened Step 02 BAMs | samtools |
 | `03` | Infer strandedness and read orientation. | canonical sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | cluster-proven across all six samples | RSeQC `infer_experiment.py` |
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
-| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented locally; pending cluster validation | GATK SplitNCigarReads |
+| `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read orientation. | split-N-cigar BAM | orientation-specific BAMs and indexes | scaffolded / not implemented / not cluster-proven | samtools |
 | `07` | Run mpileup by chromosome and orientation/strand. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
 | `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
@@ -89,9 +89,9 @@ jobs/step_00c_prepare_gatk_reference.slurm
 tests/shell/test_step_00c_prepare_gatk_reference.sh
 ```
 
-The formal Step `00c` implementation is dry-run by default, creates only missing sidecars in execute mode, uses a reference-level lock, publishes run-token temp files only after validation, and fails rather than overwriting invalid existing sidecars.
+The Step `00c` implementation is dry-run by default, creates only missing sidecars in execute mode, uses a reference-level lock, publishes run-token temp files only after validation, and fails rather than overwriting invalid existing sidecars.
 
-The sidecars were also generated successfully before this implementation as an ad hoc cluster prep task; the ad hoc sidecar job completed successfully with exit code `0:0`.
+The sidecars were also generated successfully before this implementation as an ad hoc cluster prep task; formal Step `00c` cluster validation is now complete.
 
 Reference/BAM compatibility check:
 
@@ -105,7 +105,7 @@ Reference/BAM SQ check: PASS
 Status:
 
 ```text
-implemented locally; pending formal cluster validation
+cluster-proven
 ```
 
 ### Step 01
@@ -168,6 +168,8 @@ Confirmed final canonical BAM sizes were approximately:
 | `ABE_PUM1_4` | 2.5 GB |
 
 Transient backup and lock paths are not stable interfaces.
+
+Step `02` cleanup/trap handling was hardened after local validation-failure tests found an owned-lock cleanup regression. This did not change the canonical Step `02` BAM/BAI output contract.
 
 ### Step 02b
 
@@ -276,7 +278,7 @@ The observed Step `04` memory range was about 22.7-24.3 GB MaxRSS. This is an ob
 
 ### Step 05
 
-Step `05` is implemented locally and pending cluster validation.
+Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected in this interim status patch. Do not describe Step `05` as cluster-proven or cohort-proven yet.
 
 Implemented entry points:
 
@@ -308,6 +310,17 @@ GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GAT
 Step `05` treats `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 The implementation is dry-run by default, side-effect-free in dry-run mode, validates the selected Java runtime is at least Java 17 in execute mode, writes GATK output to a run-token temp BAM, indexes and validates the temp pair with samtools, checks coordinate sort order and sample read-group preservation, and publishes final BAM/BAI only after validation succeeds.
+
+The first `ABE_EV_2` cluster execute attempt provided useful partial evidence: GATK completed traversal pass 1, entered traversal pass 2, and then failed during HTSJDK temporary spill/write/close behavior because `SortingCollection` temp files were written to node-local `/tmp` and hit `No space left on device`.
+
+Step `05` was hardened to use a per-run project-storage GATK temp directory via `--java-options -Djava.io.tmpdir=...`, `--tmp-dir ...`, and `TMPDIR` for the GATK process. Cleanup now removes owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks on failure.
+
+Step `06` should consume the Step `05` output contract:
+
+```text
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
+```
 
 ## Reference Workflow Alignment
 
@@ -426,7 +439,7 @@ multiple-testing method
 
 ## Future Cross-Cutting Engineering Roadmap
 
-Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for Step `00c`, Step `05`, or the remaining compute pipeline.
+Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for Step `05` or the remaining compute pipeline.
 
 Future cross-cutting capabilities may include:
 
@@ -439,10 +452,10 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Resolve supported cluster-wide Java 17 availability.
-2. Run formal Step `00c` dry-run and execute validation on the cluster.
-3. Run Step `05` SLURM dry-run and execute validation for `ABE_EV_2`, then inspect outputs before declaring it cluster-proven.
-4. Continue Steps `06`-`09` one gate at a time.
+1. Inspect the submitted/running Step `05` six-sample cluster revalidation outputs and logs.
+2. Confirm each final split-N-cigar BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
+3. Implement Step `06` against the Step `05` output contract.
+4. Continue Steps `07`-`09` one gate at a time.
 
 ## Local Validation Gate
 
@@ -464,7 +477,8 @@ git diff --name-status
 ## Known Cluster Notes
 
 * `logs/` must exist before `sbatch`.
-* Use `TMPDIR=/tmp`.
+* Use `TMPDIR=/tmp` for the general SLURM wrapper convention.
+* Step `05` GATK work must route Java/HTSJDK/GATK temp files to project storage, not node-local `/tmp`.
 * The cluster may warn that `/local/tmp` is not writable and fall back to `/tmp`; this has not been fatal.
 * `module list` writes to stderr, so scripts should use `module list 2>&1 || true`.
 * Known useful modules include `star/2.7.11b`, `samtools/1.19.2`, `bedtools/2.31.1`, `picard/3.1.1`, `python39`, and `java/17.0.10`.

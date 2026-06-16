@@ -16,19 +16,19 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort. Step `05` SplitNCigarReads is implemented locally and awaits cluster validation; later editing-prep steps remain scaffolded until implemented.
+The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort, and Step `00c` GATK reference sidecar preparation is cluster-proven. Step `05` SplitNCigarReads is implemented and locally tested, with six-sample cluster revalidation submitted/running but final outputs not yet inspected; later editing-prep steps remain scaffolded until implemented.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
 | `00b` | Convert GTF to BED12 for RSeQC | cluster-proven |
-| `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | implemented locally; pending formal cluster validation |
+| `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | cluster-proven |
 | `01` | STAR alignment | complete and cluster-proven across all six samples |
 | `02` | Canonical sorted/read-group/indexed BAM | hardened and cluster-proven across all six samples |
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
-| `05` | GATK SplitNCigarReads | implemented locally; pending cluster validation |
+| `05` | GATK SplitNCigarReads | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected |
 | `06` | Split BAMs by read orientation | scaffolded / not implemented / not cluster-proven |
 | `07` | bcftools mpileup by chromosome and orientation/strand | scaffolded / not implemented / not cluster-proven |
 | `08` | VCF preprocessing | scaffolded / not implemented / not cluster-proven |
@@ -306,7 +306,7 @@ Reference notes:
 * FASTA and GTF chromosome names match.
 * STAR index was built with `sjdbOverhang=149` for 150 bp reads.
 * BED12 annotation was generated from the GTF for RSeQC.
-* Step `00c` now formalizes GATK sidecar prep with `scripts/step_00c_prepare_gatk_reference.sh` and `jobs/step_00c_prepare_gatk_reference.slurm`; the formal job is pending cluster validation.
+* Step `00c` formalizes GATK sidecar prep with `scripts/step_00c_prepare_gatk_reference.sh` and `jobs/step_00c_prepare_gatk_reference.slurm`; it is cluster-proven.
 
 ## Confirmed Tools On CSU
 

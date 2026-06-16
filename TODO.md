@@ -20,6 +20,7 @@ Cluster-proven:
 ```text
 00a  Build STAR index
 00b  Convert GTF to BED12
+00c  GATK reference sidecars / reference FASTA index and sequence dictionary
 01   STAR alignment across all six samples
 02   Hardened canonical sort/read-group/index BAM across all six samples
 02b  BAM QC refreshed across all six final hardened Step 02 BAMs
@@ -27,10 +28,9 @@ Cluster-proven:
 04   Picard MarkDuplicates across all six samples
 ```
 
-Implemented locally; pending formal cluster validation:
+Implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected:
 
 ```text
-00c  GATK reference sidecars / reference FASTA index and sequence dictionary
 05   SplitNCigarReads
 ```
 
@@ -62,28 +62,9 @@ Temporary node pinning to `node003` is operational mitigation, not architecture.
 
 Do not copy a JDK from the head node or another compute node.
 
-### 2. Run Formal Step 00c Cluster Validation
+### 2. Inspect Step 05 Six-Sample Revalidation
 
-Step `00c` now has:
-
-```text
-scripts/step_00c_prepare_gatk_reference.sh
-jobs/step_00c_prepare_gatk_reference.slurm
-tests/shell/test_step_00c_prepare_gatk_reference.sh
-```
-
-Next gate:
-
-```bash
-sbatch jobs/step_00c_prepare_gatk_reference.slurm
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_00c_prepare_gatk_reference.slurm
-```
-
-Inspect logs and confirm `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` remain valid before declaring formal Step `00c` cluster-proven.
-
-### 3. Run Step 05 Cluster Validation
-
-Step `05` is implemented locally and pending cluster validation.
+Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected.
 
 Current entry points:
 
@@ -110,14 +91,20 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
-Next gate:
+The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 completion and traversal pass 2 startup, then failed because HTSJDK `SortingCollection` temp files spilled to node-local `/tmp` and hit `No space left on device`. Step `05` has since been hardened to use project-storage GATK temp space and stricter failure cleanup.
 
-```bash
-sbatch jobs/step_05_split_n_cigar_reads.slurm
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_05_split_n_cigar_reads.slurm
+Next gate: inspect the submitted/running revalidation logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` completed, and validate every final BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
+
+### 3. Implement Step 06 Against Step 05 Outputs
+
+Step `06` should consume:
+
+```text
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
-Inspect logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` ran, and validate the final BAM/BAI before declaring Step `05` cluster-proven.
+Do not implement downstream steps until Step `05` outputs are inspected and accepted.
 
 ## Architecture Reminders
 
@@ -245,7 +232,7 @@ document statistical assumptions
 
 ## Deferred Roadmap: Engineering Improvements
 
-These are deferred engineering improvements and roadmap ideas. They do not block Step `00c`, Step `05`, or the remaining compute pipeline. Do not create schemas, helper libraries, validators, Makefile targets, config files, JSON sidecars, cleanup utilities, report templates, report directories, or new SLURM jobs until a roadmap item is explicitly activated.
+These are deferred engineering improvements and roadmap ideas. They do not block Step `05` or the remaining compute pipeline. Do not create schemas, helper libraries, validators, Makefile targets, config files, JSON sidecars, cleanup utilities, report templates, report directories, or new SLURM jobs until a roadmap item is explicitly activated.
 
 ### After Steps 00c-09 Are Proven
 
@@ -309,6 +296,7 @@ Resolved:
 Build STAR reference index.
 Convert annotation to BED12.
 Generate GATK reference sidecars as an ad hoc cluster prep task.
+Prove formal Step 00c GATK reference sidecar preparation on the cluster.
 Align all six samples.
 Harden Step 02.
 Add sample-specific read groups.
@@ -324,6 +312,8 @@ Compare Step 04 duplication metrics across all six samples.
 Confirm GATK availability on node002.
 Confirm bcftools availability on node002.
 Implement Step 05 locally with dry-run-first GATK SplitNCigarReads script, SLURM wrapper, and shell tests.
+Harden Step 05 GATK temp handling to use project-storage per-run temp space.
+Harden Step 05 failure cleanup for owned temp files, sidecars, temp directories, and locks.
 ```
 
 ## Development Rule

@@ -158,7 +158,7 @@ RSeQC is available through the project virtual environment:
 
 Known caveat: module names and `JAVA_HOME` are not sufficient proof of effective Java runtime on every compute node.
 
-GATK and bcftools have confirmed direct paths, but Steps `05` and `07` remain non-runnable until implemented:
+GATK and bcftools have confirmed direct paths:
 
 ```text
 GATK 4.6.1.0: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
@@ -235,6 +235,8 @@ Cluster validation wrote 206,601 transcript BED12 records.
 
 The GATK reference sidecars were generated successfully by an ad hoc cluster prep task with exit code `0:0`. FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed.
 
+Step `00c` is now cluster-proven as the formal sidecar preparation/validation step.
+
 ### Chromosome Naming
 
 Answered.
@@ -299,15 +301,15 @@ Cluster-proven:
 ```text
 00a  Build STAR index
 00b  Convert GTF to BED12
+00c  GATK reference sidecars / reference FASTA index and sequence dictionary
 01   STAR alignment across all six samples
 02   Hardened canonical sort/read-group/index BAM across all six samples
 02b  BAM QC refreshed across all six final hardened Step 02 BAMs
 03   RSeQC strandedness/orientation inference across all six samples
 04   Picard MarkDuplicates across all six samples
-00c  GATK reference sidecars implemented locally; pending formal cluster validation
 ```
 
-Implemented locally; pending cluster validation:
+Implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected:
 
 ```text
 05   SplitNCigarReads
@@ -392,11 +394,11 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 
 Observed Step `04` MaxRSS ranged from about 22.7-24.3 GB. This is observed evidence, not a guaranteed resource requirement.
 
-### Step 05 Local Implementation Status
+### Step 05 Implementation And Interim Cluster Status
 
 Answered operationally.
 
-Step `05` is implemented locally and pending cluster validation:
+Step `05` is implemented and locally tested:
 
 ```text
 jobs/step_05_split_n_cigar_reads.slurm
@@ -413,7 +415,9 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 
 Step `05` treats the Step `00c` outputs `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
-Cluster validation is still pending.
+The first `ABE_EV_2` cluster execute attempt reached GATK `SplitNCigarReads` traversal pass 1 completion and traversal pass 2 startup before failing because HTSJDK `SortingCollection` spill files used node-local `/tmp` and hit `No space left on device`. Step `05` was hardened to route GATK temp files to project storage and to clean owned temp files, sidecars, temp directories, and locks on failure.
+
+Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected. Step `05` is not cluster-proven or cohort-proven yet.
 
 ### GATK Availability
 
@@ -428,7 +432,7 @@ GATK path: /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
 tool probe exit code: 0:0
 ```
 
-This resolves the GATK availability question. Step `05` uses this path by default in its SLURM wrapper, but remains pending cluster validation.
+This resolves the GATK availability question. Step `05` uses this path by default in its SLURM wrapper, but remains pending final output inspection before it can be called cluster-proven.
 
 ### bcftools Availability
 

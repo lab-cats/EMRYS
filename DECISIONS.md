@@ -136,7 +136,7 @@ refs/novogene_ref/genome.dict
 
 Reason: `SplitNCigarReads` needs the FASTA index and sequence dictionary, and shared reference files should be prepared and validated once instead of silently created inside per-sample jobs.
 
-Current evidence: an ad hoc cluster prep task generated both sidecars successfully with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `00c` is implemented locally with a dry-run-first script, SLURM wrapper, reference-level lock, temp-file publication, and shell tests; the formal Step `00c` job is pending cluster validation.
+Current evidence: an ad hoc cluster prep task generated both sidecars successfully with exit code `0:0`; FAI, DICT, and BAM header contig counts all matched at 194, and the reference/BAM SQ check passed. Step `00c` is implemented with a dry-run-first script, SLURM wrapper, reference-level lock, temp-file publication, and shell tests; the formal Step `00c` job is cluster-proven.
 
 ## STAR Outputs Feed Canonical Step 02 BAMs
 
@@ -298,6 +298,20 @@ TMPDIR=/tmp
 
 Reason: CSU default `/local/tmp` was observed to be non-writable on compute nodes. Jobs may emit a warning and fall back to `/tmp`; this has not been fatal when the job logs show `TMPDIR: /tmp`.
 
+## Step 05 GATK Temp Files Use Project Storage
+
+Decision: Step `05` must route GATK `SplitNCigarReads` Java/HTSJDK temp files to a per-run project-storage temp directory, not node-local `/tmp`.
+
+Required mechanism:
+
+```text
+--java-options -Djava.io.tmpdir=<project temp dir>
+--tmp-dir <project temp dir>
+TMPDIR=<project temp dir> for the GATK process
+```
+
+Reason: GATK/HTSJDK `SortingCollection` spill files can exceed safe node-local `/tmp` capacity during `SplitNCigarReads`. Project-storage temp space keeps large temporary spill files with the pipeline run instead of relying on node-local scratch capacity.
+
 ## `logs/` Must Exist Before `sbatch`
 
 Decision: create `logs/` before submitting jobs.
@@ -339,7 +353,7 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam
 results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 ```
 
-Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It remains pending cluster validation until a SLURM dry-run and execute job are inspected.
+Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It remains pending final output inspection before it can be called cluster-proven.
 
 ## bcftools Path Is Confirmed But Step 07 Is Not Implemented
 

@@ -457,6 +457,38 @@ Still log and validate the actual Java runtime. The historical Java inconsistenc
 
 Step `05` still validates the actual Java runtime before execute-mode GATK use.
 
+## Step 05 GATK `No space left on device` from `/tmp`
+
+### Symptom
+
+Step `05` `GATK SplitNCigarReads` starts successfully, completes traversal pass 1, enters traversal pass 2, then fails during HTSJDK temporary spill/write/close behavior with a message like:
+
+```text
+No space left on device
+```
+
+The failure may mention `SortingCollection` temporary spill files.
+
+### Cause
+
+GATK/HTSJDK wrote large `SortingCollection` temp spill files to node-local `/tmp`. Node-local `/tmp` did not have enough free space for this workload.
+
+This is useful partial evidence that the Step `05` inputs, tools, and reference sidecars were mostly working, but it is not Step `05` cluster proof because final split-N-cigar BAM/BAI outputs were not validated.
+
+### Fix
+
+Route GATK temp files to a per-run project-storage temp directory. Step `05` should pass the project-storage temp directory through all relevant GATK/Java temp controls:
+
+```text
+--java-options -Djava.io.tmpdir=<project temp dir>
+--tmp-dir <project temp dir>
+TMPDIR=<project temp dir> for the GATK process
+```
+
+After failure, cleanup should remove only owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
+
+Do not call Step `05` cluster-proven until a rerun completes and final `results/split_ncigar/<sample>/<sample>.split_ncigar.bam` plus `.bai` outputs pass validation.
+
 ## Step 00c FAI/DICT validation fails
 
 ### Symptom
@@ -484,7 +516,7 @@ A downstream job like Step `06`-`09` is submitted but exits immediately, says `n
 Steps `06`-`09` are scaffolded and intentionally non-runnable until
 implemented.
 
-Step `05` is now implemented locally and pending cluster validation. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
+Step `05` is implemented and locally tested, with cluster revalidation submitted/running but final outputs not yet inspected. If Step `05` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
 
 Current scaffolded files include:
 
