@@ -2,6 +2,8 @@
 
 This page is a compact visual map for PI demo use. It summarizes the pipeline shape, validated boundaries, output contracts, and reliability pattern without replacing `docs/design/PIPELINE_PLAN.md` or `docs/operations/RUNBOOK.md` as the detailed sources of truth.
 
+For deferred modular architecture ideas, see `docs/architecture/FUTURE_ARCHITECTURE.md`.
+
 ## One-Screen Summary
 
 This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.

@@ -34,6 +34,10 @@ Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
 
+Architecture/design docs:
+
+- `docs/architecture/FUTURE_ARCHITECTURE.md` - deferred modular target architecture for core preprocessing, analysis modules, and reporting.
+
 ## Cohort And Key Results
 
 Known samples:

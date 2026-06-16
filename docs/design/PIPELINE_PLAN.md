@@ -509,6 +509,8 @@ multiple-testing method
 
 This architecture is a deferred design direction. It should not block the immediate goal of conservatively reproducing the legacy Steps `07`-`09` RNA-editing/CMH workflow.
 
+A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
+
 The long-term shape is:
 
 ```text
