@@ -14,6 +14,50 @@ The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream go
 
 Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `05` are validated across all six samples. Step `05` SplitNCigarReads is cluster-proven after temp-space hardening and output inspection. Step `06` read-orientation BAM splitting is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation.
 
+## PI Decision Brief
+
+### Current validated boundary
+
+The preprocessing backbone is cluster-proven through Step `05` across all six samples. Step `06` has been implemented, locally tested, and cluster-validated on `ABE_EV_3`; cohort validation is pending. Downstream editing-site calling steps `07`-`09` remain the next implementation boundary.
+
+### Evidence table
+
+| Step | Input contract | Output contract | Validation evidence | Current status |
+| ---- | -------------- | --------------- | ------------------- | -------------- |
+| `00a` STAR index | reference FASTA/GTF | `refs/novogene_star_index/` | built with `sjdbOverhang=149` | cluster-proven |
+| `00b` GTF -> BED12 | `genome.gtf` | `refs/novogene_ref/genome.bed` | 206,601 BED12 records | cluster-proven |
+| `00c` GATK sidecars | `genome.fa` | `.fai` and `genome.dict` | 194-contig FAI/DICT/BAM match; SQ PASS | cluster-proven |
+| `01` STAR alignment | paired FASTQs, STAR index | STAR coordinate-sorted BAMs | STAR summaries across six samples | six-sample cluster-proven |
+| `02` canonical BAM | STAR BAM | `results/bam/<sample>/<sample>.sorted.bam` and `.bai` | quickcheck, coordinate sort, RG/index publication | six-sample cluster-proven |
+| `02b` BAM QC | canonical BAM | quickcheck and flagstat summaries | refreshed across final Step `02` BAMs | six-sample cluster-proven |
+| `03` strandedness | canonical BAM, BED12 | RSeQC strandedness report | reverse-stranded / first-strand signal across cohort | six-sample cluster-proven |
+| `04` MarkDuplicates | canonical BAM | markdup BAM/BAI, Picard metrics | quickcheck, index, metrics rows | six-sample cluster-proven |
+| `05` SplitNCigarReads | markdup BAM, FASTA/FAI/DICT | split-N-cigar BAM/BAI | `PASS=6`, quickcheck, RG, no scratch files | six-sample cluster-proven |
+| `06` read-orientation split | split-N-cigar BAM | `FWD_like`/`REV_like` BAM/BAI, counts TSV | local tests; `ABE_EV_3` cluster validation; counts sanity | `ABE_EV_3` cluster-validated; cohort pending |
+| `07`-`09` editing workflow | orientation BAMs, reference, VCF tables | mpileup VCFs, preprocessed tables, CMH outputs | not yet implemented | pending / not cluster-proven |
+
+### PI scientific/QC questions
+
+- Are the high duplicate rates expected, especially in `ABE_EV4` and `ABE_PUM1_4`, or should they trigger sample-level QC concern?
+- Is `ABE_EV_2`'s lower unique mapping / higher multimapping acceptable for the intended downstream analysis?
+- Should the legacy `FWD_like` / `REV_like` orientation split be preserved exactly through first reproduction before changing biological interpretation?
+- What should count as the first biologically useful MVP: orientation-split BAMs, mpileup VCFs, preprocessed editing tables, or CMH-ranked candidate sites?
+- Which filters/thresholds should be treated as legacy-preservation constraints versus PI-guided analysis choices?
+
+### Proposed next 48 hours / next week
+
+Next 48 hours:
+
+1. Finish Step `06` cohort validation.
+2. Patch docs/status once cohort validation is complete.
+3. Begin Step `07` on a narrow validation scope before full-cohort execution.
+
+Next week:
+
+1. Implement Steps `07`-`09` as legacy-preserving, dry-run-first stages.
+2. Generate first candidate editing-site tables.
+3. Review QC and candidate sites with PI before interpreting biology.
+
 ## Pipeline Status
 
 | Step | Purpose | Status |

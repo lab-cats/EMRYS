@@ -18,7 +18,7 @@ Steps 00a-05 cluster-proven
 
 1. `README.md` - project overview and current status.
 2. `docs/ARCHITECTURE.md` - visual dataflow and engineering architecture.
-3. `docs/PI_DEMO_REPORT.md` - preliminary validation and QC summary.
+3. `docs/PI_DEMO_REPORT.md` - PI Decision Brief plus preliminary validation and QC summary.
 4. `docs/PIPELINE_PLAN.md` - exact step contracts and validation status.
 5. `TROUBLESHOOTING.md` - Step `05` `/tmp` temp-spill failure and hardening.
 6. Optional terminal evidence - Step `05` / Step `06` validation outputs if available.
