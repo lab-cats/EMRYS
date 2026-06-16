@@ -4,6 +4,8 @@ This is a preliminary pipeline validation and handoff/demo report for the NORAD 
 
 This report reflects the already-documented project state only. It does not inspect live cluster job status or rerun generated-output checks.
 
+For a visual system map, see `docs/ARCHITECTURE.md`. Standalone Mermaid diagrams live in `docs/architecture_pipeline.mmd` and `docs/architecture_reliability.mmd`.
+
 ## Executive Summary
 
 This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a local-first, SLURM-scaled, dry-run-first, testable pipeline.

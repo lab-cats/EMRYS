@@ -32,7 +32,7 @@ Steps `00a`-`05` are cluster-proven, including all six samples for Steps `01`-`0
 | `06` | read-orientation BAM split | next implementation target |
 | `07`-`09` | downstream editing workflow | pending |
 
-For demo details, use `docs/PIPELINE_PLAN.md` as the tactical map, `docs/HANDOFF.md` for current state, `docs/RUNBOOK.md` for safe inspection commands, `TROUBLESHOOTING.md` for known failure modes, and `TODO.md` for the next gates.
+For demo details, use `docs/PIPELINE_PLAN.md` as the tactical map, `docs/HANDOFF.md` for current state, `docs/RUNBOOK.md` for safe inspection commands, `TROUBLESHOOTING.md` for known failure modes, and `TODO.md` for the next gates. For a visual map, see `docs/ARCHITECTURE.md` — visual pipeline/dataflow architecture; standalone Mermaid sources live in `docs/architecture_pipeline.mmd` and `docs/architecture_reliability.mmd`.
 
 ## Cohort And Key Results
 
@@ -253,6 +253,7 @@ docs/HANDOFF.md        big project-state handoff
 docs/PIPELINE_PLAN.md  tactical step map and validation status
 docs/QUESTIONS.md      answered/open project questions
 docs/RUNBOOK.md        operational commands and cluster procedure
+docs/ARCHITECTURE.md   visual pipeline/dataflow architecture
 TROUBLESHOOTING.md     symptom -> cause -> fix
 DECISIONS.md           decisions and reasons
 TODO.md                tactical next work

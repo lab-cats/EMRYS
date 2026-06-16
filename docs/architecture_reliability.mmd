@@ -1,0 +1,11 @@
+flowchart LR
+    local["local implementation<br/>macOS / VS Code"]
+    tests["local tests<br/>fake tools and syntax checks"]
+    gitpush["git commit/push"]
+    pull["cluster pull<br/>CSU/ADAM checkout"]
+    dryrun["SLURM dry-run<br/>default mode"]
+    execute["execute<br/>explicit EXECUTE=1"]
+    validate["validate outputs<br/>logs, quickcheck, contracts"]
+    docs["update docs<br/>handoff, runbook, status"]
+
+    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docs

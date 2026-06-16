@@ -1,0 +1,17 @@
+flowchart LR
+    fastq["FASTQ<br/>raw paired-end reads"]
+    star["Step 01<br/>STAR alignment<br/>cluster-proven"]
+    bam["Step 02<br/>canonical BAM<br/>cluster-proven"]
+    bamqc["Step 02b<br/>BAM QC<br/>cluster-proven"]
+    stranded["Step 03<br/>strandedness check<br/>cluster-proven"]
+    markdup["Step 04<br/>MarkDuplicates<br/>cluster-proven"]
+    splitncigar["Step 05<br/>SplitNCigarReads<br/>cluster-proven"]
+    orient["Step 06<br/>read-orientation split<br/>implemented; pending cluster validation"]
+    mpileup["Step 07<br/>bcftools mpileup<br/>not implemented"]
+    vcf["Step 08<br/>VCF preprocessing<br/>not implemented"]
+    cmh["Step 09<br/>CMH/editing-site calling<br/>not implemented"]
+
+    fastq --> star --> bam
+    bam --> bamqc
+    bam --> stranded
+    bam --> markdup --> splitncigar --> orient --> mpileup --> vcf --> cmh
