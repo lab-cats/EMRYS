@@ -152,6 +152,19 @@ set -euo pipefail
 printf 'gatk invoked\\n' >> "$gatk_log"
 printf '%s\\n' "\$@" >> "$gatk_log"
 
+java_options=""
+while [[ \$# -gt 0 ]]; do
+    case "\$1" in
+        --java-options)
+            java_options="\${2:-}"
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 subcommand="\${1:-}"
 shift || true
 
@@ -163,8 +176,14 @@ case "\$subcommand" in
         reference=""
         input=""
         output=""
+        tmp_dir=""
         while [[ \$# -gt 0 ]]; do
             case "\$1" in
+                --tmp-dir)
+                    tmp_dir="\${2:-}"
+                    mkdir -p "\$tmp_dir"
+                    shift 2
+                    ;;
                 -R)
                     reference="\${2:-}"
                     shift 2
@@ -189,6 +208,18 @@ case "\$subcommand" in
         fi
         if [[ -z "\$reference" || -z "\$input" || -z "\$output" ]]; then
             printf 'fake gatk missing -R, -I, or -O\\n' >&2
+            exit 64
+        fi
+        if [[ -z "\$tmp_dir" ]]; then
+            printf 'fake gatk missing --tmp-dir\\n' >&2
+            exit 64
+        fi
+        if [[ "\$java_options" != -Djava.io.tmpdir=* ]]; then
+            printf 'fake gatk missing java.io.tmpdir option\\n' >&2
+            exit 64
+        fi
+        if [[ "\${TMPDIR:-}" != "\$tmp_dir" ]]; then
+            printf 'fake gatk TMPDIR did not match --tmp-dir\\n' >&2
             exit 64
         fi
         {
@@ -402,6 +433,14 @@ assert_contains "$dry_output" "Output BAM: $dry_bam"
 assert_contains "$dry_output" "Output BAI: $dry_bam.bai"
 assert_contains "$dry_output" "Lock directory: $dry_output_dir/.step_05_split_n_cigar_reads.lock"
 assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.split_ncigar.tmp.bam"
+assert_contains "$dry_output" "Alternate GATK temporary BAI:"
+assert_contains "$dry_output" "GATK temp directory:"
+assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.gatk_tmp"
+assert_contains "$dry_output" "--java-options"
+assert_contains "$dry_output" "-Djava.io.tmpdir="
+assert_contains "$dry_output" "--tmp-dir"
+assert_contains "$dry_output" "GATK temp directory creation action:"
+assert_contains "$dry_output" "GATK temp cleanup action:"
 assert_contains "$dry_output" "GATK SplitNCigarReads command:"
 assert_contains "$dry_output" "SplitNCigarReads"
 assert_contains "$dry_output" "-R"
@@ -428,6 +467,10 @@ assert_contains "$execute_bam" $'@RG\tID:ABE_EV_2\tSM:ABE_EV_2'
 assert_contains "$execute_bam" "TOTAL:10"
 assert_contains "$execute_bam" "TAGGED:10"
 assert_contains "$gatk_log" "SplitNCigarReads"
+assert_contains "$gatk_log" "--java-options"
+assert_contains "$gatk_log" "-Djava.io.tmpdir="
+assert_contains "$gatk_log" "--tmp-dir"
+assert_contains "$gatk_log" ".ABE_EV_2.step05.exec001.gatk_tmp"
 assert_contains "$gatk_log" "-R"
 assert_contains "$gatk_log" "$reference_fasta"
 assert_contains "$gatk_log" "-I"

@@ -258,6 +258,15 @@ lock_owner_file="$lock_path/owner"
 
 tmp_bam="$output_dir/.${sample_id}.step05.${run_token}.split_ncigar.tmp.bam"
 tmp_bai="$tmp_bam.bai"
+
+# GATK/HTSJDK may also create an index by replacing .bam with .bai.
+# Track this so failed runs do not leave confusing zero-byte sidecars.
+tmp_gatk_bai="${tmp_bam%.bam}.bai"
+
+# Do not let GATK spill internal SortingCollection temp files to node-local /tmp.
+# CSU compute-node /tmp can be small; project storage has enough space.
+gatk_tmp_dir="$output_dir/.${sample_id}.step05.${run_token}.gatk_tmp"
+
 backup_bam="$output_dir/.${sample_id}.step05.${run_token}.previous.bam"
 backup_bai="$output_dir/.${sample_id}.step05.${run_token}.previous.bam.bai"
 
@@ -270,7 +279,9 @@ final_publish_complete=false
 
 gatk_command=(
     "$gatk_bin"
+    --java-options "-Djava.io.tmpdir=$gatk_tmp_dir"
     SplitNCigarReads
+    --tmp-dir "$gatk_tmp_dir"
     -R "$reference_fasta"
     -I "$input_bam"
     -O "$tmp_bam"
@@ -417,7 +428,10 @@ rollback_publish() {
 }
 
 cleanup() {
-    local status=$?
+    local status="$1"
+
+    # Cleanup should be best-effort and must not mask the original failure.
+    set +e
 
     # Rollback must run before temp/backup cleanup so previous final files can
     # still be restored after a partial publish.
@@ -425,7 +439,8 @@ cleanup() {
         rollback_publish
     fi
 
-    rm -f "$tmp_bam" "$tmp_bai"
+    rm -f "$tmp_bam" "$tmp_bai" "$tmp_gatk_bai"
+    rm -rf "$gatk_tmp_dir"
 
     if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
         rm -f "$backup_bam" "$backup_bai"
@@ -464,6 +479,8 @@ printf '  Lock directory: %s\n' "$lock_path"
 printf '  Lock owner file: %s\n' "$lock_owner_file"
 printf '  Temporary BAM: %s\n' "$tmp_bam"
 printf '  Temporary BAI: %s\n' "$tmp_bai"
+printf '  Alternate GATK temporary BAI: %s\n' "$tmp_gatk_bai"
+printf '  GATK temp directory: %s\n' "$gatk_tmp_dir"
 printf '  Backup BAM: %s\n' "$backup_bam"
 printf '  Backup BAI: %s\n' "$backup_bai"
 printf '  Mode: %s\n' "$mode"
@@ -475,6 +492,12 @@ printf 'printf %q %q %q\n' '%s\n' "run_token=$run_token" "$lock_owner_file"
 
 printf 'GATK SplitNCigarReads command:\n'
 print_command "${gatk_command[@]}"
+
+printf 'GATK temp directory creation action:\n'
+printf 'mkdir -p %q\n' "$gatk_tmp_dir"
+
+printf 'GATK temp cleanup action:\n'
+printf 'rm -rf %q\n' "$gatk_tmp_dir"
 
 printf 'samtools index command:\n'
 print_command "${index_command[@]}"
@@ -496,7 +519,7 @@ printf '  1. Verify Step 04 input BAM and BAI exist and are nonempty.\n'
 printf '  2. Verify Step 00c reference FASTA, .fai, and .dict exist and are nonempty.\n'
 printf '  3. Resolve GATK, samtools, and Java executables.\n'
 printf '  4. Validate actual Java version is >=17 before execute-mode GATK use.\n'
-printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM.\n'
+printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM using a project-storage GATK temp directory.\n'
 printf '  6. Index the temp BAM and validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
 printf '  7. Publish final BAM/BAI only after validation succeeds.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
@@ -514,12 +537,26 @@ mkdir -p "$output_dir"
 # run may need manual inspection before this sample is attempted again.
 [[ ! -e "$tmp_bam" ]] || die "Temporary BAM path already exists: $tmp_bam"
 [[ ! -e "$tmp_bai" ]] || die "Temporary BAI path already exists: $tmp_bai"
+[[ ! -e "$tmp_gatk_bai" ]] || die "Alternate GATK temporary BAI path already exists: $tmp_gatk_bai"
+[[ ! -e "$gatk_tmp_dir" ]] || die "GATK temp directory already exists: $gatk_tmp_dir"
 [[ ! -e "$backup_bam" ]] || die "Backup BAM path already exists: $backup_bam"
 [[ ! -e "$backup_bai" ]] || die "Backup BAI path already exists: $backup_bai"
 
-trap cleanup EXIT
+on_exit() {
+    local status=$?
+
+    # Prevent recursive cleanup if a signal trap exits and then EXIT fires too.
+    trap - EXIT HUP INT TERM
+
+    cleanup "$status"
+    exit "$status"
+}
+
+trap on_exit EXIT HUP INT TERM
+
 acquire_lock
 confirm_final_pair_state
+mkdir -p "$gatk_tmp_dir"
 
 printf 'Java version:\n'
 validate_java_version "$java_bin"
@@ -527,7 +564,7 @@ validate_java_version "$java_bin"
 printf 'GATK version:\n'
 validate_gatk_version "$gatk_bin"
 
-"${gatk_command[@]}"
+env TMPDIR="$gatk_tmp_dir" "${gatk_command[@]}"
 "${index_command[@]}"
 validate_bam_pair "$tmp_bam" "$tmp_bai" "Replacement"
 

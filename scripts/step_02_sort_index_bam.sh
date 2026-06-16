@@ -304,7 +304,10 @@ rollback_publish() {
 }
 
 cleanup() {
-    local status=$?
+    local status="$1"
+
+    # Cleanup should be best-effort and must not mask the original failure.
+    set +e
 
     # Rollback must run before backup cleanup so prior canonical files are usable.
     if [[ "$status" -ne 0 ]]; then
@@ -312,6 +315,7 @@ cleanup() {
     fi
 
     rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
+    rm -f "$tmp_sorted_bam.bai" "$tmp_rg_bam.bai"
 
     if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
         rm -f "$backup_bam" "$backup_bai"
@@ -387,7 +391,18 @@ if [[ "$execute" != true ]]; then
 fi
 
 mkdir -p "$output_dir"
-trap cleanup EXIT
+
+on_exit() {
+    local status=$?
+
+    # Prevent recursive cleanup if a signal trap exits and then EXIT fires too.
+    trap - EXIT HUP INT TERM
+
+    cleanup "$status"
+    exit "$status"
+}
+
+trap on_exit EXIT HUP INT TERM
 acquire_lock
 
 # Build and validate the replacement completely before touching canonical paths.
