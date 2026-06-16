@@ -129,6 +129,21 @@ The rebuilt pipeline emphasizes:
 
 This design is meant to make the workflow reproducible, reviewable, and handoff-safe rather than dependent on one-off interactive commands.
 
+## What This Demonstrates
+
+- The legacy workflow has been translated into explicit, testable pipeline steps rather than one-off scripts.
+- Each step has defined inputs, outputs, validation checks, and cluster execution gates.
+- The pipeline has already produced useful QC signals across all six samples.
+- Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
+- The current state is honest: preprocessing is nearly through the legacy SplitNCigarReads/orientation split boundary, while editing-site calling remains downstream.
+
+## Questions For PI Discussion
+
+- Are the high duplication rates expected for this library/prep, especially ABE_EV4 and ABE_PUM1_4?
+- Should ABE_EV_2’s lower unique mapping/higher multimapping be treated as a sample QC concern or acceptable cohort variation?
+- For downstream editing analysis, should we preserve the legacy FWD/REV-like orientation split exactly before deciding biological interpretation?
+- What should count as the first biologically useful MVP output: orientation-split BAMs, mpileup VCFs, preprocessed candidate editing tables, or CMH-ranked sites?
+
 ## Next Steps
 
 1. Inspect Step `05` six-sample revalidation outputs.
