@@ -7,12 +7,12 @@ It should stay mostly stable over time. Do not use this file to track current pi
 For current project state, consult:
 
 ```text
-docs/HANDOFF.md
-docs/PIPELINE_PLAN.md
-docs/QUESTIONS.md
-docs/RUNBOOK.md
-TROUBLESHOOTING.md
-DECISIONS.md
+docs/operations/HANDOFF.md
+docs/design/PIPELINE_PLAN.md
+docs/design/QUESTIONS.md
+docs/operations/RUNBOOK.md
+docs/operations/TROUBLESHOOTING.md
+docs/design/DECISIONS.md
 TODO.md
 ```
 
@@ -74,12 +74,12 @@ Avoid adding:
 Use these files instead:
 
 ```text
-docs/HANDOFF.md        current project handoff and big-picture state
-docs/PIPELINE_PLAN.md  current pipeline map and step validation status
-docs/QUESTIONS.md      answered and unresolved questions
-docs/RUNBOOK.md        operational commands and cluster procedure
-TROUBLESHOOTING.md     symptom -> cause -> fix
-DECISIONS.md           durable decisions and rationale
+docs/operations/HANDOFF.md        current project handoff and big-picture state
+docs/design/PIPELINE_PLAN.md      current pipeline map and step validation status
+docs/design/QUESTIONS.md          answered and unresolved questions
+docs/operations/RUNBOOK.md        operational commands and cluster procedure
+docs/operations/TROUBLESHOOTING.md symptom -> cause -> fix
+docs/design/DECISIONS.md          durable decisions and rationale
 TODO.md                tactical next work
 README.md              project overview and entrypoint
 ```
@@ -379,12 +379,12 @@ Use the docs according to purpose:
 
 ```text
 README.md              entrypoint / overview
-docs/HANDOFF.md        big project-state handoff
-docs/PIPELINE_PLAN.md  tactical step map and validation status
-docs/QUESTIONS.md      answered/open project questions
-docs/RUNBOOK.md        operational commands and cluster procedure
-TROUBLESHOOTING.md     symptom -> cause -> fix
-DECISIONS.md           decisions and reasons
+docs/operations/HANDOFF.md        big project-state handoff
+docs/design/PIPELINE_PLAN.md      tactical step map and validation status
+docs/design/QUESTIONS.md          answered/open project questions
+docs/operations/RUNBOOK.md        operational commands and cluster procedure
+docs/operations/TROUBLESHOOTING.md symptom -> cause -> fix
+docs/design/DECISIONS.md          decisions and reasons
 TODO.md                tactical next work
 AGENTS.md              coding-agent instructions
 ```
