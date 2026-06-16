@@ -47,22 +47,7 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Resolve Java 17 Availability
-
-Work with CSU HPC or cluster documentation to identify one durable Java 17 path:
-
-```text
-HPC-supported Java 17 module that works consistently across nodes
-administrator-provided cluster-wide Java 17 path
-explicit verified executable supplied through JAVA_BIN_OVERRIDE
-administrator remediation of inconsistent node images
-```
-
-Temporary node pinning to `node003` is operational mitigation, not architecture.
-
-Do not copy a JDK from the head node or another compute node.
-
-### 2. Inspect Step 05 Six-Sample Revalidation
+### 1. Inspect Step 05 Six-Sample Revalidation
 
 Step `05` is implemented and locally tested. Six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected.
 
@@ -95,7 +80,11 @@ The first `ABE_EV_2` cluster execute attempt reached GATK traversal pass 1 compl
 
 Next gate: inspect the submitted/running revalidation logs, confirm Java `>=17`, confirm GATK `SplitNCigarReads` completed, and validate every final BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
 
-### 3. Implement Step 06 Against Step 05 Outputs
+### 2. If Step 05 Passes, Promote It In Docs
+
+If all six Step `05` final split-N-cigar BAM/BAI pairs pass validation, update `README.md`, `docs/HANDOFF.md`, `docs/PIPELINE_PLAN.md`, `docs/RUNBOOK.md`, `docs/QUESTIONS.md`, and `TODO.md` to mark Step `05` cohort-proven.
+
+### 3. Implement Step 06 Read-Orientation BAM Split
 
 Step `06` should consume:
 
@@ -104,7 +93,34 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
-Do not implement downstream steps until Step `05` outputs are inspected and accepted.
+Step `06` should write:
+
+```text
+results/orientation/<sample>/<sample>.FWD_like.bam
+results/orientation/<sample>/<sample>.FWD_like.bam.bai
+results/orientation/<sample>/<sample>.REV_like.bam
+results/orientation/<sample>/<sample>.REV_like.bam.bai
+results/qc/orientation/<sample>.orientation_counts.tsv
+```
+
+Preserve the legacy mechanical read-orientation flag groups:
+
+```text
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
+```
+
+Remember that `samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not describe these outputs as biological strand calls.
+
+### 4. Cluster-Validate Step 06 After Local Tests
+
+After Step `06` is implemented locally, use the normal gate:
+
+```text
+local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs
+```
+
+Do not implement downstream Steps `07`-`09` until Step `05` outputs are inspected and Step `06` is proven.
 
 ## Architecture Reminders
 
@@ -120,11 +136,14 @@ results/qc/markdup/<sample>.markdup.metrics.txt
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 
-results/orientation/<sample>/<sample>.<orientation>.bam
-results/orientation/<sample>/<sample>.<orientation>.bam.bai
+results/orientation/<sample>/<sample>.FWD_like.bam
+results/orientation/<sample>/<sample>.FWD_like.bam.bai
+results/orientation/<sample>/<sample>.REV_like.bam
+results/orientation/<sample>/<sample>.REV_like.bam.bai
+results/qc/orientation/<sample>.orientation_counts.tsv
 ```
 
-The Step `05` portion of this layout is now implemented locally. Revisit the Step `06` orientation output names before implementing Step `06`.
+The Step `05` portion of this layout is now implemented locally. The Step `06` names above are the intended next contract.
 
 ## External Blockers / Unresolved Items
 
@@ -177,18 +196,19 @@ Exact annotation release/version if recoverable from files or Novogene docs.
 Old workflow used samtools flag groupings similar to:
 
 ```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
 ```
 
 Important:
 
 ```text
-Do not assume old FWD/REV labels equal biological sense/antisense.
+Do not assume `FWD_like` / `REV_like` labels equal biological sense/antisense.
 The cohort is reverse-stranded / first-strand-style.
+samtools view -f FLAG means has all bits in FLAG, not exact flag equality.
 ```
 
-Step `06` must clearly document read orientation versus transcript strand.
+Step `06` must clearly document read-orientation/mechanical flag groups without making unsupported transcript-strand claims.
 
 ### Step 07: bcftools mpileup
 
@@ -199,7 +219,7 @@ use confirmed bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 chromosome/region handling
 reference FASTA path
 per-sample vs grouped mpileup strategy
-FWD/REV or orientation-specific output naming
+FWD_like/REV_like or other read-orientation-specific output naming
 ```
 
 ### Step 08: VCF Preprocessing
@@ -212,7 +232,7 @@ Needs:
 remove hardcoded paths
 make CLI-driven
 make manifest-driven where appropriate
-document strand/orientation assumptions
+document read-orientation assumptions without unsupported biological strand claims
 define output table format
 ```
 

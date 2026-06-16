@@ -2,7 +2,7 @@
 
 This repository contains code, tests, documentation, and SLURM job wrappers for a NORAD / PUM1 / rABE-related Novogene Remora RNA-seq workflow.
 
-The project is being rebuilt as a maintainable, manifest-driven, dry-run-first pipeline for:
+The project rebuilds a hardcoded legacy RNA-editing/RNA-seq workflow into maintainable research software. The rebuilt pipeline is manifest-driven, local-first, SLURM-scaled, and dry-run-first for:
 
 * local development on macOS
 * full-scale execution on CSU's SLURM cluster
@@ -10,13 +10,13 @@ The project is being rebuilt as a maintainable, manifest-driven, dry-run-first p
 * strandedness/orientation inference
 * downstream RNA-editing / variant-like site calling
 
-The uploaded legacy workflow is treated as a protocol reference, not as production code.
+The uploaded legacy workflow is treated as a protocol reference, not as production code. Each step is promoted only after local checks, SLURM dry-run, SLURM execute, output inspection, and documentation updates.
 
 A future decoupled reporting layer is planned to consume structured pipeline artifacts and render reusable HTML, PDF, and TSV outputs without rerunning computation. That layer is roadmap-only and not implemented.
 
 ## Current Status
 
-The upstream preprocessing workflow is now proven through duplicate marking across the six-sample cohort, and Step `00c` GATK reference sidecar preparation is cluster-proven. Step `05` SplitNCigarReads is implemented and locally tested, with six-sample cluster revalidation submitted/running but final outputs not yet inspected; later editing-prep steps remain scaffolded until implemented.
+Steps `00a`-`04` are cluster-proven, including all six samples for Steps `01`-`04`. Step `05` SplitNCigarReads is implemented and locally tested; six-sample cluster revalidation has been submitted/running, but final outputs have not yet been inspected. Step `06` is the next implementation target and will preserve the legacy read-orientation split without claiming biological strand interpretation.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -28,13 +28,11 @@ The upstream preprocessing workflow is now proven through duplicate marking acro
 | `02b` | BAM QC with samtools | implemented and refreshed across all six final hardened Step 02 BAMs |
 | `03` | Infer strandedness/orientation with RSeQC | cluster-proven across all six samples |
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
-| `05` | GATK SplitNCigarReads | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected |
-| `06` | Split BAMs by read orientation | scaffolded / not implemented / not cluster-proven |
-| `07` | bcftools mpileup by chromosome and orientation/strand | scaffolded / not implemented / not cluster-proven |
-| `08` | VCF preprocessing | scaffolded / not implemented / not cluster-proven |
-| `09` | CMH editing-site calling | scaffolded / not implemented / not cluster-proven |
+| `05` | SplitNCigarReads | implemented/local-tested; cluster revalidation submitted/running; outputs pending inspection |
+| `06` | read-orientation BAM split | next implementation target |
+| `07`-`09` | downstream editing workflow | pending |
 
-Step `02b` currently creates its output directory before dry-run exit, so do not describe that dry-run as side-effect-free. Its final cohort refresh succeeded after prepending the known samtools bin directory to `PATH`; the first failed attempt was a cluster environment/PATH issue, not a BAM/QC failure.
+For demo details, use `docs/PIPELINE_PLAN.md` as the tactical map, `docs/HANDOFF.md` for current state, `docs/RUNBOOK.md` for safe inspection commands, `TROUBLESHOOTING.md` for known failure modes, and `TODO.md` for the next gates.
 
 ## Cohort And Key Results
 
@@ -99,6 +97,8 @@ CMH/editing-site calling
 ```
 
 This is not currently a simple gene-count differential-expression workflow. The downstream reference workflow points toward RNA-editing / variant-like site analysis.
+
+Step `06` should split Step `05` BAMs into `FWD_like` and `REV_like` read-orientation groups using the legacy mechanical flag groups. These labels are not biological sense/antisense claims.
 
 ## Development Model
 

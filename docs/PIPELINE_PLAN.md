@@ -43,8 +43,8 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `03` | Infer strandedness and read orientation. | canonical sorted BAM, `refs/novogene_ref/genome.bed` | `results/qc/strandedness/<sample_id>.infer_experiment.txt` | cluster-proven across all six samples | RSeQC `infer_experiment.py` |
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected | GATK SplitNCigarReads |
-| `06` | Split processed BAMs by read orientation. | split-N-cigar BAM | orientation-specific BAMs and indexes | scaffolded / not implemented / not cluster-proven | samtools |
-| `07` | Run mpileup by chromosome and orientation/strand. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
+| `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | next implementation target / not cluster-proven | samtools |
+| `07` | Run mpileup by chromosome and read-orientation group. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
 | `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
 | `09` | Call CMH editing sites and write summaries. | Step `08` preprocessed tables | CMH/editing-site result tables and plots | scaffolded / not implemented / not cluster-proven | R |
 
@@ -322,6 +322,36 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 ```
 
+### Step 06
+
+Step `06` is the next implementation target. It is not implemented and not cluster-proven.
+
+Input contract:
+
+```text
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam
+results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
+```
+
+Expected output contract:
+
+```text
+results/orientation/<sample>/<sample>.FWD_like.bam
+results/orientation/<sample>/<sample>.FWD_like.bam.bai
+results/orientation/<sample>/<sample>.REV_like.bam
+results/orientation/<sample>/<sample>.REV_like.bam.bai
+results/qc/orientation/<sample>.orientation_counts.tsv
+```
+
+Legacy read-orientation groups to preserve:
+
+```text
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
+```
+
+These are mechanical flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not describe `FWD_like` or `REV_like` as biological sense, antisense, transcript-strand, or biological-strand calls.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -340,11 +370,11 @@ This repository is rebuilding that workflow in a cleaner SLURM/script/testable s
 The old workflow split read orientation using samtools flags similar to:
 
 ```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, future steps must document the difference between read orientation labels and biological transcript strand.
+Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, future steps must treat `FWD_like` and `REV_like` as read-orientation/mechanical flag groups and avoid unsupported biological strand claims.
 
 ## Future Artifact And Reporting Layer
 

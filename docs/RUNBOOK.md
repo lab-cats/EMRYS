@@ -65,6 +65,71 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 
 Note: `ABE_EV4` does not have an underscore before `4`.
 
+## Demo / Inspection Checklist
+
+Use this checklist for a short read-only project demo. These commands inspect the repo, docs, or existing outputs; they do not submit jobs.
+
+1. Show repo state and docs:
+
+```bash
+git status --short
+sed -n '1,90p' README.md
+```
+
+2. Show the tactical pipeline map:
+
+```bash
+sed -n '1,120p' docs/PIPELINE_PLAN.md
+```
+
+3. Show the sample manifest:
+
+```bash
+sed -n '1,20p' samples.tsv
+```
+
+4. Show proven output locations when present:
+
+```bash
+for path in \
+  refs/novogene_star_index \
+  refs/novogene_ref/genome.bed \
+  refs/novogene_ref/genome.fa.fai \
+  refs/novogene_ref/genome.dict \
+  results/bam \
+  results/qc/bam \
+  results/qc/strandedness \
+  results/markdup
+do
+  if [ -e "$path" ]; then
+    ls -ld "$path"
+  else
+    printf 'pending or unavailable here: %s\n' "$path"
+  fi
+done
+```
+
+5. Show Step `05` status and logs without promoting it:
+
+```bash
+squeue -u "$USER"
+ls -ltr logs | tail
+grep -n "SplitNCigarReads\|No space left on device\|tmp-dir\|java.io.tmpdir" \
+  logs/norad-split-n-cigar-*.out logs/norad-split-n-cigar-*.err 2>/dev/null | tail -40
+```
+
+Step `05` outputs are pending inspection until each final split-N-cigar BAM/BAI is validated.
+
+6. Show the dry-run/execute gate:
+
+```bash
+grep -n "EXECUTE\|--execute\|dry-run" \
+  jobs/step_05_split_n_cigar_reads.slurm \
+  scripts/step_05_split_n_cigar_reads.sh | head -60
+```
+
+Do not run scaffolded Steps `06`-`09` during the demo.
+
 ## Confirmed Cluster Tools / Modules
 
 ### STAR
@@ -1109,17 +1174,27 @@ scaffolded / not implemented / not cluster-proven
 Old reference workflow used samtools flags similar to:
 
 ```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Do not assume old FWD/REV labels directly equal biological sense/antisense.
+These are mechanical read-orientation flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not assume `FWD_like` / `REV_like` labels directly equal biological sense/antisense.
 
 Step `06` should consume the Step `05` output contract:
 
 ```text
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam
 results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
+```
+
+Expected output contract:
+
+```text
+results/orientation/<sample>/<sample>.FWD_like.bam
+results/orientation/<sample>/<sample>.FWD_like.bam.bai
+results/orientation/<sample>/<sample>.REV_like.bam
+results/orientation/<sample>/<sample>.REV_like.bam.bai
+results/qc/orientation/<sample>.orientation_counts.tsv
 ```
 
 ## Step 07: bcftools mpileup

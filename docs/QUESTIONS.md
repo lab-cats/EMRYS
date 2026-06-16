@@ -329,14 +329,13 @@ Scaffolded / not implemented / not cluster-proven:
 The uploaded/reference workflow indicates these downstream steps still need clean reimplementation:
 
 ```text
-SplitNCigarReads
 Split BAM by read orientation
-bcftools mpileup by chromosome and strand/orientation
+bcftools mpileup by chromosome and read-orientation group
 VCF preprocessing
 CMH editing-site calling
 ```
 
-The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
+Step `05` SplitNCigarReads is already implemented and locally tested, with six-sample cluster revalidation submitted/running and final outputs pending inspection. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
 ### What Needs Special Care Later?
 
@@ -345,19 +344,19 @@ Step `06` and downstream interpretation need special care.
 The old workflow split read orientation using samtools flags similar to:
 
 ```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
 ```
 
 Because the cohort is reverse-stranded / first-strand-style, future steps must document the difference between:
 
 ```text
-read orientation labels
-biological transcript strand
+read-orientation labels
+mechanical flag groups
 editing interpretation
 ```
 
-Do not silently assume old `FWD` / `REV` labels equal biological sense / antisense.
+`samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not silently assume `FWD_like` / `REV_like` labels equal biological sense / antisense.
 
 ### Step 02b Final-BAM QC Refresh
 

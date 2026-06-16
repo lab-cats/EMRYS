@@ -34,7 +34,15 @@ The intended high-level workflow is:
 | `03` RSeQC strandedness/orientation inference | cluster-proven across all six samples | All libraries are paired-end and reverse-stranded / first-strand-style. |
 | `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
 | `05` GATK SplitNCigarReads | implemented and locally tested; cluster revalidation submitted/running; final outputs not yet inspected | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
-| `06`-`09` downstream editing workflow | scaffolded / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
+| `06` read-orientation BAM split | next implementation target | Should consume Step `05` split-N-cigar BAMs and write `FWD_like` / `REV_like` mechanical flag-group BAMs. |
+| `07`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
+
+Current demo state:
+
+* Proven: Steps `00a`-`04`; Steps `01`-`04` are proven across all six samples.
+* Implemented and revalidating: Step `05`; do not call it cluster-proven until final split-N-cigar BAM/BAI outputs are inspected.
+* Next: Step `06` read-orientation BAM split from Step `05` outputs.
+* Pending: Steps `07`-`09` downstream editing workflow.
 
 ## Cohort
 
@@ -152,7 +160,11 @@ results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
 Expected future output families, once implemented:
 
 ```text
-results/orientation/
+results/orientation/<sample>/<sample>.FWD_like.bam
+results/orientation/<sample>/<sample>.FWD_like.bam.bai
+results/orientation/<sample>/<sample>.REV_like.bam
+results/orientation/<sample>/<sample>.REV_like.bam.bai
+results/qc/orientation/<sample>.orientation_counts.tsv
 results/vcf/
 results/editing/
 results/artifacts/
@@ -325,10 +337,10 @@ GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GAT
 ## Current Next Work
 
 1. Inspect the submitted/running Step `05` six-sample cluster revalidation outputs and logs.
-2. Confirm each final split-N-cigar BAM/BAI before declaring Step `05` cluster-proven or cohort-proven.
+2. If Step `05` passes, mark Step `05` cohort-proven in the docs.
 3. Implement Step `06` against the Step `05` output contract.
-4. Continue Steps `07`-`09` after each upstream gate is proven.
-5. Keep the reporting/artifact layer deferred until the core compute pipeline is substantially proven.
+4. Cluster-validate Step `06` after local tests.
+5. Continue Steps `07`-`09` after each upstream gate is proven.
 
 ## Java And Picard Handoff
 

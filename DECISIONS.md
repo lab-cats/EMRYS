@@ -212,18 +212,18 @@ Reason: strandedness inference depends on the canonical alignment and annotation
 
 ## Read Orientation Labels Must Be Separated From Biological Strand Interpretation
 
-Decision: future orientation-splitting steps must document the distinction between read orientation labels and biological transcript strand.
+Decision: future orientation-splitting steps must document the distinction between read-orientation labels, mechanical flag groups, and biological interpretation.
 
-Reason: the old workflow used FWD/REV-like read orientation splits, but the cohort is reverse-stranded / first-strand-style.
+Reason: the old workflow used FWD/REV-like read orientation splits, but the rebuilt pipeline should preserve them as `FWD_like` / `REV_like` mechanical flag groups because the cohort is reverse-stranded / first-strand-style.
 
 Old workflow used samtools flags similar to:
 
 ```text
-FWD-like: 99 and 147
-REV-like: 83 and 163
+FWD_like = samtools -f 99 plus samtools -f 147
+REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Do not silently assume old `FWD` / `REV` labels equal biological sense / antisense.
+`samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not silently assume `FWD_like` / `REV_like` labels equal biological sense / antisense, transcript strand, or biological strand.
 
 ## Picard Is Invoked Through `$PICARD`
 
