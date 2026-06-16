@@ -12,7 +12,7 @@ This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a l
 
 The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream goal is RNA-editing / variant-like site analysis, not simple gene-count differential expression.
 
-Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are validated across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims.
+Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are cluster-proven across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims. Steps `07` through `09` remain pending / not implemented / not cluster-proven, and the next implementation boundary is Step `07`.
 
 ## PI Decision Brief
 
@@ -33,7 +33,7 @@ The preprocessing and read-orientation backbone is cluster-proven through Step `
 | `03` strandedness | canonical BAM, BED12 | RSeQC strandedness report | reverse-stranded / first-strand signal across cohort | six-sample cluster-proven |
 | `04` MarkDuplicates | canonical BAM | markdup BAM/BAI, Picard metrics | quickcheck, index, metrics rows | six-sample cluster-proven |
 | `05` SplitNCigarReads | markdup BAM, FASTA/FAI/DICT | split-N-cigar BAM/BAI | `PASS=6`, quickcheck, RG, no scratch files | six-sample cluster-proven |
-| `06` read-orientation split | SplitNCigarReads BAM/BAI | `FWD_like` and `REV_like` BAM/BAI plus orientation counts TSV | All six jobs completed 0:0; quickcheck passed; counts TSVs present; assigned_fraction = 1.000000 and unassigned_records = 0 for all six; no Step 06 scratch files | cluster-proven across all six samples |
+| `06` read-orientation split | SplitNCigarReads BAM/BAI | `FWD_like` and `REV_like` BAM/BAI plus orientation counts TSV | All six jobs completed 0:0; quickcheck passed; counts TSVs present; assigned_fraction = 1.000000 and unassigned_records = 0 for all six; cluster validation showed no Step 06 scratch files remaining in the checked Step 06 artifact paths | cluster-proven across all six samples |
 | `07`-`09` editing workflow | orientation BAMs, reference, VCF tables | mpileup VCFs, preprocessed tables, CMH outputs | not yet implemented | pending / not cluster-proven |
 
 ### PI scientific/QC questions
@@ -71,12 +71,14 @@ Next week:
 | `03` | strandedness | cluster-proven across all six |
 | `04` | MarkDuplicates | cluster-proven across all six |
 | `05` | SplitNCigarReads | cluster-proven across all six |
-| `06` | read-orientation BAM split | cluster-proven across all six |
+| `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | bcftools mpileup | pending / not implemented / not cluster-proven |
 | `08` | VCF preprocessing | pending / not implemented / not cluster-proven |
 | `09` | CMH editing-site calling | pending / not implemented / not cluster-proven |
 
-Steps `05` and `06` are cluster-proven/cohort-proven across all six samples based on final output inspection.
+Step 06: cluster-proven across all six samples.
+
+Steps `05` and `06` are cluster-proven/cohort-proven across all six samples based on documented final output inspection and user-provided Step `06` cohort validation evidence.
 
 ## Approximate Runtime Profile
 
@@ -91,7 +93,7 @@ Steps `05` and `06` are cluster-proven/cohort-proven across all six samples base
 | `03` strandedness | per sample | short QC/inference step; exact elapsed not recorded in this report | Runs RSeQC strandedness inference. |
 | `04` MarkDuplicates | per sample | ~6-9 minutes per sample | Picard duplicate marking across all six samples. |
 | `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
-| `06` read-orientation split | per sample | ~25-34 minutes per sample; slower EV samples ~33-34 minutes | Preliminary ADAM operational runtimes from current validation runs, not formal benchmarks. |
+| `06` read-orientation split | per sample | about 25-34 minutes per sample; slower EV samples about 33-34 minutes | Preliminary ADAM operational runtimes from the current validation run, not formal benchmarks. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -116,7 +118,7 @@ Recovered Step `05` GATK elapsed examples:
 
 `ABE_EV_2` and `ABE_EV4` were heavier/slower Step `05` samples, but exact elapsed times are not recorded in this report.
 
-Step `06` read-orientation split completed across the cohort in ~25-34 minutes per sample on ADAM. The slower EV samples took ~33-34 minutes. These are preliminary operational runtimes from the current ADAM validation runs, not formal performance benchmarks.
+Step `06` completed across the cohort in about 25-34 minutes per sample on ADAM; the slower EV samples took about 33-34 minutes. These are preliminary operational runtimes from the current ADAM validation run, not formal benchmarks.
 
 Observed Step `06` preliminary ADAM operational runtimes:
 
@@ -227,6 +229,29 @@ Confirmed final Step `05` output sizes:
 | `ABE_PUM1_2` | 3.7G | 1.6M |
 | `ABE_PUM1_3` | 3.7G | 1.6M |
 | `ABE_PUM1_4` | 3.8G | 1.8M |
+
+## Step 06 Read-Orientation Split Results
+
+Step 06 splits each validated SplitNCigarReads BAM into mechanical read-orientation groups (`FWD_like` and `REV_like`) needed by the legacy orientation-aware downstream editing workflow.
+
+All six Step 06 jobs completed with ExitCode 0:0. Published `FWD_like` and `REV_like` BAM/BAI outputs and orientation-count TSVs were present for all six samples; `samtools quickcheck` passed silently; assigned_fraction was 1.000000 with zero unassigned records for all six samples.
+
+Cluster validation showed no Step 06 scratch files remaining in the checked Step 06 artifact paths.
+
+| Sample | Input records | FWD_like records | REV_like records | Assigned fraction | Runtime | Status |
+| ------ | ------------: | ---------------: | ---------------: | ----------------: | ------: | ------ |
+| `ABE_EV_2` | 88,863,298 | 21,689,836 | 67,173,462 | 1.000000 | 00:33:09 | cluster-proven |
+| `ABE_EV_3` | 67,725,992 | 26,943,032 | 40,782,960 | 1.000000 | 00:25:27 | cluster-proven |
+| `ABE_EV4` | 98,078,863 | 29,765,372 | 68,313,491 | 1.000000 | 00:34:07 | cluster-proven |
+| `ABE_PUM1_2` | 75,761,468 | 27,371,848 | 48,389,620 | 1.000000 | 00:27:17 | cluster-proven |
+| `ABE_PUM1_3` | 76,522,917 | 31,559,320 | 44,963,597 | 1.000000 | 00:26:29 | cluster-proven |
+| `ABE_PUM1_4` | 81,011,913 | 24,998,144 | 56,013,769 | 1.000000 | 00:29:34 | cluster-proven |
+
+`FWD_like` and `REV_like` are mechanical read-orientation groups based on SAM flag filters. They are not biological sense/antisense, transcript-strand, or edit-direction labels.
+
+`samtools view -f FLAG` means records have all bits in `FLAG`; it is not exact flag equality.
+
+Demo meaning: the reusable preprocessing backbone is now rebuilt and cluster-validated through Step 06 across the full six-sample cohort; the next boundary is Step 07, where the pipeline begins extracting editing-site evidence with mpileup-style downstream analysis.
 
 ## Engineering And Reproducibility Features
 
