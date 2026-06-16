@@ -201,6 +201,8 @@ document statistical assumptions
 
 These are deferred engineering improvements and roadmap ideas. They do not block Step `05` or the remaining compute pipeline. Do not create schemas, helper libraries, validators, Makefile targets, config files, JSON sidecars, cleanup utilities, report templates, report directories, or new SLURM jobs until a roadmap item is explicitly activated.
 
+Deferred architecture: evaluate separating the reusable preprocessing backbone from assay-specific analysis modules and a reporting layer. First reproduce the legacy Steps `07`-`09` workflow, then decide whether to formalize modules such as `rna_editing_cmh`, manifest/config contracts, artifact indexes, report generation, and possible public-dataset import support.
+
 ### After Steps 00c-09 Are Proven
 
 These items belong after the full compute path is substantially proven:

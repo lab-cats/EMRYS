@@ -76,6 +76,13 @@ rerun, schema-version conflict, and pipeline-version conflict representation
 exact HTML, PDF, and TSV report deliverables
 Jinja2 versus Quarto/R Markdown responsibilities
 final CMH/editing-site results, plots, and interpretation notes
+whether Step 06 orientation splitting remains part of the core preprocessing boundary or becomes an optional prerequisite requested by orientation-aware analysis modules
+whether the first analysis module should be named rna_editing_cmh or preserve legacy workflow terminology
+whether assay selection should live only in an analysis YAML config or whether the sample manifest can optionally point to a default analysis config
+what metadata should be required before an analysis module is allowed to make biological comparisons
+what orientation mapping the RNA-editing/CMH module should use for first reproduction versus later biological interpretation
+what artifact index format the reporting layer should consume
+whether future public-dataset ingestion should be handled as a separate import layer that produces the same manifest/config inputs as lab-generated ADAM FASTQs
 ```
 
 ### Deferred Engineering Roadmap Decisions

@@ -505,6 +505,89 @@ annotation/reference metadata
 multiple-testing method
 ```
 
+## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
+
+This architecture is a deferred design direction. It should not block the immediate goal of conservatively reproducing the legacy Steps `07`-`09` RNA-editing/CMH workflow.
+
+The long-term shape is:
+
+```text
+FASTQs + manifest
+        ->
+core preprocessing pipeline
+        ->
+validated analysis-ready artifacts
+        ->
+assay-specific analysis modules
+        ->
+standardized result artifacts
+        ->
+reporting layer
+        ->
+configured lab-facing reports
+```
+
+The core preprocessing pipeline should eventually be able to ingest arbitrary FASTQ files placed on ADAM, plus a sample manifest, and robustly process them through reusable preprocessing and QC stages. Core responsibilities include manifest validation, reference validation/prep, alignment, canonical BAM publication, BAM QC, strandedness inference, duplicate marking, SplitNCigarReads, and optional orientation-aware preprocessing when required by an analysis module.
+
+Steps `00a`-`06` currently form the validated preprocessing backbone for this project. Step `06` may eventually be treated as an optional prerequisite for orientation-aware analysis modules rather than a universal requirement for every RNA-seq analysis.
+
+This architecture would support current lab-generated datasets first, but the same model could later support independent analysis of public genomics datasets. Public FASTQs or derived inputs should still enter through the same manifest/config/provenance system rather than bypassing the pipeline contracts. Examples include public repositories such as SRA, GEO, ENA, or other public genomics archives.
+
+The intended separation is:
+
+* The manifest describes what data exist.
+* The analysis config describes what to do with those data.
+
+Example manifest fields:
+
+```text
+sample_id
+condition
+replicate
+fastq_r1
+fastq_r2
+batch
+notes
+```
+
+Illustrative analysis config fields:
+
+```yaml
+analysis_module: rna_editing_cmh
+reference: novogene_ref
+contrast:
+  control: EV
+  treatment: PUM1
+strandedness_policy: infer_or_validate
+orientation_policy: preserve_legacy_mechanical_labels
+filters:
+  min_alt_depth: null
+  min_total_depth: null
+reports:
+  - qc_summary
+  - editing_candidates
+```
+
+These examples are design notes only. They do not create a real config interface yet.
+
+Bundled analysis modules should conceptually live outside the reusable preprocessing core. For this project, the first likely module is `rna_editing_cmh`. It would consume validated core artifacts, the sample manifest, and an explicit analysis config; it would produce mpileup/VCF artifacts, preprocessed analysis tables, CMH/editing-site result tables, module-specific QC summaries, and report-ready summaries.
+
+Steps `07`-`09` are currently the pending legacy RNA-editing/CMH workflow. They should be reproduced conservatively before any major modular refactor.
+
+Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
+
+Future runs should eventually record the manifest used, analysis config used, git commit, reference version/paths, tool versions, sample set, step statuses, and output paths. Future artifacts should ideally include machine-readable indexes such as:
+
+```text
+run_summary.json
+artifacts.tsv
+qc_summary.tsv
+```
+
+The reporting layer should eventually ingest the structured artifact directory and generate configured reports such as QC summaries, preprocessing validation reports, runtime/provenance summaries, assay-specific candidate result reports, and PI/demo summaries.
+
+Assay modules should refuse to run when required metadata or config is missing, such as missing condition labels, missing replicate structure, missing contrast definition, missing orientation policy, or inconsistent strandedness assumptions.
+
 ## Future Cross-Cutting Engineering Roadmap
 
 Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for Step `05` or the remaining compute pipeline.
