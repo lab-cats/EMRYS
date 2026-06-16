@@ -156,12 +156,47 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
 - The current state is honest: preprocessing is through SplitNCigarReads, while read-orientation splitting and editing-site calling remain downstream.
 
+## Near-Term Roadmap
+
+### Phase 1 — Rebuild and validate preprocessing backbone
+
+Status: mostly complete; currently at the Step `06` read-orientation boundary.
+
+- Reference prep and STAR index
+- STAR alignment across six samples
+- Canonical BAM generation and QC
+- RSeQC strandedness confirmation
+- Picard MarkDuplicates
+- GATK SplitNCigarReads
+- Read-orientation BAM split
+
+Current boundary:
+Step `06` is the final preprocessing/read-orientation split step before variant-like/editing-site calling.
+
+### Phase 2 — Reproduce legacy editing-site calling workflow
+
+Status: next.
+
+- Run bcftools mpileup by chromosome and read-orientation group
+- Preprocess VCF-like outputs into analysis tables
+- Preserve/control strand and read-orientation assumptions
+- Run CMH/editing-site calling
+
+### Phase 3 — Scientific review and refinement
+
+Status: requires PI guidance.
+
+- Interpret QC findings, including high duplication and mapping differences
+- Decide what should count as the first biologically useful MVP output
+- Review candidate editing sites and filters
+- Decide whether to preserve legacy thresholds or revise them
+
 ## Questions For PI Discussion
 
-- Are the high duplication rates expected for this library/prep, especially ABE_EV4 and ABE_PUM1_4?
-- Should ABE_EV_2’s lower unique mapping/higher multimapping be treated as a sample QC concern or acceptable cohort variation?
-- For downstream editing analysis, should we preserve the legacy FWD/REV-like orientation split exactly before deciding biological interpretation?
-- What should count as the first biologically useful MVP output: orientation-split BAMs, mpileup VCFs, preprocessed candidate editing tables, or CMH-ranked sites?
+- Are the high duplication rates expected for this dataset/prep, especially ABE_EV4 and ABE_PUM1_4?
+- Should ABE_EV_2’s lower unique mapping / higher multimapping be treated as a sample QC concern or acceptable cohort variation?
+- Should the first biologically useful MVP output be orientation-split BAMs, mpileup VCFs, preprocessed candidate tables, or CMH-ranked editing sites?
+- Should we preserve the legacy `FWD_like` / `REV_like` read-orientation split exactly before changing biological interpretation?
 
 ## Next Steps
 
