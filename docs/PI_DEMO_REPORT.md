@@ -4,7 +4,7 @@ This is a preliminary pipeline validation and handoff/demo report for the NORAD 
 
 This report reflects the already-documented project state only. It does not inspect live cluster job status or rerun generated-output checks.
 
-For a visual system map, see `docs/ARCHITECTURE.md`. Standalone Mermaid diagrams live in `docs/architecture_pipeline.mmd` and `docs/architecture_reliability.mmd`.
+For a short demo path, see `docs/DEMO_WALKTHROUGH.md`. For a visual system map, see `docs/ARCHITECTURE.md`. Standalone Mermaid diagrams live in `docs/architecture_pipeline.mmd` and `docs/architecture_reliability.mmd`.
 
 ## Executive Summary
 
@@ -12,7 +12,7 @@ This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a l
 
 The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream goal is RNA-editing / variant-like site analysis, not simple gene-count differential expression.
 
-Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `05` are validated across all six samples. Step `05` SplitNCigarReads is cluster-proven after temp-space hardening and output inspection. Step `06` read-orientation BAM splitting is the next implementation target.
+Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `05` are validated across all six samples. Step `05` SplitNCigarReads is cluster-proven after temp-space hardening and output inspection. Step `06` read-orientation BAM splitting is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation.
 
 ## Pipeline Status
 
@@ -27,10 +27,10 @@ Reference preparation steps `00a` through `00c` are cluster-proven. Sample-proce
 | `03` | strandedness | cluster-proven across all six |
 | `04` | MarkDuplicates | cluster-proven across all six |
 | `05` | SplitNCigarReads | cluster-proven across all six |
-| `06` | read-orientation BAM split | next implementation target |
-| `07` | bcftools mpileup | pending |
-| `08` | VCF preprocessing | pending |
-| `09` | CMH editing-site calling | pending |
+| `06` | read-orientation BAM split | implemented and locally tested; cluster-validated on `ABE_EV_3`; cohort validation pending |
+| `07` | bcftools mpileup | pending / not implemented / not cluster-proven |
+| `08` | VCF preprocessing | pending / not implemented / not cluster-proven |
+| `09` | CMH editing-site calling | pending / not implemented / not cluster-proven |
 
 Step `05` is cluster-proven/cohort-proven across all six samples based on final split-N-cigar BAM/BAI output inspection.
 
@@ -47,7 +47,7 @@ Step `05` is cluster-proven/cohort-proven across all six samples based on final 
 | `03` strandedness | per sample | short QC/inference step; exact elapsed not recorded in this report | Runs RSeQC strandedness inference. |
 | `04` MarkDuplicates | per sample | ~6-9 minutes per sample | Picard duplicate marking across all six samples. |
 | `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
-| `06` read-orientation split | per sample | `ABE_EV_3` observed ~25 min 27 sec | I/O-heavy samtools filtering/merging/indexing; not cohort-proven in this report. |
+| `06` read-orientation split | per sample | `ABE_EV_3` observed ~25 min 27 sec | I/O-heavy samtools filtering/merging/indexing; cluster-validated on `ABE_EV_3`; cohort validation pending. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -200,13 +200,13 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - Each step has defined inputs, outputs, validation checks, and cluster execution gates.
 - The pipeline has already produced useful QC signals across all six samples.
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
-- The current state is honest: preprocessing is through SplitNCigarReads, while read-orientation splitting and editing-site calling remain downstream.
+- The current state is honest: preprocessing is cluster-proven through SplitNCigarReads; read-orientation splitting has one cluster-validated sample and still needs cohort validation before downstream editing-site calling.
 
 ## Near-Term Roadmap
 
 ### Phase 1 — Rebuild and validate preprocessing backbone
 
-Status: mostly complete; currently at the Step `06` read-orientation boundary.
+Status: mostly complete; currently at the Step `06` cohort-validation boundary.
 
 - Reference prep and STAR index
 - STAR alignment across six samples
@@ -217,7 +217,7 @@ Status: mostly complete; currently at the Step `06` read-orientation boundary.
 - Read-orientation BAM split
 
 Current boundary:
-Step `06` is the final preprocessing/read-orientation split step before variant-like/editing-site calling.
+Step `06` is the final preprocessing/read-orientation split step before variant-like/editing-site calling. It is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation.
 
 ### Phase 2 — Reproduce legacy editing-site calling workflow
 
@@ -246,8 +246,8 @@ Status: requires PI guidance.
 
 ## Next Steps
 
-1. Implement Step `06` read-orientation BAM split.
-2. Validate Step `06` locally and then on the cluster.
+1. Finish Step `06` cohort validation.
+2. Inspect Step `06` outputs and update status docs only after validation is complete.
 3. Continue to Step `07` bcftools mpileup, Step `08` VCF preprocessing, and Step `09` CMH calling.
 
 ## Demo Talking Points
@@ -258,4 +258,4 @@ Status: requires PI guidance.
 - STAR and duplicate-marking summaries already provide useful preliminary QC observations.
 - Step `05` exposed a real cluster temp-space issue and was hardened rather than papered over.
 - Step `05` is now cohort-proven after final BAM/BAI output inspection.
-- The next technical milestone is Step `06`, which will preserve read-orientation groups without making unsupported biological strand claims.
+- Step `06` preserves read-orientation groups without making unsupported biological strand claims; it is cluster-validated on `ABE_EV_3`, with cohort validation still pending.

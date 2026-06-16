@@ -6,13 +6,13 @@ This page is a compact visual map for PI demo use. It summarizes the pipeline sh
 
 This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.
 
-Steps `00a`-`05` are cluster-proven across the cohort, with Steps `01`-`05` validated across all six samples. Step `06` read-orientation splitting is implemented and locally tested, but pending cluster validation. Steps `07`-`09` are scaffolded / not implemented / not cluster-proven.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`05` are cluster-proven across all six samples. Step `06` read-orientation splitting is implemented and locally tested, cluster-validated on `ABE_EV_3`, and pending cohort validation. Steps `07`-`09` are pending / not implemented / not cluster-proven.
 
 Current boundary:
 
 ```text
 cluster-proven preprocessing through Step 05
--> Step 06 cluster validation
+-> Step 06 cohort validation
 -> Steps 07-09 editing-site calling path
 ```
 
@@ -20,22 +20,49 @@ cluster-proven preprocessing through Step 05
 
 ```mermaid
 flowchart LR
-    fastq["FASTQ<br/>raw paired-end reads"]
-    star["Step 01<br/>STAR alignment<br/>cluster-proven"]
-    bam["Step 02<br/>canonical BAM<br/>cluster-proven"]
-    bamqc["Step 02b<br/>BAM QC<br/>cluster-proven"]
-    stranded["Step 03<br/>strandedness check<br/>cluster-proven"]
-    markdup["Step 04<br/>MarkDuplicates<br/>cluster-proven"]
-    splitncigar["Step 05<br/>SplitNCigarReads<br/>cluster-proven"]
-    orient["Step 06<br/>read-orientation split<br/>implemented; pending cluster validation"]
-    mpileup["Step 07<br/>bcftools mpileup<br/>not implemented"]
-    vcf["Step 08<br/>VCF preprocessing<br/>not implemented"]
-    cmh["Step 09<br/>CMH/editing-site calling<br/>not implemented"]
+    classDef proven fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef boundary fill:#fff8e1,stroke:#f9a825,color:#5f4300,stroke-width:2px
+    classDef pending fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
+    classDef input fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
 
-    fastq --> star --> bam
-    bam --> bamqc
-    bam --> stranded
-    bam --> markdup --> splitncigar --> orient --> mpileup --> vcf --> cmh
+    subgraph ref["Reference prep"]
+        direction TB
+        s00a["00a STAR index<br/>cluster-proven"]
+        s00b["00b GTF -> BED12<br/>cluster-proven"]
+        s00c["00c GATK sidecars<br/>cluster-proven"]
+    end
+
+    subgraph sample["Sample preprocessing"]
+        direction TB
+        fastq["FASTQ<br/>raw paired-end reads"]
+        s01["01 STAR alignment<br/>cluster-proven"]
+        s02["02 canonical BAM<br/>cluster-proven"]
+        s02b["02b BAM QC<br/>cluster-proven"]
+        s03["03 strandedness<br/>cluster-proven"]
+        s04["04 MarkDuplicates<br/>cluster-proven"]
+        s05["05 SplitNCigarReads<br/>cluster-proven"]
+        s06["06 read-orientation split<br/>implemented/local-tested<br/>ABE_EV_3 cluster-validated<br/>cohort pending"]
+    end
+
+    subgraph downstream["Downstream editing workflow"]
+        direction TB
+        s07["07 bcftools mpileup<br/>pending"]
+        s08["08 VCF preprocessing<br/>pending"]
+        s09["09 CMH/editing-site calling<br/>pending"]
+    end
+
+    fastq --> s01 --> s02
+    s00a --> s01
+    s00b --> s03
+    s00c --> s05
+    s02 --> s02b
+    s02 --> s03
+    s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
+
+    class fastq input
+    class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05 proven
+    class s06 boundary
+    class s07,s08,s09 pending
 ```
 
 Standalone Mermaid source: `docs/architecture_pipeline.mmd`.
@@ -53,10 +80,10 @@ Standalone Mermaid source: `docs/architecture_pipeline.mmd`.
 | `03` | `results/qc/strandedness/<sample>.infer_experiment.txt` | cluster-proven across all six samples | All six libraries are reverse-stranded / first-strand-style. |
 | `04` | `results/markdup/<sample>/<sample>.markdup.bam(.bai)` | cluster-proven across all six samples | Duplicate reads are marked, not removed. |
 | `05` | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` | cluster-proven across all six samples | GATK temp handling hardened to project storage. |
-| `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | implemented and locally tested; pending cluster validation | Mechanical `FWD_like` / `REV_like` split. |
-| `07` | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools path is known; workflow behavior still pending. |
-| `08` | cleaned/annotated VCF-like tables | scaffolded / not implemented / not cluster-proven | R/Rscript availability still unresolved. |
-| `09` | CMH/editing-site result tables and plots | scaffolded / not implemented / not cluster-proven | Final deliverable format still needs PI-guided definition. |
+| `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | implemented and locally tested; cluster-validated on `ABE_EV_3`; cohort validation pending | Mechanical `FWD_like` / `REV_like` split. |
+| `07` | per-chromosome/per-orientation VCF files | pending / not implemented / not cluster-proven | bcftools path is known; workflow behavior still pending. |
+| `08` | cleaned/annotated VCF-like tables | pending / not implemented / not cluster-proven | R/Rscript availability still unresolved. |
+| `09` | CMH/editing-site result tables and plots | pending / not implemented / not cluster-proven | Final deliverable format still needs PI-guided definition. |
 
 ## Data Contracts
 
@@ -73,16 +100,46 @@ Standalone Mermaid source: `docs/architecture_pipeline.mmd`.
 
 ```mermaid
 flowchart LR
-    local["local implementation<br/>macOS / VS Code"]
-    tests["local tests<br/>fake tools and syntax checks"]
-    gitpush["git commit/push"]
-    pull["cluster pull<br/>CSU/ADAM checkout"]
-    dryrun["SLURM dry-run<br/>default mode"]
-    execute["execute<br/>explicit EXECUTE=1"]
-    validate["validate outputs<br/>logs, quickcheck, contracts"]
-    docs["update docs<br/>handoff, runbook, status"]
+    classDef gate fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef cluster fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef safeguard fill:#fff8e1,stroke:#f9a825,color:#5f4300
+    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
 
-    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docs
+    local["local implementation<br/>macOS / VS Code"]
+    tests["local tests<br/>syntax + fake tools"]
+    gitpush["commit / push"]
+    pull["cluster pull<br/>CSU checkout"]
+    dryrun["SLURM dry-run<br/>default gate"]
+    execute["execute<br/>explicit EXECUTE=1"]
+    validate["validate outputs<br/>logs + contracts"]
+    docupdate["update docs<br/>status + troubleshooting"]
+
+    fake["fake-tool tests"]
+    drydefault["dry-run default"]
+    execflag["explicit EXECUTE=1"]
+    locks["locks"]
+    runtoken["run-token temp files"]
+    publish["validate before publish"]
+    rollback["rollback"]
+    cleanup["cleanup"]
+    trouble["troubleshooting docs"]
+
+    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docupdate
+
+    fake -.-> tests
+    drydefault -.-> dryrun
+    execflag -.-> execute
+    locks -.-> execute
+    runtoken -.-> execute
+    publish -.-> validate
+    rollback -.-> validate
+    cleanup -.-> validate
+    trouble -.-> docupdate
+
+    class local,tests,gitpush gate
+    class pull,dryrun,execute,validate cluster
+    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
+    class docupdate docs
 ```
 
 Standalone Mermaid source: `docs/architecture_reliability.mmd`.
@@ -121,7 +178,7 @@ REV_like = samtools view -f 83 plus samtools view -f 163
 
 ## What Remains
 
-1. Finish Step `06` cluster validation.
+1. Finish Step `06` cohort validation.
 2. Implement Step `07` bcftools mpileup.
 3. Port Step `08` VCF preprocessing.
 4. Port Step `09` CMH/editing-site calling.

@@ -1,17 +1,44 @@
 flowchart LR
-    fastq["FASTQ<br/>raw paired-end reads"]
-    star["Step 01<br/>STAR alignment<br/>cluster-proven"]
-    bam["Step 02<br/>canonical BAM<br/>cluster-proven"]
-    bamqc["Step 02b<br/>BAM QC<br/>cluster-proven"]
-    stranded["Step 03<br/>strandedness check<br/>cluster-proven"]
-    markdup["Step 04<br/>MarkDuplicates<br/>cluster-proven"]
-    splitncigar["Step 05<br/>SplitNCigarReads<br/>cluster-proven"]
-    orient["Step 06<br/>read-orientation split<br/>implemented; pending cluster validation"]
-    mpileup["Step 07<br/>bcftools mpileup<br/>not implemented"]
-    vcf["Step 08<br/>VCF preprocessing<br/>not implemented"]
-    cmh["Step 09<br/>CMH/editing-site calling<br/>not implemented"]
+    classDef proven fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef boundary fill:#fff8e1,stroke:#f9a825,color:#5f4300,stroke-width:2px
+    classDef pending fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
+    classDef input fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
 
-    fastq --> star --> bam
-    bam --> bamqc
-    bam --> stranded
-    bam --> markdup --> splitncigar --> orient --> mpileup --> vcf --> cmh
+    subgraph ref["Reference prep"]
+        direction TB
+        s00a["00a STAR index<br/>cluster-proven"]
+        s00b["00b GTF -> BED12<br/>cluster-proven"]
+        s00c["00c GATK sidecars<br/>cluster-proven"]
+    end
+
+    subgraph sample["Sample preprocessing"]
+        direction TB
+        fastq["FASTQ<br/>raw paired-end reads"]
+        s01["01 STAR alignment<br/>cluster-proven"]
+        s02["02 canonical BAM<br/>cluster-proven"]
+        s02b["02b BAM QC<br/>cluster-proven"]
+        s03["03 strandedness<br/>cluster-proven"]
+        s04["04 MarkDuplicates<br/>cluster-proven"]
+        s05["05 SplitNCigarReads<br/>cluster-proven"]
+        s06["06 read-orientation split<br/>implemented/local-tested<br/>ABE_EV_3 cluster-validated<br/>cohort pending"]
+    end
+
+    subgraph downstream["Downstream editing workflow"]
+        direction TB
+        s07["07 bcftools mpileup<br/>pending"]
+        s08["08 VCF preprocessing<br/>pending"]
+        s09["09 CMH/editing-site calling<br/>pending"]
+    end
+
+    fastq --> s01 --> s02
+    s00a --> s01
+    s00b --> s03
+    s00c --> s05
+    s02 --> s02b
+    s02 --> s03
+    s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
+
+    class fastq input
+    class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05 proven
+    class s06 boundary
+    class s07,s08,s09 pending
