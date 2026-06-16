@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Union
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ def run_converter(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def write_gtf(path: Path, lines: list[str]) -> Path:
+def write_gtf(path: Path, lines: List[str]) -> Path:
     path.write_text("\n".join(lines) + "\n")
     return path
 
@@ -25,8 +26,8 @@ def write_gtf(path: Path, lines: list[str]) -> Path:
 def gtf_row(
     chrom: str,
     feature: str,
-    start: int | str,
-    end: int | str,
+    start: Union[int, str],
+    end: Union[int, str],
     strand: str,
     attributes: str,
 ) -> str:
@@ -45,7 +46,7 @@ def gtf_row(
     )
 
 
-def read_bed(path: Path) -> list[str]:
+def read_bed(path: Path) -> List[str]:
     return path.read_text().splitlines()
 
 
