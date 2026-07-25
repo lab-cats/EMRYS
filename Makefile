@@ -1,6 +1,6 @@
 DEMO_SAMPLE ?= ABE_EV_2
 
-.PHONY: test validate lint demo-step03
+.PHONY: test shell-test validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
@@ -14,6 +14,7 @@ shell-test:
 	bash tests/shell/test_step_04_mark_duplicates.sh
 	bash tests/shell/test_step_05_split_n_cigar_reads.sh
 	bash tests/shell/test_step_06_split_bam_by_read_orientation.sh
+	bash tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
@@ -25,7 +26,7 @@ smoke:
 lint:
 	python -m compileall scripts tests
 
-all-checks: test shell-test validate smoke
+all-checks: test shell-test validate smoke lint
 
 demo-step03-dry-run:
 	mkdir -p logs
