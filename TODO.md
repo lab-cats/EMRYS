@@ -57,7 +57,10 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Complete The Step 09 Gate, Then Promote Step 07
+The Step `09` implementation/docpatch gate is complete at `9ac8307`.
+`step-09a-roadmap-docpatch` records this reconciled roadmap and is the required
+clean/pushed base for the next runtime branch; it has no implementation or
+runtime claim of its own.
 
 Step `06` is cluster-proven across all six samples and publishes the orientation-specific BAM/BAI inputs for Step `07`:
 
@@ -76,18 +79,160 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Steps `07`-`09` now have local implementation commits and active tests. The
-remaining local gate is the separate Step `09` documentation-only commit and
-clean push.
+Steps `07`-`09` have implementation commits, active local tests, separate
+docpatch commits, clean histories, and pushed branches. A documentation-only
+package uses one docs commit plus validation/clean/push; it never fabricates an
+implementation commit.
 
-Required gates:
+Required lineage:
 
-1. Commit the Step `09` documentation-only patch, re-run consistency checks, require a clean worktree, and push `step-09-cmh`.
-2. Before Step `07`, add the approved `replicate` values to the full cluster sample manifest so that one manifest hash propagates through the complete Steps `07`-`09` chain; never use the Step `09` pairing reference file as a runtime overlay.
-3. Resolve and record a supported `Rscript` and the Step `08` Bioconductor packages, then run both real-R fixture suites in that environment.
-4. Begin cluster promotion with Step `07`: dry-run, one-row pilot execute/inspection, one-chromosome execute/inspection, then the approved primary-contig manifest.
-5. Docpatch inspected Step `07` evidence before promoting Step `08`; docpatch Step `08` evidence before promoting Step `09`.
-6. Do not call any of Steps `07`-`09` cluster-proven until their scheduler state, logs, execute outputs, and validation evidence have been inspected.
+```text
+step-09-cmh
+└── step-09a-roadmap-docpatch
+    └── validate-step-07
+        └── validate-step-08
+            └── validate-step-09
+                └── step-09b-scientific-validation
+```
+
+### 1. Establish The Runtime Promotion Preconditions
+
+Before any Step `07` cluster dry-run:
+
+1. Locate or deliberately provision the full cluster `samples.tsv`. It is
+   absent from this Git checkout, and the cluster-local copy has not been
+   inspected.
+2. Add the approved explicit replicate `2`, `3`, and `4` values to that
+   six-row manifest. Validate it, record its SHA-256, and keep the exact same
+   bytes/hash through Steps `07`-`09`; the tracked pairing reference is not a
+   runtime overlay.
+3. Resolve a compute-node-visible `Rscript`, the Step `08` Bioconductor
+   packages, and `sha256sum` or `shasum`. Run both real-R fixture suites in
+   that same supported environment before promotion.
+4. Verify the clean cluster checkout, `logs/`, all 12 Step `06` orientation
+   BAM/BAI pairs, the Novogene FASTA/FAI, primary-contig selectors including
+   `MT`, bcftools `1.21`, available storage/quota, and the provisional
+   eight-hour/one-CPU request.
+
+If this resolution requires tracking or changing repository manifest/config
+content, create `step-07a-runtime-manifest` (or the approved sequential
+inserted-package name) from `step-09a-roadmap-docpatch`, commit the config/
+validation change, docpatch, clean, and push. Then create `validate-step-07`
+from that branch. If the durable runtime file is a byte-identical cluster-local
+copy, record its path/hash as validation evidence without fabricating an
+implementation commit.
+
+### 2. Promote Step 07 On `validate-step-07`
+
+Run and inspect, in order:
+
+1. pilot dry-run;
+2. pilot execute;
+3. chromosome `1` dry-run;
+4. chromosome `1` execute;
+5. each of the remaining 24 primary partitions explicitly.
+
+Record pilot/chromosome-1 runtime and VCF size and use them to estimate
+remaining storage before the production fan-out. Do not add a dispatcher or
+job array.
+
+Exit only with 25 primary receipts and 50 structurally valid primary VCFs,
+exact six-sample order, identical manifest hashes throughout, reconciled
+record counts, `COMPLETED 0:0` jobs, inspected logs/outputs, and no owned lock
+or run-token scratch residue. The separate `pilot_1` transaction is
+validation-only and never enters the primary correction universe. Commit the
+evidence/status docpatch, require clean status/history, and push before Step
+`08`.
+
+### 3. Promote Step 08 On `validate-step-08`
+
+Require the supported environment to pass both real-R fixture suites. Inspect
+one successful dry-run and execute transaction over exactly 25 partitions by
+two orientations. Exit only with three valid outputs, exactly 50 input-receipt
+rows in partition order with `FWD_like` then `REV_like`, matching hashes and
+sample columns, unique candidate IDs, reconciled observed/supported/skipped/
+published counts, `COMPLETED 0:0`, and no owned lock or scratch residue.
+Docpatch, clean, and push before Step `09`.
+
+### 4. Promote Step 09 On `validate-step-09`
+
+The dry-run must show the three explicit replicate pairs, current upstream
+hashes, and frozen default thresholds. Execute once with background disabled.
+Exit only with `COMPLETED 0:0`, six reconciled outputs, all-sites row count
+equal to Step `08` candidates, the exact ordered rows whose `call_status` is
+`significant_up` or `significant_down`, one summary row, 12 mutation-spectrum
+rows, valid PDF `%PDF-`/`%%EOF` markers, and no lock/scratch residue. Docpatch,
+clean, and push. This can establish
+computational cluster proof; it cannot biologically validate
+`legacy_provisional_v1`.
+
+### 5. Run The Post-Step-09 Scientific Gate
+
+Create `step-09b-scientific-validation` from the clean, pushed
+`validate-step-09` branch. This is an evidence-and-decision package, not a
+runnable Step `10`.
+
+Required evidence:
+
+* independently validate read flags, transcript strand, genomic/RNA alleles,
+  and raw counts at predeclared plus-strand and minus-strand transcript loci;
+  compare the current and inverted normalization policies. A>G enrichment is
+  supporting evidence only, not proof;
+* record the Novogene GTF path/identity/SHA-256 and delivery provenance; record
+  the exact release if recoverable, otherwise retain it as an accepted
+  unresolved limitation; audit predeclared CDS, UTR, exon, intron, intergenic,
+  overlapping-gene, and multi-transcript cases;
+* reconcile the production funnel from Step `07` records through Step `08`
+  exclusions and Step `09` statuses by partition/orientation;
+* freeze the legacy defaults, predeclare sensitivity analyses, review
+  per-replicate AF/delta and leave-one-pair-out results, and explicitly review
+  the unweighted mean-sample-AF effect metric, `ABE_EV_2` mapping behavior,
+  replicate `4` duplication, and replicate-direction discordance;
+* adjudicate deterministic top, discordant, and near-threshold candidate sets
+  for coverage, quality/bias, splice/repeat/multimapping/duplicate/indel,
+  annotation, and polymorphism concerns;
+* decide whether a genuine distinct comparable background cohort exists. EV
+  is not no-dox. Adding one changes the manifest hash and reopens Steps
+  `07`-`09`.
+
+Before viewing concordance/candidate rankings, freeze deterministic selection,
+sample size, both orientations and plus/minus transcript-strand coverage, the
+sensitivity grid/decision thresholds, input hashes, git commit,
+commands/scripts/software versions, reviewer/date/owner, and
+current/superseded analysis IDs. Sensitivity and leave-one-pair-out runs use
+distinct analysis IDs and never overwrite the primary transaction; any
+testability/family change recomputes BH.
+
+The evidence package should include compact audit/threshold/leave-one-out/
+adjudication TSVs in approved results storage. The docpatch records compact
+non-sensitive summaries, paths, and hashes; do not commit production-derived
+biological TSV snapshots without explicit approval.
+Record `science_review_complete_exploratory` when review is complete but
+results remain provisional. Record `biological_interpretation_ready` only with
+a validated orientation policy plus accepted annotation provenance/
+limitations, approved primary thresholds, reviewed replicate sensitivity,
+candidate adjudication, and background/matched-DNA decisions.
+
+Rerun rules:
+
+```text
+manifest or partition universe -> gated config/evidence package, then Steps 07-09
+Step 07 filter or maximum depth
+  -> contract/versioning decision plus distinct namespace or added provenance,
+     then Steps 07-09
+new background samples -> prove their Steps 01-06 inputs, then Steps 07-09
+existing unchanged Step 08 background columns -> new Step 09 analysis ID
+GTF input -> Steps 08-09
+orientation normalization policy
+  -> Steps 08-09 contract/code/tests/docpatch, then Steps 08-09 runtime
+supported Step 09 target/unchanged-manifest contrast/background/min-DP/defaults
+  -> new Step 09 analysis ID and full applicable-family BH
+CMH method/correction or testability logic
+  -> Step 09 implementation/tests/docpatch, then new-ID runtime validation
+FASTA/coordinate change -> upstream reference/alignment impact review
+manual adjudication labels -> no compute rerun
+new automated candidate filter -> separate implementation/test/docpatch
+```
 
 ## Architecture Reminders
 
@@ -132,6 +277,13 @@ mechanical read-orientation groups, not biological strand calls.
 
 ## External Blockers / Unresolved Items
 
+### Runtime Sample Manifest
+
+`samples.tsv` is the runtime source of truth but is absent from this checkout.
+Before Step `07`, determine whether the full six-row manifest is intentionally
+cluster-local or should be safely tracked, add explicit replicate values,
+validate it, and record where the immutable runtime copy and SHA-256 live.
+
 ### R / Rscript Availability
 
 Still unresolved.
@@ -156,6 +308,10 @@ scratch availability
 whether temp files should use scratch or /tmp
 ```
 
+This is a Step `07` safety preflight, not merely a later administrative item.
+Record pilot and chromosome-1 VCF size/runtime before submitting the remaining
+primary partitions.
+
 ### Exact Annotation Version
 
 Partially unresolved.
@@ -173,6 +329,10 @@ Still need:
 ```text
 Exact annotation release/version if recoverable from files or Novogene docs.
 ```
+
+Also unresolved before Step `07`/`08` promotion: confirm `MT` against the
+runtime FAI and determine whether the provisional eight-hour, one-CPU
+resources are sufficient.
 
 ## Later TODOs
 
@@ -284,44 +444,73 @@ These are deferred cross-cutting engineering improvements and roadmap ideas. The
 
 Deferred architecture: evaluate separating the reusable preprocessing backbone from assay-specific analysis modules and a reporting layer. First reproduce the legacy Steps `07`-`09` workflow, then decide whether to formalize modules such as `rna_editing_cmh`, manifest/config contracts, artifact indexes, report generation, and possible public-dataset import support.
 
-### After Steps 00c-09 Are Proven
+### Ordered Post-Proof Operational Packages
 
-These items belong after the full compute path is substantially proven:
+Create each package as a clean descendant with its own implementation/evidence
+commit when applicable and separate docpatch:
 
-* Add manifest-driven submission and validation helpers for targeted sample reruns and later cohort-scale execution. Possible future helpers include `scripts/submit_step.sh --step ... --manifest ...` and `scripts/validate_step.sh --step ... --manifest ...`, but their names and interfaces are not decided.
-* Add SLURM job-array support only after single-sample behavior is stable and manifest-driven sample lookup is clear.
-* Add an environment/tool probe step for STAR, samtools, bedtools, Picard, Java, GATK, bcftools, R/Rscript, required R packages, and Python/RSeQC. This should be a preflight report, not a replacement for per-step validation.
-* Add reference provenance and checksum tracking for `genome.fa`, `genome.gtf`, `genome.bed`, the STAR index, `genome.fa.fai`, and `genome.dict` to reduce reference mismatch risk.
-* Define output retention and cleanup policy for raw FASTQs, STAR BAMs, canonical BAMs, markdup BAMs, split-N-cigar BAMs, pileups/VCFs, temp files, backups, and logs.
-* Add standardized validation reports after the existing per-step validation behavior is stable. Decide later whether these are per-step validators, a generic dispatcher, or both.
+These are candidate package/branch labels; approve each exact interface/name
+when activated. The order is fixed. Promotion-specific environment,
+reference, and storage evidence is collected manually now; these later
+packages turn those checks into reusable tooling for future runs/cohorts.
+
+1. `post09-runtime-preflight`: read-only tool/runtime/package probe from STAR
+   through bcftools, R/Rscript, required packages, and RSeQC. It supplements,
+   but never replaces, per-step validation and never installs software.
+2. `post09-reference-provenance`: reference identities/checksums for FASTA,
+   GTF, BED, FAI, DICT, and STAR index plus contig-agreement checks.
+3. `post09-storage-inventory-retention`: read-only size/quota/scratch inventory
+   followed by an approved retention matrix; it is not a cleanup tool.
+4. `post09-validation-reports`: step-specific read-only validators and missing
+   Step `00a`/`00b` shell coverage before any generic dispatcher.
+5. `post09-targeted-reruns`: manifest-driven rerun planning/submission only
+   after validators stabilize; job arrays remain optional and require repeated
+   operational need.
 
 ### Reporting And Artifact Layer
 
 This layer remains planned, deferred, and non-runnable. It should not be implemented until the core compute workflow is substantially proven.
 
-Deferred phases:
+Ordered packages:
+
+These IDs are candidate labels until separately activated; their dependency
+order is fixed.
 
 ```text
-A. Define and version the artifact schema.
-B. Add shared artifact-writing utilities.
-C. Retrofit proven steps to emit sidecars.
-D. Define the richer CMH/editing-site artifact schema.
-E. Aggregate sidecars into run_summary.json.
-F. Implement HTML reporting.
-G. Add PDF and TSV renderers.
+artifact-schema-v1
+-> artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
 ```
 
 Roadmap ideas:
 
-* Future per-step JSON sidecars may eventually record command context, inputs, outputs, tool versions, runtime, node, validation results, and metrics.
-* A future aggregation layer may combine sidecars into `results/artifacts/run_summary.json`.
-* Future cohort QC summary tables may include alignment, strandedness, and duplication summaries for handoff and sanity checks.
-* Future demo/reporting artifacts may include HTML/PDF summaries, but report generation should remain decoupled from compute steps.
+* `artifact-schema-v1` defines versioned JSON Schema, fixtures, and a validator,
+  after resolving run IDs, attempted/failed/incomplete states, version
+  conflicts, paths/hashes, and richer Step `09` fields.
+* `artifact-adapters-v1` adds read-only adapters over existing Step `07`
+  receipts, Step `08` receipt/summary, and Step `09` summary without changing
+  proven CLIs or paths. Native emitters may come later.
+* `artifact-run-summary` represents missing, failed, and incomplete work and
+  aggregates approved artifacts into `run_summary.json` plus an index/QC table.
+* `report-html-v1` consumes only structured artifacts and final tables. It
+  never reruns computation or discovers inputs by path glob.
+* `report-exports-v1` adds PDF/TSV exports only after HTML is stable.
 
 ### Later Maintainability And Refactor Work
 
 These are refactor candidates, not active implementation requirements:
 
+* After the evidence gates, `analysis-config-v1` may separate the sample
+  manifest (what data exist) from a required analysis config (what contrast,
+  reference, strandedness/orientation policy, and filters to run).
+* Only then may `rna-editing-cmh-module` wrap Steps `07`-`09` as a thin module
+  while preserving every existing CLI and output path; Step `06` can be an
+  optional prerequisite for orientation-aware modules.
+* General core refactoring requires evidence from a second real cohort.
+  Public SRA/GEO/ENA ingestion comes last and must enter through the same
+  manifest/config/provenance contracts.
 * Consider shared shell helper libraries only after behavior is covered by tests and outputs are stable. Candidate future files include `scripts/lib/norad_common.sh` and `scripts/lib/norad_slurm_common.sh`.
 * Candidate shared helpers include repo-root detection, strict-mode/logging conventions, dry-run/execute handling, tool resolution and version logging, Java runtime validation, common file/path validation, lock handling, temp-path cleanup traps, samtools quickcheck/index validation, standardized error messages, and SLURM job context logging.
 * Future helper-library refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
@@ -337,6 +526,11 @@ These ideas are for later handoff and maintenance:
 * Add a compact failure taxonomy or troubleshooting index that maps symptom to likely cause, confirmation command, and fix once enough repeated failures exist.
 * Consider conservative stale-lock inspection and cleanup utilities after lock behavior is stable and safety rules are documented.
 * Keep any admin utility cautious by default; do not delete or repair shared outputs without explicit operator intent.
+
+Explicitly premature now: a generic dispatcher, job arrays, broad shared
+shell/SLURM extraction, automatic R-package installation, unproven tool-path
+configuration, automatic cleanup or stale-lock deletion, moving proven scripts
+into modules, public-data ingestion, or report templates that glob paths.
 
 ## Resolved Items
 
@@ -379,6 +573,8 @@ Implement Step 09 locally with explicit manifest-defined pairing, a base-R CMH e
 Promote the former Step 09 pending test plan into active shell and conditional real-R suites.
 Define the Step 09 fixed all-sites/significant/summary/mutation schemas, status vocabulary, global BH family, and treatment-relative odds-ratio direction.
 Define the Step 09 six-output transaction with owned locking, stable hashes, exact reconciliation, rollback, and the summary published last.
+Complete and push the separate Step 07, Step 08, and Step 09 local docpatch gates; Step 09 is at 9ac8307.
+Reconcile the descendant runtime, scientific-validation, and post-proof roadmap on step-09a-roadmap-docpatch.
 ```
 
 ## Development Rule

@@ -30,6 +30,8 @@ flowchart LR
         s09["09 CMH/editing-site calling<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
     end
 
+    science["post-09 scientific evidence/decision gate<br/>planned only after validate-step-09 cluster proof<br/>not Step 10"]
+
     fastq --> s01 --> s02
     s00a --> s01
     s00b --> s03
@@ -37,7 +39,9 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
+    s09 -.-> science
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
     class s07,s08,s09 boundary
+    class science pending

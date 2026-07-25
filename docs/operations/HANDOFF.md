@@ -45,9 +45,17 @@ Current demo state:
 * Implemented locally and locally tested: Step `07`, using mocked bcftools rather than a real bcftools runtime.
 * Implemented locally and wrapper-tested: Step `08` at implementation commit `90335d8`, using a fake `Rscript`; the real-R fixtures exist but have not run.
 * Implemented locally and wrapper-tested: Step `09` at implementation commit `e4371de`, using a fake `Rscript`; the real-R fixtures exist but report `SKIP` because no local `Rscript` is available.
-* Immediate local next: finish the Step `09` docpatch/clean/push gate.
-* Later cluster promotion begins with Step `07`: dry-run, pilot, one chromosome, then the approved primary-contig manifest. No Step `07` cluster evidence has yet been inspected.
+* The Step `09` implementation/docpatch gate is complete and pushed at
+  `9ac8307`.
+* Documentation-only `step-09a-roadmap-docpatch` records the reconciled
+  roadmap and is the required clean/pushed base for `validate-step-07`.
+* Later cluster promotion begins with Step `07`: dry-run, pilot, one
+  chromosome, then the approved primary-contig manifest. No Step `07` cluster
+  evidence has yet been inspected.
 * Not cluster-proven: Steps `07`, `08`, and `09`.
+* No final biological result exists. Even future computational cluster proof
+  will leave the provisional orientation policy and candidate interpretation
+  for the separate scientific evidence-and-decision gate.
 
 ## Cohort
 
@@ -84,7 +92,8 @@ It is not a runtime overlay. Step `09` reads pairing only from the full sample
 manifest, and pairing is never inferred from names. Before Step `07` cluster
 promotion, add these `replicate` values to the full cluster sample manifest so
 the same sample-manifest hash propagates through the complete Steps `07`-`09`
-chain.
+chain. `samples.tsv` is absent from this checkout; the cluster-local runtime
+copy, its persistence, and its hash have not yet been inspected.
 
 ## Current Scientific And Workflow Conclusions
 
@@ -100,6 +109,21 @@ Step `03` confirmed all six libraries are paired-end and reverse-stranded / firs
 | `ABE_PUM1_4` | 0.0926 | 0.0402 | 0.8672 |
 
 The `ABE_EV_2` Step `03` output was rerun after Step `02` hardening and matched the previous report exactly. Step `02` changed operational metadata and publication safety without changing the biological orientation inference.
+
+Current downstream conclusions must remain bounded:
+
+* Step `09` output statuses will identify CMH-ranked candidates under the
+  configured policy; they are not validated editing sites.
+* `cluster-proven` means the declared computation ran and its contracts were
+  inspected. It does not approve `legacy_provisional_v1`, annotation
+  interpretation, thresholds, or biological causality.
+* A separate post-Step-09 scientific gate must resolve orientation evidence,
+  annotation provenance, sensitivity/replicate robustness, candidate
+  adjudication, and the eligible-background decision before interpretation.
+* `science_review_complete_exploratory` records a completed review while
+  retaining provisional results. Only `biological_interpretation_ready`
+  permits biological interpretation and requires a validated orientation
+  policy plus every stricter scientific exit.
 
 ## Main Entry Points
 
@@ -473,6 +497,14 @@ The receipt records `cohort_id`, `partition_id`, `selector_type`, `selector_valu
 
 Dry-run is side-effect-free. Execute mode validates BAM/BAI and FASTA/FAI inputs, selectors, and complete outputs; uses an owned cohort/partition lock and run-token scratch paths; validates before publication; and rolls back a replaced complete final set on failure. Local coverage is active at `tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`, including mocked multi-BAM command construction, dry-run, validation, locks, cleanup, and rollback.
 
+The primary manifest has 25 partitions. Step `07` becomes cluster-proven only
+after the pilot and chromosome-1 gates plus inspected execution of all primary
+partitions yields 25 valid primary receipts and 50 valid primary VCFs with
+exact sample order, unchanged manifest hashes, reconciled record counts,
+successful scheduler/log evidence, and no owned lock or run-token residue.
+The separate pilot adds one receipt/two VCFs for validation only and is never
+part of those totals or the correction universe.
+
 ## Step 08 Current State
 
 Step `08` is implemented locally at implementation commit `90335d8`. Its
@@ -531,6 +563,13 @@ candidate counts reconcile per input and in the summary. An owned cohort lock,
 run-token temporary and backup paths, immutable input hashes,
 validation-before-publication, cleanup, and rollback protect the three-file
 set. The input receipt is published last as the transaction commit marker.
+
+The Step `08` cluster exit requires both real-R fixture suites to pass in the
+supported batch-visible environment and one inspected successful three-file
+transaction. For the primary manifest, the input receipt must contain exactly
+50 rows in partition order with `FWD_like` then `REV_like`; schemas, hashes,
+sample columns, candidate uniqueness, and count invariants must reconcile, the
+job must be `COMPLETED 0:0`, and no owned lock or run-token residue may remain.
 
 ## Step 09 Current State
 
@@ -602,13 +641,45 @@ the commit marker. If rollback cannot restore a complete prior state, the
 owned lock is deliberately retained for operator recovery; never delete such
 a lock before inspecting its owner metadata, backups, final paths, and logs.
 
+The Step `09` cluster exit requires one inspected `COMPLETED 0:0` transaction
+with all six outputs, all-sites row count equal to the Step `08` candidate
+count, significant-sites as the exact ordered rows whose `call_status` is
+`significant_up` or `significant_down`, one summary row, 12 mutation-spectrum
+rows, reconciled statuses and upstream hashes, valid PDF
+signatures/EOF markers, background disabled for the default analysis, and no
+owned lock or run-token residue. Passing this gate establishes computational
+proof only.
+
 ## Current Next Work
 
-1. Complete the Step `09` documentation-only commit, clean-status/history check, and push gate.
-2. Add explicit replicate `2`, `3`, and `4` metadata to the full cluster sample manifest before Step `07`.
-3. Resolve and record the supported `Rscript` path and Step `08` Bioconductor packages; run both real-R fixture suites in that environment.
-4. Promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then the approved primary-contig manifest.
-5. Docpatch inspected Step `07` evidence before promoting Step `08`, and docpatch inspected Step `08` evidence before promoting Step `09`.
+Use this clean descendant sequence:
+
+```text
+step-09-cmh
+└── step-09a-roadmap-docpatch
+    └── validate-step-07
+        └── validate-step-08
+            └── validate-step-09
+                └── step-09b-scientific-validation
+```
+
+1. Establish the immutable replicate-bearing runtime manifest; resolve the
+   compute-node R/package/hash environment; run both real-R suites; verify all
+   Step `06` BAM/BAI inputs, FASTA/FAI selectors including `MT`, storage/quota,
+   logs, and provisional resources. If tracked manifest/config content must
+   change, insert a gated `step-07a-runtime-manifest`-style package before the
+   evidence-only validation branch.
+2. Promote Step `07`, then Step `08`, then Step `09`, using the numeric exit
+   contracts above. After each stage, commit an inspected evidence/status
+   docpatch, require clean history, and push before branching.
+3. Run `step-09b-scientific-validation` over actual production outputs. It is
+   an evidence-and-decision gate, not Step `10`; any approved policy, GTF,
+   manifest, threshold, or code change reopens the affected implementation,
+   tests, docpatch, and runtime stages.
+4. Only after those gates activate the ordered post-proof engineering
+   packages documented in `TODO.md` and `docs/design/PIPELINE_PLAN.md`.
+   Exploratory review completion may unlock operational/artifact tooling, but
+   biological candidate reports require `biological_interpretation_ready`.
 
 ## Java And Picard Handoff
 

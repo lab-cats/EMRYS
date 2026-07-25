@@ -473,6 +473,11 @@ partial pair of VCFs as a complete partition. Owned locks, run-token scratch
 paths, validation-before-publication, rollback, and cleanup preserve the
 reliability contract established by Steps `05` and `06`.
 
+For the approved primary manifest, the durable completion unit is 25 committed
+partition transactions: 25 receipts and 50 VCFs. The separate pilot
+transaction is validation evidence only and never counts toward, mutates, or
+enters that primary correction universe.
+
 ## The Confirmed bcftools Path Is The Step 07 Cluster Default
 
 Decision: use the validated CSU bcftools path as the Step `07` SLURM-wrapper
@@ -645,6 +650,11 @@ Reason: fixed schemas and ordering make Step `09` consumption deterministic,
 and receipt-last rollback publication prevents a partial cohort table set from
 being mistaken for a committed Step `08` result.
 
+For the approved 25-partition universe, the durable Step `08` input-receipt
+contract is exactly 50 rows in partition-manifest order, with `FWD_like` then
+`REV_like` for each partition. A different row count or order is a different
+or incomplete transaction, not a harmless presentation change.
+
 Current evidence: this contract is implemented locally at commit `90335d8`.
 The fake-R shell suite passes. The committed real-R fixture suite has not run
 because this workstation lacks `Rscript`; there is no cluster dry-run, execute,
@@ -754,6 +764,16 @@ cluster-proven. It retains
 `orientation_policy=legacy_provisional_v1`, which is not biologically
 validated.
 
+Durable cluster-proof reconciliation requires one successful six-output
+transaction whose all-sites row count equals Step `08`, whose significant
+table contains the exact ordered rows whose `call_status` is `significant_up`
+or `significant_down`, whose summary has one row, whose mutation spectrum has
+12 rows, and whose PDFs have valid signatures/EOF
+markers, together with matching upstream hashes/status totals, inspected
+scheduler/log evidence, and no owned lock or scratch residue. This
+computational proof does not convert `legacy_provisional_v1` or
+`significant_up`/`significant_down` into biological validation.
+
 ## R/Rscript Availability Is Not Decided
 
 Decision: do not assume final module names or invocation patterns for R/Rscript
@@ -767,6 +787,78 @@ compatible installed package versions, and cluster availability remain
 unresolved. Analysis scripts must fail clearly when dependencies are absent
 and must not install packages automatically.
 
+## Computational Proof And Scientific Interpretation Are Separate Gates
+
+Decision: `cluster-proven` means a declared computation completed on the
+cluster and its scheduler state, logs, inputs, outputs, hashes, and stage
+contracts were inspected. It does not mean its biological orientation,
+annotation interpretation, thresholds, candidate identity, or causal
+interpretation is validated.
+
+After Step `09` runtime proof, a separate descendant scientific
+evidence-and-decision package must review orientation, annotation provenance
+and semantics, predeclared threshold/replicate sensitivity, candidate
+adjudication, and the background-cohort decision. A>G enrichment can support
+but cannot independently prove the orientation mapping. PI review and report
+generation do not constitute orthogonal experimental validation.
+
+Reason: computational reproducibility and biological validity answer different
+questions. Keeping the gates distinct prevents a technically correct run from
+being overstated as a validated scientific conclusion.
+
+Decision: post-review status uses two explicit states:
+
+```text
+science_review_complete_exploratory
+biological_interpretation_ready
+```
+
+The first means evidence/decisions are recorded while the result remains
+provisional. It may permit operational, provenance, and artifact tooling, but
+not biological candidate claims. The second additionally requires a validated
+orientation policy and every stricter scientific exit criterion. Reports must
+render the state and limitations explicitly; they never infer validation from
+review completion.
+
+## Post-Proof Engineering Uses An Ordered, Adapters-First Roadmap
+
+Decision: after runtime and scientific gates, activate work packages in this
+dependency order. The order is durable; exact package/branch names and
+interfaces remain candidate labels until separately activated:
+
+```text
+runtime preflight
+-> reference provenance
+-> storage inventory and approved retention policy
+-> step-specific validation reports
+-> targeted-rerun planning
+-> versioned artifact schema
+-> read-only adapters over existing receipts/summaries
+-> run-summary aggregation
+-> HTML reporting
+-> PDF/TSV exports
+-> analysis-config contract
+-> thin rna_editing_cmh module
+-> general core refactor after a second real cohort
+-> public-data ingestion
+```
+
+The preflight is read-only and does not install software. Retention policy
+precedes any cleanup. Step-specific validators precede a generic dispatcher.
+Adapters precede native emitter retrofits and preserve proven CLIs/paths.
+Biological candidate reporting requires the scientific-policy gate. Public
+ingestion is last and must produce the same manifest/config/provenance
+contracts.
+
+The first three roadmap items mean reusable environment-audit,
+reference-registry, and storage/retention tooling for later runs. The current
+promotion and scientific gates collect their required environment, reference,
+and storage evidence manually before those tools exist.
+
+Reason: this order extracts trustworthy structure from proven outputs before
+changing computation or adding presentation layers. It also ensures reports
+do not silently infer state by globbing paths or rerun analysis.
+
 ## Future Refactors Must Preserve Proven Interfaces
 
 Decision: future helper-library, orchestration, validation-reporting, and admin-utility refactors must preserve existing step command-line interfaces, output paths, dry-run/execute semantics, and proven cluster contracts unless a later task explicitly decides otherwise.
@@ -779,15 +871,25 @@ Candidate helper names, config filenames, validator names, Makefile targets, and
 
 Decision: compute steps and report rendering should remain decoupled.
 
-Future pipeline results should be exposed through versioned structured JSON artifacts. Per-step JSON sidecars are planned as a cross-cutting capability, and a future aggregation phase should combine them into:
+Future pipeline results should be exposed through versioned structured
+artifacts. First define and validate the schema, then build read-only adapters
+over existing receipts/summaries, and only then aggregate them into:
 
 ```text
 results/artifacts/run_summary.json
 ```
 
-`run_summary.json` is intended to become the report layer's single structured input. HTML, PDF, TSV, or other renderers should consume that summary and final result tables without rerunning STAR, samtools, Picard, GATK, bcftools, or CMH computation.
+`run_summary.json` is intended to become the report layer's single structured
+input. HTML, PDF, TSV, or other renderers should consume that summary and final
+result tables without rerunning STAR, samtools, Picard, GATK, bcftools, or CMH
+computation and without discovering state by path glob. Candidate/biological
+reports must also carry the approved post-Step-09 scientific policy and may
+not imply that report generation itself validates a candidate.
 
-This decision does not require immediate retrofitting of currently implemented steps. Artifact emission, aggregation, and rendering remain planned, deferred, and non-runnable until the core computational workflow is substantially proven.
+This decision does not require immediate retrofitting of currently implemented
+steps. Native artifact emission is optional after adapters prove the schema.
+Artifact adapters, aggregation, and rendering remain planned, deferred, and
+non-runnable until the runtime and scientific gates are complete.
 
 ## Documentation Files Have Different Purposes
 

@@ -88,9 +88,71 @@ runtime FASTA index and will fail rather than silently omit a missing contig.
 Confirm the full tracked manifest against
 `refs/novogene_ref/genome.fa.fai` during the first cluster dry-run.
 
+### Runtime Sample-Manifest Provisioning And Persistence
+
+The runtime contract is known, but the production file is not yet established
+from this checkout:
+
+```text
+samples.tsv is absent from the current Git checkout
+the cluster-local full manifest has not been inspected
+the six approved replicate assignments must exist before Step 07
+one byte-identical manifest/hash must flow through Steps 07-09
+```
+
+Determine whether the runtime manifest is intentionally cluster-local or can
+be safely tracked, where its durable copy lives, how operators obtain it in a
+fresh checkout, and where its SHA-256 is recorded. Never edit downstream
+receipt hashes to mask a changed manifest; regenerate affected stages.
+If the answer requires a tracked config change, use a separately gated
+`step-07a-runtime-manifest`-style descendant before `validate-step-07`; do not
+mix config implementation into the evidence-only validation branch.
+
+### Post-Step 09 Scientific Evidence And Decisions
+
+These questions remain open even after a future computationally
+`cluster-proven` Step `09`:
+
+```text
+What independent protocol/RSeQC/BAM-locus evidence is sufficient to retain
+  legacy_provisional_v1, and what evidence requires a versioned replacement?
+Can the exact Novogene GTF release be recovered after its path/identity/
+  SHA-256 and delivery provenance are fixed; if not, can the unresolved
+  release be accepted explicitly as a limitation? How should multiple
+  transcript/gene assignments be represented, and what discrepancy rate is
+  acceptable in the predeclared annotation audit?
+Is unweighted mean sample AF the intended treatment-control effect metric?
+Which primary thresholds will be approved before results are reviewed, and
+  which sensitivity and leave-one-pair-out analyses are predeclared?
+Does a genuine distinct, comparable no-dox/rABE-negative background cohort
+  exist, and is the legacy every-background-sample AF <0.01 rule intended?
+What coverage, quality/bias, repeat/multimapping, polymorphism, and annotation
+  criteria define candidate pass/flag/reject adjudication?
+What orthogonal evidence, if any, is required before a candidate is described
+  as biologically validated rather than CMH-ranked?
+```
+
+A>G enrichment may support an orientation decision but cannot independently
+prove the mapping that created the A>G labels. PI review and candidate
+adjudication are also not substitutes for orthogonal experimental validation.
+Record answers in `docs/design/DECISIONS.md` only after the underlying
+evidence has been inspected.
+
 ### Future Artifact And Reporting Design
 
 Structured artifacts and reporting are planned, deferred, and non-runnable.
+Their dependency order is now decided:
+
+```text
+artifact-schema-v1
+-> read-only artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
+```
+
+The dependency order is decided; these remain candidate package/branch labels
+until each name and interface is separately activated.
 
 Open questions:
 
@@ -107,26 +169,29 @@ whether Step 06 orientation splitting remains part of the core preprocessing bou
 whether the first analysis module should be named rna_editing_cmh or preserve legacy workflow terminology
 whether assay selection should live only in an analysis YAML config or whether the sample manifest can optionally point to a default analysis config
 what metadata should be required before an analysis module is allowed to make biological comparisons
-what evidence is required to replace the approved provisional
-  orientation_policy=legacy_provisional_v1 mapping with a biologically
-  validated policy
 what artifact index format the reporting layer should consume
 whether future public-dataset ingestion should be handled as a separate import layer that produces the same manifest/config inputs as lab-generated ADAM FASTQs
 ```
 
 ### Deferred Engineering Roadmap Decisions
 
-The deferred engineering roadmap is tracked canonically in `TODO.md`. These questions do not block Step `00c`, Step `05`, or the remaining compute pipeline.
+The deferred engineering roadmap is tracked canonically in `TODO.md`. The
+sequence from runtime preflight through provenance, storage/retention,
+step-specific validators, targeted reruns, artifacts, reports, analysis config,
+module wrapping, second-cohort refactoring, and public ingestion is decided.
+These questions do not block the remaining compute pipeline.
+
+The order is fixed, but exact package names and interfaces remain open until
+their activation gates.
 
 Open questions:
 
 ```text
-when to activate manifest-driven submission and validation helpers
-whether future sample selection helpers should be step-specific or generic
-when SLURM arrays become useful enough to replace manual cohort loops
+when each ordered package has enough evidence and operator need to activate
+the exact interfaces for step-specific validators and targeted-rerun planners
+when repeated execution makes SLURM arrays useful
 which reference files need checksums and where provenance should be recorded
 which generated outputs are long-term retained versus disposable
-whether validation reports should be per-step scripts, a generic dispatcher, or both
 whether cluster tool paths need a config file, and which paths belong there
 how stale-lock inspection and cleanup should prove safety before changing anything
 which failure categories belong in a troubleshooting taxonomy
@@ -221,7 +286,7 @@ Do not copy full raw data into Git.
 
 ### Sample Manifest Source
 
-Answered.
+Contract answered; runtime provisioning remains open above.
 
 Manifest file:
 
@@ -239,7 +304,9 @@ The generic schema accepts optional `replicate` metadata so earlier manifests
 remain valid. Step `09` requires `replicate` for its control/treatment samples
 and uses the full sample manifest as the only pairing source. The manifest must
 carry the approved pairs before Step `07` so the same hash propagates through
-the downstream receipt chain.
+the downstream receipt chain. This does not establish that a production
+`samples.tsv` is present in the current checkout or that its cluster-local
+copy has been inspected.
 
 ### What Partition / Account Should Jobs Use?
 

@@ -481,6 +481,15 @@ The receipt is published last and is the commit marker for the complete two-orie
 
 The local implementation follows the Step `05`-`06` reliability contract: side-effect-free dry-run, an owned cohort/partition lock, run-token scratch and backup paths, validation before publication, rollback of a replaced complete set, and owned cleanup. The active fake-bcftools test covers command construction, both selectors, receipt and sample-order validation, header-only output, failure handling, locks, cleanup, and rollback. The complete local repository gate passed with 22 Python tests and all shell tests through Step `07`.
 
+Cluster-proof exit contract: after pilot and chromosome-1 promotion gates, all
+25 primary partitions must yield 25 valid receipts and 50 structurally valid
+primary VCFs. Every VCF must preserve the exact six-sample manifest order;
+receipt record counts and the unchanged replicate-bearing sample-manifest and
+partition-manifest hashes must reconcile; jobs/logs/outputs must be inspected
+as `COMPLETED 0:0`; and no owned lock or run-token residue may remain. The
+separate pilot produces one receipt/two VCFs for validation only and never
+enters those totals or the primary correction universe.
+
 ### Step 08
 
 Step `08` is implemented locally at implementation commit `90335d8`. The
@@ -629,6 +638,14 @@ multiallelic mapping, annotation, deterministic ordering, count reconciliation,
 header-only inputs, and strict failures. `make real-r-test` reports `SKIP` on
 this workstation because `Rscript` is unavailable; that skip is not real-R
 validation.
+
+Cluster-proof exit contract: both real-R fixture suites must pass in the same
+supported batch-visible environment used for execution. One successful
+three-file transaction over the primary universe must contain exactly 50
+input-receipt rows in partition-manifest order with `FWD_like` then
+`REV_like`; schemas, immutable hashes, exact sample columns, candidate
+uniqueness, and all per-input/summary count invariants must reconcile; the job
+must be `COMPLETED 0:0`; and no owned lock or run-token residue may remain.
 
 ### Step 09
 
@@ -787,6 +804,117 @@ and the summary last as the commit marker. Final hashes and content are
 revalidated. Failure before commit restores the prior complete set. If
 rollback is incomplete, the owned lock remains for explicit operator recovery.
 
+Cluster-proof exit contract: one inspected default-analysis job must be
+`COMPLETED 0:0` and publish one reconciled six-file transaction. The all-sites
+row count must equal the Step `08` candidate count; significant-sites must be
+the exact ordered `significant_up`/`significant_down` subset; summary must have
+one row; mutation spectrum must have 12 rows; statuses, hashes, thresholds,
+and background-disabled state must reconcile; both PDFs must pass `%PDF-` and
+`%%EOF` checks; and no owned lock or run-token residue may remain. This proves
+the computation, not the biological validity of `legacy_provisional_v1`.
+
+## Post-Step 09 Scientific Validation Gate
+
+This planned evidence-and-decision package is outside the core Steps
+`00a`-`09` computation and is not a runnable Step `10`. It begins only from a
+clean, pushed `validate-step-09` branch with inspected production outputs:
+
+```text
+validate-step-09
+└── step-09b-scientific-validation
+```
+
+Required evidence categories:
+
+1. **Orientation policy.** Independently derive the relationship among legacy
+   flag groups, transcript strand, genomic/RNA alleles, and raw counts from
+   library protocol, RSeQC, and predeclared plus-strand and minus-strand
+   transcript loci in the BAMs. Compare the current and inverted policies.
+   A>G enrichment is
+   supporting evidence only, not a circular proof. Record a locus-audit TSV
+   with flags, transcript strand, genomic/RNA alleles, raw counts, expected
+   mapping, and concordance, then decide whether to retain
+   `legacy_provisional_v1` or introduce a versioned replacement.
+2. **Annotation provenance and semantics.** Fix the annotation file identity,
+   path, SHA-256, and Novogene delivery provenance. Record the exact release
+   if recoverable; otherwise explicitly retain the unresolved release as an
+   accepted limitation. Audit plus-strand and minus-strand transcript loci
+   across CDS, UTR, exon, intron, intergenic, overlapping-gene, and
+   multi-transcript cases. Quantify multiple assignments and decide whether
+   collapsed flags suffice or a transcript-level table is required.
+3. **Production QC funnel.** Reconcile Step `07` records through Step `08`
+   exclusions to Step `09` test/call statuses by partition and orientation;
+   review mutation spectrum/orientation balance and per-sample DP/AF
+   distributions. These are pileup-derived candidates, not genotype calls.
+4. **Statistical robustness.** Freeze the legacy primary defaults and
+   predeclare sensitivity analyses rather than tuning for hits. Review
+   per-replicate AF/delta, leave-one-pair-out results, modest DP/effect
+   alternatives, the unweighted mean-sample-AF effect metric, `ABE_EV_2`
+   mapping behavior, and replicate `4` duplication. Record a threshold matrix,
+   leave-one-out table, replicate-direction concordance/discordance and its
+   interpretation, and a PI-approved primary threshold decision. Every
+   sensitivity run uses a distinct analysis ID and never overwrites the
+   primary transaction. A min-sample-DP, pairing, target, or testability change
+   recomputes BH over that run's complete applicable tested family.
+5. **Candidate adjudication.** Review the predeclared top up/down, discordant,
+   and near-threshold sets for coverage, base/mapping quality, read-position
+   and splice bias, repeats/multimapping, duplicates, nearby indels,
+   annotation ambiguity, and known polymorphisms. Record pass/flag/reject,
+   reason, reviewer, and evidence. Record whether matched DNA exists; when it
+   does not, retain that limitation. Candidate review is not orthogonal
+   experimental validation.
+6. **Background decision.** Determine whether a genuine distinct comparable
+   no-dox/rABE-negative cohort exists. If not, record background disabled/no
+   eligible cohort; EV is never substituted. Adding a background changes the
+   sample-manifest hash and requires Steps `07`-`09` regeneration. Separately
+   review whether the legacy all-background-samples AF `<0.01` rule is
+   scientifically intended.
+
+Before inspecting concordance or candidate rankings, freeze a reproducible
+evidence plan that defines deterministic locus/candidate selection, sample
+size, coverage of both orientations and plus/minus transcript strands, the
+sensitivity grid and decision thresholds, required input hashes, git commit,
+commands/scripts and software versions, reviewer/date/decision owner, and
+current/superseded analysis IDs.
+
+Keep production-derived evidence tables in approved results storage. The
+evidence docpatch records compact non-sensitive summaries plus paths and
+hashes; it must not commit biological result TSV snapshots without explicit
+approval.
+
+The gate has two outcomes:
+
+```text
+science_review_complete_exploratory
+  evidence and decisions recorded; results remain provisional
+
+biological_interpretation_ready
+  runtime proof plus validated orientation policy, accepted annotation
+  provenance/limitations, approved primary thresholds, reviewed replicate
+  sensitivity, candidate adjudication, and recorded background/DNA decisions
+```
+
+Exploratory completion may unlock operational/provenance/artifact tooling, but
+not biological candidate claims. If the gate changes policy, inputs, or code,
+use this rerun matrix:
+
+| Change | Required action |
+| ------ | --------------- |
+| sample manifest or partition universe | rerun Steps `07`-`09` through a gated config/evidence package |
+| Step `07` filter or maximum depth | first make a gated contract/versioning decision because current receipts do not record these parameters; use a distinct cohort/output namespace or extend provenance, then rerun Steps `07`-`09` |
+| newly added background samples | first prove their required Steps `01`-`06` inputs, then rerun Steps `07`-`09` |
+| background condition already present in unchanged Step `08` sample columns | rerun Step `09` under a new analysis ID |
+| GTF input | rerun Steps `08`-`09` |
+| orientation normalization policy | separately gated Steps `08`-`09` contract/code/test/docpatch change, then rerun Steps `08`-`09` |
+| supported Step `09` target, unchanged-manifest contrast/background selection, minimum DP, or threshold defaults | rerun Step `09` under a new analysis ID and recompute BH over the complete applicable family |
+| CMH method/correction or testability logic | separately gated Step `09` implementation/fix with tests and docpatch, then a new analysis ID and runtime validation with full applicable-family BH |
+| FASTA/reference coordinates | perform an upstream reference/alignment impact review; do not assume Step `07`-only regeneration |
+| manual adjudication labels only | no compute rerun; a new automated filter requires a separate implementation/test/docpatch package |
+
+Any required implementation/fix receives tests and a separate docpatch before
+runtime reruns. An evidence-only package uses an evidence/status docpatch
+without fabricating an implementation commit.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -819,16 +947,22 @@ Neither implementation nor local testing biologically validates that mapping.
 
 This layer is planned, deferred, and non-runnable. It is not a new core pipeline step and is not a runnable Step `10`. The existing Steps `00a`-`09` remain the core computational pipeline.
 
-The intended future separation is:
+The ordered future separation is:
 
 ```text
-core computation: Steps 00a-09
-    -> future per-step JSON sidecars
-    -> future aggregation into results/artifacts/run_summary.json
-    -> future report rendering from structured artifacts
+proven computation and scientific policy
+    -> artifact-schema-v1
+    -> artifact-adapters-v1 over existing receipts/summaries
+    -> artifact-run-summary
+    -> report-html-v1
+    -> report-exports-v1
 ```
 
-Per-step JSON sidecars are a future cross-cutting pipeline capability. They should eventually describe each completed or attempted step without changing the core output paths. A future layout may look like:
+The schema must define completed, attempted, failed, missing, incomplete, and
+rerun states plus run IDs, versions, paths, and hashes. Read-only adapters
+come before any native sidecar retrofit and must preserve existing compute
+CLIs and output paths. Native per-step JSON emitters may be considered only
+after the adapters prove the schema. A future layout may look like:
 
 ```text
 results/
@@ -908,9 +1042,9 @@ multiple-testing method
 
 ## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
 
-This architecture is a deferred design direction. It should not block the
-immediate goal of completing the Step `09` docpatch gate and runtime-promoting
-the locally implemented Steps `07`-`09` in upstream order.
+This architecture is a deferred design direction. It must not block the
+current `step-09a-roadmap-docpatch`, upstream-first runtime promotion, or the
+post-Step-09 scientific evidence gate.
 
 A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
 
@@ -1000,25 +1134,64 @@ Assay modules should refuse to run when required metadata or config is missing, 
 ## Future Cross-Cutting Engineering Roadmap
 
 Deferred engineering improvements are tracked canonically in `TODO.md`. They
-are roadmap ideas, not current blockers for the Step `09` docpatch gate or
-later upstream-first Step `07` cluster promotion.
+are not current blockers. Activate them only after runtime and scientific
+gates, in this dependency order. The package IDs below are candidate labels
+until separately approved; the order is fixed. Promotion-specific environment,
+reference, and storage evidence is collected manually now, while these later
+packages productize the checks for future runs/cohorts:
 
-Future cross-cutting capabilities may include:
+1. `post09-runtime-preflight`: read-only tool/runtime/package probe; no
+   installation and no replacement for per-step validation.
+2. `post09-reference-provenance`: FASTA/GTF/BED/FAI/DICT/STAR-index identity,
+   checksums, annotation release, and contig agreement.
+3. `post09-storage-inventory-retention`: read-only size/quota/scratch inventory,
+   then an approved retention matrix; no cleanup.
+4. `post09-validation-reports`: step-specific read-only validators first,
+   including Step `00a`/`00b` shell coverage; no generic dispatcher first.
+5. `post09-targeted-reruns`: manifest-driven rerun planning/submission after
+   validators stabilize; arrays only after repeated operational need.
+6. `artifact-schema-v1`, `artifact-adapters-v1`, and
+   `artifact-run-summary`, in that order.
+7. `report-html-v1`, then `report-exports-v1`.
+8. `analysis-config-v1`: manifest=data, config=analysis, with required
+   contrast, replicate, reference, strandedness/orientation, and filter policy.
+9. `rna-editing-cmh-module`: a thin orchestration layer around proven Steps
+   `07`-`09`, preserving existing CLIs/paths and treating Step `06` as an
+   optional prerequisite for orientation-aware modules.
+10. General reusable-core refactoring only after a second real cohort, and
+    public SRA/GEO/ENA ingestion last through the same contracts.
 
-* manifest-driven submission and validation helpers, followed later by SLURM job arrays after single-sample behavior is stable
-* environment/tool probes, reference provenance and checksums, output retention policy, standardized validation reports, cohort QC summaries, and demo/reporting artifacts
-* shared shell/SLURM helper libraries after behavior is covered by tests and output contracts are stable
-* conservative handoff/admin utilities such as tool-path config, troubleshooting taxonomy, and stale-lock inspection or cleanup helpers
-
-Candidate helper names and interfaces are not decided unless a later implementation task explicitly promotes them. Future refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
+Every activated package is a linear descendant of the latest clean, pushed
+docpatched branch. An implementation package receives an implementation
+commit plus separate docpatch; a documentation/evidence-only package receives
+one documentation commit, validation, clean-history inspection, and push.
+Premature work includes generic dispatchers/arrays, broad shared-library
+extraction, automatic R installation, unproven tool-path config, automatic
+cleanup/stale-lock deletion, moving proven scripts, report globbing or compute
+reruns, and public importers.
 
 ## Current Next Work
 
-1. Complete the Step `09` documentation-only commit, clean-status/history check, and push.
-2. Add explicit replicate `2`, `3`, and `4` metadata to the full cluster sample manifest before Step `07`, preserving one upstream receipt hash chain.
-3. Resolve a supported `Rscript` and the Step `08` Bioconductor packages; run both real-R fixture suites in that environment.
-4. Promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then every approved primary partition.
-5. Perform the Step `07` evidence docpatch before promoting Step `08`, and the Step `08` evidence docpatch before promoting Step `09`.
+1. Before Step `07`, establish the absent-from-this-checkout cluster runtime
+   `samples.tsv` with explicit replicates and one immutable hash; resolve the
+   compute-node `Rscript`/packages/hash utilities and pass both real-R suites;
+   verify Step `06` BAM/BAI inputs, FAI selectors including `MT`,
+   storage/quota, logs, and provisional resources.
+   If repository manifest/config content must change, insert a gated
+   `step-07a-runtime-manifest`-style descendant with a config/validation commit
+   and separate docpatch; do not alter config on the evidence-only
+   `validate-step-07` branch. A byte-identical cluster-local copy is recorded
+   as provenance evidence instead.
+2. Create `validate-step-07` from the clean/pushed
+   `step-09a-roadmap-docpatch`, run pilot then chromosome `1` then the remaining
+   24 primary partitions, meet the 25-receipt/50-VCF exit, evidence-docpatch,
+   and push.
+3. Create `validate-step-08`, meet the three-file/50-row exit,
+   evidence-docpatch, and push.
+4. Create `validate-step-09`, meet the six-file reconciled exit,
+   evidence-docpatch, and push.
+5. Create `step-09b-scientific-validation`, complete the evidence/decision
+   gate above, and only then consider the ordered post-proof packages.
 
 ## Local Validation Gate
 

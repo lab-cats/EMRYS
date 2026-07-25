@@ -386,9 +386,18 @@ If helpers are not installed, use the manual commands in the next section.
 
 ## Future Operational Helpers
 
-The deferred engineering roadmap in `TODO.md` includes possible future operational helpers for manifest-driven submission/validation, environment probes, standardized validation reports, reference provenance checks, retention/cleanup policy, and conservative admin utilities.
+The deferred engineering roadmap in `TODO.md` orders future operational work
+as read-only runtime preflight, reference provenance, storage inventory plus
+approved retention policy, step-specific validation reports, and only then
+manifest-driven targeted reruns. Artifact/reporting/config/module packages
+follow later.
 
 These helpers are roadmap ideas unless their scripts, tests, and runbook commands exist in the repo. Do not treat candidate helper names, config files, Makefile targets, validators, reports, or cleanup utilities as available commands.
+
+The future preflight will supplement, not replace, each step's own validation.
+It must not install packages, guess tool paths, delete outputs, or clear locks.
+Do not use a generic dispatcher or job array before the step-specific
+validators and repeated operational need establish their contracts.
 
 ## Manual Job Checking
 
@@ -475,15 +484,61 @@ git log --oneline -3
 git push
 ```
 
-On cluster:
+Open a cluster shell:
 
 ```bash
 ssh csu-hpc
+```
+
+Then run the fail-closed checkout gate in that cluster shell:
+
+```bash
+set -euo pipefail
+
 cd ~/norad
-git pull
-git status --short
+git fetch origin
+validation_branch=validate-step-07
+git switch "$validation_branch" ||
+  git switch --track -c "$validation_branch" "origin/$validation_branch"
+git pull --ff-only origin "$validation_branch"
+test "$(git branch --show-current)" = "$validation_branch"
+git rev-parse HEAD
+test -z "$(git status --porcelain)"
 mkdir -p logs
 ```
+
+Set `validation_branch` to the exact active gate:
+
+```text
+validate-step-07
+validate-step-08
+validate-step-09
+```
+
+Do not use an unqualified `git pull` and assume the checkout changed branches.
+Record the branch and commit with the validation evidence before submitting.
+
+Create and push each local descendant only after its predecessor is clean and
+pushed:
+
+```bash
+set -euo pipefail
+
+predecessor=step-09a-roadmap-docpatch
+next_branch=validate-step-07
+
+git switch "$predecessor"
+git pull --ff-only origin "$predecessor"
+test -z "$(git status --porcelain)"
+test "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$predecessor")"
+git log --oneline -3
+git switch -c "$next_branch"
+git push -u origin "$next_branch"
+```
+
+For later gates, use `validate-step-07` -> `validate-step-08` and then
+`validate-step-08` -> `validate-step-09`. Never create the descendant before
+the predecessor's inspected evidence docpatch, clean-history check, and push.
 
 Dry-run:
 
@@ -1341,8 +1396,11 @@ partition_id    selector_type    selector_value
 
 `region` passes `selector_value` to bcftools `-r`. `regions_file` passes it to `-R`; a relative regions-file path resolves from the partition manifest directory. The primary manifest is the declared correction universe. The separate one-row pilot manifest selects `pilot_1` at `1:1-100000`. Never replace either contract with a VCF glob.
 
-Before any Step `07` dry-run, update the full cluster `samples.tsv` with an
-optional `replicate` column carrying the approved Step `09` pairs:
+Before any Step `07` dry-run, locate or deliberately provision the full
+cluster `samples.tsv`. It is absent from the current Git checkout, and neither
+its cluster-local persistence nor its current bytes have been inspected.
+Update that full runtime manifest with the optional `replicate` column carrying
+the approved Step `09` pairs:
 
 ```text
 ABE_EV_2 / ABE_PUM1_2 -> 2
@@ -1357,7 +1415,35 @@ the full manifest; it is not a runtime overlay. Validate the full manifest:
 python scripts/validate_manifest.py --manifest samples.tsv
 head -1 samples.tsv
 sed -n '1,8p' configs/step_09_pairs.NORAD_EV_PUM1.tsv
+sha256sum samples.tsv 2>/dev/null || shasum -a 256 samples.tsv
 ```
+
+The generic validator permits empty optional `replicate` values, so also
+assert that the runtime manifest's exact `(sample_id, condition, replicate)`
+set matches the approved pairing reference:
+
+```bash
+diff -u \
+  <(tail -n +2 configs/step_09_pairs.NORAD_EV_PUM1.tsv | LC_ALL=C sort) \
+  <(awk -F '\t' '
+      NR == 1 {
+          for (i = 1; i <= NF; i++) {
+              if ($i == "sample_id") sample_column = i
+              if ($i == "condition") condition_column = i
+              if ($i == "replicate") replicate_column = i
+          }
+          if (!sample_column || !condition_column || !replicate_column) exit 1
+          next
+      }
+      {
+          if ($sample_column == "" || $condition_column == "" ||
+              $replicate_column == "") exit 1
+          print $sample_column "\t" $condition_column "\t" $replicate_column
+      }
+  ' samples.tsv | LC_ALL=C sort)
+```
+
+The `diff` must be empty with exit status `0`.
 
 This must happen before Step `07` because the manifest SHA-256 is embedded in
 the Step `07` receipts, propagated into Step `08`, checked again by Step `09`,
@@ -1365,11 +1451,73 @@ and recorded in the Step `09` summary. If any Step `07` or Step `08` artifacts
 were made from the pre-replicate manifest, regenerate them through the normal
 upstream workflow; never edit receipt hashes to force a match.
 
+If establishing this file requires adding or changing tracked repository
+manifest/config content, stop before `validate-step-07` and create a separately
+gated descendant such as `step-07a-runtime-manifest`. Commit the config and
+validation change, run the full gate, make a separate docpatch, clean/push, and
+create `validate-step-07` from that branch. Do not combine configuration
+implementation with an evidence-only validation branch. If the runtime file
+is a byte-identical cluster-local copy, record its path and SHA-256 as
+validation evidence without fabricating an implementation commit.
+
+Complete the remaining preflight before submission:
+
+```bash
+set -euo pipefail
+
+test -z "$(git status --porcelain)"
+mkdir -p logs
+df -h .
+quota -s 2>/dev/null || true
+/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools --version
+test -s refs/novogene_ref/genome.fa
+test -s refs/novogene_ref/genome.fa.fai
+test -s refs/novogene_ref/genome.gtf
+command -v sha256sum >/dev/null || command -v shasum >/dev/null
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
+```
+
+The exact `/supported/path/to/Rscript` must be visible in the same
+compute-node/batch environment planned for Steps `08`-`09`. Run the displayed
+test command inside an allocated compute-node or batch context; running it in
+the login shell proves only the login-shell environment. Both real-R suites
+must pass in the supported execution context; the Step `08` packages and
+`sha256sum` or `shasum` must be available. Separately inspect all six samples'
+`FWD_like` and `REV_like` BAM/BAI pairs (12 BAM/BAI pairs total), confirm the
+reference/GTF identity, and record free-space/quota evidence. The dry-run
+validates inputs but does not replace this operator inventory.
+
 Before the first cluster dry-run, inspect the reference contigs and specifically confirm the tracked `MT` selector:
 
 ```bash
 awk -F '\t' '$1 == "MT" { print }' refs/novogene_ref/genome.fa.fai
 sed -n '1,30p' configs/step_07_partitions.primary_contigs.tsv
+```
+
+Assert every primary manifest selector appears exactly once in the FAI:
+
+```bash
+awk -F '\t' '
+    FNR == NR {
+        if (FNR > 1) {
+            if ($2 != "region" || required[$3]++) exit 1
+            required_count++
+        }
+        next
+    }
+    { fai_count[$1]++ }
+    END {
+        if (required_count != 25) exit 1
+        for (contig in required) {
+            if (fai_count[contig] != 1) {
+                print "FAI mismatch for " contig > "/dev/stderr"
+                exit 1
+            }
+        }
+        print "primary_fai_contigs=" required_count
+    }
+' configs/step_07_partitions.primary_contigs.tsv \
+  refs/novogene_ref/genome.fa.fai
 ```
 
 The script validates every selector against the FAI and will fail on spelling differences such as `chr1` versus `1`. The repository currently records the primary set as `1`-`22`, `X`, `Y`, and `MT`, but its exact compatibility with the cluster reference has not yet been inspected for Step `07`.
@@ -1433,6 +1581,10 @@ PARTITION_ID=1 \
 
 Do not submit the remaining primary partitions until the one-chromosome outputs pass inspection. Submit each declared partition explicitly; Step `07` does not add a job array or generic dispatcher. The wrapper's `long` partition and eight-hour, one-CPU request are provisional and have not been cluster-proven.
 
+Record pilot and chromosome-1 elapsed time, maximum RSS, and both VCF sizes.
+Use those observations to estimate the remaining storage requirement before
+submitting the other 24 primary partitions.
+
 Each successful partition publishes this complete set atomically:
 
 ```text
@@ -1469,6 +1621,55 @@ The receipt records cohort, partition selector, orientation, VCF path, both mani
 
 Execute mode validates input BAM/BAI pairs, FASTA/FAI, selectors, VCF structure, sample order, record counts, and stable manifests. It uses an owned cohort/partition lock, run-token scratch paths, validation-before-publication, rollback, and owned cleanup. Do not delete a foreign lock or adopt an incomplete output set without first inspecting its owner and scheduler state.
 
+Primary Step `07` exit gate:
+
+```text
+25 primary partition receipts
+50 structurally valid primary VCFs
+exact manifest-ordered six-sample columns in every VCF
+one unchanged replicate-bearing sample-manifest hash
+one unchanged primary partition-manifest hash
+receipt record counts reconciled
+all jobs COMPLETED 0:0 with logs and outputs inspected
+no owned lock or run-token scratch residue
+```
+
+`pilot_1` adds one receipt and two VCFs under the output root, but it is
+validation-only. Exclude it from the 25/50 totals and never include it in the
+Step `08` correction universe.
+
+Count only manifest-named primary outputs, never every file under the output
+root:
+
+```bash
+set -euo pipefail
+
+cohort=NORAD_EV_PUM1
+partition_manifest=configs/step_07_partitions.primary_contigs.tsv
+receipt_count=0
+vcf_count=0
+
+while IFS=$'\t' read -r partition_id selector_type selector_value; do
+    [[ "$partition_id" == "partition_id" ]] && continue
+    out_dir="results/mpileup/$cohort/$partition_id"
+    receipt="$out_dir/$cohort.$partition_id.step07_outputs.tsv"
+    test -s "$receipt"
+    for orientation in FWD_like REV_like; do
+        test -s "$out_dir/$cohort.$partition_id.$orientation.mpileup.vcf"
+        vcf_count=$((vcf_count + 1))
+    done
+    receipt_count=$((receipt_count + 1))
+done < "$partition_manifest"
+
+[[ "$receipt_count" -eq 25 ]]
+[[ "$vcf_count" -eq 50 ]]
+printf 'primary_receipts=%s primary_vcfs=%s\n' "$receipt_count" "$vcf_count"
+```
+
+This loop intentionally never reads the pilot manifest. Continue with the
+per-file bcftools/sample-order, receipt-hash, selector, and record-count
+validation; counts alone are not proof.
+
 Cluster promotion order:
 
 ```text
@@ -1487,13 +1688,18 @@ Use descendant validation branches:
 
 ```text
 step-09-cmh
-└── validate-step-07
-    └── validate-step-08
-        └── validate-step-09
+└── step-09a-roadmap-docpatch
+    └── validate-step-07
+        └── validate-step-08
+            └── validate-step-09
+                └── step-09b-scientific-validation
 ```
 
 Each validation branch receives its inspected evidence/status docpatch,
 clean-status/history check, and push before the next branch is created.
+`step-09a-roadmap-docpatch` is documentation-only and receives one docs commit,
+validation, clean-history inspection, and push. `step-09b` is a later
+scientific evidence/decision gate, not a runnable compute step.
 
 ## Step 08: VCF Preprocessing
 
@@ -1544,6 +1750,22 @@ the CLI `--rscript-bin`, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript` on
 `scripts/step_08_vcf_preprocessing.R` and can be overridden with
 `--r-script` or `STEP08_R_SCRIPT`.
 
+Before the Step `08` dry-run, prove the exact batch-visible environment:
+
+```bash
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
+```
+
+Both Step `08` and Step `09` real-R fixture suites must pass. A missing
+runtime/package or a `SKIP` does not satisfy this gate. Execute the command in
+an allocated compute-node/batch context; a login-shell pass alone does not
+prove batch visibility.
+
+The direct production dry-run below hashes and validates the complete declared
+input set. It is an interface/reference command for an allocated compute-node
+context, not a login-node command. Use the SLURM dry-run below for cluster
+promotion.
+
 Direct dry-run:
 
 ```bash
@@ -1564,6 +1786,11 @@ temporary file, or final output.
 
 Only after Step `07` is cluster-proven and the supported R environment and
 packages have passed the real-R fixtures, add execute mode:
+
+The direct command below documents the shell interface. Run production-scale
+execution through the SLURM wrapper; do not run it on the cluster login node.
+Direct execute is limited to an explicitly allocated compute-node context or a
+tiny approved fixture.
 
 ```bash
 scripts/step_08_vcf_preprocessing.sh \
@@ -1678,6 +1905,44 @@ each summary allele/count total = the matching input-receipt column sum
 summary published candidate count = sites-table row count
 ```
 
+For the approved primary manifest, require exactly `50` data rows in
+`step08_inputs.tsv` (`25` partitions by two orientations) in declared
+partition order with `FWD_like` then `REV_like`. Require one
+`COMPLETED 0:0` job, inspected logs, all three files, and no owned lock or
+run-token scratch residue.
+
+Assert the exact partition/orientation sequence:
+
+```bash
+awk -F '\t' '
+    FNR == NR {
+        if (FNR > 1) {
+            partition[++partition_count] = $1
+        }
+        next
+    }
+    FNR == 1 {
+        for (i = 1; i <= NF; i++) {
+            if ($i == "partition_id") partition_column = i
+            if ($i == "orientation") orientation_column = i
+        }
+        if (!partition_column || !orientation_column) exit 1
+        next
+    }
+    {
+        row = FNR - 1
+        expected_partition = partition[int((row + 1) / 2)]
+        expected_orientation = (row % 2 ? "FWD_like" : "REV_like")
+        if ($partition_column != expected_partition ||
+            $orientation_column != expected_orientation) exit 1
+    }
+    END {
+        if (partition_count != 25 || row != 50) exit 1
+        print "step08_input_rows=" row
+    }
+' configs/step_07_partitions.primary_contigs.tsv "$inputs"
+```
+
 Execute mode owns a cohort lock, uses run-token temporary and backup paths,
 validates before publication, and rolls back a prior complete set on failure.
 The only valid preexisting state is all three outputs present or all three
@@ -1736,6 +2001,11 @@ The full sample manifest is the only pairing source. Step `09` requires
 control and one treatment, both conditions must have identical replicate sets,
 and at least two strata are required. Pairing is never inferred from names.
 
+The direct production dry-run below parses and validates the production sites
+table and receipt. It is an interface/reference command for an allocated
+compute-node context, not a login-node command. Use the SLURM dry-run below for
+cluster promotion.
+
 Direct dry-run:
 
 ```bash
@@ -1785,6 +2055,11 @@ must never be repurposed as a missing no-dox cohort.
 
 Only after Step `08` is cluster-proven, the supported R environment passes both
 real-R fixture suites, and the Step `09` dry-run is inspected, add execute mode:
+
+The direct command below documents the shell interface. Run production-scale
+execution through the SLURM wrapper; do not run it on the cluster login node.
+Direct execute is limited to an explicitly allocated compute-node context or a
+tiny approved fixture.
 
 ```bash
 scripts/step_09_cmh_editing_site_calling.sh \
@@ -1884,6 +2159,8 @@ device, are signature/EOF validated, and include valid empty-input plots.
 Validation checklist after a future execute run:
 
 ```bash
+set -euo pipefail
+
 analysis=NORAD_EV_vs_PUM1
 out_dir="results/editing/$analysis"
 all="$out_dir/$analysis.cmh_all_sites.tsv"
@@ -1899,10 +2176,10 @@ head -2 "$all"
 head -2 "$significant"
 cat "$summary"
 cat "$spectrum"
-head -c 5 "$spectrum_pdf"
-head -c 5 "$depth_pdf"
-tail -c 2048 "$spectrum_pdf" | grep -a '%%EOF'
-tail -c 2048 "$depth_pdf" | grep -a '%%EOF'
+test "$(head -c 5 "$spectrum_pdf")" = '%PDF-'
+test "$(head -c 5 "$depth_pdf")" = '%PDF-'
+tail -c 2048 "$spectrum_pdf" | grep -aFq -- '%%EOF'
+tail -c 2048 "$depth_pdf" | grep -aFq -- '%%EOF'
 ```
 
 Require all six files, exact schemas, a single summary row, 12 mutation rows,
@@ -1912,6 +2189,57 @@ valid PDF must also contain its `%%EOF` marker near the end. A
 header-only Step `08` sites table is valid: all-sites and significant remain
 header-only, the summary has one row, the spectrum has 12 zero-count rows, and
 both PDFs remain valid.
+
+Also require the all-sites data-row count to equal the Step `08` sites data-row
+count; significant-sites must be the exact ordered subset with
+`significant_up` or `significant_down`; summary status totals and upstream
+manifest/input hashes must reconcile; the default run must record background
+disabled; the job must be `COMPLETED 0:0`; and no owned lock or run-token
+scratch residue may remain.
+
+Assert the row-count and exact-subset contract:
+
+For production tables, run this full-table scan inside an allocated
+compute-node/batch context, not on the login node.
+
+```bash
+set -euo pipefail
+
+analysis=NORAD_EV_vs_PUM1
+out_dir="results/editing/$analysis"
+all="$out_dir/$analysis.cmh_all_sites.tsv"
+significant="$out_dir/$analysis.cmh_significant_sites.tsv"
+summary="$out_dir/$analysis.cmh_summary.tsv"
+spectrum="$out_dir/$analysis.mutation_spectrum.tsv"
+step08_sites="results/vcf_preprocessed/NORAD_EV_PUM1/NORAD_EV_PUM1.step08_sites.tsv"
+step08_rows=$(awk 'END { print NR - 1 }' "$step08_sites")
+all_rows=$(awk 'END { print NR - 1 }' "$all")
+summary_rows=$(awk 'END { print NR - 1 }' "$summary")
+spectrum_rows=$(awk 'END { print NR - 1 }' "$spectrum")
+
+[[ "$all_rows" -eq "$step08_rows" ]]
+[[ "$summary_rows" -eq 1 ]]
+[[ "$spectrum_rows" -eq 12 ]]
+
+diff -u \
+  <(awk -F '\t' '
+      NR == 1 {
+          for (i = 1; i <= NF; i++) {
+              if ($i == "call_status") call_column = i
+          }
+          if (!call_column) exit 1
+          print
+          next
+      }
+      $call_column == "significant_up" ||
+      $call_column == "significant_down" { print }
+  ' "$all") \
+  "$significant"
+```
+
+The `diff` must be empty with exit status `0`. These checks supplement, rather
+than replace, schema, hash, status-total, PDF, scheduler, log, lock, and scratch
+inspection.
 
 Execute mode atomically acquires:
 
@@ -1930,6 +2258,85 @@ outputs, and run-token scratch paths; never delete or adopt it blindly. If
 rollback cannot restore a complete state, the script deliberately retains its
 owned lock and any recovery evidence. Inspect the reported finals/backups and
 perform an explicit operator recovery before another run.
+
+## Post-Step 09: Scientific Validation Gate
+
+Status:
+
+```text
+planned evidence-and-decision package
+not implemented as a script or SLURM job
+not a runnable Step 10
+requires inspected production Step 09 outputs
+```
+
+Create `step-09b-scientific-validation` only from the clean, pushed
+`validate-step-09` evidence branch. This section is a review checklist, not a
+command interface; do not invent a wrapper, output directory, or submission
+command until an actual evidence package is approved.
+
+Review:
+
+* library protocol, RSeQC, read flags, transcript strand, genomic/RNA alleles,
+  and raw counts at predeclared plus-strand and minus-strand transcript loci
+  under both current and inverted normalization policies;
+* Novogene GTF path/identity/SHA-256 and delivery provenance, with exact
+  release recorded if recoverable or explicitly accepted as unresolved, plus
+  predeclared CDS, UTR, exon, intron, intergenic, overlap, and
+  multi-transcript annotation semantics;
+* the Step `07` -> Step `08` -> Step `09` count/status funnel by partition and
+  orientation, mutation spectrum, orientation balance, and per-sample DP/AF;
+* predeclared threshold sensitivity under distinct non-overwriting analysis
+  IDs, per-replicate AF/delta,
+  leave-one-pair-out behavior, the unweighted mean-sample-AF metric,
+  replicate-direction discordance, `ABE_EV_2`, and replicate `4` duplication;
+* deterministic top, discordant, and near-threshold candidate quality,
+  bias, splice/repeat/multimapping/duplicate/indel, annotation, and
+  polymorphism evidence;
+* whether an eligible distinct background cohort exists and whether the
+  strict all-sample `<0.01` rule is intended. Never use EV as no-dox.
+
+Before inspecting concordance or rankings, freeze deterministic
+locus/candidate selection, sample size, both orientations and plus/minus
+transcript-strand coverage, sensitivity grid/decision thresholds, input
+hashes, git commit, commands/scripts/software versions, reviewer/date/decision
+owner, and current/superseded analysis IDs. Every sensitivity run preserves
+the primary transaction; a testability/family change recomputes BH.
+
+Record compact evidence tables, paths, hashes, reviewers, limitations,
+matched-DNA availability, and decisions. A>G enrichment is supportive but does
+not independently validate orientation. Candidate review/PI approval is not
+orthogonal experimental validation. Close as
+`science_review_complete_exploratory` when review is complete but results
+remain provisional. Use `biological_interpretation_ready` only with a validated
+orientation policy and all stricter exits.
+
+Keep production-derived audit/adjudication tables in approved results storage.
+Commit only compact non-sensitive summaries, paths, hashes, and decisions
+unless explicit approval permits tracking a safe fixture; never add full
+biological result snapshots by default.
+
+Rerun matrix:
+
+```text
+manifest / partition universe -> gated config/evidence package, then Steps 07-09
+Step 07 filter / maximum depth
+  -> contract/versioning decision plus distinct namespace or added provenance,
+     then Steps 07-09
+new background samples -> prove Steps 01-06 inputs, then Steps 07-09
+background already in unchanged Step 08 columns -> new Step 09 analysis ID
+GTF input -> Steps 08-09
+orientation normalization policy
+  -> Steps 08-09 contract/code/tests/docpatch, then Steps 08-09 runtime
+supported Step 09 target / unchanged-manifest contrast or background /
+  min-DP / defaults
+  -> new analysis ID and recomputed BH over the applicable full family
+CMH method/correction or testability logic
+  -> Step 09 implementation/tests/docpatch, then new-ID runtime validation
+FASTA or coordinates -> upstream reference/alignment impact review
+manual adjudication labels -> no compute rerun
+new automated filter -> separate implementation/test/docpatch package
+```
 
 ## Temporary Java Workaround
 

@@ -44,7 +44,14 @@ Steps 00a-00c cluster-proven reference prep
 - Step `09` uses only manifest-defined EV/PUM1 replicate pairs and is designed to publish all-sites, significant-sites, summary, mutation-spectrum, and depth/delta outputs under `results/editing/<analysis>/`. These are implementation contracts, not inspected biological results.
 - A real cluster failure in Step `05` was diagnosed as GATK/HTSJDK temp spill to node-local `/tmp` and hardened with project-storage temp handling.
 - Biological interpretation is intentionally cautious: read-orientation labels are mechanical flag groups, and the Step `08`/`09` `orientation_policy=legacy_provisional_v1` mapping is explicitly provisional rather than biologically validated.
-- The Step `09` docpatch/clean-push gate is the final local branch action; cluster promotion then begins with Step `07`.
+- The Step `09` implementation/docpatch gate is complete and pushed at
+  `9ac8307`. The documentation-only `step-09a-roadmap-docpatch` is the
+  clean/pushed roadmap base; cluster promotion proceeds through
+  `validate-step-07`, `validate-step-08`, and `validate-step-09`, with an
+  evidence docpatch between each.
+- Computationally cluster-proven Steps `07`-`09` will still feed a separate
+  `step-09b-scientific-validation` gate for orientation, annotation,
+  statistical robustness, candidate adjudication, and background policy.
 
 ## 4. What Not To Claim
 
@@ -54,3 +61,12 @@ Steps 00a-00c cluster-proven reference prep
 - Do not claim Step `09` has run in a real R runtime, passed a cluster dry-run, executed on the cluster, produced inspected CMH tables/plots or biological candidates, or become cluster-proven.
 - Do not describe `orientation_policy=legacy_provisional_v1` as biologically validated.
 - Do not equate `FWD_like` / `REV_like` with biological strand, sense, antisense, or transcript-strand labels.
+- Do not describe CMH-ranked `significant_up`/`significant_down` candidates as
+  validated editing sites. Cluster proof, candidate review, PI approval, and
+  report generation are not by themselves orthogonal biological validation.
+- Do not treat `science_review_complete_exploratory` as
+  `biological_interpretation_ready`; exploratory reports must show their
+  provisional status and limitations.
+- Do not present the post-proof preflight, provenance, artifact, reporting,
+  config, module, array, dispatcher, cleanup, or public-ingestion roadmap as
+  implemented commands.

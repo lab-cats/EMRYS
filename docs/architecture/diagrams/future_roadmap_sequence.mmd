@@ -1,0 +1,31 @@
+flowchart LR
+    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
+    classDef validation fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef science fill:#fff8e1,stroke:#f9a825,color:#5f4300
+    classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+    classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
+
+    s09["step-09-cmh<br/>local implementation/docpatch complete"]
+    s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
+    v07["validate-step-07<br/>25 receipts / 50 primary VCFs"]
+    v08["validate-step-08<br/>50 receipt rows / 3 outputs"]
+    v09["validate-step-09<br/>6 reconciled outputs"]
+    science09b["step-09b-scientific-validation<br/>exploratory-complete or interpretation-ready"]
+    operations["operational foundations<br/>preflight -> provenance -> storage/retention<br/>-> validators -> targeted reruns"]
+    artifacts["structured artifacts<br/>schema -> adapters -> run summary"]
+    reports["reporting<br/>HTML -> PDF/TSV exports"]
+    configmodule["analysis config -> thin rna_editing_cmh module"]
+    second["general core refactor<br/>only after a second real cohort"]
+    public["public SRA/GEO/ENA ingestion<br/>last"]
+
+    s09 --> s09a --> v07 --> v08 --> v09 --> science09b
+    science09b --> operations --> artifacts --> reports --> configmodule --> second
+    second -.-> public
+
+    class s09 current
+    class s09a docs
+    class v07,v08,v09 validation
+    class science09b science
+    class operations,artifacts,reports,configmodule future
+    class second,public deferred

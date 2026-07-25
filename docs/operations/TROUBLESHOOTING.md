@@ -590,6 +590,32 @@ not bypass Step `07` validation.
 
 This is locally tested validation behavior, not an observed cluster failure.
 
+## Step 07 cannot establish the runtime sample manifest or later reports a manifest hash mismatch
+
+### Symptom
+
+The cluster checkout has no `samples.tsv`, the manifest lacks explicit
+replicate values, validation fails, or Steps `08`/`09` report a
+sample-manifest hash different from the Step `07` receipts.
+
+### Cause
+
+`samples.tsv` is absent from the current Git checkout, so the full runtime
+manifest must be deliberately provisioned on the cluster. A copy may be
+missing, may still predate the approved replicate assignments, or may have
+changed after Step `07`. The Step `09` pairing reference TSV is documentation,
+not a runtime overlay.
+
+### Fix
+
+Before Step `07`, establish the durable six-row runtime manifest, add and
+validate explicit replicate `2`, `3`, and `4` assignments, record its SHA-256,
+and use the byte-identical file through Steps `07`-`09`. If the manifest must
+change after upstream artifacts exist, regenerate every affected stage through
+normal contracts. Never edit a receipt or summary hash to force acceptance.
+
+This is a documented promotion risk, not an observed cluster incident.
+
 ## Step 07 finds a lock or an incomplete output set
 
 ### Symptom
@@ -624,6 +650,11 @@ to overwrite an incomplete stable set.
 
 These are locally mocked lock/rollback guarantees; no Step `07` cluster lock or
 rollback incident has been observed.
+
+For full primary-universe validation, require 25 primary receipts and 50
+primary VCFs. The separate `pilot_1` transaction adds one receipt/two VCFs
+under the output root but does not satisfy, alter, or enter the primary 25/50
+gate. Do not use an unfiltered directory-wide file count as proof.
 
 ## Step 07 VCF has a header but no records
 
@@ -689,6 +720,11 @@ The current workstation has no `Rscript`, and a supported CSU R/Rscript path
 and compatible installed package set have not yet been established. The
 workflow intentionally does not install packages automatically.
 
+An executable visible on the login node may also be absent from a clean batch
+or compute-node environment. Separately, the Step `09` R engine requires
+`sha256sum` or `shasum` for hash verification; the shell preflight's
+`python3` fallback does not satisfy that execute-time R-engine requirement.
+
 Step `09` uses base R only (`stats`, `graphics`, and `grDevices`). A Step `09`
 failure to resolve `Rscript` is therefore an executable/environment issue, not
 evidence that the Step `08` Bioconductor package set is also required by Step
@@ -714,6 +750,9 @@ Confirm the package set in that same environment, then run:
 ```bash
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
 ```
+
+Run this probe in the same supported batch-visible environment intended for
+Steps `08` and `09`, and confirm `sha256sum` or `shasum` there.
 
 Do not substitute a fake R executable for semantic validation and do not call a
 skipped real-R test a pass. `make real-r-test` runs the Step `08` suite followed
@@ -1091,7 +1130,7 @@ A future troubleshooting index may summarize repeated failure patterns as sympto
 
 ## General success checklist
 
-A job is only “proven” when all of these are true:
+A computational stage is only `cluster-proven` when all of these are true:
 
 ```text
 1. Dry-run completed 0:0.
@@ -1100,10 +1139,19 @@ A job is only “proven” when all of these are true:
 4. stderr is empty or contains only known harmless messages.
 5. Expected output files exist.
 6. Expected output files are non-empty where appropriate.
-7. Output content makes biological/computational sense.
+7. Stage-specific schemas, hashes, counts, sample order, and cleanup contracts
+   reconcile.
 ```
 
 Do not promote a downstream step to cluster execution until its upstream
 dependency passes this checklist. Local implementation of later steps may
 proceed on the required descendant branches after each implementation/docpatch
 gate is complete.
+
+This checklist proves runtime execution, not biological interpretation.
+Orientation policy, annotation semantics, statistical robustness, candidate
+adjudication, and limitations require the separate post-Step-09 scientific
+evidence-and-decision gate. Do not call CMH-ranked candidates biologically
+validated solely because the files pass this checklist.
+`science_review_complete_exploratory` still requires provisional labeling;
+only `biological_interpretation_ready` permits biological interpretation.

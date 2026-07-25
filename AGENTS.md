@@ -82,6 +82,12 @@ An explicitly approved local implementation sequence may create the next descend
 
 When cluster validation is included in the work, use the same descendant-branch discipline for validation branches. Commit the inspected evidence/status docpatch, require a clean worktree, and push before creating the next validation branch.
 
+A documentation-only roadmap or consistency package may use its own descendant
+branch and one documentation-only commit. Do not fabricate an implementation
+commit when no implementation exists. It must still receive the required
+document reread, repository-wide consistency pass, validation, clean-history
+check, and push gate before another descendant branch is created.
+
 Documentation must distinguish:
 
 * implemented locally
@@ -507,6 +513,23 @@ Be careful with terminology around:
 Do not assume read-orientation labels directly equal biological strand labels unless the workflow explicitly documents why.
 
 When uncertain, preserve neutral orientation labels and document the uncertainty.
+
+`cluster-proven` is a computational/runtime status, not a biological-validation
+claim. A result remains scientifically provisional until its orientation,
+annotation, statistical policy, candidate evidence, and relevant limitations
+have passed an explicit evidence-and-decision gate. Generating a report or
+receiving PI review does not by itself constitute orthogonal biological
+validation.
+
+Use two distinct post-review states:
+
+* `science_review_complete_exploratory`: evidence and decisions are recorded,
+  but results and candidate reports must remain explicitly provisional.
+* `biological_interpretation_ready`: the approved orientation policy and all
+  stricter scientific exit criteria are satisfied.
+
+Never collapse these states or use exploratory completion to support
+biological candidate claims.
 
 ## Engineering standard
 

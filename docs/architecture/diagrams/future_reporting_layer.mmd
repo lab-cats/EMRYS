@@ -3,37 +3,68 @@ flowchart TD
     classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
 
-    subgraph inputs["Machine-readable artifacts"]
+    subgraph inputs["Schema-validated records"]
         direction TB
-        run_summary["run_summary.json"]
-        artifacts_tsv["artifacts.tsv"]
+        schema["Versioned artifact schema"]
+        artifacts_tsv["schema-validated artifact index"]
         qc_summary["qc_summary.tsv"]
-        module_outputs["module outputs"]
         provenance["runtime/provenance records"]
+        final_tables["approved final result tables"]
     end
 
-    generator["Report generator"]
+    aggregate["Run-summary aggregation"]
+    run_summary["run_summary.json"]
+    generator["HTML report generator"]
+    html["Stable HTML report"]
+    exports["PDF / TSV export renderers"]
+
+    subgraph review["Scientific review fields"]
+        direction TB
+        review_status["review status"]
+        orientation_status["orientation policy status/version"]
+        annotation_status["annotation provenance status"]
+        adjudication_status["candidate adjudication status"]
+        orthogonal_status["orthogonal validation status"]
+        limitations["limitations"]
+        review_record["Rendered review/limitations record"]
+    end
 
     subgraph outputs["Generated reports"]
         direction TB
         qc_report["QC summary"]
         validation_report["Preprocessing validation report"]
-        candidate_report["Assay-specific candidate report"]
-        pi_report["PI/demo report"]
+        candidate_report["Status-labeled candidate report"]
+        pi_report["Biological-results PI report"]
         handoff_report["Handoff/operator report"]
+        pdf_output["PDF exports"]
+        tsv_output["TSV exports"]
     end
 
+    schema --> artifacts_tsv
+    artifacts_tsv --> aggregate
+    qc_summary --> aggregate
+    provenance --> aggregate
+    aggregate --> run_summary
     run_summary --> generator
-    artifacts_tsv --> generator
-    qc_summary --> generator
-    module_outputs --> generator
-    provenance --> generator
-    generator --> qc_report
-    generator --> validation_report
-    generator --> candidate_report
-    generator --> pi_report
-    generator --> handoff_report
+    final_tables --> generator
+    generator --> html
+    html --> qc_report
+    html --> validation_report
+    html --> handoff_report
+    html --> candidate_report
+    html --> pi_report
+    html --> exports
+    exports --> pdf_output
+    exports --> tsv_output
+    review_status --> review_record
+    orientation_status --> review_record
+    annotation_status --> review_record
+    adjudication_status --> review_record
+    orthogonal_status --> review_record
+    limitations --> review_record
+    review_record --> candidate_report
+    review_record --> pi_report
 
-    class run_summary,artifacts_tsv,qc_summary,module_outputs,provenance contract
-    class generator future
-    class qc_report,validation_report,candidate_report,pi_report,handoff_report reporting
+    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record contract
+    class aggregate,generator,html,exports future
+    class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

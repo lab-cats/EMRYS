@@ -15,6 +15,7 @@ flowchart LR
         direction TB
         manifest["Sample manifest"]
         config["Analysis config"]
+        policy_record["Versioned scientific policy<br/>review status + limitations"]
     end
 
     subgraph core["Core preprocessing"]
@@ -30,6 +31,13 @@ flowchart LR
         results["Standardized result artifacts"]
     end
 
+    subgraph science["Scientific gate before module generalization"]
+        direction TB
+        proven09["Runtime-proven Step 09 outputs"]
+        science_review["Step 09b scientific review"]
+        decision_record["Review decision record"]
+    end
+
     subgraph reports["Reporting"]
         direction TB
         report_layer["Reporting layer"]
@@ -40,12 +48,19 @@ flowchart LR
     public -.-> manifest
     manifest --> backbone
     config --> backbone
-    backbone --> ready --> registry --> assays --> results --> report_layer --> outputs
+    manifest --> assays
+    config --> assays
+    policy_record --> config
+    policy_record --> assays
+    backbone --> ready --> assays --> results --> registry --> report_layer --> outputs
+    proven09 --> science_review --> decision_record --> policy_record
+    proven09 --> registry
+    decision_record --> report_layer
 
     class lab current
     class public deferred
-    class manifest,config contract
+    class manifest,config,policy_record,decision_record contract
     class backbone,ready future
     class registry contract
-    class assays,results future
+    class assays,results,proven09,science_review future
     class report_layer,outputs reporting

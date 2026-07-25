@@ -16,6 +16,14 @@ flowchart LR
     execute["execute<br/>explicit EXECUTE=1"]
     validate["validate outputs<br/>logs + contracts"]
     validationpatch["validation docpatch<br/>evidence + status"]
+    validationpush["clean validation history<br/>push"]
+    nextvalbranch["next descendant validation branch<br/>validate-step-08 or validate-step-09"]
+    v09push["validate-step-09<br/>clean history / push confirmed"]
+    sciencebranch["post-Step-09<br/>science branch"]
+    scireview["orientation / annotation / statistics<br/>candidate evidence review"]
+    sciencepatch["science evidence/decision<br/>docpatch"]
+    sciencepush["clean science history<br/>push"]
+    futurepackage["next approved<br/>post-proof package"]
 
     fake["fake-tool tests"]
     drydefault["dry-run default"]
@@ -28,7 +36,10 @@ flowchart LR
     trouble["troubleshooting docs"]
 
     stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch
+    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch --> validationpush
+    validationpush -->|after validate-step-07 or 08| nextvalbranch --> pull
+    validationpush -->|after validate-step-09 only| v09push --> sciencebranch
+    sciencebranch --> scireview --> sciencepatch --> sciencepush --> futurepackage
 
     fake -.-> tests
     drydefault -.-> dryrun
@@ -40,8 +51,9 @@ flowchart LR
     cleanup -.-> validate
     trouble -.-> stagepatch
     trouble -.-> validationpatch
+    trouble -.-> sciencepatch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,validationpush,nextvalbranch,v09push,sciencepush,futurepackage gate
     class pull,dryrun,execute,validate cluster
-    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class stagepatch,validationpatch docs
+    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble,scireview safeguard
+    class stagepatch,validationpatch,sciencebranch,sciencepatch docs

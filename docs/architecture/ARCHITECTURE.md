@@ -18,6 +18,13 @@ and shell/fake-R tested; its real-R fixture runner is blocked for the same
 reason. Steps `07`-`09` have no cluster dry-run, execute, log, or inspected
 output evidence and are not cluster-proven.
 
+The Step `09` implementation/docpatch gate is complete and pushed at
+`9ac8307`. The current `step-09a-roadmap-docpatch` is documentation-only.
+After it is cleanly committed/pushed, runtime promotion remains sequential
+through `validate-step-07`, `validate-step-08`, and `validate-step-09`.
+Computational proof is followed by a separate
+`step-09b-scientific-validation` evidence/decision gate; it is not Step `10`.
+
 Current boundary:
 
 ```text
@@ -63,6 +70,8 @@ flowchart LR
         s09["09 CMH/editing-site calling<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
     end
 
+    science["post-09 scientific evidence/decision gate<br/>planned only after validate-step-09 cluster proof<br/>not Step 10"]
+
     fastq --> s01 --> s02
     s00a --> s01
     s00b --> s03
@@ -70,10 +79,12 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
+    s09 -.-> science
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
     class s07,s08,s09 boundary
+    class science pending
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
@@ -222,6 +233,14 @@ flowchart LR
     execute["execute<br/>explicit EXECUTE=1"]
     validate["validate outputs<br/>logs + contracts"]
     validationpatch["validation docpatch<br/>evidence + status"]
+    validationpush["clean validation history<br/>push"]
+    nextvalbranch["next descendant validation branch<br/>validate-step-08 or validate-step-09"]
+    v09push["validate-step-09<br/>clean history / push confirmed"]
+    sciencebranch["post-Step-09<br/>science branch"]
+    scireview["orientation / annotation / statistics<br/>candidate evidence review"]
+    sciencepatch["science evidence/decision<br/>docpatch"]
+    sciencepush["clean science history<br/>push"]
+    futurepackage["next approved<br/>post-proof package"]
 
     fake["fake-tool tests"]
     drydefault["dry-run default"]
@@ -234,7 +253,10 @@ flowchart LR
     trouble["troubleshooting docs"]
 
     stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch
+    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch --> validationpush
+    validationpush -->|after validate-step-07 or 08| nextvalbranch --> pull
+    validationpush -->|after validate-step-09 only| v09push --> sciencebranch
+    sciencebranch --> scireview --> sciencepatch --> sciencepush --> futurepackage
 
     fake -.-> tests
     drydefault -.-> dryrun
@@ -246,11 +268,12 @@ flowchart LR
     cleanup -.-> validate
     trouble -.-> stagepatch
     trouble -.-> validationpatch
+    trouble -.-> sciencepatch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,validationpush,nextvalbranch,v09push,sciencepush,futurepackage gate
     class pull,dryrun,execute,validate cluster
-    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class stagepatch,validationpatch docs
+    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble,scireview safeguard
+    class stagepatch,validationpatch,sciencebranch,sciencepatch docs
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/reliability.mmd`.
@@ -296,11 +319,28 @@ REV_like -> legacy pos -> compatible - transcripts -> retain DNA REF/ALT
 
 The output retains genomic alleles, RNA-normalized alleles, mechanical orientation, and compatible annotation strand. This policy preserves the legacy analysis mapping for reproduction; it is not biologically validated and must not be presented as such.
 
+Likewise, `cluster-proven` establishes inspected runtime behavior, not
+biological truth. `significant_up` and `significant_down` are configured
+pipeline call statuses for CMH-ranked candidates. Orientation, GTF semantics,
+threshold robustness, replicate sensitivity, candidate quality, and
+background eligibility remain subject to the post-Step-09 scientific gate.
+`science_review_complete_exploratory` records a finished review while keeping
+results provisional; only `biological_interpretation_ready` permits biological
+interpretation.
+
 ## What Remains
 
-1. Complete the Step `09` docpatch, clean-status/history, and push gate.
-2. Add approved replicate metadata to the full sample manifest before Step `07`.
-3. Resolve an R-capable environment and run both real-R fixture suites before claiming real-R runtime validation.
-4. Begin cluster promotion with a Step `07` dry-run and narrow pilot before primary-contig execution.
-5. Docpatch Step `07` evidence before runtime-promoting Step `08`, and docpatch Step `08` evidence before Step `09`.
-6. Review QC and biological interpretation with PI guidance.
+1. Establish the absent-from-this-checkout runtime `samples.tsv` with explicit
+   replicates/one hash; resolve batch-visible R/packages/hash tools; verify all
+   Step `06` BAM/BAI pairs, `MT`, storage/quota, logs, and resources.
+2. On `validate-step-07`, promote pilot then chromosome `1` then the remaining
+   24 primary partitions; exit with 25 primary receipts/50 primary VCFs and
+   docpatch.
+3. On `validate-step-08`, exit with one reconciled three-file transaction and
+   exactly 50 ordered receipt rows; docpatch before Step `09`.
+4. On `validate-step-09`, exit with one reconciled six-file transaction,
+   one-row summary, 12-row spectrum, exact significant subset, and valid PDFs;
+   docpatch.
+5. Run `step-09b-scientific-validation` before biological interpretation.
+6. Only then activate the ordered operational, provenance, artifact,
+   reporting, analysis-config, and module roadmap in `TODO.md`.

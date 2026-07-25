@@ -4,7 +4,12 @@ This is a preliminary pipeline validation and handoff/demo report for the NORAD 
 
 This report reflects the already-documented project state only. It does not inspect live cluster job status or rerun generated-output checks.
 
-For a short demo path, see `docs/demo/DEMO_WALKTHROUGH.md`. For a visual system map, see `docs/architecture/ARCHITECTURE.md`. Standalone Mermaid diagrams live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
+For a short demo path, see `docs/demo/DEMO_WALKTHROUGH.md`. For a visual system
+map, see `docs/architecture/ARCHITECTURE.md`. The current-state standalone
+Mermaid diagrams are `docs/architecture/diagrams/pipeline.mmd` and
+`docs/architecture/diagrams/reliability.mmd`; the proposed roadmap and future
+diagrams are linked from `docs/architecture/FUTURE_ARCHITECTURE.md`, including
+`future_roadmap_sequence.mmd`.
 
 ## Executive Summary
 
@@ -22,7 +27,10 @@ shell/fake-R tested. Step `09` is implemented locally at `e4371de` and
 shell/fake-R tested. Because this workstation has no `Rscript`, neither real-R
 fixture suite has run. Steps `07`-`09` have no cluster dry-run, execute, log, or
 inspected output evidence and are not cluster-proven. Step `07` remains the
-first later cluster-promotion gate.
+first later cluster-promotion gate. The Step `09` implementation/docpatch gate
+is complete and pushed at `9ac8307`; the current
+`step-09a-roadmap-docpatch` is a documentation-only descendant and carries no
+new runtime or biological evidence.
 
 ## PI Decision Brief
 
@@ -65,15 +73,22 @@ cluster-proven.
 
 Next 48 hours:
 
-1. Complete the Step `09` repository-wide docpatch, clean-status/history check, and push gate.
-2. Add the approved replicate metadata to the full cluster sample manifest before Step `07`, preserving the Steps `07`-`09` hash chain.
-3. Resolve a supported `Rscript` and Step `08` package environment; run both real-R suites.
+1. Establish the absent-from-this-checkout cluster runtime manifest with the
+   approved replicates and one recorded hash; verify all Step `06` BAM/BAI
+   inputs, `MT`, storage/quota, logs, and provisional resources.
+2. Resolve a compute-node-visible `Rscript`, Step `08` packages, and hash
+   utilities; run both real-R suites in that environment.
+3. Create `validate-step-07` from the clean/pushed Step `09a` roadmap base and
+   begin with its pilot dry-run.
 
 Next week:
 
-1. Begin sequential cluster promotion with Step `07` dry-run, narrow pilot, and primary-contig execution before downstream execute runs.
-2. Docpatch inspected Step `07` evidence before promoting Step `08`, then docpatch Step `08` evidence before Step `09`.
-3. Review QC and candidate sites with PI before interpreting biology.
+1. On `validate-step-07`, run dry-run/pilot/chromosome `1`, estimate storage,
+   then complete 25 primary receipts/50 VCFs.
+2. Evidence-docpatch and push before `validate-step-08`; require its exact
+   50-row/three-output transaction, then docpatch before `validate-step-09`.
+3. Require the Step `09` six-output reconciliation, then begin the separate
+   scientific evidence/decision gate before interpreting biology.
 
 ## Pipeline Status
 
@@ -416,12 +431,46 @@ Step `07`-`09` cluster execution remains pending.
 
 ### Phase 3 — Scientific review and refinement
 
-Status: requires PI guidance.
+Status: planned as `step-09b-scientific-validation` after runtime promotion;
+requires actual outputs, independent evidence, and PI decisions.
 
-- Interpret QC findings, including high duplication and mapping differences
-- Decide what should count as the first biologically useful MVP output
-- Review candidate editing sites and filters
-- Decide whether to preserve legacy thresholds or revise them
+- Validate the flag-group/transcript-strand/RNA-allele mapping independently
+  at predeclared plus-strand and minus-strand transcript loci; A>G enrichment
+  is supporting evidence, not proof.
+- Record the Novogene GTF path/checksum/delivery provenance and exact release
+  when recoverable; otherwise retain the release as an explicit limitation.
+- Reconcile the Step `07` -> `08` -> `09` candidate funnel by partition and
+  orientation.
+- Predeclare threshold sensitivity and leave-one-pair-out analyses under
+  distinct analysis IDs; review the unweighted mean-sample-AF effect metric,
+  replicate-direction discordance, `ABE_EV_2`, and replicate `4`.
+- Adjudicate deterministic top, discordant, and near-threshold candidates
+  with explicit pass/flag/reject evidence and limitations.
+- Decide whether an eligible distinct background cohort exists. EV is not
+  no-dox; adding a background changes the manifest hash and reruns Steps
+  `07`-`09`.
+
+Before viewing results, freeze the selection rules, sample sizes, sensitivity
+grid/decision thresholds, hashes, git commit, commands/versions, reviewer/date/
+owner, and analysis IDs. `science_review_complete_exploratory` records a
+finished review but keeps results provisional.
+`biological_interpretation_ready` additionally requires a validated
+orientation policy, accepted annotation provenance/limitations, approved
+primary thresholds, reviewed replicate sensitivity, candidate adjudication,
+and background/matched-DNA decisions. This gate is not Step `10` and does not
+itself provide orthogonal experimental validation.
+
+### Phase 4 — Post-proof engineering
+
+Status: deferred until Phases 2 and 3 exit.
+
+The approved order is reusable environment-audit, reference-registry, and
+storage/retention tooling; step-specific validation reports; targeted reruns;
+artifact schema/adapters/run summary; HTML then PDF/TSV reporting; analysis
+config; and a thin editing-CMH module. Promotion/science collect the necessary
+environment/reference/storage evidence manually first; later packages
+productize it. Exact package labels remain candidates until activation.
+General refactoring needs a second cohort; public-data ingestion is last.
 
 ## Questions For PI Discussion
 
@@ -429,13 +478,22 @@ Status: requires PI guidance.
 - Should ABE_EV_2’s lower unique mapping / higher multimapping be treated as a sample QC concern or acceptable cohort variation?
 - Should the first biologically useful MVP output be orientation-split BAMs, mpileup VCFs, preprocessed candidate tables, or CMH-ranked editing sites?
 - Should we preserve the legacy `FWD_like` / `REV_like` read-orientation split exactly before changing biological interpretation?
+- What evidence would approve or replace `legacy_provisional_v1`, and what
+  annotation version/semantics should be authoritative?
+- Is unweighted mean sample AF the intended effect metric, and which primary
+  thresholds/sensitivity analyses should be predeclared?
+- Is there a genuine eligible background cohort, and what candidate
+  adjudication or orthogonal evidence is required before biological claims?
 
 ## Next Steps
 
-1. Complete the Step `09` docpatch/clean-push gate.
-2. Add approved replicate metadata to the full cluster sample manifest and run both real-R suites in a supported R environment.
-3. Validate Step `07` first with dry-run, narrow pilot, and inspected primary-contig outputs before executing downstream stages.
-4. Perform an evidence docpatch after Step `07`, then after Step `08`, before promoting Step `09`.
+1. Establish the immutable replicate-bearing runtime manifest and supported
+   batch R/package/hash environment; pass both real-R suites.
+2. Validate Step `07` to 25 primary receipts/50 VCFs, Step `08` to exactly 50
+   receipt rows/three outputs, and Step `09` to six reconciled outputs, with an
+   evidence docpatch and clean push between stages.
+3. Complete the scientific evidence-and-decision gate before biological
+   interpretation or candidate reporting.
 
 ## Demo Talking Points
 
@@ -450,3 +508,8 @@ Status: requires PI guidance.
 - Step `08` has local implementation and shell/fake-R evidence only; no real-R tables, cluster outputs, or biological results are presented.
 - Step `09` has local implementation and shell/fake-R evidence only; no real-R CMH tables/plots, cluster outputs, or biological results are presented.
 - Steps `08` and `09` use `orientation_policy=legacy_provisional_v1`, which preserves a legacy mapping but is not biologically validated.
+- The Step `09` local branch gate is complete; the current Step `09a` branch
+  reconciles the roadmap only and adds no runtime evidence.
+- Future cluster proof will establish computation, not biological truth;
+  orientation, annotation, robustness, candidate evidence, and background
+  eligibility remain a separate science gate.
