@@ -12,13 +12,13 @@ This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a l
 
 The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream goal is RNA-editing / variant-like site analysis, not simple gene-count differential expression.
 
-Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are cluster-proven across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims. Steps `07` through `09` remain pending / not implemented / not cluster-proven, and the next implementation boundary is Step `07`.
+Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are cluster-proven across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims. Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`, but it has no real-bcftools runtime, cluster dry-run, cluster execute run, or inspected cluster output and is not cluster-proven. Steps `08`-`09` remain pending / not implemented / not cluster-proven; Step `08` is the next local implementation boundary, while Step `07` is the next cluster-promotion gate.
 
 ## PI Decision Brief
 
 ### Current validated boundary
 
-The preprocessing and read-orientation backbone is cluster-proven through Step `06` across all six samples. Downstream editing-site calling steps `07`-`09` remain pending / not implemented / not cluster-proven, and the next implementation boundary is Step `07`.
+The preprocessing and read-orientation backbone is cluster-proven through Step `06` across all six samples. Step `07` now has a locally implemented, mocked-test contract, but no real or cluster runtime evidence. Steps `08`-`09` remain unimplemented, and no downstream editing-site stage is cluster-proven.
 
 ### Evidence table
 
@@ -34,7 +34,8 @@ The preprocessing and read-orientation backbone is cluster-proven through Step `
 | `04` MarkDuplicates | canonical BAM | markdup BAM/BAI, Picard metrics | quickcheck, index, metrics rows | six-sample cluster-proven |
 | `05` SplitNCigarReads | markdup BAM, FASTA/FAI/DICT | split-N-cigar BAM/BAI | `PASS=6`, quickcheck, RG, no scratch files | six-sample cluster-proven |
 | `06` read-orientation split | SplitNCigarReads BAM/BAI | `FWD_like` and `REV_like` BAM/BAI plus orientation counts TSV | All six jobs completed 0:0; quickcheck passed; counts TSVs present; assigned_fraction = 1.000000 and unassigned_records = 0 for all six; cluster validation showed no Step 06 scratch files remaining in the checked Step 06 artifact paths | cluster-proven across all six samples |
-| `07`-`09` editing workflow | orientation BAMs, reference, VCF tables | mpileup VCFs, preprocessed tables, CMH outputs | not yet implemented | pending / not cluster-proven |
+| `07` cohort mpileup | Step `06` FWD_like/REV_like BAM/BAI pairs, sample manifest, partition manifest, FASTA/FAI | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implementation commit `e68b00c`; local Bash 3.2 and mocked-bcftools shell tests | implemented and locally tested; real-bcftools and cluster validation pending; not cluster-proven |
+| `08`-`09` downstream editing workflow | Step `07` VCF/receipt set, annotation, manifests | preprocessed tables, CMH outputs, plots | not yet implemented | pending / not cluster-proven |
 
 ### PI scientific/QC questions
 
@@ -48,14 +49,14 @@ The preprocessing and read-orientation backbone is cluster-proven through Step `
 
 Next 48 hours:
 
-1. Begin Step `07` on a narrow validation scope before full-cohort execution.
-2. Keep Step `08` and Step `09` pending until Step `07` behavior is proven.
-3. Review Step `07` output contract assumptions before implementing downstream table processing.
+1. Create the Step `08` descendant branch from the clean, pushed Step `07` implementation and docpatch history.
+2. Implement and locally test Step `08`, then perform its separate repository-wide docpatch.
+3. Preserve Step `07` as the first later cluster-promotion gate; do not execute Step `08` on the cluster before Step `07` is cluster-proven.
 
 Next week:
 
-1. Implement Steps `07`-`09` as legacy-preserving, dry-run-first stages.
-2. Generate first candidate editing-site tables.
+1. Implement and locally test Step `09` from the docpatched Step `08` branch, then perform its separate docpatch.
+2. Begin sequential cluster promotion with Step `07` dry-run, narrow pilot, and primary-contig execution before downstream execute runs.
 3. Review QC and candidate sites with PI before interpreting biology.
 
 ## Pipeline Status
@@ -72,7 +73,7 @@ Next week:
 | `04` | MarkDuplicates | cluster-proven across all six |
 | `05` | SplitNCigarReads | cluster-proven across all six |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
-| `07` | bcftools mpileup | pending / not implemented / not cluster-proven |
+| `07` | bcftools mpileup | implemented locally and locally tested with mocked bcftools; no real or cluster runtime; not cluster-proven |
 | `08` | VCF preprocessing | pending / not implemented / not cluster-proven |
 | `09` | CMH editing-site calling | pending / not implemented / not cluster-proven |
 
@@ -94,6 +95,7 @@ Steps `05` and `06` are cluster-proven/cohort-proven across all six samples base
 | `04` MarkDuplicates | per sample | ~6-9 minutes per sample | Picard duplicate marking across all six samples. |
 | `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
 | `06` read-orientation split | per sample | about 25-34 minutes per sample; slower EV samples about 33-34 minutes | Preliminary ADAM operational runtimes from the current validation run, not formal benchmarks. |
+| `07` cohort mpileup | per cohort partition, both mechanical orientations | no real runtime measured | Local mocked-bcftools execution only. The long-partition, 8-hour, 1-CPU job request is unvalidated configuration, not observed runtime evidence. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -251,7 +253,7 @@ Cluster validation showed no Step 06 scratch files remaining in the checked Step
 
 `samtools view -f FLAG` means records have all bits in `FLAG`; it is not exact flag equality.
 
-Demo meaning: the reusable preprocessing backbone is now rebuilt and cluster-validated through Step 06 across the full six-sample cohort; the next boundary is Step 07, where the pipeline begins extracting editing-site evidence with mpileup-style downstream analysis.
+Demo meaning: the reusable preprocessing backbone is rebuilt and cluster-validated through Step `06` across the full six-sample cohort. Step `07` extends the code boundary with a locally implemented mpileup contract that is locally tested with mocked bcftools, but the cluster-proven boundary has not moved; Step `08` is the next local implementation boundary.
 
 ## Engineering And Reproducibility Features
 
@@ -261,7 +263,7 @@ The rebuilt pipeline emphasizes:
 - SLURM execution at scale
 - dry-run by default
 - explicit `EXECUTE=1`
-- per-sample locking
+- scope-owned locking, including Step `07` cohort/partition locks
 - run-token temp files
 - validation before publish
 - rollback protection
@@ -273,16 +275,16 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 ## What This Demonstrates
 
 - The legacy workflow has been translated into explicit, testable pipeline steps rather than one-off scripts.
-- Each step has defined inputs, outputs, validation checks, and cluster execution gates.
+- Each implemented step has defined inputs, outputs, validation checks, and cluster execution gates.
 - The pipeline has already produced useful QC signals across all six samples.
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
-- The current state is honest: preprocessing and read-orientation splitting are cluster-proven through Step `06`; downstream editing-site calling remains pending.
+- The current state is honest: preprocessing and read-orientation splitting are cluster-proven through Step `06`; Step `07` is implemented and locally tested with mocked bcftools but has no real or cluster output evidence; downstream biological editing-site calling remains pending.
 
 ## Near-Term Roadmap
 
 ### Phase 1 — Rebuild and validate preprocessing backbone
 
-Status: complete through Step `06` across all six samples; currently at the Step `07` implementation boundary.
+Status: cluster-proven through Step `06` across all six samples. Step `07` is implemented and locally tested with mocked bcftools but awaits real-bcftools and cluster validation; Step `08` is the next local implementation boundary.
 
 - Reference prep and STAR index
 - STAR alignment across six samples
@@ -293,13 +295,13 @@ Status: complete through Step `06` across all six samples; currently at the Step
 - Read-orientation BAM split
 
 Current boundary:
-Step `06` is the final preprocessing/read-orientation split step before variant-like/editing-site calling and is cluster-proven across all six samples. Step `07` is the next implementation boundary.
+Step `06` is the final cluster-proven preprocessing/read-orientation split step and is proven across all six samples. Step `07` is the local code boundary but is not cluster-proven; Step `08` is the next local implementation boundary.
 
 ### Phase 2 — Reproduce legacy editing-site calling workflow
 
-Status: next.
+Status: in progress locally. Step `07` is implemented and locally tested with mocked bcftools; Steps `08`-`09` remain pending, and Step `07` cluster execution remains pending.
 
-- Run bcftools mpileup by chromosome and read-orientation group
+- Step `07`: cohort bcftools mpileup per declared partition and mechanical read-orientation group, implemented locally but not run with real bcftools
 - Preprocess VCF-like outputs into analysis tables
 - Preserve/control strand and read-orientation assumptions
 - Run CMH/editing-site calling
@@ -322,9 +324,9 @@ Status: requires PI guidance.
 
 ## Next Steps
 
-1. Implement Step `07` bcftools mpileup on a narrow validation scope.
-2. Inspect Step `07` outputs before full-cohort execution.
-3. Continue to Step `08` VCF preprocessing and Step `09` CMH calling after Step `07` is proven.
+1. Create the descendant Step `08` branch from the clean, pushed Step `07` implementation and docpatch history; implement, test, and docpatch Step `08`.
+2. Repeat the same branch, implementation-commit, docpatch-commit, clean-push gate for Step `09`.
+3. During later cluster promotion, validate Step `07` first with dry-run, narrow pilot, and inspected primary-contig outputs before executing downstream stages.
 
 ## Demo Talking Points
 
@@ -335,3 +337,4 @@ Status: requires PI guidance.
 - Step `05` exposed a real cluster temp-space issue and was hardened rather than papered over.
 - Step `05` is now cohort-proven after final BAM/BAI output inspection.
 - Step `06` preserves read-orientation groups without making unsupported biological strand claims and is cluster-proven across all six samples.
+- Step `07` has local implementation and mocked-test evidence only; no cluster VCFs or biological results are presented.

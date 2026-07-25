@@ -4,14 +4,18 @@ flowchart LR
     classDef safeguard fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
 
+    stagebranch["stage branch<br/>from prior docpatch"]
     local["local implementation<br/>macOS / VS Code"]
     tests["local tests<br/>syntax + fake tools"]
-    gitpush["commit / push"]
+    implcommit["implementation commit"]
+    stagepatch["repository-wide docpatch<br/>separate commit"]
+    cleanpush["clean check / push"]
+    descendant["next descendant<br/>stage branch"]
     pull["cluster pull<br/>CSU checkout"]
     dryrun["SLURM dry-run<br/>default gate"]
     execute["execute<br/>explicit EXECUTE=1"]
     validate["validate outputs<br/>logs + contracts"]
-    docupdate["update docs<br/>status + troubleshooting"]
+    validationpatch["validation docpatch<br/>evidence + status"]
 
     fake["fake-tool tests"]
     drydefault["dry-run default"]
@@ -23,7 +27,8 @@ flowchart LR
     cleanup["cleanup"]
     trouble["troubleshooting docs"]
 
-    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docupdate
+    stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
+    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch
 
     fake -.-> tests
     drydefault -.-> dryrun
@@ -33,9 +38,10 @@ flowchart LR
     publish -.-> validate
     rollback -.-> validate
     cleanup -.-> validate
-    trouble -.-> docupdate
+    trouble -.-> stagepatch
+    trouble -.-> validationpatch
 
-    class local,tests,gitpush gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class docupdate docs
+    class stagepatch,validationpatch docs

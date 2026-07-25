@@ -7,8 +7,17 @@ The project rebuilds an uploaded/reference RNA-editing workflow into a cleaner, 
 Pipeline development follows a gated workflow:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
+create stage branch from the latest clean docpatched predecessor
+-> implement only that stage
+-> focused and complete local validation
+-> implementation commit
+-> required-document reread and repository-wide docpatch
+-> documentation-only commit
+-> clean status/history and push
+-> create the next descendant stage branch
 ```
+
+Cluster promotion remains sequential from the earliest unproven upstream step and receives its own evidence docpatch after each validated stage.
 
 ## Cohort
 
@@ -44,9 +53,9 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `04` | Mark PCR/optical duplicates. | canonical sorted BAM | `results/markdup/<sample_id>/<sample_id>.markdup.bam` and `.bai`, Picard metrics | cluster-proven across all six samples | Picard MarkDuplicates |
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
-| `07` | Run mpileup by chromosome and read-orientation group. | orientation-specific BAMs, chromosome regions, reference FASTA | per-chromosome/per-orientation VCF files | scaffolded / not implemented / not cluster-proven | bcftools |
-| `08` | Preprocess mpileup VCFs for editing-site statistics. | Step `07` VCF files | cleaned/annotated VCF-like TSV/table files | scaffolded / not implemented / not cluster-proven | R |
-| `09` | Call CMH editing sites and write summaries. | Step `08` preprocessed tables | CMH/editing-site result tables and plots | scaffolded / not implemented / not cluster-proven | R |
+| `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
+| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | pending / not implemented / not cluster-proven | R / Bioconductor |
+| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | all-sites/significant/summary/spectrum tables and three plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | R |
 
 ## Validated Outputs And Results
 
@@ -390,6 +399,76 @@ The implementation is dry-run by default, side-effect-free in dry-run mode, writ
 
 All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
 
+### Step 07
+
+Step `07` is implemented locally at commit `e68b00c` and locally tested with mocked bcftools. Real-bcftools runtime validation is unavailable on this workstation. No Step `07` cluster dry-run, execute run, log, or output evidence has been inspected, so the step is not cluster-proven.
+
+Implemented entry points and active test:
+
+```text
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+```
+
+Committed partition manifests:
+
+```text
+configs/step_07_partitions.pilot.tsv
+configs/step_07_partitions.primary_contigs.tsv
+configs/step_07_partitions.example.tsv
+```
+
+The analysis-specific partition contract is:
+
+```text
+partition_id    selector_type    selector_value
+```
+
+`region` maps to bcftools `-r`, and `regions_file` maps to `-R`. The approved manifest is the explicit correction universe; downstream steps must consume that declared set rather than globbing whatever VCFs exist. The separate one-row pilot selects `pilot_1` at `1:1-100000`. The tracked primary manifest declares `1`-`22`, `X`, `Y`, and `MT`; cluster dry-run must compare that set with the actual Novogene FAI, including the exact `MT` name, before runtime validation.
+
+One invocation chooses one partition and passes every manifest sample to bcftools together, in manifest order, for both `FWD_like` and `REV_like`. These remain mechanical labels, not biological strand calls.
+
+The command streams `bcftools mpileup -Ou` into `bcftools filter -Ov` and preserves:
+
+```text
+maximum depth: 10000000
+skip indels
+FORMAT annotations: DP, AD, ADF, ADR, SP
+INFO annotations: AD, ADF, ADR
+filter: INFO/AD[1-]>2 & MAX(FORMAT/DP)>20
+plain VCF output
+no bcftools call stage
+```
+
+Output contract:
+
+```text
+results/mpileup/<cohort>/<partition>/
+  <cohort>.<partition>.FWD_like.mpileup.vcf
+  <cohort>.<partition>.REV_like.mpileup.vcf
+  <cohort>.<partition>.step07_outputs.tsv
+```
+
+Receipt columns:
+
+```text
+cohort_id
+partition_id
+selector_type
+selector_value
+orientation
+vcf_path
+sample_manifest_sha256
+partition_manifest_sha256
+sample_count
+vcf_record_count
+```
+
+The receipt is published last and is the commit marker for the complete two-orientation partition transaction. Execute mode validates BAM/BAI pairs, FASTA/FAI structure, selectors, VCF structure, stable manifest hashes, and exact manifest-ordered sample columns. Header-only VCFs are valid and receive a zero record count.
+
+The local implementation follows the Step `05`-`06` reliability contract: side-effect-free dry-run, an owned cohort/partition lock, run-token scratch and backup paths, validation before publication, rollback of a replaced complete set, and owned cleanup. The active fake-bcftools test covers command construction, both selectors, receipt and sample-order validation, header-only output, failure handling, locks, cleanup, and rollback. The complete local repository gate passed with 22 Python tests and all shell tests through Step `07`.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -412,7 +491,7 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, future steps must treat `FWD_like` and `REV_like` as read-orientation/mechanical flag groups and avoid unsupported biological strand claims.
+Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, Step `07` preserves `FWD_like` and `REV_like` as read-orientation/mechanical flag groups. Downstream interpretation in Steps `08`-`09` must remain explicit and avoid unsupported biological strand claims.
 
 ## Future Artifact And Reporting Layer
 
@@ -507,7 +586,7 @@ multiple-testing method
 
 ## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
 
-This architecture is a deferred design direction. It should not block the immediate goal of conservatively reproducing the legacy Steps `07`-`09` RNA-editing/CMH workflow.
+This architecture is a deferred design direction. It should not block the immediate goal of completing the locally implemented Step `07` contract and conservatively reproducing pending Steps `08`-`09`.
 
 A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
 
@@ -574,7 +653,7 @@ These examples are design notes only. They do not create a real config interface
 
 Bundled analysis modules should conceptually live outside the reusable preprocessing core. For this project, the first likely module is `rna_editing_cmh`. It would consume validated core artifacts, the sample manifest, and an explicit analysis config; it would produce mpileup/VCF artifacts, preprocessed analysis tables, CMH/editing-site result tables, module-specific QC summaries, and report-ready summaries.
 
-Steps `07`-`09` are currently the pending legacy RNA-editing/CMH workflow. They should be reproduced conservatively before any major modular refactor.
+Step `07` now provides the locally tested cohort/partition mpileup boundary. Steps `08`-`09` remain the pending legacy RNA-editing/CMH reimplementation and should be reproduced conservatively before any major modular refactor.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
@@ -592,7 +671,7 @@ Assay modules should refuse to run when required metadata or config is missing, 
 
 ## Future Cross-Cutting Engineering Roadmap
 
-Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for Step `05` or the remaining compute pipeline.
+Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for the approved Step `08`-`09` implementation sequence or later Step `07` cluster promotion.
 
 Future cross-cutting capabilities may include:
 
@@ -605,9 +684,11 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Implement Step `07` bcftools mpileup against the Step `06` orientation output contract.
-2. Validate Step `07` on a narrow scope before full-cohort execution.
-3. Continue Steps `08`-`09` one gate at a time.
+1. Complete the Step `07` documentation-only commit, clean-status check, and push.
+2. Create `step-08-vcf-preprocessing` from that clean docpatched branch and implement only Step `08`; record real-R validation as pending while `Rscript` is unavailable.
+3. Complete the same implementation-commit/docpatch-commit gate for Step `09`.
+4. After the local branch chain is complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then every approved primary partition.
+5. Promote Steps `08` and `09` only after each upstream cluster gate is proven, with an evidence docpatch before proceeding.
 
 ## Local Validation Gate
 
@@ -631,6 +712,8 @@ git diff --name-status
 * `logs/` must exist before `sbatch`.
 * Use `TMPDIR=/tmp` for the general SLURM wrapper convention.
 * Step `05` GATK work must route Java/HTSJDK/GATK temp files to project storage, not node-local `/tmp`.
+* The bcftools `1.21` executable probe on `node002` confirms tool availability only. It is not Step `07` dry-run, execute, output, or cluster-proof evidence.
+* Before Step `07` execute mode, compare every approved partition selector with the actual Novogene `genome.fa.fai`; the tracked primary set includes `MT`, whose exact reference spelling has not yet been runtime-confirmed.
 * The cluster may warn that `/local/tmp` is not writable and fall back to `/tmp`; this has not been fatal.
 * `module list` writes to stderr, so scripts should use `module list 2>&1 || true`.
 * Known useful modules include `star/2.7.11b`, `samtools/1.19.2`, `bedtools/2.31.1`, `picard/3.1.1`, `python39`, and `java/17.0.10`.

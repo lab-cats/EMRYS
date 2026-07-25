@@ -14,6 +14,7 @@ docs/operations/RUNBOOK.md
 docs/operations/TROUBLESHOOTING.md
 docs/design/DECISIONS.md
 TODO.md
+README.md
 ```
 
 ## Purpose
@@ -38,16 +39,16 @@ Prioritize:
 Use a gated workflow:
 
 ```text
-implement locally
--> run local checks/tests
--> commit/push
--> pull on cluster
--> run SLURM dry-run
--> inspect logs
--> run SLURM execute mode
--> inspect outputs
--> update docs
--> proceed
+create and switch to the stage branch
+-> implement only that stage
+-> run focused tests and the complete local validation gate
+-> commit implementation and tests
+-> reread the required project documents and perform a repository-wide docpatch
+-> commit documentation separately
+-> require a clean worktree, inspect history, and push
+-> create the next descendant stage branch when that local stage is approved
+-> promote runtime stages upstream-first through cluster dry-run and execute gates
+-> inspect evidence and docpatch each validation stage
 ```
 
 Do not skip gates.
@@ -55,6 +56,41 @@ Do not skip gates.
 Do not implement multiple major pipeline steps at once unless explicitly requested.
 
 Do not run heavy computation on the cluster login node.
+
+## Stage Branch And Docpatch Gates
+
+Every explicitly staged implementation package must use a linear descendant branch from the latest clean, docpatched predecessor. Do not implement a new stage directly on its parent branch.
+
+Each implementation stage has this completion gate:
+
+1. Implement only that stage and its directly required contracts.
+2. Run focused tests and the complete repository validation gate.
+3. Commit implementation and tests.
+4. Reread `AGENTS.md`, `README.md`, `TODO.md`, `docs/operations/HANDOFF.md`, `docs/design/PIPELINE_PLAN.md`, `docs/design/QUESTIONS.md`, `docs/operations/RUNBOOK.md`, `docs/design/DECISIONS.md`, and `docs/operations/TROUBLESHOOTING.md`.
+5. Perform a repository-wide documentation consistency pass, including affected Markdown and diagrams.
+6. Update every stale status, command, interface, output path, decision, troubleshooting claim, and next-step statement.
+7. Commit documentation separately as `step NN docpatch`.
+8. Re-run `git diff --check`, inspect status and history, and require a clean worktree.
+9. Push the completed stage branch.
+10. Only then create the next descendant stage branch.
+
+If implementation changes after a docpatch, the stage gate reopens: retest, commit the fix, and perform another separate docpatch before branching onward.
+
+Inserted work packages follow the same rule and use sequential names such as `step-07a-<slug>` or `step-08a-<slug>`.
+
+An explicitly approved local implementation sequence may create the next descendant stage after the predecessor's local docpatch even when runtime validation is unavailable. Runtime and cluster promotion on production inputs must still remain upstream-sequential; never runtime-promote a downstream stage before its upstream stage has passed the required runtime gate.
+
+When cluster validation is included in the work, use the same descendant-branch discipline for validation branches. Commit the inspected evidence/status docpatch, require a clean worktree, and push before creating the next validation branch.
+
+Documentation must distinguish:
+
+* implemented locally
+* locally tested
+* runtime validation blocked
+* cluster dry-run validated
+* cluster-proven
+
+Never describe a stage as cluster-proven without inspected scheduler, log, and output evidence.
 
 ## State belongs elsewhere
 
@@ -203,7 +239,7 @@ Reasons:
 * avoids CSV quoting problems
 * easy to inspect manually
 
-Future multi-sample execution should use manifest-driven selection rather than hardcoded sample lists.
+Multi-sample execution should use manifest-driven selection rather than hardcoded sample lists.
 
 Do not overbuild orchestration before the underlying step is proven on one sample.
 
@@ -391,9 +427,9 @@ AGENTS.md              coding-agent instructions
 
 Do not turn one document into an everything-bucket.
 
-When a step becomes implemented, update the pipeline plan.
+When a step becomes implemented, complete the documentation gate above and update the pipeline plan.
 
-When a step becomes cluster-proven, update the pipeline plan and handoff notes.
+When a step becomes cluster-proven, perform a validation docpatch and update the pipeline plan and handoff notes.
 
 When a new cluster quirk is discovered, update troubleshooting or the runbook.
 

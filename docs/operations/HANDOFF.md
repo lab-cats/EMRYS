@@ -17,7 +17,7 @@ The intended high-level workflow is:
 7. Mark duplicates.
 8. Run GATK SplitNCigarReads.
 9. Split BAMs by read orientation.
-10. Run bcftools mpileup by chromosome and orientation/strand.
+10. Run cohort bcftools mpileup by declared partition and mechanical read orientation.
 11. Preprocess VCFs.
 12. Run CMH/editing-site calling.
 
@@ -35,13 +35,16 @@ The intended high-level workflow is:
 | `04` Picard MarkDuplicates | cluster-proven across all six samples | Duplicate-marked BAMs, indexes, Picard metrics, quickcheck, coordinate sort order, read groups, and metrics rows are confirmed. |
 | `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
 | `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
-| `07`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Scripts and wrappers exit as not implemented. |
+| `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
+| `08`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Shell and SLURM entry points remain non-runnable scaffolds. |
 
 Current demo state:
 
-* Proven: Steps `00a`-`00c`; Steps `01`-`06` are proven across all six samples.
-* Next: Step `07` bcftools mpileup from Step `06` orientation outputs.
-* Pending: Steps `07`-`09` downstream editing workflow.
+* Cluster-proven: Steps `00a`-`00c`; Steps `01`-`06` across all six samples.
+* Implemented locally and locally tested: Step `07`, using mocked bcftools rather than a real bcftools runtime.
+* Immediate local next: Step `08` on `step-08-vcf-preprocessing`, created only from the clean, docpatched, pushed Step `07` branch.
+* Later cluster promotion: Step `07` dry-run, pilot, one chromosome, then the approved primary-contig manifest. No Step `07` cluster evidence has yet been inspected.
+* Pending / not implemented / not cluster-proven: Steps `08`-`09`.
 
 ## Cohort
 
@@ -95,6 +98,7 @@ scripts/step_03_infer_strandedness_and_orientation.sh
 scripts/step_04_mark_duplicates.sh
 scripts/step_05_split_n_cigar_reads.sh
 scripts/step_06_split_bam_by_read_orientation.sh
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 ```
 
 Implemented SLURM jobs:
@@ -110,20 +114,28 @@ jobs/step_03_infer_strandedness_and_orientation.slurm
 jobs/step_04_mark_duplicates.slurm
 jobs/step_05_split_n_cigar_reads.slurm
 jobs/step_06_split_bam_by_read_orientation.slurm
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
 Scaffolded downstream files:
 
 ```text
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 scripts/step_08_vcf_preprocessing.sh
 scripts/step_09_cmh_editing_site_calling.sh
 ```
 
-These future steps are intentionally non-runnable and exit as not implemented.
+Only Steps `08` and `09` are intentionally non-runnable and exit as not implemented.
+
+Step `07` also has:
+
+```text
+tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+configs/step_07_partitions.pilot.tsv
+configs/step_07_partitions.primary_contigs.tsv
+configs/step_07_partitions.example.tsv
+```
 
 ## Operator Pointers
 
@@ -159,12 +171,16 @@ results/orientation/<sample>/<sample>.FWD_like.bam.bai
 results/orientation/<sample>/<sample>.REV_like.bam
 results/orientation/<sample>/<sample>.REV_like.bam.bai
 results/qc/orientation/<sample>.orientation_counts.tsv
+results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf
+results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf
+results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv
 ```
 
 Expected downstream output families, once implemented:
 
 ```text
-results/vcf/
+results/vcf_preprocessed/
+results/qc/vcf_preprocessing/
 results/editing/
 results/artifacts/
 results/reports/
@@ -384,11 +400,49 @@ All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs 
 
 `FWD_like` and `REV_like` are mechanical read-orientation groups built from the legacy `samtools view -f 99`, `-f 147`, `-f 83`, and `-f 163` filters. They are not biological strand, transcript strand, sense, or antisense labels.
 
+## Step 07 Current State
+
+Step `07` is implemented locally and locally tested with mocked bcftools. It has not run with real bcftools on this workstation, no cluster dry-run or execute evidence has been inspected, and it is not cluster-proven.
+
+One invocation selects exactly one row from the approved partition manifest and runs every sample in `samples.tsv` together, in manifest order, for both neutral mechanical orientations. The partition schema is:
+
+```text
+partition_id    selector_type    selector_value
+```
+
+`region` maps to bcftools `-r`; `regions_file` maps to `-R`. The approved primary-contig manifest defines the correction universe, while the separate one-row pilot manifest selects `1:1-100000`. The tracked primary manifest declares `1`-`22`, `X`, `Y`, and `MT`; its exact compatibility, including `MT`, with the Novogene FASTA index must be confirmed during cluster dry-run before it is treated as runtime validated.
+
+The implementation preserves these legacy defaults:
+
+```text
+maximum depth: 10000000
+skip indels
+FORMAT annotations: DP, AD, ADF, ADR, SP
+INFO annotations: AD, ADF, ADR
+filter: INFO/AD[1-]>2 & MAX(FORMAT/DP)>20
+plain VCF output
+no bcftools call stage
+```
+
+For each partition it publishes:
+
+```text
+results/mpileup/<cohort>/<partition>/
+  <cohort>.<partition>.FWD_like.mpileup.vcf
+  <cohort>.<partition>.REV_like.mpileup.vcf
+  <cohort>.<partition>.step07_outputs.tsv
+```
+
+The receipt records `cohort_id`, `partition_id`, `selector_type`, `selector_value`, `orientation`, `vcf_path`, both manifest SHA-256 hashes, `sample_count`, and `vcf_record_count`. It is published last and is the transaction commit marker for downstream consumers. Validation requires the exact manifest-ordered VCF sample columns; structurally valid header-only VCFs are accepted and recorded with zero records.
+
+Dry-run is side-effect-free. Execute mode validates BAM/BAI and FASTA/FAI inputs, selectors, and complete outputs; uses an owned cohort/partition lock and run-token scratch paths; validates before publication; and rolls back a replaced complete final set on failure. Local coverage is active at `tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`, including mocked multi-BAM command construction, dry-run, validation, locks, cleanup, and rollback.
+
 ## Current Next Work
 
-1. Implement Step `07` bcftools mpileup against the Step `06` orientation output contract.
-2. Validate Step `07` on a narrow scope before full-cohort execution.
-3. Continue Steps `08`-`09` after each upstream gate is proven.
+1. Complete the Step `07` documentation-only commit, clean-status check, and push gate.
+2. Create `step-08-vcf-preprocessing` from the clean, docpatched Step `07` branch and implement only Step `08`.
+3. Continue the approved local branch chain through Step `09`, with an implementation commit and separate docpatch commit at every stage.
+4. After the local branches are complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then the approved primary-contig manifest. Promote Steps `08` and `09` only after their upstream cluster gates pass.
 
 ## Java And Picard Handoff
 
@@ -430,8 +484,16 @@ Local tests are lightweight and should not require real full-size BAM/FASTQ data
 
 ## Development Rule
 
-Do not jump ahead. The pipeline should continue to be developed as:
+Do not jump ahead. Each stage must use its own descendant branch and complete both commits before the next branch is created:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
+create stage branch
+-> implement and run focused/full local tests
+-> implementation commit
+-> reread required docs and perform repository-wide consistency pass
+-> documentation-only commit
+-> clean status/history and push
+-> create the next descendant stage branch
 ```
+
+Cluster promotion remains upstream-sequential. A step is `cluster-proven` only after its scheduler state, logs, validation commands, and outputs have been inspected; a tool probe or local mocked test is not cluster proof.

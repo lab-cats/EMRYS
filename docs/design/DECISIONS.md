@@ -23,10 +23,57 @@ Decision: develop and test locally, then execute full data jobs on CSU SLURM.
 Workflow:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
+stage branch
+-> local implementation and validation
+-> implementation commit
+-> repository-wide docpatch and documentation-only commit
+-> clean status/history and push
+-> next descendant local stage
+-> upstream-first cluster dry-run and execute promotion
+-> inspected evidence and validation docpatch
 ```
 
 Reason: this keeps large cluster jobs reproducible, reviewable, and gated.
+
+## Major Stages Use Descendant Branches And Documentation Gates
+
+Decision: each major implementation or validation stage must use a dedicated
+branch created from the latest clean, docpatched parent branch.
+
+The completion gate is:
+
+```text
+implement only the stage and its required contracts
+-> run focused tests and the complete repository validation gate
+-> commit implementation and tests
+-> reread the nine required project documents
+-> perform a repository-wide documentation consistency pass
+-> commit documentation separately as "step NN docpatch"
+-> rerun diff/status/history checks and require a clean worktree
+-> push the completed stage branch
+-> create the next descendant branch
+```
+
+If implementation changes after a docpatch, the gate reopens: retest, commit
+the fix, and add another separate documentation-only commit before branching.
+Any inserted work package follows the same pattern on a sequentially named
+descendant branch.
+
+Documentation must distinguish:
+
+```text
+implemented locally
+locally tested
+runtime validation blocked
+cluster dry-run validated
+cluster-proven
+```
+
+Only inspected cluster evidence can support a `cluster-proven` claim.
+
+Reason: linear stage ancestry plus a documentation-only gate makes the state,
+interfaces, evidence, and remaining validation requirements reviewable at every
+handoff boundary.
 
 ## SLURM Wrappers Are Dry-Run By Default
 
@@ -53,6 +100,10 @@ Decision: scaffolded future steps must be clearly pending/non-runnable.
 Pending steps should not look submit-ready. Placeholder jobs should not load modules, call tools, or define realistic resource use until implemented.
 
 Reason: this prevents accidentally submitting placeholder jobs and mistaking scaffolding for working pipeline logic.
+
+Current application: Steps `08` and `09` remain pending and non-runnable.
+Step `07` is implemented locally and locally tested, but is not yet
+cluster-proven.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -355,9 +406,72 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 
 Step `05` consumes validated `refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` sidecars as prerequisites, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is cluster-proven across all six samples after final BAM/BAI output inspection.
 
-## bcftools Path Is Confirmed But Step 07 Is Not Implemented
+## Step 07 Is A Cohort-Wide, Manifest-Partitioned mpileup
 
-Decision: use the validated CSU bcftools path when Step `07` is implemented, but keep Step `07` scaffolded / not implemented / not cluster-proven until real script/job behavior and tests exist.
+Decision: Step `07` runs every sample in manifest order together for one
+declared partition and publishes both neutral mechanical orientations:
+
+```text
+FWD_like
+REV_like
+```
+
+The analysis partition manifest is the declared correction universe and has the
+schema:
+
+```text
+partition_id    selector_type    selector_value
+```
+
+`region` maps to bcftools `-r`; `regions_file` maps to `-R`. Pilots use a
+separate one-row manifest rather than changing the approved full-analysis
+manifest.
+
+Step `07` preserves these legacy mpileup/filter defaults:
+
+```text
+maximum depth: 10000000
+skip indels
+FORMAT annotations: DP, AD, ADF, ADR, SP
+INFO annotations: AD, ADF, ADR
+filter: INFO/AD[1-]>2 & MAX(FORMAT/DP)>20
+plain VCF output
+no bcftools call stage
+```
+
+Reason: cohort-wide multi-BAM mpileup preserves the manifest-defined sample
+universe and order for downstream paired analysis, while explicit partition
+manifests prevent accidental glob-based changes to the multiple-testing
+universe. Neutral orientation names avoid claiming biological strand meaning.
+
+## Step 07 Publishes VCFs Atomically With A Receipt Commit Marker
+
+Decision: one Step `07` transaction owns the cohort/partition output scope,
+validates both orientation VCFs, and publishes the receipt last.
+
+Expected paths:
+
+```text
+results/mpileup/<cohort>/<partition>/
+  <cohort>.<partition>.FWD_like.mpileup.vcf
+  <cohort>.<partition>.REV_like.mpileup.vcf
+  <cohort>.<partition>.step07_outputs.tsv
+```
+
+The receipt records the cohort, partition selector, orientation, VCF path,
+manifest hashes, manifest sample count, and VCF record count. Its presence is
+the transaction commit marker. Header-only VCFs are valid when their structure
+and exact manifest-ordered sample columns pass validation.
+
+Reason: publishing the receipt last prevents downstream steps from accepting a
+partial pair of VCFs as a complete partition. Owned locks, run-token scratch
+paths, validation-before-publication, rollback, and cleanup preserve the
+reliability contract established by Steps `05` and `06`.
+
+## The Confirmed bcftools Path Is The Step 07 Cluster Default
+
+Decision: use the validated CSU bcftools path as the Step `07` SLURM-wrapper
+default:
 
 Confirmed evidence:
 
@@ -367,6 +481,13 @@ bcftools: 1.21
 bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 tool probe exit code: 0:0
 ```
+
+Current status: Step `07` is implemented locally and locally tested with mocked
+bcftools. It has not run against real bcftools on this workstation, has not
+completed a cluster dry-run or execute job, has no inspected cluster output,
+and is not cluster-proven. The tracked primary-contig manifest includes `MT`;
+its exact presence/spelling in the Novogene FASTA index must be confirmed
+during cluster dry-run validation.
 
 ## R/Rscript Availability Is Not Decided
 

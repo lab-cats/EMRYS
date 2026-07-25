@@ -25,8 +25,8 @@ flowchart LR
 
     subgraph downstream["Downstream editing workflow"]
         direction TB
-        s07["07 bcftools mpileup<br/>next boundary<br/>pending"]
-        s08["08 VCF preprocessing<br/>pending"]
+        s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
+        s08["08 VCF preprocessing<br/>next local implementation<br/>pending"]
         s09["09 CMH/editing-site calling<br/>pending"]
     end
 

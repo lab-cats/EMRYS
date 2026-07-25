@@ -10,13 +10,13 @@ The project rebuilds a hardcoded legacy RNA-editing/RNA-seq workflow into mainta
 * strandedness/orientation inference
 * downstream RNA-editing / variant-like site calling
 
-The uploaded legacy workflow is treated as a protocol reference, not as production code. Each step is promoted only after local checks, SLURM dry-run, SLURM execute, output inspection, and documentation updates.
+The uploaded legacy workflow is treated as a protocol reference, not as production code. Local implementation stages use descendant branches, focused and repository-wide tests, a separate documentation-only commit, and a clean push gate. Runtime promotion remains upstream-first through SLURM dry-run, execute, output inspection, and evidence docpatches.
 
 A future decoupled reporting layer is planned to consume structured pipeline artifacts and render reusable HTML, PDF, and TSV outputs without rerunning computation. That layer is roadmap-only and not implemented.
 
 ## Current Status
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Steps `07`-`09` remain pending / not implemented / not cluster-proven, and the next implementation boundary is Step `07`.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Step `07` is implemented locally and locally tested with mocked bcftools, but real-bcftools runtime validation is unavailable on this workstation and no Step `07` cluster dry-run or execute evidence has been inspected. Steps `08`-`09` remain pending / not implemented / not cluster-proven. After the Step `07` docpatch and push gate, the next local implementation boundary is Step `08`; later cluster promotion begins with Step `07`.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -30,7 +30,37 @@ Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster
 | `04` | Picard MarkDuplicates | cluster-proven across all six samples |
 | `05` | SplitNCigarReads | implemented and cluster-proven across all six samples |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
-| `07`-`09` | downstream editing workflow | pending / not implemented / not cluster-proven |
+| `07` | cohort mpileup by declared partition and mechanical orientation | implemented locally; mocked-bcftools tests pass; runtime and cluster validation pending; not cluster-proven |
+| `08`-`09` | VCF preprocessing and CMH editing-site calling | pending / not implemented / not cluster-proven |
+
+### Step 07 Local Implementation
+
+Implemented entry points:
+
+```text
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+```
+
+Partition manifests:
+
+```text
+configs/step_07_partitions.primary_contigs.tsv  # approved correction universe: 1-22, X, Y, MT
+configs/step_07_partitions.pilot.tsv            # one-row pilot: 1:1-100000
+configs/step_07_partitions.example.tsv          # illustrative schema/example
+```
+
+One invocation selects one declared partition, passes every sample BAM to a cohort-wide mpileup in manifest order, and produces both neutral mechanical orientations:
+
+```text
+results/mpileup/<cohort>/<partition>/
+  <cohort>.<partition>.FWD_like.mpileup.vcf
+  <cohort>.<partition>.REV_like.mpileup.vcf
+  <cohort>.<partition>.step07_outputs.tsv
+```
+
+The receipt is published last as the output-set commit marker; downstream stages must require and validate it rather than globbing VCFs. Step `07` is dry-run-first, validates declared inputs and output structure, and uses owned locks, run-token scratch paths, validation-before-publication, cleanup, and rollback. These claims are locally tested with a fake bcftools executable only. See `docs/operations/RUNBOOK.md` for the exact CLI, SLURM variables, and future cluster-promotion sequence.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
 
@@ -109,23 +139,23 @@ Step `06` splits Step `05` BAMs into `FWD_like` and `REV_like` read-orientation 
 The intended development loop is:
 
 ```text
-implement locally
+create the stage branch from the latest clean docpatched predecessor
     ->
-run local tests
+implement only that stage
     ->
-commit and push
+run focused and complete local validation
     ->
-pull on cluster
+commit implementation and tests
     ->
-submit SLURM dry-run
+reread project docs and perform the repository-wide docpatch
     ->
-inspect logs
+commit documentation separately, require a clean worktree, and push
     ->
-submit SLURM execute job
+create the next descendant local stage when explicitly approved
     ->
-inspect outputs
+promote runtime stages upstream-first through SLURM dry-run and execute
     ->
-update docs
+inspect logs and outputs, then commit the validation docpatch
     ->
 proceed to next step
 ```

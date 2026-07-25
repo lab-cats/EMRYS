@@ -7,10 +7,17 @@ This project is developed locally and executed at full scale on the CSU SLURM cl
 Core workflow rule:
 
 ```text
-implement locally -> local tests -> commit/push -> pull on cluster -> dry-run -> execute -> inspect outputs -> update docs -> proceed
+create stage branch from latest clean docpatched predecessor
+-> implement only that stage
+-> focused and complete local validation
+-> implementation commit
+-> reread required docs and repository-wide docpatch
+-> documentation-only commit
+-> clean status/history and push
+-> create the next descendant stage branch
 ```
 
-Do not skip gates. Do not run scaffolded future jobs. Keep the pipeline boring.
+Cluster promotion is a later upstream-sequential gate: pull the completed branch, dry-run, execute the approved scope, inspect scheduler/log/output evidence, and docpatch that evidence before promoting the next step. Do not skip gates. Do not run scaffolded future jobs. Keep the pipeline boring.
 
 ## Project Locations
 
@@ -131,7 +138,7 @@ grep -n "EXECUTE\|--execute\|dry-run" \
   scripts/step_05_split_n_cigar_reads.sh | head -60
 ```
 
-Do not run scaffolded Steps `07`-`09` during the demo.
+Step `07` source and mocked local-test evidence may be inspected during the demo, but do not claim or demonstrate real Step `07` VCFs because no cluster run has been validated. Do not run scaffolded Steps `08`-`09`.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -233,7 +240,7 @@ bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 tool probe exit code: 0:0
 ```
 
-Step `07` remains scaffolded / not implemented / not cluster-proven until implemented.
+Step `07` is implemented locally and locally tested with mocked bcftools. The executable probe above confirms tool availability only; no Step `07` cluster dry-run, execute run, or output evidence has been inspected. Step `07` is not cluster-proven.
 
 ### Still Unresolved Tools
 
@@ -422,7 +429,7 @@ ls -lh <output_dir>
 
 ## Local Validation Gate
 
-Run from the local repo root before committing:
+Run from the local repo root before each implementation or documentation commit:
 
 ```bash
 cd /Users/elisteiger/dev/norad
@@ -437,7 +444,7 @@ git status --short
 git diff --name-status
 ```
 
-Only commit after the local gate passes.
+Commit implementation/tests first. Then reread the required project documents, perform the repository-wide documentation consistency pass, rerun this gate, and make the separate documentation-only commit. Require a clean worktree and inspect history before pushing or creating the next descendant stage branch.
 
 ## Cluster Execution Pattern
 
@@ -447,7 +454,13 @@ On local:
 cd /Users/elisteiger/dev/norad
 git status --short
 git add <changed-files>
-git commit -m "<message>"
+git commit -m "<stage implementation message>"
+# after the required document reread and repository-wide docpatch:
+git add <documentation-files>
+git commit -m "step NN docpatch"
+git diff --check
+git status --short
+git log --oneline -3
 git push
 ```
 
@@ -1290,17 +1303,154 @@ All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs 
 Status:
 
 ```text
-scaffolded / not implemented / not cluster-proven
+implemented locally
+locally tested with mocked bcftools
+real-bcftools runtime and cluster validation pending
+not cluster-proven
 ```
 
-bcftools availability is confirmed on compute node `node002`: bcftools `1.21`, path `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools`; the tool probe completed successfully with exit code `0:0`. Step `07` remains scaffolded / not implemented / not cluster-proven.
+No command in this section has yet produced inspected Step `07` cluster evidence. The prior compute-node probe confirmed bcftools `1.21` at `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools` with exit code `0:0`; it did not validate this workflow.
+
+Implemented files:
+
+```text
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+configs/step_07_partitions.pilot.tsv
+configs/step_07_partitions.primary_contigs.tsv
+configs/step_07_partitions.example.tsv
+```
+
+Partition manifest schema:
+
+```text
+partition_id    selector_type    selector_value
+```
+
+`region` passes `selector_value` to bcftools `-r`. `regions_file` passes it to `-R`; a relative regions-file path resolves from the partition manifest directory. The primary manifest is the declared correction universe. The separate one-row pilot manifest selects `pilot_1` at `1:1-100000`. Never replace either contract with a VCF glob.
+
+Before the first cluster dry-run, inspect the reference contigs and specifically confirm the tracked `MT` selector:
+
+```bash
+awk -F '\t' '$1 == "MT" { print }' refs/novogene_ref/genome.fa.fai
+sed -n '1,30p' configs/step_07_partitions.primary_contigs.tsv
+```
+
+The script validates every selector against the FAI and will fail on spelling differences such as `chr1` versus `1`. The repository currently records the primary set as `1`-`22`, `X`, `Y`, and `MT`, but its exact compatibility with the cluster reference has not yet been inspected for Step `07`.
+
+Direct cluster dry-run for the one-row pilot:
+
+```bash
+scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.pilot.tsv \
+  --partition-id pilot_1 \
+  --orientation-root results/orientation \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --output-root results/mpileup \
+  --bcftools-bin /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
+```
+
+Dry-run is the default and creates no output directory, lock, scratch path, VCF, or receipt. Inspect the resolved BAM order and both printed pipelines. Each orientation must pass all six manifest-ordered BAMs in one bcftools invocation. The preserved defaults are maximum depth `10000000`, skip indels, FORMAT `DP,AD,ADF,ADR,SP`, INFO `AD,ADF,ADR`, filter `INFO/AD[1-]>2 & MAX(FORMAT/DP)>20`, plain VCF output, and no `bcftools call`.
+
+Planned pilot SLURM dry-run:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
+PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,\
+PARTITION_ID=pilot_1 \
+  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+```
+
+Inspect scheduler state and both logs before execute mode:
+
+```bash
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+tail -160 logs/norad-mpileup-<JOBID>.out
+tail -160 logs/norad-mpileup-<JOBID>.err
+```
+
+Only after the pilot dry-run is clean, submit the pilot execute job:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
+PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,\
+PARTITION_ID=pilot_1 \
+  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+```
+
+One primary chromosome is the next promotion gate:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
+PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,\
+PARTITION_ID=1 \
+  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+
+# after inspection of the dry-run job:
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
+PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,\
+PARTITION_ID=1 \
+  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+```
+
+Do not submit the remaining primary partitions until the one-chromosome outputs pass inspection. Submit each declared partition explicitly; Step `07` does not add a job array or generic dispatcher. The wrapper's `long` partition and eight-hour, one-CPU request are provisional and have not been cluster-proven.
+
+Each successful partition publishes this complete set atomically:
+
+```text
+results/mpileup/<cohort>/<partition>/
+  <cohort>.<partition>.FWD_like.mpileup.vcf
+  <cohort>.<partition>.REV_like.mpileup.vcf
+  <cohort>.<partition>.step07_outputs.tsv
+```
+
+For the pilot, inspect the committed set:
+
+```bash
+cohort=NORAD_EV_PUM1
+partition=pilot_1
+out_dir="results/mpileup/$cohort/$partition"
+fwd="$out_dir/$cohort.$partition.FWD_like.mpileup.vcf"
+rev="$out_dir/$cohort.$partition.REV_like.mpileup.vcf"
+receipt="$out_dir/$cohort.$partition.step07_outputs.tsv"
+bcftools=/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
+
+ls -lh "$fwd" "$rev" "$receipt"
+"$bcftools" view -h "$fwd"
+"$bcftools" view -h "$rev"
+"$bcftools" query -l "$fwd"
+"$bcftools" query -l "$rev"
+"$bcftools" view -H "$fwd" | wc -l
+"$bcftools" view -H "$rev" | wc -l
+awk -F '\t' 'NR == 1 || NR <= 3 { print }' "$receipt"
+```
+
+Compare both `query -l` results exactly, line for line, with the `sample_id` order in `samples.tsv`. Reconcile the two observed record counts with the receipt. A header-only VCF is valid when its header and sample order validate and the receipt records `0`.
+
+The receipt records cohort, partition selector, orientation, VCF path, both manifest hashes, sample count, and record count. It is published last and is the downstream commit marker. A VCF pair without its matching valid receipt is incomplete and must not be consumed.
+
+Execute mode validates input BAM/BAI pairs, FASTA/FAI, selectors, VCF structure, sample order, record counts, and stable manifests. It uses an owned cohort/partition lock, run-token scratch paths, validation-before-publication, rollback, and owned cleanup. Do not delete a foreign lock or adopt an incomplete output set without first inspecting its owner and scheduler state.
+
+Cluster promotion order:
+
+```text
+Step 07 dry-run
+-> pilot execute and output inspection
+-> one primary chromosome execute and output inspection
+-> remaining approved primary partitions and combined receipt inspection
+-> Step 07 evidence docpatch
+-> Step 08 runtime validation
+```
 
 ## Step 08: VCF Preprocessing
 
 Status:
 
 ```text
-scaffolded / not implemented / not cluster-proven
+pending / not implemented / not cluster-proven
 ```
 
 Future work should port and parameterize the reference `vcf_preprocess1.R`.
@@ -1310,7 +1460,7 @@ Future work should port and parameterize the reference `vcf_preprocess1.R`.
 Status:
 
 ```text
-scaffolded / not implemented / not cluster-proven
+pending / not implemented / not cluster-proven
 ```
 
 Future work should port and parameterize the reference `Edit_call_cmh.R`.

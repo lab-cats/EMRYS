@@ -1,13 +1,13 @@
 # Future Planned Architecture
 
-This page describes a deferred target architecture. It is not the current implementation contract. The current validated pipeline is documented in `docs/architecture/ARCHITECTURE.md`; the immediate next implementation boundary remains Step `07`.
+This page describes a deferred target architecture. It is not the current implementation contract. The current pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step `06`, Step `07` is implemented locally and locally tested with mocked bcftools but is not cluster-proven, and Step `08` is the next local implementation boundary.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Steps `07`-`09` pending legacy reproduction | Assay-specific modules consuming validated artifacts |
+| Downstream analysis | Step `07` implemented locally and locally tested with mocked bcftools but awaiting real-bcftools and cluster validation; Steps `08`-`09` pending | Assay-specific modules consuming validated artifacts |
 | Reporting | Demo/QC docs and generated step artifacts | Configurable report generation from artifact indexes |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
@@ -172,4 +172,4 @@ flowchart TD
 
 ## Deferred implementation note
 
-This architecture is deferred. First priority remains reproducing the legacy Steps 07-09 workflow using the validated Step 06 outputs. Modularization, artifact indexes, public-dataset import, and report generation should be evaluated after the legacy analysis path is working and reviewed.
+This architecture is deferred. The immediate local priority is reproducing Steps `08`-`09` from the implemented Step `07` contract, while later cluster promotion must begin with Step `07` and proceed sequentially. Modularization, artifact indexes, public-dataset import, and report generation should be evaluated after the legacy analysis path is working and reviewed.

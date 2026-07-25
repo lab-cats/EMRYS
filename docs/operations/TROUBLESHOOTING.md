@@ -506,15 +506,161 @@ Do not let Step `05` create or repair these files inside a per-sample job. Inspe
 
 Step `00c` intentionally does not overwrite invalid existing sidecars by default.
 
+## Step 07 selector does not match the FASTA index
+
+### Symptom
+
+Step `07` rejects a `region` selector or a contig named in a `regions_file`
+before bcftools runs.
+
+### Cause
+
+Step `07` requires every selected contig to exist in the supplied FASTA index.
+Likely causes include:
+
+```text
+chr1 in a selector while the Novogene reference uses 1
+an MT/M/chrM spelling mismatch
+a malformed region expression
+a regions_file created for a different reference
+an unapproved partition manifest that changes the declared universe
+```
+
+### Diagnose
+
+Inspect the FASTA-index names and the declared partition selector:
+
+```bash
+cut -f1 refs/novogene_ref/genome.fa.fai
+awk -F '\t' 'NR == 1 || $1 == "<partition_id>"' \
+  configs/step_07_partitions.primary_contigs.tsv
+```
+
+The tracked primary-contig manifest includes `MT`, but its exact
+presence/spelling in the Novogene FASTA index has not been inspected on this
+workstation and must be confirmed during cluster dry-run validation.
+
+### Fix
+
+Use selectors that match the exact runtime FASTA index. Do not silently drop a
+partition or rename the reference. If the approved correction universe must
+change, update the manifest and affected documentation explicitly before
+running.
+
+This is locally tested validation behavior, not an observed cluster failure;
+Step `07` has not yet completed a cluster dry-run or execute job.
+
+## Step 07 rejects VCF sample columns
+
+### Symptom
+
+bcftools creates a structurally readable temporary VCF, but Step `07` rejects
+its sample columns or rolls publication back.
+
+### Cause
+
+Step `07` requires VCF sample columns to exactly equal the sample manifest in
+manifest order. bcftools derives sample names from BAM read-group `SM` values,
+so missing, duplicate, or mismatched metadata can violate the cohort contract.
+Supplying BAMs in a different order can also change VCF column order.
+
+### Diagnose
+
+Compare the manifest order with BAM read groups:
+
+```bash
+awk -F '\t' 'NR > 1 {print $1}' samples.tsv
+samtools view -H \
+  results/orientation/<sample_id>/<sample_id>.FWD_like.bam |
+  grep '^@RG'
+```
+
+For an already published VCF, inspect the actual columns with:
+
+```bash
+/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools query -l \
+  results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf
+```
+
+### Fix
+
+Correct the manifest selection/order or regenerate the affected upstream BAM
+with the expected sample metadata. Do not reorder VCF headers manually and do
+not bypass Step `07` validation.
+
+This is locally tested validation behavior, not an observed cluster failure.
+
+## Step 07 finds a lock or an incomplete output set
+
+### Symptom
+
+Step `07` reports an existing cohort/partition lock, or refuses to continue
+because only part of the expected VCF/VCF/receipt set exists.
+
+### Cause
+
+Another run may own:
+
+```text
+results/mpileup/<cohort>/<partition>/.<cohort>.<partition>.step07.lock
+```
+
+Alternatively, files may have been copied or changed outside the transaction,
+or a prior run may have been interrupted in a way that left an incomplete
+stable set. The receipt is published last and is the commit marker for the two
+validated orientation VCFs.
+
+### Fix
+
+Inspect the lock `owner` file, SLURM state, logs, and all three stable output
+paths. Do not delete a foreign lock, remove one member of a published set, or
+manufacture a receipt merely to make the check pass. Resolve ownership and the
+state of any active job first. If recovery is required, treat it as an explicit
+operator action and preserve evidence before changing files.
+
+The script removes only its owned run-token temporary paths and lock, restores
+the prior complete output set when publication fails after backup, and refuses
+to overwrite an incomplete stable set.
+
+These are locally mocked lock/rollback guarantees; no Step `07` cluster lock or
+rollback incident has been observed.
+
+## Step 07 VCF has a header but no records
+
+### Symptom
+
+`bcftools view -H` prints no records and the Step `07` receipt records a VCF
+record count of `0`.
+
+### Cause
+
+A valid partition may contain no records that pass:
+
+```text
+INFO/AD[1-]>2 & MAX(FORMAT/DP)>20
+```
+
+### Fix
+
+Do not classify the VCF as corrupt solely because it has zero data records.
+Step `07` accepts a header-only VCF when the VCF structure and exact
+manifest-ordered sample columns validate, and records `0` in the receipt.
+Investigate only if the result is unexpected for the selected region or if
+header/sample validation fails.
+
+Header-only behavior is covered by local mocked tests; no real-bcftools or
+cluster header-only output has been inspected yet.
+
 ## Scaffolded downstream job accidentally submitted
 
 ### Symptom
 
-A downstream job like Step `07`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
+A Step `08` or Step `09` job is submitted but exits immediately, says
+`not implemented`, or exits with code `2`.
 
 ### Cause
 
-Steps `07`-`09` are scaffolded and intentionally non-runnable until
+Steps `08` and `09` are scaffolded and intentionally non-runnable until
 implemented.
 
 Steps `05` and `06` are implemented and cluster-proven across all six samples. If Step `05` or Step `06` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
@@ -522,13 +668,16 @@ Steps `05` and `06` are implemented and cluster-proven across all six samples. I
 Scaffolded files include:
 
 ```text
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 scripts/step_08_vcf_preprocessing.sh
 scripts/step_09_cmh_editing_site_calling.sh
 ```
+
+Step `07` is implemented locally and locally tested with mocked bcftools. If
+its cluster checkout still reports `not implemented`, that checkout predates
+the completed Step `07` branch. Step `07` has not yet completed a cluster
+dry-run or execute job and is not cluster-proven.
 
 ### Fix
 
@@ -537,13 +686,16 @@ Do not run scaffolded downstream jobs.
 Scaffolded steps:
 
 ```text
-07 bcftools mpileup
 08 VCF preprocessing
 09 CMH editing-site calling
 ```
 
 Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
 after the step is active.
+
+For Step `07`, pull the completed stage branch, inspect its dry-run first, and
+do not describe it as cluster-proven until real execute outputs and receipts
+have been inspected.
 
 Step `05` outputs now use `results/split_ncigar/<sample_id>/` and consume Step `04` outputs under `results/markdup/<sample_id>/`.
 
@@ -622,4 +774,7 @@ A job is only “proven” when all of these are true:
 7. Output content makes biological/computational sense.
 ```
 
-Do not proceed to the next step until this checklist passes.
+Do not promote a downstream step to cluster execution until its upstream
+dependency passes this checklist. Local implementation of later steps may
+proceed on the required descendant branches after each implementation/docpatch
+gate is complete.

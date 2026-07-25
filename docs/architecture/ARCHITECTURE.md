@@ -8,15 +8,16 @@ For deferred modular architecture ideas, see `docs/architecture/FUTURE_ARCHITECT
 
 This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Steps `07`-`09` are pending / not implemented / not cluster-proven, and Step `07` is the next implementation boundary.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`; it has not run with real bcftools, passed a cluster dry-run, executed on the cluster, or produced inspected cluster outputs, and it is not cluster-proven. Steps `08`-`09` remain pending / not implemented / not cluster-proven, and Step `08` is the next local implementation boundary.
 
 Current boundary:
 
 ```text
 cluster-proven reference prep through Steps 00a-00c
 -> cluster-proven sample workflow through Step 06
--> Step 07 next pending boundary
--> Steps 08-09 pending editing-site path
+-> Step 07 implemented and locally tested with mocked bcftools; cluster validation pending
+-> Step 08 next local implementation boundary
+-> Step 09 pending editing-site calling
 ```
 
 ## Pipeline Dataflow
@@ -49,8 +50,8 @@ flowchart LR
 
     subgraph downstream["Downstream editing workflow"]
         direction TB
-        s07["07 bcftools mpileup<br/>next boundary<br/>pending"]
-        s08["08 VCF preprocessing<br/>pending"]
+        s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
+        s08["08 VCF preprocessing<br/>next local implementation<br/>pending"]
         s09["09 CMH/editing-site calling<br/>pending"]
     end
 
@@ -84,9 +85,9 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `04` | `results/markdup/<sample>/<sample>.markdup.bam(.bai)` | cluster-proven across all six samples | Duplicate reads are marked, not removed. |
 | `05` | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` | cluster-proven across all six samples | GATK temp handling hardened to project storage. |
 | `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | cluster-proven across all six samples | Mechanical `FWD_like` / `REV_like` split. |
-| `07` | per-chromosome/per-orientation VCF files | pending / not implemented / not cluster-proven | Next implementation boundary; bcftools path is known, but workflow behavior is still pending. |
-| `08` | cleaned/annotated VCF-like tables | pending / not implemented / not cluster-proven | R/Rscript availability still unresolved. |
-| `09` | CMH/editing-site result tables and plots | pending / not implemented / not cluster-proven | Final deliverable format still needs PI-guided definition. |
+| `07` | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implemented locally and locally tested with mocked bcftools; not cluster-proven | Cohort-wide per declared partition. No real-bcftools runtime, cluster dry-run, execute run, or inspected cluster output yet. |
+| `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | pending / not implemented / not cluster-proven | Approved contract exists; R/Rscript availability and real-R fixture validation remain unresolved. |
+| `09` | six approved tables/plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | Approved paired-CMH output contract exists; implementation and real-R validation remain pending. |
 
 ## Data Contracts
 
@@ -98,6 +99,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | SplitNCigarReads | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` |
 | Read-orientation BAMs | `results/orientation/<sample>/<sample>.FWD_like.bam(.bai)` and `results/orientation/<sample>/<sample>.REV_like.bam(.bai)` |
 | Orientation QC | `results/qc/orientation/<sample>.orientation_counts.tsv` |
+| Cohort mpileup partition | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` |
 
 ## Reliability Workflow
 
@@ -108,14 +110,18 @@ flowchart LR
     classDef safeguard fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
 
+    stagebranch["stage branch<br/>from prior docpatch"]
     local["local implementation<br/>macOS / VS Code"]
     tests["local tests<br/>syntax + fake tools"]
-    gitpush["commit / push"]
+    implcommit["implementation commit"]
+    stagepatch["repository-wide docpatch<br/>separate commit"]
+    cleanpush["clean check / push"]
+    descendant["next descendant<br/>stage branch"]
     pull["cluster pull<br/>CSU checkout"]
     dryrun["SLURM dry-run<br/>default gate"]
     execute["execute<br/>explicit EXECUTE=1"]
     validate["validate outputs<br/>logs + contracts"]
-    docupdate["update docs<br/>status + troubleshooting"]
+    validationpatch["validation docpatch<br/>evidence + status"]
 
     fake["fake-tool tests"]
     drydefault["dry-run default"]
@@ -127,7 +133,8 @@ flowchart LR
     cleanup["cleanup"]
     trouble["troubleshooting docs"]
 
-    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docupdate
+    stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
+    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch
 
     fake -.-> tests
     drydefault -.-> dryrun
@@ -137,12 +144,13 @@ flowchart LR
     publish -.-> validate
     rollback -.-> validate
     cleanup -.-> validate
-    trouble -.-> docupdate
+    trouble -.-> stagepatch
+    trouble -.-> validationpatch
 
-    class local,tests,gitpush gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class docupdate docs
+    class stagepatch,validationpatch docs
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/reliability.mmd`.
@@ -151,7 +159,7 @@ Safeguards:
 
 - dry-run default
 - explicit `EXECUTE=1`
-- per-sample locks
+- scope-owned locks, including sample and cohort/partition locks
 - run-token temp files
 - validate-before-publish
 - rollback protection
@@ -181,8 +189,8 @@ REV_like = samtools view -f 83 plus samtools view -f 163
 
 ## What Remains
 
-1. Implement Step `07` bcftools mpileup.
-2. Validate Step `07` on a narrow scope before full-cohort execution.
-3. Port Step `08` VCF preprocessing.
-4. Port Step `09` CMH/editing-site calling.
+1. Create the descendant Step `08` branch from the clean, pushed Step `07` implementation and docpatch history.
+2. Implement, locally test, and docpatch Step `08`, then repeat the gate for Step `09`.
+3. Begin later cluster promotion with a Step `07` dry-run and narrow pilot before primary-contig execution.
+4. Do not execute downstream stages on the cluster until each preceding stage is cluster-proven.
 5. Review QC and biological interpretation with PI guidance.

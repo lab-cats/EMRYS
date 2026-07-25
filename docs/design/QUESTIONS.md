@@ -28,7 +28,10 @@ R
 Rscript
 ```
 
-These are needed for Steps `08` and `09`.
+These are needed for Steps `08` and `09`. `Rscript` is not available on the
+current local workstation, so those steps may be implemented and tested with
+shell-level mocks locally, but real-R fixture validation must remain pending
+until an R-capable environment is available.
 
 ### Storage Quotas
 
@@ -47,18 +50,49 @@ whether scratch should be used for temporary files
 
 The GTF came from the Novogene `04.Ref` delivery, but the exact annotation version has not yet been recorded.
 
-### Final Deliverables
+### Exact Step 07 Primary-Contig Membership
 
-The broad final deliverables are expected to be RNA-editing / variant-like site summaries and CMH result tables/plots, but the exact final table/plot formats are not yet specified.
-
-Need to define expected Step `09` outputs before porting the old R scripts:
+The tracked Step `07` primary-contig partition manifest declares:
 
 ```text
-exact output file names
-exact columns
-expected comparison structure
-whether outputs are per chromosome, per orientation, per condition, or combined
-plotting requirements
+1 through 22
+X
+Y
+MT
+```
+
+The exact Novogene FASTA-index spelling and presence of `MT` has not been
+inspected on this workstation. Step `07` validates every selector against the
+runtime FASTA index and will fail rather than silently omit a missing contig.
+Confirm the full tracked manifest against
+`refs/novogene_ref/genome.fa.fai` during the first cluster dry-run.
+
+### Final Deliverable Schemas
+
+The approved plan now fixes the Step `08` and Step `09` output paths and the
+main Step `08` metadata/count families. Those contracts remain planned rather
+than implemented.
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+Still to finalize while implementing Steps `08` and `09`:
+
+```text
+exact column order and status vocabulary for every Step 09 TSV
+the complete mutation-spectrum schema
+plot labels, dimensions, and deterministic rendering details
+which summary fields carry runtime and exclusion counts
 ```
 
 ### Future Artifact And Reporting Design
@@ -80,7 +114,9 @@ whether Step 06 orientation splitting remains part of the core preprocessing bou
 whether the first analysis module should be named rna_editing_cmh or preserve legacy workflow terminology
 whether assay selection should live only in an analysis YAML config or whether the sample manifest can optionally point to a default analysis config
 what metadata should be required before an analysis module is allowed to make biological comparisons
-what orientation mapping the RNA-editing/CMH module should use for first reproduction versus later biological interpretation
+what evidence is required to replace the approved provisional
+  orientation_policy=legacy_provisional_v1 mapping with a biologically
+  validated policy
 what artifact index format the reporting layer should consume
 whether future public-dataset ingestion should be handled as a separate import layer that produces the same manifest/config inputs as lab-generated ADAM FASTQs
 ```
@@ -318,20 +354,34 @@ Cluster-proven:
 06   Read-orientation BAM split across all six samples
 ```
 
-Scaffolded / not implemented / not cluster-proven:
+Implemented locally and locally tested:
 
 ```text
-07   bcftools mpileup by chromosome and orientation/strand
+07   Cohort bcftools mpileup by manifest partition and neutral orientation
+```
+
+Step `07` passed its mocked-bcftools focused tests and the complete local
+repository validation gate. It has not run against real bcftools on this
+workstation, has not completed a cluster dry-run or execute job, and has no
+inspected cluster output. It is not cluster-proven.
+
+Pending / not implemented / not cluster-proven:
+
+```text
 08   VCF preprocessing
 09   CMH editing-site calling
 ```
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
-The uploaded/reference workflow indicates these downstream steps still need clean reimplementation:
+Step `07` has now been cleanly reimplemented as a parameterized,
+manifest-driven cohort step. Its real-bcftools and cluster validation remain
+pending.
+
+The uploaded/reference workflow indicates these downstream steps still need
+clean implementation:
 
 ```text
-bcftools mpileup by chromosome and read-orientation group
 VCF preprocessing
 CMH editing-site calling
 ```
@@ -358,6 +408,31 @@ editing interpretation
 ```
 
 `samtools view -f FLAG` means a read has all bits in `FLAG`, not exact flag equality. Do not silently assume `FWD_like` / `REV_like` labels equal biological sense / antisense.
+
+### What Is The Step 07 Cohort mpileup Contract?
+
+Answered for local implementation.
+
+One invocation selects one row from the analysis partition manifest and runs
+all sample-manifest BAMs together, in manifest order, for both neutral
+`FWD_like` and `REV_like` orientations. `region` maps to bcftools `-r`, while
+`regions_file` maps to `-R`. The approved primary manifest defines the
+correction universe, and pilots use a separate one-row manifest.
+
+The implementation preserves maximum depth `10000000`, skips indels, requests
+FORMAT `DP,AD,ADF,ADR,SP` and INFO `AD,ADF,ADR`, applies
+`INFO/AD[1-]>2 & MAX(FORMAT/DP)>20`, writes plain VCF, and has no
+`bcftools call` stage.
+
+Each partition publishes the two VCFs plus
+`<cohort>.<partition>.step07_outputs.tsv` under
+`results/mpileup/<cohort>/<partition>/`. The receipt records the selector,
+orientation, output path, manifest hashes, manifest sample count, and record
+count, and is published last as the downstream commit marker.
+
+This contract is implemented locally and locally tested with mocked bcftools.
+Real-bcftools runtime and cluster validation remain pending; Step `07` is not
+cluster-proven.
 
 ### Step 02b Final-BAM QC Refresh
 
@@ -465,4 +540,8 @@ bcftools path: /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 tool probe exit code: 0:0
 ```
 
-This resolves the bcftools availability question, but Step `07` remains scaffolded / not implemented / not cluster-proven.
+This resolves the bcftools availability question. Step `07` now uses this path
+as the SLURM-wrapper default and is implemented locally and locally tested with
+mocked bcftools. It has not been validated with the real executable, has not
+completed a cluster dry-run or execute job, has no inspected cluster output,
+and is not cluster-proven.
