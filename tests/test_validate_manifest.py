@@ -44,7 +44,7 @@ def test_help_interface() -> None:
     assert "--check-files" in result.stdout
 
 
-def test_valid_manifest_without_file_checks(tmp_path: Path) -> None:
+def test_legacy_manifest_without_replicate_is_allowed(tmp_path: Path) -> None:
     manifest = write_manifest(tmp_path / "samples.tsv", valid_header(), valid_rows())
 
     result = run_validator("--manifest", str(manifest))
@@ -54,6 +54,37 @@ def test_valid_manifest_without_file_checks(tmp_path: Path) -> None:
     assert "Samples: 2" in result.stdout
     assert "Conditions: control, treatment" in result.stdout
     assert "Strandedness values: forward, reverse" in result.stdout
+
+
+def test_optional_replicate_column_is_allowed(tmp_path: Path) -> None:
+    manifest = write_manifest(
+        tmp_path / "samples.tsv",
+        valid_header() + ["replicate"],
+        [
+            [
+                "sample_001",
+                "reads/sample_001_R1.fastq.gz",
+                "reads/sample_001_R2.fastq.gz",
+                "reverse",
+                "control",
+                "1",
+            ],
+            [
+                "sample_002",
+                "reads/sample_002_R1.fastq.gz",
+                "reads/sample_002_R2.fastq.gz",
+                "reverse",
+                "treatment",
+                "1",
+            ],
+        ],
+    )
+
+    result = run_validator("--manifest", str(manifest))
+
+    assert result.returncode == 0
+    assert "Manifest validation passed." in result.stdout
+    assert "Samples: 2" in result.stdout
 
 
 def test_valid_manifest_with_file_checks(tmp_path: Path) -> None:

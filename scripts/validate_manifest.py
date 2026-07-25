@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 REQUIRED_COLUMNS = ("sample_id", "r1_fastq", "r2_fastq", "strandedness", "condition")
-OPTIONAL_COLUMNS = ("notes",)
+OPTIONAL_COLUMNS = ("notes", "replicate")
 ALLOWED_COLUMNS = set(REQUIRED_COLUMNS) | set(OPTIONAL_COLUMNS)
 VALID_STRANDEDNESS = {"forward", "reverse", "unstranded", "unknown"}
 
