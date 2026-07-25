@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Step `07` is implemented locally and locally tested with mocked bcftools, but real-bcftools runtime validation is unavailable on this workstation and no Step `07` cluster dry-run or execute evidence has been inspected. Steps `08`-`09` remain pending / not implemented / not cluster-proven. After the Step `07` docpatch and push gate, the next local implementation boundary is Step `08`; later cluster promotion begins with Step `07`.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Step `07` is implemented locally and locally tested with mocked bcftools, but real-bcftools runtime validation is unavailable on this workstation and no Step `07` cluster dry-run or execute evidence has been inspected. Step `08` is implemented locally at implementation commit `90335d8` and its wrapper/publication behavior is locally tested with a fake `Rscript`; this workstation has no `Rscript`, so the real-R fixture suite has not run, and no Step `08` cluster evidence exists. Step `09` remains pending / not implemented / not cluster-proven. After the Step `08` docpatch and push gate, the next local implementation boundary is Step `09`; later cluster promotion still begins with Step `07`.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -31,7 +31,8 @@ Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster
 | `05` | SplitNCigarReads | implemented and cluster-proven across all six samples |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | cohort mpileup by declared partition and mechanical orientation | implemented locally; mocked-bcftools tests pass; runtime and cluster validation pending; not cluster-proven |
-| `08`-`09` | VCF preprocessing and CMH editing-site calling | pending / not implemented / not cluster-proven |
+| `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R tests pass; real-R runtime and cluster validation pending; not cluster-proven |
+| `09` | paired CMH editing-site calling | pending / not implemented / not cluster-proven |
 
 ### Step 07 Local Implementation
 
@@ -61,6 +62,51 @@ results/mpileup/<cohort>/<partition>/
 ```
 
 The receipt is published last as the output-set commit marker; downstream stages must require and validate it rather than globbing VCFs. Step `07` is dry-run-first, validates declared inputs and output structure, and uses owned locks, run-token scratch paths, validation-before-publication, cleanup, and rollback. These claims are locally tested with a fake bcftools executable only. See `docs/operations/RUNBOOK.md` for the exact CLI, SLURM variables, and future cluster-promotion sequence.
+
+### Step 08 Local Implementation
+
+Implemented entry points and tests:
+
+```text
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
+jobs/step_08_vcf_preprocessing.slurm
+tests/shell/test_step_08_vcf_preprocessing.sh
+tests/r/run_step_08_vcf_preprocessing_tests.sh
+tests/r/test_step_08_vcf_preprocessing.R
+```
+
+Step `08` consumes exactly the declared partition-manifest cross-product with
+`FWD_like` and `REV_like`; it never discovers VCFs by glob. It verifies the
+Step `07` receipts, hashes, paths, record counts, and exact manifest-ordered
+sample columns before using `VariantAnnotation`, `GenomicRanges`, and
+`rtracklayer` to expand alternate alleles and annotate the Novogene GTF.
+Symbolic and non-SNV alleles are counted and excluded.
+
+The orientation mapping is explicitly provisional:
+
+```text
+orientation_policy=legacy_provisional_v1
+FWD_like -> compatible + transcripts -> complement genomic REF/ALT
+REV_like -> compatible - transcripts -> retain genomic REF/ALT
+```
+
+This is legacy compatibility behavior, not a biologically validated strand
+policy. Step `08` publishes a validated three-file transaction:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+The wide sites table has fixed metadata followed by manifest-ordered
+`DP__<sample>`, `AD__<sample>`, and `AF__<sample>` columns. The inputs receipt
+is published last as the commit marker. Owned locks, stable input hashes,
+run-token temporary paths, validation-before-publication, cleanup, and rollback
+protect the output set. The shell/fake-R suite tests that wrapper contract.
+`make real-r-test` runs the semantic R fixtures when `Rscript` is available;
+on this workstation it reports `SKIP`, which is not real-R validation.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
 
@@ -193,6 +239,9 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
+make real-r-test
+git status --short
+git diff --name-status
 ```
 
 Shortcut for the Makefile-covered checks:
@@ -266,7 +315,7 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
 ## Repository Layout
 
 ```text
-scripts/        # Python, shell, and later R scripts
+scripts/        # Python, shell, and R scripts
 jobs/           # SLURM job wrappers
 tests/          # local tests and pending test plans
 configs/        # optional config files
@@ -370,6 +419,10 @@ Still unresolved:
 ```text
 R / Rscript
 ```
+
+An operator-validated `Rscript` plus the required Bioconductor packages is
+needed to run the Step `08` real-R fixture suite and later cluster promotion.
+The implemented wrapper does not install packages or guess an R module.
 
 ## Beginner Glossary
 

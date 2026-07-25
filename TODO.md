@@ -30,18 +30,24 @@ Cluster-proven:
 06   Read-orientation BAM split across all six samples
 ```
 
-Implemented locally and locally tested, but not runtime-validated or cluster-proven:
+Implemented locally and locally tested, but not fully runtime-validated or cluster-proven:
 
 ```text
 07   Cohort bcftools mpileup by declared partition and mechanical orientation
+08   Deterministic VCF preprocessing and annotation
 ```
 
 The active Step `07` shell suite uses a fake bcftools executable. Real bcftools is unavailable on this workstation, and no Step `07` cluster dry-run, execute run, or output evidence has been inspected.
 
+The active Step `08` shell suite uses a fake `Rscript` to test the wrapper and
+publication boundary. Its real-R fixture suite is implemented, but `Rscript`
+is unavailable on this workstation, so semantic R execution remains pending.
+No Step `08` cluster dry-run, execute run, or output evidence has been
+inspected.
+
 Scaffolded / not implemented / not cluster-proven:
 
 ```text
-08   VCF preprocessing
 09   CMH editing-site calling
 ```
 
@@ -49,7 +55,7 @@ All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Complete The Step 07 Branch Gate And Begin Step 08 Locally
+### 1. Complete The Step 08 Branch Gate And Begin Step 09 Locally
 
 Step `06` is cluster-proven across all six samples and publishes the orientation-specific BAM/BAI inputs for Step `07`:
 
@@ -68,24 +74,24 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Step `07` is implemented locally with:
+Step `08` is implemented locally at implementation commit `90335d8` with:
 
 ```text
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
-tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
-configs/step_07_partitions.primary_contigs.tsv
-configs/step_07_partitions.pilot.tsv
-configs/step_07_partitions.example.tsv
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
+jobs/step_08_vcf_preprocessing.slurm
+tests/shell/test_step_08_vcf_preprocessing.sh
+tests/r/run_step_08_vcf_preprocessing_tests.sh
+tests/r/test_step_08_vcf_preprocessing.R
 ```
 
 Required next gates:
 
-1. Commit the Step `07` documentation-only patch, re-run consistency checks, require a clean worktree, and push `step-07-mpileup`.
-2. Create `step-08-vcf-preprocessing` from the clean docpatched Step `07` branch.
-3. Implement only the approved Step `08` contract and its tests. The workstation has no `Rscript`, so real-R runtime validation must remain explicitly pending even if fake-R wrapper tests pass.
-4. After the Step `08` implementation/docpatch/push gate, create the descendant Step `09` branch and apply the same workflow.
-5. After the local Step `09` gate, begin cluster promotion with Step `07`: dry-run, one-row pilot, one chromosome, then the approved primary-contig manifest. Do not runtime-promote Step `08` before Step `07` is cluster-proven or Step `09` before Step `08` is cluster-proven.
+1. Commit the Step `08` documentation-only patch, re-run consistency checks, require a clean worktree, and push `step-08-vcf-preprocessing`.
+2. Create `step-09-cmh` from the clean docpatched Step `08` branch.
+3. Implement only the approved Step `09` contract and its tests, then complete its separate docpatch/push gate.
+4. After the local Step `09` gate, begin cluster promotion with Step `07`: dry-run, one-row pilot, one chromosome, then the approved primary-contig manifest.
+5. Do not runtime-promote Step `08` before Step `07` is cluster-proven or Step `09` before Step `08` is cluster-proven. Resolve and record a supported `Rscript` and required packages before real-R validation.
 
 ## Architecture Reminders
 
@@ -110,9 +116,13 @@ results/qc/orientation/<sample>.orientation_counts.tsv
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv
+
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
 ```
 
-The Step `05` and Step `06` portions of this layout are cluster-proven across all six samples. The Step `07` portion is implemented and tested locally only. Continue to treat `FWD_like` / `REV_like` as mechanical read-orientation groups, not biological strand calls.
+The Step `05` and Step `06` portions of this layout are cluster-proven across all six samples. The Step `07` and Step `08` portions are implemented and tested locally only. Continue to treat `FWD_like` / `REV_like` as mechanical read-orientation groups, not biological strand calls.
 
 ## External Blockers / Unresolved Items
 
@@ -123,8 +133,8 @@ Still unresolved.
 Needed for:
 
 ```text
-Step 08: VCF preprocessing
-Step 09: CMH editing-site calling
+Step 08: real-R fixture and runtime validation of the implemented workflow
+Step 09: implementation, fixture tests, and runtime validation
 ```
 
 ### Storage Quotas
@@ -177,7 +187,7 @@ The cohort is reverse-stranded / first-strand-style.
 samtools view -f FLAG means has all bits in FLAG, not exact flag equality.
 ```
 
-Step `06` is cluster-proven across all six samples. Step `07` preserves the neutral mechanical labels. Pending Steps `08`-`09` must document their explicit provisional orientation policy without describing it as biologically validated.
+Step `06` is cluster-proven across all six samples. Step `07` preserves the neutral mechanical labels. Step `08` implements `orientation_policy=legacy_provisional_v1`; it must never be described as biologically validated. Step `09` must preserve that explicit policy and caution.
 
 ### Step 07: bcftools mpileup
 
@@ -210,15 +220,28 @@ Step 07 validation docpatch
 
 ### Step 08: VCF Preprocessing
 
-Implement a clean R workflow behind the existing shell/SLURM entry points, using the approved Step `07` receipt and partition contracts rather than globbing VCFs.
+Implemented locally at `90335d8` behind the shell/SLURM entry points. The
+workflow consumes exactly the approved partition-manifest cross-product with
+`FWD_like` and `REV_like`, verifies Step `07` receipts/hashes/paths/sample
+order/counts, and never globs VCFs. `VariantAnnotation`, `GenomicRanges`, and
+`rtracklayer` provide semantic VCF/GTF parsing; multiallelic records are
+expanded by ALT index, while symbolic and non-SNV alleles are counted and
+excluded.
 
 ```text
 results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
 results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
 results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
 orientation_policy=legacy_provisional_v1, never biologically validated
-real-R runtime validation pending because local Rscript is unavailable
+wide DP__/AD__/AF__ sample columns in manifest order
+input receipt published last as the three-output commit marker
 ```
+
+The wrapper uses an owned lock, run-token temporary paths, stable hashes,
+validation-before-publication, cleanup, and rollback. Active shell/fake-R tests
+pass locally. `make real-r-test` is implemented, but reports `SKIP` on this
+workstation because `Rscript` is unavailable; real-R and all cluster validation
+remain pending.
 
 ### Step 09: CMH Editing-Site Calling
 
@@ -279,7 +302,7 @@ These are refactor candidates, not active implementation requirements:
 * Consider shared shell helper libraries only after behavior is covered by tests and outputs are stable. Candidate future files include `scripts/lib/norad_common.sh` and `scripts/lib/norad_slurm_common.sh`.
 * Candidate shared helpers include repo-root detection, strict-mode/logging conventions, dry-run/execute handling, tool resolution and version logging, Java runtime validation, common file/path validation, lock handling, temp-path cleanup traps, samtools quickcheck/index validation, standardized error messages, and SLURM job context logging.
 * Future helper-library refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
-* Expand shell coverage only after inspecting the current `Makefile`, `tests/shell/`, and `tests/pending/`. In this checkout, `make shell-test` wires Step `00c` and Steps `01`-`07`, while no Step `00a` or Step `00b` shell test exists under `tests/shell/` or `tests/pending/`; adding Step `00a` / `00b` shell coverage is deferred future work.
+* Expand shell coverage only after inspecting the current `Makefile`, `tests/shell/`, and `tests/pending/`. In this checkout, `make shell-test` wires Step `00c` and Steps `01`-`08`, while no Step `00a` or Step `00b` shell test exists under `tests/shell/` or `tests/pending/`; adding Step `00a` / `00b` shell coverage is deferred future work. `make real-r-test` runs the Step `08` semantic fixtures when `Rscript` is available and otherwise reports a skip.
 * Keep active runnable tests under `tests/shell/` and non-runnable future test plans under `tests/pending/`.
 * Possible future Makefile targets may include validation/reporting conveniences, but do not add targets until the underlying commands exist and are stable.
 
@@ -325,6 +348,10 @@ Implement Step 07 locally with cohort-wide, manifest-ordered mpileup for both me
 Add approved primary-contig, one-row pilot, and example Step 07 partition manifests.
 Promote the Step 07 mocked-bcftools plan into the active shell suite and `make shell-test`.
 Define the Step 07 receipt-last output contract and rollback-protected publication boundary.
+Implement Step 08 locally with a deterministic R engine, dry-run-first shell wrapper, and SLURM entry point.
+Promote the Step 08 fake-R wrapper plan into the active shell suite and add a conditional real-R fixture suite.
+Define the Step 08 exact receipt-set, fixed wide-table schemas, count reconciliation, and provisional orientation policy.
+Define the Step 08 three-output transaction with owned locking, stable hashes, rollback, and the input receipt published last.
 ```
 
 ## Development Rule

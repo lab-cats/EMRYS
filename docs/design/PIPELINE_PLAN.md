@@ -54,8 +54,8 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
 | `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
-| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | pending / not implemented / not cluster-proven | R / Bioconductor |
-| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | all-sites/significant/summary/spectrum tables and three plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | R |
+| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally and shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven | R / Bioconductor |
+| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | R |
 
 ## Validated Outputs And Results
 
@@ -469,6 +469,155 @@ The receipt is published last and is the commit marker for the complete two-orie
 
 The local implementation follows the Step `05`-`06` reliability contract: side-effect-free dry-run, an owned cohort/partition lock, run-token scratch and backup paths, validation before publication, rollback of a replaced complete set, and owned cleanup. The active fake-bcftools test covers command construction, both selectors, receipt and sample-order validation, header-only output, failure handling, locks, cleanup, and rollback. The complete local repository gate passed with 22 Python tests and all shell tests through Step `07`.
 
+### Step 08
+
+Step `08` is implemented locally at implementation commit `90335d8`. The
+shell wrapper and its publication transaction are locally tested with a fake
+`Rscript`. This workstation has no `Rscript`, so the real-R semantic fixture
+suite has not run. No cluster dry-run, execute job, log, or output evidence has
+been inspected; Step `08` is not cluster-proven.
+
+Implemented entry points and active tests:
+
+```text
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
+jobs/step_08_vcf_preprocessing.slurm
+tests/shell/test_step_08_vcf_preprocessing.sh
+tests/r/run_step_08_vcf_preprocessing_tests.sh
+tests/r/test_step_08_vcf_preprocessing.R
+```
+
+The shell CLI is:
+
+```text
+scripts/step_08_vcf_preprocessing.sh
+  --cohort-id COHORT
+  --sample-manifest SAMPLE_MANIFEST
+  --partition-manifest PARTITION_MANIFEST
+  --step07-root STEP07_ROOT
+  --annotation-gtf ANNOTATION_GTF
+  --output-root OUTPUT_ROOT
+  --qc-root QC_ROOT
+  [--rscript-bin RSCRIPT_BIN]
+  [--r-script R_SCRIPT]
+  [--execute]
+```
+
+Dry-run is the default, constructs the exact command and input set, invokes no
+R process, and creates no output directories or files. The declared input
+universe is the partition manifest crossed with `{FWD_like, REV_like}`; no VCF
+glob is used. For each partition the implementation requires the Step `07`
+receipt plus both named VCFs and verifies receipt hashes, paths, selector
+values, manifest hashes, record counts, and exact manifest-ordered VCF sample
+columns. Partition selectors must not overlap, candidate IDs must remain
+globally unique, and the sample manifest, partition manifest, GTF, receipts,
+and VCFs must not change during execution.
+
+The R implementation uses `VariantAnnotation`, `GenomicRanges`,
+`rtracklayer`, and their required Bioconductor dependencies; base R is used
+otherwise. It imports the project Novogene GTF directly, expands each
+multiallelic record by ALT index, and extracts the matching alternate AD.
+Symbolic and non-SNV alleles are counted and excluded rather than truncated.
+Missing FORMAT definitions, malformed or negative counts, one-sided missing
+DP/AD, AD greater than DP, sample mismatches, partition overlap, duplicate
+candidate IDs, or receipt/count inconsistencies fail.
+
+The approved provisional legacy mapping is:
+
+```text
+FWD_like -> legacy neg -> compatible + transcripts -> complement genomic REF/ALT
+REV_like -> legacy pos -> compatible - transcripts -> retain genomic REF/ALT
+orientation_policy=legacy_provisional_v1
+```
+
+This policy is retained for legacy compatibility and is not biologically
+validated. The deterministic sites table has these fixed metadata columns:
+
+```text
+partition_id
+candidate_id
+orientation
+chromosome
+position
+alt_index
+genomic_ref
+genomic_alt
+rna_ref
+rna_alt
+annotation_strand
+gene_ids
+transcript_ids
+is_cds
+is_five_prime_utr
+is_three_prime_utr
+is_exon
+is_intron
+qual
+filter
+info_alt_depth
+orientation_policy
+```
+
+They are followed by all `DP__<sample>` columns, then all `AD__<sample>`
+columns, then all `AF__<sample>` columns in sample-manifest order. Candidate
+IDs are `orientation|chromosome|position|REF>ALT` and do not include the
+partition ID, allowing overlap/duplicate detection across the declared
+universe. Intergenic candidates are retained with `NA` annotation identifiers
+and false feature flags.
+
+Published output contract:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+The input receipt schema is:
+
+```text
+cohort_id, partition_id, selector_type, selector_value, orientation,
+step07_receipt_path, step07_receipt_sha256, vcf_path, vcf_sha256,
+sample_manifest_sha256, partition_manifest_sha256, annotation_gtf,
+annotation_gtf_sha256, sample_count, declared_vcf_record_count,
+observed_vcf_record_count, observed_alt_allele_count, supported_snv_count,
+skipped_symbolic_count, skipped_non_snv_count, published_candidate_count,
+orientation_policy
+```
+
+The summary schema is:
+
+```text
+cohort_id, partition_count, step07_receipt_count, input_vcf_count,
+sample_count, observed_vcf_record_count, observed_alt_allele_count,
+supported_snv_count, skipped_symbolic_count, skipped_non_snv_count,
+published_candidate_count, sample_manifest_sha256,
+partition_manifest_sha256, annotation_gtf, annotation_gtf_sha256,
+orientation_policy
+```
+
+For every input and for the cohort summary, observed alternate alleles equal
+supported SNVs plus skipped symbolic plus skipped non-SNV alleles, and
+published candidates equal supported SNVs. Receipt rows follow partition
+manifest order with `FWD_like` then `REV_like`; the sites table follows the
+same declared order and VCF record/ALT order.
+
+Execute mode uses an owned cohort lock, run-token temporary and backup paths,
+stable hashes, validation before publication, cleanup, and rollback. Existing
+stable outputs must be all three present or all three absent. It publishes the
+sites table, then summary, then the input receipt last as the transaction
+commit marker. Header-only input VCFs and a header-only sites table are valid
+when all counts reconcile.
+
+The active shell test covers wrapper CLI and dry-run behavior, exact input
+enumeration, locks, cleanup, validation, publication order, and rollback with a
+fake R executable. The real-R fixture suite covers semantic VCF/GTF parsing,
+multiallelic mapping, annotation, deterministic ordering, count reconciliation,
+header-only inputs, and strict failures. `make real-r-test` reports `SKIP` on
+this workstation because `Rscript` is unavailable; that skip is not real-R
+validation.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -491,7 +640,7 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, Step `07` preserves `FWD_like` and `REV_like` as read-orientation/mechanical flag groups. Downstream interpretation in Steps `08`-`09` must remain explicit and avoid unsupported biological strand claims.
+Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, Step `07` preserves `FWD_like` and `REV_like` as read-orientation/mechanical flag groups. Step `08` now records the explicit provisional `legacy_provisional_v1` mapping, and Step `09` must preserve it. Neither implementation nor local testing biologically validates that mapping.
 
 ## Future Artifact And Reporting Layer
 
@@ -586,7 +735,7 @@ multiple-testing method
 
 ## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
 
-This architecture is a deferred design direction. It should not block the immediate goal of completing the locally implemented Step `07` contract and conservatively reproducing pending Steps `08`-`09`.
+This architecture is a deferred design direction. It should not block the immediate goal of runtime-promoting the locally implemented Steps `07`-`08` and conservatively reproducing pending Step `09`.
 
 A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
 
@@ -653,7 +802,10 @@ These examples are design notes only. They do not create a real config interface
 
 Bundled analysis modules should conceptually live outside the reusable preprocessing core. For this project, the first likely module is `rna_editing_cmh`. It would consume validated core artifacts, the sample manifest, and an explicit analysis config; it would produce mpileup/VCF artifacts, preprocessed analysis tables, CMH/editing-site result tables, module-specific QC summaries, and report-ready summaries.
 
-Step `07` now provides the locally tested cohort/partition mpileup boundary. Steps `08`-`09` remain the pending legacy RNA-editing/CMH reimplementation and should be reproduced conservatively before any major modular refactor.
+Step `07` now provides the locally tested cohort/partition mpileup boundary,
+and Step `08` provides the locally shell/fake-R-tested preprocessing boundary.
+Step `09` remains the pending legacy CMH reimplementation and should be
+reproduced conservatively before any major modular refactor.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
@@ -684,11 +836,11 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Complete the Step `07` documentation-only commit, clean-status check, and push.
-2. Create `step-08-vcf-preprocessing` from that clean docpatched branch and implement only Step `08`; record real-R validation as pending while `Rscript` is unavailable.
+1. Complete the Step `08` documentation-only commit, clean-status check, and push.
+2. Create `step-09-cmh` from that clean docpatched branch and implement only Step `09`.
 3. Complete the same implementation-commit/docpatch-commit gate for Step `09`.
 4. After the local branch chain is complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then every approved primary partition.
-5. Promote Steps `08` and `09` only after each upstream cluster gate is proven, with an evidence docpatch before proceeding.
+5. Resolve a supported `Rscript` and required packages, then promote Steps `08` and `09` only after each upstream cluster gate is proven, with an evidence docpatch before proceeding.
 
 ## Local Validation Gate
 
@@ -703,9 +855,13 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
+make real-r-test
 git status --short
 git diff --name-status
 ```
+
+`make real-r-test` may report `SKIP` when the default `Rscript` executable is
+unavailable; that is a recorded runtime-validation gap, not a semantic pass.
 
 ## Known Cluster Notes
 

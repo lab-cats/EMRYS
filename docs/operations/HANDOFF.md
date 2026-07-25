@@ -36,15 +36,17 @@ The intended high-level workflow is:
 | `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
 | `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
 | `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
-| `08`-`09` downstream editing workflow | pending / not implemented / not cluster-proven | Shell and SLURM entry points remain non-runnable scaffolds. |
+| `08` VCF preprocessing | implemented locally and locally shell/fake-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Real-R semantic fixtures are blocked on this workstation because `Rscript` is unavailable; no cluster evidence exists, and this step is not cluster-proven. |
+| `09` CMH editing-site calling | pending / not implemented / not cluster-proven | Shell and SLURM entry points remain non-runnable scaffolds. |
 
 Current demo state:
 
 * Cluster-proven: Steps `00a`-`00c`; Steps `01`-`06` across all six samples.
 * Implemented locally and locally tested: Step `07`, using mocked bcftools rather than a real bcftools runtime.
-* Immediate local next: Step `08` on `step-08-vcf-preprocessing`, created only from the clean, docpatched, pushed Step `07` branch.
+* Implemented locally and wrapper-tested: Step `08` at implementation commit `90335d8`, using a fake `Rscript`; the real-R fixtures exist but have not run.
+* Immediate local next: finish the Step `08` docpatch/clean/push gate, then create `step-09-cmh` from that docpatched branch.
 * Later cluster promotion: Step `07` dry-run, pilot, one chromosome, then the approved primary-contig manifest. No Step `07` cluster evidence has yet been inspected.
-* Pending / not implemented / not cluster-proven: Steps `08`-`09`.
+* Pending / not implemented / not cluster-proven: Step `09`.
 
 ## Cohort
 
@@ -99,6 +101,8 @@ scripts/step_04_mark_duplicates.sh
 scripts/step_05_split_n_cigar_reads.sh
 scripts/step_06_split_bam_by_read_orientation.sh
 scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
 ```
 
 Implemented SLURM jobs:
@@ -115,18 +119,17 @@ jobs/step_04_mark_duplicates.slurm
 jobs/step_05_split_n_cigar_reads.slurm
 jobs/step_06_split_bam_by_read_orientation.slurm
 jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+jobs/step_08_vcf_preprocessing.slurm
 ```
 
 Scaffolded downstream files:
 
 ```text
-jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_08_vcf_preprocessing.sh
 scripts/step_09_cmh_editing_site_calling.sh
 ```
 
-Only Steps `08` and `09` are intentionally non-runnable and exit as not implemented.
+Only Step `09` is intentionally non-runnable and exits as not implemented.
 
 Step `07` also has:
 
@@ -135,6 +138,14 @@ tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 configs/step_07_partitions.pilot.tsv
 configs/step_07_partitions.primary_contigs.tsv
 configs/step_07_partitions.example.tsv
+```
+
+Step `08` also has:
+
+```text
+tests/shell/test_step_08_vcf_preprocessing.sh
+tests/r/run_step_08_vcf_preprocessing_tests.sh
+tests/r/test_step_08_vcf_preprocessing.R
 ```
 
 ## Operator Pointers
@@ -174,13 +185,14 @@ results/qc/orientation/<sample>.orientation_counts.tsv
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf
 results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
 ```
 
 Expected downstream output families, once implemented:
 
 ```text
-results/vcf_preprocessed/
-results/qc/vcf_preprocessing/
 results/editing/
 results/artifacts/
 results/reports/
@@ -437,11 +449,70 @@ The receipt records `cohort_id`, `partition_id`, `selector_type`, `selector_valu
 
 Dry-run is side-effect-free. Execute mode validates BAM/BAI and FASTA/FAI inputs, selectors, and complete outputs; uses an owned cohort/partition lock and run-token scratch paths; validates before publication; and rolls back a replaced complete final set on failure. Local coverage is active at `tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`, including mocked multi-BAM command construction, dry-run, validation, locks, cleanup, and rollback.
 
+## Step 08 Current State
+
+Step `08` is implemented locally at implementation commit `90335d8`. Its
+shell wrapper and publication behavior pass active fake-R tests. This
+workstation has no `Rscript`, so the semantic R fixture suite has not run;
+there is also no cluster dry-run, execute job, log, or inspected output
+evidence. Step `08` is not cluster-proven.
+
+Implemented entry points:
+
+```text
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
+jobs/step_08_vcf_preprocessing.slurm
+```
+
+The input universe is exactly the partition manifest crossed with
+`FWD_like` and `REV_like`, in that order; VCF globbing is prohibited. The
+workflow checks every Step `07` receipt and VCF path, SHA-256 hash, declared
+and observed record count, and exact manifest-ordered sample columns. It also
+requires disjoint partition selectors, stable sample/partition/GTF inputs, and
+globally unique partition-independent candidate IDs.
+
+The R engine uses `VariantAnnotation`, `GenomicRanges`, and `rtracklayer`
+with the Novogene GTF. It expands multiallelic records by ALT index, extracts
+the matching AD value, and counts/excludes symbolic and non-SNV alleles.
+Missing required FORMAT definitions, malformed or negative counts, one-sided
+missing DP/AD, AD greater than DP, overlaps, duplicates, or receipt
+inconsistencies fail rather than being coerced. A paired missing DP/AD value is
+retained as missing.
+
+The retained legacy mapping is explicit and provisional:
+
+```text
+orientation_policy=legacy_provisional_v1
+FWD_like -> legacy neg -> compatible + transcripts -> complement genomic REF/ALT
+REV_like -> legacy pos -> compatible - transcripts -> retain genomic REF/ALT
+```
+
+It is not a biologically validated orientation policy. The sites table keeps
+genomic and RNA-normalized alleles, mechanical orientation, compatible
+annotation strand, annotation flags, and manifest-ordered `DP__<sample>`,
+`AD__<sample>`, and `AF__<sample>` columns. Output rows and collapsed
+identifiers are deterministic.
+
+The output transaction is:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+Observed ALT, supported SNV, skipped symbolic, skipped non-SNV, and published
+candidate counts reconcile per input and in the summary. An owned cohort lock,
+run-token temporary and backup paths, immutable input hashes,
+validation-before-publication, cleanup, and rollback protect the three-file
+set. The input receipt is published last as the transaction commit marker.
+
 ## Current Next Work
 
-1. Complete the Step `07` documentation-only commit, clean-status check, and push gate.
-2. Create `step-08-vcf-preprocessing` from the clean, docpatched Step `07` branch and implement only Step `08`.
-3. Continue the approved local branch chain through Step `09`, with an implementation commit and separate docpatch commit at every stage.
+1. Complete the Step `08` documentation-only commit, clean-status check, and push gate.
+2. Create `step-09-cmh` from the clean, docpatched Step `08` branch.
+3. Implement and locally validate Step `09`, then complete its separate implementation/docpatch/push gate.
 4. After the local branches are complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then the approved primary-contig manifest. Promote Steps `08` and `09` only after their upstream cluster gates pass.
 
 ## Java And Picard Handoff
@@ -476,11 +547,14 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
+make real-r-test
 git status --short
 git diff --name-status
 ```
 
-Local tests are lightweight and should not require real full-size BAM/FASTQ data.
+Local tests are lightweight and should not require real full-size BAM/FASTQ
+data. `make real-r-test` reports `SKIP` when the default `Rscript` is absent;
+that skip is not semantic R validation.
 
 ## Development Rule
 

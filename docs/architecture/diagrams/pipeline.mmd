@@ -26,8 +26,8 @@ flowchart LR
     subgraph downstream["Downstream editing workflow"]
         direction TB
         s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
-        s08["08 VCF preprocessing<br/>next local implementation<br/>pending"]
-        s09["09 CMH/editing-site calling<br/>pending"]
+        s08["08 VCF preprocessing<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
+        s09["09 CMH/editing-site calling<br/>next local implementation; pending"]
     end
 
     fastq --> s01 --> s02
@@ -40,5 +40,5 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07 boundary
-    class s08,s09 pending
+    class s07,s08 boundary
+    class s09 pending

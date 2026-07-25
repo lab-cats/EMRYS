@@ -1,13 +1,13 @@
 # Future Planned Architecture
 
-This page describes a deferred target architecture. It is not the current implementation contract. The current pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step `06`, Step `07` is implemented locally and locally tested with mocked bcftools but is not cluster-proven, and Step `08` is the next local implementation boundary.
+This page describes a deferred target architecture. It is not the current implementation contract. The current pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step `06`; Steps `07` and `08` are implemented and locally tested but are not cluster-proven; Step `08` real-R fixture execution is runtime-blocked because this workstation has no `Rscript`; and Step `09` is the next local implementation boundary.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented locally and locally tested with mocked bcftools but awaiting real-bcftools and cluster validation; Steps `08`-`09` pending | Assay-specific modules consuming validated artifacts |
+| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Step `08` implemented at `90335d8` and shell/fake-R tested locally, with real-R runtime validation blocked; neither has cluster evidence; Step `09` pending | Assay-specific modules consuming validated artifacts |
 | Reporting | Demo/QC docs and generated step artifacts | Configurable report generation from artifact indexes |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
@@ -170,6 +170,8 @@ flowchart TD
 * Invalid states should be refused loudly, especially missing contrasts, missing replicate structure, missing orientation policy, or inconsistent strandedness assumptions.
 * Strand/orientation interpretation should stay explicit and PI-approved.
 
+The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
+
 ## Deferred implementation note
 
-This architecture is deferred. The immediate local priority is reproducing Steps `08`-`09` from the implemented Step `07` contract, while later cluster promotion must begin with Step `07` and proceed sequentially. Modularization, artifact indexes, public-dataset import, and report generation should be evaluated after the legacy analysis path is working and reviewed.
+This architecture is deferred. Step `08` is now locally implemented from the Step `07` contract; the immediate local priority is the descendant Step `09` implementation after the Step `08` docpatch/push gate. Later cluster promotion must still begin with Step `07` and proceed sequentially through Steps `08` and `09`. Modularization, artifact indexes, public-dataset import, and report generation should be evaluated after the legacy analysis path is working and reviewed.

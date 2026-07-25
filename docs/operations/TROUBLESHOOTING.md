@@ -651,26 +651,218 @@ header/sample validation fails.
 Header-only behavior is covered by local mocked tests; no real-bcftools or
 cluster header-only output has been inspected yet.
 
-## Scaffolded downstream job accidentally submitted
+## Step 08 cannot find `Rscript` or required R packages
 
 ### Symptom
 
-A Step `08` or Step `09` job is submitted but exits immediately, says
+The Step `08` wrapper fails with an error such as:
+
+```text
+Rscript executable was not found on PATH
+Rscript does not exist
+Rscript exists but is not executable
+```
+
+or the R implementation reports:
+
+```text
+Missing required R package(s): ...
+```
+
+### Cause
+
+Step `08` requires a supported `Rscript` executable and these packages:
+
+```text
+VariantAnnotation
+GenomicRanges
+IRanges
+S4Vectors
+SummarizedExperiment
+GenomeInfoDb
+BiocGenerics
+rtracklayer
+```
+
+The current workstation has no `Rscript`, and a supported CSU R/Rscript path
+and compatible installed package set have not yet been established. The
+workflow intentionally does not install packages automatically.
+
+### Fix
+
+Resolve and validate the supported R environment first. For a direct script
+run, pass the executable with:
+
+```bash
+--rscript-bin /supported/path/to/Rscript
+```
+
+For the SLURM wrapper, export:
+
+```bash
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript
+```
+
+Confirm the package set in that same environment, then run:
+
+```bash
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
+```
+
+Do not substitute a fake R executable for semantic validation and do not call a
+skipped real-R test a pass. Step `08` is implemented locally and fake-R/shell
+tested, but real-R runtime validation and cluster evidence remain pending.
+
+## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
+
+### Symptom
+
+Step `08` stops before or during semantic processing with a receipt/path/hash
+mismatch, an unexpected input count, a VCF record-count mismatch, or a message
+that VCF sample columns do not exactly match manifest order.
+
+### Cause
+
+Step `08` consumes exactly the declared partition-manifest Cartesian product
+with `FWD_like` and `REV_like`. Each partition must have its valid Step `07`
+receipt commit marker, and the receipt must agree with:
+
+```text
+cohort and partition selector
+orientation order
+exact VCF paths
+sample-manifest and partition-manifest SHA-256 hashes
+manifest sample count
+VCF record count
+exact manifest-ordered VCF sample columns
+```
+
+A stale manifest, copied or edited receipt, moved VCF, changed VCF header,
+manually changed record count, or incomplete Step `07` transaction violates
+that contract.
+
+### Diagnose
+
+Inspect the declared partition and its committed Step `07` set:
+
+```bash
+partition=<partition_id>
+cohort=<cohort_id>
+dir="results/mpileup/$cohort/$partition"
+
+ls -lh \
+  "$dir/$cohort.$partition.FWD_like.mpileup.vcf" \
+  "$dir/$cohort.$partition.REV_like.mpileup.vcf" \
+  "$dir/$cohort.$partition.step07_outputs.tsv"
+awk -F '\t' 'NR == 1 || NR <= 3 { print }' \
+  "$dir/$cohort.$partition.step07_outputs.tsv"
+```
+
+With the validated cluster bcftools path, compare each VCF sample list and data
+row count with the manifest and receipt:
+
+```bash
+bcftools=/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
+"$bcftools" query -l "$dir/$cohort.$partition.FWD_like.mpileup.vcf"
+"$bcftools" view -H "$dir/$cohort.$partition.FWD_like.mpileup.vcf" | wc -l
+```
+
+### Fix
+
+Restore the exact manifests used to produce Step `07`, or rerun the affected
+Step `07` partition through its validated publication path. Do not edit a VCF
+header, receipt hash, path, or count merely to satisfy Step `08`, and do not
+replace the declared set with a glob.
+
+These checks are locally tested behavior. No Step `08` real-R or cluster
+receipt-mismatch incident has been observed.
+
+## Step 08 rejects partition overlap, duplicate candidates, or malformed counts
+
+### Symptom
+
+Step `08` reports an overlapping partition selector, duplicate candidate ID,
+missing or incorrect FORMAT/INFO definition, malformed or negative count,
+partial DP/AD missingness, or AD greater than DP.
+
+### Cause
+
+The declared partitions must not overlap, and candidate identity is global
+across partitions. VCF parsing also requires the Step `07` FORMAT/INFO
+definitions and integer, non-negative, internally consistent DP/AD values.
+Silently deduplicating sites, truncating multiallelic vectors, or coercing
+malformed counts would change the declared analysis universe.
+
+Symbolic and non-SNV alternate alleles are different: valid instances are
+counted and excluded intentionally rather than causing failure.
+
+### Fix
+
+Correct the partition manifest or regenerate the malformed upstream VCF from
+the approved Step `07` workflow. Preserve ALT indexing and complete DP/AD pairs.
+Do not delete duplicate rows, clamp counts, convert missing values to zero, or
+change AD to fit DP after the fact.
+
+These validation paths are covered by the committed real-R fixtures, but those
+fixtures have not executed on this workstation because `Rscript` is
+unavailable.
+
+## Step 08 finds a lock, partial output set, or input mutation
+
+### Symptom
+
+Step `08` reports:
+
+```text
+Step 08 lock already exists
+Existing Step 08 outputs are incomplete; expected all three or none
+an input or hash changed during Step 08
+```
+
+### Cause
+
+Another run may own:
+
+```text
+results/vcf_preprocessed/<cohort>/.<cohort>.step08.lock/
+```
+
+Alternatively, a prior/manual operation may have left only part of the sites,
+summary, and input-receipt set, or a manifest, GTF, Step `07` receipt, or VCF
+may have changed after preflight. `step08_inputs.tsv` is published last as the
+transaction commit marker, so one or two stable files are not a committed set.
+
+### Fix
+
+Inspect the lock owner, scheduler state, logs, all three final paths, and the
+declared inputs before changing anything. Do not delete a foreign lock,
+manufacture the missing receipt, combine files from different runs, or bypass
+the hash check. If an active writer exists, wait for it to finish. If recovery
+is required after an interrupted/manual operation, preserve evidence and make
+the operator action explicit before restoring or regenerating a complete set.
+
+The wrapper removes only its owned run-token scratch and lock paths and restores
+the prior complete three-file set when a replacement fails after backup begins.
+Lock, cleanup, input-mutation, and rollback behavior is locally tested with a
+fake R executable; no Step `08` cluster incident has been observed.
+
+## Scaffolded Step 09 job accidentally submitted
+
+### Symptom
+
+A Step `09` job is submitted but exits immediately, says
 `not implemented`, or exits with code `2`.
 
 ### Cause
 
-Steps `08` and `09` are scaffolded and intentionally non-runnable until
-implemented.
+Step `09` is scaffolded and intentionally non-runnable until implemented.
 
 Steps `05` and `06` are implemented and cluster-proven across all six samples. If Step `05` or Step `06` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
 
-Scaffolded files include:
+Scaffolded files:
 
 ```text
-jobs/step_08_vcf_preprocessing.slurm
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_08_vcf_preprocessing.sh
 scripts/step_09_cmh_editing_site_calling.sh
 ```
 
@@ -679,19 +871,25 @@ its cluster checkout still reports `not implemented`, that checkout predates
 the completed Step `07` branch. Step `07` has not yet completed a cluster
 dry-run or execute job and is not cluster-proven.
 
+Step `08` is also implemented locally. If its checkout still reports
+`not implemented`, that checkout predates commit `90335d8`. A current Step
+`08` checkout may instead fail because the supported R runtime is unresolved;
+use the Rscript/package entry above. Do not runtime-promote Step `08` before
+Step `07` is cluster-proven.
+
 ### Fix
 
-Do not run scaffolded downstream jobs.
+Do not run the scaffolded Step `09` job.
 
-Scaffolded steps:
+Scaffolded step:
 
 ```text
-08 VCF preprocessing
 09 CMH editing-site calling
 ```
 
-Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
-after the step is active.
+Implement Step `09` locally, test, commit/push, pull on cluster, then
+dry-run/execute only after the step is active and Step `08` has passed its
+upstream runtime/cluster gates.
 
 For Step `07`, pull the completed stage branch, inspect its dry-run first, and
 do not describe it as cluster-proven until real execute outputs and receipts

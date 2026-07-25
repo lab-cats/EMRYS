@@ -162,7 +162,7 @@ Do not run full alignment, sorting, mpileup, or large analysis directly on the l
 Expected structure:
 
 ```text
-scripts/        # Python, shell, and later R scripts
+scripts/        # Python, shell, and R scripts
 jobs/           # SLURM job wrappers
 tests/          # active tests and pending test plans
 configs/        # optional local/cluster config files
@@ -380,9 +380,14 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
+make real-r-test
 git status --short
 git diff --name-status
 ```
+
+`make real-r-test` may report `SKIP` only when the default `Rscript` executable
+is unavailable. A skip is not semantic R validation; an explicit runtime
+override or a present runtime with missing packages must fail clearly.
 
 When adding or modifying a workflow step:
 

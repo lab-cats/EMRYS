@@ -101,9 +101,10 @@ Pending steps should not look submit-ready. Placeholder jobs should not load mod
 
 Reason: this prevents accidentally submitting placeholder jobs and mistaking scaffolding for working pipeline logic.
 
-Current application: Steps `08` and `09` remain pending and non-runnable.
-Step `07` is implemented locally and locally tested, but is not yet
-cluster-proven.
+Current application: Step `09` remains pending and non-runnable. Steps `07` and
+`08` are implemented locally and locally tested at their available local
+boundaries, but neither is cluster-proven. Step `08` real-R fixture execution
+remains pending because this workstation has no `Rscript`.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -489,11 +490,173 @@ and is not cluster-proven. The tracked primary-contig manifest includes `MT`;
 its exact presence/spelling in the Novogene FASTA index must be confirmed
 during cluster dry-run validation.
 
+## Step 08 Consumes Only The Declared Step 07 Transaction Set
+
+Decision: Step `08` consumes the exact partition-manifest Cartesian product
+with the two neutral orientations in fixed order:
+
+```text
+FWD_like
+REV_like
+```
+
+It must not glob whatever VCFs happen to exist. For every declared partition it
+requires the Step `07` receipt commit marker and validates the receipt schema,
+cohort, selector, orientation order, exact VCF paths, sample-manifest and
+partition-manifest hashes, sample count, exact manifest-ordered VCF sample
+columns, and declared VCF record counts. The sample manifest, partition
+manifest, annotation GTF, receipts, and VCFs must remain byte-stable throughout
+processing.
+
+Decision: semantic preprocessing uses `VariantAnnotation` for VCF parsing and
+ALT expansion and uses `rtracklayer` plus `GenomicRanges` to import and query
+the Novogene GTF directly. Every alternate allele is expanded by ALT index, and
+the corresponding FORMAT/AD and INFO/AD alternate value is extracted.
+Symbolic and non-SNV alternate alleles are counted and excluded rather than
+truncated. Overlapping partition selectors, duplicate candidate IDs, missing
+or incorrect required FORMAT/INFO definitions, malformed or negative counts,
+partial DP/AD missingness, and AD greater than DP are hard failures.
+
+The orientation mapping is explicitly provisional:
+
+```text
+FWD_like -> legacy neg -> compatible + transcripts -> complement DNA REF/ALT
+REV_like -> legacy pos -> compatible - transcripts -> retain DNA REF/ALT
+orientation_policy=legacy_provisional_v1
+```
+
+Step `08` retains the genomic and RNA-normalized alleles, mechanical
+orientation, and compatible annotation strand. This policy reproduces the
+approved legacy behavior; it is not a biologically validated strand or editing
+interpretation.
+
+Reason: a declared, hash-checked input universe prevents stale or extra VCFs
+from silently changing candidate membership, while semantic ALT/count parsing
+avoids the legacy failure modes of positional truncation and implicit strand
+interpretation.
+
+## Step 08 Publishes Deterministic Wide Tables As One Transaction
+
+Decision: Step `08` publishes:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+The sites table begins with this fixed metadata order:
+
+```text
+partition_id
+candidate_id
+orientation
+chromosome
+position
+alt_index
+genomic_ref
+genomic_alt
+rna_ref
+rna_alt
+annotation_strand
+gene_ids
+transcript_ids
+is_cds
+is_five_prime_utr
+is_three_prime_utr
+is_exon
+is_intron
+qual
+filter
+info_alt_depth
+orientation_policy
+```
+
+Those fields are followed by manifest-ordered `DP__<sample>`,
+`AD__<sample>`, and `AF__<sample>` groups. Supported intergenic SNVs remain
+published with missing gene/transcript IDs and false annotation flags.
+Candidate order follows partition-manifest order, then `FWD_like`,
+`REV_like`, then original VCF record and ALT order.
+
+The input-receipt columns are:
+
+```text
+cohort_id
+partition_id
+selector_type
+selector_value
+orientation
+step07_receipt_path
+step07_receipt_sha256
+vcf_path
+vcf_sha256
+sample_manifest_sha256
+partition_manifest_sha256
+annotation_gtf
+annotation_gtf_sha256
+sample_count
+declared_vcf_record_count
+observed_vcf_record_count
+observed_alt_allele_count
+supported_snv_count
+skipped_symbolic_count
+skipped_non_snv_count
+published_candidate_count
+orientation_policy
+```
+
+The summary columns are:
+
+```text
+cohort_id
+partition_count
+step07_receipt_count
+input_vcf_count
+sample_count
+observed_vcf_record_count
+observed_alt_allele_count
+supported_snv_count
+skipped_symbolic_count
+skipped_non_snv_count
+published_candidate_count
+sample_manifest_sha256
+partition_manifest_sha256
+annotation_gtf
+annotation_gtf_sha256
+orientation_policy
+```
+
+Observed alternate alleles must equal supported SNVs plus counted symbolic and
+non-SNV exclusions; supported and published candidate counts must equal the
+combined sites row count. A header-only sites table is valid when all counts
+reconcile.
+
+Execute mode accepts only a complete prior three-file set or no prior set,
+uses an owned cohort lock and run-token scratch/backup paths, validates all
+temporary outputs, publishes sites then summary, and publishes
+`step08_inputs.tsv` last as the transaction commit marker. A failed replacement
+restores the prior complete set.
+
+Reason: fixed schemas and ordering make Step `09` consumption deterministic,
+and receipt-last rollback publication prevents a partial cohort table set from
+being mistaken for a committed Step `08` result.
+
+Current evidence: this contract is implemented locally at commit `90335d8`.
+The fake-R shell suite passes. The committed real-R fixture suite has not run
+because this workstation lacks `Rscript`; there is no cluster dry-run, execute,
+log, or output evidence, and Step `08` is not cluster-proven.
+
 ## R/Rscript Availability Is Not Decided
 
-Decision: do not assume final module names or invocation patterns for R/Rscript until validated on the cluster.
+Decision: do not assume final module names or invocation patterns for R/Rscript
+until validated on the cluster.
 
-These are needed for Steps `08` and `09`.
+Step `08` declares `VariantAnnotation`, `GenomicRanges`, `IRanges`,
+`S4Vectors`, `SummarizedExperiment`, `GenomeInfoDb`, `BiocGenerics`, and
+`rtracklayer` as runtime dependencies, and Step `09` also requires R. The
+supported R/Rscript path, compatible installed package versions, and cluster
+availability remain unresolved. Analysis scripts must fail clearly when
+dependencies are absent and must not install packages automatically.
 
 ## Future Refactors Must Preserve Proven Interfaces
 

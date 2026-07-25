@@ -12,13 +12,13 @@ This project rebuilds a legacy hardcoded RNA-editing / RNA-seq workflow into a l
 
 The biological context is NORAD / PUM1 / rABE-related RNA-seq. The downstream goal is RNA-editing / variant-like site analysis, not simple gene-count differential expression.
 
-Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are cluster-proven across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims. Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`, but it has no real-bcftools runtime, cluster dry-run, cluster execute run, or inspected cluster output and is not cluster-proven. Steps `08`-`09` remain pending / not implemented / not cluster-proven; Step `08` is the next local implementation boundary, while Step `07` is the next cluster-promotion gate.
+Reference preparation steps `00a` through `00c` are cluster-proven. Sample-processing steps `01` through `06` are cluster-proven across all six samples. Step `06` read-orientation BAM splitting is cluster-proven across the cohort and preserves mechanical read-orientation groups without making biological strand claims. Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`, but it has no real-bcftools runtime or cluster evidence and is not cluster-proven. Step `08` is implemented locally at commit `90335d8` and its shell/fake-R tests pass; because this workstation has no `Rscript`, the authored real-R fixtures remain runtime-blocked and pending. Step `08` also has no cluster dry-run, execute run, or inspected output evidence and is not cluster-proven. Step `09` remains pending / not implemented / not cluster-proven and is the next local implementation boundary, while Step `07` remains the first later cluster-promotion gate.
 
 ## PI Decision Brief
 
 ### Current validated boundary
 
-The preprocessing and read-orientation backbone is cluster-proven through Step `06` across all six samples. Step `07` now has a locally implemented, mocked-test contract, but no real or cluster runtime evidence. Steps `08`-`09` remain unimplemented, and no downstream editing-site stage is cluster-proven.
+The preprocessing and read-orientation backbone is cluster-proven through Step `06` across all six samples. Steps `07` and `08` now have locally implemented, fake-tool-tested contracts, but neither has real-runtime or cluster evidence. Step `08` real-R fixture execution is specifically blocked by the absence of `Rscript` on this workstation. Step `09` remains unimplemented, and no downstream editing-site stage is cluster-proven.
 
 ### Evidence table
 
@@ -35,7 +35,8 @@ The preprocessing and read-orientation backbone is cluster-proven through Step `
 | `05` SplitNCigarReads | markdup BAM, FASTA/FAI/DICT | split-N-cigar BAM/BAI | `PASS=6`, quickcheck, RG, no scratch files | six-sample cluster-proven |
 | `06` read-orientation split | SplitNCigarReads BAM/BAI | `FWD_like` and `REV_like` BAM/BAI plus orientation counts TSV | All six jobs completed 0:0; quickcheck passed; counts TSVs present; assigned_fraction = 1.000000 and unassigned_records = 0 for all six; cluster validation showed no Step 06 scratch files remaining in the checked Step 06 artifact paths | cluster-proven across all six samples |
 | `07` cohort mpileup | Step `06` FWD_like/REV_like BAM/BAI pairs, sample manifest, partition manifest, FASTA/FAI | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implementation commit `e68b00c`; local Bash 3.2 and mocked-bcftools shell tests | implemented and locally tested; real-bcftools and cluster validation pending; not cluster-proven |
-| `08`-`09` downstream editing workflow | Step `07` VCF/receipt set, annotation, manifests | preprocessed tables, CMH outputs, plots | not yet implemented | pending / not cluster-proven |
+| `08` VCF preprocessing | exact partition-manifest × `{FWD_like,REV_like}` Step `07` VCF/receipt set, sample manifest, Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implementation commit `90335d8`; local shell/fake-R suite passes; real-R fixtures authored but not run because `Rscript` is unavailable | implemented and locally shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven |
+| `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | approved all-sites/significant/summary/spectrum tables and plots under `results/editing/<analysis>/` | not yet implemented | pending / not cluster-proven |
 
 ### PI scientific/QC questions
 
@@ -49,15 +50,16 @@ The preprocessing and read-orientation backbone is cluster-proven through Step `
 
 Next 48 hours:
 
-1. Create the Step `08` descendant branch from the clean, pushed Step `07` implementation and docpatch history.
-2. Implement and locally test Step `08`, then perform its separate repository-wide docpatch.
+1. Complete the Step `08` repository-wide docpatch, clean-status check, and push gate.
+2. Create `step-09-cmh` from the clean, docpatched Step `08` branch and implement only Step `09`.
 3. Preserve Step `07` as the first later cluster-promotion gate; do not execute Step `08` on the cluster before Step `07` is cluster-proven.
 
 Next week:
 
-1. Implement and locally test Step `09` from the docpatched Step `08` branch, then perform its separate docpatch.
+1. Complete the Step `09` implementation/test commit and separate repository-wide docpatch.
 2. Begin sequential cluster promotion with Step `07` dry-run, narrow pilot, and primary-contig execution before downstream execute runs.
-3. Review QC and candidate sites with PI before interpreting biology.
+3. Resolve an R-capable environment and run the Step `08` and Step `09` real-R fixtures before claiming real-R runtime validation.
+4. Review QC and candidate sites with PI before interpreting biology.
 
 ## Pipeline Status
 
@@ -74,7 +76,7 @@ Next week:
 | `05` | SplitNCigarReads | cluster-proven across all six |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | bcftools mpileup | implemented locally and locally tested with mocked bcftools; no real or cluster runtime; not cluster-proven |
-| `08` | VCF preprocessing | pending / not implemented / not cluster-proven |
+| `08` | VCF preprocessing | implemented locally at `90335d8`; shell/fake-R tested; real-R runtime blocked and cluster validation pending; not cluster-proven |
 | `09` | CMH editing-site calling | pending / not implemented / not cluster-proven |
 
 Step 06: cluster-proven across all six samples.
@@ -96,6 +98,7 @@ Steps `05` and `06` are cluster-proven/cohort-proven across all six samples base
 | `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
 | `06` read-orientation split | per sample | about 25-34 minutes per sample; slower EV samples about 33-34 minutes | Preliminary ADAM operational runtimes from the current validation run, not formal benchmarks. |
 | `07` cohort mpileup | per cohort partition, both mechanical orientations | no real runtime measured | Local mocked-bcftools execution only. The long-partition, 8-hour, 1-CPU job request is unvalidated configuration, not observed runtime evidence. |
+| `08` VCF preprocessing | one cohort across all declared partitions and both orientations | no real-R runtime measured | Local shell/fake-R execution only; the real-R fixture runner reported an explicit skip because `Rscript` is unavailable. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -253,7 +256,33 @@ Cluster validation showed no Step 06 scratch files remaining in the checked Step
 
 `samtools view -f FLAG` means records have all bits in `FLAG`; it is not exact flag equality.
 
-Demo meaning: the reusable preprocessing backbone is rebuilt and cluster-validated through Step `06` across the full six-sample cohort. Step `07` extends the code boundary with a locally implemented mpileup contract that is locally tested with mocked bcftools, but the cluster-proven boundary has not moved; Step `08` is the next local implementation boundary.
+Demo meaning: the reusable preprocessing backbone is rebuilt and cluster-validated through Step `06` across the full six-sample cohort. Steps `07` and `08` extend the local code boundary with mocked/fake-runtime-tested contracts, but the cluster-proven boundary has not moved. Step `09` is the next local implementation boundary.
+
+## Step 08 Local VCF Preprocessing Contract
+
+Step `08` consumes the exact partition-manifest × `{FWD_like,REV_like}` set of Step `07` VCFs and receipts; it does not glob whichever files are present. Before R execution, the shell wrapper verifies receipt paths, both manifest hashes, sample order, declared VCF record counts, and the complete declared input set.
+
+The published output set is:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+The deterministic wide sites table retains partition and candidate IDs; mechanical orientation; genomic coordinates and ALT index; genomic and RNA-normalized alleles; compatible annotation strand; gene/transcript IDs; CDS, UTR, exon, and intron flags; QUAL/FILTER; INFO alternate depth; and `orientation_policy`. It then appends manifest-ordered `DP__<sample>`, `AD__<sample>`, and `AF__<sample>` column groups. The input receipt reconciles every declared VCF's observed records, ALT alleles, supported SNVs, skipped symbolic/non-SNV alleles, and published candidates with the cohort summary. The complete input receipt is published last as the output-set commit marker.
+
+The implemented legacy-preservation mapping is:
+
+```text
+FWD_like -> legacy neg -> compatible + transcripts -> complement DNA REF/ALT
+REV_like -> legacy pos -> compatible - transcripts -> retain DNA REF/ALT
+orientation_policy=legacy_provisional_v1
+```
+
+The table retains genomic alleles alongside RNA-normalized alleles so this transformation remains auditable. The policy is provisional and is not biologically validated.
+
+Current evidence is limited to implementation commit `90335d8`, passing shell/fake-R wrapper tests, and static/local repository checks. The real-R fixture suite exists but could not execute because this workstation has no `Rscript`. No cluster job, real-R output table, or biological candidate result has been inspected.
 
 ## Engineering And Reproducibility Features
 
@@ -263,7 +292,7 @@ The rebuilt pipeline emphasizes:
 - SLURM execution at scale
 - dry-run by default
 - explicit `EXECUTE=1`
-- scope-owned locking, including Step `07` cohort/partition locks
+- scope-owned locking, including Step `07` cohort/partition and Step `08` cohort locks
 - run-token temp files
 - validation before publish
 - rollback protection
@@ -278,13 +307,13 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - Each implemented step has defined inputs, outputs, validation checks, and cluster execution gates.
 - The pipeline has already produced useful QC signals across all six samples.
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
-- The current state is honest: preprocessing and read-orientation splitting are cluster-proven through Step `06`; Step `07` is implemented and locally tested with mocked bcftools but has no real or cluster output evidence; downstream biological editing-site calling remains pending.
+- The current state is honest: preprocessing and read-orientation splitting are cluster-proven through Step `06`; Step `07` is mocked-bcftools tested locally; Step `08` is shell/fake-R tested locally but its real-R fixture runtime is blocked; neither has cluster evidence; downstream CMH calling remains pending.
 
 ## Near-Term Roadmap
 
 ### Phase 1 — Rebuild and validate preprocessing backbone
 
-Status: cluster-proven through Step `06` across all six samples. Step `07` is implemented and locally tested with mocked bcftools but awaits real-bcftools and cluster validation; Step `08` is the next local implementation boundary.
+Status: cluster-proven through Step `06` across all six samples. Steps `07` and `08` are implemented and locally fake-tool tested but await their real-runtime and cluster gates; Step `09` is the next local implementation boundary.
 
 - Reference prep and STAR index
 - STAR alignment across six samples
@@ -295,14 +324,14 @@ Status: cluster-proven through Step `06` across all six samples. Step `07` is im
 - Read-orientation BAM split
 
 Current boundary:
-Step `06` is the final cluster-proven preprocessing/read-orientation split step and is proven across all six samples. Step `07` is the local code boundary but is not cluster-proven; Step `08` is the next local implementation boundary.
+Step `06` is the final cluster-proven preprocessing/read-orientation split step and is proven across all six samples. Step `08` is the local code boundary but is not real-R runtime-validated or cluster-proven; Step `09` is the next local implementation boundary.
 
 ### Phase 2 — Reproduce legacy editing-site calling workflow
 
-Status: in progress locally. Step `07` is implemented and locally tested with mocked bcftools; Steps `08`-`09` remain pending, and Step `07` cluster execution remains pending.
+Status: in progress locally. Step `07` is mocked-bcftools tested locally; Step `08` is implemented and shell/fake-R tested locally with real-R runtime validation blocked; Step `09` and Step `07` cluster execution remain pending.
 
 - Step `07`: cohort bcftools mpileup per declared partition and mechanical read-orientation group, implemented locally but not run with real bcftools
-- Preprocess VCF-like outputs into analysis tables
+- Step `08`: preprocess the exact Step `07` receipt set into deterministic candidate/input/QC tables, implemented locally but not run with real R
 - Preserve/control strand and read-orientation assumptions
 - Run CMH/editing-site calling
 
@@ -324,9 +353,10 @@ Status: requires PI guidance.
 
 ## Next Steps
 
-1. Create the descendant Step `08` branch from the clean, pushed Step `07` implementation and docpatch history; implement, test, and docpatch Step `08`.
-2. Repeat the same branch, implementation-commit, docpatch-commit, clean-push gate for Step `09`.
+1. Complete the Step `08` docpatch/clean-push gate, then create the descendant `step-09-cmh` branch.
+2. Apply the same implementation-commit, docpatch-commit, clean-push gate to Step `09`.
 3. During later cluster promotion, validate Step `07` first with dry-run, narrow pilot, and inspected primary-contig outputs before executing downstream stages.
+4. Run the real-R fixture suites in an R-capable environment before claiming real-R runtime validation.
 
 ## Demo Talking Points
 
@@ -338,3 +368,5 @@ Status: requires PI guidance.
 - Step `05` is now cohort-proven after final BAM/BAI output inspection.
 - Step `06` preserves read-orientation groups without making unsupported biological strand claims and is cluster-proven across all six samples.
 - Step `07` has local implementation and mocked-test evidence only; no cluster VCFs or biological results are presented.
+- Step `08` has local implementation and shell/fake-R evidence only; no real-R tables, cluster outputs, or biological results are presented.
+- Step `08` uses `orientation_policy=legacy_provisional_v1`, which preserves a legacy mapping but is not biologically validated.

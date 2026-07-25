@@ -138,7 +138,11 @@ grep -n "EXECUTE\|--execute\|dry-run" \
   scripts/step_05_split_n_cigar_reads.sh | head -60
 ```
 
-Step `07` source and mocked local-test evidence may be inspected during the demo, but do not claim or demonstrate real Step `07` VCFs because no cluster run has been validated. Do not run scaffolded Steps `08`-`09`.
+Step `07` source and mocked local-test evidence may be inspected during the
+demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
+run has been validated. Step `08` source and fake-R wrapper tests may also be
+inspected, but no real-R or cluster output exists. Do not run scaffolded Step
+`09`.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -440,9 +444,15 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
+make real-r-test
 git status --short
 git diff --name-status
 ```
+
+`make real-r-test` runs the Step `08` semantic fixtures when `Rscript` is
+available. When the default `Rscript` is absent it reports `SKIP`; that skip is
+not semantic R validation. An explicit bad override or a present runtime with
+missing required packages fails.
 
 Commit implementation/tests first. Then reread the required project documents, perform the repository-wide documentation consistency pass, rerun this gate, and make the separate documentation-only commit. Require a clean worktree and inspect history before pushing or creating the next descendant stage branch.
 
@@ -1450,10 +1460,189 @@ Step 07 dry-run
 Status:
 
 ```text
-pending / not implemented / not cluster-proven
+implemented locally at implementation commit 90335d8
+locally tested with shell/fake-R coverage
+real-R semantic fixture execution pending because local Rscript is unavailable
+cluster validation pending
+not cluster-proven
 ```
 
-Future work should port and parameterize the reference `vcf_preprocess1.R`.
+No Step `08` cluster dry-run, execute job, log, or output evidence has been
+inspected. Do not runtime-promote Step `08` before Step `07` is
+cluster-proven.
+
+Implemented files:
+
+```text
+scripts/step_08_vcf_preprocessing.sh
+scripts/step_08_vcf_preprocessing.R
+jobs/step_08_vcf_preprocessing.slurm
+tests/shell/test_step_08_vcf_preprocessing.sh
+tests/r/run_step_08_vcf_preprocessing_tests.sh
+tests/r/test_step_08_vcf_preprocessing.R
+```
+
+Runtime requirements:
+
+```text
+supported Rscript
+VariantAnnotation
+GenomicRanges
+IRanges
+S4Vectors
+SummarizedExperiment
+GenomeInfoDb
+BiocGenerics
+rtracklayer
+sha256sum or shasum
+```
+
+The wrapper does not guess an R module or install packages. Record a supported
+cluster executable/environment and pass it explicitly. `Rscript` resolution is
+the CLI `--rscript-bin`, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript` on
+`PATH`. The R implementation defaults to
+`scripts/step_08_vcf_preprocessing.R` and can be overridden with
+`--r-script` or `STEP08_R_SCRIPT`.
+
+Direct dry-run:
+
+```bash
+scripts/step_08_vcf_preprocessing.sh \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step07-root results/mpileup \
+  --annotation-gtf refs/novogene_ref/genome.gtf \
+  --output-root results/vcf_preprocessed \
+  --qc-root results/qc/vcf_preprocessing \
+  --rscript-bin /supported/path/to/Rscript
+```
+
+Dry-run is the default. It validates and prints the exact declared input set
+and R command, invokes no R process, and creates no output directory, lock,
+temporary file, or final output.
+
+Only after Step `07` is cluster-proven and the supported R environment and
+packages have passed the real-R fixtures, add execute mode:
+
+```bash
+scripts/step_08_vcf_preprocessing.sh \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step07-root results/mpileup \
+  --annotation-gtf refs/novogene_ref/genome.gtf \
+  --output-root results/vcf_preprocessed \
+  --qc-root results/qc/vcf_preprocessing \
+  --rscript-bin /supported/path/to/Rscript \
+  --execute
+```
+
+SLURM dry-run:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
+  jobs/step_08_vcf_preprocessing.slurm
+```
+
+SLURM execute, only after the dry-run and prerequisites are inspected:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
+  jobs/step_08_vcf_preprocessing.slurm
+```
+
+Wrapper variables and defaults:
+
+```text
+COHORT_ID=NORAD_EV_PUM1
+SAMPLE_MANIFEST=samples.tsv
+PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv
+STEP07_ROOT=results/mpileup
+ANNOTATION_GTF=refs/novogene_ref/genome.gtf
+OUTPUT_ROOT=results/vcf_preprocessed
+QC_ROOT=results/qc/vcf_preprocessing
+RSCRIPT_BIN_OVERRIDE=<unset; defaults to Rscript on PATH>
+STEP08_R_SCRIPT=scripts/step_08_vcf_preprocessing.R
+EXECUTE=0
+```
+
+The current job requests the `long` partition, eight hours, and one CPU. Those
+resources are provisional and have not been cluster-proven.
+
+Step `08` constructs the exact partition-manifest cross-product with
+`FWD_like` and `REV_like`; it never globs VCFs. It requires each partition's
+Step `07` receipt and named two-orientation VCF pair, validates receipt/VCF
+paths and SHA-256 hashes, declared/observed record counts, both manifest
+hashes, and exact sample-manifest VCF column order. It also rejects overlapping
+partition selectors, duplicate partition-independent candidate IDs, and
+inputs that change during the run.
+
+The R implementation expands multiallelic records by ALT index and extracts
+the matching alternate AD. It counts and excludes symbolic and non-SNV alleles
+and fails on missing FORMAT/INFO definitions, malformed or negative counts,
+one-sided missing DP/AD, AD greater than DP, or sample/count inconsistencies.
+Header-only VCFs are valid when their receipts and zero counts reconcile.
+
+The provisional mapping is:
+
+```text
+orientation_policy=legacy_provisional_v1
+FWD_like -> legacy neg -> compatible + transcripts -> complement genomic REF/ALT
+REV_like -> legacy pos -> compatible - transcripts -> retain genomic REF/ALT
+```
+
+This is legacy compatibility behavior, not a biologically validated
+orientation policy.
+
+Successful execute mode publishes:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+```
+
+The sites table has fixed genomic/RNA/annotation metadata followed by
+manifest-ordered `DP__<sample>`, `AD__<sample>`, and `AF__<sample>` columns.
+The input receipt has one row per declared partition/orientation, in partition
+manifest order with `FWD_like` then `REV_like`, and records input hashes and
+observed/supported/skipped/published counts. The summary reconciles those
+counts across the cohort.
+
+Validation checklist after a future execute run:
+
+```bash
+cohort=NORAD_EV_PUM1
+sites="results/vcf_preprocessed/$cohort/$cohort.step08_sites.tsv"
+inputs="results/vcf_preprocessed/$cohort/$cohort.step08_inputs.tsv"
+summary="results/qc/vcf_preprocessing/$cohort.step08_summary.tsv"
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+ls -lh "$sites" "$inputs" "$summary"
+head -2 "$sites"
+cat "$inputs"
+cat "$summary"
+```
+
+Require all three outputs, exact schemas, the declared number/order of receipt
+rows, correct sample column groups, stable hashes, globally unique candidate
+IDs, and the invariants:
+
+```text
+observed ALT = supported SNV + skipped symbolic + skipped non-SNV
+published candidate count = supported SNV count
+each summary allele/count total = the matching input-receipt column sum
+summary published candidate count = sites-table row count
+```
+
+Execute mode owns a cohort lock, uses run-token temporary and backup paths,
+validates before publication, and rolls back a prior complete set on failure.
+The only valid preexisting state is all three outputs present or all three
+absent. Publication order is sites table, summary, then the input receipt last
+as the transaction commit marker.
 
 ## Step 09: CMH Editing-Site Calling
 
