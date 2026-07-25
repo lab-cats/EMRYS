@@ -37,16 +37,17 @@ The intended high-level workflow is:
 | `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
 | `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
 | `08` VCF preprocessing | implemented locally and locally shell/fake-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Real-R semantic fixtures are blocked on this workstation because `Rscript` is unavailable; no cluster evidence exists, and this step is not cluster-proven. |
-| `09` CMH editing-site calling | pending / not implemented / not cluster-proven | Shell and SLURM entry points remain non-runnable scaffolds. |
+| `09` CMH editing-site calling | implemented locally and locally shell/fake-R tested | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. The real-R suite is blocked on this workstation because `Rscript` is unavailable; no cluster evidence exists, and this step is not cluster-proven. |
 
 Current demo state:
 
 * Cluster-proven: Steps `00a`-`00c`; Steps `01`-`06` across all six samples.
 * Implemented locally and locally tested: Step `07`, using mocked bcftools rather than a real bcftools runtime.
 * Implemented locally and wrapper-tested: Step `08` at implementation commit `90335d8`, using a fake `Rscript`; the real-R fixtures exist but have not run.
-* Immediate local next: finish the Step `08` docpatch/clean/push gate, then create `step-09-cmh` from that docpatched branch.
-* Later cluster promotion: Step `07` dry-run, pilot, one chromosome, then the approved primary-contig manifest. No Step `07` cluster evidence has yet been inspected.
-* Pending / not implemented / not cluster-proven: Step `09`.
+* Implemented locally and wrapper-tested: Step `09` at implementation commit `e4371de`, using a fake `Rscript`; the real-R fixtures exist but report `SKIP` because no local `Rscript` is available.
+* Immediate local next: finish the Step `09` docpatch/clean/push gate.
+* Later cluster promotion begins with Step `07`: dry-run, pilot, one chromosome, then the approved primary-contig manifest. No Step `07` cluster evidence has yet been inspected.
+* Not cluster-proven: Steps `07`, `08`, and `09`.
 
 ## Cohort
 
@@ -69,6 +70,21 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 ```
 
 Note that `ABE_EV4` lacks the underscore before `4`.
+
+Approved paired strata are explicit:
+
+```text
+replicate 2: ABE_EV_2 / ABE_PUM1_2
+replicate 3: ABE_EV_3 / ABE_PUM1_3
+replicate 4: ABE_EV4  / ABE_PUM1_4
+```
+
+`configs/step_09_pairs.NORAD_EV_PUM1.tsv` records this mapping for reference.
+It is not a runtime overlay. Step `09` reads pairing only from the full sample
+manifest, and pairing is never inferred from names. Before Step `07` cluster
+promotion, add these `replicate` values to the full cluster sample manifest so
+the same sample-manifest hash propagates through the complete Steps `07`-`09`
+chain.
 
 ## Current Scientific And Workflow Conclusions
 
@@ -103,6 +119,8 @@ scripts/step_06_split_bam_by_read_orientation.sh
 scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
 scripts/step_08_vcf_preprocessing.sh
 scripts/step_08_vcf_preprocessing.R
+scripts/step_09_cmh_editing_site_calling.sh
+scripts/step_09_cmh_editing_site_calling.R
 ```
 
 Implemented SLURM jobs:
@@ -120,16 +138,8 @@ jobs/step_05_split_n_cigar_reads.slurm
 jobs/step_06_split_bam_by_read_orientation.slurm
 jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 jobs/step_08_vcf_preprocessing.slurm
-```
-
-Scaffolded downstream files:
-
-```text
 jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_09_cmh_editing_site_calling.sh
 ```
-
-Only Step `09` is intentionally non-runnable and exits as not implemented.
 
 Step `07` also has:
 
@@ -146,6 +156,15 @@ Step `08` also has:
 tests/shell/test_step_08_vcf_preprocessing.sh
 tests/r/run_step_08_vcf_preprocessing_tests.sh
 tests/r/test_step_08_vcf_preprocessing.R
+```
+
+Step `09` also has:
+
+```text
+tests/shell/test_step_09_cmh_editing_site_calling.sh
+tests/r/run_step_09_cmh_tests.sh
+tests/r/test_step_09_cmh_editing_site_calling.R
+configs/step_09_pairs.NORAD_EV_PUM1.tsv
 ```
 
 ## Operator Pointers
@@ -188,12 +207,17 @@ results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv
 results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
 results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
 results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
 ```
 
-Expected downstream output families, once implemented:
+Deferred output families, once their roadmap work is implemented:
 
 ```text
-results/editing/
 results/artifacts/
 results/reports/
 ```
@@ -508,12 +532,83 @@ run-token temporary and backup paths, immutable input hashes,
 validation-before-publication, cleanup, and rollback protect the three-file
 set. The input receipt is published last as the transaction commit marker.
 
+## Step 09 Current State
+
+Step `09` is implemented locally at implementation commit `e4371de`. The
+active shell/fake-R suite passes, but the real-R fixture runner reports `SKIP`
+because this workstation has no `Rscript`; a skip is not semantic R
+validation. There is no Step `09` cluster dry-run, execute job, log, or
+inspected output evidence, so the step is not cluster-proven.
+
+The full sample manifest is the only pairing source. It must contain
+`replicate`, with exactly one control and one treatment per replicate,
+identical replicate sets, and at least two strata. The approved current pairs
+are replicates `2`, `3`, and `4`; names are never parsed to infer them. Step
+`09` rejects a sample-manifest hash that does not match every row of the Step
+`08` input receipt, so the replicate-bearing manifest must be established
+before Step `07`, not overlaid at Step `09`.
+
+The default analysis is:
+
+```text
+control: EV
+treatment: PUM1
+RNA change: A>G
+minimum per-sample DP: 1
+mean analysis DP: strictly >50
+BH FDR: strictly <0.05
+common OR: strictly >1.2 or <1/1.2
+absolute treatment-control fraction difference: strictly >0.005
+```
+
+For every target candidate with complete counts and adequate per-sample depth,
+the base-R engine builds treatment/control by edited/unedited tables for each
+manifest-defined replicate and runs a two-sided,
+continuity-corrected `mantelhaen.test`. The common odds ratio is treatment
+relative to control. BH is applied once across every successfully tested
+target candidate from all declared partitions and both orientations; mean
+depth remains a later call threshold. Missing, low-coverage, degenerate, and
+non-target candidates remain in the all-sites table with explicit statuses.
+
+Background filtering is disabled by default. When an explicit condition
+different from control and treatment is provided, every background sample
+must have AF strictly below `0.01` by default. EV is never repurposed as a
+missing no-dox condition.
+
+Successful execute mode publishes:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+The all-sites and significant tables have 42 fixed analysis/annotation fields
+followed by manifest-ordered `DP__`, `AD__`, and `AF__` groups. The summary has
+39 fixed provenance/count/threshold fields. The mutation table always has the
+12 ordered canonical substitutions. Both PDFs use a fixed 7-by-5-inch base-R
+device, are signature/EOF validated, and remain valid for empty input. The
+workflow retains
+`orientation_policy=legacy_provisional_v1`, which is not biologically
+validated.
+
+Dry-run validates the complete contract and writes nothing. Execute mode uses
+an owned analysis lock, run-token temporary/backup paths, stable input hashes,
+exact six-output validation, and rollback. The summary is published last as
+the commit marker. If rollback cannot restore a complete prior state, the
+owned lock is deliberately retained for operator recovery; never delete such
+a lock before inspecting its owner metadata, backups, final paths, and logs.
+
 ## Current Next Work
 
-1. Complete the Step `08` documentation-only commit, clean-status check, and push gate.
-2. Create `step-09-cmh` from the clean, docpatched Step `08` branch.
-3. Implement and locally validate Step `09`, then complete its separate implementation/docpatch/push gate.
-4. After the local branches are complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then the approved primary-contig manifest. Promote Steps `08` and `09` only after their upstream cluster gates pass.
+1. Complete the Step `09` documentation-only commit, clean-status/history check, and push gate.
+2. Add explicit replicate `2`, `3`, and `4` metadata to the full cluster sample manifest before Step `07`.
+3. Resolve and record the supported `Rscript` path and Step `08` Bioconductor packages; run both real-R fixture suites in that environment.
+4. Promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then the approved primary-contig manifest.
+5. Docpatch inspected Step `07` evidence before promoting Step `08`, and docpatch inspected Step `08` evidence before promoting Step `09`.
 
 ## Java And Picard Handoff
 

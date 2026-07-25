@@ -1,13 +1,18 @@
 # Future Planned Architecture
 
-This page describes a deferred target architecture. It is not the current implementation contract. The current pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step `06`; Steps `07` and `08` are implemented and locally tested but are not cluster-proven; Step `08` real-R fixture execution is runtime-blocked because this workstation has no `Rscript`; and Step `09` is the next local implementation boundary.
+This page describes a deferred target architecture. It is not the current
+implementation contract. The current pipeline is documented in
+`docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step
+`06`; Steps `07`-`09` are implemented and tested at their available local
+boundaries but are not cluster-proven; and the Step `08` and Step `09` real-R
+fixture suites are runtime-blocked because this workstation has no `Rscript`.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Step `08` implemented at `90335d8` and shell/fake-R tested locally, with real-R runtime validation blocked; neither has cluster evidence; Step `09` pending | Assay-specific modules consuming validated artifacts |
+| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de` and shell/fake-R tested locally, with real-R runtime validation blocked; none has cluster evidence | Assay-specific modules consuming validated artifacts |
 | Reporting | Demo/QC docs and generated step artifacts | Configurable report generation from artifact indexes |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
@@ -174,4 +179,9 @@ The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v
 
 ## Deferred implementation note
 
-This architecture is deferred. Step `08` is now locally implemented from the Step `07` contract; the immediate local priority is the descendant Step `09` implementation after the Step `08` docpatch/push gate. Later cluster promotion must still begin with Step `07` and proceed sequentially through Steps `08` and `09`. Modularization, artifact indexes, public-dataset import, and report generation should be evaluated after the legacy analysis path is working and reviewed.
+This architecture is deferred. Steps `07`-`09` are now implemented locally;
+the immediate local priority is the Step `09` docpatch/clean-push gate. Later
+cluster promotion must begin with Step `07` and proceed sequentially through
+Steps `08` and `09`, with evidence docpatches between stages. Modularization,
+artifact indexes, public-dataset import, and report generation should be
+evaluated after the legacy analysis path is runtime-validated and reviewed.

@@ -14,7 +14,10 @@ Current manifest:
 samples.tsv
 ```
 
-The manifest is the source of truth for sample IDs, conditions, and FASTQ paths.
+The manifest is the source of truth for sample IDs, conditions, FASTQ paths,
+and optional replicate metadata. Earlier steps remain compatible with
+manifests that omit `replicate`; Step `09` requires it and uses it as the only
+pairing source.
 
 ## The Workflow Is Local-First And Cluster-Scaled
 
@@ -101,10 +104,11 @@ Pending steps should not look submit-ready. Placeholder jobs should not load mod
 
 Reason: this prevents accidentally submitting placeholder jobs and mistaking scaffolding for working pipeline logic.
 
-Current application: Step `09` remains pending and non-runnable. Steps `07` and
-`08` are implemented locally and locally tested at their available local
-boundaries, but neither is cluster-proven. Step `08` real-R fixture execution
-remains pending because this workstation has no `Rscript`.
+Current application: Steps `07`, `08`, and `09` are implemented locally and
+locally tested at their available local boundaries, but none is
+cluster-proven. Step `08` and Step `09` real-R fixture executions remain pending
+because this workstation has no `Rscript`. No currently scoped Step `07`-`09`
+entry point is a non-runnable scaffold.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -646,6 +650,110 @@ The fake-R shell suite passes. The committed real-R fixture suite has not run
 because this workstation lacks `Rscript`; there is no cluster dry-run, execute,
 log, or output evidence, and Step `08` is not cluster-proven.
 
+## Step 09 Pairing Comes Only From Explicit Manifest Replicates
+
+Decision: the generic sample manifest may include an optional `replicate`
+column without breaking earlier manifests. Step `09` requires it and accepts
+only one control and one treatment per replicate, identical replicate sets,
+and at least two strata. Pairing must never be inferred from sample names.
+
+The approved current reference mapping is:
+
+```text
+ABE_EV_2 / ABE_PUM1_2 -> replicate 2
+ABE_EV_3 / ABE_PUM1_3 -> replicate 3
+ABE_EV4  / ABE_PUM1_4 -> replicate 4
+```
+
+`configs/step_09_pairs.NORAD_EV_PUM1.tsv` documents those relationships but is
+not a runtime input or overlay. The full sample manifest remains the source of
+truth. Its hash must match the complete Step `08` input receipt, so replicate
+metadata must be present before Step `07` produces the upstream receipt chain.
+
+Reason: explicit pairing is reviewable and resistant to the inconsistent sample
+name spelling already present in the cohort. Reusing one full manifest and one
+hash across Steps `07`-`09` prevents a late metadata overlay from silently
+changing the analysis contract.
+
+## Step 09 Uses One Paired CMH And BH Family
+
+Decision: for every successfully testable target candidate, Step `09` builds a
+2-by-2 table of treatment/control by edited/unedited counts for every
+manifest-defined replicate and runs:
+
+```text
+mantelhaen.test(..., alternative="two.sided", correct=TRUE, exact=FALSE)
+```
+
+The common odds ratio direction is treatment relative to control. BH is
+applied once across all successfully tested target candidates from every
+declared partition and both orientations. Missing counts, low coverage,
+degenerate tables, and non-target mutations remain in the all-sites table with
+explicit statuses. Mean depth, optional background, FDR, and effect thresholds
+are call filters; mean depth does not shrink the BH family.
+
+The defaults are:
+
+```text
+control: EV
+treatment: PUM1
+RNA change: A>G
+minimum per-sample DP: 1
+mean analysis DP: strictly >50
+BH FDR: strictly <0.05
+common OR: strictly >1.2 or <1/1.2
+absolute treatment-control fraction difference: strictly >0.005
+```
+
+Decision: background filtering is disabled by default. If an explicit
+condition different from control and treatment is selected, every background
+sample must have adequate depth and an edited fraction strictly below `0.01`
+by default. EV must not be repurposed as a missing no-dox cohort.
+
+Reason: this preserves the approved paired legacy analysis while making the
+comparison direction, multiple-testing universe, threshold boundaries, and
+missing/degenerate behavior explicit and testable.
+
+## Step 09 Publishes One Six-Output Transaction
+
+Decision: Step `09` publishes:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+All-sites preserves every Step `08` candidate and order; significant-sites is
+the deterministic `significant_up`/`significant_down` subset. Both tables use
+42 fixed fields followed by manifest-ordered `DP__`, `AD__`, and `AF__`
+groups. The summary uses 39 fixed provenance/count/threshold fields. The
+mutation table always emits all 12 canonical substitutions, and both base-R
+PDFs use a fixed 7-by-5-inch device with signature/EOF validation.
+
+Execute mode accepts only all six existing outputs or none, uses an
+analysis-scoped owned lock plus run-token temporary/backup paths, verifies
+immutable inputs and exact output reconciliation, and publishes the summary
+last as the commit marker. A failed replacement restores the previous complete
+set. If rollback is incomplete, the owned lock remains for explicit operator
+recovery.
+
+Reason: the six files jointly describe one analysis result. A summary-last,
+rollback-protected boundary keeps downstream readers from treating a partial
+set as committed while retaining recoverable evidence when restoration itself
+fails.
+
+Current evidence: this contract is implemented locally at commit `e4371de`.
+The shell/fake-R suite passes. The committed real-R fixture suite reports
+`SKIP` because this workstation lacks `Rscript`; there is no cluster dry-run,
+execute, log, or inspected output evidence, and Step `09` is not
+cluster-proven. It retains
+`orientation_policy=legacy_provisional_v1`, which is not biologically
+validated.
+
 ## R/Rscript Availability Is Not Decided
 
 Decision: do not assume final module names or invocation patterns for R/Rscript
@@ -653,10 +761,11 @@ until validated on the cluster.
 
 Step `08` declares `VariantAnnotation`, `GenomicRanges`, `IRanges`,
 `S4Vectors`, `SummarizedExperiment`, `GenomeInfoDb`, `BiocGenerics`, and
-`rtracklayer` as runtime dependencies, and Step `09` also requires R. The
-supported R/Rscript path, compatible installed package versions, and cluster
-availability remain unresolved. Analysis scripts must fail clearly when
-dependencies are absent and must not install packages automatically.
+`rtracklayer` as runtime dependencies. Step `09` requires R but uses base R
+only (`stats`, `graphics`, and `grDevices`). The supported R/Rscript path,
+compatible installed package versions, and cluster availability remain
+unresolved. Analysis scripts must fail clearly when dependencies are absent
+and must not install packages automatically.
 
 ## Future Refactors Must Preserve Proven Interfaces
 

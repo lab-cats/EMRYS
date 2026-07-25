@@ -8,7 +8,15 @@ For deferred modular architecture ideas, see `docs/architecture/FUTURE_ARCHITECT
 
 This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`; it has not run with real bcftools, passed a cluster dry-run, executed on the cluster, or produced inspected cluster outputs, and it is not cluster-proven. Step `08` is implemented locally at commit `90335d8` and its shell/fake-R tests pass, but this workstation has no `Rscript`, so the authored real-R fixture suite remains runtime-blocked and pending. Step `08` has no cluster dry-run, execute, or inspected output evidence and is not cluster-proven. Step `09` remains pending / not implemented / not cluster-proven and is the next local implementation boundary.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are
+cluster-proven across all six samples. Step `07` is implemented locally and
+mocked-bcftools tested at commit `e68b00c`, but it has no real-bcftools or
+cluster evidence. Step `08` is implemented locally at `90335d8` and
+shell/fake-R tested, while its real-R fixtures are blocked because this
+workstation has no `Rscript`. Step `09` is implemented locally at `e4371de`
+and shell/fake-R tested; its real-R fixture runner is blocked for the same
+reason. Steps `07`-`09` have no cluster dry-run, execute, log, or inspected
+output evidence and are not cluster-proven.
 
 Current boundary:
 
@@ -17,7 +25,7 @@ cluster-proven reference prep through Steps 00a-00c
 -> cluster-proven sample workflow through Step 06
 -> Step 07 implemented and locally tested with mocked bcftools; cluster validation pending
 -> Step 08 implemented and shell/fake-R tested locally; real-R runtime and cluster validation pending
--> Step 09 next local implementation boundary
+-> Step 09 implemented and shell/fake-R tested locally; real-R runtime and cluster validation pending
 ```
 
 ## Pipeline Dataflow
@@ -52,7 +60,7 @@ flowchart LR
         direction TB
         s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
         s08["08 VCF preprocessing<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
-        s09["09 CMH/editing-site calling<br/>next local implementation; pending"]
+        s09["09 CMH/editing-site calling<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
     end
 
     fastq --> s01 --> s02
@@ -65,8 +73,7 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08 boundary
-    class s09 pending
+    class s07,s08,s09 boundary
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
@@ -87,7 +94,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | cluster-proven across all six samples | Mechanical `FWD_like` / `REV_like` split. |
 | `07` | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implemented locally and locally tested with mocked bcftools; not cluster-proven | Cohort-wide per declared partition. No real-bcftools runtime, cluster dry-run, execute run, or inspected cluster output yet. |
 | `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implemented locally at `90335d8`; shell/fake-R tested; real-R runtime blocked; not cluster-proven | Consumes the exact partition-manifest × `{FWD_like,REV_like}` receipt set. No local `Rscript`, cluster dry-run, execute run, or inspected cluster output yet. |
-| `09` | six approved tables/plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | Approved paired-CMH output contract exists; implementation and real-R validation remain pending. |
+| `09` | four TSVs and two PDFs under `results/editing/<analysis>/` | implemented locally at `e4371de`; shell/fake-R tested; real-R runtime blocked; not cluster-proven | Uses explicit manifest-defined pairs plus the Step `08` sites table and complete input receipt. No local `Rscript`, cluster dry-run, execute run, or inspected cluster output yet. |
 
 ## Data Contracts
 
@@ -101,6 +108,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | Orientation QC | `results/qc/orientation/<sample>.orientation_counts.tsv` |
 | Cohort mpileup partition | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` |
 | VCF preprocessing | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` |
+| Paired CMH calling | `results/editing/<analysis>/<analysis>.cmh_all_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_summary.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.pdf`, and `results/editing/<analysis>/<analysis>.depth_delta.pdf` |
 
 Step `08` enumerates the exact declared partition set in manifest order and both orientations in fixed `FWD_like`, then `REV_like`, order. It validates the Step `07` receipts, manifest hashes, VCF paths, declared record counts, and exact sample order rather than globbing available files. The deterministic wide candidate table starts with:
 
@@ -179,6 +187,20 @@ orientation_policy
 
 The receipt and summary reconcile every declared VCF's observed records, ALT alleles, supported SNVs, skipped symbolic/non-SNV alleles, and published candidates. `step08_inputs.tsv` is published last as the complete Step `08` output-set commit marker.
 
+Step `09` uses only explicit replicate pairs from the full sample manifest and
+validates its hash against the complete Step `08` input receipt. It retains
+every candidate with explicit test/call/background status, runs two-sided
+continuity-corrected paired CMH tests, and applies one BH family across all
+successfully tested target candidates before call-level depth, background, and
+effect filters. Defaults are EV versus PUM1, RNA `A>G`, per-sample DP at least
+`1`, mean DP strictly above `50`, FDR strictly below `0.05`, common OR above
+`1.2` or below `1/1.2`, and absolute treatment-control difference above
+`0.005`. Background is disabled by default. The six files are one
+rollback-protected transaction whose summary is published last; all-sites,
+significant-sites, and summary preserve
+`orientation_policy=legacy_provisional_v1`, which is not biologically
+validated.
+
 ## Reliability Workflow
 
 ```mermaid
@@ -237,12 +259,12 @@ Safeguards:
 
 - dry-run default
 - explicit `EXECUTE=1`
-- scope-owned locks, including sample and cohort/partition locks
+- scope-owned locks, including sample, cohort/partition, and analysis locks
 - run-token temp files
 - validate-before-publish
 - rollback protection
 - cleanup on failure
-- fake-tool shell tests
+- fake-tool shell tests, including fake-R Step `08`/`09` wrapper tests
 - troubleshooting docs
 
 ## Local Vs Cluster Responsibilities
@@ -276,9 +298,9 @@ The output retains genomic alleles, RNA-normalized alleles, mechanical orientati
 
 ## What Remains
 
-1. Complete the Step `08` docpatch, clean-status, and push gate.
-2. Create the descendant Step `09` branch from the docpatched Step `08` branch, then implement, locally test, and docpatch Step `09`.
-3. Begin later cluster promotion with a Step `07` dry-run and narrow pilot before primary-contig execution.
-4. Do not runtime-promote Step `08` before Step `07` is cluster-proven or Step `09` before Step `08` is cluster-proven.
-5. Resolve an R-capable environment and run the real-R fixtures before claiming real-R runtime validation.
+1. Complete the Step `09` docpatch, clean-status/history, and push gate.
+2. Add approved replicate metadata to the full sample manifest before Step `07`.
+3. Resolve an R-capable environment and run both real-R fixture suites before claiming real-R runtime validation.
+4. Begin cluster promotion with a Step `07` dry-run and narrow pilot before primary-contig execution.
+5. Docpatch Step `07` evidence before runtime-promoting Step `08`, and docpatch Step `08` evidence before Step `09`.
 6. Review QC and biological interpretation with PI guidance.

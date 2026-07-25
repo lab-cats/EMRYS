@@ -140,9 +140,9 @@ grep -n "EXECUTE\|--execute\|dry-run" \
 
 Step `07` source and mocked local-test evidence may be inspected during the
 demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
-run has been validated. Step `08` source and fake-R wrapper tests may also be
-inspected, but no real-R or cluster output exists. Do not run scaffolded Step
-`09`.
+run has been validated. Step `08` and Step `09` source and fake-R wrapper tests
+may also be inspected, but neither has real-R or cluster output evidence. Do
+not demonstrate Step `09` as a biological result.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -449,10 +449,11 @@ git status --short
 git diff --name-status
 ```
 
-`make real-r-test` runs the Step `08` semantic fixtures when `Rscript` is
-available. When the default `Rscript` is absent it reports `SKIP`; that skip is
-not semantic R validation. An explicit bad override or a present runtime with
-missing required packages fails.
+`make real-r-test` runs the Step `08` and Step `09` semantic fixtures when
+`Rscript` is available. When the default `Rscript` is absent, each runner
+reports `SKIP`; those skips are not semantic R validation. An explicit bad
+override fails. A present runtime with missing Step `08` packages also fails;
+Step `09` uses base R only.
 
 Commit implementation/tests first. Then reread the required project documents, perform the repository-wide documentation consistency pass, rerun this gate, and make the separate documentation-only commit. Require a clean worktree and inspect history before pushing or creating the next descendant stage branch.
 
@@ -1340,6 +1341,30 @@ partition_id    selector_type    selector_value
 
 `region` passes `selector_value` to bcftools `-r`. `regions_file` passes it to `-R`; a relative regions-file path resolves from the partition manifest directory. The primary manifest is the declared correction universe. The separate one-row pilot manifest selects `pilot_1` at `1:1-100000`. Never replace either contract with a VCF glob.
 
+Before any Step `07` dry-run, update the full cluster `samples.tsv` with an
+optional `replicate` column carrying the approved Step `09` pairs:
+
+```text
+ABE_EV_2 / ABE_PUM1_2 -> 2
+ABE_EV_3 / ABE_PUM1_3 -> 3
+ABE_EV4  / ABE_PUM1_4 -> 4
+```
+
+Use `configs/step_09_pairs.NORAD_EV_PUM1.tsv` only as a reference while editing
+the full manifest; it is not a runtime overlay. Validate the full manifest:
+
+```bash
+python scripts/validate_manifest.py --manifest samples.tsv
+head -1 samples.tsv
+sed -n '1,8p' configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+This must happen before Step `07` because the manifest SHA-256 is embedded in
+the Step `07` receipts, propagated into Step `08`, checked again by Step `09`,
+and recorded in the Step `09` summary. If any Step `07` or Step `08` artifacts
+were made from the pre-replicate manifest, regenerate them through the normal
+upstream workflow; never edit receipt hashes to force a match.
+
 Before the first cluster dry-run, inspect the reference contigs and specifically confirm the tracked `MT` selector:
 
 ```bash
@@ -1453,7 +1478,22 @@ Step 07 dry-run
 -> remaining approved primary partitions and combined receipt inspection
 -> Step 07 evidence docpatch
 -> Step 08 runtime validation
+-> Step 08 evidence docpatch
+-> Step 09 runtime validation
+-> Step 09 evidence docpatch
 ```
+
+Use descendant validation branches:
+
+```text
+step-09-cmh
+└── validate-step-07
+    └── validate-step-08
+        └── validate-step-09
+```
+
+Each validation branch receives its inspected evidence/status docpatch,
+clean-status/history check, and push before the next branch is created.
 
 ## Step 08: VCF Preprocessing
 
@@ -1649,10 +1689,247 @@ as the transaction commit marker.
 Status:
 
 ```text
-pending / not implemented / not cluster-proven
+implemented locally at implementation commit e4371de
+locally tested with shell/fake-R coverage
+real-R semantic fixture execution pending because local Rscript is unavailable
+cluster validation pending
+not cluster-proven
 ```
 
-Future work should port and parameterize the reference `Edit_call_cmh.R`.
+No Step `09` cluster dry-run, execute job, log, output table, plot, or
+biological candidate result has been inspected. Do not runtime-promote this
+step before Step `08` is cluster-proven.
+
+Implemented files:
+
+```text
+scripts/step_09_cmh_editing_site_calling.sh
+scripts/step_09_cmh_editing_site_calling.R
+jobs/step_09_cmh_editing_site_calling.slurm
+tests/shell/test_step_09_cmh_editing_site_calling.sh
+tests/r/run_step_09_cmh_tests.sh
+tests/r/test_step_09_cmh_editing_site_calling.R
+configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+Runtime requirements:
+
+```text
+operator-validated Rscript
+base R stats, graphics, and grDevices
+sha256sum or shasum for the R engine
+```
+
+Step `09` does not install R, load a guessed module, or require Bioconductor.
+The shell preflight can fall back to `python3` for SHA-256, but execute mode
+still requires `sha256sum` or `shasum` because the R engine verifies hashes
+independently.
+The Step `08` package requirements remain separate. `Rscript` resolution is
+CLI `--rscript-bin`, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript` on `PATH`.
+The R implementation defaults to the adjacent
+`scripts/step_09_cmh_editing_site_calling.R` and may be overridden with
+`--r-script` or `STEP09_R_SCRIPT`.
+
+The full sample manifest is the only pairing source. Step `09` requires
+`sample_id`, `r1_fastq`, `r2_fastq`, `strandedness`, `condition`, and
+`replicate`; `notes` remains optional. Each replicate must contain exactly one
+control and one treatment, both conditions must have identical replicate sets,
+and at least two strata are required. Pairing is never inferred from names.
+
+Direct dry-run:
+
+```bash
+scripts/step_09_cmh_editing_site_calling.sh \
+  --analysis-id NORAD_EV_vs_PUM1 \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step08-root results/vcf_preprocessed \
+  --output-root results/editing \
+  --rscript-bin /supported/path/to/Rscript
+```
+
+Dry-run is the default. It resolves the executable, validates the current
+manifest/partition hashes, prints every manifest-defined pair, derives exactly:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+```
+
+and validates the Step `08` sites table plus complete input receipt. This
+includes receipt order,
+cohort/sample counts, both manifest hashes, `FWD_like` then `REV_like` for
+every declared partition, exact manifest-ordered `DP__`, `AD__`, and `AF__`
+columns, candidate uniqueness, row counts, count/AF consistency, and
+`orientation_policy=legacy_provisional_v1`. Dry-run prints the exact R command
+but does not invoke R, acquire a lock, or create an output directory.
+
+Default analysis:
+
+```text
+control: EV
+treatment: PUM1
+RNA change: A>G
+minimum per-sample DP: 1
+mean analysis DP: strictly >50
+BH FDR: strictly <0.05
+common OR: strictly >1.2 or <1/1.2
+absolute treatment-control fraction difference: strictly >0.005
+background condition: disabled
+background maximum fraction when enabled: strictly <0.01
+```
+
+The optional background condition must differ from control and treatment. EV
+must never be repurposed as a missing no-dox cohort.
+
+Only after Step `08` is cluster-proven, the supported R environment passes both
+real-R fixture suites, and the Step `09` dry-run is inspected, add execute mode:
+
+```bash
+scripts/step_09_cmh_editing_site_calling.sh \
+  --analysis-id NORAD_EV_vs_PUM1 \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step08-root results/vcf_preprocessed \
+  --output-root results/editing \
+  --rscript-bin /supported/path/to/Rscript \
+  --execute
+```
+
+SLURM dry-run:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
+  jobs/step_09_cmh_editing_site_calling.slurm
+```
+
+SLURM execute, only after the dry-run and upstream gates are inspected:
+
+```bash
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
+RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
+  jobs/step_09_cmh_editing_site_calling.slurm
+```
+
+Wrapper variables and defaults:
+
+```text
+ANALYSIS_ID=NORAD_EV_vs_PUM1
+COHORT_ID=NORAD_EV_PUM1
+SAMPLE_MANIFEST=samples.tsv
+PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv
+STEP08_ROOT=results/vcf_preprocessed
+OUTPUT_ROOT=results/editing
+CONTROL_CONDITION=EV
+TREATMENT_CONDITION=PUM1
+RNA_REF=A
+RNA_ALT=G
+MIN_SAMPLE_DP=1
+MEAN_DP_THRESHOLD=50
+FDR_THRESHOLD=0.05
+COMMON_OR_THRESHOLD=1.2
+ABSOLUTE_DIFFERENCE_THRESHOLD=0.005
+BACKGROUND_CONDITION=<empty; disabled>
+BACKGROUND_MAX_FRACTION=0.01
+RSCRIPT_BIN_OVERRIDE=<unset; defaults to Rscript on PATH>
+STEP09_R_SCRIPT=scripts/step_09_cmh_editing_site_calling.R
+EXECUTE=0
+```
+
+The current job requests the `long` partition, eight hours, and one CPU with no
+explicit memory request. Those resources are provisional and have not been
+cluster-proven.
+
+For each successfully testable target candidate, the R engine builds
+treatment/control by edited/unedited tables for every manifest-defined
+replicate and runs two-sided
+`mantelhaen.test(..., correct=TRUE, exact=FALSE)`. The common odds ratio is
+treatment relative to control. BH is applied once across all successfully
+tested target candidates from every partition and orientation before
+mean-depth, background, FDR, or effect call filters.
+
+The all-sites table retains non-target, missing-count, low-coverage, and
+degenerate candidates. Exact status values are:
+
+```text
+test_status:
+  not_target_change | missing_counts | low_coverage | degenerate_table | tested
+call_status:
+  not_tested | below_mean_dp | background_not_passed | fdr_not_met |
+  effect_not_met | significant_up | significant_down
+background_status:
+  disabled | pass | missing_counts | low_coverage | fail_fraction
+```
+
+Successful execute mode publishes:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+The all-sites and significant tables have 42 fixed analysis/annotation fields
+followed by manifest-ordered `DP__`, `AD__`, and `AF__` groups. The summary has
+39 fixed provenance/count/threshold fields. The mutation table always emits
+the 12 canonical substitutions. Both plots use a fixed 7-by-5-inch base-R
+device, are signature/EOF validated, and include valid empty-input plots.
+
+Validation checklist after a future execute run:
+
+```bash
+analysis=NORAD_EV_vs_PUM1
+out_dir="results/editing/$analysis"
+all="$out_dir/$analysis.cmh_all_sites.tsv"
+significant="$out_dir/$analysis.cmh_significant_sites.tsv"
+summary="$out_dir/$analysis.cmh_summary.tsv"
+spectrum="$out_dir/$analysis.mutation_spectrum.tsv"
+spectrum_pdf="$out_dir/$analysis.mutation_spectrum.pdf"
+depth_pdf="$out_dir/$analysis.depth_delta.pdf"
+
+sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+ls -lh "$all" "$significant" "$summary" "$spectrum" "$spectrum_pdf" "$depth_pdf"
+head -2 "$all"
+head -2 "$significant"
+cat "$summary"
+cat "$spectrum"
+head -c 5 "$spectrum_pdf"
+head -c 5 "$depth_pdf"
+tail -c 2048 "$spectrum_pdf" | grep -a '%%EOF'
+tail -c 2048 "$depth_pdf" | grep -a '%%EOF'
+```
+
+Require all six files, exact schemas, a single summary row, 12 mutation rows,
+preserved all-sites row order, a deterministic significant subset, reconciled
+status/count totals, current input hashes, and `%PDF-` signatures. A
+valid PDF must also contain its `%%EOF` marker near the end. A
+header-only Step `08` sites table is valid: all-sites and significant remain
+header-only, the summary has one row, the spectrum has 12 zero-count rows, and
+both PDFs remain valid.
+
+Execute mode atomically acquires:
+
+```text
+results/editing/<analysis>/.<analysis>.step09.lock/
+```
+
+It uses run-token temporary and backup paths, requires either all six stable
+outputs or none, verifies immutable inputs before and after R, validates every
+temporary file, publishes five non-summary files, then publishes the summary
+last as the transaction commit marker. It revalidates final content and hashes.
+A failed replacement restores the previous complete set.
+
+If a foreign lock exists, inspect its `owner` file, SLURM state, logs, stable
+outputs, and run-token scratch paths; never delete or adopt it blindly. If
+rollback cannot restore a complete state, the script deliberately retains its
+owned lock and any recovery evidence. Inspect the reported finals/backups and
+perform an explicit operator recovery before another run.
 
 ## Temporary Java Workaround
 

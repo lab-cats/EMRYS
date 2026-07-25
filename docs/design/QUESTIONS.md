@@ -29,9 +29,12 @@ Rscript
 ```
 
 Step `08` is implemented locally at commit `90335d8`, and its wrapper behavior
-is covered by shell tests with a fake R executable. `Rscript` is not available
-on the current local workstation, so the committed real-R fixture suite has not
-run and semantic runtime validation remains pending. Step `09` also requires R.
+is covered by shell tests with a fake R executable. Step `09` is implemented
+locally at commit `e4371de`, and its wrapper, pairing, publication, and output
+validation behavior is also covered with a fake R executable. `Rscript` is not
+available on the current local workstation, so neither committed real-R
+fixture suite has run; both report explicit skips, which are not semantic R
+validation.
 
 Step `08` declares these R package dependencies:
 
@@ -48,7 +51,8 @@ rtracklayer
 
 The supported local/cluster `Rscript` path, compatible package versions, and
 package availability in that environment remain unresolved. The workflow does
-not install packages automatically.
+not install packages automatically. Step `09` itself uses base R
+(`stats`, `graphics`, and `grDevices`) and adds no Bioconductor dependency.
 
 ### Storage Quotas
 
@@ -83,30 +87,6 @@ inspected on this workstation. Step `07` validates every selector against the
 runtime FASTA index and will fail rather than silently omit a missing contig.
 Confirm the full tracked manifest against
 `refs/novogene_ref/genome.fa.fai` during the first cluster dry-run.
-
-### Step 09 Final Deliverable Schemas
-
-The Step `08` paths and schemas are fixed by its local implementation and are
-recorded under the answered Step `08` contract below. The approved Step `09`
-paths remain planned:
-
-```text
-results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
-results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
-results/editing/<analysis>/<analysis>.cmh_summary.tsv
-results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
-results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
-results/editing/<analysis>/<analysis>.depth_delta.pdf
-```
-
-Still to finalize while implementing Step `09`:
-
-```text
-exact column order and status vocabulary for every Step 09 TSV
-the complete mutation-spectrum schema
-plot labels, dimensions, and deterministic rendering details
-which summary fields carry runtime and exclusion counts
-```
 
 ### Future Artifact And Reporting Design
 
@@ -255,6 +235,12 @@ Validated by:
 scripts/validate_manifest.py
 ```
 
+The generic schema accepts optional `replicate` metadata so earlier manifests
+remain valid. Step `09` requires `replicate` for its control/treatment samples
+and uses the full sample manifest as the only pairing source. The manifest must
+carry the approved pairs before Step `07` so the same hash propagates through
+the downstream receipt chain.
+
 ### What Partition / Account Should Jobs Use?
 
 Partially answered.
@@ -372,6 +358,7 @@ Implemented locally and locally tested:
 ```text
 07   Cohort bcftools mpileup by manifest partition and neutral orientation
 08   VCF preprocessing of the declared Step 07 receipt set
+09   Paired CMH editing-site calling from the committed Step 08 tables
 ```
 
 Step `07` passed its mocked-bcftools focused tests and the complete local
@@ -384,24 +371,17 @@ shell tests pass, but this workstation has no `Rscript`, so the real-R fixture
 suite has not executed. Step `08` has no cluster dry-run, execute, log, or
 output evidence and is not cluster-proven.
 
-Pending / not implemented / not cluster-proven:
-
-```text
-09   CMH editing-site calling
-```
+Step `09` is implemented locally at commit `e4371de`. Its shell/fake-R suite
+passes, but this workstation has no `Rscript`, so its real-R fixture suite has
+not executed. Step `09` has no cluster dry-run, execute, log, or output evidence
+and is not cluster-proven.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
-Steps `07` and `08` have now been cleanly reimplemented as parameterized,
-manifest-driven stages. Step `07` real-bcftools and cluster validation remain
-pending. Step `08` real-R and cluster validation remain pending.
-
-The uploaded/reference workflow indicates this downstream step still needs
-clean implementation:
-
-```text
-CMH editing-site calling
-```
+Steps `07`, `08`, and `09` have now been cleanly reimplemented as
+parameterized, manifest-driven stages. Step `07` real-bcftools and cluster
+validation remain pending. Steps `08` and `09` real-R and cluster validation
+remain pending.
 
 Steps `05` SplitNCigarReads and `06` read-orientation BAM splitting are already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
@@ -430,8 +410,8 @@ editing interpretation
 Step `08` now records `orientation_policy=legacy_provisional_v1` and retains
 both mechanical orientation and compatible annotation strand. That policy is a
 provisional legacy mapping, not biological validation. The evidence required
-to replace it remains an open question, and Step `09` must preserve that
-qualification.
+to replace it remains an open question, and Step `09` preserves that
+qualification in its result tables and summary.
 
 ### What Is The Step 07 Cohort mpileup Contract?
 
@@ -536,6 +516,105 @@ This contract is implemented locally at commit `90335d8` and locally tested
 through the fake-R shell suite. Real-R fixture execution is blocked on this
 workstation because `Rscript` is unavailable. No cluster evidence has been
 inspected, and Step `08` is not cluster-proven.
+
+### What Is The Step 09 Paired CMH Contract?
+
+Answered for local implementation.
+
+The full sample manifest is the only runtime pairing source. It must include
+`replicate`, with exactly one control and one treatment for each replicate,
+identical replicate sets for the two conditions, and at least two strata.
+Pairing is never inferred from sample names. The current approved relationships
+are:
+
+```text
+ABE_EV_2 / ABE_PUM1_2 -> replicate 2
+ABE_EV_3 / ABE_PUM1_3 -> replicate 3
+ABE_EV4  / ABE_PUM1_4 -> replicate 4
+```
+
+`configs/step_09_pairs.NORAD_EV_PUM1.tsv` is a reference record of that mapping,
+not a runtime overlay. Because Step `09` requires the current sample-manifest
+hash to match every Step `08` input-receipt row, the replicate-bearing full
+manifest must be established before Step `07`.
+
+Step `09` validates the current manifest and partition hashes, the complete
+Step `08` receipt order and counts, the exact sites-table schema and
+manifest-ordered sample columns, candidate uniqueness, count/AF consistency,
+and immutable input hashes. For each successfully testable target row, it builds
+treatment/control by edited/unedited tables across the manifest-defined strata
+and calls two-sided `mantelhaen.test(..., correct=TRUE, exact=FALSE)`. The
+common odds ratio is treatment relative to control. BH is applied once across
+all successfully tested target candidates from all partitions and both
+orientations before mean-depth, background, or effect filters.
+
+Default call thresholds are:
+
+```text
+control: EV
+treatment: PUM1
+RNA change: A>G
+minimum per-sample DP: 1
+mean analysis DP: strictly >50
+BH FDR: strictly <0.05
+common OR: strictly >1.2 or <1/1.2
+absolute treatment-control fraction difference: strictly >0.005
+```
+
+Optional background filtering is disabled by default. When an explicit
+condition distinct from control and treatment is supplied, every background
+sample must have adequate depth and AF strictly below `0.01` by default. EV is
+never repurposed as a missing no-dox cohort.
+
+The all-sites and significant-sites tables begin with 42 fixed
+analysis/annotation/statistic fields and then manifest-ordered
+`DP__<sample>`, `AD__<sample>`, and `AF__<sample>` groups. Exact status
+vocabularies are:
+
+```text
+test_status:
+  not_target_change | missing_counts | low_coverage | degenerate_table | tested
+call_status:
+  not_tested | below_mean_dp | background_not_passed | fdr_not_met |
+  effect_not_met | significant_up | significant_down
+background_status:
+  disabled | pass | missing_counts | low_coverage | fail_fraction
+```
+
+The summary has 39 fixed provenance, count, threshold, method, and policy
+columns. The mutation table has nine fixed columns and exactly 12 ordered
+canonical substitutions:
+
+```text
+A>C A>G A>T C>A C>G C>T G>A G>C G>T T>A T>C T>G
+```
+
+The complete output transaction is:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+Both plots use a fixed 7-by-5-inch base-R device, are signature/EOF validated,
+and remain valid for an empty candidate table. Execute mode uses an owned
+analysis lock, run-token
+temporary and backup paths, validation before publication, exact output
+reconciliation, and rollback. The summary is published last as the transaction
+commit marker. An incomplete rollback retains the owned lock for explicit
+operator recovery.
+
+This contract is implemented locally at commit `e4371de` and locally tested
+through the shell/fake-R suite. The real-R fixture suite is implemented but
+reports `SKIP` because this workstation has no `Rscript`; no Step `09` cluster
+evidence has been inspected, and the step is not cluster-proven. The workflow
+preserves `orientation_policy=legacy_provisional_v1`; the all-sites,
+significant-sites, and summary tables record it. The policy is not
+biologically validated.
 
 ### Step 02b Final-BAM QC Refresh
 

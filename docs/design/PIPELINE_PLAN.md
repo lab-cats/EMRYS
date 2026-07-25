@@ -39,6 +39,18 @@ EV:   ABE_EV_2, ABE_EV_3, ABE_EV4
 PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 ```
 
+Approved paired strata:
+
+```text
+replicate 2: ABE_EV_2 / ABE_PUM1_2
+replicate 3: ABE_EV_3 / ABE_PUM1_3
+replicate 4: ABE_EV4  / ABE_PUM1_4
+```
+
+The full sample manifest is the only runtime pairing source. The tracked
+`configs/step_09_pairs.NORAD_EV_PUM1.tsv` records this mapping for reference;
+it is not an overlay, and pairing is never inferred from names.
+
 ## Pipeline Table
 
 | Step | Purpose | Expected inputs | Expected outputs | Status | Main tool(s) |
@@ -55,7 +67,7 @@ PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
 | `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
 | `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally and shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven | R / Bioconductor |
-| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | pending / not implemented / not cluster-proven | R |
+| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally at `e4371de` and shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven | base R |
 
 ## Validated Outputs And Results
 
@@ -618,6 +630,163 @@ header-only inputs, and strict failures. `make real-r-test` reports `SKIP` on
 this workstation because `Rscript` is unavailable; that skip is not real-R
 validation.
 
+### Step 09
+
+Step `09` is implemented locally at implementation commit `e4371de`. The
+shell/fake-R suite and complete local repository gate pass, including 23 Python
+tests and shell tests through Step `09`. The real-R fixture runner reports
+`SKIP` because this workstation has no `Rscript`; that skip is not semantic R
+validation. No cluster dry-run, execute job, log, or output evidence has been
+inspected, and Step `09` is not cluster-proven.
+
+Implemented entry points and active tests:
+
+```text
+scripts/step_09_cmh_editing_site_calling.sh
+scripts/step_09_cmh_editing_site_calling.R
+jobs/step_09_cmh_editing_site_calling.slurm
+tests/shell/test_step_09_cmh_editing_site_calling.sh
+tests/r/run_step_09_cmh_tests.sh
+tests/r/test_step_09_cmh_editing_site_calling.R
+configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+Public shell CLI:
+
+```text
+scripts/step_09_cmh_editing_site_calling.sh
+  --analysis-id ANALYSIS_ID
+  --cohort-id COHORT_ID
+  --sample-manifest SAMPLE_MANIFEST
+  --partition-manifest PARTITION_MANIFEST
+  --step08-root STEP08_ROOT
+  --output-root OUTPUT_ROOT
+  [--control-condition EV]
+  [--treatment-condition PUM1]
+  [--rna-ref A]
+  [--rna-alt G]
+  [--min-sample-dp 1]
+  [--mean-dp-threshold 50]
+  [--fdr-threshold 0.05]
+  [--common-or-threshold 1.2]
+  [--absolute-difference-threshold 0.005]
+  [--background-condition CONDITION]
+  [--background-max-fraction 0.01]
+  [--rscript-bin RSCRIPT_BIN]
+  [--r-script R_SCRIPT]
+  [--execute]
+```
+
+Dry-run is the default. It resolves an executable `Rscript`, validates the
+manifests, explicit replicate pairs, exact Step `08` input set, receipt
+order/counts/hashes, sample columns, candidate uniqueness, and count/AF
+consistency, then prints the exact R command. It does not invoke R, acquire a
+lock, or create the output directory. Therefore even a real dry-run requires a
+supported `Rscript`; fake-R tests prove wrapper behavior only.
+
+The generic manifest validator accepts optional `replicate` without breaking
+earlier manifests. Step `09` requires one control and one treatment per
+explicit replicate, identical control/treatment replicate sets, and at least
+two strata. Pairing comes from the full sample manifest only. That same
+replicate-bearing manifest must be used before Step `07`, so its SHA-256 hash
+propagates through the complete Steps `07`-`09` chain.
+
+For every target row with complete counts and per-sample depth at least the
+configured minimum, the base-R engine builds treatment/control by
+edited/unedited tables for each manifest-defined stratum and runs:
+
+```text
+mantelhaen.test(..., alternative="two.sided", correct=TRUE, exact=FALSE)
+```
+
+The common odds ratio is treatment relative to control. BH is applied exactly
+once across all successfully tested target candidates from every declared
+partition and both orientations, before mean-depth, background, FDR, or effect
+call filters. Missing, low-coverage, degenerate, and non-target candidates
+remain in the all-sites table.
+
+Default call contract:
+
+```text
+control: EV
+treatment: PUM1
+RNA change: A>G
+minimum per-sample DP: 1
+mean analysis DP: strictly >50
+BH FDR: strictly <0.05
+common OR: strictly >1.2 or <1/1.2
+absolute treatment-control fraction difference: strictly >0.005
+```
+
+Background filtering is disabled unless an explicit condition different from
+control and treatment is supplied. When enabled, every background sample must
+have complete counts, adequate depth, and AF strictly below `0.01` by default;
+equality fails. EV is never repurposed as a missing no-dox cohort.
+
+Published output contract:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+All-sites preserves every Step `08` row and order. Significant-sites is the
+deterministic ordered subset whose call is `significant_up` or
+`significant_down`. Their fixed 42-column prefix is:
+
+```text
+analysis_id, partition_id, candidate_id, orientation, chromosome, position,
+alt_index, genomic_ref, genomic_alt, rna_ref, rna_alt, annotation_strand,
+gene_ids, transcript_ids, is_cds, is_five_prime_utr, is_three_prime_utr,
+is_exon, is_intron, qual, filter, info_alt_depth, orientation_policy,
+control_condition, treatment_condition, target_rna_change, replicate_count,
+test_status, call_status, background_condition, background_status,
+min_analysis_dp, mean_analysis_dp, mean_control_af, mean_treatment_af,
+treatment_control_difference, max_background_af, cmh_statistic,
+cmh_degrees_freedom, cmh_p_value, cmh_fdr_bh, common_odds_ratio
+```
+
+Those fields are followed by manifest-ordered `DP__<sample>`, then
+`AD__<sample>`, then `AF__<sample>` columns. Exact vocabularies are:
+
+```text
+test_status:
+  not_target_change | missing_counts | low_coverage | degenerate_table | tested
+call_status:
+  not_tested | below_mean_dp | background_not_passed | fdr_not_met |
+  effect_not_met | significant_up | significant_down
+background_status:
+  disabled | pass | missing_counts | low_coverage | fail_fraction
+```
+
+The one-row summary has 39 fixed fields covering identity, counts, input paths
+and hashes, thresholds, `multiple_testing_method=BH`,
+`cmh_alternative=two.sided`, continuity correction, and the provisional
+orientation policy. The nine-column mutation table always emits the 12 ordered
+canonical substitutions:
+
+```text
+A>C A>G A>T C>A C>G C>T G>A G>C G>T T>A T>C T>G
+```
+
+The mutation plot reports candidate counts. The depth/delta plot uses
+successfully tested targets with log mean-depth on x and treatment-control AF
+on y. Both PDFs use a fixed 7-by-5-inch base-R device, are signature/EOF
+validated, and remain valid for empty input. Step `09` retains
+`orientation_policy=legacy_provisional_v1`; this is not biologically
+validated.
+
+Execute mode requires either all six existing outputs or none, uses an owned
+analysis lock and run-token temporary/backup paths, checks immutable inputs,
+validates and reconciles every temporary output, then publishes five outputs
+and the summary last as the commit marker. Final hashes and content are
+revalidated. Failure before commit restores the prior complete set. If
+rollback is incomplete, the owned lock remains for explicit operator recovery.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -640,7 +809,11 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Because Step `03` confirms reverse-stranded / first-strand behavior across the cohort, Step `07` preserves `FWD_like` and `REV_like` as read-orientation/mechanical flag groups. Step `08` now records the explicit provisional `legacy_provisional_v1` mapping, and Step `09` must preserve it. Neither implementation nor local testing biologically validates that mapping.
+Because Step `03` confirms reverse-stranded / first-strand behavior across the
+cohort, Step `07` preserves `FWD_like` and `REV_like` as
+read-orientation/mechanical flag groups. Step `08` records the explicit
+provisional `legacy_provisional_v1` mapping, and Step `09` preserves it.
+Neither implementation nor local testing biologically validates that mapping.
 
 ## Future Artifact And Reporting Layer
 
@@ -735,7 +908,9 @@ multiple-testing method
 
 ## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
 
-This architecture is a deferred design direction. It should not block the immediate goal of runtime-promoting the locally implemented Steps `07`-`08` and conservatively reproducing pending Step `09`.
+This architecture is a deferred design direction. It should not block the
+immediate goal of completing the Step `09` docpatch gate and runtime-promoting
+the locally implemented Steps `07`-`09` in upstream order.
 
 A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
 
@@ -803,9 +978,10 @@ These examples are design notes only. They do not create a real config interface
 Bundled analysis modules should conceptually live outside the reusable preprocessing core. For this project, the first likely module is `rna_editing_cmh`. It would consume validated core artifacts, the sample manifest, and an explicit analysis config; it would produce mpileup/VCF artifacts, preprocessed analysis tables, CMH/editing-site result tables, module-specific QC summaries, and report-ready summaries.
 
 Step `07` now provides the locally tested cohort/partition mpileup boundary,
-and Step `08` provides the locally shell/fake-R-tested preprocessing boundary.
-Step `09` remains the pending legacy CMH reimplementation and should be
-reproduced conservatively before any major modular refactor.
+Step `08` provides the locally shell/fake-R-tested preprocessing boundary, and
+Step `09` provides the locally shell/fake-R-tested paired-CMH boundary. All
+three reproduce the legacy path conservatively but remain upstream-gated for
+real-runtime and cluster promotion before any major modular refactor.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
@@ -823,7 +999,9 @@ Assay modules should refuse to run when required metadata or config is missing, 
 
 ## Future Cross-Cutting Engineering Roadmap
 
-Deferred engineering improvements are tracked canonically in `TODO.md`. They are roadmap ideas, not current blockers for the approved Step `08`-`09` implementation sequence or later Step `07` cluster promotion.
+Deferred engineering improvements are tracked canonically in `TODO.md`. They
+are roadmap ideas, not current blockers for the Step `09` docpatch gate or
+later upstream-first Step `07` cluster promotion.
 
 Future cross-cutting capabilities may include:
 
@@ -836,11 +1014,11 @@ Candidate helper names and interfaces are not decided unless a later implementat
 
 ## Current Next Work
 
-1. Complete the Step `08` documentation-only commit, clean-status check, and push.
-2. Create `step-09-cmh` from that clean docpatched branch and implement only Step `09`.
-3. Complete the same implementation-commit/docpatch-commit gate for Step `09`.
-4. After the local branch chain is complete, promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then every approved primary partition.
-5. Resolve a supported `Rscript` and required packages, then promote Steps `08` and `09` only after each upstream cluster gate is proven, with an evidence docpatch before proceeding.
+1. Complete the Step `09` documentation-only commit, clean-status/history check, and push.
+2. Add explicit replicate `2`, `3`, and `4` metadata to the full cluster sample manifest before Step `07`, preserving one upstream receipt hash chain.
+3. Resolve a supported `Rscript` and the Step `08` Bioconductor packages; run both real-R fixture suites in that environment.
+4. Promote Step `07` on the cluster in order: dry-run, pilot, one chromosome, then every approved primary partition.
+5. Perform the Step `07` evidence docpatch before promoting Step `08`, and the Step `08` evidence docpatch before promoting Step `09`.
 
 ## Local Validation Gate
 
@@ -860,8 +1038,10 @@ git status --short
 git diff --name-status
 ```
 
-`make real-r-test` may report `SKIP` when the default `Rscript` executable is
-unavailable; that is a recorded runtime-validation gap, not a semantic pass.
+`make real-r-test` runs the Step `08` and Step `09` suites. Either runner may
+report `SKIP` when the default `Rscript` executable is unavailable; each skip
+is a recorded runtime-validation gap, not a semantic pass. An explicit bad
+runtime override fails.
 
 ## Known Cluster Notes
 

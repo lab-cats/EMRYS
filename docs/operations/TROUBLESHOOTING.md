@@ -651,11 +651,11 @@ header/sample validation fails.
 Header-only behavior is covered by local mocked tests; no real-bcftools or
 cluster header-only output has been inspected yet.
 
-## Step 08 cannot find `Rscript` or required R packages
+## Step 08 or Step 09 cannot find `Rscript`
 
 ### Symptom
 
-The Step `08` wrapper fails with an error such as:
+The Step `08` or Step `09` wrapper fails with an error such as:
 
 ```text
 Rscript executable was not found on PATH
@@ -663,7 +663,7 @@ Rscript does not exist
 Rscript exists but is not executable
 ```
 
-or the R implementation reports:
+Step `08` may instead reach R and report:
 
 ```text
 Missing required R package(s): ...
@@ -671,7 +671,8 @@ Missing required R package(s): ...
 
 ### Cause
 
-Step `08` requires a supported `Rscript` executable and these packages:
+Both steps require a supported `Rscript` executable. Step `08` additionally
+requires these packages:
 
 ```text
 VariantAnnotation
@@ -687,6 +688,11 @@ rtracklayer
 The current workstation has no `Rscript`, and a supported CSU R/Rscript path
 and compatible installed package set have not yet been established. The
 workflow intentionally does not install packages automatically.
+
+Step `09` uses base R only (`stats`, `graphics`, and `grDevices`). A Step `09`
+failure to resolve `Rscript` is therefore an executable/environment issue, not
+evidence that the Step `08` Bioconductor package set is also required by Step
+`09`.
 
 ### Fix
 
@@ -710,8 +716,11 @@ RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
 ```
 
 Do not substitute a fake R executable for semantic validation and do not call a
-skipped real-R test a pass. Step `08` is implemented locally and fake-R/shell
-tested, but real-R runtime validation and cluster evidence remain pending.
+skipped real-R test a pass. `make real-r-test` runs the Step `08` suite followed
+by the Step `09` suite; either runner reports `SKIP` only when the default
+`Rscript` is absent, while an explicit bad override fails. Both steps are
+implemented locally and fake-R/shell tested, but real-R runtime validation and
+cluster evidence remain pending.
 
 ## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
 
@@ -846,56 +855,178 @@ the prior complete three-file set when a replacement fails after backup begins.
 Lock, cleanup, input-mutation, and rollback behavior is locally tested with a
 fake R executable; no Step `08` cluster incident has been observed.
 
-## Scaffolded Step 09 job accidentally submitted
+## Step 09 rejects the sample manifest pairing
 
 ### Symptom
 
-A Step `09` job is submitted but exits immediately, says
-`not implemented`, or exits with code `2`.
+Step `09` reports a missing `replicate` column, empty replicate, duplicate
+sample for one condition/replicate, unequal control/treatment replicate sets,
+or fewer than two paired strata.
 
 ### Cause
 
-Step `09` is scaffolded and intentionally non-runnable until implemented.
-
-Steps `05` and `06` are implemented and cluster-proven across all six samples. If Step `05` or Step `06` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
-
-Scaffolded files:
+Step `09` pairs only from explicit metadata in the full sample manifest. It
+requires exactly one control and one treatment for each replicate, identical
+replicate sets, and at least two strata. The current approved relationships
+are:
 
 ```text
-jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_09_cmh_editing_site_calling.sh
+ABE_EV_2 / ABE_PUM1_2 -> replicate 2
+ABE_EV_3 / ABE_PUM1_3 -> replicate 3
+ABE_EV4  / ABE_PUM1_4 -> replicate 4
 ```
 
-Step `07` is implemented locally and locally tested with mocked bcftools. If
-its cluster checkout still reports `not implemented`, that checkout predates
-the completed Step `07` branch. Step `07` has not yet completed a cluster
-dry-run or execute job and is not cluster-proven.
-
-Step `08` is also implemented locally. If its checkout still reports
-`not implemented`, that checkout predates commit `90335d8`. A current Step
-`08` checkout may instead fail because the supported R runtime is unresolved;
-use the Rscript/package entry above. Do not runtime-promote Step `08` before
-Step `07` is cluster-proven.
+`ABE_EV4` demonstrates why pairing must not be inferred by parsing names.
 
 ### Fix
 
-Do not run the scaffolded Step `09` job.
+Add the approved `replicate` values to the full sample manifest before Step
+`07`, validate it with:
 
-Scaffolded step:
-
-```text
-09 CMH editing-site calling
+```bash
+python scripts/validate_manifest.py --manifest samples.tsv
 ```
 
-Implement Step `09` locally, test, commit/push, pull on cluster, then
-dry-run/execute only after the step is active and Step `08` has passed its
-upstream runtime/cluster gates.
+and regenerate any Step `07`/Step `08` artifacts made with the old manifest.
+`configs/step_09_pairs.NORAD_EV_PUM1.tsv` is a reference mapping only; do not
+pass or merge it as a runtime overlay and do not relax pairing validation.
 
-For Step `07`, pull the completed stage branch, inspect its dry-run first, and
-do not describe it as cluster-proven until real execute outputs and receipts
-have been inspected.
+## Step 09 rejects Step 08 hashes, receipts, rows, or sample columns
 
-Step `05` outputs now use `results/split_ncigar/<sample_id>/` and consume Step `04` outputs under `results/markdup/<sample_id>/`.
+### Symptom
+
+Step `09` reports a sample/partition manifest hash mismatch, incomplete or
+misordered Step `08` input receipt, row-count mismatch, duplicate candidate,
+unexpected orientation policy, or missing/misordered `DP__`, `AD__`, or `AF__`
+sample columns.
+
+### Cause
+
+Step `09` consumes exactly:
+
+```text
+results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
+results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
+```
+
+and validates the full declared partition by `{FWD_like,REV_like}` universe.
+The current sample and partition hashes must match every Step `08` input row.
+A common future cause is adding `replicate` to `samples.tsv` only after Step
+`07` or Step `08`; even a biologically correct metadata edit changes the file
+hash and invalidates the old receipt chain.
+
+### Fix
+
+Restore the exact manifests used upstream or, when replicate metadata is the
+approved new contract, rerun Steps `07` and `08` from that full manifest.
+Never edit receipt hashes, reorder sample columns, copy rows between analyses,
+or bypass the validation merely to make Step `09` run.
+
+These failures are locally fake-R/shell tested. No Step `09` cluster mismatch
+incident has been observed.
+
+## Step 09 rejects R outputs, background statuses, or plot signatures
+
+### Symptom
+
+The R process exits successfully, but the wrapper rejects an all-sites,
+significant-sites, summary, mutation-spectrum, or PDF output. Errors may refer
+to a schema/status mismatch, sample-count inconsistency, background
+status/fraction mismatch, significant-subset mismatch, summary count/hash
+mismatch, mutation count/fraction mismatch, or missing PDF header/EOF marker.
+
+### Cause
+
+Step `09` treats R output as untrusted until it independently reconciles the
+six-file transaction with the current manifests and Step `08` inputs. Common
+causes include:
+
+```text
+using a different or edited R implementation
+writing rows or sample columns in a different order
+using non-strict threshold boundaries
+miscomputing enabled-background AF/status
+shrinking the BH family with a call-level filter
+publishing a significant table that is not the exact ordered subset
+writing incomplete/corrupt PDFs
+an input changing during the run
+```
+
+### Fix
+
+Use the committed Step `09` R implementation and inspect the first reported
+invariant rather than hand-editing an output. Confirm the manifests and Step
+`08` transaction did not change, then rerun through the shell wrapper so all
+six temporary outputs are regenerated and validated together. Do not patch a
+summary count, background status, hash, subset, or PDF signature to force
+publication.
+
+These independent output checks and rollback behavior are locally tested with
+a fake R executable. Real-R and cluster output validation remain pending.
+
+## Step 09 finds a lock or incomplete six-output set
+
+### Symptom
+
+Step `09` reports:
+
+```text
+Step 09 lock already exists
+Existing Step 09 outputs are incomplete; expected all six or none
+Refusing to reuse an existing Step 09 scratch path
+```
+
+### Cause
+
+Another run may own:
+
+```text
+results/editing/<analysis>/.<analysis>.step09.lock/
+```
+
+Alternatively, a manual/interrupted operation may have left only part of the
+four-TSV/two-PDF result set or a run-token temp/backup path. The summary is
+published last as the commit marker; fewer than six stable files is not a
+committed transaction.
+
+### Fix
+
+Inspect the lock `owner`, scheduler state, logs, all six final paths, and hidden
+run-token temp/backup paths. Do not delete a foreign lock, combine outputs from
+different runs, manufacture a summary, or adopt an incomplete set. Wait for an
+active owner or perform an explicit evidence-preserving recovery before
+retrying.
+
+## Step 09 rollback is incomplete and retains its lock
+
+### Symptom
+
+Step `09` reports that rollback was incomplete and that its owned lock is being
+retained for operator recovery.
+
+### Cause
+
+After a replacement began, the wrapper could not remove a partial new final or
+restore one or more run-token `.previous` backups. Automatically releasing the
+lock would permit another writer to overwrite the remaining recovery evidence.
+
+### Fix
+
+Do not delete the retained lock blindly. Inspect:
+
+```text
+lock owner run_token and PID
+SLURM job state and logs
+all six final outputs
+all matching hidden .previous backup paths
+all matching hidden temporary paths
+```
+
+Decide explicitly whether to restore the complete previous six-file set or
+remove an incomplete new set, validate the recovered state, record the
+operator action, and only then remove the owned lock. The normal wrapper
+cleanup removes only its own paths; incomplete-rollback lock retention is an
+intentional safety boundary.
 
 ## Wrong log interpretation: empty `.err` file
 

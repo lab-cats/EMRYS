@@ -16,7 +16,7 @@ A future decoupled reporting layer is planned to consume structured pipeline art
 
 ## Current Status
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Step `07` is implemented locally and locally tested with mocked bcftools, but real-bcftools runtime validation is unavailable on this workstation and no Step `07` cluster dry-run or execute evidence has been inspected. Step `08` is implemented locally at implementation commit `90335d8` and its wrapper/publication behavior is locally tested with a fake `Rscript`; this workstation has no `Rscript`, so the real-R fixture suite has not run, and no Step `08` cluster evidence exists. Step `09` remains pending / not implemented / not cluster-proven. After the Step `08` docpatch and push gate, the next local implementation boundary is Step `09`; later cluster promotion still begins with Step `07`.
+Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Step `06` preserves the legacy read-orientation split without claiming biological strand interpretation. Step `07` is implemented locally and locally tested with mocked bcftools, but real-bcftools runtime validation is unavailable on this workstation and no Step `07` cluster dry-run or execute evidence has been inspected. Step `08` is implemented locally at implementation commit `90335d8` and its wrapper/publication behavior is locally tested with a fake `Rscript`; this workstation has no `Rscript`, so the real-R fixture suite has not run, and no Step `08` cluster evidence exists. Step `09` is implemented locally at implementation commit `e4371de`; its shell/fake-R wrapper, manifest, transaction, and output-validation contracts are locally tested, while its real-R fixture runner reports `SKIP` because this workstation has no `Rscript`. No Step `09` cluster dry-run, execute, log, or output evidence exists. Steps `07`-`09` are therefore not cluster-proven. After the Step `09` docpatch and push gate, cluster promotion begins upstream with Step `07`.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -32,7 +32,7 @@ Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | cohort mpileup by declared partition and mechanical orientation | implemented locally; mocked-bcftools tests pass; runtime and cluster validation pending; not cluster-proven |
 | `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R tests pass; real-R runtime and cluster validation pending; not cluster-proven |
-| `09` | paired CMH editing-site calling | pending / not implemented / not cluster-proven |
+| `09` | paired CMH editing-site calling | implemented locally; shell/fake-R tests pass; real-R runtime and cluster validation pending; not cluster-proven |
 
 ### Step 07 Local Implementation
 
@@ -105,8 +105,63 @@ The wide sites table has fixed metadata followed by manifest-ordered
 is published last as the commit marker. Owned locks, stable input hashes,
 run-token temporary paths, validation-before-publication, cleanup, and rollback
 protect the output set. The shell/fake-R suite tests that wrapper contract.
-`make real-r-test` runs the semantic R fixtures when `Rscript` is available;
-on this workstation it reports `SKIP`, which is not real-R validation.
+`make real-r-test` runs both semantic R fixture suites when `Rscript` is
+available; on this workstation both runners report `SKIP`, which is not
+real-R validation.
+
+### Step 09 Local Implementation
+
+Implemented entry points, tests, and reference pairing:
+
+```text
+scripts/step_09_cmh_editing_site_calling.sh
+scripts/step_09_cmh_editing_site_calling.R
+jobs/step_09_cmh_editing_site_calling.slurm
+tests/shell/test_step_09_cmh_editing_site_calling.sh
+tests/r/run_step_09_cmh_tests.sh
+tests/r/test_step_09_cmh_editing_site_calling.R
+configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+The full sample manifest is the only runtime pairing source. Its optional
+`replicate` column becomes required for Step `09`: each replicate must contain
+exactly one control and one treatment, the two conditions must have identical
+replicate sets, and at least two strata are required. The tracked Step `09`
+pairing file documents the approved `2`, `3`, and `4` relationships only; it is
+not a runtime overlay, and pairing is never inferred from sample names. The
+same replicate-bearing sample manifest must be used before Step `07` so its
+hash propagates through the complete Steps `07`-`09` chain.
+
+Step `09` validates the Step `08` sites table and complete input-receipt contract,
+runs two-sided continuity-corrected paired CMH tests with treatment-relative-
+to-control common odds ratios, and applies BH once across all successfully
+tested target candidates before call-level depth/effect filtering. Defaults
+are EV control, PUM1 treatment, RNA `A>G`, per-sample depth at least `1`, mean
+analysis depth strictly greater than `50`, FDR strictly less than `0.05`,
+common odds ratio strictly above `1.2` or below `1/1.2`, and absolute
+treatment-control fraction difference strictly above `0.005`. Optional
+background filtering is disabled unless an explicit, distinct condition is
+provided; EV is never repurposed as a missing no-dox cohort.
+
+One validated transaction publishes four TSVs and two 7-by-5-inch PDFs:
+
+```text
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
+```
+
+The all-sites table retains missing, low-coverage, degenerate, and non-target
+candidates with explicit statuses and preserves
+`orientation_policy=legacy_provisional_v1`; that policy is not biologically
+validated. The summary is published last as the six-output transaction commit
+marker. Owned locks, immutable input hashes, run-token temporary and backup
+paths, exact output reconciliation, cleanup, and rollback protect the set. The
+real-R fixtures are implemented but have not run on this workstation because
+`Rscript` is unavailable.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live in `docs/architecture/diagrams/pipeline.mmd` and `docs/architecture/diagrams/reliability.mmd`.
 
@@ -420,9 +475,11 @@ Still unresolved:
 R / Rscript
 ```
 
-An operator-validated `Rscript` plus the required Bioconductor packages is
-needed to run the Step `08` real-R fixture suite and later cluster promotion.
-The implemented wrapper does not install packages or guess an R module.
+An operator-validated `Rscript` plus the required Step `08` Bioconductor
+packages is needed to run both real-R fixture suites and later cluster
+promotion. Step `09` otherwise uses base R, including `stats`,
+`graphics`, and `grDevices`. The implemented wrappers do not install packages
+or guess an R module.
 
 ## Beginner Glossary
 

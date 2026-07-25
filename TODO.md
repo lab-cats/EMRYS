@@ -35,6 +35,7 @@ Implemented locally and locally tested, but not fully runtime-validated or clust
 ```text
 07   Cohort bcftools mpileup by declared partition and mechanical orientation
 08   Deterministic VCF preprocessing and annotation
+09   Paired CMH editing-site calling
 ```
 
 The active Step `07` shell suite uses a fake bcftools executable. Real bcftools is unavailable on this workstation, and no Step `07` cluster dry-run, execute run, or output evidence has been inspected.
@@ -45,17 +46,18 @@ is unavailable on this workstation, so semantic R execution remains pending.
 No Step `08` cluster dry-run, execute run, or output evidence has been
 inspected.
 
-Scaffolded / not implemented / not cluster-proven:
-
-```text
-09   CMH editing-site calling
-```
+Step `09` is implemented locally at implementation commit `e4371de`. Its
+shell/fake-R suite covers pairing, the Step `08` sites/input-receipt contract,
+threshold/output validation, dry-run behavior, locks, cleanup, and rollback.
+Its real-R fixture suite is implemented, but `Rscript` is unavailable on this
+workstation, so it reports `SKIP`; this is not semantic R validation. No Step
+`09` cluster dry-run, execute run, log, or output evidence has been inspected.
 
 All six libraries are paired-end and reverse-stranded / first-strand-style.
 
 ## Immediate TODOs
 
-### 1. Complete The Step 08 Branch Gate And Begin Step 09 Locally
+### 1. Complete The Step 09 Gate, Then Promote Step 07
 
 Step `06` is cluster-proven across all six samples and publishes the orientation-specific BAM/BAI inputs for Step `07`:
 
@@ -74,24 +76,18 @@ FWD_like = samtools -f 99 plus samtools -f 147
 REV_like = samtools -f 83 plus samtools -f 163
 ```
 
-Step `08` is implemented locally at implementation commit `90335d8` with:
+Steps `07`-`09` now have local implementation commits and active tests. The
+remaining local gate is the separate Step `09` documentation-only commit and
+clean push.
 
-```text
-scripts/step_08_vcf_preprocessing.sh
-scripts/step_08_vcf_preprocessing.R
-jobs/step_08_vcf_preprocessing.slurm
-tests/shell/test_step_08_vcf_preprocessing.sh
-tests/r/run_step_08_vcf_preprocessing_tests.sh
-tests/r/test_step_08_vcf_preprocessing.R
-```
+Required gates:
 
-Required next gates:
-
-1. Commit the Step `08` documentation-only patch, re-run consistency checks, require a clean worktree, and push `step-08-vcf-preprocessing`.
-2. Create `step-09-cmh` from the clean docpatched Step `08` branch.
-3. Implement only the approved Step `09` contract and its tests, then complete its separate docpatch/push gate.
-4. After the local Step `09` gate, begin cluster promotion with Step `07`: dry-run, one-row pilot, one chromosome, then the approved primary-contig manifest.
-5. Do not runtime-promote Step `08` before Step `07` is cluster-proven or Step `09` before Step `08` is cluster-proven. Resolve and record a supported `Rscript` and required packages before real-R validation.
+1. Commit the Step `09` documentation-only patch, re-run consistency checks, require a clean worktree, and push `step-09-cmh`.
+2. Before Step `07`, add the approved `replicate` values to the full cluster sample manifest so that one manifest hash propagates through the complete Steps `07`-`09` chain; never use the Step `09` pairing reference file as a runtime overlay.
+3. Resolve and record a supported `Rscript` and the Step `08` Bioconductor packages, then run both real-R fixture suites in that environment.
+4. Begin cluster promotion with Step `07`: dry-run, one-row pilot execute/inspection, one-chromosome execute/inspection, then the approved primary-contig manifest.
+5. Docpatch inspected Step `07` evidence before promoting Step `08`; docpatch Step `08` evidence before promoting Step `09`.
+6. Do not call any of Steps `07`-`09` cluster-proven until their scheduler state, logs, execute outputs, and validation evidence have been inspected.
 
 ## Architecture Reminders
 
@@ -120,9 +116,19 @@ results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv
 results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
 results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
 results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
+
+results/editing/<analysis>/<analysis>.cmh_all_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv
+results/editing/<analysis>/<analysis>.cmh_summary.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
+results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
+results/editing/<analysis>/<analysis>.depth_delta.pdf
 ```
 
-The Step `05` and Step `06` portions of this layout are cluster-proven across all six samples. The Step `07` and Step `08` portions are implemented and tested locally only. Continue to treat `FWD_like` / `REV_like` as mechanical read-orientation groups, not biological strand calls.
+The Step `05` and Step `06` portions of this layout are cluster-proven across
+all six samples. The Step `07`-`09` portions are implemented and tested only at
+their available local boundaries. Continue to treat `FWD_like` / `REV_like` as
+mechanical read-orientation groups, not biological strand calls.
 
 ## External Blockers / Unresolved Items
 
@@ -134,7 +140,7 @@ Needed for:
 
 ```text
 Step 08: real-R fixture and runtime validation of the implemented workflow
-Step 09: implementation, fixture tests, and runtime validation
+Step 09: real-R fixture and runtime validation of the implemented workflow
 ```
 
 ### Storage Quotas
@@ -187,7 +193,10 @@ The cohort is reverse-stranded / first-strand-style.
 samtools view -f FLAG means has all bits in FLAG, not exact flag equality.
 ```
 
-Step `06` is cluster-proven across all six samples. Step `07` preserves the neutral mechanical labels. Step `08` implements `orientation_policy=legacy_provisional_v1`; it must never be described as biologically validated. Step `09` must preserve that explicit policy and caution.
+Step `06` is cluster-proven across all six samples. Step `07` preserves the
+neutral mechanical labels. Steps `08` and `09` retain
+`orientation_policy=legacy_provisional_v1`; it must never be described as
+biologically validated.
 
 ### Step 07: bcftools mpileup
 
@@ -245,15 +254,29 @@ remain pending.
 
 ### Step 09: CMH Editing-Site Calling
 
-Implement paired, manifest-defined CMH calling only after the Step `08` local docpatch gate.
+Implemented locally at `e4371de` behind the shell/SLURM entry points. The
+sample manifest is the only runtime pairing source and requires one EV control
+and one PUM1 treatment per explicit replicate, identical replicate sets, and
+at least two strata. The tracked `configs/step_09_pairs.NORAD_EV_PUM1.tsv`
+records the approved replicate `2`, `3`, and `4` relationships for reference
+only; pairing is never inferred from sample names.
 
 ```text
 explicit replicate metadata; never infer pairing from sample names
 paired EV/PUM1 strata and approved A>G/default thresholds
-BH family across all successfully tested candidates
-all-sites, significant-sites, summary, mutation-spectrum, and depth-delta outputs
+two-sided continuity-corrected CMH; common OR is treatment relative to control
+one BH family across all successfully tested A>G candidates
+missing, low-coverage, degenerate, and non-target rows retained with statuses
+optional explicit background condition; disabled by default; EV is not no-dox
+four TSVs plus fixed-size, signature-validated mutation-spectrum and depth-delta PDFs
+summary published last as the six-output transaction commit marker
 real-R runtime validation pending until an R-capable environment is available
 ```
+
+The shell/fake-R suite is locally passing. The real-R fixtures include a known
+CMH result and odds-ratio direction, global BH behavior, strict threshold
+boundaries, background mode, empty and degenerate inputs, deterministic
+subsets, and PDF signatures, but have not executed on this workstation.
 
 ## Deferred Roadmap: Engineering Improvements
 
@@ -302,7 +325,7 @@ These are refactor candidates, not active implementation requirements:
 * Consider shared shell helper libraries only after behavior is covered by tests and outputs are stable. Candidate future files include `scripts/lib/norad_common.sh` and `scripts/lib/norad_slurm_common.sh`.
 * Candidate shared helpers include repo-root detection, strict-mode/logging conventions, dry-run/execute handling, tool resolution and version logging, Java runtime validation, common file/path validation, lock handling, temp-path cleanup traps, samtools quickcheck/index validation, standardized error messages, and SLURM job context logging.
 * Future helper-library refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
-* Expand shell coverage only after inspecting the current `Makefile`, `tests/shell/`, and `tests/pending/`. In this checkout, `make shell-test` wires Step `00c` and Steps `01`-`08`, while no Step `00a` or Step `00b` shell test exists under `tests/shell/` or `tests/pending/`; adding Step `00a` / `00b` shell coverage is deferred future work. `make real-r-test` runs the Step `08` semantic fixtures when `Rscript` is available and otherwise reports a skip.
+* Expand shell coverage only after inspecting the current `Makefile`, `tests/shell/`, and `tests/pending/`. In this checkout, `make shell-test` wires Step `00c` and Steps `01`-`09`, while no Step `00a` or Step `00b` shell test exists under `tests/shell/` or `tests/pending/`; adding Step `00a` / `00b` shell coverage is deferred future work. `make real-r-test` runs the Step `08` and Step `09` semantic fixtures when `Rscript` is available and otherwise reports explicit skips.
 * Keep active runnable tests under `tests/shell/` and non-runnable future test plans under `tests/pending/`.
 * Possible future Makefile targets may include validation/reporting conveniences, but do not add targets until the underlying commands exist and are stable.
 
@@ -352,6 +375,10 @@ Implement Step 08 locally with a deterministic R engine, dry-run-first shell wra
 Promote the Step 08 fake-R wrapper plan into the active shell suite and add a conditional real-R fixture suite.
 Define the Step 08 exact receipt-set, fixed wide-table schemas, count reconciliation, and provisional orientation policy.
 Define the Step 08 three-output transaction with owned locking, stable hashes, rollback, and the input receipt published last.
+Implement Step 09 locally with explicit manifest-defined pairing, a base-R CMH engine, dry-run-first shell wrapper, and SLURM entry point.
+Promote the former Step 09 pending test plan into active shell and conditional real-R suites.
+Define the Step 09 fixed all-sites/significant/summary/mutation schemas, status vocabulary, global BH family, and treatment-relative odds-ratio direction.
+Define the Step 09 six-output transaction with owned locking, stable hashes, exact reconciliation, rollback, and the summary published last.
 ```
 
 ## Development Rule
