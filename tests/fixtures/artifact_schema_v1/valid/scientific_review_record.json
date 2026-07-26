@@ -1,0 +1,325 @@
+{
+  "schema_name": "norad.scientific_review_record",
+  "schema_version": "1.0.0",
+  "record_type": "scientific_review_record",
+  "run_id": "run_fixture",
+  "run_contract": {
+    "run_contract_sha256": "284446856367c83d6a7ff61008230d979c33238f77aae087fb87405d9c216245",
+    "sample_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "reference_contract_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "partition_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "primary_analysis_id": "synthetic_analysis",
+    "primary_analysis_policy_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "review_id": "synthetic_review",
+  "primary_analysis_id": "synthetic_analysis",
+  "superseded_analysis_ids": [],
+  "sensitivity_analysis_ids": [],
+  "review_metadata": {
+    "plan_version": "synthetic_plan_v1",
+    "plan_date": "2000-01-01",
+    "reviewer": "synthetic_reviewer",
+    "decision_owner": "synthetic_owner",
+    "git_commit": "fixturecommit",
+    "review_completed_date": null
+  },
+  "computational_status": {
+    "implementation_status": "implemented",
+    "local_test_status": "passed",
+    "runtime_validation_status": "blocked",
+    "cluster_dry_run_status": "not_run",
+    "cluster_proof_status": "not_run",
+    "evidence": [
+      {
+        "evidence_id": "step09c_fixture_test",
+        "role": "local_test",
+        "path": "tests/test_artifact_schema_contracts.py",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  "scientific_state": {
+    "overall_status": "evidence_incomplete",
+    "orientation_status": "provisional",
+    "orientation_policy": "legacy_provisional_v1",
+    "orientation_policy_version": "legacy_provisional_v1"
+  },
+  "readiness_authorization": null,
+  "policy_versions": {
+    "locus_selection": "synthetic_locus_v1",
+    "candidate_selection": "synthetic_candidate_v1",
+    "sensitivity": "synthetic_sensitivity_v1",
+    "background": "synthetic_background_v1",
+    "annotation": "synthetic_annotation_v1",
+    "adjudication": "synthetic_adjudication_v1"
+  },
+  "selection_rules": {
+    "locus_selection": "No production loci selected in this synthetic fixture.",
+    "candidate_selection": "No production candidates selected in this synthetic fixture.",
+    "sensitivity": "No production sensitivity analyses exist in this synthetic fixture.",
+    "leave_one_pair_out": "No production leave-one-pair-out analyses exist in this synthetic fixture."
+  },
+  "evidence_categories": {
+    "orientation_locus_audit": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "annotation_audit": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "qc_funnel": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "replicate_effects": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "sensitivity_matrix": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "leave_one_pair_out": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "candidate_selection": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "candidate_adjudication": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "decisions": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    },
+    "limitations": {
+      "status": "missing",
+      "evidence_ids": [],
+      "not_applicable_reason": null
+    }
+  },
+  "evidence_records": [
+    {
+      "evidence_id": "step09c_fixture_test",
+      "category": "computational_validation",
+      "analysis_id": "synthetic_analysis",
+      "status": "complete",
+      "source": {
+        "path": "tests/test_artifact_schema_contracts.py",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "size_bytes": null,
+        "row_count": null,
+        "media_type": "text/x-python"
+      },
+      "reviewer": "synthetic_reviewer",
+      "owner": "synthetic_owner",
+      "evidence_date": "2000-01-01",
+      "policy_version": "synthetic_validation_v1",
+      "not_applicable_reason": null
+    }
+  ],
+  "decisions": {
+    "orientation": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "annotation": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "thresholds": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "background": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "matched_dna": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "orthogonal_evidence": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    },
+    "adjudication": {
+      "status": "pending",
+      "value": null,
+      "detail": null,
+      "reviewer": null,
+      "decision_date": null,
+      "evidence_ids": [],
+      "rerun_scope": "none"
+    }
+  },
+  "input_artifacts": [
+    {
+      "artifact_id": "manifest.sample",
+      "role": "sample_manifest",
+      "path": "tests/fixtures/artifact_schema_v1/source/configs/samples.tsv",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "row_count": 6
+    },
+    {
+      "artifact_id": "manifest.partition",
+      "role": "partition_manifest",
+      "path": "tests/fixtures/artifact_schema_v1/source/configs/partitions.tsv",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "row_count": 2
+    },
+    {
+      "artifact_id": "cohort.synthetic.step08_sites",
+      "role": "step08_sites",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_sites.tsv",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "row_count": 2
+    },
+    {
+      "artifact_id": "cohort.synthetic.step08_inputs",
+      "role": "step08_inputs",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_inputs.tsv",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "row_count": 4
+    },
+    {
+      "artifact_id": "cohort.synthetic.step08_summary",
+      "role": "step08_summary",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/qc/vcf_preprocessing/synthetic_cohort.step08_summary.tsv",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "row_count": 1
+    },
+    {
+      "artifact_id": "analysis.synthetic.cmh_all_sites",
+      "role": "step09_all_sites",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "row_count": 2
+    },
+    {
+      "artifact_id": "analysis.synthetic.cmh_significant_sites",
+      "role": "step09_significant_sites",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_significant_sites.tsv",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "row_count": 1
+    },
+    {
+      "artifact_id": "analysis.synthetic.cmh_summary",
+      "role": "step09_summary",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_summary.tsv",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "row_count": 1
+    },
+    {
+      "artifact_id": "analysis.synthetic.mutation_spectrum_tsv",
+      "role": "step09_mutation_spectrum_tsv",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.mutation_spectrum.tsv",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "row_count": 12
+    },
+    {
+      "artifact_id": "analysis.synthetic.mutation_spectrum_pdf",
+      "role": "step09_mutation_spectrum_pdf",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.mutation_spectrum.pdf",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "row_count": null
+    },
+    {
+      "artifact_id": "analysis.synthetic.depth_delta_pdf",
+      "role": "step09_depth_delta_pdf",
+      "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.depth_delta.pdf",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "row_count": null
+    },
+    {
+      "artifact_id": "review.synthetic.review_plan",
+      "role": "review_plan",
+      "path": "tests/fixtures/artifact_schema_v1/source/configs/review_plan.tsv",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "row_count": 1
+    },
+    {
+      "artifact_id": "review.synthetic.evidence_manifest",
+      "role": "evidence_manifest",
+      "path": "tests/fixtures/artifact_schema_v1/source/configs/evidence_manifest.tsv",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "row_count": 10
+    }
+  ],
+  "review_summary": {
+    "path": "tests/fixtures/artifact_schema_v1/source/results/scientific_validation/synthetic_review/synthetic_review.step09c_review_summary.tsv",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "size_bytes": 512,
+    "row_count": 1,
+    "media_type": "text/tab-separated-values"
+  },
+  "limitations": [
+    {
+      "limitation_id": "production_evidence_missing",
+      "status": "open",
+      "description": "No production Step 09c evidence package is represented.",
+      "impact": "Biological interpretation is not permitted.",
+      "evidence_ids": []
+    }
+  ],
+  "warnings": [
+    {
+      "code": "synthetic_fixture_only",
+      "message": "This record validates structure only and is not a completed production review.",
+      "related_artifact_ids": [
+        "analysis.synthetic.cmh_summary"
+      ],
+      "evidence": []
+    }
+  ],
+  "errors": [],
+  "provenance": {
+    "producer": "artifact_schema_fixture",
+    "producer_version": "1.0.0",
+    "git_commit": "fixturecommit",
+    "created_at": "2000-01-01T00:00:03Z"
+  }
+}

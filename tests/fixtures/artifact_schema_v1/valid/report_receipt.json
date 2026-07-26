@@ -1,0 +1,106 @@
+{
+  "schema_name": "norad.report_receipt",
+  "schema_version": "1.0.0",
+  "record_type": "report_receipt",
+  "run_id": "run_fixture",
+  "attempt_id": "report-attempt-001",
+  "generated_at": "2000-01-01T00:00:05Z",
+  "publication_state": "complete",
+  "transaction_state": "complete",
+  "science_status": "evidence_incomplete",
+  "readiness_authorization": null,
+  "input_run_summary": {
+    "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
+    "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "schema_name": "norad.run_summary",
+    "schema_version": "1.0.0"
+  },
+  "requested_formats": [
+    "html",
+    "pdf"
+  ],
+  "renderer": {
+    "name": "quarto",
+    "version": "1.9.38",
+    "executable": ".tools/quarto/1.9.38/bin/quarto",
+    "pandoc_version": "3.synthetic",
+    "pdf_engine": "typst"
+  },
+  "template": {
+    "path": "reports/run_report.qmd",
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "size_bytes": 1024,
+    "row_count": null,
+    "media_type": "text/markdown"
+  },
+  "outputs": [
+    {
+      "output_id": "run_report_html",
+      "kind": "html",
+      "path": "results/reports/run_fixture/run_fixture.run_report.html",
+      "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
+      "size_bytes": 4096,
+      "media_type": "text/html",
+      "self_contained": true,
+      "page_count": null,
+      "state_banner_every_page": null
+    },
+    {
+      "output_id": "run_report_pdf",
+      "kind": "pdf",
+      "path": "results/reports/run_fixture/run_fixture.run_report.pdf",
+      "sha256": "1313131313131313131313131313131313131313131313131313131313131313",
+      "size_bytes": 8192,
+      "media_type": "application/pdf",
+      "self_contained": null,
+      "page_count": 3,
+      "state_banner_every_page": true
+    },
+    {
+      "output_id": "run_summary_tsv",
+      "kind": "run_summary_tsv",
+      "path": "results/reports/run_fixture/run_fixture.run_summary.tsv",
+      "sha256": "1414141414141414141414141414141414141414141414141414141414141414",
+      "size_bytes": 512,
+      "media_type": "text/tab-separated-values",
+      "self_contained": null,
+      "page_count": null,
+      "state_banner_every_page": null
+    }
+  ],
+  "state_banner": "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.",
+  "truncations": [
+    {
+      "table_id": "cmh_ranked_candidates",
+      "report_section": "candidate_summary",
+      "full_table_path": "results/editing/synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv",
+      "full_table_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "full_row_count": 100,
+      "displayed_row_count": 10
+    }
+  ],
+  "schema_versions": {
+    "artifact_record": "1.0.0",
+    "scientific_review_record": "1.0.0",
+    "run_summary": "1.0.0",
+    "report_receipt": "1.0.0"
+  },
+  "analysis_execution_performed": false,
+  "external_network_assets_used": false,
+  "validation_claimed": false,
+  "warnings": [
+    {
+      "code": "scientific_review_incomplete",
+      "message": "The report is a rendering of incomplete synthetic evidence.",
+      "related_artifact_ids": [],
+      "evidence": []
+    }
+  ],
+  "errors": [],
+  "provenance": {
+    "producer": "artifact_schema_fixture",
+    "producer_version": "1.0.0",
+    "git_commit": "fixturecommit",
+    "created_at": "2000-01-01T00:00:05Z"
+  }
+}
