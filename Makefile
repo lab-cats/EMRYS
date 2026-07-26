@@ -1,6 +1,7 @@
 DEMO_SAMPLE ?= ABE_EV_2
+RSCRIPT_BIN ?= Rscript
 
-.PHONY: test shell-test real-r-test validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
@@ -17,10 +18,31 @@ shell-test:
 	bash tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/shell/test_step_08_vcf_preprocessing.sh
 	bash tests/shell/test_step_09_cmh_editing_site_calling.sh
+	bash tests/shell/test_local_r_environment.sh
 
 real-r-test:
 	bash tests/r/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/r/run_step_09_cmh_tests.sh
+
+r-restore:
+	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
+		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		"$(RSCRIPT_BIN)" scripts/restore_r_environment.R
+
+r-check:
+	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
+		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		"$(RSCRIPT_BIN)" scripts/check_r_environment.R
+
+local-real-r-test:
+	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
+		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \
+		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
+		$(MAKE) real-r-test
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv

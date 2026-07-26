@@ -28,4 +28,13 @@ __pycache__/
 *.pyc
 .Rhistory
 .RData
+.renv-cache/
+renv/cache/
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
 docs/CLUSTER_DISCOVERY.md
