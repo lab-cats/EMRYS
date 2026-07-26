@@ -42,14 +42,17 @@ JSON input and uses a static, non-executing QMD view plus pinned Quarto `1.9.38`
 to publish one self-contained, script-free HTML file. The official macOS
 archive is verified against SHA-256
 `47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
-Sixty-five focused report tests pass, including real pinned-Quarto renders, and
-the complete Python suite reports 277 passed with one expected opt-in Quarto
-skip. These are synthetic/incomplete local fixtures only: no production
-artifact index, run summary, or report exists, and no runtime, cluster,
+The report-table approval producer is implemented at `2a4b8f8`; it binds
+optional exact approvals to the current run contract and complete active
+Step `09c` TSV artifacts. The current run-summary suite has 53 focused tests,
+the combined artifact layer has 161, `make report-test` passes 119 Python tests
+plus its shell wrapper with real Quarto, and the complete Python suite reports
+292 passed with one expected opt-in Quarto skip. These are
+synthetic/incomplete local fixtures only: no production artifact index, run
+summary, approval manifest, or report exists, and no runtime, cluster,
 scientific-review, or biological status is promoted. Remote promotion is
-intentionally paused while the remaining local sequence adds an explicit
-report-table approval producer, PDF/TSV exports, read-only foundations, and one
-validator branch per pipeline step.
+intentionally paused while the remaining local sequence adds PDF/TSV exports,
+read-only foundations, and one validator branch per pipeline step.
 
 Current boundary:
 
@@ -64,7 +67,8 @@ cluster-proven reference prep through Steps 00a-00c
 -> artifact-adapters-v1 implemented and locally fixture-tested at 4dbd32d; no production artifact index
 -> artifact-run-summary implemented and locally fixture-tested at 209bb19; no production summary
 -> report-html-v1 implemented and locally fixture-tested at 117ba26; no production report
--> report-html-v1a-report-table-approvals is next, then report-exports-v1
+-> report-html-v1a-report-table-approvals implemented and fixture-tested at 2a4b8f8
+-> report-exports-v1 is next
 -> remote validation remains paused
 ```
 
@@ -110,8 +114,8 @@ flowchart LR
     artifact_adapters["artifact-adapters-v1<br/>explicit inventory + run contract<br/>implemented + fixture-tested locally<br/>no production index"]
     runsummary["artifact-run-summary<br/>canonical JSON + deterministic TSV/QC<br/>implemented + fixture-tested locally<br/>no production summary"]
     reporthtml["report-html-v1<br/>self-contained script-free HTML<br/>implemented + fixture-tested locally<br/>no production report"]
-    approvals["report-html-v1a report-table approvals<br/>next; builder support pending"]
-    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
+    approvals["report-html-v1a report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
+    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -125,8 +129,8 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary,reporthtml boundary
-    class approvals,exports pending
+    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals boundary
+    class exports pending
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
@@ -151,8 +155,8 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `09c` | 13 TSVs under `results/scientific_validation/<review_id>/` | implemented locally at `b674a31`; Python/shell synthetic fixtures pass | Validates explicit evidence and publishes the review summary last. No production review evidence, production science completion, cluster proof, or biological readiness is recorded or supported by inspected evidence. |
 | `artifact-schema-v1` | four public JSON schemas plus their shared definitions under `schemas/artifacts/v1/`, and `configs/artifact_inventory.example.tsv` | implemented locally at `5f4d3b4`; current 58 schema, inventory, and synthetic-record fixtures pass | Artifact record remains `1.0.0`; scientific-review, run-summary, and report-receipt are `1.1.0`. It defines a 67-row explicit inventory but does not build a production artifact index, run summary, or report. |
 | `artifact-adapters-v1` | `results/artifacts/<run_id>/records/<artifact_id>.json`, `<run_id>.artifacts.tsv`, and receipt-last `<run_id>.artifact_receipt.tsv` | implemented locally at `4dbd32d`; 50 focused synthetic-fixture tests pass | Requires an explicit `run_id`, strict six-field run-contract JSON, and inventory. It performs read-only native inspection without glob discovery. No production transaction, run summary/report, runtime/cluster proof, completed science review, or readiness evidence exists. |
-| `artifact-run-summary` | `<run_id>.run_summary.json`, `<run_id>.run_summary.tsv`, `<run_id>.qc_summary.tsv`, and receipt-last `<run_id>.run_summary_receipt.tsv` | implemented locally at `209bb19`; 39 focused synthetic-fixture tests pass | Consumes one exact complete adapter receipt plus an optional exact Step `09c` summary. Canonical JSON is the sole structured report input. No production transaction/summary or validation claim exists. |
-| `report-html-v1` | `<OUTPUT_ROOT>/<run_id>/<run_id>.run_report.html` only | implemented locally at `117ba26`; 65 focused report tests pass with pinned real Quarto `1.9.38` | Consumes one exact canonical run-summary JSON, renders a static non-executing QMD, and validates self-contained, script-free HTML before atomic publication. Evidence is synthetic/incomplete only; no production report or validation claim exists. |
+| `artifact-run-summary` | `<run_id>.run_summary.json`, `<run_id>.run_summary.tsv`, `<run_id>.qc_summary.tsv`, and receipt-last `<run_id>.run_summary_receipt.tsv` | introduced at `209bb19`; approval producer added at `2a4b8f8`; 53 focused synthetic-fixture tests pass | Consumes one exact complete adapter receipt plus optional exact Step `09c` summary and run-bound report-table approvals TSV. Canonical JSON is the sole structured report input. No production transaction/summary, approval manifest, or validation claim exists. |
+| `report-html-v1` | `<OUTPUT_ROOT>/<run_id>/<run_id>.run_report.html` only | implemented locally at `117ba26`; current report gate passes 119 Python tests plus its shell wrapper with pinned real Quarto `1.9.38` | Consumes one exact canonical run-summary JSON, renders a static non-executing QMD, and validates self-contained, script-free HTML before atomic publication. Evidence is synthetic/incomplete only; no production report or validation claim exists. |
 
 ## Data Contracts
 
@@ -170,7 +174,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | Scientific evidence validation | 13 declared TSVs under `results/scientific_validation/<review_id>/`; `<review_id>.step09c_review_summary.tsv` is published last |
 | Artifact schema foundation | Draft 2020-12 contracts under `schemas/artifacts/v1/`, a 67-row explicit expected-artifact inventory at `configs/artifact_inventory.example.tsv`, and local validation through `scripts/validate_artifact_contracts.py`; no generated artifact index is part of this stage |
 | Artifact adapter index | `.venv/bin/python scripts/build_artifact_index.py --run-id RUN_ID --run-contract RUN_CONTRACT_JSON --inventory INVENTORY_TSV --output-root OUTPUT_ROOT [--execute]`; dry-run-first, explicit-input-only, and receipt-last under `<OUTPUT_ROOT>/<run_id>/` (conventionally `results/artifacts/<run_id>/`) |
-| Artifact run summary | `.venv/bin/python scripts/build_run_summary.py --run-id RUN_ID --artifact-receipt ARTIFACT_RECEIPT --output-root OUTPUT_ROOT [--science-review-summary REVIEW_SUMMARY_TSV] [--execute]`; exact-input-only and publishes canonical JSON, artifact/QC TSV views, and the receipt last as a separate transaction in the existing `<OUTPUT_ROOT>/<run_id>/` directory |
+| Artifact run summary | `.venv/bin/python scripts/build_run_summary.py --run-id RUN_ID --artifact-receipt ARTIFACT_RECEIPT --output-root OUTPUT_ROOT [--science-review-summary REVIEW_SUMMARY_TSV] [--report-table-approvals APPROVALS_TSV] [--execute]`; exact-input-only and publishes canonical JSON, artifact/QC TSV views, and the receipt last as a separate transaction in the existing `<OUTPUT_ROOT>/<run_id>/` directory. Omission authorizes no tables; a supplied nonempty manifest binds exact complete active-review Step `09c` TSV artifacts to the current run contract. |
 | Static HTML run report | `scripts/render_run_report.sh --run-summary RUN_SUMMARY_JSON --output-root OUTPUT_ROOT --quarto-bin QUARTO_BIN [--formats html] [--execute]`; dry-run-first, exact-input-only, and publishes only `<OUTPUT_ROOT>/<run_id>/<run_id>.run_report.html`. PDF, exported summary TSV, and the report receipt remain pending `report-exports-v1`. |
 
 Step `08` enumerates the exact declared partition set in manifest order and both orientations in fixed `FWD_like`, then `REV_like`, order. It validates the Step `07` receipts, manifest hashes, VCF paths, declared record counts, and exact sample order rather than globbing available files. The deterministic wide candidate table starts with:
@@ -287,8 +291,8 @@ flowchart LR
     artifact_adapters["artifact-adapters-v1<br/>explicit native adapters<br/>fixture-tested locally"]
     runsummary["artifact-run-summary<br/>implemented + fixture-tested locally"]
     reporthtml["report-html-v1<br/>HTML implemented + fixture-tested locally"]
-    approvals["report-html-v1a<br/>report-table approval producer next"]
-    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
+    approvals["report-html-v1a<br/>report-table approval producer implemented locally at 2a4b8f8"]
+    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
     validators["one validator branch per step<br/>00a through 09"]
     localstop["final local validator<br/>clean / docpatched / pushed"]
@@ -326,11 +330,11 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,reporthtml,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
-    class approvals,exports,foundations,validators safeguard
+    class exports,foundations,validators safeguard
     class remotehold docs
 ```
 
@@ -418,14 +422,13 @@ implemented at `b674a31` and synthetic-fixture-tested locally; no production
 science evidence or review completion is claimed. `artifact-schema-v1` is
 implemented and locally fixture-tested at `5f4d3b4`.
 `artifact-adapters-v1` is implemented and locally fixture-tested at `4dbd32d`,
-and `artifact-run-summary` is implemented and locally fixture-tested at
-`209bb19`. `report-html-v1` is implemented and locally fixture-tested at
-`117ba26`, but no production artifact index, run summary, or report exists.
+and `artifact-run-summary` was introduced at `209bb19`.
+`report-html-v1` is implemented and locally fixture-tested at `117ba26`, and
+its report-table approval producer is implemented at `2a4b8f8`, but no
+production artifact index, run summary, approval manifest, or report exists.
 
-1. Implement `report-html-v1a-report-table-approvals`, which makes the existing
-   explicit approved-table schema field producible by the normal run-summary
-   builder, then implement `report-exports-v1` for PDF, exported summary TSV,
-   and the final report receipt.
+1. After this approval docpatch/push gate, implement `report-exports-v1` for
+   PDF, exported summary TSV, and the final report receipt.
    Synthetic/incomplete reports must carry their state banners and must not be
    presented as validation evidence.
 2. Implement the read-only foundations

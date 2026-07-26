@@ -12,7 +12,7 @@ flowchart TD
         review["Step 09c review record<br/>state + decisions + limitations"]
         provenance["Provenance<br/>what code/reference/tools produced results"]
         registry["Artifact registry<br/>what outputs exist and where"]
-        report_approval["Explicit report-table approvals<br/>normal-builder producer pending"]
+        report_approval["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
     end
 
     subgraph artifacts["Validated artifact inputs"]
@@ -50,5 +50,5 @@ flowchart TD
     reports --> html_report["Static self-contained HTML<br/>implemented + fixture-tested locally"]
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters,reports,html_report current
-    class ready,module,results,report_approval future
+    class fastqs,existing,adapters,reports,html_report,report_approval current
+    class ready,module,results future

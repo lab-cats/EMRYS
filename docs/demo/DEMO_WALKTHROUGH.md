@@ -24,8 +24,9 @@ Steps 00a-00c cluster-proven reference prep
 -> artifact-adapters-v1 implemented and focused-fixture-tested at 4dbd32d
 -> artifact-run-summary implemented and focused-fixture-tested at 209bb19
 -> report-html-v1 implemented and focused-fixture-tested at 117ba26
--> report-html-v1a-report-table-approvals is next, then report-exports-v1
--> no production artifact index, run summary, or report exists
+-> report-html-v1a-report-table-approvals implemented and locally tested at 2a4b8f8
+-> report-exports-v1 is next
+-> no production artifact index, run summary, approval manifest, or report exists
 -> remote validation remains paused
 ```
 
@@ -79,6 +80,26 @@ Steps 00a-00c cluster-proven reference prep
      --output-root results/artifacts
    ```
 
+   To authorize supplemental report tables, also provide both the exact
+   committed Step `09c` review summary and the optional explicit approvals
+   manifest:
+
+   ```bash
+   .venv/bin/python scripts/build_run_summary.py \
+     --run-id RUN_ID \
+     --artifact-receipt \
+       results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
+     --output-root results/artifacts \
+     --science-review-summary REVIEW_SUMMARY_TSV \
+     --report-table-approvals REPORT_TABLE_APPROVALS_TSV
+   ```
+
+   Each approval must match the run ID and run-contract hash, name a complete
+   artifact from the active Step `09c` scientific review, and match its
+   controlled role, exact path, SHA-256, and row count. Nothing is discovered
+   or approved by glob, and synthetic approvals are not production scientific
+   authorization.
+
    Only `--execute` publishes
    `<run_id>.run_summary.json`, `<run_id>.run_summary.tsv`,
    `<run_id>.qc_summary.tsv`, and receipt-last
@@ -126,19 +147,21 @@ Steps 00a-00c cluster-proven reference prep
   implemented and locally fixture-tested at `5f4d3b4`: four public Draft
   2020-12 schemas share common definitions, and an explicit inventory declares
   67 expected artifacts without glob discovery. `artifact-adapters-v1` is
-  implemented at `4dbd32d`: 49 exact adapters cover those 67 rows, and 50
-  focused synthetic-fixture tests pass. `artifact-run-summary` is implemented
-  at `209bb19`: 39 focused tests exercise canonical JSON, deterministic TSV/QC
-  views, exact evidence normalization, and receipt-last publication.
-  `report-html-v1` is implemented at `117ba26`: 65 focused report tests pass,
-  including real pinned-Quarto renders, and the complete Python suite reports
-  277 passed with one expected opt-in Quarto skip. No production index,
-  summary, or report has been built. The normal run-summary builder cannot yet
-  populate explicit report-table approvals, so
-  `report-html-v1a-report-table-approvals` is next. Bundled-Typst PDF/TSV and
-  receipt exports, read-only runtime/reference/storage foundations, and one
-  validator branch per pipeline step remain unimplemented. Remote validation
-  remains paused.
+  implemented at `4dbd32d`: 49 exact adapters cover those 67 rows. The current
+  combined artifact-layer suite has 161 passing tests.
+  `artifact-run-summary` is implemented at `209bb19` and its explicit
+  report-table approval producer is implemented at `2a4b8f8`: 53 focused
+  run-summary tests exercise canonical JSON, deterministic TSV/QC views,
+  exact evidence normalization, Step `09c`-bound approvals, and receipt-last
+  publication. `report-html-v1` is implemented at `117ba26`. The current
+  `make report-test` gate passes 119 Python tests: 15 renderer-restore tests,
+  53 run-summary tests, and 51 HTML-renderer tests, followed by the shell
+  wrapper. The complete Python suite collects 293 tests and reports 292 passed
+  with one expected opt-in Quarto skip. No production index, summary, approval
+  transaction, or report has been built. `report-exports-v1` is next;
+  bundled-Typst PDF/TSV and receipt exports, read-only
+  runtime/reference/storage foundations, and one validator branch per
+  pipeline step remain unimplemented. Remote validation remains paused.
 - Step `09c` can record `evidence_incomplete` or
   `science_review_complete_exploratory`; it rejects the reserved
   `biological_interpretation_ready` value. It validates explicit evidence,
@@ -173,6 +196,9 @@ Steps 00a-00c cluster-proven reference prep
 - Do not present the implemented HTML renderer or its synthetic/incomplete
   fixture output as a production report, computational validation, completed
   science review, or biological evidence.
-- Do not present report-table approval production, PDF/TSV/receipt exports, the
+- Do not present the implemented approval producer or its synthetic fixtures
+  as a production approval manifest, completed scientific review, or human
+  authorization of production tables.
+- Do not present PDF/TSV/receipt exports, the
   preflight/provenance/storage foundations, or the per-step validators as
   implemented commands yet. They are activated descendant packages.

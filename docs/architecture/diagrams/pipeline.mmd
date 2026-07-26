@@ -37,8 +37,8 @@ flowchart LR
     artifact_adapters["artifact-adapters-v1<br/>explicit inventory + run contract<br/>implemented + fixture-tested locally<br/>no production index"]
     runsummary["artifact-run-summary<br/>canonical JSON + deterministic TSV/QC<br/>implemented + fixture-tested locally<br/>no production summary"]
     reporthtml["report-html-v1<br/>self-contained script-free HTML<br/>implemented + fixture-tested locally<br/>no production report"]
-    approvals["report-html-v1a report-table approvals<br/>next; builder support pending"]
-    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
+    approvals["report-html-v1a report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
+    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -52,5 +52,5 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary,reporthtml boundary
-    class approvals,exports pending
+    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals boundary
+    class exports pending

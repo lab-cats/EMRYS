@@ -797,11 +797,11 @@ batch visibility, production input behavior, or cluster outputs. The
 complete. Step `09c` is implemented locally at `b674a31`.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
-`4dbd32d`. `artifact-run-summary` is implemented and locally fixture-tested at
-`209bb19`. `report-html-v1` is implemented and tested locally with the real
-pinned renderer at `117ba26`. After its docpatch/push gate, the next descendant
-is `report-html-v1a-report-table-approvals`, followed by
-`report-exports-v1`.
+`4dbd32d`. `artifact-run-summary` was introduced at `209bb19`, and its
+report-table approval producer is implemented and locally fixture-tested at
+`2a4b8f8`. `report-html-v1` is implemented and tested locally with the real
+pinned renderer at `117ba26`. After this approval docpatch/push gate, the next
+descendant is `report-exports-v1`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1592,14 +1592,16 @@ shared common schema plus four public Draft 2020-12 schemas
 read-only validator and 58 focused tests pass locally
 artifact-adapters-v1 implemented at 4dbd32d
 49 read-only adapters and 50 focused tests pass locally
-artifact-run-summary implemented at 209bb19
-canonical JSON, deterministic TSV/QC views, and receipt-last publication
-39 focused run-summary and 147 combined artifact-layer tests pass locally
+artifact-run-summary introduced at 209bb19
+report-table approval producer implemented at 2a4b8f8
+canonical JSON, deterministic TSV/QC views, exact Step 09c table approvals,
+  and receipt-last publication
+53 focused run-summary and 161 combined artifact-layer tests pass locally
 report-html-v1 implemented at 117ba26
-65 focused report tests pass with the real pinned Quarto runtime
+make report-test passes 119 Python tests plus its shell wrapper with real Quarto
 one static script-free self-contained HTML-only output
-no production artifact index, run summary, report, or production evidence
-report-html-v1a-report-table-approvals is next, then report-exports-v1
+no production artifact index, run summary, approval manifest, report, or evidence
+report-exports-v1 is next
 ```
 
 Keep production and cluster status unchanged. Keep production science
@@ -1654,6 +1656,43 @@ inputs. If no committed review exists, omit `--science-review-summary`; the
 run summary will retain `evidence_incomplete` and an explicit warning. Do not
 point at a copied summary, decoy, incomplete directory, or hand-edited table.
 
+## Report-table approvals are rejected by the run-summary builder
+
+### Symptom
+
+`--report-table-approvals` fails on its header, an empty manifest, run ID,
+run-contract hash, role, artifact ID, review scope, path, SHA-256, row count,
+display limit, approval status/policy, approver, timestamp, duplicate, symlink,
+or input mutation.
+
+### Cause
+
+The option accepts one explicit nonempty TSV with this exact header:
+
+```text
+run_id	run_contract_sha256	table_id	artifact_id	role	title	path	sha256	row_count	display_row_limit	approval_status	approval_policy_version	approved_by	approved_at
+```
+
+Approvals require the exact committed Step `09c` science-review summary.
+Every row must bind to the current run and immutable contract, use a supported
+closed Step `09c` table role and `approval_status=approved`, and name one exact
+complete TSV artifact in that active review scope. The path, hash, row count,
+media type, size, current file, display limit, policy, approver, and canonical
+non-future UTC timestamp must all reconcile. Duplicate table IDs, duplicate
+physical sources, globs/templates, traversal or redundant paths, symlinks,
+decoys, and changed files fail closed.
+
+### Fix
+
+Start from `configs/report_table_approvals.example.tsv`, but replace every
+synthetic value with values from the exact current adapter transaction and
+Step `09c` review. Recompute the declaration from the actual source; never edit
+a hash, count, run binding, artifact record, or canonical JSON to force a
+match. If no table is approved, omit the option entirely; a supplied
+header-only approvals file is intentionally invalid. An approval authorizes
+display of an exact table—it is not scientific review completion, biological
+validation, or a computational-status promotion.
+
 ## Run-summary lock, partial output set, or recovery state remains
 
 ### Symptom
@@ -1672,25 +1711,26 @@ results/artifacts/<run_id>/.<run_id>.run-summary.<run_token>.RECOVERY.txt
 ### Cause
 
 The canonical JSON, two TSV views, and receipt are one transaction, with the
-receipt published last. A concurrent writer, adapter transaction-member or
-optional Step `09c` input mutation, output-directory replacement, signal,
-publication failure, incomplete rollback, or incomplete cleanup can leave
-evidence that must be inspected before another writer runs. Native Step
-`00`-`09` source hashes are carried from adapter records rather than rehashed
-by the summary builder.
+receipt published last. A concurrent writer, adapter transaction-member,
+optional Step `09c`, approval-manifest, or approved-table input mutation,
+output-directory replacement, signal, publication failure, incomplete
+rollback, or incomplete cleanup can leave evidence that must be inspected
+before another writer runs. Native Step `00`-`09` source hashes are carried
+from adapter records rather than rehashed by the summary builder.
 
 ### Fix
 
 Inspect the regular lock metadata, owning process, current four outputs, all
-reported temporary/backup/recovery paths, and exact adapter/Step `09c` inputs.
-Do not delete a foreign lock or recovery evidence, combine attempts, or
-manufacture a receipt. If output-directory identity changed, resolve and
-verify that identity before touching any contained path. First validate the
-current new four-file transaction: a post-commit cleanup failure may leave it
-complete and it should then be retained. If it is not complete, restore the
-validated prior transaction or a clean first-publication state as appropriate.
-Validate the chosen state, record the operator action, then remove only
-proven-owned residue and a lock whose ownership is proven.
+reported temporary/backup/recovery paths, and exact adapter, Step `09c`,
+approval-manifest, and approved-table inputs. Do not delete a foreign lock or
+recovery evidence, combine attempts, or manufacture a receipt. If
+output-directory identity changed, resolve and verify that identity before
+touching any contained path. First validate the current new four-file
+transaction: a post-commit cleanup failure may leave it complete and it should
+then be retained. If it is not complete, restore the validated prior
+transaction or a clean first-publication state as appropriate. Validate the
+chosen state, record the operator action, then remove only proven-owned residue
+and a lock whose ownership is proven.
 
 ## Run-summary receipt is complete but evidence is missing or failed
 
@@ -1749,16 +1789,17 @@ or renderer.
 
 ### Fix
 
-Describe the boundary as implemented and locally fixture-tested at `209bb19`,
-with 39 focused, 147 combined artifact-layer, and 213 total Python tests
-passing. A separate `report-html-v1` renderer is implemented at `117ba26`;
-its 65 focused tests pass with the real pinned Quarto runtime, and the complete
-Python gate passes 277 tests with one expected skip. This establishes only
+Describe the boundary as introduced at `209bb19` and extended with the
+report-table approval producer at `2a4b8f8`, with 53 focused and 161 combined
+artifact-layer tests passing. A separate `report-html-v1` renderer is
+implemented at `117ba26`; `make report-test` passes 119 Python tests plus its
+shell wrapper with the real pinned Quarto runtime, and the complete Python
+gate passes 292 tests with one expected skip. This establishes only
 synthetic-fixture behavior and local renderer execution. No production
-adapter transaction, run summary, HTML/PDF report, pipeline runtime/cluster
-proof, completed production science review, or biological readiness exists.
-`report-html-v1a-report-table-approvals` is next, followed by
-`report-exports-v1`; rendering still does not promote validation.
+adapter transaction, run summary, approval manifest, HTML/PDF report,
+pipeline runtime/cluster proof, completed production science review, or
+biological readiness exists. `report-exports-v1` is next; rendering still
+does not promote validation.
 
 ## Quarto restore rejects the archive, installed tree, version, or lock
 
@@ -1865,17 +1906,12 @@ the exact normalized path, SHA-256, row count, role, and display limit. The
 rendered document must be script-free, self-contained, accessible, and carry
 the exact applicable scientific-state banner.
 
-The implemented normal run-summary producer currently emits:
-
-```json
-"approved_report_tables":[]
-```
-
-Therefore status, provenance, evidence, limitation, and other structured
-summary sections render normally, while row-level approved scientific tables
-remain unavailable until `report-html-v1a-report-table-approvals` implements
-their producer authorization. This is not a renderer failure and must not be
-bypassed by editing canonical JSON.
+The implemented normal run-summary producer emits an empty
+`approved_report_tables` list when its optional approval manifest is omitted.
+When the exact nonempty manifest passes the run/contract/Step `09c` artifact
+checks documented above, the producer emits those authorized records in
+manifest order. A missing row-level table after omission is not a renderer
+failure and must not be bypassed by editing canonical JSON.
 
 ### Fix
 
@@ -1943,11 +1979,12 @@ validation.
 
 ### Cause
 
-`report-html-v1` is implemented at `117ba26`. Its 65 focused tests exercise
-the real pinned Quarto runtime, and the complete Python gate passes 277 tests
-with one expected skip. Those inputs are synthetic/incomplete fixtures.
-Rendering accurately presents their declared states but creates no new
-computational or scientific evidence.
+`report-html-v1` is implemented at `117ba26`. The current `make report-test`
+gate passes 119 Python tests plus its shell wrapper with the real pinned
+Quarto runtime, and the complete Python gate passes 292 tests with one
+expected skip. Those inputs are synthetic/incomplete fixtures. Rendering
+accurately presents their declared states but creates no new computational or
+scientific evidence.
 
 ### Fix
 
@@ -1959,7 +1996,8 @@ real pinned local Quarto runtime exercised
 one synthetic HTML-only output contract validated
 no production report or pipeline runtime/cluster validation
 no completed production science review or biological readiness
-report-html-v1a-report-table-approvals next, then report-exports-v1
+report-table approval producer implemented at 2a4b8f8
+report-exports-v1 next
 ```
 
 Retain the report's state banner and limitations. Report generation is never
@@ -2033,8 +2071,8 @@ implemented, as is the run-summary builder, so their concrete failure modes
 are documented above. Static HTML reporting is also implemented, so its
 concrete restore, validation, publication, and recovery failures are
 documented above. Do not add entries that imply general cleanup tools,
-report-table approval production, PDF/TSV exports, foundation tools, or
-per-step validators exist before their branches implement them.
+PDF/TSV exports, foundation tools, or per-step validators exist before their
+branches implement them.
 
 ## General success checklist
 

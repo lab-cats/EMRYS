@@ -20,10 +20,10 @@ flowchart TD
     run_summary_tsv["run_summary.tsv<br/>deterministic artifact view"]
     qc_summary["qc_summary.tsv<br/>deterministic metric view"]
     summary_receipt["run_summary_receipt.tsv<br/>published last"]
-    approved_tables["Explicit approved report-table records<br/>normal builder support pending"]
+    approved_tables["Explicit approved report-table records<br/>implemented + fixture-tested locally at 2a4b8f8"]
     generator["Static QMD / pinned Quarto renderer<br/>implemented; no analysis execution"]
     html["Self-contained script-free HTML<br/>fixture-tested locally; no production report"]
-    exports["Bundled Typst PDF + TSV + receipt<br/>pending"]
+    exports["report-exports-v1<br/>next: bundled Typst PDF + TSV + receipt"]
 
     subgraph review["Scientific review fields"]
         direction TB
@@ -78,8 +78,8 @@ flowchart TD
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,generator,html current
+    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,approved_tables,generator,html current
     class run_contract,inventory,declared_sources,artifacts_tsv contract
     class science_summary,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class approved_tables,exports future
+    class exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

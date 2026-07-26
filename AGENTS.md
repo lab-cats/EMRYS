@@ -315,10 +315,17 @@ scientific-review, or biological evidence.
 
 The implemented run-summary layer consumes one exact completed adapter
 receipt under the declared output root and, optionally, one exact committed
-Step `09c` review summary. It never discovers either input. Execute mode
-publishes canonical JSON, deterministic artifact and QC TSV views, and the
-run-summary receipt last. Transaction completion does not promote missing,
-failed, incomplete, unavailable, local-test, runtime, cluster, scientific, or
+Step `09c` review summary. With that review it may also consume one exact
+report-table approval manifest. It never discovers those inputs. A supplied
+approval manifest must be nonempty,
+bound to the current `run_id` and immutable run-contract hash, and authorize
+only exact complete Step `09c` TSV artifacts in the active scientific-review
+scope. Paths, hashes, row counts, roles, display limits, policy version,
+approver, and approval time must reconcile; omitting the manifest produces no
+approved report tables. Execute mode publishes canonical JSON, deterministic
+artifact and QC TSV views, and the run-summary receipt last. Transaction
+completion or table authorization does not promote missing, failed,
+incomplete, unavailable, local-test, runtime, cluster, scientific, or
 biological state.
 
 ## Report rendering conventions

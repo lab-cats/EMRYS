@@ -153,9 +153,11 @@ synthetic focused tests may also be shown, but not as a production artifact
 index. The implemented `artifact-run-summary` help text, side-effect-free
 dry-run, and synthetic four-file fixture transaction may also be shown. The
 implemented `report-html-v1` help text, side-effect-free dry-run, pinned
-Quarto restore receipt, and synthetic self-contained HTML may be shown, but
-not as a production report. No production run summary or report exists, and
-none of these packages is production-output, cluster, or scientific evidence.
+Quarto restore receipt, synthetic self-contained HTML, and
+`report-html-v1a-report-table-approvals` exact-input producer contract may be
+shown, but not as a production report or scientific approval. No production
+run summary, approval manifest, or report exists, and none of these packages
+is production-output, cluster, or scientific evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -407,8 +409,9 @@ If helpers are not installed, use the manual commands in the next section.
 The approved local descendant roadmap has implemented Step `09c`
 scientific-validation tooling, the `artifact-schema-v1` contract package, the
 `artifact-adapters-v1` index package, the `artifact-run-summary` package, and
-the HTML-only `report-html-v1` package. The next descendant adds explicit
-producer-side report-table approvals before the export package:
+the HTML-only `report-html-v1` package. Explicit producer-side report-table
+approvals are implemented at `2a4b8f8`; the next descendant is the export
+package:
 
 ```text
 step-09c-scientific-validation
@@ -416,8 +419,8 @@ step-09c-scientific-validation
 -> artifact-adapters-v1                       # implemented and locally tested
 -> artifact-run-summary                       # implemented and locally tested
 -> report-html-v1                             # implemented and locally tested
--> report-html-v1a-report-table-approvals     # next
--> report-exports-v1
+-> report-html-v1a-report-table-approvals     # implemented and locally tested
+-> report-exports-v1                          # next
 -> post09-runtime-preflight
 -> post09-reference-provenance
 -> post09-storage-inventory-retention
@@ -430,13 +433,13 @@ analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
 Step `09c`, `artifact-schema-v1`, `artifact-adapters-v1`,
-`artifact-run-summary`, and `report-html-v1` are no longer helper ideas. Their
-schemas, example contracts, validators, fixtures, and commands documented
-below exist. The adapter, run-summary, and static HTML output contracts are
-implemented, but no production transaction/report exists. Report-table
-approval production, PDF/TSV/receipt export, foundation records, and per-step
-validators remain roadmap work. Do not treat commands or outputs belonging
-to those future packages as available.
+`artifact-run-summary`, `report-html-v1`, and the report-table approval
+producer are no longer helper ideas. Their schemas, example contracts,
+validators, fixtures, and commands documented below exist. The adapter,
+run-summary, approval, and static HTML output contracts are implemented, but
+no production transaction/report exists. PDF/TSV/receipt export, foundation
+records, and per-step validators remain roadmap work. Do not treat commands
+or outputs belonging to those future packages as available.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
@@ -651,11 +654,12 @@ or biological-readiness evidence exists.
 
 ### Build An `artifact-run-summary` Transaction
 
-Implemented locally at `209bb19`:
+Introduced at `209bb19`; report-table approval production added at `2a4b8f8`:
 
 ```text
 scripts/build_run_summary.py
 scripts/_run_summary_science.py
+configs/report_table_approvals.example.tsv
 tests/fixtures/artifact_run_summary_v1/build_fixture.py
 tests/test_artifact_run_summary.py
 ```
@@ -687,6 +691,29 @@ evidence without creating stable outputs, locks, or scratch paths. It carries
 native-source hashes recorded by the adapter but does not rehash native Step
 `00`-`09` sources.
 
+To authorize exact Step `09c` TSVs for reporting, append:
+
+```bash
+  --report-table-approvals /explicit/path/to/report_table_approvals.tsv
+```
+
+This option is also never discovered. Omit it when no tables are approved. A
+supplied file requires the exact committed Step `09c` summary, must contain at
+least one data row, and uses this exact header:
+
+```text
+run_id	run_contract_sha256	table_id	artifact_id	role	title	path	sha256	row_count	display_row_limit	approval_status	approval_policy_version	approved_by	approved_at
+```
+
+Each row must be `approved`, bind to the current run ID and immutable
+run-contract hash, and match one complete active-review Step `09c` TSV
+artifact by adapter role, exact path, hash, and row count. It also records the
+display-row limit (`NA` or a canonical nonnegative integer no greater than the
+full row count), policy version, approver, and canonical non-future UTC
+approval time. The closed roles are orientation/annotation audits, QC funnel,
+replicate effects, sensitivity matrix, leave-one-pair-out, candidate
+selection/adjudication, decisions, evidence index, and limitations.
+
 Execute only after inspecting dry-run:
 
 ```bash
@@ -712,16 +739,21 @@ The receipt is last. Canonical JSON is the report layer's single structured
 entry point; the TSVs are deterministic artifact and QC views. Every expected
 scope remains represented, including explicit missing, failed, incomplete,
 and externally unavailable states. `summary_state=complete` describes the
-committed four-file transaction, not evidence completeness.
+committed four-file transaction, not evidence completeness. Omission of the
+approval input produces `approved_report_tables: []`; a supplied manifest and
+its authorized table snapshots are rechecked for the complete transaction.
+The run-summary receipt TSV remains schema `1.0.0`; its canonical JSON
+SHA-256 commits the approval-manifest descriptor and approved records.
 
 Each execute-mode publication receives a distinct run-summary attempt ID under
 the unchanged immutable run contract. Existing summary transactions must
 validate before replacement. Publication uses an owned regular lock, run-token
-temporary and backup paths, adapter transaction-member and optional Step `09c`
-input rechecks, output-directory identity checks, validation-before-
-publication, rollback, and recovery safeguards. Never move or edit adapter
-transaction members, manufacture receipts, combine attempts, delete a foreign
-lock, or manually promote evidence status.
+temporary and backup paths, adapter transaction-member, optional Step `09c`,
+approval manifest, and approved-table input rechecks, output-directory
+identity checks, validation-before-publication, rollback, and recovery
+safeguards. Never move or edit adapter transaction members, manufacture
+receipts, combine attempts, delete a foreign lock, hand-edit canonical JSON,
+or manually promote evidence status.
 
 Run focused and combined checks:
 
@@ -733,11 +765,11 @@ Run focused and combined checks:
   tests/test_artifact_run_summary.py
 ```
 
-Current evidence is 39 focused run-summary tests and 147 combined
+Current evidence is 53 focused run-summary tests and 161 combined
 artifact-layer tests passing. This is local synthetic fixture evidence only.
-No production adapter transaction or run summary exists; the builder runs no
-analysis and establishes no runtime, cluster, scientific, or biological
-validation.
+No production adapter transaction, run summary, or approval manifest exists;
+the builder runs no analysis and establishes no runtime, cluster, scientific,
+or biological validation.
 
 ### Restore Quarto And Render The Static HTML Report
 
@@ -819,10 +851,9 @@ safeguards protect replacement. Never delete a foreign lock or hand-edit a
 canonical run summary.
 
 This branch does not publish PDF, exported report TSVs, or a report receipt.
-The current normal run-summary producer emits
-`approved_report_tables: []`; `report-html-v1a-report-table-approvals` is the
-next descendant to add producer-side authorization. `report-exports-v1`
-follows it.
+The normal run-summary producer now lawfully populates approved records from
+the optional exact manifest above and emits an empty list when it is omitted.
+`report-exports-v1` is the next descendant.
 
 Focused validation:
 
@@ -831,13 +862,13 @@ make report-test
 ```
 
 Run `make quarto-restore` first. The target requires real pinned Quarto and
-passes 65 focused tests, including deterministic real rerenders, plus the
-shell wrapper test. The complete Python gate reports
-`277 passed, 1 skipped`; the expected skip is the opt-in real-Quarto case that
-this target executes. Shell, guarded real-R, and `r-check` gates also pass.
-This is synthetic/incomplete local evidence only. No production report,
-runtime or cluster validation, completed production scientific review, or
-biological readiness was created.
+passes 119 Python tests (15 restore, 53 run-summary, and 51 renderer tests)
+plus the shell wrapper, including deterministic real rerenders. The complete
+Python gate reports `292 passed, 1 skipped`; the expected skip is the opt-in
+real-Quarto case that this target executes. Shell, guarded real-R, and
+`r-check` gates also pass. This is synthetic/incomplete local evidence only.
+No production approval manifest or report, runtime or cluster validation,
+completed production scientific review, or biological readiness was created.
 
 ## Manual Job Checking
 
@@ -953,10 +984,11 @@ batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
 `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
-locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
-locally fixture-tested at `209bb19`. `report-html-v1` is implemented and
-fixture-tested at `117ba26`; after its docpatch/push gate the next descendant
-is `report-html-v1a-report-table-approvals`.
+locally fixture-tested at `4dbd32d`. `artifact-run-summary` was introduced at
+`209bb19`, and its approval producer is implemented and locally fixture-tested
+at `2a4b8f8`. `report-html-v1` is implemented and fixture-tested at `117ba26`;
+after this approval docpatch/push gate the next descendant is
+`report-exports-v1`.
 
 ## Cluster Execution Pattern
 

@@ -42,8 +42,8 @@ flowchart LR
         direction TB
         run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
         report_html["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-        report_approvals["Explicit report-table approvals<br/>builder support pending"]
-        report_exports["PDF + TSV + report receipt<br/>pending"]
+        report_approvals["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
+        report_exports["report-exports-v1<br/>next: PDF + TSV + report receipt"]
         outputs["QC reports / PI reports / candidate result reports / handoff reports"]
     end
 
@@ -62,10 +62,10 @@ flowchart LR
     declared09 --> registry
     decision_record --> run_summary
 
-    class lab,run_summary,report_html current
+    class lab,run_summary,report_html,report_approvals current
     class public deferred
     class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future
     class registry contract
     class assays,results,declared09 future
-    class report_approvals,report_exports,outputs reporting
+    class report_exports,outputs reporting

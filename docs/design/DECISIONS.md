@@ -946,13 +946,12 @@ step-09b-local-r-runtime
 The local `step-09b1-real-r-fixes` package is complete and pushed. Step `09c`
 is implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
-locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
-locally fixture-tested at `209bb19`. `report-html-v1` is implemented and
-locally tested with the real pinned renderer at `117ba26`; after its
-docpatch/push gate, `report-html-v1a-report-table-approvals` is the next
-descendant, followed by `report-exports-v1`. Report-table authorization and
-PDF/TSV/final-receipt exports remain immediate, before the three foundational
-engineering packages.
+locally fixture-tested at `4dbd32d`. `artifact-run-summary` was introduced at
+`209bb19`. `report-html-v1` is implemented and locally tested with the real
+pinned renderer at `117ba26`. `report-html-v1a-report-table-approvals` is
+implemented at `2a4b8f8`; after its docpatch/push gate, `report-exports-v1` is
+the next descendant. PDF/TSV/final-receipt exports remain immediate, before
+the three foundational engineering packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the
 fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
@@ -982,11 +981,13 @@ does not apply to the implemented
 `schemas/artifacts/v1/`, `scripts/build_artifact_index.py`, or
 `configs/artifact_run_contract.example.json`,
 `scripts/build_run_summary.py`, or
-`scripts/_run_summary_science.py`, `scripts/restore_quarto.py`,
+`scripts/_run_summary_science.py`,
+`configs/report_table_approvals.example.tsv`,
+`scripts/restore_quarto.py`,
 `scripts/render_run_report.sh`, `scripts/render_run_report.py`,
 `reports/run_report.qmd`, `reports/run_report.css`, `make quarto-restore`, or
-`make report-test` interfaces. It still applies to pending report-table
-approval/export work, foundation tools, and per-step validators.
+`make report-test` interfaces. It still applies to pending report export work,
+foundation tools, and per-step validators.
 
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 
@@ -1112,9 +1113,14 @@ emission is not added.
 Decision: one exact complete adapter receipt under
 `OUTPUT_ROOT/<run_id>/` is the only required run-summary entry point. An
 optional Step `09c` review summary is supplied by exact path and is never
-discovered. Dry-run performs full validation without stable writes. Execute
-mode publishes canonical JSON, artifact TSV, QC TSV, and the run-summary
-receipt last as one transaction.
+discovered. An optional exact report-table approvals TSV may authorize only
+complete active-review Step `09c` TSV artifacts after run-contract, role,
+path, hash, row-count, display-limit, policy, approver, and approval-time
+validation. It requires the exact committed Step `09c` summary, is never
+discovered, and omission authorizes no tables.
+Dry-run performs full validation without stable writes. Execute mode publishes
+canonical JSON, artifact TSV, QC TSV, and the run-summary receipt last as one
+transaction.
 
 Decision: `summary_state=complete` means the four-file summary transaction was
 validated and committed. It does not mean the underlying evidence is
@@ -1122,15 +1128,20 @@ complete. Missing, failed, incomplete, and externally unavailable artifacts
 remain explicit, and no local, runtime, cluster, scientific, or biological
 status is inferred or promoted.
 
+Decision: report-table approvals do not change the run-summary receipt TSV
+header or its `1.0.0` schema. The receipt's canonical JSON SHA-256 transitively
+commits the approval-manifest descriptor and approved records.
+
 Decision: each execute-mode publication under one unchanged immutable run
 contract receives a distinct run-summary attempt ID and preserves ordered
 supersession history. Existing summary transactions, adapter
 receipt/run-contract/inventory/index/record members, optional Step `09c`
-inputs, and output-directory identity must validate before replacement. The
-builder carries native-source hashes recorded by the adapter but does not
-rehash native Step `00`-`09` sources. Owned locking, run-token
-temporary/backup paths, validation-before-publication, rollback, and recovery
-protect the receipt-last boundary.
+inputs, optional approval manifest and approved table snapshots, and
+output-directory identity must validate before replacement. The builder
+carries native-source hashes recorded by the adapter but does not rehash
+native Step `00`-`09` sources. Owned locking, run-token temporary/backup
+paths, validation-before-publication, rollback, and recovery protect the
+receipt-last boundary.
 
 Decision: adapter transaction completion and evidence completion are separate.
 The adapter receipt is published last and may be complete while individual
@@ -1204,11 +1215,14 @@ bcftools, R preprocessing, or CMH.
 
 Only tables named by the run summary's `approved_report_tables` records may
 enter the report, and their exact normalized paths, SHA-256 values, row
-counts, widths, and snapshots must validate. The normal run-summary producer
-currently emits `approved_report_tables: []`; the inserted
-`report-html-v1a-report-table-approvals` branch will add its explicit
-authorization interface before PDF exports. Canonical run-summary JSON must
-not be hand-edited to bypass that gate.
+counts, widths, and snapshots must validate. The implemented optional
+`--report-table-approvals` interface accepts a nonempty exact 14-column TSV,
+binds every row to the current run ID and immutable run-contract hash, and
+authorizes only exact complete active-review Step `09c` TSV artifacts with
+matching adapter role, path, hash, row count, display limit, approval policy,
+approver, and canonical UTC approval time. Omitting the input emits
+`approved_report_tables: []`. Canonical run-summary JSON must not be
+hand-edited to bypass this producer.
 
 Execute mode treats the one HTML file as an atomic publication. It validates
 any prior report, uses an owned lock plus run-token stage and backup paths,
@@ -1233,19 +1247,20 @@ Current evidence: `artifact-schema-v1` is implemented at `5f4d3b4`. The shared
 schema, four public schemas, read-only validator, 67-row synthetic physical
 inventory, valid fixtures, and current `58` focused tests pass locally.
 `artifact-adapters-v1` is implemented at `4dbd32d`; its 49 adapters, synthetic
-native fixtures, receipt-last transaction, and 50 focused tests pass locally
-(108 combined schema/adapter tests). `artifact-run-summary` is implemented at
-`209bb19`; its 39 focused tests, 147 combined artifact-layer tests, and the
-complete 213-test Python gate pass on synthetic fixtures.
-`report-html-v1` is implemented at `117ba26`; its 65 focused report tests pass
-with the real pinned Quarto runtime, and the complete Python gate passes 277
-tests with one expected skip. `make report-test` separately makes the real
-renderer mandatory and does not skip it. These results prove local
-synthetic-fixture behavior and local renderer execution only. No production
-source/index, canonical run summary, HTML/PDF report, pipeline runtime or
-cluster evidence, completed production scientific review, or biological
-readiness exists. `report-html-v1a-report-table-approvals` is next, followed
-by `report-exports-v1`; generated production outputs/reports remain ignored.
+native fixtures, receipt-last transaction, and 50 focused tests pass locally.
+`artifact-run-summary` was introduced at `209bb19`; its report-table approval
+producer is implemented at `2a4b8f8`, and its 53 focused and 161 combined
+artifact-layer tests pass on synthetic fixtures. `report-html-v1` is
+implemented at `117ba26`; the current `make report-test` gate passes 119
+Python tests plus its shell wrapper with the real pinned Quarto runtime, and
+the complete Python gate passes 292 tests with one expected skip.
+`make report-test` makes the real renderer mandatory and does not skip it.
+These results prove local synthetic-fixture behavior and local renderer
+execution only. No production source/index, canonical run summary, approval
+manifest, HTML/PDF report, pipeline runtime or cluster evidence, completed
+production scientific review, or biological readiness exists.
+`report-exports-v1` is next; generated production outputs/reports remain
+ignored.
 
 ## Documentation Files Have Different Purposes
 

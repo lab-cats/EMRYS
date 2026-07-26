@@ -4,10 +4,11 @@ This page describes the activated local roadmap beyond the current compute
 pipeline. Step `09c` now exists and is fixture-tested locally. The
 `artifact-schema-v1` foundation is also implemented and locally fixture-tested;
 `artifact-adapters-v1` and `artifact-run-summary` are implemented and locally
-fixture-tested. `report-html-v1` is implemented and fixture-tested locally;
-report-table approval production, PDF/TSV exports, foundation, validator, and
-modular tooling remain planned until each named branch is implemented. The
-current pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the
+fixture-tested. `report-html-v1` and
+`report-html-v1a-report-table-approvals` are implemented and fixture-tested
+locally; PDF/TSV exports, foundation, validator, and modular tooling remain
+planned until each named branch is implemented. The current pipeline is
+documented in `docs/architecture/ARCHITECTURE.md`: the
 cluster-proven boundary remains Step `06`, and Steps `07`-`09` remain not
 cluster-proven.
 
@@ -22,15 +23,17 @@ Step `09c` is implemented at `b674a31` and fixture-tested locally; it has no
 production review evidence. `artifact-schema-v1` is implemented and locally
 fixture-tested at `5f4d3b4`; `artifact-adapters-v1` is implemented and locally
 fixture-tested at `4dbd32d`, with 50 focused adapter tests passing.
-`artifact-run-summary` is implemented and locally fixture-tested at
-`209bb19`, with 39 focused tests passing. `report-html-v1` is implemented at
-`117ba26`: 65 focused report tests pass, including real renders with pinned
-Quarto `1.9.38`, and the complete Python suite reports 277 passed with one
-expected opt-in Quarto skip. The official macOS archive is verified against
-SHA-256
+`artifact-run-summary` is implemented at `209bb19` and its explicit
+report-table approval producer is implemented at `2a4b8f8`; 53 focused
+run-summary tests and 161 combined artifact-layer tests pass.
+`report-html-v1` is implemented at `117ba26`. The current
+`make report-test` gate runs 119 Python tests with real pinned Quarto `1.9.38`
+plus the shell wrapper test, and the complete Python suite reports 292 passed
+with one expected opt-in Quarto skip. The official macOS archive is verified
+against SHA-256
 `47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
 The rendered evidence is synthetic/incomplete only. No production artifact
-index, run summary, or report exists, and no computational, cluster,
+index, run summary, approval manifest, or report exists, and no computational, cluster,
 scientific-review, or biological status is promoted.
 
 ## Current vs future boundary
@@ -39,7 +42,7 @@ scientific-review, or biological status is promoted.
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
 | Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; Step `09c` implemented at `b674a31` and synthetic-fixture-tested; none has production scientific or Step `07`-`09` cluster evidence | Later assay-specific modules after explicit evidence/report foundations |
-| Reporting | Handwritten demo/QC docs and generated step artifacts; Draft 2020-12 schemas and explicit 67-row inventory implemented at `5f4d3b4`; dry-run-first explicit adapter indexer implemented at `4dbd32d`; canonical JSON plus deterministic TSV/QC run-summary builder implemented at `209bb19`; self-contained script-free HTML renderer implemented at `117ba26`; no production artifact index, summary, or report | Add normal-builder support for explicit report-table approvals, then bundled-Typst PDF/TSV exports and the report receipt |
+| Reporting | Handwritten demo/QC docs and generated step artifacts; Draft 2020-12 schemas and explicit 67-row inventory implemented at `5f4d3b4`; dry-run-first explicit adapter indexer implemented at `4dbd32d`; canonical JSON plus deterministic TSV/QC run-summary builder implemented at `209bb19`; explicit report-table approval production implemented at `2a4b8f8`; self-contained script-free HTML renderer implemented at `117ba26`; no production artifact index, summary, approval manifest, or report | Add bundled-Typst PDF/TSV exports and the report receipt on `report-exports-v1` |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
 ## Ordered roadmap boundary
@@ -63,8 +66,8 @@ flowchart TB
     artifact_adapters["artifact-adapters-v1<br/>implemented + locally fixture-tested<br/>no production index"]
     runsummary["artifact-run-summary<br/>implemented + locally fixture-tested<br/>no production summary"]
     reporthtml["report-html-v1<br/>implemented + locally fixture-tested<br/>no production report"]
-    approvals["report-html-v1a-report-table-approvals<br/>next"]
-    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
+    approvals["report-html-v1a-report-table-approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
+    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
     foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
     validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
     remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
@@ -73,10 +76,10 @@ flowchart TB
     science09c --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports --> foundations --> validators
     validators -.-> remote
 
-    class s09,rfix,science09c,artifact_schema,artifact_adapters,runsummary,reporthtml current
+    class s09,rfix,science09c,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals current
     class s09a docs
     class rlocal runtime
-    class approvals,exports,foundations,validators future
+    class exports,foundations,validators future
     class remote deferred
 ```
 
@@ -123,13 +126,13 @@ artifacts without glob discovery. It has not generated a production artifact
 index. `artifact-adapters-v1` is implemented at `4dbd32d`; its 49 read-only
 adapters require the explicit run contract plus inventory, and its 50 focused
 tests pass on synthetic native-output fixtures. `artifact-run-summary` is
-implemented at `209bb19`; its 39 focused tests pass on synthetic adapter and
-Step `09c` fixtures. `report-html-v1` is implemented at `117ba26`; its 65
-focused tests cover static, self-contained, script-free HTML and include real
-pinned-Quarto renders. The normal run-summary builder still cannot populate
-explicit report-table approvals, so
-`report-html-v1a-report-table-approvals` is the next package before
-`report-exports-v1`. PDF, exported TSV, and the report receipt remain pending.
+implemented at `209bb19`, and its explicit report-table approval producer is
+implemented at `2a4b8f8`; 53 focused run-summary tests and 161 combined
+artifact-layer tests pass on synthetic fixtures. `report-html-v1` is
+implemented at `117ba26`. The current `make report-test` gate runs 119 Python
+tests, including real pinned-Quarto renders, plus the shell wrapper test.
+`report-exports-v1` is next; PDF, exported TSV, and the report receipt remain
+pending.
 Remote validation is paused until the final local validator branch.
 
 ## Future modular dataflow
@@ -181,8 +184,8 @@ flowchart LR
         direction TB
         run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
         report_html["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-        report_approvals["Explicit report-table approvals<br/>builder support pending"]
-        report_exports["PDF + TSV + report receipt<br/>pending"]
+        report_approvals["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
+        report_exports["report-exports-v1<br/>next: PDF + TSV + report receipt"]
         outputs["QC reports / PI reports / candidate result reports / handoff reports"]
     end
 
@@ -201,13 +204,13 @@ flowchart LR
     declared09 --> registry
     decision_record --> run_summary
 
-    class lab,run_summary,report_html current
+    class lab,run_summary,report_html,report_approvals current
     class public deferred
     class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future
     class registry contract
     class assays,results,declared09 future
-    class report_approvals,report_exports,outputs reporting
+    class report_exports,outputs reporting
 ```
 
 ## Manifest/config contracts
@@ -229,7 +232,7 @@ flowchart TD
         review["Step 09c review record<br/>state + decisions + limitations"]
         provenance["Provenance<br/>what code/reference/tools produced results"]
         registry["Artifact registry<br/>what outputs exist and where"]
-        report_approval["Explicit report-table approvals<br/>normal-builder producer pending"]
+        report_approval["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
     end
 
     subgraph artifacts["Validated artifact inputs"]
@@ -267,8 +270,8 @@ flowchart TD
     reports --> html_report["Static self-contained HTML<br/>implemented + fixture-tested locally"]
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters,reports,html_report current
-    class ready,module,results,report_approval future
+    class fastqs,existing,adapters,reports,html_report,report_approval current
+    class ready,module,results future
 ```
 
 ## Reporting layer
@@ -281,6 +284,7 @@ The implemented summary boundary is:
 build_run_summary.py
   exact complete artifact receipt
   + optional exact Step 09c review summary
+  + optional exact report-table approvals TSV
   -> canonical run_summary.json
   -> deterministic run_summary.tsv
   -> deterministic qc_summary.tsv
@@ -302,9 +306,13 @@ scripts/render_run_report.sh
 Only canonical JSON crosses into the implemented renderer. The TSV views are
 outputs, not independent renderer inputs. The renderer publishes exactly one
 HTML file and does not execute analysis. No production summary or report
-exists. Although the schema can represent explicitly approved report-table
-paths, the normal run-summary builder cannot yet populate them; that producer
-is the bounded `report-html-v1a-report-table-approvals` package.
+exists. The optional `--report-table-approvals` input is an exact, nonempty
+14-column TSV manifest; omission preserves an empty `approved_report_tables`
+list. Supplied rows must be bound to the run ID and immutable contract, name
+complete Step `09c` scientific-review artifacts, and reconcile their paths,
+hashes, row counts, roles, approval metadata, and current file snapshots.
+Neither the builder nor renderer discovers tables by glob, and canonical
+run-summary JSON must never be hand-edited to add an approval.
 
 ```mermaid
 flowchart TD
@@ -329,10 +337,10 @@ flowchart TD
     run_summary_tsv["run_summary.tsv<br/>deterministic artifact view"]
     qc_summary["qc_summary.tsv<br/>deterministic metric view"]
     summary_receipt["run_summary_receipt.tsv<br/>published last"]
-    approved_tables["Explicit approved report-table records<br/>normal builder support pending"]
+    approved_tables["Explicit approved report-table records<br/>implemented + fixture-tested locally at 2a4b8f8"]
     generator["Static QMD / pinned Quarto renderer<br/>implemented; no analysis execution"]
     html["Self-contained script-free HTML<br/>fixture-tested locally; no production report"]
-    exports["Bundled Typst PDF + TSV + receipt<br/>pending"]
+    exports["report-exports-v1<br/>next: bundled Typst PDF + TSV + receipt"]
 
     subgraph review["Scientific review fields"]
         direction TB
@@ -387,10 +395,10 @@ flowchart TD
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,generator,html current
+    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,approved_tables,generator,html current
     class run_contract,inventory,declared_sources,artifacts_tsv contract
     class science_summary,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class approved_tables,exports future
+    class exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting
 ```
 
@@ -419,7 +427,9 @@ The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v
 Activated local packages (Step `09b1` is complete; Step `09c`,
 `artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`, and
 `report-html-v1` are implemented and synthetic/contract-fixture-tested locally;
-every later package remains unimplemented until its own branch; dependency
+`report-html-v1a-report-table-approvals` is also implemented and
+fixture-tested locally at `2a4b8f8`; every package beginning with
+`report-exports-v1` remains unimplemented until its own branch; dependency
 order fixed):
 
 ```text
@@ -464,17 +474,20 @@ run summary and reports after evidence inspection.
 ## Implementation-boundary note
 
 The local R environment, `step-09b1-real-r-fixes`, Step `09c`,
-`artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`, and
-`report-html-v1` are implemented at this boundary. Environment/restore checks,
-both Step `08` and Step `09` semantic real-R suites, the Step `09c`
-Python/shell fixtures, artifact schema/inventory fixtures, 50 focused adapter
-tests, 39 focused run-summary tests, and 65 focused report tests pass locally.
+`artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
+`report-html-v1`, and `report-html-v1a-report-table-approvals` are implemented
+at this boundary. Environment/restore checks, both Step `08` and Step `09`
+semantic real-R suites, the Step `09c` Python/shell fixtures, artifact
+schema/inventory fixtures, 50 focused adapter tests, 53 focused run-summary
+tests, 161 combined artifact-layer tests, and the 119-test `make report-test`
+Python gate plus its shell wrapper test pass locally. The complete Python suite
+reports 292 passed with one expected opt-in Quarto skip.
 There is no production Step `07`-`09` or Step `09c` review evidence, no
 production artifact index, run summary, or report, and no downstream cluster
-proof. `report-html-v1a-report-table-approvals` is next, followed by
-`report-exports-v1`; the remaining activated packages above are plans, not
-runnable commands. The generated HTML fixtures are synthetic/incomplete and
-must not be presented as production evidence or biological interpretation.
+proof. `report-exports-v1` is next; the remaining activated packages above are
+plans, not runnable commands. The generated HTML fixtures are
+synthetic/incomplete and must not be presented as production evidence or
+biological interpretation.
 Do not preempt the branch sequence with remote validation, generic dispatchers,
 arrays, broad helper extraction, automatic R-package installation in compute
 wrappers, cleanup/lock deletion, report globbing/recomputation, moved compute

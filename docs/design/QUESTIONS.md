@@ -159,10 +159,10 @@ The design questions for the immediate artifact/report vertical slice are
 resolved. Step `09c` is implemented and fixture-tested locally.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
-`4dbd32d`; `artifact-run-summary` is implemented and locally fixture-tested
-at `209bb19`; and `report-html-v1` is implemented and locally fixture-tested
-at `117ba26`. Producer-side report-table approvals and final PDF/TSV/receipt
-exports remain approved but unimplemented:
+`4dbd32d`; `artifact-run-summary` was introduced at `209bb19`;
+`report-html-v1` is implemented and locally fixture-tested at `117ba26`; and
+producer-side report-table approvals are implemented and fixture-tested at
+`2a4b8f8`. Final PDF/TSV/receipt exports remain approved but unimplemented:
 
 ```text
 artifact-schema-v1
@@ -206,12 +206,15 @@ Implemented run-summary decisions:
 
 ```text
 canonical run-summary JSON as the report layer's sole structured entry point
-one exact complete adapter receipt and optional exact Step 09c summary
+one exact complete adapter receipt, optional exact Step 09c summary, and
+  optional exact report-table approval manifest
 no glob discovery, analysis execution, or status promotion
 deterministic artifact and QC TSV views
 rollback-protected four-file transaction with the receipt published last
 distinct summary attempt IDs under one unchanged immutable run contract
 explicit missing, failed, incomplete, and unavailable evidence remains visible
+approval rows bind to the current run contract and exact complete active
+  Step 09c TSV artifacts; omission produces no approved tables
 ```
 
 Implemented HTML-report decisions:
@@ -229,25 +232,27 @@ report generation never runs analysis and never proves validation
 state banners preserve incomplete or exploratory/provisional meaning
 ```
 
-Fixed decisions for the remaining report packages:
+Implemented approval and remaining export decisions:
 
 ```text
-report-html-v1a-report-table-approvals adds a normal producer authorization path
+report-html-v1a-report-table-approvals adds a normal producer authorization
+  path and is implemented at 2a4b8f8
 report-exports-v1 adds PDF, exported summary TSV, and final report receipt
 PDF uses Quarto bundled Typst and repeats the state banner on every page
 ```
 
-The current gate has 58 schema tests, 50 adapter tests, 108 combined
-schema/adapter tests, 39 run-summary tests, 147 combined artifact-layer tests,
-and 65 focused report tests. The focused report target passes with real pinned
-Quarto required. The full Python gate reports `277 passed, 1 skipped`; the
-expected skip is its opt-in real-Quarto case. Synthetic fixtures exercise
+The current gate has 58 schema tests, 50 adapter tests, 53 focused run-summary
+tests, 161 combined artifact-layer tests, and 119 Python tests plus the shell
+wrapper in `make report-test`. The focused report target passes with real
+pinned Quarto required. The full Python gate reports `292 passed, 1 skipped`;
+the expected skip is its opt-in real-Quarto case. Synthetic fixtures exercise
 explicit native-source inspection, adapter and summary receipt-last
-publication, and deterministic HTML rendering. No production source has been
-inspected by these artifact-layer packages, and no production artifact index,
-run summary, or report exists. Production reports and biological conclusions
-remain unavailable because production Steps `07`-`09` evidence and production
-Step `09c` review evidence have not been generated or inspected.
+publication, report-table authorization, and deterministic HTML rendering.
+No production source has been inspected by these artifact-layer packages, and
+no production artifact index, run summary, approval manifest, or report
+exists. Production reports and biological conclusions remain unavailable
+because production Steps `07`-`09` evidence and production Step `09c` review
+evidence have not been generated or inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -556,16 +561,18 @@ records/index/receipt transactions. No production source has been inspected
 or indexed, and no runtime, cluster, scientific-review, or
 biological-readiness status has changed.
 
-`artifact-run-summary` is implemented locally at `209bb19`. It publishes
-canonical JSON, deterministic artifact/QC TSV views, and a receipt-last
-four-file transaction from exact synthetic adapter inputs. All 39 focused
-tests pass. Synthetic fixture summaries exist; no production artifact
-transaction or production run summary has been generated, and no evidence
-status has been promoted.
+`artifact-run-summary` was introduced at `209bb19` and its report-table
+approval producer is implemented at `2a4b8f8`. It publishes canonical JSON,
+deterministic artifact/QC TSV views, and a receipt-last four-file transaction
+from exact synthetic adapter inputs plus optional exact Step `09c` approval
+inputs. All 53 focused tests pass. Synthetic fixture summaries exist; no
+production artifact transaction, production run summary, or approval manifest
+has been generated, and no evidence status has been promoted.
 
-`report-html-v1` is implemented locally at `117ba26`. Its 65-test focused
-target passes with real pinned Quarto required, and the complete Python gate
-reports `277 passed, 1 skipped`. Synthetic/incomplete fixture reports render
+`report-html-v1` is implemented locally at `117ba26`. The current
+`make report-test` target passes 119 Python tests plus its shell wrapper with
+real pinned Quarto required, and the complete Python gate reports
+`292 passed, 1 skipped`. Synthetic/incomplete fixture reports render
 deterministically, but no production report has been generated and no
 computational, scientific, or biological state has been promoted.
 
@@ -905,9 +912,8 @@ scientific status remain independent.
 This contract is implemented at `4dbd32d`. All 50 focused adapter tests and
 108 combined schema/adapter tests pass on synthetic fixtures. No production
 source or artifact transaction has been inspected. The run-summary package is
-implemented separately. Static HTML rendering is also implemented;
-producer-side report-table approvals and PDF/TSV/receipt exports remain
-pending.
+implemented separately. Static HTML rendering and producer-side report-table
+approvals are also implemented; PDF/TSV/receipt exports remain pending.
 
 ### What Is The Artifact Run Summary Contract?
 
@@ -920,16 +926,25 @@ Answered for local implementation.
 --artifact-receipt ARTIFACT_RECEIPT
 --output-root OUTPUT_ROOT
 [--science-review-summary REVIEW_SUMMARY_TSV]
+[--report-table-approvals APPROVALS_TSV]
 [--execute]
 ```
 
 The artifact receipt must be the exact complete receipt under the declared
 `OUTPUT_ROOT/<run_id>/` adapter transaction. The optional Step `09c` summary
-is an exact committed path and is never discovered. Dry-run validates the
-complete adapter transaction, immutable run identity, receipt/run-contract/
-inventory/index/record hashes, ordering, attempt lineage, and optional science
-evidence without writing. It carries native-source hashes recorded by the
-adapter but does not rehash native Step `00`-`09` sources. Execute mode
+is an exact committed transaction-marker path and is never discovered. The
+optional report-table approval manifest is an explicit stable regular-file
+input whose descriptor is committed by the run summary. Supplying approvals
+requires the exact committed Step `09c` summary. A supplied approvals TSV is
+nonempty, has the exact tracked 14-column
+header, and binds every approved row to the current run contract and one exact
+complete active-review Step `09c` TSV artifact, including its role,
+path, hash, row count, display limit, policy, approver, and approval time.
+Omitting it yields no approved tables. Dry-run validates the complete adapter
+transaction, immutable run identity, receipt/run-contract/inventory/index/
+record hashes, ordering, attempt lineage, optional science evidence, and
+optional approvals without writing. It carries native-source hashes recorded
+by the adapter but does not rehash native Step `00`-`09` sources. Execute mode
 publishes:
 
 ```text
@@ -945,16 +960,16 @@ point. The two TSVs are deterministic artifact and QC views, and the receipt
 is published last. A complete summary transaction can legitimately retain
 missing, failed, incomplete, or unavailable evidence. Retries receive
 distinct run-summary attempt IDs under the unchanged immutable run contract.
-Owned locking, adapter transaction-member and optional Step `09c` input
-rechecks, output-directory identity checks, validation-before-publication,
-rollback, and recovery protect publication.
+Owned locking, adapter transaction-member, optional Step `09c`, approval
+manifest, and approved-table input rechecks, output-directory identity checks,
+validation-before-publication, rollback, and recovery protect publication.
 The builder never invokes analysis or promotes computational, scientific, or
 biological status.
 
-This contract is implemented at `209bb19`. All 39 focused tests and 147
-combined artifact-layer tests pass on synthetic fixtures. No production
-adapter transaction or run summary exists, and no validation claim was
-created.
+This contract was introduced at `209bb19` and the approval producer is
+implemented at `2a4b8f8`. All 53 focused tests and 161 combined artifact-layer
+tests pass on synthetic fixtures. No production adapter transaction, run
+summary, or approval manifest exists, and no validation claim was created.
 
 ### What Is The Static HTML Report Contract?
 
@@ -994,16 +1009,16 @@ exported report TSVs, and the report receipt are not part of this contract.
 SHA-256
 `47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`
 before publishing ignored local tooling. `make report-test` then requires
-that real pinned executable. All 65 focused tests pass, while the complete
-Python gate reports `277 passed, 1 skipped`; the one expected skip is the
-opt-in real-Quarto test executed by the focused target. This is local
-synthetic/incomplete fixture evidence only, not a production report or
+that real pinned executable. It passes 119 Python tests plus its shell wrapper,
+while the complete Python gate reports `292 passed, 1 skipped`; the expected
+skip is the opt-in real-Quarto test executed by the focused target. This is
+local synthetic/incomplete fixture evidence only, not a production report or
 runtime, cluster, scientific-review, or biological-readiness claim.
 
-The renderer accepts only tables named by `approved_report_tables`, but the
-current normal run-summary producer emits that list empty. The resolved next
-package is therefore `report-html-v1a-report-table-approvals`, followed by
-`report-exports-v1`. Operators must not hand-edit canonical summary JSON.
+The renderer accepts only tables named by `approved_report_tables`. The normal
+run-summary producer now creates those records from an optional validated
+manifest and emits an empty list when it is omitted. Operators must not
+hand-edit canonical summary JSON. `report-exports-v1` is next.
 
 ### Step 02b Final-BAM QC Refresh
 
