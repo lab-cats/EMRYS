@@ -45,6 +45,14 @@ review evidence:
 09c  Explicit scientific-evidence validation and review-summary publication
 ```
 
+Implemented local artifact-contract tooling, focused-fixture-tested without
+production source inspection or generated reporting artifacts:
+
+```text
+artifact-schema-v1  Five schema files total, read-only validator, and
+                    67-row synthetic explicit physical-artifact inventory
+```
+
 The active Step `07` shell suite uses a fake bcftools executable. Real
 bcftools is unavailable on this workstation, and no Step `07` cluster dry-run,
 execute run, or output evidence has been inspected.
@@ -89,8 +97,8 @@ step-09a-roadmap-docpatch
 └── step-09b-local-r-runtime
     └── step-09b1-real-r-fixes
         └── step-09c-scientific-validation
-            └── artifact-schema-v1
-                └── artifact-adapters-v1
+            └── artifact-schema-v1          # implemented at 5f4d3b4
+                └── artifact-adapters-v1    # next
                     └── artifact-run-summary
                         └── report-html-v1
                             └── report-exports-v1
@@ -114,8 +122,9 @@ step-09a-roadmap-docpatch
 
 The Step `09b` runtime and Step `09b1` corrective gates are complete locally.
 Commit `eae5eca` contains the Step `09b1` implementation and tests. Step `09c`
-is implemented at `b674a31`; after this documentation gate is committed and
-pushed, `artifact-schema-v1` is next.
+is implemented at `b674a31`. `artifact-schema-v1` is implemented at `5f4d3b4`;
+after its documentation gate is committed and pushed,
+`artifact-adapters-v1` is next.
 
 Completed local gate:
 
@@ -125,6 +134,14 @@ step-09c-scientific-validation
   13-file atomic evidence transaction with summary last
   Python and shell synthetic-fixture suites
   no production scientific evidence or review
+
+artifact-schema-v1
+  one shared common schema plus four public Draft 2020-12 record schemas
+  read-only explicit document and inventory validator
+  67-row synthetic explicit physical-artifact inventory for Steps 00a-09c
+  54 focused synthetic contract tests
+  no adapters, production source inspection, generated artifact index,
+    run summary, report, runtime/cluster evidence, or scientific evidence
 ```
 
 Step `09c` may publish only:
@@ -137,19 +154,18 @@ science_review_complete_exploratory
 It must reject the reserved `biological_interpretation_ready` state until a
 separately approved policy branch unlocks its scientific exit criteria.
 
-### 1. Implement Artifacts, Run Summary, And Reports Immediately
+### 1. Continue Artifacts, Run Summary, And Reports Immediately
 
-Do not defer reporting. Implement, in order:
+Do not defer reporting. The schema package is complete locally; continue in
+order:
 
-1. `artifact-schema-v1`: Draft 2020-12 artifact, science-review, run-summary,
-   and report-receipt schemas plus an explicit expected-artifact inventory.
-2. `artifact-adapters-v1`: read-only explicit adapters for Steps `00a`-`09`
+1. `artifact-adapters-v1`: read-only explicit adapters for Steps `00a`-`09`
    and Step `09c`; never discover inputs by glob.
-3. `artifact-run-summary`: deterministic canonical JSON plus TSV/QC views and
+2. `artifact-run-summary`: deterministic canonical JSON plus TSV/QC views and
    a receipt published last.
-4. `report-html-v1`: checksum-verified local Quarto `1.9.38`, a static QMD
+3. `report-html-v1`: checksum-verified local Quarto `1.9.38`, a static QMD
    view, and one self-contained accessible HTML report.
-5. `report-exports-v1`: the same report as HTML/PDF plus summary TSV and a
+4. `report-exports-v1`: the same report as HTML/PDF plus summary TSV and a
    report receipt, using bundled Typst for PDF.
 
 Reports must separate computational and scientific state, carry persistent
@@ -434,11 +450,12 @@ conversion. This local fixture pass is not production or cluster evidence.
 
 ## Activated Roadmap And Deferred Boundaries
 
-Scientific-validation tooling is implemented and fixture-tested locally.
-Explicit artifact schemas/adapters, the canonical run summary, HTML/PDF/TSV
-reports, the three foundational read-only packages, and one validator branch
-per pipeline step remain activated in the exact local sequence above. Each
-becomes available only after its own implementation/docpatch gate.
+Scientific-validation tooling and the explicit artifact schemas/validator are
+implemented and fixture-tested locally. Artifact adapters, the canonical run
+summary, HTML/PDF/TSV reports, the three foundational read-only packages, and
+one validator branch per pipeline step remain activated in the exact local
+sequence above. Each becomes available only after its own
+implementation/docpatch gate.
 
 ### Foundational Operational Packages
 
@@ -463,8 +480,9 @@ vertical slice:
 ### Reporting And Artifact Layer
 
 This layer is activated for immediate local implementation after Step `09c`.
-It remains non-runnable at the completed local Step `09c` implementation
-boundary; `artifact-schema-v1` is the next package.
+Its read-only schema validator is now runnable and locally focused-tested, but
+artifact production and reporting remain non-runnable at this boundary;
+`artifact-adapters-v1` is the next package.
 
 Ordered packages:
 
@@ -478,11 +496,13 @@ artifact-schema-v1
 -> report-exports-v1
 ```
 
-Roadmap ideas:
+Implemented boundary and remaining roadmap:
 
-* `artifact-schema-v1` defines versioned JSON Schema, fixtures, and a validator,
-  after resolving run IDs, attempted/failed/incomplete states, version
-  conflicts, paths/hashes, and richer Step `09` fields.
+* `artifact-schema-v1` now defines the versioned JSON Schemas, valid fixtures,
+  explicit physical inventory, and read-only validator for run IDs,
+  attempts/failures/incomplete states, version conflicts, paths/hashes,
+  evidence roles, scientific state, and richer Step `09` fields. Its 54
+  focused tests pass locally.
 * `artifact-adapters-v1` adds read-only adapters over existing Step `07`
   receipts, Step `08` receipt/summary, and Step `09` summary without changing
   proven CLIs or paths. Native emitters may come later.
@@ -583,6 +603,9 @@ Pass both real-R suites, the aggregate local R target, shell/Python gates, and r
 Implement Step 09c locally as explicit-input, dry-run-first Python/shell evidence validation at b674a31.
 Publish and validate the synthetic-fixture Step 09c 13-file summary-last transaction with owned locking, immutable hashes, rollback, and cleanup.
 Promote Step 09c Python and shell fixtures into the active repository gate, including incomplete/exploratory and reserved-state cases.
+Implement artifact-schema-v1 at 5f4d3b4 with one shared common schema and four public Draft 2020-12 schemas.
+Add and validate the 67-row synthetic explicit physical-artifact inventory for Steps 00a-09c.
+Pass all 54 focused artifact-contract tests without claiming adapter execution, generated reports, production evidence, or cluster proof.
 ```
 
 ## Development Rule

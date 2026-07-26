@@ -29,9 +29,12 @@ malformed-count failure.
 No Step `07`-`09` remote dry-run, execute, log, or output evidence was added;
 all three remain not cluster-proven. Step `09c` is implemented at `b674a31`
 and synthetic-fixture-tested locally, but no production evidence package or
-scientific review exists. Remote promotion is intentionally paused while the
-remaining local sequence implements the artifact/run-summary/report vertical
-slice, read-only foundations, and one validator branch per pipeline step.
+scientific review exists. The `artifact-schema-v1` foundation is implemented
+and locally fixture-tested at `5f4d3b4`; it defines contracts and an explicit
+expected-artifact inventory but has not built a production artifact index, run
+summary, or report. Remote promotion is intentionally paused while the
+remaining local sequence implements the adapters/run-summary/report layers,
+read-only foundations, and one validator branch per pipeline step.
 
 Current boundary:
 
@@ -42,7 +45,8 @@ cluster-proven reference prep through Steps 00a-00c
 -> local R 4.6.1 + guarded renv/Bioconductor 3.23 environment checks pass
 -> Step 08 and Step 09 real-R suites pass locally without SKIP
 -> Step 09c implemented at b674a31 and fixture-tested locally; no production science evidence
--> artifact-schema-v1 is next; remote validation remains paused
+-> artifact-schema-v1 implemented and locally fixture-tested at 5f4d3b4; no production artifact index or report
+-> artifact-adapters-v1 is next; remote validation remains paused
 ```
 
 ## Pipeline Dataflow
@@ -83,7 +87,8 @@ flowchart LR
     localr["09b local R runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23<br/>environment checks pass"]
     fixes["09b1 real-R fixes<br/>complete locally"]
     science["09c scientific-validation tooling<br/>implemented + fixture-tested locally<br/>no production-review or readiness claim"]
-    reports["immediate artifact + report slice<br/>schema -> adapters -> run summary -> HTML -> PDF<br/>activated, not implemented"]
+    artifact_schema["artifact-schema-v1<br/>versioned schemas + explicit inventory<br/>implemented + fixture-tested locally"]
+    reports["remaining artifact + report slice<br/>adapters -> run summary -> HTML -> PDF<br/>pending"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -92,11 +97,11 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-    s09 --> localr --> fixes --> science --> reports
+    s09 --> localr --> fixes --> science --> artifact_schema --> reports
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science boundary
+    class s07,s08,s09,localr,fixes,science,artifact_schema boundary
     class reports pending
 ```
 
@@ -120,6 +125,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implemented locally at `90335d8` and hardened at `eae5eca`; shell/fake-R and guarded real-R suites pass; not cluster-proven | Consumes the exact partition-manifest × `{FWD_like,REV_like}` receipt set. Raw DP/AD/INFO AD lexemes are validated before `VariantAnnotation`; no production or cluster evidence exists. |
 | `09` | four TSVs and two PDFs under `results/editing/<analysis>/` | implemented locally at `e4371de`; shell/fake-R and guarded real-R suites pass after the `eae5eca` fixture correction; not cluster-proven | Uses explicit manifest-defined pairs plus the Step `08` sites table and complete input receipt. PDF EOF fixture validation is raw-byte and locale-independent; no production or cluster evidence exists. |
 | `09c` | 13 TSVs under `results/scientific_validation/<review_id>/` | implemented locally at `b674a31`; Python/shell synthetic fixtures pass | Validates explicit evidence and publishes the review summary last. No production review evidence, production science completion, cluster proof, or biological readiness is recorded or supported by inspected evidence. |
+| `artifact-schema-v1` | four public JSON schemas plus their shared definitions under `schemas/artifacts/v1/`, and `configs/artifact_inventory.example.tsv` | implemented locally at `5f4d3b4`; schema, inventory, and synthetic-record fixtures pass | Defines artifact, scientific-review, run-summary, and report-receipt contracts plus a 67-row explicit inventory. It does not build a production artifact index, run summary, or report. |
 
 ## Data Contracts
 
@@ -135,6 +141,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | VCF preprocessing | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` |
 | Paired CMH calling | `results/editing/<analysis>/<analysis>.cmh_all_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_summary.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.pdf`, and `results/editing/<analysis>/<analysis>.depth_delta.pdf` |
 | Scientific evidence validation | 13 declared TSVs under `results/scientific_validation/<review_id>/`; `<review_id>.step09c_review_summary.tsv` is published last |
+| Artifact schema foundation | Draft 2020-12 contracts under `schemas/artifacts/v1/`, a 67-row explicit expected-artifact inventory at `configs/artifact_inventory.example.tsv`, and local validation through `scripts/validate_artifact_contracts.py`; no generated artifact index is part of this stage |
 
 Step `08` enumerates the exact declared partition set in manifest order and both orientations in fixed `FWD_like`, then `REV_like`, order. It validates the Step `07` receipts, manifest hashes, VCF paths, declared record counts, and exact sample order rather than globbing available files. The deterministic wide candidate table starts with:
 
@@ -246,8 +253,9 @@ flowchart LR
     localr["local R gate<br/>guarded renv / runtime checks"]
     realrfix["09b1 real-R fixes<br/>both suites pass locally"]
     sciencebranch["09c implemented locally<br/>synthetic fixtures pass"]
-    artifacts["artifact contracts<br/>schema -> adapters -> run summary"]
-    reports["immediate reports<br/>HTML -> PDF exports"]
+    artifact_schema["artifact-schema-v1<br/>schemas + explicit inventory<br/>fixture-tested locally"]
+    artifacts["artifact adapters -> run summary<br/>pending"]
+    reports["immediate reports<br/>HTML -> PDF exports<br/>pending"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
     validators["one validator branch per step<br/>00a through 09"]
     localstop["final local validator<br/>clean / docpatched / pushed"]
@@ -269,7 +277,7 @@ flowchart LR
     trouble["troubleshooting docs"]
 
     stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    descendant --> localr --> realrfix --> sciencebranch --> artifacts --> reports --> foundations --> validators --> localstop --> remotehold
+    descendant --> localr --> realrfix --> sciencebranch --> artifact_schema --> artifacts --> reports --> foundations --> validators --> localstop --> remotehold
     remotehold -.-> pull --> dryrun --> execute --> validate --> validationpatch
     validationpatch -->|clean push, then next descendant| pull
 
@@ -285,7 +293,7 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
@@ -311,6 +319,9 @@ Safeguards:
   and cache-disabled empty-library restore coverage
 - Step `09c` explicit-input validation, 13-file summary-last publication,
   immutable-hash checks, owned lock, rollback, and synthetic fixtures
+- Draft 2020-12 artifact-contract validation, a declared 67-row inventory,
+  explicit source paths rather than glob discovery, and synthetic record
+  fixtures
 - troubleshooting docs
 
 ## Local Vs Cluster Responsibilities
@@ -318,7 +329,7 @@ Safeguards:
 | Local macOS | CSU/ADAM SLURM |
 | ----------- | -------------- |
 | Edit scripts/docs/tests. | Run real STAR/samtools/Picard/GATK/bcftools jobs. |
-| Run current fake-tool shell tests, syntax checks, guarded real-R fixtures, and Step `09c` scientific-validation fixtures. After their named branches exist, artifact aggregation and synthetic report rendering also run locally. | Execute sample/cohort-scale workflows through `jobs/*.slurm`; compute wrappers never install R packages. |
+| Run current fake-tool shell tests, syntax checks, guarded real-R fixtures, Step `09c` scientific-validation fixtures, and artifact-schema/inventory validation. Artifact aggregation and synthetic report rendering remain pending their named branches. | Execute sample/cohort-scale workflows through `jobs/*.slurm`; compute wrappers never install R packages. |
 | Validate command construction and dry-run behavior. | Inspect SLURM logs, scheduler status, and output files. |
 | Commit/push reviewed changes. | Pull committed changes before dry-run and execute gates. |
 
@@ -358,11 +369,13 @@ of computational or biological validation.
 
 The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented at `b674a31` and synthetic-fixture-tested locally; no production
-science evidence or review completion is claimed.
+science evidence or review completion is claimed. `artifact-schema-v1` is
+implemented and locally fixture-tested at `5f4d3b4`, but no production artifact
+index, run summary, or report exists.
 
 1. Implement the immediate report vertical slice in order:
-   `artifact-schema-v1`, `artifact-adapters-v1`,
-   `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`.
+   `artifact-adapters-v1`, `artifact-run-summary`, `report-html-v1`, and
+   `report-exports-v1`.
    Synthetic/incomplete reports must carry their state banners and must not be
    presented as validation evidence.
 2. Implement the read-only foundations

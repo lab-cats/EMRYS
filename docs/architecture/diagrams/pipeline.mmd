@@ -33,7 +33,8 @@ flowchart LR
     localr["09b local R runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23<br/>environment checks pass"]
     fixes["09b1 real-R fixes<br/>complete locally"]
     science["09c scientific-validation tooling<br/>implemented + fixture-tested locally<br/>no production-review or readiness claim"]
-    reports["immediate artifact + report slice<br/>schema -> adapters -> run summary -> HTML -> PDF<br/>activated, not implemented"]
+    artifact_schema["artifact-schema-v1<br/>versioned schemas + explicit inventory<br/>implemented + fixture-tested locally"]
+    reports["remaining artifact + report slice<br/>adapters -> run summary -> HTML -> PDF<br/>pending"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -42,9 +43,9 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-    s09 --> localr --> fixes --> science --> reports
+    s09 --> localr --> fixes --> science --> artifact_schema --> reports
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science boundary
+    class s07,s08,s09,localr,fixes,science,artifact_schema boundary
     class reports pending

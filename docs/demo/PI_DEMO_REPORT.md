@@ -41,6 +41,11 @@ artifact/report, foundation, and per-step validator sequence is implemented.
 Step `09c` is implemented at `b674a31` and synthetic-fixture-tested locally.
 It validates explicit evidence and publishes a 13-TSV review transaction; no
 production evidence package or completed production science review exists.
+The `artifact-schema-v1` foundation is implemented and locally fixture-tested
+at `5f4d3b4`. It provides four public Draft 2020-12 record schemas with shared
+definitions, an explicit 67-row expected-artifact inventory, and a local
+validator; it has not generated a production artifact index, run summary, or
+report.
 No production biological-readiness claim has been produced;
 `biological_interpretation_ready` remains reserved and rejected.
 
@@ -57,6 +62,8 @@ environment itself passes its restore, namespace, lock, and PDF checks. Step
 evidence, and none is cluster-proven. Step `09c` is the local
 evidence-validation code boundary only; its fixture pass does not establish
 production scientific-review completion or move the cluster-proven boundary.
+The artifact-schema contract is also locally implemented and tested, but no
+adapter has indexed production evidence and no run summary or report exists.
 
 ### Evidence table
 
@@ -76,6 +83,7 @@ production scientific-review completion or move the cluster-proven boundary.
 | `08` VCF preprocessing | exact partition-manifest × `{FWD_like,REV_like}` Step `07` VCF/receipt set, sample manifest, Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implementation commit `90335d8`, corrective commit `eae5eca`; shell/fake-R and guarded real-R suites pass; raw count preflight active | implemented and locally tested; cluster validation pending; not cluster-proven |
 | `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | four TSVs and two PDFs under `results/editing/<analysis>/` | implementation commit `e4371de`, fixture correction `eae5eca`; shell/fake-R and guarded real-R suites pass; PDF EOF validation is raw-byte based | implemented and locally tested; cluster validation pending; not cluster-proven |
 | `09c` scientific-evidence validation | sample/partition manifests, exact Step `08` transaction, Step `09` analysis directory, review plan, evidence manifest | 13 TSVs under `results/scientific_validation/<review_id>/`, with review summary last | implementation `b674a31`; dedicated Python and active shell synthetic fixtures | implemented and fixture-tested locally; production review evidence unavailable; no production science-review completion, cluster proof, or biological readiness |
+| `artifact-schema-v1` contract foundation | explicit expected-artifact inventory and synthetic JSON records | four public schemas plus shared definitions under `schemas/artifacts/v1/`; example inventory under `configs/` | implementation `5f4d3b4`; schema/inventory validation plus positive and negative synthetic contract tests | implemented and locally fixture-tested; no production artifact index, run summary, report, cluster proof, or science proof |
 
 ### PI scientific/QC questions
 
@@ -90,11 +98,13 @@ production scientific-review completion or move the cluster-proven boundary.
 The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented at `b674a31` and fixture-tested locally; no production review
 evidence is recorded or supported by inspected evidence.
+`artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
+its contracts and inventory do not constitute a production artifact index.
 
-1. Implement the immediate reporting slice:
-   `artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
-   `report-html-v1`, and `report-exports-v1`. The synthetic reports must label
-   incomplete/exploratory state and never imply validation.
+1. Continue the immediate reporting slice with `artifact-adapters-v1`,
+   `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`. The
+   synthetic reports must label incomplete/exploratory state and never imply
+   validation.
 2. Implement read-only runtime, reference-provenance, and storage-retention
    foundations, then one validation-report branch for every pipeline step from
    `00a` through `09`.
@@ -119,6 +129,7 @@ evidence is recorded or supported by inspected evidence.
 | `08` | VCF preprocessing | implemented locally at `90335d8`, hardened at `eae5eca`; shell/fake-R and guarded real-R suites pass; not cluster-proven |
 | `09` | CMH editing-site calling | implemented locally at `e4371de`; shell/fake-R and guarded real-R suites pass after `eae5eca`; not cluster-proven |
 | `09c` | scientific-evidence validation | implemented at `b674a31` and synthetic-fixture-tested locally; no production review evidence or biological-readiness claim |
+| `artifact-schema-v1` | versioned artifact/science/run-summary/report-receipt contracts and explicit inventory | implemented at `5f4d3b4` and locally fixture-tested; no production artifact index or report |
 
 Step 06: cluster-proven across all six samples.
 
@@ -511,14 +522,18 @@ not itself provide orthogonal experimental validation.
 
 ### Phase 4 — Immediate artifacts and reports
 
-Status: activated after Step `09c`, but not implemented yet.
+Status: the `artifact-schema-v1` foundation is implemented and locally
+fixture-tested at `5f4d3b4`; adapters, artifact indexes, canonical run
+summaries, and HTML/PDF reports are not implemented yet.
 
-The approved order is artifact schema, read-only adapters, canonical run
+The implemented schema stage defines four public Draft 2020-12 contracts with
+shared definitions and validates a 67-row explicit expected-artifact
+inventory. The remaining approved order is read-only adapters, canonical run
 summary, self-contained HTML, then bundled-Typst PDF/TSV exports. Reports use
 explicit inventory paths, represent missing/incomplete evidence, and carry a
 persistent scientific-state banner. Candidate rows are “CMH-ranked
-candidates,” never validated editing sites. Report generation is not evidence
-of computational or biological validation.
+candidates,” never validated editing sites. Neither schema validation nor
+report generation is evidence of computational or biological validation.
 
 ### Phase 5 — Foundations and per-step validators
 
@@ -549,8 +564,10 @@ deferred.
 
 The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented at `b674a31`; its production evidence/review gate remains open.
+`artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
+no production index or report was generated.
 
-1. Implement `artifact-schema-v1`, the artifact adapters/run summary, and the
+1. Implement `artifact-adapters-v1`, the artifact run summary, and the
    immediate HTML/PDF reporting slice in separate gated descendant branches.
 2. Implement read-only foundations and one validator branch per pipeline step;
    stop local work at `post09-validation-report-09`.
@@ -579,9 +596,11 @@ implemented at `b674a31`; its production evidence/review gate remains open.
   checks; Step `09b1` fixes are complete, and Step `09c` is implemented and
   synthetic-fixture-tested locally.
 - Step `09c` is implemented and synthetic-fixture-tested; it does not establish
-  a production scientific review. Consolidated HTML/PDF reporting is next and
-  remains unimplemented. Neither evidence validation nor report generation
-  establishes biological readiness.
+  a production scientific review. `artifact-schema-v1` is implemented and
+  locally fixture-tested at `5f4d3b4`, but it has not created a production
+  artifact index. `artifact-adapters-v1` is next; consolidated run summaries
+  and HTML/PDF reporting remain unimplemented. Neither evidence validation,
+  schema validation, nor report generation establishes biological readiness.
 - Future cluster proof establishes computation, not biological truth;
   orientation, annotation, robustness, candidate evidence, and background
   eligibility remain a separate science gate.

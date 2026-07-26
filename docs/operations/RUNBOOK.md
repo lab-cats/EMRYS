@@ -146,7 +146,11 @@ and pass with synthetic fixtures. Neither step has production or cluster
 output evidence. Step `09c` source, dry-run output, example contracts, and
 synthetic Python/shell fixtures may also be inspected. Do not present its
 fixture transaction as a production scientific review or demonstrate Step
-`09` as a biological result.
+`09` as a biological result. The implemented `artifact-schema-v1` schemas,
+explicit synthetic inventory, read-only validator, and focused tests may also
+be shown. Do not present them as an artifact index, run summary, generated
+report, production-output inspection, cluster evidence, or scientific
+evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -393,15 +397,16 @@ sjtail <JOBID>
 
 If helpers are not installed, use the manual commands in the next section.
 
-## Future Operational Helpers
+## Artifact And Future Operational Helpers
 
 The approved local descendant roadmap has implemented Step `09c`
-scientific-validation tooling. The reporting vertical slice follows
-immediately:
+scientific-validation tooling and the `artifact-schema-v1` contract package.
+The next descendant is `artifact-adapters-v1`; the rest of the reporting
+vertical slice follows in order:
 
 ```text
 step-09c-scientific-validation
--> artifact-schema-v1
+-> artifact-schema-v1                         # implemented and locally tested
 -> artifact-adapters-v1
 -> artifact-run-summary
 -> report-html-v1
@@ -417,17 +422,97 @@ remaining foundational engineering. Remote validation, targeted reruns,
 analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
-Step `09c` is no longer a helper idea: its explicit script, configs, schemas,
-fixtures, and commands are documented below. The artifact/report,
-foundation, and per-step validator helpers remain roadmap ideas until their
-scripts, tests, and runbook commands exist. Do not treat candidate helper
-names, Makefile targets, reports, validators, or cleanup utilities as
-available commands.
+Step `09c` and `artifact-schema-v1` are no longer helper ideas. The artifact
+schemas, example inventory, validator, fixtures, and commands documented below
+exist. Artifact adapters, generated artifact records/indexes, run summaries,
+HTML/PDF reports, foundation records, and per-step validators remain roadmap
+work until their own branches implement and test them. Do not treat their
+candidate commands, Makefile targets, outputs, reports, or cleanup utilities
+as available.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
 Do not use a generic dispatcher or job array before the step-specific
 validators and repeated operational need establish their contracts.
+
+### Validate `artifact-schema-v1`
+
+Implemented locally at `5f4d3b4`:
+
+```text
+schemas/artifacts/v1/common.schema.json
+schemas/artifacts/v1/artifact_record.schema.json
+schemas/artifacts/v1/scientific_review_record.schema.json
+schemas/artifacts/v1/run_summary.schema.json
+schemas/artifacts/v1/report_receipt.schema.json
+configs/artifact_inventory.example.tsv
+scripts/validate_artifact_contracts.py
+tests/fixtures/artifact_schema_v1/valid/
+tests/test_artifact_schema_contracts.py
+```
+
+The shared common schema and four public record schemas use JSON Schema Draft
+2020-12 and public schema version `1.0.0`. The example inventory contains 67
+synthetic physical artifacts across Steps `00a`-`09c`. It is a fixture
+contract, not a production inventory. Every row names one explicit source
+path; multiple physical artifacts may share one logical scope, whose rows must
+remain contiguous.
+
+Validate the schemas and example inventory:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --check-schemas \
+  --inventory configs/artifact_inventory.example.tsv
+```
+
+Validate each public example record:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --schema artifact-record \
+  --document tests/fixtures/artifact_schema_v1/valid/artifact_record.json \
+  --inventory configs/artifact_inventory.example.tsv
+
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --schema scientific-review-record \
+  --document tests/fixtures/artifact_schema_v1/valid/scientific_review_record.json
+
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --schema run-summary \
+  --document tests/fixtures/artifact_schema_v1/valid/run_summary.json
+
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --schema report-receipt \
+  --document tests/fixtures/artifact_schema_v1/valid/report_receipt.json
+```
+
+Run the focused suite:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+```
+
+Current focused evidence is `54 passed`. This is local schema/fixture evidence
+only; the repository-wide gate remains a separate required stage check.
+
+The validator is read-only. It validates strict JSON, schema and semantic
+coherence, canonical run-contract hashes, attempt/status/evidence
+relationships, explicit normalized paths, and the exact seven-column
+inventory contract. It never discovers pipeline outputs, expands a glob,
+builds an artifact index, verifies production source files, renders a report,
+or runs analysis. Combining `--inventory` with `--schema` performs record/
+inventory reconciliation only for `artifact-record` and `run-summary`;
+scientific-review and report-receipt records are validated without
+`--inventory`.
+
+The v1 contracts admit only `evidence_incomplete` and
+`science_review_complete_exploratory`; readiness authorization remains null.
+They reject `biological_interpretation_ready` until a separately approved
+scientific-policy branch unlocks it. No adapter, generated
+`results/artifacts/` transaction, run summary, report, production evidence,
+cluster evidence, completed science review, or biological-readiness evidence
+was created by this package.
 
 ## Manual Job Checking
 
@@ -540,8 +625,9 @@ Therefore the guarded environment and both semantic fixture suites are
 validated locally. This does not validate production data, establish CSU
 batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
 `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
-implemented locally at `b674a31`; after its docpatch/push gate the next
-descendant is `artifact-schema-v1`.
+implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
+locally fixture-tested at `5f4d3b4`; after its docpatch/push gate the next
+descendant is `artifact-adapters-v1`.
 
 ## Cluster Execution Pattern
 

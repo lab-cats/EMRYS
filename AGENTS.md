@@ -249,6 +249,44 @@ Multi-sample execution should use manifest-driven selection rather than hardcode
 
 Do not overbuild orchestration before the underlying step is proven on one sample.
 
+## Artifact contract conventions
+
+Versioned artifact contracts live under:
+
+```text
+schemas/artifacts/v1/
+```
+
+The contract set contains one shared common schema and four public Draft
+2020-12 record schemas: artifact record, scientific-review record, run
+summary, and report receipt.
+
+Expected-artifact inventories must use this exact tab-separated header:
+
+```text
+artifact_id	step_id	scope_type	scope_id	adapter	source_path	required
+```
+
+Use one row per concrete expected physical artifact. Keep rows explicit and
+stably ordered, keep rows for one logical scope contiguous, and never use
+globs, unresolved templates, traversal components, duplicate physical paths,
+or machine-specific path substitutions.
+
+When changing an artifact schema or inventory, run:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --check-schemas \
+  --inventory configs/artifact_inventory.example.tsv
+.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+```
+
+The artifact-contract validator is read-only. A passing schema, document, or
+inventory check does not establish source-file existence, adapter execution,
+runtime or cluster validation, scientific-review completion, or report
+generation. Adapter identifiers remain declarations until the separately
+implemented adapter layer resolves and inspects them.
+
 ## Script conventions
 
 Scripts should:

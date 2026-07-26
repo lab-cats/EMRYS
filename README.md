@@ -13,11 +13,12 @@ The project rebuilds a hardcoded legacy RNA-editing/RNA-seq workflow into mainta
 The uploaded legacy workflow is treated as a protocol reference, not as production code. Local implementation stages use descendant branches, focused and repository-wide tests, a separate documentation-only commit, and a clean push gate. Runtime promotion remains upstream-first through SLURM dry-run, execute, output inspection, and evidence docpatches.
 
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
-approved immediate local implementation sequence. It will consume explicit,
-versioned pipeline artifacts without rerunning computation. Step `09c`
-scientific-validation tooling is now implemented and fixture-tested locally;
-`artifact-schema-v1` is the next package, and the artifact/reporting layer is
-still not implemented.
+approved immediate local implementation sequence. The first package,
+`artifact-schema-v1`, is implemented locally at `5f4d3b4` and its focused
+synthetic contract suite passes. It defines versioned schemas, a read-only
+validator, and an explicit expected-artifact inventory without rerunning
+computation. `artifact-adapters-v1` is next; generated artifact indexes,
+canonical run-summary outputs, and HTML/PDF/TSV reports remain unimplemented.
 
 ## Current Status
 
@@ -58,6 +59,15 @@ This is local synthetic evidence only: no completed production scientific
 review is recorded or supported by inspected evidence, and biological
 interpretation readiness remains unavailable.
 
+The `artifact-schema-v1` package is implemented locally at `5f4d3b4`. It
+tracks five schema files total (one shared common schema plus four public
+Draft 2020-12 record schemas), a 67-row synthetic explicit physical-artifact
+inventory, a read-only contract validator, and valid synthetic fixtures. All
+54 focused artifact-contract tests pass. This is local structural and
+semantic fixture evidence only: no adapter has inspected a production source,
+and no artifact index, run summary, report, runtime/cluster evidence, or
+scientific evidence was generated.
+
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
@@ -85,8 +95,8 @@ step-09-cmh
     └── step-09b-local-r-runtime
         └── step-09b1-real-r-fixes       # local fixes and real-R acceptance complete
             └── step-09c-scientific-validation  # implemented and fixture-tested locally
-                └── artifact-schema-v1
-                    └── artifact-adapters-v1
+                └── artifact-schema-v1          # implemented and focused-tested locally
+                    └── artifact-adapters-v1    # next
                         └── artifact-run-summary
                             └── report-html-v1
                                 └── report-exports-v1
@@ -121,12 +131,11 @@ or claim production review. Its allowed science states are
 approved policy branch unlocks its exit criteria.
 
 Run-summary and reporting work is immediate, not deferred. The artifact
-schema, read-only adapters, canonical run summary, self-contained HTML report,
-and Quarto/Typst PDF/TSV bundle come directly after Step `09c`. They will be
-implemented from explicit inventories and validated structured inputs; report
+schema is now implemented from explicit contracts and synthetic fixtures.
+Read-only adapters, the canonical run summary, the self-contained HTML report,
+and the Quarto/Typst PDF/TSV bundle remain pending in that order. Report
 generation will never be evidence of computational or biological validation.
-At this boundary, all of those artifact/reporting packages remain
-unimplemented; `artifact-schema-v1` is next.
+At this boundary, `artifact-adapters-v1` is next.
 
 The reporting slice is followed by read-only runtime, reference-provenance,
 and storage/retention tooling, then one explicit validator branch for every
@@ -334,6 +343,47 @@ requires coherent completed evidence and decisions but remains provisional;
 completion means implemented and synthetic-fixture-tested, not production
 scientific review, cluster proof, or biological validation.
 
+### Artifact Schema V1 Local Contract
+
+Implemented contract files and tests:
+
+```text
+schemas/artifacts/v1/common.schema.json
+schemas/artifacts/v1/artifact_record.schema.json
+schemas/artifacts/v1/scientific_review_record.schema.json
+schemas/artifacts/v1/run_summary.schema.json
+schemas/artifacts/v1/report_receipt.schema.json
+configs/artifact_inventory.example.tsv
+scripts/validate_artifact_contracts.py
+tests/fixtures/artifact_schema_v1/valid/
+tests/test_artifact_schema_contracts.py
+```
+
+Validate the five-schema set and the 67-row synthetic explicit physical
+inventory with:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --check-schemas \
+  --inventory configs/artifact_inventory.example.tsv
+
+.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+```
+
+The four public document types are `artifact-record`,
+`scientific-review-record`, `run-summary`, and `report-receipt`; the shared
+common schema is loaded with them. The validator is explicit-input-only and
+read-only. It validates schema, record, inventory, run/attempt, path/hash,
+typed evidence, rollup, and reserved-science-state consistency, but it does
+not discover or inspect production pipeline outputs. Adapter execution and
+artifact-index publication begin on `artifact-adapters-v1`; canonical
+run-summary files and reports remain later packages.
+
+The 54 focused tests are synthetic local contract evidence. They do not
+establish production artifact availability, runtime validation, a cluster
+dry-run or cluster proof, scientific-review completion, biological readiness,
+or report generation.
+
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
 Architecture/design docs:
@@ -495,11 +545,12 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the Step `09c` implementation boundary the R
-environment check, both Step `08` and Step `09` real-R runners, the aggregate
-`local-real-r-test`, and the complete Step `09c` Python/shell fixtures pass.
-The complete shell, Python, R, and `r-check` gates pass locally. These checks
-use synthetic fixtures and do not constitute production, cluster, or
+uses the existing `.venv`. At the `artifact-schema-v1` implementation boundary
+the R environment check, both Step `08` and Step `09` real-R runners, the
+aggregate `local-real-r-test`, the Step `09c` Python/shell fixtures, and all 54
+focused artifact-contract tests pass. These checks use synthetic fixtures and
+do not constitute production input inspection, adapter execution, generated
+artifact/run-summary/report evidence, cluster validation, or
 scientific-review validation.
 
 Shortcut for the Makefile-covered checks:

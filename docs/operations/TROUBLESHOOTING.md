@@ -794,8 +794,10 @@ cluster runtime and output evidence remain pending
 These passes establish local fixture behavior only. They do not prove CSU
 batch visibility, production input behavior, or cluster outputs. The
 `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
-complete. Step `09c` is implemented locally at `b674a31`; after its
-docpatch/push gate, the next descendant is `artifact-schema-v1`.
+complete. Step `09c` is implemented locally at `b674a31`.
+`artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
+after its docpatch/push gate, the next descendant is
+`artifact-adapters-v1`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1307,6 +1309,168 @@ biological_interpretation_ready rejected
 Only an inspected production evidence package and the applicable approved
 policy can change those statements. Report generation will not do so.
 
+## Artifact contract validation cannot import `jsonschema`
+
+### Symptom
+
+Running `scripts/validate_artifact_contracts.py` fails before validation with
+an import error naming `jsonschema`, `referencing`, or another pinned Python
+dependency.
+
+### Cause
+
+`artifact-schema-v1` added the JSON Schema Draft 2020-12 validator dependency
+closure to `requirements.txt`. The selected Python environment is absent or
+has not been synchronized with the current branch.
+
+### Fix
+
+Use the project virtual environment and install the tracked requirements as an
+explicit local setup action:
+
+```bash
+cd /Users/elisteiger/dev/norad
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/validate_artifact_contracts.py --check-schemas
+```
+
+Do not add package installation to pipeline compute wrappers, SLURM jobs,
+artifact adapters, run-summary builders, or report renderers.
+
+## Artifact JSON or inventory validation fails
+
+### Symptom
+
+The read-only validator rejects a schema, record, or inventory with an error
+about one of these contracts:
+
+```text
+duplicate JSON object key or non-standard NaN/Infinity value
+schema name/version or record type
+canonical run_contract_sha256
+attempt supersession or selected-attempt state
+implementation/local/runtime/cluster evidence coherence
+scientific status or reserved biological_interpretation_ready
+unresolved, globbed, redundant, or traversing path
+inventory header, identifier, required value, ordering, or duplicate path
+unsupported document/inventory reconciliation
+```
+
+### Cause
+
+The v1 contracts fail closed. JSON must be strict; paths must already be
+explicit and normalized; computational/scientific claims require their
+declared evidence; and the inventory header must contain these tab-separated
+fields in exactly this order:
+
+```text
+artifact_id
+step_id
+scope_type
+scope_id
+adapter
+source_path
+required
+```
+
+`required` is lowercase `true` or `false`. Each artifact ID and physical
+source path must be unique, including after path normalization. Rows belonging
+to one logical `(step_id, scope_type, scope_id)` must be contiguous.
+`biological_interpretation_ready` and non-null readiness authorization are
+intentionally rejected by v1.
+
+Combining `--inventory` with a document performs reconciliation only for an
+`artifact-record` or `run-summary`. A `scientific-review-record` or
+`report-receipt` should be validated without `--inventory`.
+
+### Diagnose
+
+First validate the tracked contracts and inventory independently:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --check-schemas
+
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --inventory configs/artifact_inventory.example.tsv
+```
+
+Then validate the explicit record with the matching public schema:
+
+```bash
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --schema artifact-record \
+  --document /explicit/path/to/artifact-record.json
+```
+
+Allowed schema names are:
+
+```text
+artifact-record
+scientific-review-record
+run-summary
+report-receipt
+```
+
+### Fix
+
+Correct the declaring inventory or JSON producer at the first reported
+invariant. Do not edit a hash, status, evidence role, attempt link, source
+path, or readiness value merely to force acceptance. An input or policy hash
+change requires a new `run_id`; an identical-contract retry requires a
+distinct `attempt_id`.
+
+The focused regression command is:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+```
+
+Current local focused evidence is `54 passed`. This is schema/fixture evidence,
+not production artifact validation.
+
+## A passing artifact-schema fixture is mistaken for an artifact index, report, or validation evidence
+
+### Symptom
+
+A passing schema/inventory command or committed example JSON is described as:
+
+```text
+a generated results/artifacts transaction
+a canonical production run summary
+an HTML/PDF report
+proof that declared source files exist or match their hashes
+production or cluster validation
+a completed scientific review or biological-readiness result
+```
+
+### Cause
+
+`artifact-schema-v1` defines and validates declarations. Its 67-row inventory
+and valid JSON records are synthetic fixtures. The validator is read-only and
+does not discover pipeline outputs, build adapter records, inspect production
+source contents, publish files, render reports, or run analysis. Within a
+record it validates the canonical run-contract hash, but detecting historical
+reuse of one `run_id` for a different contract requires the stateful
+`artifact-adapters-v1` layer.
+
+### Fix
+
+Describe the current boundary as:
+
+```text
+artifact-schema-v1 implemented at 5f4d3b4
+shared common schema plus four public Draft 2020-12 schemas
+67-row synthetic explicit physical inventory
+read-only validator and 54 focused tests pass locally
+no adapters, generated artifacts, run summaries, reports, or production evidence
+artifact-adapters-v1 is next
+```
+
+Keep production and cluster status unchanged. Keep production science
+`evidence_incomplete`, and continue rejecting
+`biological_interpretation_ready`.
+
 ## Wrong log interpretation: empty `.err` file
 
 ### Symptom
@@ -1366,7 +1530,13 @@ missing read groups in Step 04.
 
 ## Future Troubleshooting Taxonomy
 
-A future troubleshooting index may summarize repeated failure patterns as symptom, likely cause, confirmation command, and fix. Keep this as a deferred roadmap idea until enough real failures exist; do not add entries for helpers, validators, cleanup tools, reports, or config files that are not implemented.
+A future troubleshooting index may summarize repeated failure patterns as
+symptom, likely cause, confirmation command, and fix. Keep the generic index as
+a deferred roadmap idea until enough real failures exist. The artifact-schema
+validator and inventory are now implemented, so their concrete failure modes
+are documented above; do not add entries that imply artifact adapters,
+generated run summaries, cleanup tools, reports, foundation tools, or per-step
+validators exist before their branches implement them.
 
 ## General success checklist
 

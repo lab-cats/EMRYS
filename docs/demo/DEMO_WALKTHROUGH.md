@@ -7,7 +7,8 @@ This is a short read-only path for PI demo use. It points to the current sources
 Show that the legacy NORAD / Novogene Remora workflow has been rebuilt into a
 reproducible preprocessing and paired-CMH code path, with a clear distinction
 between the cluster-proven RNA-seq preprocessing boundary and the locally
-implemented Steps `07`-`09` plus the local Step `09c` evidence validator.
+implemented Steps `07`-`09`, the local Step `09c` evidence validator, and the
+locally tested artifact-schema foundation.
 
 Current boundary:
 
@@ -18,7 +19,9 @@ Steps 00a-00c cluster-proven reference prep
 -> local signed/notarized R 4.6.1 + guarded renv/Bioconductor 3.23 checks pass
 -> Step 08 and Step 09 real-R suites pass locally without SKIP after eae5eca
 -> Step 09c implemented and synthetic-fixture-tested locally at b674a31
--> remote validation paused; immediate reports are activated but not implemented
+-> artifact-schema-v1 implemented and locally fixture-tested at 5f4d3b4
+-> artifact-adapters-v1 is next; no production artifact index or report exists
+-> remote validation remains paused
 ```
 
 ## 2. Suggested 5-10 Minute Flow
@@ -33,7 +36,10 @@ Steps 00a-00c cluster-proven reference prep
    checks. The Step `08`/`09` real-R suites now pass locally, but synthetic
    fixture evidence is not production, cluster, or biological output evidence.
    The Step `09c` dry-run and fixture suite may be shown only as validator
-   implementation evidence, not a completed production scientific review.
+   implementation evidence, not a completed production scientific review. The
+   artifact schema validator, synthetic JSON records, and explicit 67-row
+   inventory may be shown as local contract evidence only; they are not a
+   production artifact index, run summary, or report.
 
 ## 3. Talk Track
 
@@ -53,8 +59,11 @@ Steps 00a-00c cluster-proven reference prep
   Namespace, lock, headless-PDF, and empty cache-disabled restore checks pass;
   compute wrappers do not install packages.
 - The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
-  implemented at `b674a31` and fixture-tested locally; `artifact-schema-v1` is
-  next. Artifact adapters/run summary, self-contained HTML and bundled-Typst
+  implemented at `b674a31` and fixture-tested locally. `artifact-schema-v1` is
+  implemented and locally fixture-tested at `5f4d3b4`: four public Draft
+  2020-12 schemas share common definitions, and an explicit inventory declares
+  67 expected artifacts without glob discovery. `artifact-adapters-v1` is
+  next. Artifact indexes/run summaries, self-contained HTML and bundled-Typst
   PDF/TSV reports, read-only runtime/reference/storage foundations, and one
   validator branch per pipeline step remain unimplemented. Remote validation
   remains paused.
@@ -82,6 +91,9 @@ Steps 00a-00c cluster-proven reference prep
   provisional status and limitations.
 - Do not present Step `09c` fixture output as a production scientific review,
   science-review completion, cluster proof, or biological validation.
-- Do not present the artifact/run-summary/report slice, the
+- Do not present the implemented artifact schemas, example inventory, or
+  synthetic fixtures as a production artifact index, run summary, report, or
+  validation result.
+- Do not present artifact adapters/run-summary/report generation, the
   preflight/provenance/storage foundations, or the per-step validators as
   implemented commands yet. They are activated descendant packages.

@@ -156,8 +156,9 @@ evidence has been inspected.
 ### Immediate Artifact And Reporting Implementation
 
 The design questions for the immediate artifact/report vertical slice are
-resolved. Step `09c` is implemented and fixture-tested locally; these packages
-are approved after its docpatch/push gate but are not yet implemented:
+resolved. Step `09c` is implemented and fixture-tested locally.
+`artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
+the remaining packages are approved but not yet implemented:
 
 ```text
 artifact-schema-v1
@@ -167,13 +168,22 @@ artifact-schema-v1
 -> report-exports-v1
 ```
 
-Fixed decisions:
+Implemented schema decisions:
 
 ```text
 JSON Schema Draft 2020-12
-explicit expected-artifact inventory; no glob discovery
+shared common schema plus four public record schemas
+67-row synthetic inventory of explicit physical artifacts; no glob discovery
 immutable-contract run_id plus distinct attempt_id retries
 explicit missing/failed/incomplete evidence records
+typed local/runtime/cluster evidence and independent scientific state
+reserved biological_interpretation_ready is rejected
+read-only schema/inventory validation; no source inspection or output creation
+```
+
+Fixed decisions for the pending packages:
+
+```text
 read-only adapters over existing outputs; no native emitter retrofit
 canonical run-summary JSON as the report layer's sole structured entry point
 Quarto 1.9.38 with bundled Typst
@@ -182,10 +192,13 @@ report generation never runs analysis and never proves validation
 state banners preserve incomplete or exploratory/provisional meaning
 ```
 
-Implementation and fixture evidence for the artifact/report packages remain
-pending on the named branches. Production reports and biological conclusions
-remain unavailable because production Steps `07`-`09` evidence and production
-Step `09c` review evidence have not been generated or inspected.
+The schema package has implementation and synthetic fixture evidence,
+including 54 focused passing tests. Adapter dispatch, production source
+inspection, artifact-index/run-summary generation, and report implementation
+evidence remain pending on the named branches. Production reports and
+biological conclusions remain unavailable because production Steps `07`-`09`
+evidence and production Step `09c` review evidence have not been generated or
+inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -445,6 +458,13 @@ Implemented locally and locally tested:
 09c  Explicit scientific-evidence validation and 13-TSV review transaction
 ```
 
+Implemented local infrastructure package:
+
+```text
+artifact-schema-v1  Draft 2020-12 contracts, explicit synthetic inventory,
+                    read-only validator, and fixtures
+```
+
 Step `07` passed its mocked-bcftools focused tests and the complete local
 repository validation gate. It has not run against real bcftools on this
 workstation, has not completed a cluster dry-run or execute job, and has no
@@ -467,6 +487,13 @@ exploratory states, reserved-state rejection, hashes, locks, cleanup, and
 rollback. It has no production evidence package or completed production
 science review, and it is not a cluster computation or biological-readiness
 gate.
+
+`artifact-schema-v1` is implemented locally at `5f4d3b4`. It contains one
+shared and four public schemas, a 67-row synthetic explicit inventory, a
+read-only validator, and fixtures covered by 54 focused tests. It is not a
+compute step and has not inspected production artifacts, executed adapters,
+generated an artifact index/run summary/report, or changed any runtime,
+cluster, scientific-review, or biological-readiness status.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 

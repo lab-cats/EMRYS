@@ -111,7 +111,10 @@ real-R fixtures both pass without `SKIP` under the guarded local runtime. No
 currently scoped Step `07`-`09` entry point is a non-runnable scaffold.
 Step `09c` is also implemented locally at `b674a31` and fixture-tested as an
 explicit evidence validator; it is not a core compute or SLURM stage and has
-no production-review evidence.
+no production-review evidence. `artifact-schema-v1` is implemented locally at
+`5f4d3b4` with a read-only validator and synthetic fixtures. It defines
+contracts only: artifact adapters, generated indexes, run summaries, and
+reports remain non-runnable.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -909,8 +912,9 @@ step-09b-local-r-runtime
 ```
 
 The local `step-09b1-real-r-fixes` package is complete and pushed. Step `09c`
-is implemented locally at `b674a31`; after its docpatch/push gate,
-`artifact-schema-v1` is the next descendant. Structured run summaries and
+is implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
+locally fixture-tested at `5f4d3b4`; after its docpatch/push gate,
+`artifact-adapters-v1` is the next descendant. Structured run summaries and
 HTML/PDF reports remain immediate, before the three foundational engineering
 packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
@@ -934,16 +938,55 @@ Decision: future helper-library, orchestration, validation-reporting, and admin-
 
 Reason: the current pipeline is intentionally gated and handoff-oriented. Deferred engineering improvements should reduce duplication and improve operability without changing the behavior that downstream steps and cluster runbooks already depend on.
 
-Candidate helper names, config filenames, validator names, Makefile targets, and admin utilities remain roadmap ideas until separately implemented and tested.
+Candidate helper names, config filenames, Makefile targets, and admin
+utilities remain roadmap ideas until separately implemented and tested. This
+does not apply to the implemented
+`scripts/validate_artifact_contracts.py`,
+`configs/artifact_inventory.example.tsv`, or
+`schemas/artifacts/v1/` interfaces; it still applies to artifact adapters, run
+summary builders, renderers, foundation tools, and per-step validators.
 
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 
 Decision: compute steps and report rendering should remain decoupled.
 
-The immediate artifact slice uses JSON Schema Draft 2020-12 for artifact
-records, scientific-review records, run summaries, and report receipts. An
-explicit expected-artifact inventory supplies every adapter and source path;
-neither adapters nor renderers discover inputs by glob.
+The implemented `artifact-schema-v1` package uses JSON Schema Draft 2020-12.
+It provides one shared common schema and four public schema-version `1.0.0`
+contracts:
+
+```text
+schemas/artifacts/v1/common.schema.json
+schemas/artifacts/v1/artifact_record.schema.json
+schemas/artifacts/v1/scientific_review_record.schema.json
+schemas/artifacts/v1/run_summary.schema.json
+schemas/artifacts/v1/report_receipt.schema.json
+```
+
+An explicit expected-artifact inventory supplies every future adapter and
+source path; neither adapters nor renderers may discover inputs by glob. The
+inventory header is exactly:
+
+```text
+artifact_id
+step_id
+scope_type
+scope_id
+adapter
+source_path
+required
+```
+
+Decision: an inventory row represents one physical expected artifact path.
+`artifact_id` and physical source path are unique. Multiple physical artifacts
+may share one `(step_id, scope_type, scope_id)` logical scope, and those rows
+remain contiguous so downstream aggregation preserves stable first-seen
+ordering. Source paths are explicit and normalized: no glob syntax, unresolved
+templates, redundant separators, or `.` / `..` traversal components.
+
+The tracked `configs/artifact_inventory.example.tsv` is a 67-row synthetic
+inventory covering physical fixture artifacts from Steps `00a`-`09c`. It
+defines and tests the inventory shape; it is not a production run inventory
+and does not assert that any production source exists.
 
 ```text
 artifact-schema-v1
@@ -958,6 +1001,42 @@ require a new `run_id`. Records model attempts, implementation, local tests,
 runtime validation, cluster validation, warnings/errors, provenance, metrics,
 and scientific state independently. Missing, failed, incomplete, and
 externally unavailable evidence must be represented, not omitted.
+
+Decision: `run_contract_sha256` is the SHA-256 of canonical compact,
+key-sorted JSON over exactly the sample-manifest hash, reference-contract hash,
+partition-manifest hash, primary analysis ID, and primary-analysis-policy
+hash. The schema validator checks that relationship within each record.
+Historical detection that the same `run_id` has been reused for a different
+contract requires state across records and belongs to
+`artifact-adapters-v1`; the schema package alone does not claim that registry
+check.
+
+Decision: strict JSON and semantic validation are required in addition to
+schema shape. Duplicate object keys, `NaN`/`Infinity`, invalid dates, incoherent
+attempt supersession, status claims without required evidence, mismatched
+scientific-review inputs, and invalid report-receipt transactions fail
+closed. Artifact retry chains are checked per artifact; a run summary may
+contain multiple independent artifact attempt histories.
+
+Decision: the current v1 schemas preserve the scientific-policy lock. They
+admit only `evidence_incomplete` and
+`science_review_complete_exploratory`, require readiness authorization to be
+null, and reject `biological_interpretation_ready`. A future policy that
+unlocks readiness must receive its own approved schema/version change.
+
+The public validator is:
+
+```text
+scripts/validate_artifact_contracts.py
+```
+
+It is read-only and explicit-input-only. It validates schemas, individual
+records, inventories, and supported record/inventory reconciliation. It does
+not discover outputs, build artifact records, verify production source
+contents, publish an artifact transaction, assemble a run summary, render a
+report, or run analysis. Record/inventory reconciliation is defined only for
+artifact records and run summaries; scientific-review and report-receipt
+records validate independently of an inventory argument.
 
 Canonical, stably ordered `<run_id>.run_summary.json` is the report layer's
 single structured input. It is assembled by read-only adapters over existing
@@ -982,9 +1061,13 @@ editing sites. Full-table truncation records the explicit full-table path and
 hash, and every PDF page carries the state banner. Report generation itself
 is never validation evidence.
 
-At the completed local Step `09c` implementation boundary these artifact and
-report packages remain approved but unimplemented. Only schemas, templates,
-and synthetic fixtures will be committed; generated production reports remain
+Current evidence: `artifact-schema-v1` is implemented at `5f4d3b4`. The shared
+schema, four public schemas, read-only validator, 67-row synthetic physical
+inventory, valid fixtures, and `54` focused tests pass locally. This does not
+create artifact adapters, generated `results/artifacts/` outputs, a canonical
+run summary, an HTML/PDF report, production or cluster evidence, a completed
+scientific review, or biological readiness. Those later packages remain
+approved but unimplemented, and generated production outputs/reports remain
 ignored.
 
 ## Documentation Files Have Different Purposes

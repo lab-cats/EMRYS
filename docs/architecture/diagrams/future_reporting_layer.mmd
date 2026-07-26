@@ -1,19 +1,20 @@
 flowchart TD
+    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
 
     subgraph inputs["Schema-validated records"]
         direction TB
-        schema["Versioned artifact schema"]
-        artifacts_tsv["schema-validated artifact index"]
+        schema["Versioned artifact schemas<br/>implemented + locally fixture-tested"]
+        artifacts_tsv["schema-validated artifact index<br/>pending adapter output"]
         qc_summary["qc_summary.tsv"]
         provenance["runtime/provenance records"]
         final_tables["explicitly approved report-table paths"]
     end
 
     aggregate["Run-summary aggregation"]
-    run_summary["run_summary.json"]
+    run_summary["run_summary.json<br/>pending"]
     generator["Static QMD / Quarto renderer<br/>no analysis execution"]
     html["Self-contained HTML report"]
     exports["Bundled Typst PDF + TSV bundle"]
@@ -29,7 +30,7 @@ flowchart TD
         review_record["Rendered review/limitations record"]
     end
 
-    subgraph outputs["Generated reports"]
+    subgraph outputs["Generated reports (pending)"]
         direction TB
         qc_report["QC and funnel summary"]
         validation_report["Steps 00a-09 evidence matrix"]
@@ -67,6 +68,7 @@ flowchart TD
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class aggregate,generator,html,exports future
+    class schema current
+    class qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
+    class artifacts_tsv,aggregate,run_summary,generator,html,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

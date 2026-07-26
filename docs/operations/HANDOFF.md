@@ -39,6 +39,7 @@ The intended high-level workflow is:
 | `08` VCF preprocessing | implemented locally; shell/fake-R and guarded real-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Its real-R suite passes without `SKIP`; raw DP/AD/INFO AD lexemes are preflighted before semantic parsing. No cluster evidence exists, and this step is not cluster-proven. |
 | `09` CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R tested | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. Its real-R suite passes without `SKIP`, including locale-independent raw-byte PDF validation. No cluster evidence exists, and this step is not cluster-proven. |
 | `09c` scientific-evidence validation | implemented and fixture-tested locally at `b674a31` | Validates explicit Step `08`/`09` inputs, review plans, and evidence manifests; publishes 13 TSVs with the review summary last. No production review evidence, completed production science review, cluster evidence, or biological-readiness claim is recorded or supported by inspected evidence. |
+| `artifact-schema-v1` contract package | implemented and fixture-tested locally at `5f4d3b4` | Provides one shared and four public Draft 2020-12 schemas, a read-only validator, a 67-row synthetic expected-artifact inventory, and valid fixtures. It does not inspect production sources, execute adapters, or generate an artifact index, run summary, or report. |
 
 Current demo state:
 
@@ -66,8 +67,10 @@ Current demo state:
 * Step `09c` is implemented locally at `b674a31`, with active Python and shell
   fixtures for dry-run, status policy, evidence validation, locking,
   publication, rollback, and cleanup.
-* After the Step `09c` docpatch/push gate, the next branch is
-  `artifact-schema-v1`, followed by artifact adapters/run summary, immediate
+* `artifact-schema-v1` is implemented locally at `5f4d3b4`; its 54 focused
+  contract tests and the complete local repository gate pass.
+* After this schema docpatch/push gate, the next branch is
+  `artifact-adapters-v1`, followed by the canonical run summary, immediate
   HTML/PDF reporting, foundational read-only tooling, and one validator branch
   per pipeline step.
 * Remote promotion is paused. No Step `07` cluster evidence has yet been
@@ -174,6 +177,7 @@ scripts/step_09_cmh_editing_site_calling.sh
 scripts/step_09_cmh_editing_site_calling.R
 scripts/step_09c_scientific_validation.sh
 scripts/step_09c_scientific_validation.py
+scripts/validate_artifact_contracts.py
 ```
 
 Implemented SLURM jobs:
@@ -230,6 +234,22 @@ configs/step_09c_review_plan.example.tsv
 configs/step_09c_evidence_manifest.example.tsv
 configs/step_09c_evidence_schemas/
 ```
+
+The `artifact-schema-v1` package also has:
+
+```text
+schemas/artifacts/v1/common.schema.json
+schemas/artifacts/v1/artifact_record.schema.json
+schemas/artifacts/v1/scientific_review_record.schema.json
+schemas/artifacts/v1/run_summary.schema.json
+schemas/artifacts/v1/report_receipt.schema.json
+configs/artifact_inventory.example.tsv
+tests/fixtures/artifact_schema_v1/
+tests/test_artifact_schema_contracts.py
+```
+
+The example inventory contains 67 explicit physical artifact rows spanning
+Steps `00a`-`09c`. It is synthetic and is not a production inventory.
 
 Local R interfaces:
 
@@ -303,7 +323,7 @@ results/scientific_validation/<review_id>/<review_id>.step09c_limitations.tsv
 results/scientific_validation/<review_id>/<review_id>.step09c_review_summary.tsv
 ```
 
-Activated but not yet implemented local-roadmap output families:
+Generated local-roadmap output families not yet implemented:
 
 ```text
 results/artifacts/
@@ -804,13 +824,14 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-The Step `09b1` branch is complete and pushed. Step `09c` implementation
-`b674a31` and its complete local fixture gate pass; this docpatch is the
-remaining predecessor gate before branching.
+The Step `09b1` and Step `09c` gates are complete and pushed.
+`artifact-schema-v1` is implemented at `5f4d3b4`; its schemas, synthetic
+inventory, validator, fixtures, and 54 focused tests pass. This documentation
+commit is its remaining predecessor gate before branching.
 
-1. Implement the artifact schema/adapters/run-summary and immediate
-   self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. Reporting is
-   activated but is not implemented at this handoff boundary.
+1. Implement `artifact-adapters-v1`, then the canonical run summary and
+   self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. No generated
+   artifact index, run summary, or report exists at this handoff boundary.
 2. Implement the three read-only foundation packages and then one explicit
    validator branch for each of `00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`,
    `04`, `05`, `06`, `07`, `08`, and `09`.
@@ -862,6 +883,9 @@ bash -n scripts/*.sh
 bash -n jobs/*.slurm
 .venv/bin/python -m compileall scripts tests
 .venv/bin/python -m pytest
+.venv/bin/python scripts/validate_artifact_contracts.py \
+  --check-schemas \
+  --inventory configs/artifact_inventory.example.tsv
 make shell-test
 NORAD_USE_RENV=1 make r-check RSCRIPT_BIN=/usr/local/bin/Rscript
 NORAD_USE_RENV=1 make local-real-r-test RSCRIPT_BIN=/usr/local/bin/Rscript
@@ -874,9 +898,12 @@ data. Bare `python` is absent on this workstation, so the passing Python gate
 uses the existing project `.venv`. The R environment check passes. The two
 real-R runners and the aggregate local R target pass without `SKIP` after
 `eae5eca`; the shell, Python, and `r-check` gates also pass locally. This is
-synthetic/local evidence only. Step `09c` is implemented at `b674a31`; its
-Python/shell fixtures pass, production scientific evidence is unavailable, and
-`artifact-schema-v1` is next after this docpatch/push gate.
+synthetic/local evidence only. Step `09c` is implemented at `b674a31`.
+`artifact-schema-v1` is implemented at `5f4d3b4`; its 54 focused tests and
+schema/inventory validation pass. These checks do not inspect production
+artifacts or establish runtime, cluster, report, scientific-review, or
+biological evidence. `artifact-adapters-v1` is next after this docpatch/push
+gate.
 
 ## Development Rule
 
