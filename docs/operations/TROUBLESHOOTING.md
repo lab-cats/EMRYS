@@ -780,28 +780,9 @@ skipped real-R test a pass. `make real-r-test` runs the Step `08` suite followed
 by the Step `09` suite; either runner reports `SKIP` only when the default
 `Rscript` is absent, while an explicit bad override fails.
 
-Current evidence is deliberately narrower:
-
-```text
-local runtime/package/headless-PDF checks pass
-an empty cache-disabled binary restore passes
-both real-R suites pass locally without SKIP
-Step 08 raw lexical count validation and partition-overlap fixtures pass
-Step 09 raw-byte PDF signature/EOF fixtures pass
-cluster runtime and output evidence remain pending
-```
-
-These passes establish local fixture behavior only. They do not prove CSU
-batch visibility, production input behavior, or cluster outputs. The
-`step-09b1-real-r-fixes` documentation, clean-history, and push gate is
-complete. Step `09c` is implemented locally at `b674a31`.
-`artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
-`artifact-adapters-v1` is implemented and locally fixture-tested at
-`4dbd32d`. `artifact-run-summary` was introduced at `209bb19`, and its
-report-table approval producer is implemented and locally fixture-tested at
-`2a4b8f8`. `report-html-v1` is implemented and tested locally with the real
-pinned renderer at `117ba26`. After this approval docpatch/push gate, the next
-descendant is `report-exports-v1`.
+A passing local suite establishes local fixture behavior only. It does not
+prove CSU batch visibility, production input behavior, or cluster outputs.
+Consult the handoff for the current evidence boundary.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1309,7 +1290,7 @@ independent from production evidence-category and overall-science status.
 
 ### Fix
 
-Describe the current state as:
+Describe the evidence boundary as:
 
 ```text
 implemented and fixture-tested locally
@@ -1442,8 +1423,8 @@ The focused regression command is:
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
 ```
 
-Current local focused evidence is `58 passed`. This is schema/fixture evidence,
-not production artifact validation.
+A passing focused suite is schema/fixture evidence, not production artifact
+validation.
 
 ## Artifact adapter rejects `--run-contract` or an existing run ID
 
@@ -1583,25 +1564,16 @@ receipt before allowing the same `run_id` to be rebuilt.
 
 ### Fix
 
-Describe the current boundary as:
+Describe the evidence boundary as:
 
 ```text
-artifact-schema-v1 implemented at 5f4d3b4
 shared common schema plus four public Draft 2020-12 schemas
-67-row synthetic explicit physical inventory
-read-only validator and 58 focused tests pass locally
-artifact-adapters-v1 implemented at 4dbd32d
-49 read-only adapters and 50 focused tests pass locally
-artifact-run-summary introduced at 209bb19
-report-table approval producer implemented at 2a4b8f8
+synthetic explicit physical inventory and read-only validator
+explicit read-only artifact adapters
 canonical JSON, deterministic TSV/QC views, exact Step 09c table approvals,
   and receipt-last publication
-53 focused run-summary and 161 combined artifact-layer tests pass locally
-report-html-v1 implemented at 117ba26
-make report-test passes 119 Python tests plus its shell wrapper with real Quarto
 one static script-free self-contained HTML-only output
 no production artifact index, run summary, approval manifest, report, or evidence
-report-exports-v1 is next
 ```
 
 Keep production and cluster status unchanged. Keep production science
@@ -1789,17 +1761,11 @@ or renderer.
 
 ### Fix
 
-Describe the boundary as introduced at `209bb19` and extended with the
-report-table approval producer at `2a4b8f8`, with 53 focused and 161 combined
-artifact-layer tests passing. A separate `report-html-v1` renderer is
-implemented at `117ba26`; `make report-test` passes 119 Python tests plus its
-shell wrapper with the real pinned Quarto runtime, and the complete Python
-gate passes 292 tests with one expected skip. This establishes only
-synthetic-fixture behavior and local renderer execution. No production
-adapter transaction, run summary, approval manifest, HTML/PDF report,
-pipeline runtime/cluster proof, completed production science review, or
-biological readiness exists. `report-exports-v1` is next; rendering still
-does not promote validation.
+Describe the boundary as synthetic-fixture behavior and local renderer
+execution only. Do not claim a production adapter transaction, run summary,
+approval manifest, report, pipeline runtime or cluster proof, completed
+production science review, or biological readiness. Rendering does not
+promote validation.
 
 ## Quarto restore rejects the archive, installed tree, version, or lock
 
@@ -1979,12 +1945,9 @@ validation.
 
 ### Cause
 
-`report-html-v1` is implemented at `117ba26`. The current `make report-test`
-gate passes 119 Python tests plus its shell wrapper with the real pinned
-Quarto runtime, and the complete Python gate passes 292 tests with one
-expected skip. Those inputs are synthetic/incomplete fixtures. Rendering
-accurately presents their declared states but creates no new computational or
-scientific evidence.
+The report tests use synthetic or incomplete fixtures. Rendering accurately
+presents their declared states but creates no new computational or scientific
+evidence.
 
 ### Fix
 
@@ -1996,8 +1959,6 @@ real pinned local Quarto runtime exercised
 one synthetic HTML-only output contract validated
 no production report or pipeline runtime/cluster validation
 no completed production science review or biological readiness
-report-table approval producer implemented at 2a4b8f8
-report-exports-v1 next
 ```
 
 Retain the report's state banner and limitations. Report generation is never

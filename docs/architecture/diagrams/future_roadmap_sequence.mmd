@@ -1,31 +1,6 @@
 flowchart TB
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-    classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-    classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
-
-    s09["step-09-cmh<br/>local implementation/docpatch complete"]
-    s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
-    rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
-    rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
-    science09c["step-09c-scientific-validation<br/>implemented + synthetic-fixture-tested locally<br/>production evidence unavailable"]
-    artifact_schema["artifact-schema-v1<br/>implemented + locally fixture-tested<br/>no production artifact index"]
-    artifact_adapters["artifact-adapters-v1<br/>implemented + locally fixture-tested<br/>no production index"]
-    runsummary["artifact-run-summary<br/>implemented + locally fixture-tested<br/>no production summary"]
-    reporthtml["report-html-v1<br/>implemented + locally fixture-tested<br/>no production report"]
-    approvals["report-html-v1a-report-table-approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
-    foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
-    validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
-    remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
-
-    s09 --> s09a --> rlocal --> rfix --> science09c
-    science09c --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports --> foundations --> validators
-    validators -.-> remote
-
-    class s09,rfix,science09c,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals current
-    class s09a docs
-    class rlocal runtime
-    class exports,foundations,validators future
-    class remote deferred
+    reports["Complete deterministic report bundle"] --> foundations["Runtime, reference, and storage evidence foundations"]
+    foundations --> validators["One explicit validator per pipeline step"]
+    validators --> remote["Upstream-sequential remote validation"]
+    remote --> science["Production scientific-evidence review"]
+    science --> later["Only then consider reruns and refactors"]

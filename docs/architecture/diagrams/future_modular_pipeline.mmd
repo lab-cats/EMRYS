@@ -1,71 +1,11 @@
 flowchart LR
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef deferred fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph sources["Data sources"]
-        direction TB
-        lab["Lab-generated FASTQs on ADAM"]
-        public["Public genomics datasets<br/>deferred import"]
-    end
-
-    subgraph contracts["Configuration/contracts"]
-        direction TB
-        manifest["Sample manifest"]
-        config["Analysis config"]
-        policy_record["Versioned scientific policy<br/>review status + limitations"]
-    end
-
-    subgraph core["Core preprocessing"]
-        direction TB
-        backbone["Core preprocessing backbone"]
-        ready["Validated analysis-ready artifacts"]
-        registry["Artifact registry"]
-    end
-
-    subgraph modules["Analysis modules"]
-        direction TB
-        assays["Assay-specific analysis modules"]
-        results["Standardized result artifacts"]
-    end
-
-    subgraph science["Scientific evidence and decision records"]
-        direction TB
-        declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
-        science_review["Step 09c validation package<br/>implemented + fixture-tested locally"]
-        decision_record["Review status + limitations<br/>ready state remains locked"]
-    end
-
-    subgraph reports["Reporting"]
-        direction TB
-        run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
-        report_html["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-        report_approvals["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-        report_exports["report-exports-v1<br/>next: PDF + TSV + report receipt"]
-        outputs["QC reports / PI reports / candidate result reports / handoff reports"]
-    end
-
-    lab --> manifest
-    public -.-> manifest
-    manifest --> backbone
-    config --> backbone
-    manifest --> assays
-    config --> assays
-    policy_record --> config
-    policy_record --> assays
-    backbone --> ready --> assays --> results --> registry --> run_summary --> report_html --> outputs
-    report_approvals -.-> run_summary
-    report_html --> report_exports --> outputs
-    declared09 --> science_review --> decision_record --> policy_record
-    declared09 --> registry
-    decision_record --> run_summary
-
-    class lab,run_summary,report_html,report_approvals current
-    class public deferred
-    class manifest,config,policy_record,decision_record,science_review contract
-    class backbone,ready future
-    class registry contract
-    class assays,results,declared09 future
-    class report_exports,outputs reporting
+    samples["Sample manifest"] --> core["Stable preprocessing core"]
+    reference["Reference contract"] --> core
+    config["Analysis policy"] --> module["Assay-specific analysis module"]
+    core --> module
+    module --> native["Native outputs"]
+    native --> validators["Stage-specific validators"]
+    native --> adapters["Read-only adapters"]
+    validators --> adapters
+    adapters --> summary["Canonical summary"]
+    summary --> reports["Deterministic reports"]

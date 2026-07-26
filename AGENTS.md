@@ -1,186 +1,129 @@
 # NORAD / CSU HPC agent instructions
 
-This file defines how coding agents should work in this repository.
+This repository supports a local-first, SLURM-scaled RNA-seq and
+RNA-editing workflow. Develop it as maintainable research software: explicit
+inputs and outputs, reproducible commands, small local tests, useful logs, and
+clear evidence boundaries.
 
-It should stay mostly stable over time. Do not use this file to track current pipeline status, job IDs, sample-specific results, or transient TODOs.
+Current project state belongs in
+[`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md). The authoritative
+roadmap and status matrix belong in
+[`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
 
-For current project state, consult:
+## Required task start
 
-```text
-docs/operations/HANDOFF.md
-docs/design/PIPELINE_PLAN.md
-docs/design/QUESTIONS.md
-docs/operations/RUNBOOK.md
-docs/operations/TROUBLESHOOTING.md
-docs/design/DECISIONS.md
-TODO.md
-README.md
-```
+Begin every task in plan/review mode. Before editing, branching, installing
+dependencies, or running mutating commands, read these documents completely:
 
-## Purpose
+- `AGENTS.md`
+- `README.md`
+- `TODO.md`
+- `docs/operations/HANDOFF.md`
+- `docs/design/PIPELINE_PLAN.md`
+- `docs/design/QUESTIONS.md`
+- `docs/operations/RUNBOOK.md`
+- `docs/design/DECISIONS.md`
+- `docs/operations/TROUBLESHOOTING.md`
 
-This repository supports a local-first, SLURM-scaled bioinformatics workflow for RNA-seq / lncRNA / NORAD-related analysis.
+Inspect the worktree and relevant implementation before proposing changes.
+Do not edit until the user approves the plan.
 
-The project should be developed as maintainable research software, not as a pile of one-off scripts.
+## Development gate
 
-Prioritize:
+Every implementation package uses a linear descendant branch from the latest
+clean, docpatched predecessor:
 
-* reproducible workflows
-* parameterized scripts
-* explicit inputs and outputs
-* clear local vs cluster execution paths
-* small local tests before full-scale cluster execution
-* debuggable logs
-* documented assumptions
-* boring, understandable code
+1. Verify the predecessor is clean, pushed, and upstream-equal.
+2. Create the package branch.
+3. Implement only that package and directly required contracts.
+4. Add focused tests and run the complete applicable local gate.
+5. Commit implementation and tests.
+6. Reread the required documents.
+7. Perform a repository-wide documentation and diagram consistency pass.
+8. Commit the docpatch separately.
+9. Revalidate, require a clean worktree, inspect history, and push.
+10. Confirm upstream equality before creating another branch.
 
-## Development model
+If implementation changes after the docpatch, reopen the gate: retest, commit
+the correction, and perform another separate docpatch.
 
-Use a gated workflow:
+A documentation-only package uses one documentation commit. Do not fabricate
+an implementation commit when no executable behavior changed.
 
-```text
-create and switch to the stage branch
--> implement only that stage
--> run focused tests and the complete local validation gate
--> commit implementation and tests
--> reread the required project documents and perform a repository-wide docpatch
--> commit documentation separately
--> require a clean worktree, inspect history, and push
--> create the next descendant stage branch when that local stage is approved
--> promote runtime stages upstream-first through cluster dry-run and execute gates
--> inspect evidence and docpatch each validation stage
-```
+Runtime and cluster promotion are upstream-sequential even when an approved
+local-only sequence advances through descendant branches. Never runtime-
+promote a downstream stage before its prerequisite runtime gates pass.
 
-Do not skip gates.
+Do not merge, rebase, rename, delete, overwrite, or force-push stage branches
+without explicit user direction.
 
-Do not implement multiple major pipeline steps at once unless explicitly requested.
+## Evidence language
 
-Do not run heavy computation on the cluster login node.
+Keep these states distinct:
 
-## Stage Branch And Docpatch Gates
+- implemented locally
+- locally fixture-tested
+- real-runtime tested
+- runtime validation blocked
+- cluster dry-run validated
+- cluster-proven
+- scientific evidence incomplete
+- `science_review_complete_exploratory`
+- `biological_interpretation_ready`
 
-Every explicitly staged implementation package must use a linear descendant branch from the latest clean, docpatched predecessor. Do not implement a new stage directly on its parent branch.
+Never claim cluster proof without inspected scheduler state, logs, validation
+commands, and outputs. Tool availability, a dry-run, mocked tests, or local
+runtime tests are not cluster proof.
 
-Each implementation stage has this completion gate:
+Never treat schema validation, artifact indexing, transaction completion,
+report generation, or PI review as computational proof, completed scientific
+review, or biological validation.
 
-1. Implement only that stage and its directly required contracts.
-2. Run focused tests and the complete repository validation gate.
-3. Commit implementation and tests.
-4. Reread `AGENTS.md`, `README.md`, `TODO.md`, `docs/operations/HANDOFF.md`, `docs/design/PIPELINE_PLAN.md`, `docs/design/QUESTIONS.md`, `docs/operations/RUNBOOK.md`, `docs/design/DECISIONS.md`, and `docs/operations/TROUBLESHOOTING.md`.
-5. Perform a repository-wide documentation consistency pass, including affected Markdown and diagrams.
-6. Update every stale status, command, interface, output path, decision, troubleshooting claim, and next-step statement.
-7. Commit documentation separately as `step NN docpatch`.
-8. Re-run `git diff --check`, inspect status and history, and require a clean worktree.
-9. Push the completed stage branch.
-10. Only then create the next descendant stage branch.
+`science_review_complete_exploratory` remains provisional.
+`biological_interpretation_ready` is reserved until a separately approved
+scientific policy defines and unlocks its exit criteria. Tools must reject an
+unauthorized ready-state request.
 
-If implementation changes after a docpatch, the stage gate reopens: retest, commit the fix, and perform another separate docpatch before branching onward.
+Use “CMH-ranked candidates,” not “validated editing sites.”
 
-Inserted work packages follow the same rule and use sequential names such as `step-07a-<slug>` or `step-08a-<slug>`.
+## Local and cluster safety
 
-An explicitly approved local implementation sequence may create the next descendant stage after the predecessor's local docpatch even when runtime validation is unavailable. Runtime and cluster promotion on production inputs must still remain upstream-sequential; never runtime-promote a downstream stage before its upstream stage has passed the required runtime gate.
+Local development should use tiny fixtures, mocks, syntax checks, and explicit
+runtime overrides. Do not require full FASTQ, BAM, VCF, or production result
+data for local tests.
 
-When cluster validation is included in the work, use the same descendant-branch discipline for validation branches. Commit the inspected evidence/status docpatch, require a clean worktree, and push before creating the next validation branch.
+The cluster login node is for Git operations, small transfers, editing, light
+inspection, job submission, and small smoke tests. Heavy alignment, sorting,
+mpileup, and analysis must run through `jobs/*.slurm`.
 
-A documentation-only roadmap or consistency package may use its own descendant
-branch and one documentation-only commit. Do not fabricate an implementation
-commit when no implementation exists. It must still receive the required
-document reread, repository-wide consistency pass, validation, clean-history
-check, and push gate before another descendant branch is created.
+Never commit:
 
-Documentation must distinguish:
+- FASTQ, SAM, BAM, CRAM, VCF, indexes, large tables, logs, or results;
+- credentials, tokens, keys, `.env` files, or private data;
+- machine-specific runtime libraries, caches, or restored tools.
 
-* implemented locally
-* locally tested
-* runtime validation blocked
-* cluster dry-run validated
-* cluster-proven
+Tiny synthetic, safe fixtures may be committed.
 
-Never describe a stage as cluster-proven without inspected scheduler, log, and output evidence.
-
-## State belongs elsewhere
-
-Do not put transient project state in `AGENTS.md`.
-
-Avoid adding:
-
-* current validation sample
-* current next step
-* job IDs
-* current output sizes
-* current cluster validation status
-* temporary blockers
-* sample-specific biological results
-* recently discovered module versions unless they define a durable coding convention
-
-Use these files instead:
-
-```text
-docs/operations/HANDOFF.md        current project handoff and big-picture state
-docs/design/PIPELINE_PLAN.md      current pipeline map and step validation status
-docs/design/QUESTIONS.md          answered and unresolved questions
-docs/operations/RUNBOOK.md        operational commands and cluster procedure
-docs/operations/TROUBLESHOOTING.md symptom -> cause -> fix
-docs/design/DECISIONS.md          durable decisions and rationale
-TODO.md                tactical next work
-README.md              project overview and entrypoint
-```
-
-`AGENTS.md` is for behavior and standards.
-
-## Local development expectations
-
-Local development happens on macOS, usually in VS Code.
-
-Local work should focus on:
-
-* editing source code
-* writing tests
-* validating command construction
-* using tiny fixtures or mocks
-* checking shell/Python syntax
-* committing and pushing changes
-
-Do not assume local paths match cluster paths.
-
-Do not require full FASTQ/BAM data for local tests.
-
-## Cluster expectations
-
-The cluster uses SLURM and environment modules.
-
-Heavy computation must run through `jobs/*.slurm`.
-
-The login node is only for:
-
-* Git operations
-* small file transfers
-* light file inspection
-* editing
-* checking logs
-* submitting jobs
-* small smoke tests
-
-Do not run full alignment, sorting, mpileup, or large analysis directly on the login node.
+Do not delete, repair, move, compress, or overwrite shared or production
+artifacts without explicit operator intent. Preserve locks and recovery
+evidence when cleanup or rollback cannot be proved complete.
 
 ## Repository conventions
 
-Expected structure:
+Use:
 
 ```text
-scripts/        # Python, shell, and R scripts
-jobs/           # SLURM job wrappers
-tests/          # active tests and pending test plans
-configs/        # optional local/cluster config files
-data/test/      # tiny committed fixtures only
-data/raw/       # symlinks or raw data paths; not committed
-data/full/      # optional full-scale data paths; not committed
-results/        # generated outputs; not committed
-logs/           # SLURM logs; not committed
-docs/           # project documentation
+scripts/        parameterized workflow and validation scripts
+jobs/           thin SLURM wrappers
+tests/          active tests and synthetic fixtures
+tests/pending/  non-runnable future test plans
+configs/        explicit example contracts and configuration
+schemas/        versioned public schemas
+reports/        report views and styles
+docs/           design, operations, architecture, and demo material
 ```
 
-Prefer adding each executable workflow step as:
+Prefer workflow entry points shaped as:
 
 ```text
 scripts/step_XX_<name>.sh
@@ -188,504 +131,116 @@ jobs/step_XX_<name>.slurm
 tests/shell/test_step_XX_<name>.sh
 ```
 
-Use `tests/pending/` only for future test plans that are not active yet.
+The manifest is the source of truth for sample metadata. Prefer explicit,
+tab-separated manifests and manifest-driven selection. Do not infer pairings,
+sample order, or partitions from filenames.
 
-## Git and data rules
+Do not hardcode user- or machine-specific paths in analysis code. Use CLI
+arguments, explicit config, environment overrides, and resolved output roots.
+Do not discover scientific or report inputs by glob.
 
-Use Git for:
-
-* source code
-* SLURM job wrappers
-* configs
-* documentation
-* small safe test fixtures
-
-Never commit:
-
-* FASTQ / FASTQ.GZ
-* SAM / BAM / CRAM / BAI
-* large TSV/CSV outputs
-* logs
-* results directories
-* credentials
-* tokens
-* API keys
-* private SSH keys
-* `.env` files
-
-Tiny synthetic or representative fixtures may be committed only if they are small, safe, and non-sensitive.
-
-## Path and configuration rules
-
-Do not hardcode machine-specific paths inside analysis scripts.
-
-Prefer:
-
-* command-line arguments
-* config files
-* explicit input paths
-* explicit output paths
-* manifest-driven sample selection
-* documented local and cluster examples
-
-Scripts should run locally or on the cluster by changing arguments/configs, not by editing source code.
-
-Avoid hidden assumptions about the current working directory unless clearly documented.
-
-## Manifest conventions
-
-The manifest should remain the source of truth for sample metadata.
-
-Prefer tab-separated manifest files for workflow metadata.
-
-Reasons:
-
-* robust with file paths
-* easy to parse in Python, R, and shell
-* avoids CSV quoting problems
-* easy to inspect manually
-
-Multi-sample execution should use manifest-driven selection rather than hardcoded sample lists.
-
-Do not overbuild orchestration before the underlying step is proven on one sample.
-
-## Artifact contract conventions
-
-Versioned artifact contracts live under:
-
-```text
-schemas/artifacts/v1/
-```
-
-The contract set contains one shared common schema and four public Draft
-2020-12 record schemas: artifact record, scientific-review record, run
-summary, and report receipt. The common schema keeps its `v1` URN and the
-artifact-record document remains `1.0.0`. Scientific-review, run-summary, and
-report-receipt documents are `1.1.0`; never silently change a closed public
-shape without an explicit schema-version change.
-
-Expected-artifact inventories must use this exact tab-separated header:
-
-```text
-artifact_id	step_id	scope_type	scope_id	adapter	source_path	required
-```
-
-Use one row per concrete expected physical artifact. Keep rows explicit and
-stably ordered, keep rows for one logical scope contiguous, and never use
-globs, unresolved templates, traversal components, duplicate physical paths,
-or machine-specific path substitutions.
-
-When changing an artifact schema or inventory, run:
-
-```bash
-.venv/bin/python scripts/validate_artifact_contracts.py \
-  --check-schemas \
-  --inventory configs/artifact_inventory.example.tsv
-.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
-.venv/bin/python -m pytest -q tests/test_artifact_adapters.py
-.venv/bin/python -m pytest -q tests/test_artifact_run_summary.py
-```
-
-The artifact-contract validator is read-only. A passing schema, document, or
-inventory check does not establish source-file existence, adapter execution,
-runtime or cluster validation, scientific-review completion, or report
-generation.
-
-The implemented artifact adapter layer requires both an explicit inventory
-and a strict six-field run-contract JSON containing:
-
-```text
-run_contract_sha256
-sample_manifest_sha256
-reference_contract_sha256
-partition_manifest_sha256
-primary_analysis_id
-primary_analysis_policy_sha256
-```
-
-`run_id` is bound only to that immutable contract. Changing any of the five
-identity components requires a new `run_id`. Inventory path/hash changes are
-revisionable adapter-attempt metadata: when the immutable contract is
-unchanged, each execute-mode rebuild receives a new `adapter_attempt_id` and
-records its superseded attempt. A complete artifact-index transaction means
-only that its records, ordered index, and receipt were validated and published
-as one set. It may legitimately contain missing, incomplete, failed, or
-externally unavailable sources, and it does not establish runtime, cluster,
-scientific-review, or biological evidence.
-
-The implemented run-summary layer consumes one exact completed adapter
-receipt under the declared output root and, optionally, one exact committed
-Step `09c` review summary. With that review it may also consume one exact
-report-table approval manifest. It never discovers those inputs. A supplied
-approval manifest must be nonempty,
-bound to the current `run_id` and immutable run-contract hash, and authorize
-only exact complete Step `09c` TSV artifacts in the active scientific-review
-scope. Paths, hashes, row counts, roles, display limits, policy version,
-approver, and approval time must reconcile; omitting the manifest produces no
-approved report tables. Execute mode publishes canonical JSON, deterministic
-artifact and QC TSV views, and the run-summary receipt last. Transaction
-completion or table authorization does not promote missing, failed,
-incomplete, unavailable, local-test, runtime, cluster, scientific, or
-biological state.
-
-## Report rendering conventions
-
-Run-report renderers must consume one explicit, validated canonical
-run-summary JSON. Supplemental tables may be read only when their exact
-paths, hashes, row counts, and roles are authorized by that document's
-`approved_report_tables` records. Renderers must never discover report inputs
-by glob or infer an approval that the run summary does not contain.
-
-Report dependency setup is an explicit operator action. `make quarto-restore`
-may install the pinned renderer into ignored local tooling storage, but report
-rendering and tests must never download or install it. Before use, the
-installed renderer must pass its version and repository-local receipt/tree
-validation.
-
-Static HTML reports must be script-free, self-contained, accessible, and
-carry the exact applicable scientific-state banner. Rendering must not execute
-analysis code or promote computational, scientific, or biological state.
-
-Execute-mode report publication must use an owned lock, run-token staging and
-backup paths, input rechecks, identity-aware no-clobber replacement, and
-validation before publication. Signals and timeouts must terminate the
-complete renderer process group. Incomplete rollback or cleanup must preserve
-the owned lock and recovery evidence for explicit operator inspection.
-
-## Script conventions
+## Script and publication conventions
 
 Scripts should:
 
-* live in `scripts/`
-* accept explicit command-line arguments
-* provide useful `--help`
-* validate required inputs before expensive work
-* create output directories intentionally
-* write outputs to explicit paths
-* fail loudly with useful error messages
-* print resolved context
-* print exact commands before execution
-* avoid hidden global state
-* avoid hardcoded sample names
-* avoid hardcoded machine-specific paths
-* support tiny local tests or mocked tools
-* validate expected outputs after execution
+- accept explicit arguments and provide useful `--help`;
+- validate inputs before expensive work;
+- print resolved context and exact commands;
+- use explicit output paths;
+- fail loudly with actionable messages;
+- support local fixtures or mocked tools;
+- validate outputs before publication;
+- avoid hidden global state.
 
-For bash scripts:
+Bash scripts use strict mode, portable syntax, quoted variables, and arrays
+where helpful. Python scripts use `argparse`, `pathlib`, a guarded `main`, and
+separable parsing, validation, and publication logic. R scripts validate
+arguments and avoid hardcoded working directories.
 
-* use `#!/usr/bin/env bash` or `#!/bin/bash` consistently
-* use `set -euo pipefail`
-* quote variables
-* use arrays for command construction where helpful
-* avoid zsh-only syntax
-* make dry-run behavior explicit
-* keep tool invocation logic in scripts, not SLURM wrappers
-
-For Python scripts:
-
-* use `argparse`
-* prefer `pathlib.Path`
-* use `if __name__ == "__main__":`
-* keep parsing, computation, and file writing separable where reasonable
-* use type hints when helpful
-* avoid over-engineering
-
-For R scripts:
-
-* use `commandArgs(trailingOnly = TRUE)`
-* validate the expected number of arguments
-* document argument order clearly
-* avoid hardcoded working directories
-* print resolved input/output paths
-* fail clearly when inputs are missing
-
-The repository-local R environment is opt-in. Activate it only with the exact
-setting `NORAD_USE_RENV=1`; `NORAD_USE_RENV=0` leaves normal R startup
-unchanged, and any other value must fail clearly. Use the tracked `renv.lock`
-and these explicit developer interfaces:
-
-```bash
-RSCRIPT_BIN=/explicit/path/to/Rscript make r-restore
-RSCRIPT_BIN=/explicit/path/to/Rscript make r-check
-RSCRIPT_BIN=/explicit/path/to/Rscript make local-real-r-test
-```
-
-Restoring packages is a deliberate setup action. Analysis scripts, SLURM
-wrappers, validators, and report renderers must never bootstrap R, restore
-`renv`, install packages, or update the lockfile. Keep the project library,
-cache, staging areas, and machine-specific paths untracked. Automatic
-snapshots remain disabled; review and commit intentional lockfile changes.
-
-## Dry-run / execute convention
-
-Dry-run should be the default for workflow scripts and SLURM wrappers.
-
-Script-level pattern:
-
-```bash
-scripts/some_step.sh ...          # dry-run
-scripts/some_step.sh ... --execute
-```
-
-SLURM-level pattern:
-
-```bash
-sbatch jobs/some_step.slurm
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/some_step.slurm
-```
-
-Convention:
+Workflow and SLURM entry points are dry-run-first:
 
 ```text
-EXECUTE=0 -> dry-run
-EXECUTE=1 -> execute
-any other value -> fail clearly
+script without --execute -> validate and print only
+script with --execute    -> publish
+EXECUTE=0                -> SLURM dry-run
+EXECUTE=1                -> SLURM execute
+other EXECUTE value      -> fail
 ```
 
-Dry-run should print:
+Dry-run must not create final outputs and should avoid creating output
+directories when that could confuse validation.
 
-* resolved inputs
-* resolved outputs
-* selected sample information
-* selected tool paths
-* exact command that would run
+Multi-file outputs use validation-before-publication, owned locks, run-token
+staging, stable input rechecks, explicit no-clobber rules, rollback, and a
+receipt or summary published last as the transaction marker.
 
-Dry-run should not create final output files.
+Report renderers consume one explicit validated canonical run summary and only
+supplemental tables authorized by exact path, hash, row count, and role.
+Rendering never installs software, runs analysis engines, discovers inputs,
+or promotes evidence state.
 
-For steps where accidental directory creation could confuse validation, dry-run should avoid creating output directories too.
+## Runtime and dependency rules
 
-## SLURM job conventions
+Dependency restoration is an explicit operator action. Compute scripts,
+validators, SLURM jobs, report renderers, and tests must not bootstrap or
+install R, Quarto, system packages, or analysis dependencies.
 
-SLURM wrappers should:
+The repository-local R environment is opt-in only through
+`NORAD_USE_RENV=1`; `0` leaves normal startup unchanged and any other value
+must fail. Keep automatic snapshots disabled and review lockfile changes.
 
-* live in `jobs/`
-* call scripts from `scripts/`
-* avoid embedding analysis logic directly in the SLURM file
-* use `set -euo pipefail`
-* write stdout/stderr to `logs/`
-* print job ID, job name, node, start time, working directory, and TMPDIR
-* print selected inputs and outputs
-* load required modules inside the job script
-* avoid relying on the interactive shell environment
-* default to dry-run mode
-* use `EXECUTE=1` for real execution
-* fail on invalid `EXECUTE` values
-* avoid explicit memory requests unless known to work for the cluster/partition
+Exact setup, execution, validation, and recovery commands belong only in
+[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md).
 
-Preferred log pattern:
+## SLURM wrappers
 
-```bash
-#SBATCH --output=logs/%x-%j.out
-#SBATCH --error=logs/%x-%j.err
-```
+SLURM wrappers call scripts rather than embedding analysis logic. They use
+strict mode, default to dry-run, log job context and resolved inputs/outputs,
+load required modules inside the job, and validate `EXECUTE`.
 
-Use:
+Capture module output with `module list 2>&1 || true`. Do not add explicit
+memory requests unless the relevant cluster contract has been confirmed.
 
-```bash
-module list 2>&1 || true
-```
+## Documentation responsibilities
 
-instead of plain:
+Each mutable fact has one canonical owner:
 
-```bash
-module list
-```
+| Document | Responsibility |
+| --- | --- |
+| `AGENTS.md` | Stable conduct, safety, conventions, evidence language, and gates |
+| `README.md` | Concise entry point, purpose, minimal quick start, and repository map |
+| `TODO.md` | Short prioritized pending work and current blockers |
+| `HANDOFF.md` | Current takeover snapshot and evidence boundary |
+| `PIPELINE_PLAN.md` | Pipeline roadmap, status matrix, acceptance criteria, and branch lineage |
+| `QUESTIONS.md` | Open questions and a resolved-question index |
+| `RUNBOOK.md` | Executable setup, validation, cluster, and recovery commands |
+| `DECISIONS.md` | Durable decisions, rationale, alternatives, and consequences |
+| `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
+| `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
+| `FUTURE_ARCHITECTURE.md` | Target architecture and future constraints |
+| Demo documents | Presentation walkthroughs or explicitly dated snapshots |
+| Standalone `.mmd` files | Canonical diagram sources |
 
-because module output often goes to stderr.
+Do not duplicate live branch names, commit IDs, test totals, tool versions,
+roadmaps, or next-step narratives outside their canonical owner. Link instead.
+Do not maintain inline copies of standalone Mermaid sources.
 
-## Testing expectations
-
-Before committing changes, run the local validation gate used by this project.
-
-At minimum, check:
-
-```bash
-git diff --check
-bash -n scripts/*.sh
-bash -n jobs/*.slurm
-python -m compileall scripts tests
-python -m pytest
-make shell-test
-make real-r-test
-RSCRIPT_BIN=/explicit/path/to/Rscript make r-check
-RSCRIPT_BIN=/explicit/path/to/Rscript make local-real-r-test
-make report-test
-git status --short
-git diff --name-status
-```
-
-`make real-r-test` may report `SKIP` only when the default `Rscript` executable
-is unavailable. A skip is not semantic R validation; an explicit runtime
-override or a present runtime with missing packages must fail clearly.
-`make local-real-r-test` is the guarded repository-local equivalent and must
-execute both Step `08` and Step `09` suites without `SKIP`.
-`make report-test` requires the separately restored pinned renderer and must
-exercise that real executable; run `make quarto-restore` as the explicit setup
-action when it is absent. A mocked renderer is not report-runtime validation.
-
-When adding or modifying a workflow step:
-
-* add or update local tests
-* prefer fake/mocked external tools where real cluster tools are unavailable locally
-* test dry-run behavior
-* test execute-mode command construction if possible
-* test failure behavior for missing inputs
-* test that expected output paths are validated
-
-Active implemented-step tests should live under:
-
-```text
-tests/shell/
-```
-
-Future-step test plans may live under:
-
-```text
-tests/pending/
-```
-
-Pending tests must not be wired into active test runners.
-
-## Documentation expectations
-
-When changing workflow behavior, update the relevant docs.
-
-Use the docs according to purpose:
-
-```text
-README.md              entrypoint / overview
-docs/operations/HANDOFF.md        big project-state handoff
-docs/design/PIPELINE_PLAN.md      tactical step map and validation status
-docs/design/QUESTIONS.md          answered/open project questions
-docs/operations/RUNBOOK.md        operational commands and cluster procedure
-docs/operations/TROUBLESHOOTING.md symptom -> cause -> fix
-docs/design/DECISIONS.md          decisions and reasons
-TODO.md                tactical next work
-AGENTS.md              coding-agent instructions
-```
-
-Do not turn one document into an everything-bucket.
-
-When a step becomes implemented, complete the documentation gate above and update the pipeline plan.
-
-When a step becomes cluster-proven, perform a validation docpatch and update the pipeline plan and handoff notes.
-
-When a new cluster quirk is discovered, update troubleshooting or the runbook.
-
-When a durable choice is made, update decisions.
-
-## Handoff readiness
-
-Develop this repository as if another researcher will take over and run or modify the workflow later.
-
-A future user should be able to understand:
-
-* what each script does
-* what inputs it expects
-* what outputs it creates
-* whether it is meant to run locally or through SLURM
-* what modules/software it requires
-* how to run a tiny test
-* how to run the full cluster workflow
-* where logs and results are written
-
-When adding or modifying a script, include:
-
-* a short module/script docstring or header comment when the purpose is not obvious from the filename and CLI
-* command-line arguments with `--help`
-* an example command in the README or relevant docs
-* validation for required input files/directories
-* clear output naming
-* failure messages that explain what went wrong and how to fix it
-
-Avoid:
-
-* hardcoded user-specific paths
-* unexplained magic numbers
-* silent overwrites
-* assumptions about current working directory
-* analysis logic hidden inside SLURM files
-* one-off scripts with unclear purpose
-* undocumented manual steps
-
-## Legacy workflow handling
-
-Legacy uploaded scripts should be treated as protocol references.
-
-Do not directly copy:
-
-* hardcoded paths
-* hardcoded sample names
-* undocumented assumptions
-* brittle one-off command sequences
-
-Instead, translate legacy behavior into:
-
-* parameterized scripts
-* explicit inputs
-* explicit outputs
-* local tests
-* SLURM wrappers
-* documented assumptions
+After each task, suggest relevant updates to these documents. When behavior
+changes, complete the repository-wide docpatch; update every affected status,
+interface, command, path, schema, limitation, diagram, and next-step claim.
 
 ## Biological interpretation caution
 
-Be careful with terminology around:
+Keep library strandedness, read orientation, transcript strand, and biological
+sense/antisense interpretation separate. Mechanical read-orientation labels
+do not establish biological strand interpretation.
 
-* library strandedness
-* read orientation
-* biological transcript strand
-* sense/antisense interpretation
-* editing-site interpretation
-
-Do not assume read-orientation labels directly equal biological strand labels unless the workflow explicitly documents why.
-
-When uncertain, preserve neutral orientation labels and document the uncertainty.
-
-`cluster-proven` is a computational/runtime status, not a biological-validation
-claim. A result remains scientifically provisional until its orientation,
-annotation, statistical policy, candidate evidence, and relevant limitations
-have passed an explicit evidence-and-decision gate. Generating a report or
-receiving PI review does not by itself constitute orthogonal biological
-validation.
-
-Use two distinct post-review states:
-
-* `science_review_complete_exploratory`: evidence and decisions are recorded,
-  but results and candidate reports must remain explicitly provisional.
-* `biological_interpretation_ready`: the approved orientation policy and all
-  stricter scientific exit criteria are satisfied.
-
-Never collapse these states or use exploratory completion to support
-biological candidate claims.
-
-Until a separately approved scientific-policy stage defines and unlocks the
-exit criteria, `biological_interpretation_ready` is reserved: scientific
-validation tools must reject attempts to emit it. Report rendering may
-understand the reserved value, but rendering must never create, authorize, or
-infer it.
+Preserve neutral orientation labels until an approved scientific policy and
+evidence gate justify stronger language. Computational success is not a
+biological conclusion.
 
 ## Engineering standard
 
-Treat this repository as long-lived research software.
-
-Prefer designs that are:
-
-* easy to run
-* easy to test
-* easy to debug
-* easy to hand off
-* explicit about assumptions
-* resistant to user error
-* stable across local and cluster environments
-
-Avoid cleverness that makes the workflow harder to understand later.
-
-Default preference:
-
-```text
-Make it simple.
-Make it runnable locally.
-Make it scalable through SLURM.
-Make failures easy to debug.
-```
+Prefer designs that are explicit, boring, portable, testable, debuggable, and
+easy to hand off. Avoid broad refactors, orchestration layers, job arrays, or
+shared abstractions before stable behavior and evidence justify them.

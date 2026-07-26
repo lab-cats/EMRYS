@@ -406,43 +406,10 @@ If helpers are not installed, use the manual commands in the next section.
 
 ## Artifact And Future Operational Helpers
 
-The approved local descendant roadmap has implemented Step `09c`
-scientific-validation tooling, the `artifact-schema-v1` contract package, the
-`artifact-adapters-v1` index package, the `artifact-run-summary` package, and
-the HTML-only `report-html-v1` package. Explicit producer-side report-table
-approvals are implemented at `2a4b8f8`; the next descendant is the export
-package:
-
-```text
-step-09c-scientific-validation
--> artifact-schema-v1                         # implemented and locally tested
--> artifact-adapters-v1                       # implemented and locally tested
--> artifact-run-summary                       # implemented and locally tested
--> report-html-v1                             # implemented and locally tested
--> report-html-v1a-report-table-approvals     # implemented and locally tested
--> report-exports-v1                          # next
--> post09-runtime-preflight
--> post09-reference-provenance
--> post09-storage-inventory-retention
--> one validation-report branch for each Step 00a through 09
-```
-
-Run summaries and consolidated HTML/PDF reports therefore precede the
-remaining foundational engineering. Remote validation, targeted reruns,
-analysis configuration, module wrapping, job arrays, public-data ingestion,
-publishing infrastructure, and broad refactors remain deferred.
-
-Step `09c`, `artifact-schema-v1`, `artifact-adapters-v1`,
-`artifact-run-summary`, `report-html-v1`, and the report-table approval
-producer are no longer helper ideas. Their schemas, example contracts,
-validators, fixtures, and commands documented below exist. The adapter,
-run-summary, approval, and static HTML output contracts are implemented, but
-no production transaction/report exists. PDF/TSV/receipt export, foundation
-records, and per-step validators remain roadmap work. Do not treat commands
-or outputs belonging to those future packages as available.
-
-The future preflight will supplement, not replace, each step's own validation.
-It must not install packages, guess tool paths, delete outputs, or clear locks.
+The commands below operate only on explicit inputs. They do not install
+analysis software, discover production outputs, promote evidence state, delete
+artifacts, or clear locks. For package availability and the approved roadmap,
+consult `docs/design/PIPELINE_PLAN.md`.
 Do not use a generic dispatcher or job array before the step-specific
 validators and repeated operational need establish their contracts.
 
@@ -506,9 +473,6 @@ Run the focused suite:
 ```bash
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
 ```
-
-Current focused evidence is `58 passed`. This is local schema/fixture evidence
-only; the repository-wide gate remains a separate required stage check.
 
 The validator is read-only. It validates strict JSON, schema and semantic
 coherence, canonical run-contract hashes, attempt/status/evidence
@@ -646,15 +610,11 @@ Run the focused gates:
   tests/test_artifact_adapters.py
 ```
 
-Current local evidence is 50 adapter tests and 108 combined schema/adapter
-tests passing. All adapter source inspection and publication evidence is
-synthetic fixture evidence; no production adapter transaction, production run
-summary, report, runtime/cluster proof, completed production science review,
-or biological-readiness evidence exists.
+Passing fixture tests establish only local adapter behavior. They do not
+establish a production transaction, report, runtime or cluster proof,
+completed production science review, or biological readiness.
 
 ### Build An `artifact-run-summary` Transaction
-
-Introduced at `209bb19`; report-table approval production added at `2a4b8f8`:
 
 ```text
 scripts/build_run_summary.py
@@ -765,15 +725,11 @@ Run focused and combined checks:
   tests/test_artifact_run_summary.py
 ```
 
-Current evidence is 53 focused run-summary tests and 161 combined
-artifact-layer tests passing. This is local synthetic fixture evidence only.
-No production adapter transaction, run summary, or approval manifest exists;
-the builder runs no analysis and establishes no runtime, cluster, scientific,
-or biological validation.
+Passing fixture tests establish only local summary-builder behavior. The
+builder runs no analysis and establishes no runtime, cluster, scientific, or
+biological validation.
 
 ### Restore Quarto And Render The Static HTML Report
-
-Implemented locally at `117ba26`:
 
 ```text
 scripts/restore_quarto.py
@@ -850,10 +806,9 @@ template rechecks, output validation, rollback, signal cleanup, and recovery
 safeguards protect replacement. Never delete a foreign lock or hand-edit a
 canonical run summary.
 
-This branch does not publish PDF, exported report TSVs, or a report receipt.
-The normal run-summary producer now lawfully populates approved records from
-the optional exact manifest above and emits an empty list when it is omitted.
-`report-exports-v1` is the next descendant.
+The documented interface publishes HTML only. The run-summary producer
+populates approved records from the optional exact manifest and emits an empty
+list when it is omitted. Consult the pipeline plan for pending export work.
 
 Focused validation:
 
@@ -861,14 +816,9 @@ Focused validation:
 make report-test
 ```
 
-Run `make quarto-restore` first. The target requires real pinned Quarto and
-passes 119 Python tests (15 restore, 53 run-summary, and 51 renderer tests)
-plus the shell wrapper, including deterministic real rerenders. The complete
-Python gate reports `292 passed, 1 skipped`; the expected skip is the opt-in
-real-Quarto case that this target executes. Shell, guarded real-R, and
-`r-check` gates also pass. This is synthetic/incomplete local evidence only.
-No production approval manifest or report, runtime or cluster validation,
-completed production scientific review, or biological readiness was created.
+Run `make quarto-restore` first. The target requires the real pinned renderer
+and exercises deterministic rerendering. A passing target is local renderer
+and synthetic-fixture evidence only.
 
 ## Manual Job Checking
 
@@ -978,17 +928,9 @@ Step 08 validates consumed FORMAT/DP, FORMAT/AD, and INFO/AD lexical values
 Step 09 validates the PDF EOF marker by scanning raw bytes
 ```
 
-Therefore the guarded environment and both semantic fixture suites are
-validated locally. This does not validate production data, establish CSU
-batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
-`step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
-implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
-locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
-locally fixture-tested at `4dbd32d`. `artifact-run-summary` was introduced at
-`209bb19`, and its approval producer is implemented and locally fixture-tested
-at `2a4b8f8`. `report-html-v1` is implemented and fixture-tested at `117ba26`;
-after this approval docpatch/push gate the next descendant is
-`report-exports-v1`.
+These checks validate the guarded local environment and semantic fixtures.
+They do not validate production data, establish CSU batch visibility, or make
+Steps `08` or `09` cluster-proven.
 
 ## Cluster Execution Pattern
 
@@ -1218,7 +1160,7 @@ refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.dict
 ```
 
-Current evidence:
+Expected validation evidence:
 
 ```text
 Ad hoc sidecar prep completed with exit code 0:0.
@@ -2235,16 +2177,6 @@ and biological readiness remain independent.
 
 ## Step 08: VCF Preprocessing
 
-Status:
-
-```text
-implemented locally at implementation commit 90335d8
-locally tested with shell/fake-R coverage
-real-R fixture suite passes locally without SKIP
-cluster validation pending
-not cluster-proven
-```
-
 No Step `08` cluster dry-run, execute job, log, or output evidence has been
 inspected. Do not runtime-promote Step `08` before Step `07` is
 cluster-proven.
@@ -2495,17 +2427,6 @@ absent. Publication order is sites table, summary, then the input receipt last
 as the transaction commit marker.
 
 ## Step 09: CMH Editing-Site Calling
-
-Status:
-
-```text
-implemented locally at implementation commit e4371de
-locally tested with shell/fake-R coverage
-real-R fixture suite passes locally without SKIP
-PDF signature/EOF fixture scans raw bytes
-cluster validation pending
-not cluster-proven
-```
 
 No Step `09` cluster dry-run, execute job, log, output table, plot, or
 biological candidate result has been inspected. Do not runtime-promote this

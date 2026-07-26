@@ -1,54 +1,7 @@
 flowchart TD
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph contracts["Manifest/config/provenance contracts"]
-        direction TB
-        manifest["Manifest<br/>what data exist"]
-        config["Analysis config<br/>what analysis to run"]
-        policy["Predeclared analysis policy<br/>contrast / orientation / thresholds"]
-        review["Step 09c review record<br/>state + decisions + limitations"]
-        provenance["Provenance<br/>what code/reference/tools produced results"]
-        registry["Artifact registry<br/>what outputs exist and where"]
-        report_approval["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-    end
-
-    subgraph artifacts["Validated artifact inputs"]
-        direction TB
-        fastqs["Validated FASTQ inputs"]
-        ready["Validated analysis-ready artifacts"]
-        existing["Declared Step 00a-09c artifacts<br/>missing/incomplete represented explicitly"]
-    end
-
-    subgraph modules["Assay module execution"]
-        direction TB
-        module["Assay-specific analysis modules"]
-        results["Module result artifacts"]
-    end
-
-    subgraph indexing["Read-only artifact indexing"]
-        direction TB
-        adapters["Read-only artifact adapters<br/>implemented + fixture-tested locally"]
-    end
-
-    manifest --> fastqs --> ready
-    manifest --> module
-    config --> module
-    policy --> config
-    policy --> module
-    ready --> module
-    provenance --> module
-    module --> results --> adapters --> registry
-    existing --> adapters
-    existing --> review
-    provenance --> registry
-    registry --> reports["Run-summary JSON<br/>implemented + fixture-tested locally<br/>single structured report entry point"]
-    review --> reports
-    report_approval -.-> reports
-    reports --> html_report["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-
-    class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters,reports,html_report,report_approval current
-    class ready,module,results future
+    samples["Sample manifest<br/>identity, condition, replicate, order"] --> run["Immutable run identity"]
+    reference["Reference contract<br/>FASTA, annotation, indexes, hashes"] --> run
+    partitions["Partition contract<br/>explicit selectors and order"] --> run
+    policy["Analysis policy<br/>contrast, thresholds, orientation, background"] --> run
+    run --> outputs["Native outputs and receipts"]
+    run --> evidence["Validation and scientific evidence"]

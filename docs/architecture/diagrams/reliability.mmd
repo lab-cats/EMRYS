@@ -1,65 +1,9 @@
 flowchart LR
-    classDef gate fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef cluster fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef safeguard fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-
-    stagebranch["stage branch<br/>from prior docpatch"]
-    local["local implementation<br/>macOS / VS Code"]
-    tests["local tests<br/>syntax + fake tools"]
-    implcommit["implementation commit"]
-    stagepatch["repository-wide docpatch<br/>separate commit"]
-    cleanpush["clean check / push"]
-    descendant["next descendant<br/>local stage branch"]
-    localr["local R gate<br/>guarded renv / runtime checks"]
-    realrfix["09b1 real-R fixes<br/>both suites pass locally"]
-    sciencebranch["09c implemented locally<br/>synthetic fixtures pass"]
-    artifact_schema["artifact-schema-v1<br/>schemas + explicit inventory<br/>fixture-tested locally"]
-    artifact_adapters["artifact-adapters-v1<br/>explicit native adapters<br/>fixture-tested locally"]
-    runsummary["artifact-run-summary<br/>implemented + fixture-tested locally"]
-    reporthtml["report-html-v1<br/>HTML implemented + fixture-tested locally"]
-    approvals["report-html-v1a<br/>report-table approval producer implemented locally at 2a4b8f8"]
-    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
-    foundations["read-only foundations<br/>runtime -> reference -> storage"]
-    validators["one validator branch per step<br/>00a through 09"]
-    localstop["final local validator<br/>clean / docpatched / pushed"]
-    remotehold["remote promotion paused"]
-    pull["later cluster pull<br/>CSU checkout"]
-    dryrun["SLURM dry-run<br/>default gate"]
-    execute["execute<br/>explicit EXECUTE=1"]
-    validate["validate outputs<br/>logs + contracts"]
-    validationpatch["evidence + report regeneration<br/>validation docpatch"]
-
-    fake["fake-tool tests"]
-    drydefault["dry-run default"]
-    execflag["explicit EXECUTE=1"]
-    locks["locks"]
-    runtoken["run-token temp files"]
-    publish["validate before publish"]
-    rollback["rollback"]
-    cleanup["cleanup"]
-    trouble["troubleshooting docs"]
-
-    stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    descendant --> localr --> realrfix --> sciencebranch --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports --> foundations --> validators --> localstop --> remotehold
-    remotehold -.-> pull --> dryrun --> execute --> validate --> validationpatch
-    validationpatch -->|clean push, then next descendant| pull
-
-    fake -.-> tests
-    drydefault -.-> dryrun
-    execflag -.-> execute
-    locks -.-> execute
-    runtoken -.-> execute
-    publish -.-> validate
-    rollback -.-> validate
-    cleanup -.-> validate
-    trouble -.-> stagepatch
-    trouble -.-> validationpatch
-    trouble -.-> sciencebranch
-
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals,localstop gate
-    class pull,dryrun,execute,validate cluster
-    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class stagepatch,validationpatch docs
-    class exports,foundations,validators safeguard
-    class remotehold docs
+    inputs["Explicit inputs<br/>paths + identities + hashes"] --> dryrun["Side-effect-free dry-run"]
+    dryrun --> lock["Owned lock"]
+    lock --> stage["Run-token staging"]
+    stage --> validate["Validate outputs and recheck inputs"]
+    validate --> publish["Atomic publication"]
+    publish --> marker["Receipt or summary published last"]
+    validate --> rollback["Rollback on failure"]
+    rollback --> recovery["Preserve recovery evidence when uncertain"]

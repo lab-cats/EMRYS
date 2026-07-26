@@ -1,494 +1,87 @@
-# Future Planned Architecture
+# Future architecture
 
-This page describes the activated local roadmap beyond the current compute
-pipeline. Step `09c` now exists and is fixture-tested locally. The
-`artifact-schema-v1` foundation is also implemented and locally fixture-tested;
-`artifact-adapters-v1` and `artifact-run-summary` are implemented and locally
-fixture-tested. `report-html-v1` and
-`report-html-v1a-report-table-approvals` are implemented and fixture-tested
-locally; PDF/TSV exports, foundation, validator, and modular tooling remain
-planned until each named branch is implemented. The current pipeline is
-documented in `docs/architecture/ARCHITECTURE.md`: the
-cluster-proven boundary remains Step `06`, and Steps `07`-`09` remain not
-cluster-proven.
+This document describes target-state architecture and future constraints. It
+does not track current branch, test, runtime, or validation status. See
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for the approved
+roadmap.
 
-The local runtime boundary has moved. Signed and notarized Apple-silicon CRAN
-R `4.6.1` is installed, and the repository has a guarded `renv` environment
-locked to Bioconductor `3.23`. Namespace, lock, headless-PDF, and empty
-cache-disabled binary restore checks pass. The Step `08` and Step `09` real-R
-suites now pass locally without `SKIP`. The `step-09b1-real-r-fixes`
-implementation at `eae5eca` adds raw DP/AD/INFO AD lexical preflight for Step
-`08` and locale-independent raw-byte PDF fixture validation for Step `09`.
-Step `09c` is implemented at `b674a31` and fixture-tested locally; it has no
-production review evidence. `artifact-schema-v1` is implemented and locally
-fixture-tested at `5f4d3b4`; `artifact-adapters-v1` is implemented and locally
-fixture-tested at `4dbd32d`, with 50 focused adapter tests passing.
-`artifact-run-summary` is implemented at `209bb19` and its explicit
-report-table approval producer is implemented at `2a4b8f8`; 53 focused
-run-summary tests and 161 combined artifact-layer tests pass.
-`report-html-v1` is implemented at `117ba26`. The current
-`make report-test` gate runs 119 Python tests with real pinned Quarto `1.9.38`
-plus the shell wrapper test, and the complete Python suite reports 292 passed
-with one expected opt-in Quarto skip. The official macOS archive is verified
-against SHA-256
-`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
-The rendered evidence is synthetic/incomplete only. No production artifact
-index, run summary, approval manifest, or report exists, and no computational, cluster,
-scientific-review, or biological status is promoted.
+Canonical future diagrams:
 
-## Current vs future boundary
+- [`diagrams/future_roadmap_sequence.mmd`](diagrams/future_roadmap_sequence.mmd)
+- [`diagrams/future_modular_pipeline.mmd`](diagrams/future_modular_pipeline.mmd)
+- [`diagrams/future_manifest_config_contracts.mmd`](diagrams/future_manifest_config_contracts.mmd)
+- [`diagrams/future_reporting_layer.mmd`](diagrams/future_reporting_layer.mmd)
 
-| Area | Current state | Future direction |
-| ---- | ------------- | ---------------- |
-| Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; Step `09c` implemented at `b674a31` and synthetic-fixture-tested; none has production scientific or Step `07`-`09` cluster evidence | Later assay-specific modules after explicit evidence/report foundations |
-| Reporting | Handwritten demo/QC docs and generated step artifacts; Draft 2020-12 schemas and explicit 67-row inventory implemented at `5f4d3b4`; dry-run-first explicit adapter indexer implemented at `4dbd32d`; canonical JSON plus deterministic TSV/QC run-summary builder implemented at `209bb19`; explicit report-table approval production implemented at `2a4b8f8`; self-contained script-free HTML renderer implemented at `117ba26`; no production artifact index, summary, approval manifest, or report | Add bundled-Typst PDF/TSV exports and the report receipt on `report-exports-v1` |
-| Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
+## Target qualities
 
-## Ordered roadmap boundary
+- explicit configuration and immutable identities;
+- native compute outputs preserved behind read-only adapters;
+- deterministic validation records for every pipeline step;
+- reports generated only from canonical structured summaries;
+- local fixtures and real-runtime evidence represented separately;
+- cluster proof and scientific review represented separately;
+- safe recovery without automatic deletion or repair.
 
-Standalone source: `docs/architecture/diagrams/future_roadmap_sequence.mmd`.
+## Configuration separation
 
-```mermaid
-flowchart TB
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-    classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-    classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
+A future analysis configuration may separate:
 
-    s09["step-09-cmh<br/>local implementation/docpatch complete"]
-    s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
-    rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
-    rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
-    science09c["step-09c-scientific-validation<br/>implemented + synthetic-fixture-tested locally<br/>production evidence unavailable"]
-    artifact_schema["artifact-schema-v1<br/>implemented + locally fixture-tested<br/>no production artifact index"]
-    artifact_adapters["artifact-adapters-v1<br/>implemented + locally fixture-tested<br/>no production index"]
-    runsummary["artifact-run-summary<br/>implemented + locally fixture-tested<br/>no production summary"]
-    reporthtml["report-html-v1<br/>implemented + locally fixture-tested<br/>no production report"]
-    approvals["report-html-v1a-report-table-approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-    exports["report-exports-v1<br/>next: PDF + TSV + receipt"]
-    foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
-    validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
-    remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
+- sample metadata: what data exist;
+- reference contract: which immutable reference set applies;
+- partition contract: which declared loci are processed;
+- analysis policy: which contrast, thresholds, orientation policy, and
+  background rules apply.
 
-    s09 --> s09a --> rlocal --> rfix --> science09c
-    science09c --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports --> foundations --> validators
-    validators -.-> remote
+This separation must preserve current CLIs and output paths until evidence
+justifies migration. Filenames must not become identity.
 
-    class s09,rfix,science09c,artifact_schema,artifact_adapters,runsummary,reporthtml,approvals current
-    class s09a docs
-    class rlocal runtime
-    class exports,foundations,validators future
-    class remote deferred
-```
+## Validation records
 
-Every branch is a clean, docpatched descendant. The complete local lineage is:
+Each pipeline stage should have one explicit validator that emits a stable
+tabular record. Validators are read-only, dry-run-first, and stage-specific.
+They report failure and inconsistency rather than repairing outputs.
 
-```text
-step-09b-local-r-runtime
--> step-09b1-real-r-fixes
--> step-09c-scientific-validation
--> artifact-schema-v1
--> artifact-adapters-v1
--> artifact-run-summary
--> report-html-v1
--> report-html-v1a-report-table-approvals
--> report-exports-v1
--> post09-runtime-preflight
--> post09-reference-provenance
--> post09-storage-inventory-retention
--> post09-validation-report-00a
--> post09-validation-report-00b
--> post09-validation-report-00c
--> post09-validation-report-01
--> post09-validation-report-02
--> post09-validation-report-02b
--> post09-validation-report-03
--> post09-validation-report-04
--> post09-validation-report-05
--> post09-validation-report-06
--> post09-validation-report-07
--> post09-validation-report-08
--> post09-validation-report-09
-```
-
-The `step-09b1-real-r-fixes` package was inserted after real-R execution found
-one raw-count engine defect and one PDF fixture defect. The initial generic
-Step `08` negative-fixture message had misattributed the later malformed-count
-failure to its already-working partition-overlap validator. Step `09c` is
-implemented at `b674a31`; it validates and summarizes declared evidence but
-does not rerun CMH or infer review decisions. Its local fixtures are not
-production review evidence. `artifact-schema-v1` is implemented and locally
-fixture-tested at `5f4d3b4`; its four public Draft 2020-12 contracts share
-versioned definitions and its explicit inventory declares 67 expected
-artifacts without glob discovery. It has not generated a production artifact
-index. `artifact-adapters-v1` is implemented at `4dbd32d`; its 49 read-only
-adapters require the explicit run contract plus inventory, and its 50 focused
-tests pass on synthetic native-output fixtures. `artifact-run-summary` is
-implemented at `209bb19`, and its explicit report-table approval producer is
-implemented at `2a4b8f8`; 53 focused run-summary tests and 161 combined
-artifact-layer tests pass on synthetic fixtures. `report-html-v1` is
-implemented at `117ba26`. The current `make report-test` gate runs 119 Python
-tests, including real pinned-Quarto renders, plus the shell wrapper test.
-`report-exports-v1` is next; PDF, exported TSV, and the report receipt remain
-pending.
-Remote validation is paused until the final local validator branch.
-
-## Future modular dataflow
-
-Standalone source: `docs/architecture/diagrams/future_modular_pipeline.mmd`.
-
-```mermaid
-flowchart LR
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef deferred fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph sources["Data sources"]
-        direction TB
-        lab["Lab-generated FASTQs on ADAM"]
-        public["Public genomics datasets<br/>deferred import"]
-    end
-
-    subgraph contracts["Configuration/contracts"]
-        direction TB
-        manifest["Sample manifest"]
-        config["Analysis config"]
-        policy_record["Versioned scientific policy<br/>review status + limitations"]
-    end
-
-    subgraph core["Core preprocessing"]
-        direction TB
-        backbone["Core preprocessing backbone"]
-        ready["Validated analysis-ready artifacts"]
-        registry["Artifact registry"]
-    end
-
-    subgraph modules["Analysis modules"]
-        direction TB
-        assays["Assay-specific analysis modules"]
-        results["Standardized result artifacts"]
-    end
-
-    subgraph science["Scientific evidence and decision records"]
-        direction TB
-        declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
-        science_review["Step 09c validation package<br/>implemented + fixture-tested locally"]
-        decision_record["Review status + limitations<br/>ready state remains locked"]
-    end
-
-    subgraph reports["Reporting"]
-        direction TB
-        run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
-        report_html["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-        report_approvals["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-        report_exports["report-exports-v1<br/>next: PDF + TSV + report receipt"]
-        outputs["QC reports / PI reports / candidate result reports / handoff reports"]
-    end
-
-    lab --> manifest
-    public -.-> manifest
-    manifest --> backbone
-    config --> backbone
-    manifest --> assays
-    config --> assays
-    policy_record --> config
-    policy_record --> assays
-    backbone --> ready --> assays --> results --> registry --> run_summary --> report_html --> outputs
-    report_approvals -.-> run_summary
-    report_html --> report_exports --> outputs
-    declared09 --> science_review --> decision_record --> policy_record
-    declared09 --> registry
-    decision_record --> run_summary
-
-    class lab,run_summary,report_html,report_approvals current
-    class public deferred
-    class manifest,config,policy_record,decision_record,science_review contract
-    class backbone,ready future
-    class registry contract
-    class assays,results,declared09 future
-    class report_exports,outputs reporting
-```
-
-## Manifest/config contracts
-
-Standalone source: `docs/architecture/diagrams/future_manifest_config_contracts.mmd`.
-
-```mermaid
-flowchart TD
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph contracts["Manifest/config/provenance contracts"]
-        direction TB
-        manifest["Manifest<br/>what data exist"]
-        config["Analysis config<br/>what analysis to run"]
-        policy["Predeclared analysis policy<br/>contrast / orientation / thresholds"]
-        review["Step 09c review record<br/>state + decisions + limitations"]
-        provenance["Provenance<br/>what code/reference/tools produced results"]
-        registry["Artifact registry<br/>what outputs exist and where"]
-        report_approval["Explicit report-table approvals<br/>implemented + fixture-tested locally at 2a4b8f8"]
-    end
-
-    subgraph artifacts["Validated artifact inputs"]
-        direction TB
-        fastqs["Validated FASTQ inputs"]
-        ready["Validated analysis-ready artifacts"]
-        existing["Declared Step 00a-09c artifacts<br/>missing/incomplete represented explicitly"]
-    end
-
-    subgraph modules["Assay module execution"]
-        direction TB
-        module["Assay-specific analysis modules"]
-        results["Module result artifacts"]
-    end
-
-    subgraph indexing["Read-only artifact indexing"]
-        direction TB
-        adapters["Read-only artifact adapters<br/>implemented + fixture-tested locally"]
-    end
-
-    manifest --> fastqs --> ready
-    manifest --> module
-    config --> module
-    policy --> config
-    policy --> module
-    ready --> module
-    provenance --> module
-    module --> results --> adapters --> registry
-    existing --> adapters
-    existing --> review
-    provenance --> registry
-    registry --> reports["Run-summary JSON<br/>implemented + fixture-tested locally<br/>single structured report entry point"]
-    review --> reports
-    report_approval -.-> reports
-    reports --> html_report["Static self-contained HTML<br/>implemented + fixture-tested locally"]
-
-    class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters,reports,html_report,report_approval current
-    class ready,module,results future
-```
+A generic dispatcher or job array is not part of the target until individual
+validators are proven and a concrete operational need exists.
 
 ## Reporting layer
 
-Standalone source: `docs/architecture/diagrams/future_reporting_layer.mmd`.
+The target report bundle contains deterministic HTML, PDF, summary TSV, and a
+receipt committed last. It consumes the canonical run summary and authorized
+tables only.
 
-The implemented summary boundary is:
+PDF generation must use the renderer’s bundled toolchain, validate signatures,
+EOF, text, page order, and banners, and remain deterministic under fixed
+inputs and time.
 
-```text
-build_run_summary.py
-  exact complete artifact receipt
-  + optional exact Step 09c review summary
-  + optional exact report-table approvals TSV
-  -> canonical run_summary.json
-  -> deterministic run_summary.tsv
-  -> deterministic qc_summary.tsv
-  -> run_summary_receipt.tsv published last
-```
+Rendering is a projection of evidence, never evidence generation.
 
-The implemented HTML-only renderer boundary is:
+## Potential analysis modules
 
-```text
-scripts/render_run_report.sh
-  --run-summary RUN_SUMMARY_JSON
-  --output-root OUTPUT_ROOT
-  --quarto-bin QUARTO_BIN
-  [--formats html]
-  [--execute]
-  -> <OUTPUT_ROOT>/<run_id>/<run_id>.run_report.html
-```
+Only after stable evidence gates may Steps `07`–`09` be wrapped as a thin
+RNA-editing/CMH module. Such a module must preserve:
 
-Only canonical JSON crosses into the implemented renderer. The TSV views are
-outputs, not independent renderer inputs. The renderer publishes exactly one
-HTML file and does not execute analysis. No production summary or report
-exists. The optional `--report-table-approvals` input is an exact, nonempty
-14-column TSV manifest; omission preserves an empty `approved_report_tables`
-list. Supplied rows must be bound to the run ID and immutable contract, name
-complete Step `09c` scientific-review artifacts, and reconcile their paths,
-hashes, row counts, roles, approval metadata, and current file snapshots.
-Neither the builder nor renderer discovers tables by glob, and canonical
-run-summary JSON must never be hand-edited to add an approval.
+- explicit manifests and run identity;
+- existing entry-point behavior and output paths;
+- dry-run and execute semantics;
+- transaction and recovery contracts;
+- provisional orientation language;
+- independent computational and scientific states.
 
-```mermaid
-flowchart TD
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+General core refactoring requires evidence from another real cohort.
 
-    subgraph inputs["Schema-validated records"]
-        direction TB
-        schema["Versioned artifact schemas<br/>implemented + locally fixture-tested"]
-        run_contract["Explicit six-field run contract"]
-        inventory["Explicit expected-artifact inventory"]
-        declared_sources["Explicit declared native sources<br/>missing/incomplete allowed"]
-        science_summary["Optional exact Step 09c review summary<br/>never discovered"]
-    end
+## Deferred capabilities
 
-    adapter_builder["artifact-adapters-v1 builder<br/>implemented + fixture-tested locally"]
-    artifacts_tsv["artifact records + artifacts.tsv + receipt<br/>fixture-tested transaction<br/>production index absent"]
-    aggregate["artifact-run-summary builder<br/>implemented + fixture-tested locally"]
-    run_summary["run_summary.json<br/>canonical report entry point"]
-    run_summary_tsv["run_summary.tsv<br/>deterministic artifact view"]
-    qc_summary["qc_summary.tsv<br/>deterministic metric view"]
-    summary_receipt["run_summary_receipt.tsv<br/>published last"]
-    approved_tables["Explicit approved report-table records<br/>implemented + fixture-tested locally at 2a4b8f8"]
-    generator["Static QMD / pinned Quarto renderer<br/>implemented; no analysis execution"]
-    html["Self-contained script-free HTML<br/>fixture-tested locally; no production report"]
-    exports["report-exports-v1<br/>next: bundled Typst PDF + TSV + receipt"]
+The following remain intentionally deferred:
 
-    subgraph review["Scientific review fields"]
-        direction TB
-        review_status["evidence_incomplete or<br/>science_review_complete_exploratory"]
-        orientation_status["orientation policy status/version"]
-        annotation_status["annotation provenance status"]
-        adjudication_status["candidate adjudication status"]
-        orthogonal_status["orthogonal validation status"]
-        limitations["limitations"]
-        review_record["Normalized Step 09c review record"]
-    end
+- broad shared shell or SLURM helper extraction;
+- generic dispatchers and job arrays;
+- targeted-rerun orchestration;
+- public SRA/GEO/ENA ingestion;
+- publication infrastructure;
+- automatic dependency restoration;
+- automatic stale-lock deletion or artifact cleanup;
+- policy capable of unlocking biological readiness.
 
-    subgraph outputs["Report views (HTML fixture-tested; exports pending)"]
-        direction TB
-        qc_report["QC and funnel summary"]
-        validation_report["Steps 00a-09 evidence matrix"]
-        candidate_report["CMH-ranked candidate section"]
-        pi_report["Status-labeled PI report"]
-        handoff_report["Methods / evidence appendix"]
-        pdf_output["State-bannered PDF"]
-        tsv_output["Report-bundle run-summary TSV"]
-    end
-
-    schema --> adapter_builder
-    run_contract --> adapter_builder
-    inventory --> adapter_builder
-    declared_sources --> adapter_builder
-    adapter_builder --> artifacts_tsv
-    artifacts_tsv --> aggregate
-    science_summary --> review_record --> aggregate
-    aggregate --> run_summary
-    aggregate --> run_summary_tsv
-    aggregate --> qc_summary
-    aggregate --> summary_receipt
-    approved_tables -.-> aggregate
-    run_summary --> generator
-    generator --> html
-    html --> qc_report
-    html --> validation_report
-    html --> handoff_report
-    html --> candidate_report
-    html --> pi_report
-    html --> exports
-    exports --> pdf_output
-    exports --> tsv_output
-    review_status --> review_record
-    orientation_status --> review_record
-    annotation_status --> review_record
-    adjudication_status --> review_record
-    orthogonal_status --> review_record
-    limitations --> review_record
-    readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
-    readylock -.-> review_status
-
-    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,approved_tables,generator,html current
-    class run_contract,inventory,declared_sources,artifacts_tsv contract
-    class science_summary,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class exports future
-    class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting
-```
-
-## Design principles
-
-* Core preprocessing should produce validated reusable artifacts.
-* Assay modules should contain assay-specific scientific logic.
-* Reporting should consume standardized artifact indexes rather than guessing file paths.
-* Artifact schemas and read-only adapters should precede native emitter
-  retrofits.
-* Missing, failed, incomplete, and externally unavailable evidence should be
-  represented explicitly, never omitted by glob discovery.
-* Operational/QC reports may describe computational evidence. Candidate
-  reports may consume an exploratory review record only when they render that
-  state and limitations explicitly. Step `09c` rejects the reserved
-  `biological_interpretation_ready` state until a separate approved policy
-  branch unlocks its exit criteria.
-* Report generation never establishes computational validation, scientific
-  review completion, or biological truth.
-* Public datasets should enter through the same manifest/config/provenance model as lab-generated data.
-* Invalid states should be refused loudly, especially missing contrasts, missing replicate structure, missing orientation policy, or inconsistent strandedness assumptions.
-* Strand/orientation interpretation should stay explicit and PI-approved.
-
-The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
-
-Activated local packages (Step `09b1` is complete; Step `09c`,
-`artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`, and
-`report-html-v1` are implemented and synthetic/contract-fixture-tested locally;
-`report-html-v1a-report-table-approvals` is also implemented and
-fixture-tested locally at `2a4b8f8`; every package beginning with
-`report-exports-v1` remains unimplemented until its own branch; dependency
-order fixed):
-
-```text
-step-09b1-real-r-fixes
--> step-09c-scientific-validation
--> artifact-schema-v1
--> artifact-adapters-v1
--> artifact-run-summary
--> report-html-v1
--> report-html-v1a-report-table-approvals
--> report-exports-v1
--> post09-runtime-preflight
--> post09-reference-provenance
--> post09-storage-inventory-retention
--> post09-validation-report-00a
--> post09-validation-report-00b
--> post09-validation-report-00c
--> post09-validation-report-01
--> post09-validation-report-02
--> post09-validation-report-02b
--> post09-validation-report-03
--> post09-validation-report-04
--> post09-validation-report-05
--> post09-validation-report-06
--> post09-validation-report-07
--> post09-validation-report-08
--> post09-validation-report-09
-```
-
-The preflight, reference inventory, and storage inventory are read-only; no
-automatic installation, repair, or cleanup is implied. Each step validator
-uses explicit inputs and its own branch; no generic dispatcher or job array is
-part of this sequence. Analysis config, module extraction, generalized
-orchestration, public-data ingestion, and broad refactors remain deferred.
-
-When remote work resumes after `post09-validation-report-09`, promotion remains
-upstream-sequential through `validate-step-07`, `validate-step-08`,
-`validate-step-09`, and `validate-step-09c-scientific-evidence`, followed only
-by targeted reruns. Every remote evidence branch regenerates the structured
-run summary and reports after evidence inspection.
-
-## Implementation-boundary note
-
-The local R environment, `step-09b1-real-r-fixes`, Step `09c`,
-`artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
-`report-html-v1`, and `report-html-v1a-report-table-approvals` are implemented
-at this boundary. Environment/restore checks, both Step `08` and Step `09`
-semantic real-R suites, the Step `09c` Python/shell fixtures, artifact
-schema/inventory fixtures, 50 focused adapter tests, 53 focused run-summary
-tests, 161 combined artifact-layer tests, and the 119-test `make report-test`
-Python gate plus its shell wrapper test pass locally. The complete Python suite
-reports 292 passed with one expected opt-in Quarto skip.
-There is no production Step `07`-`09` or Step `09c` review evidence, no
-production artifact index, run summary, or report, and no downstream cluster
-proof. `report-exports-v1` is next; the remaining activated packages above are
-plans, not runnable commands. The generated HTML fixtures are
-synthetic/incomplete and must not be presented as production evidence or
-biological interpretation.
-Do not preempt the branch sequence with remote validation, generic dispatchers,
-arrays, broad helper extraction, automatic R-package installation in compute
-wrappers, cleanup/lock deletion, report globbing/recomputation, moved compute
-CLIs, or public-data import.
+Any future capability must enter through explicit contracts and preserve
+auditable evidence boundaries.
