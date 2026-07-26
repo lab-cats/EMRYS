@@ -276,6 +276,404 @@ def test_declared_evidence_hash_mutation_is_rejected(tmp_path: Path) -> None:
     assert not fixture.output_root.exists()
 
 
+def test_source_backed_evidence_requires_evidence_date(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_qc",
+        {"evidence_date": "NA"},
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "evidence_date")
+    assert not fixture.output_root.exists()
+
+
+def test_human_reviewer_and_owner_names_are_preserved(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_field(fixture.review_plan, "reviewer", "Jane Doe")
+    rewrite_field(
+        fixture.review_plan,
+        "decision_owner",
+        "Scientific Review Team",
+    )
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_qc",
+        {
+            "reviewer": "Jane Doe",
+            "owner": "Scientific Review Team",
+        },
+    )
+    decisions = fixture.root / "evidence" / "decisions.tsv"
+    rewrite_matching_row(
+        decisions,
+        "decision_dimension",
+        "orientation",
+        {"decision_owner": "Jane Doe"},
+    )
+    refresh_evidence_source(fixture, "e_decisions", decisions, 7)
+
+    result = run_validator(fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    summary = read_single_row(summary_path(fixture.output_root, fixture.review_id))
+    assert summary["reviewer"] == "Jane Doe"
+    assert summary["decision_owner"] == "Scientific Review Team"
+    published_decisions = (
+        output_directory(fixture.output_root, fixture.review_id)
+        / f"{fixture.review_id}.step09c_decisions.tsv"
+    )
+    orientation = next(
+        row
+        for row in FIXTURES.CONTRACT.read_tsv(
+            "published decisions",
+            published_decisions,
+            FIXTURES.CONTRACT.DECISIONS_HEADER,
+        ).rows
+        if row["decision_dimension"] == "orientation"
+    )
+    assert orientation["decision_owner"] == "Jane Doe"
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [
+        ("plan_version", "plan version 1"),
+        ("git_commit", "commit with spaces"),
+        ("orientation_policy", "policy with spaces"),
+        ("candidate_selection_policy_version", "policy version 1"),
+    ],
+)
+def test_review_plan_machine_identifiers_must_be_safe(
+    tmp_path: Path,
+    column: str,
+    value: str,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_field(fixture.review_plan, column, value)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, column)
+    assert not fixture.output_root.exists()
+
+
+def test_evidence_policy_version_must_be_safe(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_qc",
+        {"policy_version": "policy version 1"},
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "policy_version")
+    assert not fixture.output_root.exists()
+
+
+def test_limitation_identifiers_and_statuses_match_review_schema(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "limitations.tsv"
+    rewrite_matching_row(
+        source,
+        "limitation_id",
+        "lim_orientation",
+        {
+            "limitation_id": "unsafe limitation",
+            "limitation_status": "unsupported",
+        },
+    )
+    refresh_evidence_source(fixture, "e_limitations", source, 3)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "limitation_id")
+    assert not fixture.output_root.exists()
+
+
+def test_superseded_and_sensitivity_analysis_ids_must_be_disjoint(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_field(
+        fixture.review_plan,
+        "superseded_analysis_ids",
+        "analysis_sensitivity_dp",
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "must be disjoint")
+    assert not fixture.output_root.exists()
+
+
+def test_evidence_analysis_assignment_is_category_specific(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_annotation",
+        {"analysis_id": "analysis_sensitivity"},
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "annotation_audit")
+    assert_failed_with(result, "analysis_id")
+    assert not fixture.output_root.exists()
+
+
+def test_non_loo_payload_analysis_must_match_manifest(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "annotation_audit.tsv"
+    rewrite_matching_row(
+        source,
+        "audit_id",
+        "audit_cds",
+        {"analysis_id": "analysis_sensitivity"},
+    )
+    refresh_evidence_source(fixture, "e_annotation", source, 8)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "different from its manifest")
+    assert not fixture.output_root.exists()
+
+
+def test_pending_decision_must_not_cite_supporting_evidence(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "decisions.tsv"
+    rewrite_matching_row(
+        source,
+        "decision_dimension",
+        "orientation",
+        {
+            "decision_status": "pending",
+            "decision_value": "NA",
+            "decision_date": "NA",
+        },
+    )
+    refresh_evidence_source(fixture, "e_decisions", source, 7)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "must not cite supporting")
+    assert not fixture.output_root.exists()
+
+
+def test_recorded_decision_requires_complete_support(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "decisions.tsv"
+    rewrite_matching_row(
+        source,
+        "decision_dimension",
+        "orientation",
+        {"supporting_evidence_ids": "e_annotation"},
+    )
+    refresh_evidence_source(fixture, "e_decisions", source, 7)
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_annotation",
+        {"evidence_status": "incomplete"},
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "cannot cite missing or incomplete")
+    assert not fixture.output_root.exists()
+
+
+def test_recorded_decision_requires_nonempty_support(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "decisions.tsv"
+    rewrite_matching_row(
+        source,
+        "decision_dimension",
+        "orientation",
+        {"supporting_evidence_ids": "NA"},
+    )
+    refresh_evidence_source(fixture, "e_decisions", source, 7)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "at least one supporting")
+    assert not fixture.output_root.exists()
+
+
+def test_decision_rerun_flag_and_scope_must_agree(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "decisions.tsv"
+    rewrite_matching_row(
+        source,
+        "decision_dimension",
+        "orientation",
+        {
+            "rerun_required": "TRUE",
+            "rerun_scope": "none",
+        },
+    )
+    refresh_evidence_source(fixture, "e_decisions", source, 7)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "rerun_required")
+    assert not fixture.output_root.exists()
+
+
+def test_computational_evidence_accepts_multiple_distinct_roles(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "computational_validation.tsv"
+    with source.open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    assert fieldnames is not None and len(rows) == 1
+    rows.append(
+        {
+            **rows[0],
+            "validation_scope": "runtime_validation",
+            "validation_status": "blocked",
+            "evidence_path": "NA",
+            "evidence_sha256": "NA",
+            "scheduler_state": "NA",
+            "exit_code": "NA",
+            "notes": "Synthetic runtime remains blocked.",
+        }
+    )
+    with source.open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    refresh_evidence_source(fixture, "e_computational", source, 2)
+
+    result = run_validator(fixture)
+
+    assert result.returncode == 0, result.stderr
+    assert not fixture.output_root.exists()
+
+
+def test_passed_runtime_requires_log_and_output_roles(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_field(
+        fixture.review_plan,
+        "runtime_validation_status",
+        "passed",
+    )
+    source = fixture.root / "evidence" / "computational_validation.tsv"
+    with source.open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    assert fieldnames is not None and len(rows) == 1
+    runtime_evidence = fixture.root / "runtime-output.tsv"
+    runtime_evidence.write_text("synthetic runtime output\n")
+    rows.append(
+        {
+            **rows[0],
+            "validation_scope": "runtime_validation",
+            "validation_status": "passed",
+            "evidence_path": str(runtime_evidence),
+            "evidence_sha256": sha256_file(runtime_evidence),
+            "scheduler_state": "COMPLETED",
+            "exit_code": "0",
+            "notes": "Synthetic runtime output without its required log.",
+        }
+    )
+    with source.open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    refresh_evidence_source(fixture, "e_computational", source, 2)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "runtime_log")
+    assert not fixture.output_root.exists()
+
+
+def test_local_test_claim_requires_complete_computational_evidence(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    rewrite_matching_row(
+        fixture.evidence_manifest,
+        "evidence_id",
+        "e_computational",
+        {
+            "source_path": "NA",
+            "source_sha256": "NA",
+            "source_row_count": "NA",
+            "evidence_status": "missing",
+            "not_applicable_reason": "NA",
+            "evidence_date": "NA",
+        },
+    )
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, "local_test_status")
+    assert not fixture.output_root.exists()
+
+
+@pytest.mark.parametrize(
+    ("updates", "token"),
+    [
+        ({"validation_scope": "arbitrary_scope"}, "must be one of"),
+        ({"validation_status": "failed"}, "does not exactly support"),
+    ],
+)
+def test_computational_scope_and_status_contract_is_closed(
+    tmp_path: Path,
+    updates: dict[str, str],
+    token: str,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    source = fixture.root / "evidence" / "computational_validation.tsv"
+    rewrite_matching_row(
+        source,
+        "validation_scope",
+        "local_fixture_tests",
+        updates,
+    )
+    refresh_evidence_source(fixture, "e_computational", source, 1)
+
+    result = run_validator(fixture)
+
+    assert_failed_with(result, token)
+    assert not fixture.output_root.exists()
+
+
 def test_exploratory_completion_requires_and_preserves_complete_evidence(
     tmp_path: Path,
 ) -> None:
@@ -420,7 +818,7 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     manifest, rows, payloads, _ = contract.validate_evidence_manifest(
         manifest_path,
         "example_scientific_review",
-        analyses,
+        plan,
         {},
     )
     assert manifest.header == contract.EVIDENCE_MANIFEST_HEADER

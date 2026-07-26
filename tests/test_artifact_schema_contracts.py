@@ -563,6 +563,82 @@ def test_scientific_review_state_conditions_fail_closed() -> None:
     )
 
 
+def test_scientific_review_source_free_evidence_allows_null_date() -> None:
+    review = read_json(FIXTURES["scientific-review-record"])
+    template = review["evidence_records"][0]
+
+    missing = copy.deepcopy(review)
+    missing_record = {
+        **template,
+        "evidence_id": "qc_missing",
+        "category": "qc_funnel",
+        "status": "missing",
+        "source": None,
+        "evidence_date": None,
+        "not_applicable_reason": None,
+    }
+    missing["evidence_records"].append(missing_record)
+    missing["evidence_categories"]["qc_funnel"].update(
+        {
+            "status": "missing",
+            "evidence_ids": ["qc_missing"],
+        }
+    )
+    assert_schema_valid("scientific-review-record", missing)
+    CONTRACT.validate_document_semantics("scientific-review-record", missing)
+
+    not_applicable = copy.deepcopy(review)
+    not_applicable_record = {
+        **template,
+        "evidence_id": "qc_not_applicable",
+        "category": "qc_funnel",
+        "status": "not_applicable",
+        "source": None,
+        "evidence_date": None,
+        "not_applicable_reason": "Synthetic evidence is not applicable.",
+    }
+    not_applicable["evidence_records"].append(not_applicable_record)
+    not_applicable["evidence_categories"]["qc_funnel"].update(
+        {
+            "status": "not_applicable",
+            "evidence_ids": ["qc_not_applicable"],
+            "not_applicable_reason": (
+                "Synthetic evidence is not applicable."
+            ),
+        }
+    )
+    assert_schema_valid("scientific-review-record", not_applicable)
+    CONTRACT.validate_document_semantics(
+        "scientific-review-record", not_applicable
+    )
+
+    complete_without_date = copy.deepcopy(review)
+    complete_without_date["evidence_records"][0]["evidence_date"] = None
+    assert_schema_invalid(
+        "scientific-review-record",
+        complete_without_date,
+        "string",
+    )
+
+
+def test_scientific_review_allows_human_names_but_rejects_unsafe_policy_ids() -> None:
+    review = read_json(FIXTURES["scientific-review-record"])
+    review["review_metadata"]["reviewer"] = "Jane Doe"
+    review["review_metadata"]["decision_owner"] = "Scientific Review Team"
+    review["evidence_records"][0]["reviewer"] = "Jane Doe"
+    review["evidence_records"][0]["owner"] = "Scientific Review Team"
+    assert_schema_valid("scientific-review-record", review)
+    CONTRACT.validate_document_semantics("scientific-review-record", review)
+
+    unsafe_policy = copy.deepcopy(review)
+    unsafe_policy["evidence_records"][0]["policy_version"] = "policy v1"
+    assert_schema_invalid(
+        "scientific-review-record",
+        unsafe_policy,
+        "does not match",
+    )
+
+
 def test_scientific_review_reconciles_evidence_categories_and_input_roles() -> None:
     review = read_json(FIXTURES["scientific-review-record"])
 
@@ -618,7 +694,7 @@ def test_scientific_review_recorded_decisions_require_evidence() -> None:
             "status": "recorded",
             "value": "retain_provisional",
             "detail": "Synthetic decision without evidence.",
-            "reviewer": "synthetic_reviewer",
+            "reviewer": "Jane Doe",
             "decision_date": "2000-01-01",
         }
     )
@@ -627,6 +703,45 @@ def test_scientific_review_recorded_decisions_require_evidence() -> None:
         "scientific-review-record",
         review,
         "without supporting evidence",
+    )
+
+
+def test_scientific_review_pending_decision_can_preserve_review_context() -> None:
+    review = read_json(FIXTURES["scientific-review-record"])
+    decision = review["decisions"]["background"]
+    decision.update(
+        {
+            "detail": "Background evidence is still under review.",
+            "reviewer": "Scientific Review Team",
+            "decision_id": "decision_background",
+            "source_evidence_id": "step09c_fixture_test",
+            "evidence_status": "complete",
+            "policy_version": "background_policy_v1",
+            "rerun_required": False,
+        }
+    )
+
+    assert_schema_valid("scientific-review-record", review)
+    CONTRACT.validate_document_semantics("scientific-review-record", review)
+
+
+def test_scientific_review_computational_references_can_name_payload_evidence() -> None:
+    review = read_json(FIXTURES["scientific-review-record"])
+    reference = review["computational_status"]["evidence"][0]
+    reference["path"] = "results/runtime/validated-runtime.log"
+    reference["sha256"] = "a" * 64
+    assert_schema_valid("scientific-review-record", review)
+    CONTRACT.validate_document_semantics("scientific-review-record", review)
+
+    duplicate = copy.deepcopy(review)
+    duplicate_reference = copy.deepcopy(reference)
+    duplicate_reference["path"] = "results/runtime/second-runtime.log"
+    duplicate_reference["sha256"] = "b" * 64
+    duplicate["computational_status"]["evidence"].append(duplicate_reference)
+    assert_contract_failure(
+        "scientific-review-record",
+        duplicate,
+        "repeats evidence_id/role",
     )
 
 

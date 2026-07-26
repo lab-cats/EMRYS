@@ -4472,8 +4472,14 @@ def install_publication_signal_handlers() -> dict[int, Any]:
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
             previous[signum] = signal.getsignal(signum)
             signal.signal(signum, interrupt)
-    except (OSError, ValueError):
-        restore_signal_handlers(previous)
+    except BaseException as exc:
+        try:
+            restore_signal_handlers(previous)
+        except BaseException as restore_exc:
+            raise ArtifactIndexError(
+                "Could not restore partially installed publication signal "
+                f"handlers: {restore_exc}"
+            ) from exc
         raise
     return previous
 
@@ -4531,8 +4537,16 @@ def publish_context(context: BuildContext) -> None:
     lock_ownership = acquire_lock(context.lock_path, context.run_id, run_token)
     try:
         previous_signal_handlers = install_publication_signal_handlers()
-    except (OSError, ValueError) as exc:
-        release_owned_lock(context.lock_path, lock_ownership)
+    except BaseException as exc:
+        try:
+            release_owned_lock(context.lock_path, lock_ownership)
+        except ArtifactIndexError as cleanup_exc:
+            raise ArtifactIndexError(
+                "Could not install publication signal handlers and could "
+                f"not release the owned lock: {exc}; {cleanup_exc}"
+            ) from exc
+        if isinstance(exc, ArtifactIndexError):
+            raise
         raise ArtifactIndexError(
             f"Could not install publication signal handlers: {exc}"
         ) from exc

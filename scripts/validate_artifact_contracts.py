@@ -501,13 +501,30 @@ def require_evidence_roles(
 def validate_evidence_references(
     evidence: list[dict[str, Any]],
     label: str,
+    *,
+    allow_shared_evidence_ids: bool,
 ) -> None:
-    for field in ("evidence_id", "role", "path"):
-        values = [record[field] for record in evidence]
-        if len(values) != len(set(values)):
-            raise ContractValidationError(
-                f"{label} contains duplicate evidence {field}"
-            )
+    if not allow_shared_evidence_ids:
+        for field in ("evidence_id", "role", "path"):
+            values = [record[field] for record in evidence]
+            if len(values) != len(set(values)):
+                raise ContractValidationError(
+                    f"{label} contains duplicate evidence {field}"
+                )
+        return
+    keys = [
+        (
+            record["evidence_id"],
+            record["role"],
+            record["path"],
+            record["sha256"],
+        )
+        for record in evidence
+    ]
+    if len(keys) != len(set(keys)):
+        raise ContractValidationError(
+            f"{label} contains a duplicate evidence reference"
+        )
 
 
 def validate_computational_statuses(
@@ -516,18 +533,22 @@ def validate_computational_statuses(
     local_testing: dict[str, Any],
     runtime_validation: dict[str, Any],
     cluster_validation: dict[str, Any],
+    allow_shared_evidence_ids: bool = False,
 ) -> None:
     validate_evidence_references(
         local_testing["evidence"],
         f"{label} local testing",
+        allow_shared_evidence_ids=allow_shared_evidence_ids,
     )
     validate_evidence_references(
         runtime_validation["evidence"],
         f"{label} runtime validation",
+        allow_shared_evidence_ids=allow_shared_evidence_ids,
     )
     validate_evidence_references(
         cluster_validation["evidence"],
         f"{label} cluster validation",
+        allow_shared_evidence_ids=allow_shared_evidence_ids,
     )
     require_status_evidence(
         label=f"{label} local testing",
@@ -746,6 +767,7 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             "proof_status": computational_status["cluster_proof_status"],
             "evidence": computational_status["evidence"],
         },
+        allow_shared_evidence_ids=True,
     )
 
     primary_analysis_id = document["primary_analysis_id"]
@@ -796,22 +818,37 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             "scientific computational status references unknown evidence IDs: "
             + ", ".join(unknown_computational)
         )
+    computational_reference_keys: set[tuple[str, str]] = set()
     for reference in computational_status["evidence"]:
+        reference_key = (reference["evidence_id"], reference["role"])
+        if reference_key in computational_reference_keys:
+            raise ContractValidationError(
+                "scientific computational evidence repeats evidence_id/role: "
+                + "/".join(reference_key)
+            )
+        computational_reference_keys.add(reference_key)
         record = evidence_index[reference["evidence_id"]]
         if (
             record["category"] != "computational_validation"
             or record["status"] != "complete"
             or record["source"] is None
-            or record["source"]["path"] != reference["path"]
-            or record["source"]["sha256"] != reference["sha256"]
         ):
             raise ContractValidationError(
                 f"scientific computational evidence "
                 f"{reference['evidence_id']!r} must resolve to one complete "
-                "computational_validation record with matching path/hash"
+                "computational_validation record"
             )
 
-    referenced_evidence_ids = set(computational_evidence_ids)
+    # Every computational_validation record is owned by the independent
+    # computational-status panel. Only complete records that directly support
+    # a declared status are promoted into its typed evidence references; any
+    # incomplete, missing, or not-applicable declarations remain explicit in
+    # evidence_records without becoming proof.
+    referenced_evidence_ids = {
+        evidence_id
+        for evidence_id, record in evidence_index.items()
+        if record["category"] == "computational_validation"
+    }
     for category_name, category in document["evidence_categories"].items():
         referenced_ids = category["evidence_ids"]
         unknown = sorted(set(referenced_ids) - evidence_ids)
@@ -1332,11 +1369,12 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             if artifact["scope"]["step_id"] == "09c"
             if artifact["scope"]["scope_type"] == "scientific_review"
             and artifact["scope"]["scope_id"] == record["review_id"]
-            and artifact["completion_status"] == "complete"
-            and artifact["source"] is not None
-            and artifact["source"]["path"] == record["review_summary"]["path"]
-            and artifact["source"]["sha256"]
-            == record["review_summary"]["sha256"]
+                and artifact["completion_status"] == "complete"
+                and artifact["source"] is not None
+                and resolve_contract_path(artifact["source"]["path"])
+                == resolve_contract_path(record["review_summary"]["path"])
+                and artifact["source"]["sha256"]
+                == record["review_summary"]["sha256"]
         ]
         if len(matching_review_artifacts) != 1:
             raise ContractValidationError(

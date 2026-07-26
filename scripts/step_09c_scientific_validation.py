@@ -63,6 +63,30 @@ RERUN_SCOPES = (
     "upstream_impact_review",
     "manual_only",
 )
+COMPUTATIONAL_SCOPE_ROLES = {
+    "local_fixture_tests": "local_test",
+    "local_test": "local_test",
+    "runtime_validation": "runtime_output",
+    "runtime_log": "runtime_log",
+    "runtime_output": "runtime_output",
+    "cluster_dry_run": "cluster_dry_run",
+    "cluster_proof": "cluster_output",
+    "cluster_scheduler": "cluster_scheduler",
+    "cluster_log": "cluster_log",
+    "cluster_output": "cluster_output",
+}
+COMPUTATIONAL_SCOPE_PLAN_FIELDS = {
+    "local_fixture_tests": "local_test_status",
+    "local_test": "local_test_status",
+    "runtime_validation": "runtime_validation_status",
+    "runtime_log": "runtime_validation_status",
+    "runtime_output": "runtime_validation_status",
+    "cluster_dry_run": "cluster_dry_run_status",
+    "cluster_proof": "cluster_proof_status",
+    "cluster_scheduler": "cluster_proof_status",
+    "cluster_log": "cluster_proof_status",
+    "cluster_output": "cluster_proof_status",
+}
 
 REVIEW_PLAN_HEADER = (
     "review_id",
@@ -2013,21 +2037,27 @@ def validate_review_plan(
     )
     for column in (
         "plan_version",
-        "reviewer",
-        "decision_owner",
         "git_commit",
         "orientation_policy",
         "orientation_policy_version",
         "locus_selection_policy_version",
-        "locus_selection_rule",
         "candidate_selection_policy_version",
-        "candidate_selection_rule",
         "sensitivity_policy_version",
-        "sensitivity_rule",
-        "leave_one_pair_out_rule",
         "background_policy_version",
         "annotation_policy_version",
         "adjudication_policy_version",
+    ):
+        validate_safe_id(
+            f"Scientific review plan {column}",
+            plan[column],
+        )
+    for column in (
+        "reviewer",
+        "decision_owner",
+        "locus_selection_rule",
+        "candidate_selection_rule",
+        "sensitivity_rule",
+        "leave_one_pair_out_rule",
         "software_versions",
         "notes",
     ):
@@ -2062,6 +2092,12 @@ def validate_review_plan(
     )
     if plan["primary_analysis_id"] in superseded + sensitivity:
         fail("The primary analysis cannot also be superseded or a sensitivity run.")
+    overlap = sorted(set(superseded) & set(sensitivity))
+    if overlap:
+        fail(
+            "Superseded and sensitivity analysis IDs must be disjoint; "
+            f"overlap: {','.join(overlap)}."
+        )
     allowed_analyses = {
         plan["primary_analysis_id"],
         *superseded,
@@ -2110,7 +2146,7 @@ def aggregate_evidence_status(
 def validate_evidence_manifest(
     value: str | Path,
     review_id: str,
-    allowed_analyses: set[str],
+    plan: Mapping[str, str],
     input_hashes: dict[Path, str],
 ) -> tuple[
     Table,
@@ -2130,6 +2166,24 @@ def validate_evidence_manifest(
                 "Scientific evidence manifest must explicitly represent "
                 f"category {category}."
             )
+    primary_analysis_id = plan["primary_analysis_id"]
+    superseded_analyses = set(
+        split_ids(
+            "superseded_analysis_ids",
+            plan["superseded_analysis_ids"],
+        )
+    )
+    sensitivity_analyses = set(
+        split_ids(
+            "sensitivity_analysis_ids",
+            plan["sensitivity_analysis_ids"],
+        )
+    )
+    allowed_analyses = {
+        primary_analysis_id,
+        *superseded_analyses,
+        *sensitivity_analyses,
+    }
     source_paths: set[Path] = set()
     payload_by_category = {
         category: [] for category in ALLOWED_EVIDENCE_CATEGORIES
@@ -2152,15 +2206,26 @@ def validate_evidence_manifest(
             row["evidence_status"],
             EVIDENCE_STATUSES,
         )
-        if row["analysis_id"] not in allowed_analyses:
+        category_allowed_analyses = (
+            {primary_analysis_id, *sensitivity_analyses}
+            if row["evidence_category"]
+            in ("sensitivity_matrix", "leave_one_pair_out")
+            else {primary_analysis_id}
+        )
+        if row["analysis_id"] not in category_allowed_analyses:
             fail(
-                f"Evidence manifest row {row_number} references undeclared "
-                f"analysis_id {row['analysis_id']}."
+                f"Evidence manifest row {row_number} category "
+                f"{row['evidence_category']} cannot use analysis_id "
+                f"{row['analysis_id']}."
             )
-        for column in ("reviewer", "owner", "policy_version"):
+        for column in ("reviewer", "owner"):
             require_text(
                 f"Evidence manifest row {row_number} {column}", row[column]
             )
+        validate_safe_id(
+            f"Evidence manifest row {row_number} policy_version",
+            row["policy_version"],
+        )
         validate_iso_date(
             f"Evidence manifest row {row_number} evidence_date",
             row["evidence_date"],
@@ -2193,6 +2258,11 @@ def validate_evidence_manifest(
             observed_hash = NA_VALUE
             observed_count = NA_VALUE
         else:
+            if row["evidence_date"] == NA_VALUE:
+                fail(
+                    f"Evidence {row['evidence_id']} with status {status} "
+                    "must record evidence_date."
+                )
             if row["not_applicable_reason"] != NA_VALUE:
                 fail(
                     "Complete or incomplete evidence must use "
@@ -2251,18 +2321,23 @@ def validate_evidence_manifest(
                         f"Evidence {row['evidence_id']} payload row "
                         f"{source_row_number} has the wrong evidence_id."
                     )
-                if (
-                    row["evidence_category"] != "leave_one_pair_out"
-                    and payload["analysis_id"] not in allowed_analyses
+                if row["evidence_category"] in (
+                    "sensitivity_matrix",
+                    "leave_one_pair_out",
                 ):
+                    if payload["analysis_id"] not in {
+                        primary_analysis_id,
+                        *sensitivity_analyses,
+                    }:
+                        fail(
+                            f"Evidence {row['evidence_id']} payload "
+                            "references an analysis_id outside the primary "
+                            "and declared sensitivity analyses."
+                        )
+                elif payload["analysis_id"] != row["analysis_id"]:
                     fail(
                         f"Evidence {row['evidence_id']} payload references "
-                        "an undeclared analysis."
-                    )
-                if row["evidence_category"] == "leave_one_pair_out":
-                    validate_safe_id(
-                        "leave-one-pair-out analysis_id",
-                        payload["analysis_id"],
+                        "an analysis_id different from its manifest row."
                     )
             if row["evidence_category"] in payload_by_category:
                 payload_by_category[row["evidence_category"]].extend(
@@ -3155,10 +3230,15 @@ def validate_candidate_adjudication(
 def validate_decisions(
     rows: Sequence[Mapping[str, str]],
     plan: Mapping[str, str],
-    evidence_ids: set[str],
+    evidence_rows: Sequence[Mapping[str, str]],
     complete: bool,
 ) -> dict[str, str]:
     ensure_unique(rows, "decision_id", "Scientific decisions")
+    evidence_status_by_id = {
+        row["evidence_id"]: row["evidence_status"]
+        for row in evidence_rows
+    }
+    evidence_ids = set(evidence_status_by_id)
     seen: set[str] = set()
     decisions: dict[str, str] = {}
     for row_number, row in enumerate(rows, start=2):
@@ -3196,26 +3276,71 @@ def validate_decisions(
         )
         if row["rerun_required"] not in ("TRUE", "FALSE"):
             fail("Scientific decision rerun_required must be TRUE or FALSE.")
-        validate_supporting_ids(
+        supporting_ids = split_ids(
             "Scientific decision supporting_evidence_ids",
             row["supporting_evidence_ids"],
-            evidence_ids,
         )
+        for evidence_id in supporting_ids:
+            if evidence_id not in evidence_ids:
+                fail(
+                    "Scientific decision supporting_evidence_ids references "
+                    f"unknown evidence_id {evidence_id}."
+                )
         require_text("Scientific decision rationale", row["rationale"])
         require_text("Scientific decision owner", row["decision_owner"])
-        require_text("Scientific decision policy_version", row["policy_version"])
+        validate_safe_id(
+            "Scientific decision policy_version",
+            row["policy_version"],
+        )
         if row["decision_status"] == "recorded":
+            if row["evidence_status"] not in (
+                "complete",
+                "not_applicable",
+            ):
+                fail(
+                    "Recorded scientific decisions require their own "
+                    "evidence_status to be complete or not_applicable."
+                )
+            if not supporting_ids:
+                fail(
+                    "Recorded scientific decisions require at least one "
+                    "supporting evidence ID."
+                )
+            unsupported = [
+                evidence_id
+                for evidence_id in supporting_ids
+                if evidence_status_by_id[evidence_id]
+                not in ("complete", "not_applicable")
+            ]
+            if unsupported:
+                fail(
+                    "Recorded scientific decisions cannot cite missing or "
+                    "incomplete evidence: "
+                    + ",".join(unsupported)
+                )
             require_text("Scientific decision value", row["decision_value"])
             validate_iso_date(
                 "Scientific decision decision_date", row["decision_date"]
             )
             decisions[dimension] = row["decision_value"]
         else:
+            if supporting_ids:
+                fail(
+                    "Pending scientific decisions must not cite supporting "
+                    "evidence IDs."
+                )
             if row["decision_value"] != NA_VALUE or row["decision_date"] != NA_VALUE:
                 fail(
                     "Pending scientific decisions must use NA for value and date."
                 )
             decisions[dimension] = "pending"
+        if (row["rerun_required"] == "FALSE") != (
+            row["rerun_scope"] == "none"
+        ):
+            fail(
+                "Scientific decision rerun_required must be FALSE exactly "
+                "when rerun_scope=none."
+            )
     if complete and seen != set(DECISION_DIMENSIONS):
         fail("Complete scientific decisions do not cover every decision dimension.")
     if complete and any(value == "pending" for value in decisions.values()):
@@ -3236,9 +3361,12 @@ def validate_limitations(
 ) -> None:
     ensure_unique(rows, "limitation_id", "Scientific limitations")
     for row in rows:
+        validate_safe_id(
+            "Scientific limitation limitation_id",
+            row["limitation_id"],
+        )
         for column in (
             "limitation_category",
-            "limitation_status",
             "severity",
             "description",
             "impact",
@@ -3246,6 +3374,11 @@ def validate_limitations(
             "owner",
         ):
             require_text(f"Scientific limitation {column}", row[column])
+        validate_enum(
+            "Scientific limitation limitation_status",
+            row["limitation_status"],
+            ("active", "open", "accepted", "resolved"),
+        )
         validate_iso_date("Scientific limitation review_date", row["review_date"])
         validate_supporting_ids(
             "Scientific limitation related_evidence_ids",
@@ -3261,13 +3394,31 @@ def validate_computational_evidence(
     input_hashes: dict[Path, str],
 ) -> None:
     seen: dict[str, Mapping[str, str]] = {}
+    seen_roles: dict[str, str] = {}
+    complete_evidence_ids = {
+        row["evidence_id"]
+        for row in evidence_rows
+        if row["evidence_category"] == "computational_validation"
+        and row["evidence_status"] == "complete"
+    }
+    payload_counts = {evidence_id: 0 for evidence_id in complete_evidence_ids}
     for row_number, row in enumerate(rows, start=2):
-        validate_safe_id(
-            "Computational validation scope", row["validation_scope"]
+        validate_enum(
+            "Computational validation scope",
+            row["validation_scope"],
+            tuple(COMPUTATIONAL_SCOPE_ROLES),
         )
         if row["validation_scope"] in seen:
             fail("Computational validation contains a duplicate scope.")
         seen[row["validation_scope"]] = row
+        role = COMPUTATIONAL_SCOPE_ROLES[row["validation_scope"]]
+        if role in seen_roles:
+            fail(
+                "Computational validation scopes "
+                f"{seen_roles[role]} and {row['validation_scope']} both map "
+                f"to evidence role {role}."
+            )
+        seen_roles[role] = row["validation_scope"]
         validate_enum(
             f"Computational validation row {row_number} status",
             row["validation_status"],
@@ -3327,40 +3478,111 @@ def validate_computational_evidence(
             if observed != row["evidence_sha256"]:
                 fail("Computational validation evidence hash differs.")
             input_hashes[path] = observed
-    claims = {
-        "runtime_validation": (
-            plan["runtime_validation_status"] == "passed",
-            "passed",
-        ),
-        "cluster_dry_run": (
-            plan["cluster_dry_run_status"] == "passed",
-            "passed",
-        ),
-        "cluster_proof": (
-            plan["cluster_proof_status"] == "proven",
-            "proven",
-        ),
+        if row["evidence_id"] in complete_evidence_ids:
+            payload_counts[row["evidence_id"]] += 1
+            plan_field = COMPUTATIONAL_SCOPE_PLAN_FIELDS[
+                row["validation_scope"]
+            ]
+            expected_status = plan[plan_field]
+            if row["validation_status"] != expected_status:
+                fail(
+                    f"Computational validation scope "
+                    f"{row['validation_scope']} status "
+                    f"{row['validation_status']} does not exactly support "
+                    f"review-plan {plan_field}={expected_status}."
+                )
+    empty_complete = sorted(
+        evidence_id
+        for evidence_id, count in payload_counts.items()
+        if count == 0
+    )
+    if empty_complete:
+        fail(
+            "Complete computational-validation evidence must contain at "
+            "least one validation scope row: "
+            + ",".join(empty_complete)
+        )
+    claim_specs = {
+        ("local_test_status", "passed"): {"local_test"},
+        ("local_test_status", "failed"): {"local_test"},
+        ("runtime_validation_status", "passed"): {
+            "runtime_log",
+            "runtime_output",
+        },
+        ("runtime_validation_status", "failed"): {"runtime_log"},
+        ("cluster_dry_run_status", "passed"): {"cluster_dry_run"},
+        ("cluster_dry_run_status", "failed"): {"cluster_dry_run"},
+        ("cluster_proof_status", "proven"): {
+            "cluster_scheduler",
+            "cluster_log",
+            "cluster_output",
+        },
+        ("cluster_proof_status", "failed"): {"cluster_log"},
     }
-    for scope, (claimed, expected_status) in claims.items():
-        if not claimed:
+    for (plan_field, expected_status), required_roles in claim_specs.items():
+        if plan[plan_field] != expected_status:
             continue
-        evidence = seen.get(scope)
-        if evidence is None or evidence["validation_status"] != expected_status:
+        matching = [
+            row
+            for row in rows
+            if row["evidence_id"] in complete_evidence_ids
+            and COMPUTATIONAL_SCOPE_PLAN_FIELDS[row["validation_scope"]]
+            == plan_field
+            and row["validation_status"] == expected_status
+        ]
+        if not matching:
             fail(
-                f"{scope} is claimed in the review plan without matching "
+                f"{plan_field} is claimed in the review plan without matching "
                 "computational-validation evidence."
             )
-        if (
-            evidence["evidence_path"] == NA_VALUE
-            or evidence["evidence_sha256"] == NA_VALUE
-        ):
+        matching_by_role = {
+            COMPUTATIONAL_SCOPE_ROLES[row["validation_scope"]]: row
+            for row in matching
+        }
+        missing_roles = sorted(required_roles - set(matching_by_role))
+        if missing_roles:
             fail(
-                f"{scope} claims require an explicit evidence path and hash."
+                f"{plan_field}={expected_status} requires computational "
+                "evidence roles: "
+                + ",".join(missing_roles)
             )
-        if scope in ("cluster_dry_run", "cluster_proof") and (
-            evidence["scheduler_state"] != "COMPLETED"
-        ):
-            fail(f"{scope} claims require scheduler_state=COMPLETED.")
+        roles_requiring_payload_paths = (
+            required_roles
+            if plan_field
+            in (
+                "runtime_validation_status",
+                "cluster_dry_run_status",
+                "cluster_proof_status",
+            )
+            else set()
+        )
+        missing_paths = sorted(
+            role
+            for role in roles_requiring_payload_paths
+            if matching_by_role[role]["evidence_path"] == NA_VALUE
+            or matching_by_role[role]["evidence_sha256"] == NA_VALUE
+        )
+        if missing_paths:
+            fail(
+                f"{plan_field}={expected_status} requires explicit paths "
+                "and hashes for evidence roles: "
+                + ",".join(missing_paths)
+            )
+        if plan_field in (
+            "cluster_dry_run_status",
+            "cluster_proof_status",
+        ) and expected_status in ("passed", "proven") and matching_by_role[
+            (
+                "cluster_dry_run"
+                if plan_field == "cluster_dry_run_status"
+                else (
+                    "cluster_scheduler"
+                    if expected_status == "proven"
+                    else "cluster_log"
+                )
+            )
+        ]["scheduler_state"] != "COMPLETED":
+            fail(f"{plan_field} claims require scheduler_state=COMPLETED.")
     if (
         aggregate_evidence_status(
             evidence_rows, "computational_validation"
@@ -3465,7 +3687,7 @@ def validate_evidence_payloads(
     decisions = validate_decisions(
         category_rows["decisions"],
         plan,
-        evidence_ids,
+        evidence_rows,
         category_is_complete(evidence_rows, "decisions"),
     )
     validate_limitations(category_rows["limitations"], evidence_ids)
@@ -3606,7 +3828,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     artifacts: dict[str, Artifact] = {}
     input_hashes: dict[Path, str] = {}
 
-    plan_table, plan, allowed_analyses = validate_review_plan(
+    plan_table, plan, _allowed_analyses = validate_review_plan(
         arguments.review_plan, arguments.review_id
     )
     register_artifact(
@@ -3773,7 +3995,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         validate_evidence_manifest(
             arguments.evidence_manifest,
             arguments.review_id,
-            allowed_analyses,
+            plan,
             input_hashes,
         )
     )

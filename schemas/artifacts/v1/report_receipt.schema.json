@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:norad:schema:artifacts:report-receipt:v1",
-  "title": "NORAD report receipt v1",
+  "$id": "urn:norad:schema:artifacts:report-receipt:v1.1",
+  "title": "NORAD report receipt v1.1",
   "description": "The summary-last receipt for one successfully published static NORAD report bundle. Report generation never constitutes analysis or validation.",
   "type": "object",
   "additionalProperties": false,
@@ -36,7 +36,7 @@
       "const": "norad.report_receipt"
     },
     "schema_version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "record_type": {
       "const": "report_receipt"
@@ -86,7 +86,7 @@
           "const": "norad.run_summary"
         },
         "schema_version": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         }
       }
     },
@@ -165,13 +165,13 @@
           "const": "1.0.0"
         },
         "scientific_review_record": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "run_summary": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "report_receipt": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         }
       }
     },

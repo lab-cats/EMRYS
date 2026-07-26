@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:norad:schema:artifacts:scientific-review-record:v1",
-  "title": "NORAD scientific review record v1",
-  "description": "A normalized record of an explicit Step 09c scientific review. This version rejects biological_interpretation_ready.",
+  "$id": "urn:norad:schema:artifacts:scientific-review-record:v1.1",
+  "title": "NORAD scientific review record v1.1",
+  "description": "A normalized record of an explicit Step 09c scientific review. Version 1.1 retains human review context, decision provenance, and reporting limitation fields while continuing to reject biological_interpretation_ready.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -36,7 +36,7 @@
       "const": "norad.scientific_review_record"
     },
     "schema_version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "record_type": {
       "const": "scientific_review_record"
@@ -87,10 +87,10 @@
           "format": "date"
         },
         "reviewer": {
-          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
         },
         "decision_owner": {
-          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
         },
         "git_commit": {
           "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/git_commit"
@@ -420,7 +420,7 @@
     "limitations": {
       "type": "array",
       "items": {
-        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/limitation"
+        "$ref": "#/$defs/limitation"
       }
     },
     "warnings": {
@@ -440,6 +440,58 @@
     }
   },
   "$defs": {
+    "limitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limitation_id",
+        "status",
+        "description",
+        "impact",
+        "evidence_ids"
+      ],
+      "properties": {
+        "limitation_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "accepted",
+            "resolved"
+          ]
+        },
+        "description": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "impact": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "category": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "severity": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "mitigation": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "owner": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "review_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
     "evidence_category": {
       "type": "object",
       "additionalProperties": false,
@@ -579,14 +631,21 @@
           ]
         },
         "reviewer": {
-          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
         },
         "owner": {
-          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
         },
         "evidence_date": {
-          "type": "string",
-          "format": "date"
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "policy_version": {
           "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
@@ -620,6 +679,10 @@
               },
               "not_applicable_reason": {
                 "type": "null"
+              },
+              "evidence_date": {
+                "type": "string",
+                "format": "date"
               }
             }
           }
@@ -709,7 +772,7 @@
         "reviewer": {
           "oneOf": [
             {
-              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
             },
             {
               "type": "null"
@@ -739,6 +802,57 @@
             "upstream_impact_review",
             "manual_only"
           ]
+        },
+        "decision_id": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_evidence_id": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_status": {
+          "oneOf": [
+            {
+              "enum": [
+                "missing",
+                "incomplete",
+                "complete",
+                "not_applicable"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_version": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rerun_required": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       },
       "allOf": [
@@ -764,7 +878,7 @@
                 "minLength": 1
               },
               "reviewer": {
-                "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+                "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
               },
               "decision_date": {
                 "type": "string",
@@ -775,12 +889,6 @@
           "else": {
             "properties": {
               "value": {
-                "type": "null"
-              },
-              "detail": {
-                "type": "null"
-              },
-              "reviewer": {
                 "type": "null"
               },
               "decision_date": {

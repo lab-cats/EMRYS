@@ -1,6 +1,6 @@
 {
   "schema_name": "norad.report_receipt",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "record_type": "report_receipt",
   "run_id": "run_fixture",
   "attempt_id": "report-attempt-001",
@@ -13,7 +13,7 @@
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "schema_name": "norad.run_summary",
-    "schema_version": "1.0.0"
+    "schema_version": "1.1.0"
   },
   "requested_formats": [
     "html",
@@ -81,9 +81,9 @@
   ],
   "schema_versions": {
     "artifact_record": "1.0.0",
-    "scientific_review_record": "1.0.0",
-    "run_summary": "1.0.0",
-    "report_receipt": "1.0.0"
+    "scientific_review_record": "1.1.0",
+    "run_summary": "1.1.0",
+    "report_receipt": "1.1.0"
   },
   "analysis_execution_performed": false,
   "external_network_assets_used": false,

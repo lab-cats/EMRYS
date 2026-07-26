@@ -1,6 +1,6 @@
 {
   "schema_name": "norad.run_summary",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "record_type": "run_summary",
   "run_id": "run_fixture",
   "run_contract": {
