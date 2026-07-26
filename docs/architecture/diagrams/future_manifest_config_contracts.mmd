@@ -18,14 +18,18 @@ flowchart TD
         direction TB
         fastqs["Validated FASTQ inputs"]
         ready["Validated analysis-ready artifacts"]
-        existing["Declared Step 00a-09 artifacts<br/>missing/incomplete represented explicitly"]
+        existing["Declared Step 00a-09c artifacts<br/>missing/incomplete represented explicitly"]
     end
 
     subgraph modules["Assay module execution"]
         direction TB
         module["Assay-specific analysis modules"]
         results["Module result artifacts"]
-        adapters["Read-only artifact adapters"]
+    end
+
+    subgraph indexing["Read-only artifact indexing"]
+        direction TB
+        adapters["Read-only artifact adapters<br/>implemented + fixture-tested locally"]
     end
 
     manifest --> fastqs --> ready
@@ -43,6 +47,6 @@ flowchart TD
     review --> reports
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing current
-    class ready,module,results,adapters future
+    class fastqs,existing,adapters current
+    class ready,module,results future
     class reports reporting

@@ -1102,7 +1102,8 @@ This layer is the approved immediate local implementation sequence after
 Step `09c`; it is no longer deferred behind remote promotion. It remains
 outside the core Steps `00a`-`09` computation and none of its packages is a
 runnable Step `10`. `artifact-schema-v1` is implemented and locally
-fixture-tested at `5f4d3b4`; the remaining packages below are approved but
+fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and locally
+fixture-tested at `4dbd32d`; the remaining packages below are approved but
 not yet implemented:
 
 ```text
@@ -1129,20 +1130,29 @@ source_path
 required
 ```
 
-Inputs are never discovered by glob. Inventory paths are repository-root
-relative concrete paths; wildcard/template/traversal forms and canonical
-aliases are rejected. Rows use stable order, and rows for the same
-step/scope are contiguous. Execution attempt, implementation, local testing,
-runtime validation, cluster validation, warnings/errors, paths/hashes, tools,
+Inputs are never discovered by glob. The tracked example uses repository-root
+relative concrete paths; runtime inventories may instead use explicit,
+normalized absolute paths. Wildcard/template/traversal forms and canonical
+aliases are rejected. Rows use stable order, and rows for the same step/scope
+are contiguous. Execution attempt, implementation, local testing, runtime
+validation, cluster validation, warnings/errors, paths/hashes, tools,
 parameters, metrics, and scientific state remain separate fields.
 
 A `run_id` identifies an immutable manifest/reference/partition/primary-
-analysis contract. The canonical contract hash is SHA-256 over compact,
-sorted-key UTF-8 JSON containing the sample-manifest, reference-contract,
-partition-manifest, primary-analysis ID, and primary-analysis-policy
-components. Identical-input retries have distinct `attempt_id` values;
-connected attempt histories and status/evidence dimensions are reconciled.
-Any input or policy hash change requires a new `run_id`.
+analysis contract. The strict run-contract JSON contains
+`run_contract_sha256` plus the sample-manifest, reference-contract,
+partition-manifest, primary-analysis ID, and primary-analysis-policy identity
+components. The canonical contract hash is SHA-256 over compact, sorted-key
+UTF-8 JSON containing those five components. Changing any identity component
+requires a new `run_id`.
+
+The expected-artifact inventory is revisionable adapter-attempt metadata, not
+part of run identity. Each execute-mode build receives a distinct
+`adapter_attempt_id`; an inventory-only revision under the unchanged run
+contract validates and supersedes the prior complete adapter transaction.
+The receipt records the current inventory path/hash plus the ordered attempt
+history. A changed immutable contract colliding with an existing `run_id`
+fails closed.
 
 The read-only validator checks the schemas, inventory, and synthetic
 documents. It rejects duplicate JSON keys, non-standard numeric constants,
@@ -1151,8 +1161,8 @@ claims, disconnected retry histories, and the currently reserved
 `biological_interpretation_ready` science state. Its typed evidence roles
 prevent local tests or tool probes from being represented as runtime or
 cluster proof. A passing schema check does not inspect source artifacts,
-execute an adapter, maintain the future stateful run-ID registry, or produce
-anything under `results/`.
+execute an adapter, apply the implemented output-root-local run-ID collision
+check, or produce anything under `results/`.
 
 Current validation interface:
 
@@ -1162,15 +1172,17 @@ Current validation interface:
   --inventory configs/artifact_inventory.example.tsv
 ```
 
-`artifact-adapters-v1` adds read-only adapters over existing Step `00a`-`09`
-outputs, receipts, summaries, and Step `09c` review records. Missing, failed,
-incomplete, or externally unavailable evidence is emitted explicitly rather
-than omitted. Existing compute CLIs and paths remain unchanged; no native
-per-step JSON retrofit is part of this slice. Atomic outputs are:
+`artifact-adapters-v1` implements 49 read-only adapters over all 67 declared
+Step `00a`-`09` outputs, receipts, and summaries plus Step `09c` review
+records. Missing, failed, incomplete, externally unavailable, and unknown
+evidence is emitted explicitly rather than omitted. Existing compute CLIs and
+paths remain unchanged; no native per-step JSON retrofit is part of this
+slice. The dry-run-first interface and atomic outputs are:
 
 ```text
-python scripts/build_artifact_index.py
+.venv/bin/python scripts/build_artifact_index.py
   --run-id RUN_ID
+  --run-contract RUN_CONTRACT_JSON
   --inventory INVENTORY_TSV
   --output-root OUTPUT_ROOT
   [--execute]
@@ -1180,6 +1192,22 @@ results/artifacts/<run_id>/
   <run_id>.artifacts.tsv
   <run_id>.artifact_receipt.tsv
 ```
+
+Dry-run performs explicit validation and source inspection without creating
+stable output paths. Execute mode uses an owned regular lock, run-token
+temporary/backup paths, stable source snapshots, validation before
+publication, rollback/recovery safeguards, and publishes the receipt last.
+`transaction_state=complete` describes the committed adapter transaction; it
+does not require every source record to be complete or present. Completion
+alone creates or promotes no local/runtime/cluster/scientific state. Adapter
+v1 always leaves the generated records' local-testing, runtime-validation,
+cluster-dry-run, and cluster-proof fields at `not_run`; a reconciled native
+Step `09c` science state may be propagated without being inferred from
+transaction completion.
+
+All 50 focused adapter tests and 104 combined schema/adapter tests pass on
+synthetic fixtures at `4dbd32d`. No production source has been inspected or
+indexed, and no canonical run summary or report exists.
 
 `artifact-run-summary` consumes the completed artifact receipt and optional
 science-review summary and publishes:
@@ -1338,15 +1366,14 @@ remote and cluster promotion and are not cluster-proven.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
-The implemented schema contract defines how the artifact vertical slice will
-record the manifest used, git commit, reference and partition identity, tool
-versions, sample set, step statuses, paths, and hashes. Analysis-config work
-remains deferred. The adapters and run-summary builder that will create these
-machine-readable outputs remain pending:
+The implemented schema and adapter contracts define and build explicit
+artifact records containing manifest, reference, partition, source,
+implementation, and evidence state. Analysis-config work remains deferred.
+The adapter layer now produces `artifacts.tsv` in synthetic fixture
+transactions. The run-summary builder remains pending and will create:
 
 ```text
 run_summary.json
-artifacts.tsv
 qc_summary.tsv
 ```
 
@@ -1468,10 +1495,12 @@ step-09b-local-r-runtime
 At this boundary `step-09b1-real-r-fixes` and
 `step-09c-scientific-validation` are complete and pushed.
 `artifact-schema-v1` is implemented at `5f4d3b4`; its 54 focused tests and
-complete local gate pass. After this schema docpatch is committed and pushed,
-the next descendant package is `artifact-adapters-v1`. Every package after
-the schema remains approved but unimplemented. Remote work stays paused
-through the final Step `09` validator branch.
+complete local gate pass. `artifact-adapters-v1` is implemented at `4dbd32d`;
+its 50 focused adapter tests, 104 combined schema/adapter tests, and complete
+local gate pass. After this adapter docpatch is committed and pushed, the next
+descendant package is `artifact-run-summary`. Every later package remains
+approved but unimplemented. Remote work stays paused through the final Step
+`09` validator branch.
 
 When remote work resumes, continue from that final clean branch:
 
@@ -1522,19 +1551,25 @@ the local implementation boundary. They prove explicit-input validation and
 transaction behavior on synthetic evidence only; they do not establish a
 production science review, runtime/cluster proof, or biological readiness.
 
-The artifact schema focused gate is:
+The artifact schema and adapter focused gates are:
 
 ```bash
 .venv/bin/python scripts/validate_artifact_contracts.py \
   --check-schemas \
   --inventory configs/artifact_inventory.example.tsv
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+.venv/bin/python -m pytest -q tests/test_artifact_adapters.py
+.venv/bin/python -m pytest -q \
+  tests/test_artifact_schema_contracts.py \
+  tests/test_artifact_adapters.py
 ```
 
-All 54 focused tests pass at `5f4d3b4`. They prove structural and semantic
-contract behavior on synthetic fixtures only. Artifact adapters, source-file
-inspection, generated indexes/summaries/reports, production evidence, runtime
-validation, and cluster validation remain pending.
+All 54 schema tests pass at `5f4d3b4`; all 50 adapter tests and 104 combined
+tests pass at `4dbd32d`. They prove structural, semantic, native-adapter, and
+transaction behavior on synthetic fixtures only. No production source
+inspection or artifact index has occurred. Generated run summaries/reports,
+production evidence, runtime validation, and cluster validation remain
+pending.
 
 ## Known Cluster Notes
 

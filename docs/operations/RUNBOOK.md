@@ -148,9 +148,10 @@ synthetic Python/shell fixtures may also be inspected. Do not present its
 fixture transaction as a production scientific review or demonstrate Step
 `09` as a biological result. The implemented `artifact-schema-v1` schemas,
 explicit synthetic inventory, read-only validator, and focused tests may also
-be shown. Do not present them as an artifact index, run summary, generated
-report, production-output inspection, cluster evidence, or scientific
-evidence.
+be shown. The implemented `artifact-adapters-v1` help text, dry-run, and
+synthetic focused tests may also be shown, but not as a production artifact
+index. No run summary or generated report exists, and neither package is
+production-output, cluster, or scientific evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -400,15 +401,16 @@ If helpers are not installed, use the manual commands in the next section.
 ## Artifact And Future Operational Helpers
 
 The approved local descendant roadmap has implemented Step `09c`
-scientific-validation tooling and the `artifact-schema-v1` contract package.
-The next descendant is `artifact-adapters-v1`; the rest of the reporting
-vertical slice follows in order:
+scientific-validation tooling, the `artifact-schema-v1` contract package, and
+the `artifact-adapters-v1` index package. The next descendant is
+`artifact-run-summary`; the rest of the reporting vertical slice follows in
+order:
 
 ```text
 step-09c-scientific-validation
 -> artifact-schema-v1                         # implemented and locally tested
--> artifact-adapters-v1
--> artifact-run-summary
+-> artifact-adapters-v1                       # implemented and locally tested
+-> artifact-run-summary                       # next
 -> report-html-v1
 -> report-exports-v1
 -> post09-runtime-preflight
@@ -422,13 +424,13 @@ remaining foundational engineering. Remote validation, targeted reruns,
 analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
-Step `09c` and `artifact-schema-v1` are no longer helper ideas. The artifact
-schemas, example inventory, validator, fixtures, and commands documented below
-exist. Artifact adapters, generated artifact records/indexes, run summaries,
-HTML/PDF reports, foundation records, and per-step validators remain roadmap
-work until their own branches implement and test them. Do not treat their
-candidate commands, Makefile targets, outputs, reports, or cleanup utilities
-as available.
+Step `09c`, `artifact-schema-v1`, and `artifact-adapters-v1` are no longer
+helper ideas. Their schemas, example contracts, validators, fixtures, and
+commands documented below exist. The adapter output contract is implemented,
+but no production transaction exists. Run summaries, HTML/PDF reports,
+foundation records, and per-step validators remain roadmap work until their
+own branches implement and test them. Do not treat their candidate commands,
+Makefile targets, outputs, reports, or cleanup utilities as available.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
@@ -513,6 +515,130 @@ scientific-policy branch unlocks it. No adapter, generated
 `results/artifacts/` transaction, run summary, report, production evidence,
 cluster evidence, completed science review, or biological-readiness evidence
 was created by this package.
+
+### Build An `artifact-adapters-v1` Index
+
+Implemented locally at `4dbd32d`:
+
+```text
+configs/artifact_run_contract.example.json
+scripts/build_artifact_index.py
+tests/fixtures/artifact_adapters_v1/build_fixture.py
+tests/test_artifact_adapters.py
+```
+
+The adapter builder has 49 registered read-only adapters covering the 67
+explicit Step `00a`-`09c` rows in the example inventory. It never discovers
+sources by glob, invokes analysis engines, changes native outputs, or builds
+the later canonical run summary.
+
+Dry-run with explicit inputs:
+
+```bash
+.venv/bin/python scripts/build_artifact_index.py \
+  --run-id RUN_ID \
+  --run-contract configs/artifact_run_contract.example.json \
+  --inventory configs/artifact_inventory.example.tsv \
+  --output-root results/artifacts
+```
+
+Dry-run validates the run contract and inventory, inspects only the named
+source paths, prints the transaction plan, and creates no stable output, lock,
+or scratch path. The tracked JSON/inventory are synthetic examples; substitute
+an explicitly prepared production run contract and inventory before any
+production use.
+
+Execute only after inspecting the dry-run:
+
+```bash
+.venv/bin/python scripts/build_artifact_index.py \
+  --run-id RUN_ID \
+  --run-contract RUN_CONTRACT_JSON \
+  --inventory INVENTORY_TSV \
+  --output-root results/artifacts \
+  --execute
+```
+
+Successful execute mode publishes:
+
+```text
+results/artifacts/<run_id>/
+  records/<artifact_id>.json
+  <run_id>.artifacts.tsv
+  <run_id>.artifact_receipt.tsv
+```
+
+The receipt is last. Its one row records the immutable six-field run contract,
+current inventory path/hash, record/index hashes and counts, explicit
+availability/completion rollups, the current `adapter_attempt_id`, its
+superseded attempt, ordered attempt history, and
+`transaction_state=complete`.
+
+The six run-contract fields are:
+
+```text
+run_contract_sha256
+sample_manifest_sha256
+reference_contract_sha256
+partition_manifest_sha256
+primary_analysis_id
+primary_analysis_policy_sha256
+```
+
+Changing any of the five identity components requires a new `run_id` and a
+recomputed `run_contract_sha256`; attempting to bind an existing output-root
+run ID to different immutable values fails. The inventory is revisionable
+attempt metadata. Rebuilding the same run with a changed explicit inventory
+validates the prior complete transaction and publishes a distinct superseding
+adapter attempt.
+
+Execute mode uses an owned regular lock plus run-token temporary and backup
+paths, stable source snapshots, validation-before-publication, rollback, and
+recovery safeguards. Do not delete a foreign lock, combine files across
+attempts, or manufacture a receipt. If rollback/recovery is incomplete,
+inspect every reported or remaining lock, final, temporary, backup,
+quarantine, recovery-marker, and source path that is present before another
+execute attempt. First-publication rollback has no prior receipt to restore,
+a receipt is re-quarantined only when restored-transaction validation fails,
+and the recovery marker is best-effort rather than guaranteed.
+
+A complete receipt does not mean every expected source exists or is complete.
+Missing, failed, incomplete, externally unavailable, and unknown evidence is
+recorded rather than omitted. Adapter v1 populates implementation evidence but
+always sets every generated record's local-testing, runtime-validation,
+cluster-dry-run, and cluster-proof fields to `not_run`; it has no
+native-validation import or promotion path.
+
+Step `09c` science state is the separate supported propagation path. Both
+science states require the complete 13-output summary-last scope,
+plan/summary identity, all ten published evidence-category declarations, and
+exact evidence-ID, payload, and count reconciliation. The
+`evidence_incomplete` state may retain incomplete evidence, pending decisions
+or adjudication, and no completion date. The
+`science_review_complete_exploratory` state additionally requires every
+required category to be complete or justified `not_applicable`, all required
+decisions complete and recorded, exact equality between the selected and
+adjudicated `(analysis_id, candidate_id)` identity sets, and a completion
+date. Non-provisional orientation requires its complete audit and matching
+completed decision. A source declaration of cluster proof additionally
+requires a complete optional
+`computational_validation` category, but artifact-record cluster fields still
+remain `not_run`. The reserved ready state remains rejected.
+
+Run the focused gates:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_artifact_adapters.py
+.venv/bin/python -m pytest -q \
+  tests/test_artifact_schema_contracts.py \
+  tests/test_artifact_adapters.py
+```
+
+Current local evidence is 50 adapter tests and 104 combined schema/adapter
+tests passing. The full Python suite passes with 150 tests. All source
+inspection and publication evidence is synthetic fixture evidence; no
+production adapter transaction, run summary, report, runtime/cluster proof,
+completed production science review, or biological-readiness evidence exists.
 
 ## Manual Job Checking
 
@@ -626,8 +752,9 @@ validated locally. This does not validate production data, establish CSU
 batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
 `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
-locally fixture-tested at `5f4d3b4`; after its docpatch/push gate the next
-descendant is `artifact-adapters-v1`.
+locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
+locally fixture-tested at `4dbd32d`; after its docpatch/push gate the next
+descendant is `artifact-run-summary`.
 
 ## Cluster Execution Pattern
 

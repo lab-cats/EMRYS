@@ -796,8 +796,9 @@ batch visibility, production input behavior, or cluster outputs. The
 `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
 complete. Step `09c` is implemented locally at `b674a31`.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
-after its docpatch/push gate, the next descendant is
-`artifact-adapters-v1`.
+`artifact-adapters-v1` is implemented and locally fixture-tested at
+`4dbd32d`. After its docpatch/push gate, the next descendant is
+`artifact-run-summary`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1416,9 +1417,11 @@ report-receipt
 
 Correct the declaring inventory or JSON producer at the first reported
 invariant. Do not edit a hash, status, evidence role, attempt link, source
-path, or readiness value merely to force acceptance. An input or policy hash
-change requires a new `run_id`; an identical-contract retry requires a
-distinct `attempt_id`.
+path, or readiness value merely to force acceptance. A change to one of the
+five canonical run-identity components requires a new `run_id`; an
+identical-contract retry requires a distinct attempt ID. An inventory-only
+revision is adapter-attempt metadata and does not by itself change run
+identity.
 
 The focused regression command is:
 
@@ -1428,6 +1431,117 @@ The focused regression command is:
 
 Current local focused evidence is `54 passed`. This is schema/fixture evidence,
 not production artifact validation.
+
+## Artifact adapter rejects `--run-contract` or an existing run ID
+
+### Symptom
+
+`build_artifact_index.py` reports a missing/invalid `--run-contract`, an
+invalid canonical contract hash, or:
+
+```text
+Existing run_id is bound to a different immutable run contract field
+```
+
+### Cause
+
+The adapter CLI requires a strict JSON document containing exactly the
+declared run-contract hash plus the sample-manifest, reference-contract,
+partition-manifest, primary-analysis ID, and primary-analysis-policy identity
+components. An existing output-root receipt binds that local `run_id` to
+those values only within the selected output root while the committed receipt
+is retained. This is not a global or permanent run registry.
+The expected-artifact inventory is not one of those identity components.
+
+### Fix
+
+Correct an invalid declaration at its source. If an immutable identity value
+changed, choose a new `run_id`; never edit the old receipt or run-contract hash
+to conceal the change. If only the explicit inventory changed, retain the same
+run ID and rerun with the revised inventory. Execute mode will validate the
+prior complete transaction and publish a new superseding
+`adapter_attempt_id`.
+
+## Artifact adapter finds a lock, partial transaction, or incomplete rollback
+
+### Symptom
+
+The adapter reports an existing lock, invalid/incomplete prior receipt,
+changed source, unsafe symlink, rollback failure, cleanup failure, or retained
+recovery paths.
+
+### Cause
+
+Possible owned or recovery paths for one run include:
+
+```text
+results/artifacts/<run_id>/.<run_id>.artifact-index.lock
+results/artifacts/<run_id>/.artifact-index.<run_token>.tmp.*
+results/artifacts/<run_id>/.artifact-index.<run_token>.previous.*
+results/artifacts/<run_id>/.artifact-receipt.<run_token>.tmp.tsv
+results/artifacts/<run_id>/.artifact-receipt.<run_token>.previous.tsv
+results/artifacts/<run_id>/.artifact-index.<run_token>.RECOVERY.txt
+```
+
+The records directory, ordered index, and receipt are one transaction, with
+the receipt published last. A concurrent writer, source mutation, interrupted
+manual copy, publication failure, or incomplete restoration can leave state
+that must be inspected before another writer runs. A receipt is
+re-quarantined only if restored-transaction validation fails;
+first-publication rollback has no prior receipt; and the recovery marker is
+best-effort, so not every failure leaves every listed path.
+
+### Fix
+
+Inspect lock metadata, current records/index/receipt, every reported or
+remaining temporary, backup, quarantine, or recovery-marker path that is
+present, source paths, and any active process before changing anything. Do
+not delete a foreign lock, combine files from different attempts, manufacture
+a receipt, or discard recovery evidence. Recover either the complete prior
+transaction or a clean first-publication state, validate it, record the
+operator action, and only then remove a lock whose ownership is proven.
+
+## Artifact receipt is complete but evidence records are not
+
+### Symptom
+
+`<run_id>.artifact_receipt.tsv` records `transaction_state=complete`, while the
+index contains missing, failed, incomplete, externally unavailable, or
+unknown artifacts; runtime/cluster statuses remain `not_run`; or no Step
+`09c` science state is propagated.
+
+### Cause
+
+Transaction completion means the adapter records, index, and receipt were
+validated and committed together. It does not mean every expected artifact
+exists or that computation/science was validated. Adapter v1 populates
+implementation evidence but deliberately leaves each generated record's
+local-testing, runtime-validation, cluster-dry-run, and cluster-proof fields
+at `not_run`; it has no native-validation import path.
+
+Step `09c` science propagation is separate. Both permitted science states
+require its complete 13-output summary-last scope, plan/summary identity, all
+ten required published category declarations, and exact
+evidence-ID/payload/count reconciliation. `evidence_incomplete` may retain
+missing or incomplete categories, pending decisions/adjudication, and no
+completion date. `science_review_complete_exploratory` additionally requires
+complete or justified `not_applicable` categories, all required decisions
+complete and recorded, exact equality between the selected and adjudicated
+`(analysis_id, candidate_id)` identity sets, and a completion date.
+Non-provisional orientation and a source declaration of cluster proof have
+their additional orientation-decision and optional `computational_validation`
+gates.
+
+### Fix
+
+Treat the explicit record statuses as the result. Do not try to promote them
+manually or by adding undeclared native evidence. Later validator packages
+may publish typed validation evidence through their own contracts; the
+run-summary package may aggregate that evidence but must never infer or
+promote it. If Step `09c` science propagation was expected, correct its
+declared transaction or evidence relationships and rerun the adapter. Keep
+production science `evidence_incomplete` when reconciliation does not pass,
+and continue rejecting `biological_interpretation_ready`.
 
 ## A passing artifact-schema fixture is mistaken for an artifact index, report, or validation evidence
 
@@ -1450,9 +1564,9 @@ a completed scientific review or biological-readiness result
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a
-record it validates the canonical run-contract hash, but detecting historical
-reuse of one `run_id` for a different contract requires the stateful
-`artifact-adapters-v1` layer.
+record it validates the canonical run-contract hash. The implemented
+`artifact-adapters-v1` layer additionally validates an existing output-root
+receipt before allowing the same `run_id` to be rebuilt.
 
 ### Fix
 
@@ -1463,8 +1577,10 @@ artifact-schema-v1 implemented at 5f4d3b4
 shared common schema plus four public Draft 2020-12 schemas
 67-row synthetic explicit physical inventory
 read-only validator and 54 focused tests pass locally
-no adapters, generated artifacts, run summaries, reports, or production evidence
-artifact-adapters-v1 is next
+artifact-adapters-v1 implemented at 4dbd32d
+49 read-only adapters and 50 focused tests pass locally
+no production artifact index, run summary, report, or production evidence
+artifact-run-summary is next
 ```
 
 Keep production and cluster status unchanged. Keep production science
@@ -1533,10 +1649,11 @@ missing read groups in Step 04.
 A future troubleshooting index may summarize repeated failure patterns as
 symptom, likely cause, confirmation command, and fix. Keep the generic index as
 a deferred roadmap idea until enough real failures exist. The artifact-schema
-validator and inventory are now implemented, so their concrete failure modes
-are documented above; do not add entries that imply artifact adapters,
-generated run summaries, cleanup tools, reports, foundation tools, or per-step
-validators exist before their branches implement them.
+validator, inventory, and explicit artifact adapter indexer are now
+implemented, so their concrete failure modes are documented above; do not add
+entries that imply generated run summaries, general cleanup tools, reports,
+foundation tools, or per-step validators exist before their branches
+implement them.
 
 ## General success checklist
 

@@ -279,13 +279,35 @@ When changing an artifact schema or inventory, run:
   --check-schemas \
   --inventory configs/artifact_inventory.example.tsv
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+.venv/bin/python -m pytest -q tests/test_artifact_adapters.py
 ```
 
 The artifact-contract validator is read-only. A passing schema, document, or
 inventory check does not establish source-file existence, adapter execution,
 runtime or cluster validation, scientific-review completion, or report
-generation. Adapter identifiers remain declarations until the separately
-implemented adapter layer resolves and inspects them.
+generation.
+
+The implemented artifact adapter layer requires both an explicit inventory
+and a strict six-field run-contract JSON containing:
+
+```text
+run_contract_sha256
+sample_manifest_sha256
+reference_contract_sha256
+partition_manifest_sha256
+primary_analysis_id
+primary_analysis_policy_sha256
+```
+
+`run_id` is bound only to that immutable contract. Changing any of the five
+identity components requires a new `run_id`. Inventory path/hash changes are
+revisionable adapter-attempt metadata: when the immutable contract is
+unchanged, each execute-mode rebuild receives a new `adapter_attempt_id` and
+records its superseded attempt. A complete artifact-index transaction means
+only that its records, ordered index, and receipt were validated and published
+as one set. It may legitimately contain missing, incomplete, failed, or
+externally unavailable sources, and it does not establish runtime, cluster,
+scientific-review, or biological evidence.
 
 ## Script conventions
 

@@ -7,12 +7,16 @@ flowchart TD
     subgraph inputs["Schema-validated records"]
         direction TB
         schema["Versioned artifact schemas<br/>implemented + locally fixture-tested"]
-        artifacts_tsv["schema-validated artifact index<br/>pending adapter output"]
+        run_contract["Explicit six-field run contract"]
+        inventory["Explicit expected-artifact inventory"]
+        declared_sources["Explicit declared native sources<br/>missing/incomplete allowed"]
         qc_summary["qc_summary.tsv"]
         provenance["runtime/provenance records"]
         final_tables["explicitly approved report-table paths"]
     end
 
+    adapter_builder["artifact-adapters-v1 builder<br/>implemented + fixture-tested locally"]
+    artifacts_tsv["artifact records + artifacts.tsv + receipt<br/>fixture transaction proven<br/>production index absent"]
     aggregate["Run-summary aggregation"]
     run_summary["run_summary.json<br/>pending"]
     generator["Static QMD / Quarto renderer<br/>no analysis execution"]
@@ -41,7 +45,11 @@ flowchart TD
         tsv_output["Run-summary TSV"]
     end
 
-    schema --> artifacts_tsv
+    schema --> adapter_builder
+    run_contract --> adapter_builder
+    inventory --> adapter_builder
+    declared_sources --> adapter_builder
+    adapter_builder --> artifacts_tsv
     artifacts_tsv --> aggregate
     qc_summary --> aggregate
     provenance --> aggregate
@@ -68,7 +76,8 @@ flowchart TD
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema current
+    class schema,adapter_builder current
+    class run_contract,inventory,declared_sources,artifacts_tsv contract
     class qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class artifacts_tsv,aggregate,run_summary,generator,html,exports future
+    class aggregate,run_summary,generator,html,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

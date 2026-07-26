@@ -158,7 +158,8 @@ evidence has been inspected.
 The design questions for the immediate artifact/report vertical slice are
 resolved. Step `09c` is implemented and fixture-tested locally.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
-the remaining packages are approved but not yet implemented:
+`artifact-adapters-v1` is implemented and locally fixture-tested at
+`4dbd32d`. The remaining packages are approved but not yet implemented:
 
 ```text
 artifact-schema-v1
@@ -181,10 +182,23 @@ reserved biological_interpretation_ready is rejected
 read-only schema/inventory validation; no source inspection or output creation
 ```
 
-Fixed decisions for the pending packages:
+Implemented adapter decisions:
 
 ```text
-read-only adapters over existing outputs; no native emitter retrofit
+49 exact read-only adapters cover all 67 declared Step 00a-09c artifacts
+no glob discovery and no native compute-output retrofit
+required strict six-field run-contract JSON plus explicit inventory
+run_id binds the immutable run contract, not the revisionable inventory
+inventory-only revisions create distinct superseding adapter attempts
+records/index/receipt publish atomically with the receipt last
+missing, failed, incomplete, unavailable, and unknown evidence remain explicit
+adapter completion alone creates or promotes no runtime, cluster, science, or readiness state
+a valid native Step 09c science state may be propagated after reconciliation
+```
+
+Fixed decisions for the remaining pending packages:
+
+```text
 canonical run-summary JSON as the report layer's sole structured entry point
 Quarto 1.9.38 with bundled Typst
 self-contained HTML and PDF plus TSV summary and receipt
@@ -193,12 +207,14 @@ state banners preserve incomplete or exploratory/provisional meaning
 ```
 
 The schema package has implementation and synthetic fixture evidence,
-including 54 focused passing tests. Adapter dispatch, production source
-inspection, artifact-index/run-summary generation, and report implementation
-evidence remain pending on the named branches. Production reports and
-biological conclusions remain unavailable because production Steps `07`-`09`
-evidence and production Step `09c` review evidence have not been generated or
-inspected.
+including 54 focused passing tests. The adapter package has 50 focused passing
+tests and 104 combined schema/adapter passes. Its synthetic fixtures exercise
+explicit native-source inspection and receipt-last publication, but no
+production source has been inspected and no production artifact index exists.
+Run-summary and report implementation evidence remain pending on the named
+branches. Production reports and biological conclusions remain unavailable
+because production Steps `07`-`09` evidence and production Step `09c` review
+evidence have not been generated or inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -463,6 +479,8 @@ Implemented local infrastructure package:
 ```text
 artifact-schema-v1  Draft 2020-12 contracts, explicit synthetic inventory,
                     read-only validator, and fixtures
+artifact-adapters-v1 49 read-only Step 00a-09c adapters, explicit immutable
+                     run contract, and receipt-last artifact transaction
 ```
 
 Step `07` passed its mocked-bcftools focused tests and the complete local
@@ -491,9 +509,15 @@ gate.
 `artifact-schema-v1` is implemented locally at `5f4d3b4`. It contains one
 shared and four public schemas, a 67-row synthetic explicit inventory, a
 read-only validator, and fixtures covered by 54 focused tests. It is not a
-compute step and has not inspected production artifacts, executed adapters,
-generated an artifact index/run summary/report, or changed any runtime,
-cluster, scientific-review, or biological-readiness status.
+compute step and has not inspected production artifacts or changed any
+runtime, cluster, scientific-review, or biological-readiness status.
+
+`artifact-adapters-v1` is implemented locally at `4dbd32d`. It contains 49
+explicit adapters covering the full 67-row inventory; 50 focused tests pass.
+Its synthetic fixtures inspect representative native outputs and publish
+records/index/receipt transactions. No production source has been inspected
+or indexed, no run summary/report has been generated, and no runtime, cluster,
+scientific-review, or biological-readiness status has changed.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
@@ -778,6 +802,43 @@ The second remains provisional. `biological_interpretation_ready` is reserved
 and rejected. Active Python and shell synthetic fixtures pass, but no
 production review evidence is recorded or supported by inspected evidence;
 production science remains `evidence_incomplete`.
+
+### What Is The Artifact Adapters V1 Contract?
+
+Answered for local implementation.
+
+`scripts/build_artifact_index.py` is dry-run-first, explicit-input-only, and
+read-only with respect to Step `00a`-`09c` sources. Its 49 exact adapter IDs
+cover all 67 rows in the tracked synthetic inventory. It never discovers
+sources by glob, invokes analysis code, or requires native JSON emitters.
+
+The interface requires:
+
+```text
+--run-id RUN_ID
+--run-contract RUN_CONTRACT_JSON
+--inventory INVENTORY_TSV
+--output-root OUTPUT_ROOT
+[--execute]
+```
+
+The strict run-contract JSON contains the declared run-contract hash plus
+sample-manifest, reference-contract, partition-manifest, primary-analysis ID,
+and primary-analysis-policy identity. Those fields define immutable run
+identity. An inventory-only revision is a new `adapter_attempt_id` under the
+same run; changing an identity component requires a new `run_id`.
+
+Execute mode publishes `records/<artifact_id>.json`,
+`<run_id>.artifacts.tsv`, then `<run_id>.artifact_receipt.tsv` last under
+`results/artifacts/<run_id>/`. A complete receipt commits the adapter
+transaction even when individual records explicitly report missing,
+incomplete, failed, unavailable, or unknown evidence. Runtime, cluster, and
+scientific status remain independent.
+
+This contract is implemented at `4dbd32d`. All 50 focused adapter tests and
+104 combined schema/adapter tests pass on synthetic fixtures. No production
+source or artifact transaction has been inspected, and the run-summary/report
+packages remain pending.
 
 ### Step 02b Final-BAM QC Refresh
 

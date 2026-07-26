@@ -44,8 +44,10 @@ production evidence package or completed production science review exists.
 The `artifact-schema-v1` foundation is implemented and locally fixture-tested
 at `5f4d3b4`. It provides four public Draft 2020-12 record schemas with shared
 definitions, an explicit 67-row expected-artifact inventory, and a local
-validator; it has not generated a production artifact index, run summary, or
-report.
+validator. `artifact-adapters-v1` is implemented at `4dbd32d`; its 49
+read-only adapters cover all 67 declared Step `00a`-`09c` artifacts, and 50
+focused synthetic-fixture tests pass. It has not generated a production
+artifact index, run summary, or report.
 No production biological-readiness claim has been produced;
 `biological_interpretation_ready` remains reserved and rejected.
 
@@ -64,6 +66,8 @@ evidence-validation code boundary only; its fixture pass does not establish
 production scientific-review completion or move the cluster-proven boundary.
 The artifact-schema contract is also locally implemented and tested, but no
 adapter has indexed production evidence and no run summary or report exists.
+The adapter CLI itself is implemented and synthetic-fixture-tested locally;
+this is not runtime, cluster, or science proof.
 
 ### Evidence table
 
@@ -84,6 +88,7 @@ adapter has indexed production evidence and no run summary or report exists.
 | `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | four TSVs and two PDFs under `results/editing/<analysis>/` | implementation commit `e4371de`, fixture correction `eae5eca`; shell/fake-R and guarded real-R suites pass; PDF EOF validation is raw-byte based | implemented and locally tested; cluster validation pending; not cluster-proven |
 | `09c` scientific-evidence validation | sample/partition manifests, exact Step `08` transaction, Step `09` analysis directory, review plan, evidence manifest | 13 TSVs under `results/scientific_validation/<review_id>/`, with review summary last | implementation `b674a31`; dedicated Python and active shell synthetic fixtures | implemented and fixture-tested locally; production review evidence unavailable; no production science-review completion, cluster proof, or biological readiness |
 | `artifact-schema-v1` contract foundation | explicit expected-artifact inventory and synthetic JSON records | four public schemas plus shared definitions under `schemas/artifacts/v1/`; example inventory under `configs/` | implementation `5f4d3b4`; schema/inventory validation plus positive and negative synthetic contract tests | implemented and locally fixture-tested; no production artifact index, run summary, report, cluster proof, or science proof |
+| `artifact-adapters-v1` index foundation | `run_id`, strict six-field run-contract JSON, and explicit expected-artifact inventory | `<OUTPUT_ROOT>/<run_id>/records/<artifact_id>.json`, `<OUTPUT_ROOT>/<run_id>/<run_id>.artifacts.tsv`, and receipt-last `<OUTPUT_ROOT>/<run_id>/<run_id>.artifact_receipt.tsv` | implementation `4dbd32d`; 50 focused and 104 combined schema/adapter synthetic tests | implemented and locally fixture-tested; no production-source adapter inspection and no production index, run summary/report, runtime/cluster proof, completed production science review, or readiness evidence |
 
 ### PI scientific/QC questions
 
@@ -100,9 +105,11 @@ implemented at `b674a31` and fixture-tested locally; no production review
 evidence is recorded or supported by inspected evidence.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 its contracts and inventory do not constitute a production artifact index.
+`artifact-adapters-v1` is implemented and locally fixture-tested at `4dbd32d`;
+no production adapter transaction exists.
 
-1. Continue the immediate reporting slice with `artifact-adapters-v1`,
-   `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`. The
+1. Continue the immediate reporting slice with `artifact-run-summary`,
+   `report-html-v1`, and `report-exports-v1`. The
    synthetic reports must label incomplete/exploratory state and never imply
    validation.
 2. Implement read-only runtime, reference-provenance, and storage-retention
@@ -130,6 +137,7 @@ its contracts and inventory do not constitute a production artifact index.
 | `09` | CMH editing-site calling | implemented locally at `e4371de`; shell/fake-R and guarded real-R suites pass after `eae5eca`; not cluster-proven |
 | `09c` | scientific-evidence validation | implemented at `b674a31` and synthetic-fixture-tested locally; no production review evidence or biological-readiness claim |
 | `artifact-schema-v1` | versioned artifact/science/run-summary/report-receipt contracts and explicit inventory | implemented at `5f4d3b4` and locally fixture-tested; no production artifact index or report |
+| `artifact-adapters-v1` | explicit read-only Step `00a`-`09c` artifact index | implemented at `4dbd32d`; 50 focused synthetic-fixture tests pass; no production index, run summary/report, runtime/cluster proof, or science proof |
 
 Step 06: cluster-proven across all six samples.
 
@@ -523,17 +531,35 @@ not itself provide orthogonal experimental validation.
 ### Phase 4 — Immediate artifacts and reports
 
 Status: the `artifact-schema-v1` foundation is implemented and locally
-fixture-tested at `5f4d3b4`; adapters, artifact indexes, canonical run
-summaries, and HTML/PDF reports are not implemented yet.
+fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and locally
+fixture-tested at `4dbd32d`; 50 focused adapter tests pass, but no production
+index exists. Canonical run summaries and HTML/PDF reports are not implemented
+yet.
 
 The implemented schema stage defines four public Draft 2020-12 contracts with
 shared definitions and validates a 67-row explicit expected-artifact
-inventory. The remaining approved order is read-only adapters, canonical run
-summary, self-contained HTML, then bundled-Typst PDF/TSV exports. Reports use
+inventory. The adapter stage requires:
+
+```text
+.venv/bin/python scripts/build_artifact_index.py
+  --run-id RUN_ID
+  --run-contract RUN_CONTRACT_JSON
+  --inventory INVENTORY_TSV
+  --output-root OUTPUT_ROOT
+  [--execute]
+```
+
+It publishes explicit records, `<OUTPUT_ROOT>/<run_id>/<run_id>.artifacts.tsv`,
+and `<OUTPUT_ROOT>/<run_id>/<run_id>.artifact_receipt.tsv` last. `run_id`
+binds the immutable six-field run contract; an inventory-only revision creates
+a new superseding adapter attempt under the same run. The remaining approved
+order is canonical run summary, self-contained HTML, then bundled-Typst
+PDF/TSV exports. Reports use
 explicit inventory paths, represent missing/incomplete evidence, and carry a
 persistent scientific-state banner. Candidate rows are “CMH-ranked
-candidates,” never validated editing sites. Neither schema validation nor
-report generation is evidence of computational or biological validation.
+candidates,” never validated editing sites. Neither schema validation,
+artifact indexing, nor report generation is evidence of computational or
+biological validation.
 
 ### Phase 5 — Foundations and per-step validators
 
@@ -565,10 +591,11 @@ deferred.
 The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented at `b674a31`; its production evidence/review gate remains open.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
+`artifact-adapters-v1` is implemented and locally fixture-tested at `4dbd32d`;
 no production index or report was generated.
 
-1. Implement `artifact-adapters-v1`, the artifact run summary, and the
-   immediate HTML/PDF reporting slice in separate gated descendant branches.
+1. Implement the artifact run summary and immediate HTML/PDF reporting slice
+   in separate gated descendant branches.
 2. Implement read-only foundations and one validator branch per pipeline step;
    stop local work at `post09-validation-report-09`.
 3. Resume remote validation later in upstream order. Even then, keep
@@ -597,10 +624,12 @@ no production index or report was generated.
   synthetic-fixture-tested locally.
 - Step `09c` is implemented and synthetic-fixture-tested; it does not establish
   a production scientific review. `artifact-schema-v1` is implemented and
-  locally fixture-tested at `5f4d3b4`, but it has not created a production
-  artifact index. `artifact-adapters-v1` is next; consolidated run summaries
+  locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented
+  at `4dbd32d`, and 50 focused tests pass, but it has not created a production
+  artifact index. `artifact-run-summary` is next; consolidated run summaries
   and HTML/PDF reporting remain unimplemented. Neither evidence validation,
-  schema validation, nor report generation establishes biological readiness.
+  schema validation, artifact indexing, nor report generation establishes
+  biological readiness.
 - Future cluster proof establishes computation, not biological truth;
   orientation, annotation, robustness, candidate evidence, and background
   eligibility remain a separate science gate.

@@ -51,6 +51,8 @@ production source inspection or generated reporting artifacts:
 ```text
 artifact-schema-v1  Five schema files total, read-only validator, and
                     67-row synthetic explicit physical-artifact inventory
+artifact-adapters-v1 49 explicit read-only adapters and receipt-last artifact
+                     transaction; fixture-tested only, no production index
 ```
 
 The active Step `07` shell suite uses a fake bcftools executable. Real
@@ -98,8 +100,8 @@ step-09a-roadmap-docpatch
     └── step-09b1-real-r-fixes
         └── step-09c-scientific-validation
             └── artifact-schema-v1          # implemented at 5f4d3b4
-                └── artifact-adapters-v1    # next
-                    └── artifact-run-summary
+                └── artifact-adapters-v1    # implemented at 4dbd32d
+                    └── artifact-run-summary # next
                         └── report-html-v1
                             └── report-exports-v1
                                 └── post09-runtime-preflight
@@ -122,9 +124,9 @@ step-09a-roadmap-docpatch
 
 The Step `09b` runtime and Step `09b1` corrective gates are complete locally.
 Commit `eae5eca` contains the Step `09b1` implementation and tests. Step `09c`
-is implemented at `b674a31`. `artifact-schema-v1` is implemented at `5f4d3b4`;
-after its documentation gate is committed and pushed,
-`artifact-adapters-v1` is next.
+is implemented at `b674a31`. `artifact-schema-v1` is implemented at `5f4d3b4`,
+and `artifact-adapters-v1` is implemented at `4dbd32d`. After the adapter
+documentation gate is committed and pushed, `artifact-run-summary` is next.
 
 Completed local gate:
 
@@ -140,8 +142,18 @@ artifact-schema-v1
   read-only explicit document and inventory validator
   67-row synthetic explicit physical-artifact inventory for Steps 00a-09c
   54 focused synthetic contract tests
-  no adapters, production source inspection, generated artifact index,
-    run summary, report, runtime/cluster evidence, or scientific evidence
+  no production source inspection, generated artifact index, run summary,
+    report, runtime/cluster evidence, or scientific evidence
+
+artifact-adapters-v1
+  dry-run-first explicit run-contract and inventory interface
+  49 read-only adapters covering all 67 declared Step 00a-09c artifacts
+  deterministic records/index/receipt transaction with receipt published last
+  revisionable inventories recorded as distinct adapter attempts under one
+    unchanged immutable run contract
+  50 focused adapter tests and 104 combined schema/adapter tests
+  synthetic fixture execution only; no production artifact index, run summary,
+    report, runtime/cluster proof, completed science review, or readiness
 ```
 
 Step `09c` may publish only:
@@ -156,16 +168,14 @@ separately approved policy branch unlocks its scientific exit criteria.
 
 ### 1. Continue Artifacts, Run Summary, And Reports Immediately
 
-Do not defer reporting. The schema package is complete locally; continue in
-order:
+Do not defer reporting. The schema and adapter packages are complete locally;
+continue in order:
 
-1. `artifact-adapters-v1`: read-only explicit adapters for Steps `00a`-`09`
-   and Step `09c`; never discover inputs by glob.
-2. `artifact-run-summary`: deterministic canonical JSON plus TSV/QC views and
+1. `artifact-run-summary`: deterministic canonical JSON plus TSV/QC views and
    a receipt published last.
-3. `report-html-v1`: checksum-verified local Quarto `1.9.38`, a static QMD
+2. `report-html-v1`: checksum-verified local Quarto `1.9.38`, a static QMD
    view, and one self-contained accessible HTML report.
-4. `report-exports-v1`: the same report as HTML/PDF plus summary TSV and a
+3. `report-exports-v1`: the same report as HTML/PDF plus summary TSV and a
    report receipt, using bundled Typst for PDF.
 
 Reports must separate computational and scientific state, carry persistent
@@ -450,11 +460,11 @@ conversion. This local fixture pass is not production or cluster evidence.
 
 ## Activated Roadmap And Deferred Boundaries
 
-Scientific-validation tooling and the explicit artifact schemas/validator are
-implemented and fixture-tested locally. Artifact adapters, the canonical run
-summary, HTML/PDF/TSV reports, the three foundational read-only packages, and
-one validator branch per pipeline step remain activated in the exact local
-sequence above. Each becomes available only after its own
+Scientific-validation tooling, the explicit artifact schemas/validator, and
+the read-only adapter indexer are implemented and fixture-tested locally. The
+canonical run summary, HTML/PDF/TSV reports, the three foundational read-only
+packages, and one validator branch per pipeline step remain activated in the
+exact local sequence above. Each becomes available only after its own
 implementation/docpatch gate.
 
 ### Foundational Operational Packages
@@ -480,9 +490,10 @@ vertical slice:
 ### Reporting And Artifact Layer
 
 This layer is activated for immediate local implementation after Step `09c`.
-Its read-only schema validator is now runnable and locally focused-tested, but
-artifact production and reporting remain non-runnable at this boundary;
-`artifact-adapters-v1` is the next package.
+Its read-only schema validator and explicit adapter indexer are runnable and
+locally focused-tested. No production adapter transaction exists. Canonical
+run-summary and report production remain non-runnable at this boundary;
+`artifact-run-summary` is the next package.
 
 Ordered packages:
 
@@ -503,9 +514,13 @@ Implemented boundary and remaining roadmap:
   attempts/failures/incomplete states, version conflicts, paths/hashes,
   evidence roles, scientific state, and richer Step `09` fields. Its 54
   focused tests pass locally.
-* `artifact-adapters-v1` adds read-only adapters over existing Step `07`
-  receipts, Step `08` receipt/summary, and Step `09` summary without changing
-  proven CLIs or paths. Native emitters may come later.
+* `artifact-adapters-v1` implements 49 read-only adapters over the explicit
+  Step `00a`-`09c` inventory without changing proven CLIs or paths. It requires
+  the six-field immutable run contract plus a revisionable inventory, emits
+  missing/failed/incomplete/unavailable states explicitly, and publishes
+  records, the ordered index, and the receipt last. All 50 focused tests pass
+  on synthetic fixtures; no production index exists. Native emitters may come
+  later.
 * `artifact-run-summary` represents missing, failed, and incomplete work and
   aggregates approved artifacts into `run_summary.json` plus an index/QC table.
 * `report-html-v1` consumes only structured artifacts and final tables. It
@@ -605,7 +620,10 @@ Publish and validate the synthetic-fixture Step 09c 13-file summary-last transac
 Promote Step 09c Python and shell fixtures into the active repository gate, including incomplete/exploratory and reserved-state cases.
 Implement artifact-schema-v1 at 5f4d3b4 with one shared common schema and four public Draft 2020-12 schemas.
 Add and validate the 67-row synthetic explicit physical-artifact inventory for Steps 00a-09c.
-Pass all 54 focused artifact-contract tests without claiming adapter execution, generated reports, production evidence, or cluster proof.
+Pass all 54 focused artifact-contract tests without claiming source inspection,
+generated outputs, production evidence, or cluster proof.
+Implement artifact-adapters-v1 at 4dbd32d with the strict run-contract input, 49 explicit read-only adapters, and a receipt-last transaction.
+Pass all 50 focused adapter tests and all 104 combined schema/adapter tests without claiming a production index, run summary/report, runtime/cluster proof, or scientific evidence.
 ```
 
 ## Development Rule

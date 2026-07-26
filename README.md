@@ -13,12 +13,14 @@ The project rebuilds a hardcoded legacy RNA-editing/RNA-seq workflow into mainta
 The uploaded legacy workflow is treated as a protocol reference, not as production code. Local implementation stages use descendant branches, focused and repository-wide tests, a separate documentation-only commit, and a clean push gate. Runtime promotion remains upstream-first through SLURM dry-run, execute, output inspection, and evidence docpatches.
 
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
-approved immediate local implementation sequence. The first package,
-`artifact-schema-v1`, is implemented locally at `5f4d3b4` and its focused
-synthetic contract suite passes. It defines versioned schemas, a read-only
-validator, and an explicit expected-artifact inventory without rerunning
-computation. `artifact-adapters-v1` is next; generated artifact indexes,
-canonical run-summary outputs, and HTML/PDF/TSV reports remain unimplemented.
+approved immediate local implementation sequence. `artifact-schema-v1` is
+implemented locally at `5f4d3b4`, and `artifact-adapters-v1` is implemented
+locally at `4dbd32d`. Together they define versioned contracts and build a
+dry-run-first, explicit-input, read-only artifact transaction without
+rerunning computation or changing native pipeline outputs. The adapter suite
+has 50 focused passing tests, and the combined schema/adapter gate has 104.
+No production artifact index has been built. `artifact-run-summary` is next;
+canonical run-summary outputs and HTML/PDF/TSV reports remain unimplemented.
 
 ## Current Status
 
@@ -63,10 +65,18 @@ The `artifact-schema-v1` package is implemented locally at `5f4d3b4`. It
 tracks five schema files total (one shared common schema plus four public
 Draft 2020-12 record schemas), a 67-row synthetic explicit physical-artifact
 inventory, a read-only contract validator, and valid synthetic fixtures. All
-54 focused artifact-contract tests pass. This is local structural and
-semantic fixture evidence only: no adapter has inspected a production source,
-and no artifact index, run summary, report, runtime/cluster evidence, or
-scientific evidence was generated.
+54 focused artifact-contract tests pass.
+
+The `artifact-adapters-v1` package is implemented locally at `4dbd32d`. Its
+49 registered read-only adapters cover the 67 explicit Step `00a`-`09c`
+inventory rows, and all 50 focused adapter tests pass. The suite validates
+native receipt/summary relationships, explicit missing and incomplete states,
+stable output ordering, binary structure where applicable, immutable run
+identity, revisionable inventory attempts, and receipt-last rollback
+publication. This is synthetic local fixture evidence only: no production
+source has been inspected or indexed, and no run summary, report,
+runtime/cluster evidence, completed production science review, or biological
+readiness was generated.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -96,8 +106,8 @@ step-09-cmh
         └── step-09b1-real-r-fixes       # local fixes and real-R acceptance complete
             └── step-09c-scientific-validation  # implemented and fixture-tested locally
                 └── artifact-schema-v1          # implemented and focused-tested locally
-                    └── artifact-adapters-v1    # next
-                        └── artifact-run-summary
+                    └── artifact-adapters-v1    # implemented and focused-tested locally
+                        └── artifact-run-summary # next
                             └── report-html-v1
                                 └── report-exports-v1
                                     └── post09-runtime-preflight
@@ -131,11 +141,11 @@ or claim production review. Its allowed science states are
 approved policy branch unlocks its exit criteria.
 
 Run-summary and reporting work is immediate, not deferred. The artifact
-schema is now implemented from explicit contracts and synthetic fixtures.
-Read-only adapters, the canonical run summary, the self-contained HTML report,
-and the Quarto/Typst PDF/TSV bundle remain pending in that order. Report
-generation will never be evidence of computational or biological validation.
-At this boundary, `artifact-adapters-v1` is next.
+schema and read-only adapter indexer are now implemented from explicit
+contracts and synthetic fixtures. The canonical run summary, self-contained
+HTML report, and Quarto/Typst PDF/TSV bundle remain pending in that order.
+Report or index generation will never be evidence of computational or
+biological validation. At this boundary, `artifact-run-summary` is next.
 
 The reporting slice is followed by read-only runtime, reference-provenance,
 and storage/retention tooling, then one explicit validator branch for every
@@ -375,14 +385,61 @@ The four public document types are `artifact-record`,
 common schema is loaded with them. The validator is explicit-input-only and
 read-only. It validates schema, record, inventory, run/attempt, path/hash,
 typed evidence, rollup, and reserved-science-state consistency, but it does
-not discover or inspect production pipeline outputs. Adapter execution and
-artifact-index publication begin on `artifact-adapters-v1`; canonical
-run-summary files and reports remain later packages.
+not discover or inspect production pipeline outputs. Artifact-index
+publication is implemented by `artifact-adapters-v1`; canonical run-summary
+files and reports remain later packages.
 
 The 54 focused tests are synthetic local contract evidence. They do not
 establish production artifact availability, runtime validation, a cluster
 dry-run or cluster proof, scientific-review completion, biological readiness,
 or report generation.
+
+### Artifact Adapters V1 Local Implementation
+
+Implemented files and tests:
+
+```text
+configs/artifact_run_contract.example.json
+scripts/build_artifact_index.py
+tests/fixtures/artifact_adapters_v1/build_fixture.py
+tests/test_artifact_adapters.py
+```
+
+The dry-run-first interface is:
+
+```bash
+.venv/bin/python scripts/build_artifact_index.py \
+  --run-id RUN_ID \
+  --run-contract RUN_CONTRACT_JSON \
+  --inventory INVENTORY_TSV \
+  --output-root OUTPUT_ROOT
+
+# add --execute only to publish
+```
+
+The strict run-contract JSON contains `run_contract_sha256` plus the five
+identity components: sample-manifest hash, reference-contract hash,
+partition-manifest hash, primary-analysis ID, and primary-analysis-policy
+hash. Those values bind `run_id`. An inventory-only revision may create a new
+`adapter_attempt_id` under the same run; changing an immutable identity
+component requires a new `run_id`.
+
+Execute mode publishes:
+
+```text
+results/artifacts/<run_id>/
+  records/<artifact_id>.json
+  <run_id>.artifacts.tsv
+  <run_id>.artifact_receipt.tsv
+```
+
+The receipt is published last. Its complete transaction state means that the
+record set and index were reconciled and committed; individual records may
+still explicitly report missing, incomplete, failed, externally unavailable,
+or unknown evidence. Adapters never discover inputs by glob, invoke analysis
+engines, or infer runtime/cluster/scientific proof from tool presence or prose.
+All 50 focused adapter tests and all 104 combined schema/adapter tests pass on
+synthetic fixtures. No production adapter transaction exists.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
@@ -545,13 +602,14 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the `artifact-schema-v1` implementation boundary
-the R environment check, both Step `08` and Step `09` real-R runners, the
-aggregate `local-real-r-test`, the Step `09c` Python/shell fixtures, and all 54
-focused artifact-contract tests pass. These checks use synthetic fixtures and
-do not constitute production input inspection, adapter execution, generated
-artifact/run-summary/report evidence, cluster validation, or
-scientific-review validation.
+uses the existing `.venv`. At the `artifact-adapters-v1` implementation
+boundary, the complete Python suite passes with 150 tests; all shell tests,
+both Step `08` and Step `09` real-R runners, the aggregate local R target, and
+the R environment check also pass. The adapter-focused gate has 50 tests and
+the combined schema/adapter gate has 104. These checks use synthetic fixtures
+and do not constitute production input inspection or publication,
+run-summary/report evidence, cluster validation, production scientific-review
+completion, or biological readiness.
 
 Shortcut for the Makefile-covered checks:
 

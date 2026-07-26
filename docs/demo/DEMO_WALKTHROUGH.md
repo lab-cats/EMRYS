@@ -8,7 +8,7 @@ Show that the legacy NORAD / Novogene Remora workflow has been rebuilt into a
 reproducible preprocessing and paired-CMH code path, with a clear distinction
 between the cluster-proven RNA-seq preprocessing boundary and the locally
 implemented Steps `07`-`09`, the local Step `09c` evidence validator, and the
-locally tested artifact-schema foundation.
+locally tested artifact schema and adapter-index foundations.
 
 Current boundary:
 
@@ -20,7 +20,8 @@ Steps 00a-00c cluster-proven reference prep
 -> Step 08 and Step 09 real-R suites pass locally without SKIP after eae5eca
 -> Step 09c implemented and synthetic-fixture-tested locally at b674a31
 -> artifact-schema-v1 implemented and locally fixture-tested at 5f4d3b4
--> artifact-adapters-v1 is next; no production artifact index or report exists
+-> artifact-adapters-v1 implemented and focused-fixture-tested at 4dbd32d
+-> artifact-run-summary is next; no production artifact index or report exists
 -> remote validation remains paused
 ```
 
@@ -38,8 +39,25 @@ Steps 00a-00c cluster-proven reference prep
    The Step `09c` dry-run and fixture suite may be shown only as validator
    implementation evidence, not a completed production scientific review. The
    artifact schema validator, synthetic JSON records, and explicit 67-row
-   inventory may be shown as local contract evidence only; they are not a
-   production artifact index, run summary, or report.
+   inventory may be shown as local contract evidence only. The adapter
+   `--help`, dry-run, and focused synthetic fixtures may also be shown as
+   implementation evidence only; they are not a production artifact index,
+   run summary, or report.
+
+   Example side-effect-free adapter dry-run:
+
+   ```bash
+   .venv/bin/python scripts/build_artifact_index.py \
+     --run-id RUN_ID \
+     --run-contract configs/artifact_run_contract.example.json \
+     --inventory configs/artifact_inventory.example.tsv \
+     --output-root results/artifacts
+   ```
+
+   Only `--execute` publishes
+   `results/artifacts/<run_id>/records/<artifact_id>.json`,
+   `results/artifacts/<run_id>/<run_id>.artifacts.tsv`, and the receipt-last
+   `results/artifacts/<run_id>/<run_id>.artifact_receipt.tsv` for this command.
 
 ## 3. Talk Track
 
@@ -63,10 +81,12 @@ Steps 00a-00c cluster-proven reference prep
   implemented and locally fixture-tested at `5f4d3b4`: four public Draft
   2020-12 schemas share common definitions, and an explicit inventory declares
   67 expected artifacts without glob discovery. `artifact-adapters-v1` is
-  next. Artifact indexes/run summaries, self-contained HTML and bundled-Typst
-  PDF/TSV reports, read-only runtime/reference/storage foundations, and one
-  validator branch per pipeline step remain unimplemented. Remote validation
-  remains paused.
+  implemented at `4dbd32d`: 49 exact adapters cover those 67 rows, and 50
+  focused synthetic-fixture tests pass. No production index has been built.
+  `artifact-run-summary` is next. Run summaries, self-contained HTML and
+  bundled-Typst PDF/TSV reports, read-only runtime/reference/storage
+  foundations, and one validator branch per pipeline step remain
+  unimplemented. Remote validation remains paused.
 - Step `09c` can record `evidence_incomplete` or
   `science_review_complete_exploratory`; it rejects the reserved
   `biological_interpretation_ready` value. It validates explicit evidence,
@@ -94,6 +114,8 @@ Steps 00a-00c cluster-proven reference prep
 - Do not present the implemented artifact schemas, example inventory, or
   synthetic fixtures as a production artifact index, run summary, report, or
   validation result.
-- Do not present artifact adapters/run-summary/report generation, the
+- Do not present the implemented adapter CLI or synthetic transaction as a
+  production index or as runtime, cluster, scientific, or biological evidence.
+- Do not present run-summary/report generation, the
   preflight/provenance/storage foundations, or the per-step validators as
   implemented commands yet. They are activated descendant packages.
