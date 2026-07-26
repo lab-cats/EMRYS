@@ -1413,7 +1413,7 @@ step-09b-local-r-runtime
 ```
 
 At this boundary `step-09b1-real-r-fixes` is implemented, locally tested,
-docpatched at `859aba2`, clean, and pushed. The next descendant package is
+docpatched, clean, and pushed. The next descendant package is
 `step-09c-scientific-validation`. Every later package remains approved but
 unimplemented. Remote work stays paused through the final Step `09` validator
 branch.

@@ -98,9 +98,9 @@ step-09a-roadmap-docpatch
 ```
 
 The Step `09b` runtime and Step `09b1` corrective gates are complete locally.
-Commit `eae5eca` contains the Step `09b1` implementation and tests; docpatch
-`859aba2` records the corrected state. The branch is clean and pushed, so
-Step `09c` is next.
+Commit `eae5eca` contains the Step `09b1` implementation and tests; subsequent
+documentation-only commits record the corrected state. The branch is clean
+and pushed, so Step `09c` is next.
 
 ### 1. Implement `step-09c-scientific-validation`
 

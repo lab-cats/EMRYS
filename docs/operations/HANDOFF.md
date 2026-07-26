@@ -722,9 +722,9 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-The Step `09b1` branch is complete and pushed: implementation `eae5eca`,
-docpatch `859aba2`, with both real-R suites and the complete local gate
-passing.
+The Step `09b1` branch is complete and pushed: implementation `eae5eca` plus
+its documentation-only commits, with both real-R suites and the complete local
+gate passing.
 
 1. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
    package with synthetic fixtures. It may publish `evidence_incomplete` or
@@ -796,8 +796,8 @@ data. Bare `python` is absent on this workstation, so the passing Python gate
 uses the existing project `.venv`. The R environment check passes. The two
 real-R runners and the aggregate local R target pass without `SKIP` after
 `eae5eca`; the shell, Python, and `r-check` gates also pass locally. This is
-synthetic/local evidence only. The Step `09b1` docpatch branch is clean and
-pushed at `859aba2`, and Step `09c` is next.
+synthetic/local evidence only. The Step `09b1` branch is clean and pushed, and
+Step `09c` is next.
 
 ## Development Rule
 

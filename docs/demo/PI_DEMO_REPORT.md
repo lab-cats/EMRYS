@@ -79,9 +79,8 @@ evidence, and none is cluster-proven.
 
 ### Approved immediate local sequence
 
-The `step-09b1-real-r-fixes` branch is complete and pushed at docpatch
-`859aba2`; both Step `08` and Step `09` real-R suites pass locally without
-`SKIP`.
+The `step-09b1-real-r-fixes` branch is complete and pushed; both Step `08` and
+Step `09` real-R suites pass locally without `SKIP`.
 
 1. Implement the dry-run-first `step-09c-scientific-validation` evidence
    package. Its fixture statuses are `evidence_incomplete` or
@@ -517,8 +516,8 @@ deferred.
 
 ## Next Steps
 
-The `step-09b1-real-r-fixes` branch is complete and pushed at docpatch
-`859aba2`; both real-R suites pass locally without `SKIP`.
+The `step-09b1-real-r-fixes` branch is complete and pushed; both real-R suites
+pass locally without `SKIP`.
 
 1. Implement Step `09c`, the artifact schema/adapters/run summary, and the
    immediate HTML/PDF reporting slice in separate gated descendant branches.

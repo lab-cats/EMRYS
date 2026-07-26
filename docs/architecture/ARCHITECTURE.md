@@ -351,7 +351,8 @@ of computational or biological validation.
 ## What Remains
 
 The `step-09b1-real-r-fixes` branch is complete and pushed: implementation
-`eae5eca`, docpatch `859aba2`, with both real-R suites passing locally.
+`eae5eca` plus its documentation-only commits, with both real-R suites passing
+locally.
 
 1. Implement `step-09c-scientific-validation` as local, explicit-input,
    dry-run-first evidence tooling. Fixture completion can produce
