@@ -117,8 +117,10 @@ no production-review evidence. `artifact-schema-v1` is implemented locally at
 read-only native adapters and receipt-last synthetic transactions. No
 production artifact index exists. `artifact-run-summary` is implemented
 locally at `209bb19` with exact-input, receipt-last synthetic transactions.
-No production artifact index or run summary exists; report rendering remains
-non-runnable.
+`report-html-v1` is implemented locally at `117ba26` and tested against
+synthetic summaries with the real pinned Quarto runtime. No production
+artifact index, run summary, or report exists. PDF/TSV export and the final
+report receipt remain non-runnable.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -921,6 +923,7 @@ step-09b-local-r-runtime
 -> artifact-adapters-v1
 -> artifact-run-summary
 -> report-html-v1
+-> report-html-v1a-report-table-approvals
 -> report-exports-v1
 -> post09-runtime-preflight
 -> post09-reference-provenance
@@ -944,9 +947,12 @@ The local `step-09b1-real-r-fixes` package is complete and pushed. Step `09c`
 is implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
 locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
-locally fixture-tested at `209bb19`; after its docpatch/push gate,
-`report-html-v1` is the next descendant. HTML/PDF reports remain immediate,
-before the three foundational engineering packages.
+locally fixture-tested at `209bb19`. `report-html-v1` is implemented and
+locally tested with the real pinned renderer at `117ba26`; after its
+docpatch/push gate, `report-html-v1a-report-table-approvals` is the next
+descendant, followed by `report-exports-v1`. Report-table authorization and
+PDF/TSV/final-receipt exports remain immediate, before the three foundational
+engineering packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the
 fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
@@ -976,8 +982,11 @@ does not apply to the implemented
 `schemas/artifacts/v1/`, `scripts/build_artifact_index.py`, or
 `configs/artifact_run_contract.example.json`,
 `scripts/build_run_summary.py`, or
-`scripts/_run_summary_science.py` interfaces; it still applies to renderers,
-foundation tools, and per-step validators.
+`scripts/_run_summary_science.py`, `scripts/restore_quarto.py`,
+`scripts/render_run_report.sh`, `scripts/render_run_report.py`,
+`reports/run_report.qmd`, `reports/run_report.css`, `make quarto-restore`, or
+`make report-test` interfaces. It still applies to pending report-table
+approval/export work, foundation tools, and per-step validators.
 
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 
@@ -1152,13 +1161,65 @@ checks do not promote the artifact records' validation fields.
 
 Decision: reports use checksum-pinned Quarto `1.9.38` with bundled Pandoc and
 Typst. The approved Quarto archive SHA-256 is
-`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6f18a`.
-`make quarto-restore` is an explicit operator action into ignored local tool
-storage; rendering never installs software. One static QMD consumes the
-validated run summary, runs no analysis code, and produces a self-contained
-HTML report followed by a consolidated HTML/PDF/TSV bundle. The PDF uses
-bundled Typst. Renderers never rerun STAR, samtools, Picard, GATK, bcftools,
-R preprocessing, or CMH and never use external network assets.
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
+The earlier planned digest was incorrect. The official GitHub release asset
+metadata and an independently downloaded official archive both produced the
+value above; the restore therefore fails closed on any other digest.
+
+`make quarto-restore` is an explicit macOS operator action into ignored local
+tool storage and does not use Homebrew. It safely extracts the official
+archive, verifies the exact executable version, and writes
+`.norad-quarto-install.json` with the archive identity and a deterministic
+installed-tree hash. Every subsequent restore or `make report-test` rechecks
+the receipt, complete tree, and executable version. Rendering never installs
+or repairs software.
+
+The implemented HTML interface is:
+
+```text
+scripts/render_run_report.sh
+  --run-summary RUN_SUMMARY_JSON
+  --output-root OUTPUT_ROOT
+  --quarto-bin QUARTO_BIN
+  [--formats html]
+  [--execute]
+```
+
+Dry-run is the default and creates no stable output, lock, or scratch path.
+This stage publishes exactly:
+
+```text
+results/reports/<run_id>/<run_id>.run_report.html
+```
+
+One static QMD consumes the validated canonical run summary, contains no
+executable cells, and uses Quarto with execution disabled. The rendered HTML
+must be script-free and self-contained: active resources are embedded, no
+`script`, `base`, refresh, `iframe`, object, embed, remote asset, or sidecar
+resource tree is accepted. The renderer also validates document language and
+title, the main landmark, heading order, table headers/captions, image
+alternatives, accessible embedded figures, exact run/hash identity, and one
+exact scientific-state banner. It never reruns STAR, samtools, Picard, GATK,
+bcftools, R preprocessing, or CMH.
+
+Only tables named by the run summary's `approved_report_tables` records may
+enter the report, and their exact normalized paths, SHA-256 values, row
+counts, widths, and snapshots must validate. The normal run-summary producer
+currently emits `approved_report_tables: []`; the inserted
+`report-html-v1a-report-table-approvals` branch will add its explicit
+authorization interface before PDF exports. Canonical run-summary JSON must
+not be hand-edited to bypass that gate.
+
+Execute mode treats the one HTML file as an atomic publication. It validates
+any prior report, uses an owned lock plus run-token stage and backup paths,
+rechecks every input, and refuses to clobber symlinked, mutated, late
+foreign, or identity-changed paths. Quarto runs in its own process group; the
+renderer handles HUP, INT, TERM, and timeout by terminating and reaping that
+complete group. Failed publication restores the validated prior report when
+possible. Incomplete rollback or cleanup retains the owned lock and
+best-effort recovery marker for explicit operator inspection. This HTML-only
+stage does not publish a report receipt; PDF, exported summary TSV, and the
+final report receipt belong to `report-exports-v1`.
 
 Reports must keep computational and scientific status separate and render a
 persistent applicable state banner. `evidence_incomplete` forbids biological
@@ -1175,12 +1236,16 @@ inventory, valid fixtures, and current `58` focused tests pass locally.
 native fixtures, receipt-last transaction, and 50 focused tests pass locally
 (108 combined schema/adapter tests). `artifact-run-summary` is implemented at
 `209bb19`; its 39 focused tests, 147 combined artifact-layer tests, and the
-complete 213-test Python gate pass on synthetic fixtures. No production
-source/index or canonical run summary exists, and no HTML/PDF report,
-production runtime or cluster evidence, completed production scientific
-review, or biological readiness exists. Report packages remain approved but
-unimplemented, `report-html-v1` is next, and generated production
-outputs/reports remain ignored.
+complete 213-test Python gate pass on synthetic fixtures.
+`report-html-v1` is implemented at `117ba26`; its 65 focused report tests pass
+with the real pinned Quarto runtime, and the complete Python gate passes 277
+tests with one expected skip. `make report-test` separately makes the real
+renderer mandatory and does not skip it. These results prove local
+synthetic-fixture behavior and local renderer execution only. No production
+source/index, canonical run summary, HTML/PDF report, pipeline runtime or
+cluster evidence, completed production scientific review, or biological
+readiness exists. `report-html-v1a-report-table-approvals` is next, followed
+by `report-exports-v1`; generated production outputs/reports remain ignored.
 
 ## Documentation Files Have Different Purposes
 

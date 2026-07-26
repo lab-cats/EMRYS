@@ -8,8 +8,8 @@ Show that the legacy NORAD / Novogene Remora workflow has been rebuilt into a
 reproducible preprocessing and paired-CMH code path, with a clear distinction
 between the cluster-proven RNA-seq preprocessing boundary and the locally
 implemented Steps `07`-`09`, the local Step `09c` evidence validator, and the
-locally tested artifact schema, adapter-index, and canonical run-summary
-foundations.
+locally tested artifact schema, adapter-index, canonical run-summary, and
+static HTML reporting layers.
 
 Current boundary:
 
@@ -23,7 +23,9 @@ Steps 00a-00c cluster-proven reference prep
 -> artifact-schema-v1 implemented and locally fixture-tested at 5f4d3b4
 -> artifact-adapters-v1 implemented and focused-fixture-tested at 4dbd32d
 -> artifact-run-summary implemented and focused-fixture-tested at 209bb19
--> report-html-v1 is next; no production artifact index, run summary, or report exists
+-> report-html-v1 implemented and focused-fixture-tested at 117ba26
+-> report-html-v1a-report-table-approvals is next, then report-exports-v1
+-> no production artifact index, run summary, or report exists
 -> remote validation remains paused
 ```
 
@@ -46,7 +48,10 @@ Steps 00a-00c cluster-proven reference prep
    implementation evidence only; they are not a production artifact index,
    run summary, or report. The run-summary `--help`, dry-run, and synthetic
    four-file fixture transaction may also be shown as implementation evidence
-   only.
+   only. The HTML renderer `--help`, dry-run, and real pinned-Quarto synthetic
+   render may be shown as local implementation evidence. The resulting static,
+   self-contained, script-free HTML is still an incomplete fixture, not a
+   production report or validation result.
 
    Example side-effect-free adapter dry-run:
 
@@ -80,6 +85,25 @@ Steps 00a-00c cluster-proven reference prep
    `<run_id>.run_summary_receipt.tsv`. Fixture outputs are not production
    evidence.
 
+   Restore and verify the pinned local renderer, then inspect the HTML-only
+   dry-run contract:
+
+   ```bash
+   make quarto-restore
+
+   scripts/render_run_report.sh \
+     --run-summary RUN_SUMMARY_JSON \
+     --output-root results/reports \
+     --quarto-bin .tools/quarto/1.9.38/bin/quarto
+   ```
+
+   Add `--execute` only with an explicit fixture or approved run summary. This
+   stage publishes exactly
+   `results/reports/<run_id>/<run_id>.run_report.html`; PDF, exported summary
+   TSV, and the report receipt remain pending `report-exports-v1`. The official
+   Quarto archive is checked against SHA-256
+   `47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
+
 ## 3. Talk Track
 
 - The legacy hardcoded workflow has been translated into staged, testable pipeline steps with explicit inputs and outputs.
@@ -105,11 +129,16 @@ Steps 00a-00c cluster-proven reference prep
   implemented at `4dbd32d`: 49 exact adapters cover those 67 rows, and 50
   focused synthetic-fixture tests pass. `artifact-run-summary` is implemented
   at `209bb19`: 39 focused tests exercise canonical JSON, deterministic TSV/QC
-  views, exact evidence normalization, and receipt-last publication. No
-  production index or summary has been built. `report-html-v1` is next.
-  Self-contained HTML and bundled-Typst PDF/TSV reports, read-only
-  runtime/reference/storage foundations, and one validator branch per
-  pipeline step remain unimplemented. Remote validation remains paused.
+  views, exact evidence normalization, and receipt-last publication.
+  `report-html-v1` is implemented at `117ba26`: 65 focused report tests pass,
+  including real pinned-Quarto renders, and the complete Python suite reports
+  277 passed with one expected opt-in Quarto skip. No production index,
+  summary, or report has been built. The normal run-summary builder cannot yet
+  populate explicit report-table approvals, so
+  `report-html-v1a-report-table-approvals` is next. Bundled-Typst PDF/TSV and
+  receipt exports, read-only runtime/reference/storage foundations, and one
+  validator branch per pipeline step remain unimplemented. Remote validation
+  remains paused.
 - Step `09c` can record `evidence_incomplete` or
   `science_review_complete_exploratory`; it rejects the reserved
   `biological_interpretation_ready` value. It validates explicit evidence,
@@ -141,6 +170,9 @@ Steps 00a-00c cluster-proven reference prep
   production index or as runtime, cluster, scientific, or biological evidence.
 - Do not present the implemented run-summary CLI or synthetic transaction as a
   production summary, report, or validation evidence.
-- Do not present report generation, the preflight/provenance/storage
-  foundations, or the per-step validators as implemented commands yet. They
-  are activated descendant packages.
+- Do not present the implemented HTML renderer or its synthetic/incomplete
+  fixture output as a production report, computational validation, completed
+  science review, or biological evidence.
+- Do not present report-table approval production, PDF/TSV/receipt exports, the
+  preflight/provenance/storage foundations, or the per-step validators as
+  implemented commands yet. They are activated descendant packages.

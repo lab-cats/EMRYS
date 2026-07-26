@@ -160,13 +160,16 @@ resolved. Step `09c` is implemented and fixture-tested locally.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
 `4dbd32d`; `artifact-run-summary` is implemented and locally fixture-tested
-at `209bb19`. The report packages are approved but not yet implemented:
+at `209bb19`; and `report-html-v1` is implemented and locally fixture-tested
+at `117ba26`. Producer-side report-table approvals and final PDF/TSV/receipt
+exports remain approved but unimplemented:
 
 ```text
 artifact-schema-v1
 -> artifact-adapters-v1
 -> artifact-run-summary
 -> report-html-v1
+-> report-html-v1a-report-table-approvals
 -> report-exports-v1
 ```
 
@@ -211,25 +214,40 @@ distinct summary attempt IDs under one unchanged immutable run contract
 explicit missing, failed, incomplete, and unavailable evidence remains visible
 ```
 
-Fixed decisions for the remaining report packages:
+Implemented HTML-report decisions:
 
 ```text
 Quarto 1.9.38 with bundled Typst
-self-contained HTML and PDF plus TSV summary and receipt
+official macOS archive SHA-256
+  47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
+checksum-verified repository-local ignored restore via make quarto-restore
+one canonical run-summary JSON and only explicitly approved TSVs
+dry-run-first HTML-only CLI; --formats accepts only html
+self-contained script-free HTML; no executable cells or external active assets
+wrapper prefers .venv/bin/python and honors authoritative PYTHON_BIN_OVERRIDE
 report generation never runs analysis and never proves validation
 state banners preserve incomplete or exploratory/provisional meaning
 ```
 
+Fixed decisions for the remaining report packages:
+
+```text
+report-html-v1a-report-table-approvals adds a normal producer authorization path
+report-exports-v1 adds PDF, exported summary TSV, and final report receipt
+PDF uses Quarto bundled Typst and repeats the state banner on every page
+```
+
 The current gate has 58 schema tests, 50 adapter tests, 108 combined
 schema/adapter tests, 39 run-summary tests, 147 combined artifact-layer tests,
-and 213 total Python tests. Synthetic fixtures exercise explicit native-source
-inspection plus adapter and summary receipt-last publication. No production
-source has been inspected by these artifact-layer packages, and no production
-artifact index or run summary exists. Report implementation remains pending
-on `report-html-v1` and
-`report-exports-v1`. Production reports and biological conclusions remain
-unavailable because production Steps `07`-`09` evidence and production Step
-`09c` review evidence have not been generated or inspected.
+and 65 focused report tests. The focused report target passes with real pinned
+Quarto required. The full Python gate reports `277 passed, 1 skipped`; the
+expected skip is its opt-in real-Quarto case. Synthetic fixtures exercise
+explicit native-source inspection, adapter and summary receipt-last
+publication, and deterministic HTML rendering. No production source has been
+inspected by these artifact-layer packages, and no production artifact index,
+run summary, or report exists. Production reports and biological conclusions
+remain unavailable because production Steps `07`-`09` evidence and production
+Step `09c` review evidence have not been generated or inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -498,6 +516,8 @@ artifact-adapters-v1 49 read-only Step 00a-09c adapters, explicit immutable
                      run contract, and receipt-last artifact transaction
 artifact-run-summary Canonical JSON, deterministic artifact/QC TSV views, and
                      a receipt-last summary transaction
+report-html-v1       Checksum-pinned Quarto restore and one static,
+                     self-contained script-free HTML report
 ```
 
 Step `07` passed its mocked-bcftools focused tests and the complete local
@@ -539,9 +559,15 @@ biological-readiness status has changed.
 `artifact-run-summary` is implemented locally at `209bb19`. It publishes
 canonical JSON, deterministic artifact/QC TSV views, and a receipt-last
 four-file transaction from exact synthetic adapter inputs. All 39 focused
-tests and the complete 213-test Python gate pass. Synthetic fixture summaries
-exist; no production artifact transaction, production run summary, or report
-has been generated, and no evidence status has been promoted.
+tests pass. Synthetic fixture summaries exist; no production artifact
+transaction or production run summary has been generated, and no evidence
+status has been promoted.
+
+`report-html-v1` is implemented locally at `117ba26`. Its 65-test focused
+target passes with real pinned Quarto required, and the complete Python gate
+reports `277 passed, 1 skipped`. Synthetic/incomplete fixture reports render
+deterministically, but no production report has been generated and no
+computational, scientific, or biological state has been promoted.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
@@ -879,7 +905,9 @@ scientific status remain independent.
 This contract is implemented at `4dbd32d`. All 50 focused adapter tests and
 108 combined schema/adapter tests pass on synthetic fixtures. No production
 source or artifact transaction has been inspected. The run-summary package is
-implemented separately; HTML/PDF report packages remain pending.
+implemented separately. Static HTML rendering is also implemented;
+producer-side report-table approvals and PDF/TSV/receipt exports remain
+pending.
 
 ### What Is The Artifact Run Summary Contract?
 
@@ -923,10 +951,59 @@ rollback, and recovery protect publication.
 The builder never invokes analysis or promotes computational, scientific, or
 biological status.
 
-This contract is implemented at `209bb19`. All 39 focused tests, 147 combined
-artifact-layer tests, and 213 total Python tests pass on synthetic fixtures.
-No production adapter transaction or run summary exists, and no HTML/PDF
-report or validation claim was created. `report-html-v1` is next.
+This contract is implemented at `209bb19`. All 39 focused tests and 147
+combined artifact-layer tests pass on synthetic fixtures. No production
+adapter transaction or run summary exists, and no validation claim was
+created.
+
+### What Is The Static HTML Report Contract?
+
+Answered for local implementation.
+
+The public wrapper is explicit-input-only and dry-run-first:
+
+```text
+scripts/render_run_report.sh
+  --run-summary RUN_SUMMARY_JSON
+  --output-root OUTPUT_ROOT
+  --quarto-bin QUARTO_BIN
+  [--formats html]
+  [--execute]
+```
+
+It requires the canonical `<run_id>/<run_id>.run_summary.json` name, pinned
+Quarto `1.9.38`, and one explicit output root. The wrapper prefers the
+repository `.venv/bin/python`, then `python3`, unless an authoritative
+`PYTHON_BIN_OVERRIDE` is supplied. Dry-run validates the summary, renderer,
+templates, prior output, and every explicitly approved report table without
+creating output, lock, or scratch paths.
+
+Execute mode disables document execution and publishes only:
+
+```text
+results/reports/<run_id>/<run_id>.run_report.html
+```
+
+The file is self-contained, script-free, and free of external active assets.
+It escapes input content, preserves computational/scientific separation and
+the applicable state banner, and calls candidates only “CMH-ranked
+candidates.” It never invokes analysis or establishes validation. PDF,
+exported report TSVs, and the report receipt are not part of this contract.
+
+`make quarto-restore` verifies the official macOS Quarto archive with
+SHA-256
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`
+before publishing ignored local tooling. `make report-test` then requires
+that real pinned executable. All 65 focused tests pass, while the complete
+Python gate reports `277 passed, 1 skipped`; the one expected skip is the
+opt-in real-Quarto test executed by the focused target. This is local
+synthetic/incomplete fixture evidence only, not a production report or
+runtime, cluster, scientific-review, or biological-readiness claim.
+
+The renderer accepts only tables named by `approved_report_tables`, but the
+current normal run-summary producer emits that list empty. The resolved next
+package is therefore `report-html-v1a-report-table-approvals`, followed by
+`report-exports-v1`. Operators must not hand-edit canonical summary JSON.
 
 ### Step 02b Final-BAM QC Refresh
 

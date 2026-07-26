@@ -17,7 +17,9 @@ flowchart LR
     artifact_schema["artifact-schema-v1<br/>schemas + explicit inventory<br/>fixture-tested locally"]
     artifact_adapters["artifact-adapters-v1<br/>explicit native adapters<br/>fixture-tested locally"]
     runsummary["artifact-run-summary<br/>implemented + fixture-tested locally"]
-    reports["immediate reports<br/>HTML -> PDF exports<br/>pending"]
+    reporthtml["report-html-v1<br/>HTML implemented + fixture-tested locally"]
+    approvals["report-html-v1a<br/>report-table approval producer next"]
+    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
     validators["one validator branch per step<br/>00a through 09"]
     localstop["final local validator<br/>clean / docpatched / pushed"]
@@ -39,7 +41,7 @@ flowchart LR
     trouble["troubleshooting docs"]
 
     stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    descendant --> localr --> realrfix --> sciencebranch --> artifact_schema --> artifact_adapters --> runsummary --> reports --> foundations --> validators --> localstop --> remotehold
+    descendant --> localr --> realrfix --> sciencebranch --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports --> foundations --> validators --> localstop --> remotehold
     remotehold -.-> pull --> dryrun --> execute --> validate --> validationpatch
     validationpatch -->|clean push, then next descendant| pull
 
@@ -55,9 +57,9 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,reporthtml,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
-    class reports,foundations,validators safeguard
+    class approvals,exports,foundations,validators safeguard
     class remotehold docs

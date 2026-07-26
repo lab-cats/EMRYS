@@ -321,6 +321,30 @@ run-summary receipt last. Transaction completion does not promote missing,
 failed, incomplete, unavailable, local-test, runtime, cluster, scientific, or
 biological state.
 
+## Report rendering conventions
+
+Run-report renderers must consume one explicit, validated canonical
+run-summary JSON. Supplemental tables may be read only when their exact
+paths, hashes, row counts, and roles are authorized by that document's
+`approved_report_tables` records. Renderers must never discover report inputs
+by glob or infer an approval that the run summary does not contain.
+
+Report dependency setup is an explicit operator action. `make quarto-restore`
+may install the pinned renderer into ignored local tooling storage, but report
+rendering and tests must never download or install it. Before use, the
+installed renderer must pass its version and repository-local receipt/tree
+validation.
+
+Static HTML reports must be script-free, self-contained, accessible, and
+carry the exact applicable scientific-state banner. Rendering must not execute
+analysis code or promote computational, scientific, or biological state.
+
+Execute-mode report publication must use an owned lock, run-token staging and
+backup paths, input rechecks, identity-aware no-clobber replacement, and
+validation before publication. Signals and timeouts must terminate the
+complete renderer process group. Incomplete rollback or cleanup must preserve
+the owned lock and recovery evidence for explicit operator inspection.
+
 ## Script conventions
 
 Scripts should:
@@ -478,6 +502,7 @@ make shell-test
 make real-r-test
 RSCRIPT_BIN=/explicit/path/to/Rscript make r-check
 RSCRIPT_BIN=/explicit/path/to/Rscript make local-real-r-test
+make report-test
 git status --short
 git diff --name-status
 ```
@@ -487,6 +512,9 @@ is unavailable. A skip is not semantic R validation; an explicit runtime
 override or a present runtime with missing packages must fail clearly.
 `make local-real-r-test` is the guarded repository-local equivalent and must
 execute both Step `08` and Step `09` suites without `SKIP`.
+`make report-test` requires the separately restored pinned renderer and must
+exercise that real executable; run `make quarto-restore` as the explicit setup
+action when it is absent. A mocked renderer is not report-runtime validation.
 
 When adding or modifying a workflow step:
 

@@ -15,14 +15,20 @@ The uploaded legacy workflow is treated as a protocol reference, not as producti
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
 approved immediate local implementation sequence. `artifact-schema-v1` is
 implemented locally at `5f4d3b4`, `artifact-adapters-v1` is implemented
-locally at `4dbd32d`, and `artifact-run-summary` is implemented locally at
-`209bb19`. Together they define versioned contracts, build a dry-run-first
-explicit-input artifact transaction, and assemble its canonical JSON plus
-deterministic TSV/QC views without rerunning computation or changing native
-pipeline outputs. The run-summary package has 39 focused passing tests, and
-the complete Python gate has 213. No production artifact index or run summary
-has been built. `report-html-v1` is next; HTML/PDF/TSV reports remain
-unimplemented.
+locally at `4dbd32d`, `artifact-run-summary` is implemented locally at
+`209bb19`, and `report-html-v1` is implemented locally at `117ba26`. Together
+they define versioned contracts, build a dry-run-first explicit-input artifact
+transaction, assemble its canonical JSON plus deterministic TSV/QC views, and
+render that JSON as one self-contained, script-free HTML report without
+rerunning computation or changing native pipeline outputs.
+
+The pinned Quarto `1.9.38` restore and HTML renderer have 65 focused tests
+passing with the real pinned renderer required. The complete Python gate has
+`277 passed, 1 skipped`; the one expected skip is the opt-in real-Quarto test,
+which `make report-test` executes without skipping. No production artifact
+index, run summary, or report has been built. PDF, exported report TSVs, and
+the final report receipt remain unimplemented. The next descendant is
+`report-html-v1a-report-table-approvals`, followed by `report-exports-v1`.
 
 ## Current Status
 
@@ -87,10 +93,10 @@ records/index/receipt transaction, and publishes canonical run-summary JSON,
 a deterministic artifact TSV view, a deterministic QC TSV view, and a
 receipt last. It preserves every expected scope and explicit
 missing/incomplete/failed state without promoting computational or scientific
-status. All 39 focused tests and the complete 213-test Python gate pass on
-synthetic fixtures. No production adapter transaction or run summary has been
-created, and no report, runtime/cluster evidence, completed production
-science review, or biological readiness was generated.
+status. All 39 focused tests pass on synthetic fixtures. No production adapter
+transaction or run summary has been created, and no production report,
+runtime/cluster evidence, completed production science review, or biological
+readiness was generated.
 
 | Step / package | Purpose | Status |
 | -------------- | ------- | ------ |
@@ -109,6 +115,7 @@ science review, or biological readiness was generated.
 | `09` | paired CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R suites pass; PDF fixture validation is locale-independent and byte-based; cluster validation pending; not cluster-proven |
 | `09c` | explicit scientific-evidence validation and review summary | implemented locally at `b674a31`; dry-run, Python, and shell fixture suites pass; production evidence/review and cluster validation are unavailable; does not establish biological interpretation readiness |
 | `artifact-run-summary` | canonical structured report input and deterministic TSV/QC views | implemented locally at `209bb19`; 39 focused synthetic-fixture tests pass; no production summary or validation claim |
+| `report-html-v1` | static self-contained HTML rendering from one canonical run summary | implemented locally at `117ba26`; 65 focused tests pass with pinned Quarto `1.9.38`; no production report or validation claim |
 
 ### Local Runtime, Scientific Review, Reporting, And Validation Roadmap
 
@@ -123,24 +130,25 @@ step-09-cmh
                 └── artifact-schema-v1          # implemented and focused-tested locally
                     └── artifact-adapters-v1    # implemented and focused-tested locally
                         └── artifact-run-summary # implemented and focused-tested locally
-                            └── report-html-v1   # next
-                                └── report-exports-v1
-                                    └── post09-runtime-preflight
-                                        └── post09-reference-provenance
-                                            └── post09-storage-inventory-retention
-                                                └── post09-validation-report-00a
-                                                    └── post09-validation-report-00b
-                                                        └── post09-validation-report-00c
-                                                            └── post09-validation-report-01
-                                                                └── post09-validation-report-02
-                                                                    └── post09-validation-report-02b
-                                                                        └── post09-validation-report-03
-                                                                            └── post09-validation-report-04
-                                                                                └── post09-validation-report-05
-                                                                                    └── post09-validation-report-06
-                                                                                        └── post09-validation-report-07
-                                                                                            └── post09-validation-report-08
-                                                                                                └── post09-validation-report-09
+                            └── report-html-v1   # implemented and focused-tested locally
+                                └── report-html-v1a-report-table-approvals # next
+                                    └── report-exports-v1
+                                        └── post09-runtime-preflight
+                                            └── post09-reference-provenance
+                                                └── post09-storage-inventory-retention
+                                                    └── post09-validation-report-00a
+                                                        └── post09-validation-report-00b
+                                                            └── post09-validation-report-00c
+                                                                └── post09-validation-report-01
+                                                                    └── post09-validation-report-02
+                                                                        └── post09-validation-report-02b
+                                                                            └── post09-validation-report-03
+                                                                                └── post09-validation-report-04
+                                                                                    └── post09-validation-report-05
+                                                                                        └── post09-validation-report-06
+                                                                                            └── post09-validation-report-07
+                                                                                                └── post09-validation-report-08
+                                                                                                    └── post09-validation-report-09
 ```
 
 The local R runtime is opt-in: `.Rprofile` activates the project library only
@@ -156,12 +164,14 @@ or claim production review. Its allowed science states are
 approved policy branch unlocks its exit criteria.
 
 Run-summary and reporting work is immediate, not deferred. The artifact
-schema, read-only adapter indexer, and canonical run-summary builder are now
-implemented from explicit contracts and synthetic fixtures. The
-self-contained HTML report and Quarto/Typst PDF/TSV bundle remain pending in
-that order. Summary, report, or index generation will never be evidence of
-computational or biological validation. At this boundary, `report-html-v1` is
-next.
+schema, read-only adapter indexer, canonical run-summary builder, and
+self-contained script-free HTML renderer are implemented from explicit
+contracts and synthetic fixtures. The normal run-summary producer currently
+emits an empty `approved_report_tables` list, so
+`report-html-v1a-report-table-approvals` is the next branch; it will add the
+explicit producer-side authorization path before `report-exports-v1` adds
+PDF, exported TSVs, and the report receipt. Summary, report, or index
+generation will never be evidence of computational or biological validation.
 
 The reporting slice is followed by read-only runtime, reference-provenance,
 and storage/retention tooling, then one explicit validator branch for every
@@ -421,7 +431,9 @@ run/attempt, path/hash, typed evidence, rollup, and reserved-science-state
 consistency, but it does not discover or inspect production pipeline outputs.
 Artifact-index publication is implemented by `artifact-adapters-v1`, and
 canonical run-summary publication is implemented by
-`artifact-run-summary`; reports remain later packages.
+`artifact-run-summary`. Static HTML rendering is implemented by
+`report-html-v1`; report-table authorization and PDF/TSV/receipt export remain
+later packages.
 
 The current 58 focused tests are synthetic local contract evidence. They do not
 establish production artifact availability, runtime validation, a cluster
@@ -524,11 +536,79 @@ the adapter but does not rehash those native sources. A successful
 summary records existing evidence; it never promotes local, runtime, cluster,
 scientific, or biological status.
 
-All 39 focused run-summary tests and the complete 213-test Python suite pass,
-along with shell syntax/tests, both guarded real-R semantic suites, and
-`r-check`. This is synthetic/local fixture evidence only. No production
-artifact transaction or summary has been built, and `report-html-v1` remains
-the next package.
+All 39 focused run-summary tests pass. This is synthetic/local fixture
+evidence only. No production artifact transaction or summary has been built.
+
+### Static HTML Report V1 Local Implementation
+
+Implemented files and tests:
+
+```text
+scripts/restore_quarto.py
+scripts/render_run_report.sh
+scripts/render_run_report.py
+reports/run_report.qmd
+reports/run_report.css
+tests/fixtures/report_html_v1/approved_candidates.tsv
+tests/test_quarto_restore.py
+tests/test_report_html_v1.py
+tests/shell/test_render_run_report.sh
+```
+
+Restore the exact local renderer deliberately:
+
+```bash
+make quarto-restore
+```
+
+This installs Quarto `1.9.38` under ignored
+`.tools/quarto/1.9.38/` storage only after the official macOS archive matches
+SHA-256
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`.
+The earlier roadmap digest was incorrect. Report rendering never downloads or
+installs dependencies.
+
+The HTML-only public interface is:
+
+```bash
+scripts/render_run_report.sh \
+  --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
+  --output-root results/reports \
+  --quarto-bin .tools/quarto/1.9.38/bin/quarto \
+  [--formats html] \
+  [--execute]
+```
+
+Dry-run is the default and creates no output, lock, or scratch path. The shell
+wrapper prefers the repository `.venv/bin/python`, falls back to `python3`,
+and honors an explicit authoritative `PYTHON_BIN_OVERRIDE`. Execute mode
+validates one canonical run-summary `1.1.0` JSON plus only the TSVs explicitly
+authorized in its `approved_report_tables` records, invokes Quarto with
+analysis execution disabled, and atomically publishes:
+
+```text
+results/reports/<run_id>/<run_id>.run_report.html
+```
+
+The current output is a single self-contained, script-free HTML file with no
+external active assets. It preserves the required scientific-state banner,
+uses “CMH-ranked candidates,” and records report/input provenance without
+promoting computational or scientific state. PDF, exported summary TSVs, and
+the report receipt are not implemented on this branch.
+
+The 65-test focused `make report-test` target passes with real pinned Quarto
+required, including deterministic rerenders. The complete Python gate reports
+`277 passed, 1 skipped`; the one expected skip is the opt-in real-Quarto test
+that `make report-test` runs. Shell tests, both guarded real-R suites, and
+`r-check` also pass. These are synthetic/incomplete local fixtures only. No
+production run summary or report has been rendered, and there is no new
+runtime, cluster, scientific-review, or biological-readiness evidence.
+
+The existing run-summary producer emits `approved_report_tables: []`.
+`report-html-v1a-report-table-approvals` is therefore the next descendant and
+will add an explicit authorization-producing contract before
+`report-exports-v1`; operators must not hand-edit run-summary JSON to expose
+tables.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
@@ -675,6 +755,15 @@ The repository-local library is activated only when `NORAD_USE_RENV=1`.
 `r-restore` is an explicit setup action; workflow and SLURM entry points never
 install packages.
 
+Restore the pinned local Quarto renderer once before report testing:
+
+```bash
+make quarto-restore
+```
+
+This setup target is separate from rendering; report commands never install
+their own dependencies.
+
 Run the local validation gate:
 
 ```bash
@@ -686,25 +775,30 @@ bash -n jobs/*.slurm
 make shell-test
 NORAD_USE_RENV=1 make r-check RSCRIPT_BIN=/usr/local/bin/Rscript
 NORAD_USE_RENV=1 make local-real-r-test RSCRIPT_BIN=/usr/local/bin/Rscript
+make report-test
 git status --short
 git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the `artifact-run-summary` implementation
-boundary, the complete Python suite passes with 213 tests; all shell tests,
+uses the existing `.venv`. At the `report-html-v1` implementation boundary,
+the complete Python suite reports `277 passed, 1 skipped`; the one expected
+skip is the optional real-Quarto test. `make report-test` requires the pinned
+renderer and passes all 65 focused tests without that skip. All shell tests,
 both Step `08` and Step `09` real-R runners, the aggregate local R target, and
-the R environment check also pass. The run-summary-focused gate has 39 tests.
-These checks use synthetic fixtures and do not constitute production input
-inspection or publication, a production run summary/report, cluster
-validation, production scientific-review completion, or biological
-readiness.
+the R environment check also pass. These checks use synthetic fixtures and do
+not constitute production input inspection or publication, a production run
+summary/report, cluster validation, production scientific-review completion,
+or biological readiness.
 
 Shortcut for the Makefile-covered checks:
 
 ```bash
 make all-checks
 ```
+
+`make all-checks` now includes `make report-test`, so run
+`make quarto-restore` first.
 
 Validate the example manifest:
 

@@ -20,9 +20,10 @@ flowchart TD
     run_summary_tsv["run_summary.tsv<br/>deterministic artifact view"]
     qc_summary["qc_summary.tsv<br/>deterministic metric view"]
     summary_receipt["run_summary_receipt.tsv<br/>published last"]
-    generator["Static QMD / Quarto renderer<br/>no analysis execution"]
-    html["Self-contained HTML report"]
-    exports["Bundled Typst PDF + TSV bundle"]
+    approved_tables["Explicit approved report-table records<br/>normal builder support pending"]
+    generator["Static QMD / pinned Quarto renderer<br/>implemented; no analysis execution"]
+    html["Self-contained script-free HTML<br/>fixture-tested locally; no production report"]
+    exports["Bundled Typst PDF + TSV + receipt<br/>pending"]
 
     subgraph review["Scientific review fields"]
         direction TB
@@ -35,7 +36,7 @@ flowchart TD
         review_record["Normalized Step 09c review record"]
     end
 
-    subgraph outputs["Generated reports (pending)"]
+    subgraph outputs["Report views (HTML fixture-tested; exports pending)"]
         direction TB
         qc_report["QC and funnel summary"]
         validation_report["Steps 00a-09 evidence matrix"]
@@ -57,6 +58,7 @@ flowchart TD
     aggregate --> run_summary_tsv
     aggregate --> qc_summary
     aggregate --> summary_receipt
+    approved_tables -.-> aggregate
     run_summary --> generator
     generator --> html
     html --> qc_report
@@ -76,8 +78,8 @@ flowchart TD
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt current
+    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt,generator,html current
     class run_contract,inventory,declared_sources,artifacts_tsv contract
     class science_summary,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class generator,html,exports future
+    class approved_tables,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

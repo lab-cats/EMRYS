@@ -12,6 +12,7 @@ flowchart TD
         review["Step 09c review record<br/>state + decisions + limitations"]
         provenance["Provenance<br/>what code/reference/tools produced results"]
         registry["Artifact registry<br/>what outputs exist and where"]
+        report_approval["Explicit report-table approvals<br/>normal-builder producer pending"]
     end
 
     subgraph artifacts["Validated artifact inputs"]
@@ -45,7 +46,9 @@ flowchart TD
     provenance --> registry
     registry --> reports["Run-summary JSON<br/>implemented + fixture-tested locally<br/>single structured report entry point"]
     review --> reports
+    report_approval -.-> reports
+    reports --> html_report["Static self-contained HTML<br/>implemented + fixture-tested locally"]
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters,reports current
-    class ready,module,results future
+    class fastqs,existing,adapters,reports,html_report current
+    class ready,module,results,report_approval future

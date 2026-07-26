@@ -151,9 +151,11 @@ explicit synthetic inventory, read-only validator, and focused tests may also
 be shown. The implemented `artifact-adapters-v1` help text, dry-run, and
 synthetic focused tests may also be shown, but not as a production artifact
 index. The implemented `artifact-run-summary` help text, side-effect-free
-dry-run, and synthetic four-file fixture transaction may also be shown. No
-production run summary or generated report exists, and none of these packages
-is production-output, cluster, or scientific evidence.
+dry-run, and synthetic four-file fixture transaction may also be shown. The
+implemented `report-html-v1` help text, side-effect-free dry-run, pinned
+Quarto restore receipt, and synthetic self-contained HTML may be shown, but
+not as a production report. No production run summary or report exists, and
+none of these packages is production-output, cluster, or scientific evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -404,16 +406,17 @@ If helpers are not installed, use the manual commands in the next section.
 
 The approved local descendant roadmap has implemented Step `09c`
 scientific-validation tooling, the `artifact-schema-v1` contract package, the
-`artifact-adapters-v1` index package, and the `artifact-run-summary` package.
-The next descendant is `report-html-v1`; the rest of the reporting vertical
-slice follows in order:
+`artifact-adapters-v1` index package, the `artifact-run-summary` package, and
+the HTML-only `report-html-v1` package. The next descendant adds explicit
+producer-side report-table approvals before the export package:
 
 ```text
 step-09c-scientific-validation
 -> artifact-schema-v1                         # implemented and locally tested
 -> artifact-adapters-v1                       # implemented and locally tested
 -> artifact-run-summary                       # implemented and locally tested
--> report-html-v1                             # next
+-> report-html-v1                             # implemented and locally tested
+-> report-html-v1a-report-table-approvals     # next
 -> report-exports-v1
 -> post09-runtime-preflight
 -> post09-reference-provenance
@@ -426,14 +429,14 @@ remaining foundational engineering. Remote validation, targeted reruns,
 analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
-Step `09c`, `artifact-schema-v1`, `artifact-adapters-v1`, and
-`artifact-run-summary` are no longer helper ideas. Their schemas, example
-contracts, validators, fixtures, and commands documented below exist. The
-adapter and run-summary output contracts are implemented, but no production
-transaction exists. HTML/PDF reports, foundation records, and per-step
-validators remain roadmap work until their own branches implement and test
-them. Do not treat their candidate commands, Makefile targets, reports, or
-cleanup utilities as available.
+Step `09c`, `artifact-schema-v1`, `artifact-adapters-v1`,
+`artifact-run-summary`, and `report-html-v1` are no longer helper ideas. Their
+schemas, example contracts, validators, fixtures, and commands documented
+below exist. The adapter, run-summary, and static HTML output contracts are
+implemented, but no production transaction/report exists. Report-table
+approval production, PDF/TSV/receipt export, foundation records, and per-step
+validators remain roadmap work. Do not treat commands or outputs belonging
+to those future packages as available.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
@@ -730,12 +733,111 @@ Run focused and combined checks:
   tests/test_artifact_run_summary.py
 ```
 
-Current evidence is 39 focused run-summary tests, 147 combined artifact-layer
-tests, and 213 total Python tests passing. Shell tests, both guarded real-R
-suites, and `r-check` also pass. This is local synthetic fixture evidence
-only. No production adapter transaction or run summary exists; the builder
-runs no analysis and establishes no runtime, cluster, scientific, or
-biological validation. `report-html-v1` is next.
+Current evidence is 39 focused run-summary tests and 147 combined
+artifact-layer tests passing. This is local synthetic fixture evidence only.
+No production adapter transaction or run summary exists; the builder runs no
+analysis and establishes no runtime, cluster, scientific, or biological
+validation.
+
+### Restore Quarto And Render The Static HTML Report
+
+Implemented locally at `117ba26`:
+
+```text
+scripts/restore_quarto.py
+scripts/render_run_report.sh
+scripts/render_run_report.py
+reports/run_report.qmd
+reports/run_report.css
+tests/test_quarto_restore.py
+tests/test_report_html_v1.py
+tests/shell/test_render_run_report.sh
+```
+
+Restore Quarto deliberately before report testing or rendering:
+
+```bash
+make quarto-restore
+```
+
+The restore supports the official macOS Quarto `1.9.38` archive, verifies
+SHA-256
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a`,
+and publishes the checked executable at:
+
+```text
+.tools/quarto/1.9.38/bin/quarto
+```
+
+`.tools/` is ignored. Restore owns its lock/staging paths and publishes the
+version directory atomically. It is the only report-layer command that may
+download or install Quarto; the renderer never installs dependencies. An
+already downloaded official archive can be supplied directly to
+`scripts/restore_quarto.py --archive`, but it is still checksum-verified.
+
+HTML dry-run:
+
+```bash
+scripts/render_run_report.sh \
+  --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
+  --output-root results/reports \
+  --quarto-bin .tools/quarto/1.9.38/bin/quarto
+```
+
+Dry-run validates the canonical run-summary `1.1.0` document, Quarto version,
+tracked templates, output state, and each explicitly approved table's exact
+path, hash, row count, and display limit. It creates no output directory,
+lock, scratch path, or report.
+
+Execute only after inspecting the dry-run:
+
+```bash
+scripts/render_run_report.sh \
+  --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
+  --output-root results/reports \
+  --quarto-bin .tools/quarto/1.9.38/bin/quarto \
+  --formats html \
+  --execute
+```
+
+The wrapper accepts only `--formats html` on this branch. It prefers
+`.venv/bin/python`, falls back to `python3`, and treats an explicitly supplied
+`PYTHON_BIN_OVERRIDE` as authoritative. Execute mode invokes only Quarto with
+document execution disabled and atomically publishes:
+
+```text
+results/reports/<run_id>/<run_id>.run_report.html
+```
+
+The output is one self-contained, script-free HTML file with no external
+active assets. It escapes input content, preserves the required scientific
+state banner, describes candidate rows only as “CMH-ranked candidates,” and
+never promotes computational or scientific state. An owned regular
+`.<run_id>.report-html.lock`, run-token stage/backup paths, stable-input and
+template rechecks, output validation, rollback, signal cleanup, and recovery
+safeguards protect replacement. Never delete a foreign lock or hand-edit a
+canonical run summary.
+
+This branch does not publish PDF, exported report TSVs, or a report receipt.
+The current normal run-summary producer emits
+`approved_report_tables: []`; `report-html-v1a-report-table-approvals` is the
+next descendant to add producer-side authorization. `report-exports-v1`
+follows it.
+
+Focused validation:
+
+```bash
+make report-test
+```
+
+Run `make quarto-restore` first. The target requires real pinned Quarto and
+passes 65 focused tests, including deterministic real rerenders, plus the
+shell wrapper test. The complete Python gate reports
+`277 passed, 1 skipped`; the expected skip is the opt-in real-Quarto case that
+this target executes. Shell, guarded real-R, and `r-check` gates also pass.
+This is synthetic/incomplete local evidence only. No production report,
+runtime or cluster validation, completed production scientific review, or
+biological readiness was created.
 
 ## Manual Job Checking
 
@@ -794,6 +896,7 @@ make shell-test
 make real-r-test
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
 RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
+make report-test
 git status --short
 git diff --name-status
 ```
@@ -821,8 +924,8 @@ These targets activate the project library with `NORAD_USE_RENV=1`. The
 tracked lock describes R `4.6.1`, Bioconductor `3.23`, the eight direct Step
 `08` namespaces, and their transitive dependencies. The restore target uses
 the configured release repositories and performs installation only when the
-operator invokes it. Existing analysis scripts, compute wrappers, and future
-renderers never install packages.
+operator invokes it. Existing analysis scripts, compute wrappers, and the
+report renderer never install R packages.
 
 The guarded startup contract disables automatic snapshots and the `renv`
 sandbox. The latter avoids a reproduced high-CPU directory-creation loop on
@@ -851,8 +954,9 @@ batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
 implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
 locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
-locally fixture-tested at `209bb19`; after its docpatch/push gate the next
-descendant is `report-html-v1`.
+locally fixture-tested at `209bb19`. `report-html-v1` is implemented and
+fixture-tested at `117ba26`; after its docpatch/push gate the next descendant
+is `report-html-v1a-report-table-approvals`.
 
 ## Cluster Execution Pattern
 

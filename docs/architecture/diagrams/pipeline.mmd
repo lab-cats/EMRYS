@@ -36,7 +36,9 @@ flowchart LR
     artifact_schema["artifact-schema-v1<br/>versioned schemas + explicit inventory<br/>implemented + fixture-tested locally"]
     artifact_adapters["artifact-adapters-v1<br/>explicit inventory + run contract<br/>implemented + fixture-tested locally<br/>no production index"]
     runsummary["artifact-run-summary<br/>canonical JSON + deterministic TSV/QC<br/>implemented + fixture-tested locally<br/>no production summary"]
-    reports["remaining report slice<br/>report-html-v1 next -> PDF exports<br/>pending"]
+    reporthtml["report-html-v1<br/>self-contained script-free HTML<br/>implemented + fixture-tested locally<br/>no production report"]
+    approvals["report-html-v1a report-table approvals<br/>next; builder support pending"]
+    exports["report-exports-v1<br/>PDF + TSV + receipt pending"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -45,9 +47,10 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-    s09 --> localr --> fixes --> science --> artifact_schema --> artifact_adapters --> runsummary --> reports
+    s09 --> localr --> fixes --> science --> artifact_schema --> artifact_adapters --> runsummary --> reporthtml --> approvals --> exports
+    approvals -.->|authorizes tables in regenerated summaries| runsummary
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary boundary
-    class reports pending
+    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary,reporthtml boundary
+    class approvals,exports pending

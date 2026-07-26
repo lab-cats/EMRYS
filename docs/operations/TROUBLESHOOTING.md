@@ -798,8 +798,10 @@ complete. Step `09c` is implemented locally at `b674a31`.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
 `4dbd32d`. `artifact-run-summary` is implemented and locally fixture-tested at
-`209bb19`. After its docpatch/push gate, the next descendant is
-`report-html-v1`.
+`209bb19`. `report-html-v1` is implemented and tested locally with the real
+pinned renderer at `117ba26`. After its docpatch/push gate, the next descendant
+is `report-html-v1a-report-table-approvals`, followed by
+`report-exports-v1`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1593,8 +1595,11 @@ artifact-adapters-v1 implemented at 4dbd32d
 artifact-run-summary implemented at 209bb19
 canonical JSON, deterministic TSV/QC views, and receipt-last publication
 39 focused run-summary and 147 combined artifact-layer tests pass locally
+report-html-v1 implemented at 117ba26
+65 focused report tests pass with the real pinned Quarto runtime
+one static script-free self-contained HTML-only output
 no production artifact index, run summary, report, or production evidence
-report-html-v1 is next
+report-html-v1a-report-table-approvals is next, then report-exports-v1
 ```
 
 Keep production and cluster status unchanged. Keep production science
@@ -1746,9 +1751,220 @@ or renderer.
 
 Describe the boundary as implemented and locally fixture-tested at `209bb19`,
 with 39 focused, 147 combined artifact-layer, and 213 total Python tests
-passing. No production adapter transaction or run summary and no HTML/PDF
-report exists. `report-html-v1` is next, and future report generation will
-still not promote validation.
+passing. A separate `report-html-v1` renderer is implemented at `117ba26`;
+its 65 focused tests pass with the real pinned Quarto runtime, and the complete
+Python gate passes 277 tests with one expected skip. This establishes only
+synthetic-fixture behavior and local renderer execution. No production
+adapter transaction, run summary, HTML/PDF report, pipeline runtime/cluster
+proof, completed production science review, or biological readiness exists.
+`report-html-v1a-report-table-approvals` is next, followed by
+`report-exports-v1`; rendering still does not promote validation.
+
+## Quarto restore rejects the archive, installed tree, version, or lock
+
+### Symptom
+
+`make quarto-restore` or `make report-test` fails with an archive SHA-256
+mismatch, invalid install receipt/tree, wrong executable version, unsupported
+platform, existing restore lock, or retained recovery-state message.
+
+### Cause
+
+The local report runtime is deliberately closed to one official macOS archive:
+
+```text
+Quarto version: 1.9.38
+archive: quarto-1.9.38-macos.tar.gz
+SHA-256: 47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
+installation: .tools/quarto/1.9.38
+receipt: .tools/quarto/1.9.38/.norad-quarto-install.json
+```
+
+The earlier roadmap checksum was corrected after both the official GitHub
+release metadata and an independently downloaded official archive agreed on
+the value above. The restore safely validates archive members, the exact
+executable version, the receipt, and a deterministic hash of the complete
+installed tree. An edited receipt, mutated tree, wrong archive, stale partial
+installation, foreign lock, interrupted cleanup, or non-macOS host must fail
+closed.
+
+Owned or recovery paths may include:
+
+```text
+.tools/quarto/.restore-1.9.38.lock
+.tools/quarto/.restore-1.9.38.<run_token>.tmp
+.tools/quarto/.restore-1.9.38.<run_token>.RECOVERY.txt
+.tools/.quarto-download-<run_token>.tmp
+```
+
+### Fix
+
+For a normal first restore, run:
+
+```bash
+make quarto-restore
+make report-test
+```
+
+An already-downloaded official archive may be supplied explicitly while
+retaining the same checksum gate:
+
+```bash
+python3 scripts/restore_quarto.py \
+  --install-root .tools/quarto \
+  --archive /explicit/path/to/quarto-1.9.38-macos.tar.gz
+```
+
+Do not weaken the checksum, edit the receipt, install through Homebrew, or
+make a renderer download its own dependency. If an existing version tree is
+invalid, the restore intentionally refuses to overwrite it. Inspect and
+record the tree, receipt, lock owner, and any recovery paths first; then use an
+explicit operator-reviewed relocation or removal of only the proven ignored
+tooling target before restoring again. Never delete a foreign lock or retained
+recovery evidence merely to make the command pass.
+
+`make report-test` requires the executable to exist, revalidates the installed
+receipt/tree/version, and then exercises the real pinned executable. A fake
+Quarto fixture is useful for wrapper behavior but is not local renderer-runtime
+evidence.
+
+## HTML report rendering rejects the run summary, approved table, or output
+
+### Symptom
+
+`scripts/render_run_report.sh` fails during dry-run or execute mode with a
+run-summary schema/identity error, approved-table path/hash/row-count error,
+Quarto version error, input mutation, or static HTML validation error.
+Messages may identify a script, remote active resource, sidecar resource
+directory, missing state banner, inaccessible table/image/figure, duplicate
+ID, or invalid heading structure.
+
+### Cause
+
+The HTML renderer accepts one explicit canonical run-summary document and no
+discovered inputs:
+
+```bash
+scripts/render_run_report.sh \
+  --run-summary results/artifacts/<run_id>/<run_id>.run_summary.json \
+  --output-root results/reports \
+  --quarto-bin .tools/quarto/1.9.38/bin/quarto \
+  --formats html
+```
+
+Dry-run is the default and creates no stable output, lock, or scratch path.
+Add `--execute` to publish exactly:
+
+```text
+results/reports/<run_id>/<run_id>.run_report.html
+```
+
+The run summary, QMD/CSS templates, Quarto executable, and every explicitly
+approved table must remain byte-stable. Approved table records must supply
+the exact normalized path, SHA-256, row count, role, and display limit. The
+rendered document must be script-free, self-contained, accessible, and carry
+the exact applicable scientific-state banner.
+
+The implemented normal run-summary producer currently emits:
+
+```json
+"approved_report_tables":[]
+```
+
+Therefore status, provenance, evidence, limitation, and other structured
+summary sections render normally, while row-level approved scientific tables
+remain unavailable until `report-html-v1a-report-table-approvals` implements
+their producer authorization. This is not a renderer failure and must not be
+bypassed by editing canonical JSON.
+
+### Fix
+
+Correct or regenerate the canonical run summary and any future approved table
+through their normal validated producers. Use the exact pinned Quarto
+executable. Do not edit a run ID, schema version, receipt, path, hash, row
+count, banner, template, or rendered HTML merely to force acceptance; do not
+glob for candidate tables or add external assets/scripts. Rerun dry-run first,
+then execute only after all printed inputs and hashes are correct.
+
+This branch publishes HTML only. A PDF, exported summary TSV, or
+`<run_id>.report_outputs.tsv` report receipt does not exist until
+`report-exports-v1`.
+
+## HTML report lock, rollback, cleanup, or recovery state remains
+
+### Symptom
+
+Execute mode reports a foreign lock, invalid prior HTML report, changed output
+directory identity, late foreign replacement, failed Quarto child, signal,
+timeout, incomplete rollback, or incomplete cleanup. Relevant paths may
+include:
+
+```text
+results/reports/<run_id>/.<run_id>.report-html.lock
+results/reports/<run_id>/.run-report.<run_token>.tmp
+results/reports/<run_id>/.<run_id>.run_report.html.<run_token>.previous
+results/reports/<run_id>/.<run_id>.report-html.<run_token>.RECOVERY.txt
+```
+
+### Cause
+
+One validated HTML file is the complete `report-html-v1` publication. The
+renderer validates any prior report, snapshots every input, acquires an owned
+lock, renders into a run-token stage, and replaces only the exact predecessor
+it inspected. Symlinked, mutated, late-appearing, or identity-changed files
+and directories are never clobbered.
+
+Quarto runs in a dedicated process group. HUP, INT, TERM, launch errors, and
+the render timeout terminate and reap that complete group before publication
+cleanup continues. If publication fails, the renderer restores the validated
+prior HTML when it can prove ownership and identity. If rollback or cleanup
+cannot be proved, it retains the lock and best-effort recovery marker. If the
+output directory itself changed identity, path-based rollback is skipped to
+avoid modifying the replacement directory.
+
+### Fix
+
+Inspect the lock metadata, owning process, current HTML, run-summary and
+approved-table hashes, Quarto process state, output-directory identity, and
+all named stage/backup/recovery paths. Do not delete a foreign lock, kill an
+unrelated process, overwrite a late foreign report, combine attempts, or
+discard recovery evidence. Determine whether the validated new report is
+already committed or whether the exact prior report must be restored. Validate
+the chosen single-file state, record the operator action, and only then remove
+residue and a lock whose ownership is proven.
+
+## A synthetic HTML report is mistaken for production or validation evidence
+
+### Symptom
+
+A locally rendered fixture report is described as a production report,
+pipeline runtime/cluster proof, completed scientific review, or biological
+validation.
+
+### Cause
+
+`report-html-v1` is implemented at `117ba26`. Its 65 focused tests exercise
+the real pinned Quarto runtime, and the complete Python gate passes 277 tests
+with one expected skip. Those inputs are synthetic/incomplete fixtures.
+Rendering accurately presents their declared states but creates no new
+computational or scientific evidence.
+
+### Fix
+
+Describe the boundary as:
+
+```text
+HTML renderer implemented and fixture-tested locally
+real pinned local Quarto runtime exercised
+one synthetic HTML-only output contract validated
+no production report or pipeline runtime/cluster validation
+no completed production science review or biological readiness
+report-html-v1a-report-table-approvals next, then report-exports-v1
+```
+
+Retain the report's state banner and limitations. Report generation is never
+validation evidence, even after production inputs eventually become
+available.
 
 ## Wrong log interpretation: empty `.err` file
 
@@ -1814,9 +2030,11 @@ symptom, likely cause, confirmation command, and fix. Keep the generic index as
 a deferred roadmap idea until enough real failures exist. The artifact-schema
 validator, inventory, and explicit artifact adapter indexer are now
 implemented, as is the run-summary builder, so their concrete failure modes
-are documented above. Do not add entries that imply general cleanup tools,
-reports, foundation tools, or per-step validators exist before their branches
-implement them.
+are documented above. Static HTML reporting is also implemented, so its
+concrete restore, validation, publication, and recovery failures are
+documented above. Do not add entries that imply general cleanup tools,
+report-table approval production, PDF/TSV exports, foundation tools, or
+per-step validators exist before their branches implement them.
 
 ## General success checklist
 
