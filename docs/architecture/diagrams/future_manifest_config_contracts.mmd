@@ -9,7 +9,7 @@ flowchart TD
         manifest["Manifest<br/>what data exist"]
         config["Analysis config<br/>what analysis to run"]
         policy["Predeclared analysis policy<br/>contrast / orientation / thresholds"]
-        review["Review decision/status record<br/>interpretation + limitations"]
+        review["Step 09c review record<br/>state + decisions + limitations"]
         provenance["Provenance<br/>what code/reference/tools produced results"]
         registry["Artifact registry<br/>what outputs exist and where"]
     end
@@ -18,7 +18,7 @@ flowchart TD
         direction TB
         fastqs["Validated FASTQ inputs"]
         ready["Validated analysis-ready artifacts"]
-        existing["Existing Step 07 receipts<br/>Step 08 receipt/summary<br/>Step 09 summary"]
+        existing["Declared Step 00a-09 artifacts<br/>missing/incomplete represented explicitly"]
     end
 
     subgraph modules["Assay module execution"]
@@ -39,7 +39,7 @@ flowchart TD
     existing --> adapters
     existing --> review
     provenance --> registry
-    registry --> reports["Report-ready artifact index"]
+    registry --> reports["Run-summary JSON<br/>single structured report entry point"]
     review --> reports
 
     class manifest,config,policy,review,provenance,registry contract

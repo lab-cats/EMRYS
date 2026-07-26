@@ -11,19 +11,24 @@ This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a sta
 Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are
 cluster-proven across all six samples. Step `07` is implemented locally and
 mocked-bcftools tested at commit `e68b00c`, but it has no real-bcftools or
-cluster evidence. Step `08` is implemented locally at `90335d8` and
-shell/fake-R tested, while its real-R fixtures are blocked because this
-workstation has no `Rscript`. Step `09` is implemented locally at `e4371de`
-and shell/fake-R tested; its real-R fixture runner is blocked for the same
-reason. Steps `07`-`09` have no cluster dry-run, execute, log, or inspected
-output evidence and are not cluster-proven.
+cluster evidence. Step `08` is implemented locally at `90335d8`, and Step
+`09` is implemented locally at `e4371de`; both retain passing shell/fake-R
+contracts.
 
-The Step `09` implementation/docpatch gate is complete and pushed at
-`9ac8307`. The current `step-09a-roadmap-docpatch` is documentation-only.
-After it is cleanly committed/pushed, runtime promotion remains sequential
-through `validate-step-07`, `validate-step-08`, and `validate-step-09`.
-Computational proof is followed by a separate
-`step-09b-scientific-validation` evidence/decision gate; it is not Step `10`.
+The signed and notarized Apple-silicon CRAN R `4.6.1` runtime is now installed
+locally. A guarded repository `renv` environment is locked to Bioconductor
+`3.23` and activates only with `NORAD_USE_RENV=1`. Namespace, lock consistency,
+headless PDF, and empty cache-disabled binary restore checks pass. Both real-R
+fixture suites now execute without `SKIP`, but neither is a semantic pass:
+Step `08` exposes a partition-overlap rejection defect, and Step `09` exposes a
+locale-sensitive PDF EOF test assertion. Those defects trigger the next
+descendant `step-09b1-real-r-fixes`.
+
+No Step `07`-`09` remote dry-run, execute, log, or output evidence was added;
+all three remain not cluster-proven. Remote promotion is intentionally paused
+while the approved local sequence implements scientific-validation tooling,
+the artifact/run-summary/report vertical slice, read-only foundations, and
+one validator branch per pipeline step.
 
 Current boundary:
 
@@ -31,8 +36,9 @@ Current boundary:
 cluster-proven reference prep through Steps 00a-00c
 -> cluster-proven sample workflow through Step 06
 -> Step 07 implemented and locally tested with mocked bcftools; cluster validation pending
--> Step 08 implemented and shell/fake-R tested locally; real-R runtime and cluster validation pending
--> Step 09 implemented and shell/fake-R tested locally; real-R runtime and cluster validation pending
+-> local R 4.6.1 + guarded renv/Bioconductor 3.23 environment checks pass
+-> Step 08 and Step 09 real-R suites execute individually without SKIP but expose two defects
+-> step-09b1-real-r-fixes is next; remote validation remains paused
 ```
 
 ## Pipeline Dataflow
@@ -66,11 +72,14 @@ flowchart LR
     subgraph downstream["Downstream editing workflow"]
         direction TB
         s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
-        s08["08 VCF preprocessing<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
-        s09["09 CMH/editing-site calling<br/>implemented + shell/fake-R tested locally<br/>real-R runtime blocked; not cluster-proven"]
+        s08["08 VCF preprocessing<br/>real-R suite executed; partition-overlap defect open<br/>not cluster-proven"]
+        s09["09 CMH/editing-site calling<br/>real-R suite executed; PDF-test defect open<br/>not cluster-proven"]
     end
 
-    science["post-09 scientific evidence/decision gate<br/>planned only after validate-step-09 cluster proof<br/>not Step 10"]
+    localr["09b local R runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23<br/>environment checks pass"]
+    fixes["09b1 real-R fixes<br/>next local branch"]
+    science["09c scientific-validation tooling<br/>local evidence package; no biological-readiness claim"]
+    reports["immediate artifact + report slice<br/>schema -> adapters -> run summary -> HTML -> PDF<br/>activated, not implemented"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -79,12 +88,12 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-    s09 -.-> science
+    s09 --> localr --> fixes --> science --> reports
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09 boundary
-    class science pending
+    class s07,s08,s09,localr boundary
+    class fixes,science,reports pending
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
@@ -104,8 +113,8 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `05` | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` | cluster-proven across all six samples | GATK temp handling hardened to project storage. |
 | `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | cluster-proven across all six samples | Mechanical `FWD_like` / `REV_like` split. |
 | `07` | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implemented locally and locally tested with mocked bcftools; not cluster-proven | Cohort-wide per declared partition. No real-bcftools runtime, cluster dry-run, execute run, or inspected cluster output yet. |
-| `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implemented locally at `90335d8`; shell/fake-R tested; real-R runtime blocked; not cluster-proven | Consumes the exact partition-manifest × `{FWD_like,REV_like}` receipt set. No local `Rscript`, cluster dry-run, execute run, or inspected cluster output yet. |
-| `09` | four TSVs and two PDFs under `results/editing/<analysis>/` | implemented locally at `e4371de`; shell/fake-R tested; real-R runtime blocked; not cluster-proven | Uses explicit manifest-defined pairs plus the Step `08` sites table and complete input receipt. No local `Rscript`, cluster dry-run, execute run, or inspected cluster output yet. |
+| `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implemented locally at `90335d8`; shell/fake-R tested; real-R suite executes but currently fails partition-overlap rejection; not cluster-proven | Consumes the exact partition-manifest × `{FWD_like,REV_like}` receipt set. The local R runtime is available, but semantic real-R acceptance awaits `step-09b1-real-r-fixes`; no cluster evidence exists. |
+| `09` | four TSVs and two PDFs under `results/editing/<analysis>/` | implemented locally at `e4371de`; shell/fake-R tested; real-R suite executes but currently fails a locale-sensitive PDF EOF test assertion; not cluster-proven | Uses explicit manifest-defined pairs plus the Step `08` sites table and complete input receipt. Semantic real-R acceptance awaits `step-09b1-real-r-fixes`; no cluster evidence exists. |
 
 ## Data Contracts
 
@@ -227,20 +236,20 @@ flowchart LR
     implcommit["implementation commit"]
     stagepatch["repository-wide docpatch<br/>separate commit"]
     cleanpush["clean check / push"]
-    descendant["next descendant<br/>stage branch"]
-    pull["cluster pull<br/>CSU checkout"]
+    descendant["next descendant<br/>local stage branch"]
+    localr["local R gate<br/>guarded renv / real-R suites"]
+    sciencebranch["scientific-validation tooling<br/>explicit evidence; dry-run first"]
+    artifacts["artifact contracts<br/>schema -> adapters -> run summary"]
+    reports["immediate reports<br/>HTML -> PDF exports"]
+    foundations["read-only foundations<br/>runtime -> reference -> storage"]
+    validators["one validator branch per step<br/>00a through 09"]
+    localstop["final local validator<br/>clean / docpatched / pushed"]
+    remotehold["remote promotion paused"]
+    pull["later cluster pull<br/>CSU checkout"]
     dryrun["SLURM dry-run<br/>default gate"]
     execute["execute<br/>explicit EXECUTE=1"]
     validate["validate outputs<br/>logs + contracts"]
-    validationpatch["validation docpatch<br/>evidence + status"]
-    validationpush["clean validation history<br/>push"]
-    nextvalbranch["next descendant validation branch<br/>validate-step-08 or validate-step-09"]
-    v09push["validate-step-09<br/>clean history / push confirmed"]
-    sciencebranch["post-Step-09<br/>science branch"]
-    scireview["orientation / annotation / statistics<br/>candidate evidence review"]
-    sciencepatch["science evidence/decision<br/>docpatch"]
-    sciencepush["clean science history<br/>push"]
-    futurepackage["next approved<br/>post-proof package"]
+    validationpatch["evidence + report regeneration<br/>validation docpatch"]
 
     fake["fake-tool tests"]
     drydefault["dry-run default"]
@@ -253,10 +262,9 @@ flowchart LR
     trouble["troubleshooting docs"]
 
     stagebranch --> local --> tests --> implcommit --> stagepatch --> cleanpush --> descendant
-    cleanpush --> pull --> dryrun --> execute --> validate --> validationpatch --> validationpush
-    validationpush -->|after validate-step-07 or 08| nextvalbranch --> pull
-    validationpush -->|after validate-step-09 only| v09push --> sciencebranch
-    sciencebranch --> scireview --> sciencepatch --> sciencepush --> futurepackage
+    descendant --> localr --> sciencebranch --> artifacts --> reports --> foundations --> validators --> localstop --> remotehold
+    remotehold -.-> pull --> dryrun --> execute --> validate --> validationpatch
+    validationpatch -->|clean push, then next descendant| pull
 
     fake -.-> tests
     drydefault -.-> dryrun
@@ -268,12 +276,14 @@ flowchart LR
     cleanup -.-> validate
     trouble -.-> stagepatch
     trouble -.-> validationpatch
-    trouble -.-> sciencepatch
+    trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,validationpush,nextvalbranch,v09push,sciencepush,futurepackage gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,localstop gate
     class pull,dryrun,execute,validate cluster
-    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble,scireview safeguard
-    class stagepatch,validationpatch,sciencebranch,sciencepatch docs
+    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
+    class stagepatch,validationpatch docs
+    class sciencebranch,artifacts,reports,foundations,validators safeguard
+    class remotehold docs
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/reliability.mmd`.
@@ -288,6 +298,10 @@ Safeguards:
 - rollback protection
 - cleanup on failure
 - fake-tool shell tests, including fake-R Step `08`/`09` wrapper tests
+- signed local R `4.6.1` with repository activation guarded by
+  `NORAD_USE_RENV=1`
+- a locked Bioconductor `3.23` environment, explicit restore/check targets,
+  and cache-disabled empty-library restore coverage
 - troubleshooting docs
 
 ## Local Vs Cluster Responsibilities
@@ -295,7 +309,7 @@ Safeguards:
 | Local macOS | CSU/ADAM SLURM |
 | ----------- | -------------- |
 | Edit scripts/docs/tests. | Run real STAR/samtools/Picard/GATK/bcftools jobs. |
-| Run fake-tool shell tests, syntax checks, and real-runtime fixtures when the required runtime exists. | Execute sample/cohort-scale workflows through `jobs/*.slurm`. |
+| Run fake-tool shell tests, syntax checks, guarded real-R fixtures, scientific-validation fixtures, artifact aggregation, and synthetic report rendering. | Execute sample/cohort-scale workflows through `jobs/*.slurm`; compute wrappers never install R packages. |
 | Validate command construction and dry-run behavior. | Inspect SLURM logs, scheduler status, and output files. |
 | Commit/push reviewed changes. | Pull committed changes before dry-run and execute gates. |
 
@@ -325,22 +339,33 @@ pipeline call statuses for CMH-ranked candidates. Orientation, GTF semantics,
 threshold robustness, replicate sensitivity, candidate quality, and
 background eligibility remain subject to the post-Step-09 scientific gate.
 `science_review_complete_exploratory` records a finished review while keeping
-results provisional; only `biological_interpretation_ready` permits biological
-interpretation.
+results provisional. Step `09c` must reject the reserved
+`biological_interpretation_ready` value until a separately approved scientific
+policy unlocks its exit criteria. Artifact indexes, run summaries, and
+HTML/PDF reports describe available evidence; producing them is never evidence
+of computational or biological validation.
 
 ## What Remains
 
-1. Establish the absent-from-this-checkout runtime `samples.tsv` with explicit
-   replicates/one hash; resolve batch-visible R/packages/hash tools; verify all
-   Step `06` BAM/BAI pairs, `MT`, storage/quota, logs, and resources.
-2. On `validate-step-07`, promote pilot then chromosome `1` then the remaining
-   24 primary partitions; exit with 25 primary receipts/50 primary VCFs and
-   docpatch.
-3. On `validate-step-08`, exit with one reconciled three-file transaction and
-   exactly 50 ordered receipt rows; docpatch before Step `09`.
-4. On `validate-step-09`, exit with one reconciled six-file transaction,
-   one-row summary, 12-row spectrum, exact significant subset, and valid PDFs;
-   docpatch.
-5. Run `step-09b-scientific-validation` before biological interpretation.
-6. Only then activate the ordered operational, provenance, artifact,
-   reporting, analysis-config, and module roadmap in `TODO.md`.
+1. On `step-09b1-real-r-fixes`, correct the Step `08` partition-overlap
+   rejection and the Step `09` locale-sensitive PDF EOF test assertion, then
+   require both real-R suites to pass without `SKIP`.
+2. Implement `step-09c-scientific-validation` as local, explicit-input,
+   dry-run-first evidence tooling. Fixture completion can produce
+   `evidence_incomplete` or `science_review_complete_exploratory`; it cannot
+   produce `biological_interpretation_ready`.
+3. Implement the immediate report vertical slice in order:
+   `artifact-schema-v1`, `artifact-adapters-v1`,
+   `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`.
+   Synthetic/incomplete reports must carry their state banners and must not be
+   presented as validation evidence.
+4. Implement the read-only foundations
+   `post09-runtime-preflight`, `post09-reference-provenance`, and
+   `post09-storage-inventory-retention`.
+5. Add one descendant validation-report branch for each of `00a`, `00b`,
+   `00c`, `01`, `02`, `02b`, `03`, `04`, `05`, `06`, `07`, `08`, and `09`,
+   ending local work at `post09-validation-report-09`.
+6. When remote work resumes, promote Steps `07`, `08`, and `09` in order,
+   then validate Step `09c` scientific evidence and perform only targeted
+   reruns, regenerating the structured run summary and reports after inspected
+   evidence. Remote work is not part of the current sequence.

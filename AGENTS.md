@@ -296,6 +296,23 @@ For R scripts:
 * print resolved input/output paths
 * fail clearly when inputs are missing
 
+The repository-local R environment is opt-in. Activate it only with the exact
+setting `NORAD_USE_RENV=1`; `NORAD_USE_RENV=0` leaves normal R startup
+unchanged, and any other value must fail clearly. Use the tracked `renv.lock`
+and these explicit developer interfaces:
+
+```bash
+RSCRIPT_BIN=/explicit/path/to/Rscript make r-restore
+RSCRIPT_BIN=/explicit/path/to/Rscript make r-check
+RSCRIPT_BIN=/explicit/path/to/Rscript make local-real-r-test
+```
+
+Restoring packages is a deliberate setup action. Analysis scripts, SLURM
+wrappers, validators, and report renderers must never bootstrap R, restore
+`renv`, install packages, or update the lockfile. Keep the project library,
+cache, staging areas, and machine-specific paths untracked. Automatic
+snapshots remain disabled; review and commit intentional lockfile changes.
+
 ## Dry-run / execute convention
 
 Dry-run should be the default for workflow scripts and SLURM wrappers.
@@ -387,6 +404,8 @@ python -m compileall scripts tests
 python -m pytest
 make shell-test
 make real-r-test
+RSCRIPT_BIN=/explicit/path/to/Rscript make r-check
+RSCRIPT_BIN=/explicit/path/to/Rscript make local-real-r-test
 git status --short
 git diff --name-status
 ```
@@ -394,6 +413,8 @@ git diff --name-status
 `make real-r-test` may report `SKIP` only when the default `Rscript` executable
 is unavailable. A skip is not semantic R validation; an explicit runtime
 override or a present runtime with missing packages must fail clearly.
+`make local-real-r-test` is the guarded repository-local equivalent and must
+execute both Step `08` and Step `09` suites without `SKIP`.
 
 When adding or modifying a workflow step:
 
@@ -530,6 +551,12 @@ Use two distinct post-review states:
 
 Never collapse these states or use exploratory completion to support
 biological candidate claims.
+
+Until a separately approved scientific-policy stage defines and unlocks the
+exit criteria, `biological_interpretation_ready` is reserved: scientific
+validation tools must reject attempts to emit it. Report rendering may
+understand the reserved value, but rendering must never create, authorize, or
+infer it.
 
 ## Engineering standard
 

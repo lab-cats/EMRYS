@@ -716,9 +716,17 @@ BiocGenerics
 rtracklayer
 ```
 
-The current workstation has no `Rscript`, and a supported CSU R/Rscript path
-and compatible installed package set have not yet been established. The
-workflow intentionally does not install packages automatically.
+The local workstation now has the signed Apple-silicon CRAN R `4.6.1` runtime
+and a repository-local `renv` environment locked to Bioconductor `3.23`.
+Activation is deliberately opt-in. A shell that does not set
+`NORAD_USE_RENV=1`, a direct wrapper invocation that does not pass the selected
+Rscript, or an unsynchronized project library may therefore fail even though
+local setup exists.
+
+A supported CSU R/Rscript path and compatible package set have not yet been
+established in the batch/compute environment. Local setup does not prove
+cluster visibility. The workflow intentionally does not install packages
+automatically.
 
 An executable visible on the login node may also be absent from a clean batch
 or compute-node environment. Separately, the Step `09` R engine requires
@@ -732,14 +740,27 @@ evidence that the Step `08` Bioconductor package set is also required by Step
 
 ### Fix
 
-Resolve and validate the supported R environment first. For a direct script
-run, pass the executable with:
+For local development, use the explicit guarded targets:
 
 ```bash
---rscript-bin /supported/path/to/Rscript
+cd /Users/elisteiger/dev/norad
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
 ```
 
-For the SLURM wrapper, export:
+`make r-restore` is the only package-installing action in that sequence.
+Analysis scripts, SLURM wrappers, validators, and renderers must never call it
+or install packages. `NORAD_USE_RENV=0` intentionally leaves ordinary R
+startup unchanged; any value other than exact `0` or `1` is an error.
+
+For a direct workflow script run, pass the executable with:
+
+```bash
+--rscript-bin /usr/local/bin/Rscript
+```
+
+For a future validated SLURM environment, export its batch-visible path:
 
 ```bash
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript
@@ -757,9 +778,89 @@ Steps `08` and `09`, and confirm `sha256sum` or `shasum` there.
 Do not substitute a fake R executable for semantic validation and do not call a
 skipped real-R test a pass. `make real-r-test` runs the Step `08` suite followed
 by the Step `09` suite; either runner reports `SKIP` only when the default
-`Rscript` is absent, while an explicit bad override fails. Both steps are
-implemented locally and fake-R/shell tested, but real-R runtime validation and
-cluster evidence remain pending.
+`Rscript` is absent, while an explicit bad override fails.
+
+Current evidence is deliberately narrower:
+
+```text
+local runtime/package/headless-PDF checks pass
+an empty cache-disabled binary restore passes
+both real-R suites execute without SKIP when run individually
+Step 08 fails the partition-overlap fixture
+Step 09 fails the fixture's PDF EOF inspection
+cluster runtime and output evidence remain pending
+```
+
+The required corrective branch is `step-09b1-real-r-fixes`. Do not call the
+current Step `08`/`09` real-R run a pass and do not proceed to scientific
+validation until that branch completes its own implementation/docpatch gate.
+
+## `renv` startup uses sustained CPU or repeatedly creates directories
+
+### Symptom
+
+Starting the guarded local environment hangs or consumes sustained CPU before
+the requested R expression runs.
+
+### Cause
+
+The local R `4.6.1`/macOS combination reproduced an `renv` sandbox
+directory-creation loop. This was a startup-environment issue, not evidence of
+an analysis loop.
+
+### Fix
+
+Use the repository Make targets, which set the reviewed guard:
+
+```bash
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+```
+
+For a direct diagnostic command, preserve the same setting:
+
+```bash
+NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+  /usr/local/bin/Rscript -e 'sessionInfo()'
+```
+
+The tracked `.Rprofile` also supplies this default during opted-in activation.
+Do not enable automatic snapshots or change the lockfile as a workaround.
+
+## Local `renv` reports lock drift or missing Step 08 namespaces
+
+### Symptom
+
+`make r-check` reports that `renv::status()` is not synchronized,
+`BiocManager::valid()` fails, or one of the eight direct Step `08` namespaces
+does not load. It may instead report that the Bioconductor version cannot be
+validated while showing a DNS/download failure for the configured release
+metadata.
+
+### Cause
+
+The ignored project library may be absent, incomplete, or inconsistent with
+the tracked lockfile. The runtime may also be different from the locked R
+`4.6.1` / Bioconductor `3.23` contract. A metadata DNS/download error means the
+check cannot reach the configured Bioconductor release source; by itself it
+does not show package drift.
+
+### Fix
+
+Run the explicit restore and check:
+
+```bash
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+```
+
+Run `r-check` in a network-capable developer environment when
+`BiocManager::valid()` needs current release metadata. Require a successful
+rerun; do not relabel the connectivity failure as a passing offline check.
+
+Do not edit `renv.lock`, install into the project library manually, use the
+damaged Homebrew checkout, or add source-build tooling merely to silence the
+check. A necessary dependency or runtime contract change requires its own
+reviewed implementation and lockfile update.
 
 ## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
 
@@ -851,9 +952,12 @@ the approved Step `07` workflow. Preserve ALT indexing and complete DP/AD pairs.
 Do not delete duplicate rows, clamp counts, convert missing values to zero, or
 change AD to fit DP after the fact.
 
-These validation paths are covered by the committed real-R fixtures, but those
-fixtures have not executed on this workstation because `Rscript` is
-unavailable.
+These paths are covered by committed real-R fixtures. The local suite now
+executes without `SKIP`, but the current run stops earlier because the engine
+unexpectedly accepts overlapping partition selectors. After that defect is repaired,
+the same suite must run to completion and may expose the separately identified
+multiallelic INFO/AD indexing risk. Until then, this is failing test evidence,
+not Step `08` semantic validation.
 
 ## Step 08 finds a lock, partial output set, or input mutation
 
@@ -1001,7 +1105,11 @@ summary count, background status, hash, subset, or PDF signature to force
 publication.
 
 These independent output checks and rollback behavior are locally tested with
-a fake R executable. Real-R and cluster output validation remain pending.
+a fake R executable. The real-R engine suite executes locally, and its
+statistical/ordering checks pass when the fixture's raw PDF EOF assertion is
+corrected; the committed fixture currently misreads raw PDF bytes as locale
+text and fails that assertion. Repair and rerun it on
+`step-09b1-real-r-fixes`. Cluster output validation remains pending.
 
 ## Step 09 finds a lock or incomplete six-output set
 
@@ -1154,4 +1262,6 @@ adjudication, and limitations require the separate post-Step-09 scientific
 evidence-and-decision gate. Do not call CMH-ranked candidates biologically
 validated solely because the files pass this checklist.
 `science_review_complete_exploratory` still requires provisional labeling;
-only `biological_interpretation_ready` permits biological interpretation.
+`biological_interpretation_ready` is currently reserved and must be rejected
+until a separately approved scientific-policy branch unlocks its exit
+criteria.

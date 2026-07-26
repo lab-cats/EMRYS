@@ -19,22 +19,13 @@ administrator remediation of inconsistent node images
 
 Temporary node pinning to `node003` is not a durable architecture decision.
 
-### R / Rscript Availability
+### CSU Batch R / Rscript Availability
 
-Unresolved:
-
-```text
-R
-Rscript
-```
-
-Step `08` is implemented locally at commit `90335d8`, and its wrapper behavior
-is covered by shell tests with a fake R executable. Step `09` is implemented
-locally at commit `e4371de`, and its wrapper, pairing, publication, and output
-validation behavior is also covered with a fake R executable. `Rscript` is not
-available on the current local workstation, so neither committed real-R
-fixture suite has run; both report explicit skips, which are not semantic R
-validation.
+The local runtime question is resolved: the official signed and notarized
+Apple-silicon CRAN R `4.6.1` package is installed, and its published SHA-1
+`fc9f4ada15589e8e037b9bf05563d21e97181635` was verified before installation.
+The repository uses guarded `renv` `1.2.3`, Bioconductor `3.23`, and opt-in
+activation through `NORAD_USE_RENV=1`.
 
 Step `08` declares these R package dependencies:
 
@@ -49,10 +40,25 @@ BiocGenerics
 rtracklayer
 ```
 
-The supported local/cluster `Rscript` path, compatible package versions, and
-package availability in that environment remain unresolved. The workflow does
-not install packages automatically. Step `09` itself uses base R
-(`stats`, `graphics`, and `grDevices`) and adds no Bioconductor dependency.
+Those eight namespaces and their transitive closure are locked. Normal restore,
+an empty cache-disabled binary restore, namespace loading,
+`BiocManager::valid()`, `renv::status()`, and headless PDF creation passed.
+The Step `08` and Step `09` suites both executed without `SKIP`; Step `08`
+exposed a partition-overlap contract defect, and Step `09` exposed a
+locale-sensitive PDF EOF test defect. Those failures trigger
+`step-09b1-real-r-fixes` and must not be described as passing semantic suites.
+
+Still unresolved:
+
+```text
+supported CSU compute-node/batch-visible Rscript path
+compatible cluster package library and versions
+whether that environment passes the restored Step 08 and Step 09 suites
+```
+
+The workflow does not install packages from compute or SLURM wrappers. Step
+`09` itself uses base R (`stats`, `graphics`, and `grDevices`) and adds no
+Bioconductor dependency.
 
 ### Storage Quotas
 
@@ -110,7 +116,16 @@ mix config implementation into the evidence-only validation branch.
 
 ### Post-Step 09 Scientific Evidence And Decisions
 
-These questions remain open even after a future computationally
+The local `step-09c-scientific-validation` package is approved to validate and
+summarize explicit evidence with synthetic fixtures. It will not answer these
+questions by itself, rerun CMH, or infer human decisions. With production
+evidence unavailable, its overall state must remain `evidence_incomplete`.
+Later inspected evidence can support
+`science_review_complete_exploratory`; the reserved
+`biological_interpretation_ready` value must be rejected until a separate
+approved policy branch unlocks its exit criteria.
+
+These scientific questions remain open even after a future computationally
 `cluster-proven` Step `09`:
 
 ```text
@@ -138,64 +153,65 @@ adjudication are also not substitutes for orthogonal experimental validation.
 Record answers in `docs/design/DECISIONS.md` only after the underlying
 evidence has been inspected.
 
-### Future Artifact And Reporting Design
+### Immediate Artifact And Reporting Implementation
 
-Structured artifacts and reporting are planned, deferred, and non-runnable.
-Their dependency order is now decided:
+The design questions for the immediate artifact/report vertical slice are
+resolved. These packages are approved after Step `09c` but are not yet
+implemented:
 
 ```text
 artifact-schema-v1
--> read-only artifact-adapters-v1
+-> artifact-adapters-v1
 -> artifact-run-summary
 -> report-html-v1
 -> report-exports-v1
 ```
 
-The dependency order is decided; these remain candidate package/branch labels
-until each name and interface is separately activated.
-
-Open questions:
+Fixed decisions:
 
 ```text
-exact versioned JSON schema for per-step sidecars
-run ID semantics across dry-runs, execute runs, reruns, and partial reruns
-provenance and git commit capture on local machines and CSU SLURM
-whether artifacts describe failed and incomplete runs, or only successful runs
-rerun, schema-version conflict, and pipeline-version conflict representation
-exact HTML, PDF, and TSV report deliverables
-Jinja2 versus Quarto/R Markdown responsibilities
-final CMH/editing-site results, plots, and interpretation notes
-whether Step 06 orientation splitting remains part of the core preprocessing boundary or becomes an optional prerequisite requested by orientation-aware analysis modules
-whether the first analysis module should be named rna_editing_cmh or preserve legacy workflow terminology
-whether assay selection should live only in an analysis YAML config or whether the sample manifest can optionally point to a default analysis config
-what metadata should be required before an analysis module is allowed to make biological comparisons
-what artifact index format the reporting layer should consume
-whether future public-dataset ingestion should be handled as a separate import layer that produces the same manifest/config inputs as lab-generated ADAM FASTQs
+JSON Schema Draft 2020-12
+explicit expected-artifact inventory; no glob discovery
+immutable-contract run_id plus distinct attempt_id retries
+explicit missing/failed/incomplete evidence records
+read-only adapters over existing outputs; no native emitter retrofit
+canonical run-summary JSON as the report layer's sole structured entry point
+Quarto 1.9.38 with bundled Typst
+self-contained HTML and PDF plus TSV summary and receipt
+report generation never runs analysis and never proves validation
+state banners preserve incomplete or exploratory/provisional meaning
 ```
 
-### Deferred Engineering Roadmap Decisions
+Implementation and fixture evidence remain pending on the named branches.
+Production reports and biological conclusions remain unavailable because
+production Steps `07`-`09` and Step `09c` evidence have not been generated or
+inspected.
 
-The deferred engineering roadmap is tracked canonically in `TODO.md`. The
-sequence from runtime preflight through provenance, storage/retention,
-step-specific validators, targeted reruns, artifacts, reports, analysis config,
-module wrapping, second-cohort refactoring, and public ingestion is decided.
-These questions do not block the remaining compute pipeline.
-
-The order is fixed, but exact package names and interfaces remain open until
-their activation gates.
-
-Open questions:
+The separate longer-term module/refactor questions remain deferred:
 
 ```text
-when each ordered package has enough evidence and operator need to activate
-the exact interfaces for step-specific validators and targeted-rerun planners
+whether Step 06 is a universal core stage or an optional orientation-aware prerequisite
+whether the first analysis module is named rna_editing_cmh
+the future analysis-config interface
+public-dataset ingestion through the same manifest/config/provenance boundary
+```
+
+### Remaining Engineering Roadmap Decisions
+
+The immediate sequence is now fixed: artifacts/run summary and HTML/PDF reports
+precede runtime preflight, reference provenance, storage/retention, and one
+validator branch per Step `00a`-`09`. These packages are approved for local
+implementation; remote validation remains paused until the final validator.
+
+Still-deferred questions beyond that sequence:
+
+```text
 when repeated execution makes SLURM arrays useful
-which reference files need checksums and where provenance should be recorded
-which generated outputs are long-term retained versus disposable
-whether cluster tool paths need a config file, and which paths belong there
 how stale-lock inspection and cleanup should prove safety before changing anything
-which failure categories belong in a troubleshooting taxonomy
-which Makefile conveniences are worthwhile after underlying commands exist
+the exact targeted-rerun planner interface
+the analysis-config and module-wrapping contracts
+whether cluster tool paths eventually need a shared config
+when second-cohort evidence justifies broader refactoring
 ```
 
 ### Read-Group Library Metadata
@@ -433,22 +449,26 @@ repository validation gate. It has not run against real bcftools on this
 workstation, has not completed a cluster dry-run or execute job, and has no
 inspected cluster output. It is not cluster-proven.
 
-Step `08` is implemented locally at commit `90335d8`. Its fake-R wrapper and
-shell tests pass, but this workstation has no `Rscript`, so the real-R fixture
-suite has not executed. Step `08` has no cluster dry-run, execute, log, or
-output evidence and is not cluster-proven.
+Step `08` is implemented locally at commit `90335d8`, and its fake-R wrapper
+and shell tests pass. Its real-R fixture suite executes without `SKIP` under
+the guarded local runtime but currently fails the negative partition-overlap
+contract; `step-09b1-real-r-fixes` must correct and revalidate it. Step `08`
+has no cluster dry-run, execute, log, or output evidence and is not
+cluster-proven.
 
-Step `09` is implemented locally at commit `e4371de`. Its shell/fake-R suite
-passes, but this workstation has no `Rscript`, so its real-R fixture suite has
-not executed. Step `09` has no cluster dry-run, execute, log, or output evidence
-and is not cluster-proven.
+Step `09` is implemented locally at commit `e4371de`, and its shell/fake-R
+suite passes. Its real-R fixture suite executes without `SKIP` but currently
+fails a locale-sensitive PDF EOF test assertion;
+`step-09b1-real-r-fixes` must correct and revalidate it. Step `09` has no
+cluster dry-run, execute, log, or output evidence and is not cluster-proven.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
 Steps `07`, `08`, and `09` have now been cleanly reimplemented as
 parameterized, manifest-driven stages. Step `07` real-bcftools and cluster
-validation remain pending. Steps `08` and `09` real-R and cluster validation
-remain pending.
+validation remain pending. Steps `08` and `09` have run under the local real-R
+environment but do not yet pass their complete semantic suites; their targeted
+fixes and all cluster validation remain pending.
 
 Steps `05` SplitNCigarReads and `06` read-orientation BAM splitting are already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
@@ -580,8 +600,10 @@ rollback of a prior complete set, and publishes `step08_inputs.tsv` last as the
 transaction commit marker.
 
 This contract is implemented locally at commit `90335d8` and locally tested
-through the fake-R shell suite. Real-R fixture execution is blocked on this
-workstation because `Rscript` is unavailable. No cluster evidence has been
+through the fake-R shell suite. The local real-R suite executes without
+`SKIP`, but its negative partition-overlap case currently fails because
+overlapping partition selectors are unexpectedly accepted. The fix belongs to the
+triggered `step-09b1-real-r-fixes` branch. No cluster evidence has been
 inspected, and Step `08` is not cluster-proven.
 
 ### What Is The Step 09 Paired CMH Contract?
@@ -676,10 +698,12 @@ commit marker. An incomplete rollback retains the owned lock for explicit
 operator recovery.
 
 This contract is implemented locally at commit `e4371de` and locally tested
-through the shell/fake-R suite. The real-R fixture suite is implemented but
-reports `SKIP` because this workstation has no `Rscript`; no Step `09` cluster
-evidence has been inspected, and the step is not cluster-proven. The workflow
-preserves `orientation_policy=legacy_provisional_v1`; the all-sites,
+through the shell/fake-R suite. The local real-R fixture suite executes
+without `SKIP`, but its locale-sensitive raw-PDF EOF assertion currently
+fails. The fix belongs to the triggered `step-09b1-real-r-fixes` branch. No
+Step `09` cluster evidence has been inspected, and the step is not
+cluster-proven. The workflow preserves
+`orientation_policy=legacy_provisional_v1`; the all-sites,
 significant-sites, and summary tables record it. The policy is not
 biologically validated.
 

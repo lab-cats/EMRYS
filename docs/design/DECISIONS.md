@@ -106,8 +106,11 @@ Reason: this prevents accidentally submitting placeholder jobs and mistaking sca
 
 Current application: Steps `07`, `08`, and `09` are implemented locally and
 locally tested at their available local boundaries, but none is
-cluster-proven. Step `08` and Step `09` real-R fixture executions remain pending
-because this workstation has no `Rscript`. No currently scoped Step `07`-`09`
+cluster-proven. The Step `08` and Step `09` real-R fixtures now execute
+without `SKIP` under the guarded local runtime, but respectively expose an
+partition-overlap contract defect and a locale-sensitive PDF EOF test defect.
+Both require the triggered `step-09b1-real-r-fixes` package before their
+semantic suites can be called passing. No currently scoped Step `07`-`09`
 entry point is a non-runnable scaffold.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
@@ -656,9 +659,12 @@ contract is exactly 50 rows in partition-manifest order, with `FWD_like` then
 or incomplete transaction, not a harmless presentation change.
 
 Current evidence: this contract is implemented locally at commit `90335d8`.
-The fake-R shell suite passes. The committed real-R fixture suite has not run
-because this workstation lacks `Rscript`; there is no cluster dry-run, execute,
-log, or output evidence, and Step `08` is not cluster-proven.
+The fake-R shell suite passes. The committed real-R fixture suite executes
+without `SKIP` in the guarded local environment but fails the negative
+partition-overlap contract because overlapping partition selectors are unexpectedly
+accepted. The fix is assigned to `step-09b1-real-r-fixes`. There is no cluster
+dry-run, execute, log, or output evidence, and Step `08` is not
+cluster-proven.
 
 ## Step 09 Pairing Comes Only From Explicit Manifest Replicates
 
@@ -757,10 +763,11 @@ set as committed while retaining recoverable evidence when restoration itself
 fails.
 
 Current evidence: this contract is implemented locally at commit `e4371de`.
-The shell/fake-R suite passes. The committed real-R fixture suite reports
-`SKIP` because this workstation lacks `Rscript`; there is no cluster dry-run,
-execute, log, or inspected output evidence, and Step `09` is not
-cluster-proven. It retains
+The shell/fake-R suite passes. The committed real-R fixture suite executes
+without `SKIP` in the guarded local environment but fails a locale-sensitive
+raw-PDF EOF test assertion. The fix is assigned to
+`step-09b1-real-r-fixes`. There is no cluster dry-run, execute, log, or
+inspected output evidence, and Step `09` is not cluster-proven. It retains
 `orientation_policy=legacy_provisional_v1`, which is not biologically
 validated.
 
@@ -774,18 +781,35 @@ scheduler/log evidence, and no owned lock or scratch residue. This
 computational proof does not convert `legacy_provisional_v1` or
 `significant_up`/`significant_down` into biological validation.
 
-## R/Rscript Availability Is Not Decided
+## Local R Is Pinned, Guarded, And Never Bootstrapped By Compute Wrappers
 
-Decision: do not assume final module names or invocation patterns for R/Rscript
-until validated on the cluster.
+Decision: local development uses the official signed and notarized
+Apple-silicon CRAN R `4.6.1` package. Its published SHA-1
+`fc9f4ada15589e8e037b9bf05563d21e97181635` must match before installation.
+Do not use or repair the damaged Homebrew checkout for this runtime.
 
-Step `08` declares `VariantAnnotation`, `GenomicRanges`, `IRanges`,
-`S4Vectors`, `SummarizedExperiment`, `GenomeInfoDb`, `BiocGenerics`, and
-`rtracklayer` as runtime dependencies. Step `09` requires R but uses base R
-only (`stats`, `graphics`, and `grDevices`). The supported R/Rscript path,
-compatible installed package versions, and cluster availability remain
-unresolved. Analysis scripts must fail clearly when dependencies are absent
-and must not install packages automatically.
+The repository pins `renv` `1.2.3` and Bioconductor `3.23`. Its lock records
+the eight direct Step `08` namespaces and their transitive closure:
+`VariantAnnotation`, `GenomicRanges`, `IRanges`, `S4Vectors`,
+`SummarizedExperiment`, `GenomeInfoDb`, `BiocGenerics`, and `rtracklayer`.
+Project-library activation occurs only when `NORAD_USE_RENV=1`; otherwise the
+guarded `.Rprofile` is inert.
+
+Explicit local interfaces are `make r-restore`, `make r-check`, and
+`make local-real-r-test`, with `RSCRIPT_BIN` selecting the executable.
+Restoration/installation is an operator action. Analysis scripts, SLURM
+wrappers, and report renderers must fail clearly when dependencies are absent
+and must never bootstrap or install them. Step `09` uses only base R
+(`stats`, `graphics`, and `grDevices`).
+
+Local acceptance evidence includes normal restore, an empty cache-disabled
+binary restore, all required namespace loads, `BiocManager::valid()`,
+`renv::status()`, and headless PDF creation. The real-R suites execute but
+still require `step-09b1-real-r-fixes` for the two observed test failures.
+
+This decision does not select a CSU module or batch-visible `Rscript`.
+Cluster runtime and package availability remain unresolved and must be proven
+separately.
 
 ## Computational Proof And Scientific Interpretation Are Separate Gates
 
@@ -795,69 +819,91 @@ contracts were inspected. It does not mean its biological orientation,
 annotation interpretation, thresholds, candidate identity, or causal
 interpretation is validated.
 
-After Step `09` runtime proof, a separate descendant scientific
-evidence-and-decision package must review orientation, annotation provenance
-and semantics, predeclared threshold/replicate sensitivity, candidate
-adjudication, and the background-cohort decision. A>G enrichment can support
-but cannot independently prove the orientation mapping. PI review and report
-generation do not constitute orthogonal experimental validation.
+Decision: implement `step-09c-scientific-validation` locally before remote
+promotion as dry-run-first tooling that validates and summarizes explicit
+evidence. It must not rerun CMH, infer human decisions, or claim that synthetic
+fixtures constitute production scientific review. Later production review
+must still inspect orientation, annotation provenance and semantics,
+predeclared threshold/replicate sensitivity, candidate adjudication, and the
+background-cohort decision. A>G enrichment can support but cannot
+independently prove the orientation mapping. PI review and report generation
+do not constitute orthogonal experimental validation.
 
 Reason: computational reproducibility and biological validity answer different
 questions. Keeping the gates distinct prevents a technically correct run from
 being overstated as a validated scientific conclusion.
 
-Decision: post-review status uses two explicit states:
+Decision: Step `09c` may publish only these overall science states:
 
 ```text
+evidence_incomplete
 science_review_complete_exploratory
-biological_interpretation_ready
 ```
 
-The first means evidence/decisions are recorded while the result remains
-provisional. It may permit operational, provenance, and artifact tooling, but
-not biological candidate claims. The second additionally requires a validated
-orientation policy and every stricter scientific exit criterion. Reports must
-render the state and limitations explicitly; they never infer validation from
-review completion.
+`evidence_incomplete` means required evidence or decisions are absent or
+incomplete. `science_review_complete_exploratory` means evidence and decisions
+are recorded while the result remains provisional; it permits only
+exploratory reporting, not biological candidate claims.
+`biological_interpretation_ready` is reserved and Step `09c` must reject it
+until a separately approved scientific-policy branch defines and unlocks all
+stricter exit criteria. Reports must render state and limitations explicitly;
+they never infer validation from review completion.
 
-## Post-Proof Engineering Uses An Ordered, Adapters-First Roadmap
+Evidence categories use `missing`, `incomplete`, `complete`, or justified
+`not_applicable`; orientation uses `provisional`, `validated`, or
+`replacement_required`. Background, matched-DNA, orthogonal-evidence,
+annotation, threshold, and adjudication decisions remain independent
+dimensions.
 
-Decision: after runtime and scientific gates, activate work packages in this
-dependency order. The order is durable; exact package/branch names and
-interfaces remain candidate labels until separately activated:
+## Local Engineering Uses The Approved Report-First Descendant Order
+
+Decision: remote promotion remains paused while local implementation proceeds
+through this exact descendant order:
 
 ```text
-runtime preflight
--> reference provenance
--> storage inventory and approved retention policy
--> step-specific validation reports
--> targeted-rerun planning
--> versioned artifact schema
--> read-only adapters over existing receipts/summaries
--> run-summary aggregation
--> HTML reporting
--> PDF/TSV exports
--> analysis-config contract
--> thin rna_editing_cmh module
--> general core refactor after a second real cohort
--> public-data ingestion
+step-09b-local-r-runtime
+-> step-09b1-real-r-fixes
+-> step-09c-scientific-validation
+-> artifact-schema-v1
+-> artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
+-> post09-runtime-preflight
+-> post09-reference-provenance
+-> post09-storage-inventory-retention
+-> post09-validation-report-00a
+-> post09-validation-report-00b
+-> post09-validation-report-00c
+-> post09-validation-report-01
+-> post09-validation-report-02
+-> post09-validation-report-02b
+-> post09-validation-report-03
+-> post09-validation-report-04
+-> post09-validation-report-05
+-> post09-validation-report-06
+-> post09-validation-report-07
+-> post09-validation-report-08
+-> post09-validation-report-09
 ```
 
-The preflight is read-only and does not install software. Retention policy
-precedes any cleanup. Step-specific validators precede a generic dispatcher.
-Adapters precede native emitter retrofits and preserve proven CLIs/paths.
-Biological candidate reporting requires the scientific-policy gate. Public
-ingestion is last and must produce the same manifest/config/provenance
-contracts.
+The real-R failures trigger `step-09b1-real-r-fixes`; Step `09c` follows only
+after that branch passes its gate. Structured run summaries and HTML/PDF
+reports are immediate, before the three foundational engineering packages.
+Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
+and appears in report fixtures. Each step-specific validator publishes the
+fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
+`detail` schema, adds its adapter, and is proven through the consolidated
+summary/report fixture.
 
-The first three roadmap items mean reusable environment-audit,
-reference-registry, and storage/retention tooling for later runs. The current
-promotion and scientific gates collect their required environment, reference,
-and storage evidence manually before those tools exist.
+No package adds a generic dispatcher, job array, automatic installation,
+automatic cleanup, native compute-side artifact retrofit, report globbing, or
+analysis rerun. Targeted reruns, analysis config, module wrapping, broad
+refactors, and public-data ingestion remain deferred.
 
-Reason: this order extracts trustworthy structure from proven outputs before
-changing computation or adding presentation layers. It also ensures reports
-do not silently infer state by globbing paths or rerun analysis.
+Reason: the report-first slice makes missing and incomplete evidence visible
+early without blocking on remote production evidence, while the later
+validators progressively strengthen the same explicit artifact model.
 
 ## Future Refactors Must Preserve Proven Interfaces
 
@@ -871,25 +917,51 @@ Candidate helper names, config filenames, validator names, Makefile targets, and
 
 Decision: compute steps and report rendering should remain decoupled.
 
-Future pipeline results should be exposed through versioned structured
-artifacts. First define and validate the schema, then build read-only adapters
-over existing receipts/summaries, and only then aggregate them into:
+The immediate artifact slice uses JSON Schema Draft 2020-12 for artifact
+records, scientific-review records, run summaries, and report receipts. An
+explicit expected-artifact inventory supplies every adapter and source path;
+neither adapters nor renderers discover inputs by glob.
 
 ```text
-results/artifacts/run_summary.json
+artifact-schema-v1
+-> read-only artifact-adapters-v1 over existing outputs
+-> artifact-run-summary
 ```
 
-`run_summary.json` is intended to become the report layer's single structured
-input. HTML, PDF, TSV, or other renderers should consume that summary and final
-result tables without rerunning STAR, samtools, Picard, GATK, bcftools, or CMH
-computation and without discovering state by path glob. Candidate/biological
-reports must also carry the approved post-Step-09 scientific policy and may
-not imply that report generation itself validates a candidate.
+A `run_id` identifies one immutable
+manifest/reference/partition/primary-analysis contract. Retries with identical
+inputs receive different `attempt_id` values; input or policy hash changes
+require a new `run_id`. Records model attempts, implementation, local tests,
+runtime validation, cluster validation, warnings/errors, provenance, metrics,
+and scientific state independently. Missing, failed, incomplete, and
+externally unavailable evidence must be represented, not omitted.
 
-This decision does not require immediate retrofitting of currently implemented
-steps. Native artifact emission is optional after adapters prove the schema.
-Artifact adapters, aggregation, and rendering remain planned, deferred, and
-non-runnable until the runtime and scientific gates are complete.
+Canonical, stably ordered `<run_id>.run_summary.json` is the report layer's
+single structured input. It is assembled by read-only adapters over existing
+Step `00a`-`09` and Step `09c` receipts/summaries. Existing compute CLIs and
+paths remain unchanged; native per-step JSON emission is not added.
+
+Decision: reports use checksum-pinned Quarto `1.9.38` with bundled Pandoc and
+Typst. The approved Quarto archive SHA-256 is
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6f18a`.
+`make quarto-restore` is an explicit operator action into ignored local tool
+storage; rendering never installs software. One static QMD consumes the
+validated run summary, runs no analysis code, and produces a self-contained
+HTML report followed by a consolidated HTML/PDF/TSV bundle. The PDF uses
+bundled Typst. Renderers never rerun STAR, samtools, Picard, GATK, bcftools,
+R preprocessing, or CMH and never use external network assets.
+
+Reports must keep computational and scientific status separate and render a
+persistent applicable state banner. `evidence_incomplete` forbids biological
+interpretation; `science_review_complete_exploratory` remains explicitly
+provisional. Candidate rows are “CMH-ranked candidates,” never validated
+editing sites. Full-table truncation records the explicit full-table path and
+hash, and every PDF page carries the state banner. Report generation itself
+is never validation evidence.
+
+At the Step `09b` boundary these packages are approved but unimplemented.
+Only schemas, templates, and synthetic fixtures will be committed; generated
+production reports remain ignored.
 
 ## Documentation Files Have Different Purposes
 

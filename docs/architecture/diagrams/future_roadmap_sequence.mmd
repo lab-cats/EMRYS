@@ -1,31 +1,29 @@
-flowchart LR
+flowchart TB
     classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-    classDef validation fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef science fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
     classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
 
     s09["step-09-cmh<br/>local implementation/docpatch complete"]
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
-    v07["validate-step-07<br/>25 receipts / 50 primary VCFs"]
-    v08["validate-step-08<br/>50 receipt rows / 3 outputs"]
-    v09["validate-step-09<br/>6 reconciled outputs"]
-    science09b["step-09b-scientific-validation<br/>exploratory-complete or interpretation-ready"]
-    operations["operational foundations<br/>preflight -> provenance -> storage/retention<br/>-> validators -> targeted reruns"]
-    artifacts["structured artifacts<br/>schema -> adapters -> run summary"]
-    reports["reporting<br/>HTML -> PDF/TSV exports"]
-    configmodule["analysis config -> thin rna_editing_cmh module"]
-    second["general core refactor<br/>only after a second real cohort"]
-    public["public SRA/GEO/ENA ingestion<br/>last"]
+    rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
+    rfix["step-09b1-real-r-fixes<br/>triggered by two fixture failures"]
+    science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
+    artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
+    reports["report-html-v1<br/>-> report-exports-v1"]
+    foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
+    validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
+    remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
 
-    s09 --> s09a --> v07 --> v08 --> v09 --> science09b
-    science09b --> operations --> artifacts --> reports --> configmodule --> second
-    second -.-> public
+    s09 --> s09a --> rlocal --> rfix --> science09c
+    science09c --> artifacts --> reports --> foundations --> validators
+    validators -.-> remote
 
     class s09 current
     class s09a docs
-    class v07,v08,v09 validation
-    class science09b science
-    class operations,artifacts,reports,configmodule future
-    class second,public deferred
+    class rlocal runtime
+    class rfix,science09c science
+    class artifacts,reports,foundations,validators future
+    class remote deferred

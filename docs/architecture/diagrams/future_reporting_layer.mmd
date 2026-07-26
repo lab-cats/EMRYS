@@ -9,18 +9,18 @@ flowchart TD
         artifacts_tsv["schema-validated artifact index"]
         qc_summary["qc_summary.tsv"]
         provenance["runtime/provenance records"]
-        final_tables["approved final result tables"]
+        final_tables["explicitly approved report-table paths"]
     end
 
     aggregate["Run-summary aggregation"]
     run_summary["run_summary.json"]
-    generator["HTML report generator"]
-    html["Stable HTML report"]
-    exports["PDF / TSV export renderers"]
+    generator["Static QMD / Quarto renderer<br/>no analysis execution"]
+    html["Self-contained HTML report"]
+    exports["Bundled Typst PDF + TSV bundle"]
 
     subgraph review["Scientific review fields"]
         direction TB
-        review_status["review status"]
+        review_status["evidence_incomplete or<br/>science_review_complete_exploratory"]
         orientation_status["orientation policy status/version"]
         annotation_status["annotation provenance status"]
         adjudication_status["candidate adjudication status"]
@@ -31,13 +31,13 @@ flowchart TD
 
     subgraph outputs["Generated reports"]
         direction TB
-        qc_report["QC summary"]
-        validation_report["Preprocessing validation report"]
-        candidate_report["Status-labeled candidate report"]
-        pi_report["Biological-results PI report"]
-        handoff_report["Handoff/operator report"]
-        pdf_output["PDF exports"]
-        tsv_output["TSV exports"]
+        qc_report["QC and funnel summary"]
+        validation_report["Steps 00a-09 evidence matrix"]
+        candidate_report["CMH-ranked candidate section"]
+        pi_report["Status-labeled PI report"]
+        handoff_report["Methods / evidence appendix"]
+        pdf_output["State-bannered PDF"]
+        tsv_output["Run-summary TSV"]
     end
 
     schema --> artifacts_tsv
@@ -64,7 +64,9 @@ flowchart TD
     limitations --> review_record
     review_record --> candidate_report
     review_record --> pi_report
+    readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
+    readylock -.-> review_status
 
-    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record contract
+    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
     class aggregate,generator,html,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting

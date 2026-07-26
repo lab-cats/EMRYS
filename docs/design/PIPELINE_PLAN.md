@@ -66,8 +66,8 @@ it is not an overlay, and pairing is never inferred from names.
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
 | `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
-| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally and shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven | R / Bioconductor |
-| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally at `e4371de` and shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven | base R |
+| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally and shell/fake-R tested; real-R suite executed without `SKIP` but exposed a partition-overlap contract defect; fix pending; no cluster evidence; not cluster-proven | R / Bioconductor |
+| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally and shell/fake-R tested; real-R suite executed without `SKIP` but exposed a locale-sensitive PDF EOF test defect; fix pending; no cluster evidence; not cluster-proven | base R |
 
 ## Validated Outputs And Results
 
@@ -494,9 +494,13 @@ enters those totals or the primary correction universe.
 
 Step `08` is implemented locally at implementation commit `90335d8`. The
 shell wrapper and its publication transaction are locally tested with a fake
-`Rscript`. This workstation has no `Rscript`, so the real-R semantic fixture
-suite has not run. No cluster dry-run, execute job, log, or output evidence has
-been inspected; Step `08` is not cluster-proven.
+`Rscript`. The real-R semantic fixture suite now runs under the guarded local
+R environment without `SKIP`, but it fails its negative partition-overlap
+contract because overlapping partition selectors are unexpectedly accepted. That
+defect triggers the dedicated descendant `step-09b1-real-r-fixes`; do not
+describe Step `08` semantic real-R validation as passing yet. No cluster
+dry-run, execute job, log, or output evidence has been inspected; Step `08` is
+not cluster-proven.
 
 Implemented entry points and active tests:
 
@@ -635,9 +639,10 @@ The active shell test covers wrapper CLI and dry-run behavior, exact input
 enumeration, locks, cleanup, validation, publication order, and rollback with a
 fake R executable. The real-R fixture suite covers semantic VCF/GTF parsing,
 multiallelic mapping, annotation, deterministic ordering, count reconciliation,
-header-only inputs, and strict failures. `make real-r-test` reports `SKIP` on
-this workstation because `Rscript` is unavailable; that skip is not real-R
-validation.
+header-only inputs, and strict failures. It executes without `SKIP` in the
+local pinned runtime, but currently fails the negative partition-overlap case.
+Passing that case and the complete suite is the acceptance condition for
+`step-09b1-real-r-fixes`.
 
 Cluster-proof exit contract: both real-R fixture suites must pass in the same
 supported batch-visible environment used for execution. One successful
@@ -651,10 +656,13 @@ must be `COMPLETED 0:0`; and no owned lock or run-token residue may remain.
 
 Step `09` is implemented locally at implementation commit `e4371de`. The
 shell/fake-R suite and complete local repository gate pass, including 23 Python
-tests and shell tests through Step `09`. The real-R fixture runner reports
-`SKIP` because this workstation has no `Rscript`; that skip is not semantic R
-validation. No cluster dry-run, execute job, log, or output evidence has been
-inspected, and Step `09` is not cluster-proven.
+tests and shell tests through Step `09`. The real-R fixture runner now
+executes without `SKIP` under the guarded local runtime, but its PDF EOF test
+uses locale-sensitive raw-to-text coercion and fails even though the PDF
+contract itself is checked in the engine. That test defect also belongs on
+`step-09b1-real-r-fixes`; do not call the complete real-R suite passing yet.
+No cluster dry-run, execute job, log, or output evidence has been inspected,
+and Step `09` is not cluster-proven.
 
 Implemented entry points and active tests:
 
@@ -813,16 +821,114 @@ and background-disabled state must reconcile; both PDFs must pass `%PDF-` and
 `%%EOF` checks; and no owned lock or run-token residue may remain. This proves
 the computation, not the biological validity of `legacy_provisional_v1`.
 
-## Post-Step 09 Scientific Validation Gate
+## Local R Runtime: Step 09b
 
-This planned evidence-and-decision package is outside the core Steps
-`00a`-`09` computation and is not a runnable Step `10`. It begins only from a
-clean, pushed `validate-step-09` branch with inspected production outputs:
+The `step-09b-local-r-runtime` package establishes a guarded, reproducible
+local R environment without changing any compute wrapper into a package
+installer.
+
+Verified host runtime:
 
 ```text
-validate-step-09
-└── step-09b-scientific-validation
+R: 4.6.1, official CRAN Apple-silicon package
+published SHA-1: fc9f4ada15589e8e037b9bf05563d21e97181635
+signature: valid Developer ID Installer signature
+notarization: accepted
+renv: 1.2.3
+Bioconductor: 3.23
 ```
+
+The repository-local lock contains the eight direct Step `08` namespaces and
+their transitive closure:
+
+```text
+VariantAnnotation
+GenomicRanges
+IRanges
+S4Vectors
+SummarizedExperiment
+GenomeInfoDb
+BiocGenerics
+rtracklayer
+```
+
+Activation is opt-in only:
+
+```text
+NORAD_USE_RENV=1
+```
+
+The guarded `.Rprofile` does not activate the project library otherwise.
+SLURM and compute wrappers never restore, bootstrap, or install packages.
+Explicit local interfaces are:
+
+```text
+RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1 make r-restore
+RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1 make r-check
+RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1 make local-real-r-test
+```
+
+The normal restore and a cache-disabled restore into an empty temporary
+library both passed using binary packages. Namespace loading,
+`BiocManager::valid()`, `renv::status()`, and headless PDF creation also
+passed. The Step `08` and Step `09` real-R suites executed individually
+without `SKIP`, but
+exposed the two defects recorded in their sections above. Therefore the
+runtime itself is installed and checked locally, while semantic acceptance of
+both suites remains pending the triggered `step-09b1-real-r-fixes` package.
+The CSU batch-visible R path and packages remain unresolved. This evidence is
+local only and does not make Steps `07`-`09` cluster-proven.
+
+## Step 09c Scientific-Validation Tooling
+
+The approved `step-09c-scientific-validation` package is outside the core
+Steps `00a`-`09` computation and is not a runnable Step `10`. It follows the
+clean, pushed `step-09b1-real-r-fixes` branch. It is local,
+dry-run-first evidence tooling: it validates and summarizes explicit evidence
+but does not rerun CMH statistics, infer reviewer decisions, or claim
+production scientific validation.
+
+Public interface:
+
+```text
+scripts/step_09c_scientific_validation.sh
+  --review-id REVIEW_ID
+  --sample-manifest SAMPLE_MANIFEST
+  --partition-manifest PARTITION_MANIFEST
+  --step08-sites STEP08_SITES
+  --step08-inputs STEP08_INPUTS
+  --step08-summary STEP08_SUMMARY
+  --step09-analysis-dir STEP09_ANALYSIS_DIR
+  --review-plan REVIEW_PLAN
+  --evidence-manifest EVIDENCE_MANIFEST
+  --output-root OUTPUT_ROOT
+  [--execute]
+```
+
+Atomic output contract:
+
+```text
+results/scientific_validation/<review_id>/
+  <review>.step09c_review_plan.tsv
+  <review>.step09c_evidence_index.tsv
+  <review>.step09c_orientation_locus_audit.tsv
+  <review>.step09c_annotation_audit.tsv
+  <review>.step09c_qc_funnel.tsv
+  <review>.step09c_replicate_effects.tsv
+  <review>.step09c_sensitivity_matrix.tsv
+  <review>.step09c_leave_one_pair_out.tsv
+  <review>.step09c_candidate_selection.tsv
+  <review>.step09c_candidate_adjudication.tsv
+  <review>.step09c_decisions.tsv
+  <review>.step09c_limitations.tsv
+  <review>.step09c_review_summary.tsv
+```
+
+The summary is published last as the transaction marker. Input records include
+paths, SHA-256 hashes, row counts, evidence IDs, analysis IDs, reviewers,
+owners, dates, policy versions, and preregistered selection/sensitivity rules.
+Only schemas, examples, and synthetic fixtures are committed; production
+evidence stays under ignored results storage.
 
 Required evidence categories:
 
@@ -882,21 +988,31 @@ evidence docpatch records compact non-sensitive summaries plus paths and
 hashes; it must not commit biological result TSV snapshots without explicit
 approval.
 
-The gate has two outcomes:
+Step `09c` keeps computational status separate from scientific state.
+Computational status distinguishes implementation, local tests, runtime
+blocking, cluster dry-run, and cluster proof. Evidence-category status is one
+of `missing`, `incomplete`, `complete`, or justified `not_applicable`;
+orientation status is `provisional`, `validated`, or
+`replacement_required`. Background, matched-DNA, orthogonal-evidence,
+annotation, threshold, and adjudication decisions remain separate dimensions.
+
+The only science states Step `09c` may publish are:
 
 ```text
+evidence_incomplete
+  required evidence or decisions remain incomplete
+
 science_review_complete_exploratory
   evidence and decisions recorded; results remain provisional
-
-biological_interpretation_ready
-  runtime proof plus validated orientation policy, accepted annotation
-  provenance/limitations, approved primary thresholds, reviewed replicate
-  sensitivity, candidate adjudication, and recorded background/DNA decisions
 ```
 
-Exploratory completion may unlock operational/provenance/artifact tooling, but
-not biological candidate claims. If the gate changes policy, inputs, or code,
-use this rerun matrix:
+`biological_interpretation_ready` is reserved and Step `09c` must reject it
+until a separate approved scientific-policy branch defines and unlocks its
+exit criteria. Local Step `09c` completion means implemented and
+fixture-tested, not completion of a production scientific review.
+`science_review_complete_exploratory` permits only explicitly provisional
+reporting and never biological candidate claims. If later inspected evidence
+changes policy, inputs, or code, use this rerun matrix:
 
 | Change | Required action |
 | ------ | --------------- |
@@ -943,108 +1059,144 @@ read-orientation/mechanical flag groups. Step `08` records the explicit
 provisional `legacy_provisional_v1` mapping, and Step `09` preserves it.
 Neither implementation nor local testing biologically validates that mapping.
 
-## Future Artifact And Reporting Layer
+## Immediate Artifact, Run-Summary, And Reporting Slice
 
-This layer is planned, deferred, and non-runnable. It is not a new core pipeline step and is not a runnable Step `10`. The existing Steps `00a`-`09` remain the core computational pipeline.
-
-The ordered future separation is:
-
-```text
-proven computation and scientific policy
-    -> artifact-schema-v1
-    -> artifact-adapters-v1 over existing receipts/summaries
-    -> artifact-run-summary
-    -> report-html-v1
-    -> report-exports-v1
-```
-
-The schema must define completed, attempted, failed, missing, incomplete, and
-rerun states plus run IDs, versions, paths, and hashes. Read-only adapters
-come before any native sidecar retrofit and must preserve existing compute
-CLIs and output paths. Native per-step JSON emitters may be considered only
-after the adapters prove the schema. A future layout may look like:
+This layer is now an approved immediate local implementation sequence after
+Step `09c`; it is no longer deferred behind remote promotion. It remains
+outside the core Steps `00a`-`09` computation and none of its packages is a
+runnable Step `10`. At this docpatch boundary the packages below are approved
+but not yet implemented:
 
 ```text
-results/
-  bam/ABE_EV_2/ABE_EV_2.sorted.bam
-  bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai
-
-  artifacts/
-    ABE_EV_2/
-      01_star_align.json
-      02_sort_index.json
-      02b_bam_qc.json
-      03_strandedness.json
-      04_mark_duplicates.json
-      ...
-    run_summary.json
-
-  reports/
-    run_report.html
-    run_report.pdf
-    run_summary.tsv
+artifact-schema-v1
+-> artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
 ```
 
-Future sidecars should use a consistent, versioned JSON schema. The minimum shared fields are expected to include:
+`artifact-schema-v1` defines JSON Schema Draft 2020-12 contracts for artifact
+records, scientific-review records, run summaries, and report receipts. An
+explicit expected-artifact inventory has:
 
 ```text
-schema version
-pipeline version or git commit
-run ID
-step ID/name
-sample ID when applicable
-status
-timing
-inputs
-outputs
-tool names and versions
-resolved parameters
-key metrics
-warnings
-exit status
+artifact_id
+step_id
+scope_type
+scope_id
+adapter
+source_path
+required
 ```
 
-The future aggregation phase should discover or receive expected sidecars, validate schema versions, combine sample-level and run-level information, record missing/failed/incomplete steps explicitly, and write:
+Inputs are never discovered by glob. Execution attempt, implementation, local
+testing, runtime validation, cluster validation, warnings/errors,
+paths/hashes, tools, parameters, metrics, and scientific state remain separate
+fields. A `run_id` identifies an immutable
+manifest/reference/partition/primary-analysis contract. Identical-input
+retries have distinct `attempt_id` values; any input or policy hash change
+requires a new `run_id`.
+
+`artifact-adapters-v1` adds read-only adapters over existing Step `00a`-`09`
+outputs, receipts, summaries, and Step `09c` review records. Missing, failed,
+incomplete, or externally unavailable evidence is emitted explicitly rather
+than omitted. Existing compute CLIs and paths remain unchanged; no native
+per-step JSON retrofit is part of this slice. Atomic outputs are:
 
 ```text
-results/artifacts/run_summary.json
+python scripts/build_artifact_index.py
+  --run-id RUN_ID
+  --inventory INVENTORY_TSV
+  --output-root OUTPUT_ROOT
+  [--execute]
+
+results/artifacts/<run_id>/
+  records/<artifact_id>.json
+  <run_id>.artifacts.tsv
+  <run_id>.artifact_receipt.tsv
 ```
 
-The future report layer should read only structured artifacts and final result tables. It must not require rerunning STAR, samtools, Picard, GATK, bcftools, or CMH computation.
-
-Compute outputs and rendering outputs should stay separate: core steps write BAMs, indexes, metrics, VCF-like tables, and CMH result tables; the reporting layer consumes those outputs plus structured artifacts to produce human-readable summaries.
-
-Initial report targets:
+`artifact-run-summary` consumes the completed artifact receipt and optional
+science-review summary and publishes:
 
 ```text
-results/reports/run_report.html
-results/reports/run_report.pdf
-results/reports/run_summary.tsv
+python scripts/build_run_summary.py
+  --run-id RUN_ID
+  --artifact-receipt ARTIFACT_RECEIPT
+  --output-root OUTPUT_ROOT
+  [--science-review-summary REVIEW_SUMMARY]
+  [--execute]
+
+results/artifacts/<run_id>/
+  <run_id>.run_summary.json
+  <run_id>.run_summary.tsv
+  <run_id>.qc_summary.tsv
+  <run_id>.run_summary_receipt.tsv
 ```
 
-Jinja2 may be a good fit for HTML rendering. Quarto or R Markdown may be useful for publication-quality biological figures and PDF output. The renderer layer should remain replaceable without modifying compute steps.
+Canonical, stably ordered JSON is the report layer's single structured entry
+point. It records every expected step/scope, including missing or incomplete
+states, provenance and hashes, superseded attempts, validation evidence,
+scientific status, limitations, and only explicitly approved report-table
+paths.
 
-Step `09` CMH/editing-site results should eventually receive a richer, domain-specific artifact schema rather than being flattened into generic key/value metrics. That schema may include:
+Reporting uses pinned Quarto `1.9.38` with its bundled Pandoc and Typst. Its
+approved SHA-256 is
+`47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6f18a`.
+The checksum-verified `make quarto-restore` target installs it only into
+ignored local tooling storage; rendering never installs dependencies. One
+static QMD view consumes the validated run summary and contains no
+analysis-executing code. `report-html-v1` first provides self-contained HTML.
+Then `report-exports-v1` extends the same dry-run-first interface to
+`--formats html|pdf|all`, default `all`:
 
 ```text
-comparison definitions
-editing type
-filter thresholds
-site counts
-significant up/down site counts
-effect-size summaries
-coverage summaries
-result-table paths
-plot paths
-annotation/reference metadata
-multiple-testing method
+scripts/render_run_report.sh
+  --run-summary RUN_SUMMARY_JSON
+  --output-root OUTPUT_ROOT
+  --quarto-bin QUARTO_BIN
+  [--formats html|pdf|all]
+  [--execute]
+
+results/reports/<run_id>/
+  <run_id>.run_report.html
+  <run_id>.run_report.pdf
+  <run_id>.run_summary.tsv
+  <run_id>.report_outputs.tsv
 ```
+
+The receipt is published last and records input/output hashes, schema
+versions, renderer version, and report state. PDF rendering uses bundled
+Typst; reports use no external network assets and never invoke analysis
+engines. Reports distinguish computational and scientific status, retain a
+persistent limitations banner, show expected/missing evidence and the
+Step `07`-`09` scientific summaries, and label candidate rows only as
+“CMH-ranked candidates.”
+
+Required report banners are:
+
+```text
+evidence_incomplete:
+  SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.
+
+science_review_complete_exploratory:
+  EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.
+```
+
+The renderer understands the reserved `biological_interpretation_ready` state,
+but Step `09c` cannot produce it. Every PDF page carries the applicable state
+banner. Truncated tables declare the full table's explicit path and hash.
+Generating a run summary or report is never evidence of computational or
+biological validation. Production outputs and reports remain ignored; local
+completion is demonstrated only with synthetic, incomplete, and exploratory
+fixtures until production evidence exists.
 
 ## Future Architecture: Core Preprocessing, Analysis Modules, and Reporting
 
 This architecture is a deferred design direction. It must not block the
-current `step-09a-roadmap-docpatch`, upstream-first runtime promotion, or the
-post-Step-09 scientific evidence gate.
+approved local runtime, scientific-validation, artifact/reporting, and
+validator sequence. Remote promotion is intentionally paused until that local
+sequence is complete.
 
 A compact visual version of this deferred design lives at `docs/architecture/FUTURE_ARCHITECTURE.md`.
 
@@ -1114,12 +1266,17 @@ Bundled analysis modules should conceptually live outside the reusable preproces
 Step `07` now provides the locally tested cohort/partition mpileup boundary,
 Step `08` provides the locally shell/fake-R-tested preprocessing boundary, and
 Step `09` provides the locally shell/fake-R-tested paired-CMH boundary. All
-three reproduce the legacy path conservatively but remain upstream-gated for
-real-runtime and cluster promotion before any major modular refactor.
+three reproduce the legacy path conservatively. The local real-R runtime is
+available, but the Step `08` and Step `09` suites exposed the two pending
+`step-09b1-real-r-fixes` defects. All three remain upstream-gated for remote
+and cluster promotion and are not cluster-proven.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
-Future runs should eventually record the manifest used, analysis config used, git commit, reference version/paths, tool versions, sample set, step statuses, and output paths. Future artifacts should ideally include machine-readable indexes such as:
+The approved artifact vertical slice will record the manifest used, git
+commit, reference and partition identity, tool versions, sample set, step
+statuses, paths, and hashes. Analysis-config work remains deferred. The
+machine-readable indexes are:
 
 ```text
 run_summary.json
@@ -1127,71 +1284,140 @@ artifacts.tsv
 qc_summary.tsv
 ```
 
-The reporting layer should eventually ingest the structured artifact directory and generate configured reports such as QC summaries, preprocessing validation reports, runtime/provenance summaries, assay-specific candidate result reports, and PI/demo summaries.
+The approved reporting layer will ingest the canonical run-summary JSON and
+generate consolidated HTML/PDF plus TSV summaries without executing analysis.
 
 Assay modules should refuse to run when required metadata or config is missing, such as missing condition labels, missing replicate structure, missing contrast definition, missing orientation policy, or inconsistent strandedness assumptions.
 
-## Future Cross-Cutting Engineering Roadmap
+## Approved Foundational Engineering After Reports
 
-Deferred engineering improvements are tracked canonically in `TODO.md`. They
-are not current blockers. Activate them only after runtime and scientific
-gates, in this dependency order. The package IDs below are candidate labels
-until separately approved; the order is fixed. Promotion-specific environment,
-reference, and storage evidence is collected manually now, while these later
-packages productize the checks for future runs/cohorts:
+After the immediate artifact/report slice, the approved local sequence
+continues with three read-only foundation packages:
 
-1. `post09-runtime-preflight`: read-only tool/runtime/package probe; no
-   installation and no replacement for per-step validation.
-2. `post09-reference-provenance`: FASTA/GTF/BED/FAI/DICT/STAR-index identity,
-   checksums, annotation release, and contig agreement.
-3. `post09-storage-inventory-retention`: read-only size/quota/scratch inventory,
-   then an approved retention matrix; no cleanup.
-4. `post09-validation-reports`: step-specific read-only validators first,
-   including Step `00a`/`00b` shell coverage; no generic dispatcher first.
-5. `post09-targeted-reruns`: manifest-driven rerun planning/submission after
-   validators stabilize; arrays only after repeated operational need.
-6. `artifact-schema-v1`, `artifact-adapters-v1`, and
-   `artifact-run-summary`, in that order.
-7. `report-html-v1`, then `report-exports-v1`.
-8. `analysis-config-v1`: manifest=data, config=analysis, with required
-   contrast, replicate, reference, strandedness/orientation, and filter policy.
-9. `rna-editing-cmh-module`: a thin orchestration layer around proven Steps
-   `07`-`09`, preserving existing CLIs/paths and treating Step `06` as an
-   optional prerequisite for orientation-aware modules.
-10. General reusable-core refactoring only after a second real cohort, and
-    public SRA/GEO/ENA ingestion last through the same contracts.
+1. `post09-runtime-preflight`: explicit-profile checks for tools, versions,
+   R packages, hash utilities, and runtime visibility; no installation and no
+   runtime-proof claim.
+2. `post09-reference-provenance`: explicit FASTA/GTF/BED/FAI/DICT/STAR-index
+   inventory, hashes, annotation provenance, and contig agreement; no repair.
+3. `post09-storage-inventory-retention`: explicit storage roots, sizes,
+   capacity/quota evidence, and a validated retention-policy TSV; no deletion,
+   movement, compression, or cleanup.
+
+Each publishes an atomic TSV record, adds a read-only artifact adapter, and is
+represented in consolidated report fixtures.
+
+One dedicated validator branch then follows for each core step:
+
+```text
+post09-validation-report-00a
+post09-validation-report-00b
+post09-validation-report-00c
+post09-validation-report-01
+post09-validation-report-02
+post09-validation-report-02b
+post09-validation-report-03
+post09-validation-report-04
+post09-validation-report-05
+post09-validation-report-06
+post09-validation-report-07
+post09-validation-report-08
+post09-validation-report-09
+```
+
+Every validator is dry-run-first, explicit-input-only, and publishes:
+
+```text
+results/qc/validation/<step>/<scope>.validation.tsv
+```
+
+with fixed columns `step_id`, `scope_id`, `check_id`, `status`, `observed`,
+`expected`, and `detail`. Each branch also adds that step's read-only artifact
+adapter and an end-to-end synthetic fixture proving the validation result is
+represented correctly in the canonical run summary and consolidated
+HTML/PDF. No generic dispatcher, job array, native artifact retrofit, or
+automatic cleanup is added.
+
+Required validator scopes are:
+
+| Step | Required checks |
+| --- | --- |
+| `00a` | STAR index/source identity, contigs, and `sjdbOverhang` |
+| `00b` | BED12 structure, sorting, blocks, and GTF agreement |
+| `00c` | FASTA/FAI/DICT identity and contig agreement |
+| `01` | STAR outputs, logs, BAM, and mapping summary |
+| `02` | BAM/BAI, sorting, read groups, and alignment RG tags |
+| `02b` | quickcheck and flagstat reports |
+| `03` | RSeQC report structure and paired-orientation fractions |
+| `04` | BAM/BAI/metrics, sorting, RG preservation, and duplication metrics |
+| `05` | Parameterize the existing Step `05` output validator |
+| `06` | Orientation outputs and count arithmetic |
+| `07` | Receipts, VCF structure, selectors, hashes, sample order, and counts |
+| `08` | Three-output transaction, schemas, hashes, ordering, uniqueness, and counts |
+| `09` | Six-output transaction, statuses, subsets, spectrum, and PDFs |
+
+Targeted reruns, analysis-config work, module wrapping, general refactoring,
+and public-data ingestion remain deferred beyond this local sequence and
+require separately approved packages.
 
 Every activated package is a linear descendant of the latest clean, pushed
 docpatched branch. An implementation package receives an implementation
 commit plus separate docpatch; a documentation/evidence-only package receives
 one documentation commit, validation, clean-history inspection, and push.
 Premature work includes generic dispatchers/arrays, broad shared-library
-extraction, automatic R installation, unproven tool-path config, automatic
-cleanup/stale-lock deletion, moving proven scripts, report globbing or compute
-reruns, and public importers.
+extraction, automatic package installation inside compute/render wrappers,
+unproven tool-path config, automatic cleanup/stale-lock deletion, moving proven
+scripts, report globbing or compute reruns, and public importers.
 
 ## Current Next Work
 
-1. Before Step `07`, establish the absent-from-this-checkout cluster runtime
-   `samples.tsv` with explicit replicates and one immutable hash; resolve the
-   compute-node `Rscript`/packages/hash utilities and pass both real-R suites;
-   verify Step `06` BAM/BAI inputs, FAI selectors including `MT`,
-   storage/quota, logs, and provisional resources.
-   If repository manifest/config content must change, insert a gated
-   `step-07a-runtime-manifest`-style descendant with a config/validation commit
-   and separate docpatch; do not alter config on the evidence-only
-   `validate-step-07` branch. A byte-identical cluster-local copy is recorded
-   as provenance evidence instead.
-2. Create `validate-step-07` from the clean/pushed
-   `step-09a-roadmap-docpatch`, run pilot then chromosome `1` then the remaining
-   24 primary partitions, meet the 25-receipt/50-VCF exit, evidence-docpatch,
-   and push.
-3. Create `validate-step-08`, meet the three-file/50-row exit,
-   evidence-docpatch, and push.
-4. Create `validate-step-09`, meet the six-file reconciled exit,
-   evidence-docpatch, and push.
-5. Create `step-09b-scientific-validation`, complete the evidence/decision
-   gate above, and only then consider the ordered post-proof packages.
+The exact local descendant history now continues:
+
+```text
+step-09b-local-r-runtime
+└── step-09b1-real-r-fixes
+    └── step-09c-scientific-validation
+        └── artifact-schema-v1
+            └── artifact-adapters-v1
+                └── artifact-run-summary
+                    └── report-html-v1
+                        └── report-exports-v1
+                            └── post09-runtime-preflight
+                                └── post09-reference-provenance
+                                    └── post09-storage-inventory-retention
+                                        └── post09-validation-report-00a
+                                            └── post09-validation-report-00b
+                                                └── post09-validation-report-00c
+                                                    └── post09-validation-report-01
+                                                        └── post09-validation-report-02
+                                                            └── post09-validation-report-02b
+                                                                └── post09-validation-report-03
+                                                                    └── post09-validation-report-04
+                                                                        └── post09-validation-report-05
+                                                                            └── post09-validation-report-06
+                                                                                └── post09-validation-report-07
+                                                                                    └── post09-validation-report-08
+                                                                                        └── post09-validation-report-09
+```
+
+At this boundary only `step-09b-local-r-runtime` is implemented. The
+`step-09b1-real-r-fixes` branch is required next because the real-R suites
+exposed defects; every later package remains approved but unimplemented.
+Remote work stays paused through the final Step `09` validator branch.
+
+When remote work resumes, continue from that final clean branch:
+
+```text
+post09-validation-report-09
+└── validate-step-07
+    └── validate-step-08
+        └── validate-step-09
+            └── validate-step-09c-scientific-evidence
+                └── post09-targeted-reruns
+```
+
+Runtime promotion remains upstream-first. Each remote validation branch must
+regenerate the structured run summary and HTML/PDF report after evidence
+inspection, then record report paths and hashes in its evidence docpatch.
 
 ## Local Validation Gate
 
@@ -1206,15 +1432,21 @@ bash -n jobs/*.slurm
 python -m compileall scripts tests
 python -m pytest
 make shell-test
-make real-r-test
+NORAD_USE_RENV=1 make real-r-test
+make r-check
+# after report-html-v1 exists:
+make report-test
 git status --short
 git diff --name-status
 ```
 
-`make real-r-test` runs the Step `08` and Step `09` suites. Either runner may
-report `SKIP` when the default `Rscript` executable is unavailable; each skip
-is a recorded runtime-validation gap, not a semantic pass. An explicit bad
-runtime override fails.
+For the local pinned runtime, use explicit
+`RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1` or the consolidated
+`make local-real-r-test` target. `make real-r-test` may report `SKIP` only
+when its default R executable is absent; the explicit local runtime must not
+skip. The current real-R suites execute but do not yet pass, which is why
+`step-09b1-real-r-fixes` is mandatory. `make report-test` becomes applicable
+only after `report-html-v1` exists.
 
 ## Known Cluster Notes
 

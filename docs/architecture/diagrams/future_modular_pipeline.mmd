@@ -31,11 +31,11 @@ flowchart LR
         results["Standardized result artifacts"]
     end
 
-    subgraph science["Scientific gate before module generalization"]
+    subgraph science["Scientific evidence and decision records"]
         direction TB
-        proven09["Runtime-proven Step 09 outputs"]
-        science_review["Step 09b scientific review"]
-        decision_record["Review decision record"]
+        declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
+        science_review["Step 09c validation package"]
+        decision_record["Review status + limitations<br/>ready state remains locked"]
     end
 
     subgraph reports["Reporting"]
@@ -53,8 +53,8 @@ flowchart LR
     policy_record --> config
     policy_record --> assays
     backbone --> ready --> assays --> results --> registry --> report_layer --> outputs
-    proven09 --> science_review --> decision_record --> policy_record
-    proven09 --> registry
+    declared09 --> science_review --> decision_record --> policy_record
+    declared09 --> registry
     decision_record --> report_layer
 
     class lab current
@@ -62,5 +62,5 @@ flowchart LR
     class manifest,config,policy_record,decision_record contract
     class backbone,ready future
     class registry contract
-    class assays,results,proven09,science_review future
+    class assays,results,declared09,science_review future
     class report_layer,outputs reporting

@@ -24,13 +24,18 @@ without making biological strand claims. Step `07` is implemented locally and
 mocked-bcftools tested at commit `e68b00c`, but it has no real-bcftools or
 cluster evidence. Step `08` is implemented locally at `90335d8` and
 shell/fake-R tested. Step `09` is implemented locally at `e4371de` and
-shell/fake-R tested. Because this workstation has no `Rscript`, neither real-R
-fixture suite has run. Steps `07`-`09` have no cluster dry-run, execute, log, or
-inspected output evidence and are not cluster-proven. Step `07` remains the
-first later cluster-promotion gate. The Step `09` implementation/docpatch gate
-is complete and pushed at `9ac8307`; the current
-`step-09a-roadmap-docpatch` is a documentation-only descendant and carries no
-new runtime or biological evidence.
+shell/fake-R tested. Signed/notarized Apple-silicon CRAN R `4.6.1` and a
+repository `renv` environment locked to Bioconductor `3.23` are now installed
+locally; activation is guarded by `NORAD_USE_RENV=1`. Namespace, lock,
+headless-PDF, and empty cache-disabled binary restore checks pass.
+
+Both real-R suites execute individually without `SKIP`, but neither is a semantic pass:
+Step `08` exposes a partition-overlap rejection defect, and Step `09` exposes a
+locale-sensitive PDF EOF test assertion. The next branch is therefore
+`step-09b1-real-r-fixes`. Steps `07`-`09` still have no remote dry-run,
+execute, log, or inspected output evidence and are not cluster-proven. Remote
+validation is paused while the approved local scientific-validation,
+artifact/report, foundation, and per-step validator sequence is implemented.
 
 ## PI Decision Brief
 
@@ -38,10 +43,11 @@ new runtime or biological evidence.
 
 The preprocessing and read-orientation backbone is cluster-proven through Step
 `06` across all six samples. Steps `07`-`09` now have locally implemented,
-fake-tool-tested contracts, but none has real-runtime/cluster evidence. Step
-`08` and Step `09` real-R fixture executions are blocked by the absence of
-`Rscript` on this workstation. No downstream editing-site stage is
-cluster-proven.
+fake-tool-tested contracts, but none has cluster evidence. The local R
+environment itself passes its restore, namespace, lock, and PDF checks. Step
+`08` and Step `09` real-R fixtures run without skipping and reveal the two
+specific defects above; neither suite passes yet. No downstream editing-site
+stage is cluster-proven.
 
 ### Evidence table
 
@@ -58,8 +64,8 @@ cluster-proven.
 | `05` SplitNCigarReads | markdup BAM, FASTA/FAI/DICT | split-N-cigar BAM/BAI | `PASS=6`, quickcheck, RG, no scratch files | six-sample cluster-proven |
 | `06` read-orientation split | SplitNCigarReads BAM/BAI | `FWD_like` and `REV_like` BAM/BAI plus orientation counts TSV | All six jobs completed 0:0; quickcheck passed; counts TSVs present; assigned_fraction = 1.000000 and unassigned_records = 0 for all six; cluster validation showed no Step 06 scratch files remaining in the checked Step 06 artifact paths | cluster-proven across all six samples |
 | `07` cohort mpileup | Step `06` FWD_like/REV_like BAM/BAI pairs, sample manifest, partition manifest, FASTA/FAI | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implementation commit `e68b00c`; local Bash 3.2 and mocked-bcftools shell tests | implemented and locally tested; real-bcftools and cluster validation pending; not cluster-proven |
-| `08` VCF preprocessing | exact partition-manifest × `{FWD_like,REV_like}` Step `07` VCF/receipt set, sample manifest, Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implementation commit `90335d8`; local shell/fake-R suite passes; real-R fixtures authored but not run because `Rscript` is unavailable | implemented and locally shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven |
-| `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | four TSVs and two PDFs under `results/editing/<analysis>/` | implementation commit `e4371de`; local shell/fake-R suite and repository gate pass; real-R fixtures authored but not run because `Rscript` is unavailable | implemented and locally shell/fake-R tested; real-R runtime and cluster validation pending; not cluster-proven |
+| `08` VCF preprocessing | exact partition-manifest × `{FWD_like,REV_like}` Step `07` VCF/receipt set, sample manifest, Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implementation commit `90335d8`; shell/fake-R suite passes; real-R suite executes without `SKIP` and exposes partition-overlap rejection | implemented locally; semantic real-R acceptance pending fix; cluster validation pending; not cluster-proven |
+| `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | four TSVs and two PDFs under `results/editing/<analysis>/` | implementation commit `e4371de`; shell/fake-R suite passes; real-R suite executes without `SKIP` and exposes a locale-sensitive PDF EOF test assertion | implemented locally; semantic real-R acceptance pending fix; cluster validation pending; not cluster-proven |
 
 ### PI scientific/QC questions
 
@@ -69,26 +75,24 @@ cluster-proven.
 - What should count as the first biologically useful MVP: orientation-split BAMs, mpileup VCFs, preprocessed editing tables, or CMH-ranked candidate sites?
 - Which filters/thresholds should be treated as legacy-preservation constraints versus PI-guided analysis choices?
 
-### Proposed next 48 hours / next week
+### Approved immediate local sequence
 
-Next 48 hours:
-
-1. Establish the absent-from-this-checkout cluster runtime manifest with the
-   approved replicates and one recorded hash; verify all Step `06` BAM/BAI
-   inputs, `MT`, storage/quota, logs, and provisional resources.
-2. Resolve a compute-node-visible `Rscript`, Step `08` packages, and hash
-   utilities; run both real-R suites in that environment.
-3. Create `validate-step-07` from the clean/pushed Step `09a` roadmap base and
-   begin with its pilot dry-run.
-
-Next week:
-
-1. On `validate-step-07`, run dry-run/pilot/chromosome `1`, estimate storage,
-   then complete 25 primary receipts/50 VCFs.
-2. Evidence-docpatch and push before `validate-step-08`; require its exact
-   50-row/three-output transaction, then docpatch before `validate-step-09`.
-3. Require the Step `09` six-output reconciliation, then begin the separate
-   scientific evidence/decision gate before interpreting biology.
+1. Fix the two observed real-R defects on
+   `step-09b1-real-r-fixes`, then require both Step `08` and Step `09` suites
+   to pass without `SKIP`.
+2. Implement the dry-run-first `step-09c-scientific-validation` evidence
+   package. Its fixture statuses are `evidence_incomplete` or
+   `science_review_complete_exploratory`; it must reject the reserved
+   `biological_interpretation_ready` value.
+3. Implement the immediate reporting slice:
+   `artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
+   `report-html-v1`, and `report-exports-v1`. The synthetic reports must label
+   incomplete/exploratory state and never imply validation.
+4. Implement read-only runtime, reference-provenance, and storage-retention
+   foundations, then one validation-report branch for every pipeline step from
+   `00a` through `09`.
+5. Stop local work at `post09-validation-report-09`. Remote Step `07`-`09`
+   promotion remains paused until then.
 
 ## Pipeline Status
 
@@ -105,8 +109,8 @@ Next week:
 | `05` | SplitNCigarReads | cluster-proven across all six |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | bcftools mpileup | implemented locally and locally tested with mocked bcftools; no real or cluster runtime; not cluster-proven |
-| `08` | VCF preprocessing | implemented locally at `90335d8`; shell/fake-R tested; real-R runtime blocked and cluster validation pending; not cluster-proven |
-| `09` | CMH editing-site calling | implemented locally at `e4371de`; shell/fake-R tested; real-R runtime blocked and cluster validation pending; not cluster-proven |
+| `08` | VCF preprocessing | implemented locally at `90335d8`; shell/fake-R tested; real-R suite runs without `SKIP` but fails partition-overlap rejection; not cluster-proven |
+| `09` | CMH editing-site calling | implemented locally at `e4371de`; shell/fake-R tested; real-R suite runs without `SKIP` but fails a locale-sensitive PDF EOF assertion; not cluster-proven |
 
 Step 06: cluster-proven across all six samples.
 
@@ -127,8 +131,8 @@ Steps `05` and `06` are cluster-proven/cohort-proven across all six samples base
 | `05` SplitNCigarReads | per sample | tens of minutes per sample; observed GATK elapsed examples ~33-40 minutes, with heavier samples longer | GATK-heavy and sensitive to temp-space configuration. |
 | `06` read-orientation split | per sample | about 25-34 minutes per sample; slower EV samples about 33-34 minutes | Preliminary ADAM operational runtimes from the current validation run, not formal benchmarks. |
 | `07` cohort mpileup | per cohort partition, both mechanical orientations | no real runtime measured | Local mocked-bcftools execution only. The long-partition, 8-hour, 1-CPU job request is unvalidated configuration, not observed runtime evidence. |
-| `08` VCF preprocessing | one cohort across all declared partitions and both orientations | no real-R runtime measured | Local shell/fake-R execution only; the real-R fixture runner reported an explicit skip because `Rscript` is unavailable. |
-| `09` paired CMH calling | one analysis across the complete Step `08` candidate universe | no real-R or cluster runtime measured | Local shell/fake-R execution only; the real-R fixture runner reported an explicit skip because `Rscript` is unavailable. |
+| `08` VCF preprocessing | one cohort across all declared partitions and both orientations | fixture runtime executed, but no accepted semantic or production runtime measured | The real-R fixture suite runs locally without `SKIP` and currently fails partition-overlap rejection. |
+| `09` paired CMH calling | one analysis across the complete Step `08` candidate universe | fixture runtime executed, but no accepted semantic or production/cluster runtime measured | The real-R fixture suite runs locally without `SKIP` and currently fails a locale-sensitive PDF EOF assertion. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -328,7 +332,11 @@ orientation_policy=legacy_provisional_v1
 
 The table retains genomic alleles alongside RNA-normalized alleles so this transformation remains auditable. The policy is provisional and is not biologically validated.
 
-Current evidence is limited to implementation commit `90335d8`, passing shell/fake-R wrapper tests, and static/local repository checks. The real-R fixture suite exists but could not execute because this workstation has no `Rscript`. No cluster job, real-R output table, or biological candidate result has been inspected.
+Current evidence includes implementation commit `90335d8`, passing
+shell/fake-R wrapper tests, the guarded local R environment, and a real-R suite
+that executes without `SKIP`. The suite currently fails its partition-overlap
+rejection case, so it is not a semantic pass. No production Step `08` table,
+cluster job, or biological candidate result has been inspected.
 
 ## Step 09 Local Paired-CMH Contract
 
@@ -365,11 +373,12 @@ The summary publishes last as the commit marker. The outputs preserve
 `orientation_policy=legacy_provisional_v1` where applicable; the policy is not
 biologically validated.
 
-Current evidence is limited to implementation commit `e4371de`, passing
-shell/fake-R wrapper tests, 23 passing Python tests, and static/local repository
-checks. The real-R fixture suite exists but could not execute because this
-workstation has no `Rscript`. No Step `09` cluster job, real-R CMH output,
-plot, or biological candidate result has been inspected.
+Current evidence includes implementation commit `e4371de`, passing
+shell/fake-R wrapper tests, 23 passing Python tests, the guarded local R
+environment, and a real-R suite that executes without `SKIP`. The suite
+currently fails a locale-sensitive PDF EOF assertion, so it is not a semantic
+pass. No production Step `09` CMH output, cluster job, plot, or biological
+candidate result has been inspected.
 
 ## Engineering And Reproducibility Features
 
@@ -394,15 +403,21 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - Each implemented step has defined inputs, outputs, validation checks, and cluster execution gates.
 - The pipeline has already produced useful QC signals across all six samples.
 - Real cluster failure modes are being captured as durable troubleshooting/engineering decisions, not ad hoc fixes.
-- The current state is honest: preprocessing and read-orientation splitting are cluster-proven through Step `06`; Step `07` is mocked-bcftools tested locally; Steps `08` and `09` are shell/fake-R tested locally but their real-R fixture runtimes are blocked; none has cluster or biological-result evidence.
+- The current state is honest: preprocessing and read-orientation splitting
+  are cluster-proven through Step `06`; Step `07` is mocked-bcftools tested
+  locally; the Step `08` and Step `09` real-R suites execute individually
+  without `SKIP`
+  but fail at two recorded defects; none has downstream cluster or biological
+  result evidence.
 
 ## Near-Term Roadmap
 
 ### Phase 1 — Rebuild and validate preprocessing backbone
 
 Status: cluster-proven through Step `06` across all six samples. Steps `07`-`09`
-are implemented and locally fake-tool tested but await their real-runtime and
-cluster gates.
+are implemented and locally fake-tool tested. The local R environment is now
+installed and checked, but Step `08`/`09` semantic real-R acceptance awaits
+the triggered fix branch. Cluster gates remain paused.
 
 - Reference prep and STAR index
 - STAR alignment across six samples
@@ -414,25 +429,28 @@ cluster gates.
 
 Current boundary:
 Step `06` is the final cluster-proven preprocessing/read-orientation split
-step and is proven across all six samples. Step `09` is the local code
-boundary; Steps `07`-`09` are not real-runtime validated or cluster-proven.
+step and is proven across all six samples. Step `09` is the compute-code
+boundary; Steps `07`-`09` remain not cluster-proven.
 
 ### Phase 2 — Reproduce legacy editing-site calling workflow
 
 Status: locally implemented. Step `07` is mocked-bcftools tested; Steps `08`
-and `09` are shell/fake-R tested with real-R runtime validation blocked. All
-Step `07`-`09` cluster execution remains pending.
+and `09` are shell/fake-R tested and their real-R suites now execute. The
+Step `08` suite fails partition-overlap rejection, and the Step `09` suite fails a
+locale-sensitive PDF EOF assertion. All Step `07`-`09` remote execution
+remains pending.
 
 - Step `07`: cohort bcftools mpileup per declared partition and mechanical read-orientation group, implemented locally but not run with real bcftools
-- Step `08`: preprocess the exact Step `07` receipt set into deterministic candidate/input/QC tables, implemented locally but not run with real R
-- Step `09`: paired CMH calling across explicit manifest-defined strata, implemented locally but not run with real R
+- Step `08`: preprocess the exact Step `07` receipt set into deterministic candidate/input/QC tables; real-R fixture execution exposed the partition-overlap defect
+- Step `09`: paired CMH calling across explicit manifest-defined strata; real-R fixture execution exposed the PDF-test defect
 - Preserve/control strand and read-orientation assumptions
 - Runtime-validate and cluster-promote each downstream stage in upstream order
 
 ### Phase 3 — Scientific review and refinement
 
-Status: planned as `step-09b-scientific-validation` after runtime promotion;
-requires actual outputs, independent evidence, and PI decisions.
+Status: activated as local `step-09c-scientific-validation` tooling immediately
+after the real-R fixes. It records explicit evidence and decisions without
+rerunning CMH or claiming a production scientific review.
 
 - Validate the flag-group/transcript-strand/RNA-allele mapping independently
   at predeclared plus-strand and minus-strand transcript loci; A>G enrichment
@@ -454,23 +472,34 @@ Before viewing results, freeze the selection rules, sample sizes, sensitivity
 grid/decision thresholds, hashes, git commit, commands/versions, reviewer/date/
 owner, and analysis IDs. `science_review_complete_exploratory` records a
 finished review but keeps results provisional.
-`biological_interpretation_ready` additionally requires a validated
-orientation policy, accepted annotation provenance/limitations, approved
-primary thresholds, reviewed replicate sensitivity, candidate adjudication,
-and background/matched-DNA decisions. This gate is not Step `10` and does not
-itself provide orthogonal experimental validation.
+Step `09c` accepts `evidence_incomplete` or
+`science_review_complete_exploratory`; it must reject the reserved
+`biological_interpretation_ready` value until a separately approved policy
+branch unlocks its stricter exit criteria. This gate is not Step `10` and does
+not itself provide orthogonal experimental validation.
 
-### Phase 4 — Post-proof engineering
+### Phase 4 — Immediate artifacts and reports
 
-Status: deferred until Phases 2 and 3 exit.
+Status: activated after Step `09c`, but not implemented yet.
 
-The approved order is reusable environment-audit, reference-registry, and
-storage/retention tooling; step-specific validation reports; targeted reruns;
-artifact schema/adapters/run summary; HTML then PDF/TSV reporting; analysis
-config; and a thin editing-CMH module. Promotion/science collect the necessary
-environment/reference/storage evidence manually first; later packages
-productize it. Exact package labels remain candidates until activation.
-General refactoring needs a second cohort; public-data ingestion is last.
+The approved order is artifact schema, read-only adapters, canonical run
+summary, self-contained HTML, then bundled-Typst PDF/TSV exports. Reports use
+explicit inventory paths, represent missing/incomplete evidence, and carry a
+persistent scientific-state banner. Candidate rows are “CMH-ranked
+candidates,” never validated editing sites. Report generation is not evidence
+of computational or biological validation.
+
+### Phase 5 — Foundations and per-step validators
+
+Status: activated after report exports, but not implemented yet.
+
+Read-only runtime preflight, reference provenance, and storage
+inventory/retention tooling precede one validation-report branch for each of
+`00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`, `04`, `05`, `06`, `07`, `08`,
+and `09`. Remote validation resumes only after
+`post09-validation-report-09`. Analysis config, module extraction, arrays,
+generic dispatchers, automatic cleanup, and public-data ingestion remain
+deferred.
 
 ## Questions For PI Discussion
 
@@ -487,13 +516,14 @@ General refactoring needs a second cohort; public-data ingestion is last.
 
 ## Next Steps
 
-1. Establish the immutable replicate-bearing runtime manifest and supported
-   batch R/package/hash environment; pass both real-R suites.
-2. Validate Step `07` to 25 primary receipts/50 VCFs, Step `08` to exactly 50
-   receipt rows/three outputs, and Step `09` to six reconciled outputs, with an
-   evidence docpatch and clean push between stages.
-3. Complete the scientific evidence-and-decision gate before biological
-   interpretation or candidate reporting.
+1. Fix the two observed fixture defects on
+   `step-09b1-real-r-fixes` and pass both real-R suites without `SKIP`.
+2. Implement Step `09c`, the artifact schema/adapters/run summary, and the
+   immediate HTML/PDF reporting slice in separate gated descendant branches.
+3. Implement read-only foundations and one validator branch per pipeline step;
+   stop local work at `post09-validation-report-09`.
+4. Resume remote validation later in upstream order. Even then, keep
+   computational proof independent from biological readiness.
 
 ## Demo Talking Points
 
@@ -505,11 +535,19 @@ General refactoring needs a second cohort; public-data ingestion is last.
 - Step `05` is now cohort-proven after final BAM/BAI output inspection.
 - Step `06` preserves read-orientation groups without making unsupported biological strand claims and is cluster-proven across all six samples.
 - Step `07` has local implementation and mocked-test evidence only; no cluster VCFs or biological results are presented.
-- Step `08` has local implementation and shell/fake-R evidence only; no real-R tables, cluster outputs, or biological results are presented.
-- Step `09` has local implementation and shell/fake-R evidence only; no real-R CMH tables/plots, cluster outputs, or biological results are presented.
+- Step `08` real-R fixtures now execute without `SKIP`; the suite exposes an
+  partition-overlap rejection defect and has not passed semantically. No
+  production/cluster table or biological result is presented.
+- Step `09` real-R fixtures now execute without `SKIP`; the suite exposes a
+  locale-sensitive PDF EOF test assertion and has not passed semantically. No
+  production/cluster CMH table, plot, or biological result is presented.
 - Steps `08` and `09` use `orientation_policy=legacy_provisional_v1`, which preserves a legacy mapping but is not biologically validated.
-- The Step `09` local branch gate is complete; the current Step `09a` branch
-  reconciles the roadmap only and adds no runtime evidence.
-- Future cluster proof will establish computation, not biological truth;
+- The signed local R `4.6.1` and guarded `renv`/Bioconductor `3.23`
+  environment pass namespace, lock, headless-PDF, and empty binary restore
+  checks; the next branch fixes the two exposed suite defects.
+- Scientific-validation tooling and immediate consolidated HTML/PDF reporting
+  are activated next, but neither is implemented at this boundary and neither
+  can establish validation.
+- Future cluster proof establishes computation, not biological truth;
   orientation, annotation, robustness, candidate evidence, and background
   eligibility remain a separate science gate.

@@ -141,8 +141,10 @@ grep -n "EXECUTE\|--execute\|dry-run" \
 Step `07` source and mocked local-test evidence may be inspected during the
 demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
 run has been validated. Step `08` and Step `09` source and fake-R wrapper tests
-may also be inspected, but neither has real-R or cluster output evidence. Do
-not demonstrate Step `09` as a biological result.
+may also be inspected. Their real-R suites now execute locally without `SKIP`,
+but the current semantic fixture run fails and is not validation evidence.
+Neither step has cluster output evidence. Do not demonstrate Step `09` as a
+biological result.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -246,13 +248,17 @@ tool probe exit code: 0:0
 
 Step `07` is implemented locally and locally tested with mocked bcftools. The executable probe above confirms tool availability only; no Step `07` cluster dry-run, execute run, or output evidence has been inspected. Step `07` is not cluster-proven.
 
-### Still Unresolved Tools
+### Local R And Unresolved Cluster Runtime
 
-The following have not yet been validated in the rebuilt pipeline:
+The signed Apple-silicon CRAN R `4.6.1` runtime is installed locally and the
+guarded repository `renv` environment is locked to Bioconductor `3.23`. Local
+runtime and package-environment checks pass. The Step `08` and Step `09`
+real-R suites execute individually without `SKIP`, but currently fail semantic fixtures; see
+the local R section and troubleshooting guide.
 
-```text
-R / Rscript
-```
+A supported R/Rscript path and compatible package library visible in the CSU
+batch/compute environment remain unresolved. Local runtime evidence is not
+cluster runtime evidence.
 
 ## Cluster Facts And Quirks
 
@@ -386,11 +392,26 @@ If helpers are not installed, use the manual commands in the next section.
 
 ## Future Operational Helpers
 
-The deferred engineering roadmap in `TODO.md` orders future operational work
-as read-only runtime preflight, reference provenance, storage inventory plus
-approved retention policy, step-specific validation reports, and only then
-manifest-driven targeted reruns. Artifact/reporting/config/module packages
-follow later.
+The approved local descendant roadmap implements scientific-validation tooling
+first, then the reporting vertical slice immediately:
+
+```text
+step-09c-scientific-validation
+-> artifact-schema-v1
+-> artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
+-> post09-runtime-preflight
+-> post09-reference-provenance
+-> post09-storage-inventory-retention
+-> one validation-report branch for each Step 00a through 09
+```
+
+Run summaries and consolidated HTML/PDF reports therefore precede the
+remaining foundational engineering. Remote validation, targeted reruns,
+analysis configuration, module wrapping, job arrays, public-data ingestion,
+publishing infrastructure, and broad refactors remain deferred.
 
 These helpers are roadmap ideas unless their scripts, tests, and runbook commands exist in the repo. Do not treat candidate helper names, config files, Makefile targets, validators, reports, or cleanup utilities as available commands.
 
@@ -454,6 +475,8 @@ python -m compileall scripts tests
 python -m pytest
 make shell-test
 make real-r-test
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
 git status --short
 git diff --name-status
 ```
@@ -465,6 +488,46 @@ override fails. A present runtime with missing Step `08` packages also fails;
 Step `09` uses base R only.
 
 Commit implementation/tests first. Then reread the required project documents, perform the repository-wide documentation consistency pass, rerun this gate, and make the separate documentation-only commit. Require a clean worktree and inspect history before pushing or creating the next descendant stage branch.
+
+### Guarded local R environment
+
+Local R setup is an explicit developer action:
+
+```bash
+cd /Users/elisteiger/dev/norad
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
+```
+
+These targets activate the project library with `NORAD_USE_RENV=1`. The
+tracked lock describes R `4.6.1`, Bioconductor `3.23`, the eight direct Step
+`08` namespaces, and their transitive dependencies. The restore target uses
+the configured release repositories and performs installation only when the
+operator invokes it. Existing analysis scripts, compute wrappers, and future
+renderers never install packages.
+
+The guarded startup contract disables automatic snapshots and the `renv`
+sandbox. The latter avoids a reproduced high-CPU directory-creation loop on
+this macOS/R combination. Do not remove the guard or enable implicit package
+mutation without a separately reviewed change.
+
+Current local evidence:
+
+```text
+R 4.6.1 runtime and all required namespaces load
+BiocManager::valid() passes
+renv::status() reports synchronization
+empty cache-disabled binary restore passes
+headless PDF creation passes
+Step 08 and Step 09 real-R suites execute without SKIP when run individually
+Step 08 fails the partition-overlap fixture and may expose a multiallelic INFO/AD defect
+Step 09 fails its fixture's PDF EOF inspection despite the engine semantic checks otherwise passing
+```
+
+Therefore the environment is locally validated, but Steps `08` and `09` have
+not passed real-R semantic validation. The required next branch is
+`step-09b1-real-r-fixes`; do not proceed directly to Step `09c`.
 
 ## Cluster Execution Pattern
 
@@ -484,7 +547,9 @@ git log --oneline -3
 git push
 ```
 
-Open a cluster shell:
+Remote promotion is currently paused. After local work reaches the clean,
+pushed, docpatched `post09-validation-report-09` branch and remote work is
+explicitly resumed, open a cluster shell:
 
 ```bash
 ssh csu-hpc
@@ -513,6 +578,8 @@ Set `validation_branch` to the exact active gate:
 validate-step-07
 validate-step-08
 validate-step-09
+validate-step-09c-scientific-evidence
+post09-targeted-reruns
 ```
 
 Do not use an unqualified `git pull` and assume the checkout changed branches.
@@ -524,7 +591,7 @@ pushed:
 ```bash
 set -euo pipefail
 
-predecessor=step-09a-roadmap-docpatch
+predecessor=post09-validation-report-09
 next_branch=validate-step-07
 
 git switch "$predecessor"
@@ -536,9 +603,10 @@ git switch -c "$next_branch"
 git push -u origin "$next_branch"
 ```
 
-For later gates, use `validate-step-07` -> `validate-step-08` and then
-`validate-step-08` -> `validate-step-09`. Never create the descendant before
-the predecessor's inspected evidence docpatch, clean-history check, and push.
+For later gates, use `validate-step-07` -> `validate-step-08` ->
+`validate-step-09` -> `validate-step-09c-scientific-evidence` ->
+`post09-targeted-reruns`. Never create the descendant before the predecessor's
+inspected evidence/report docpatch, clean-history check, and push.
 
 Dry-run:
 
@@ -1684,22 +1752,25 @@ Step 07 dry-run
 -> Step 09 evidence docpatch
 ```
 
-Use descendant validation branches:
+Remote promotion is paused during the approved local implementation sequence.
+When it resumes, create validation branches only after the final local
+validator branch is clean, docpatched, and pushed:
 
 ```text
-step-09-cmh
-└── step-09a-roadmap-docpatch
-    └── validate-step-07
-        └── validate-step-08
-            └── validate-step-09
-                └── step-09b-scientific-validation
+post09-validation-report-09
+└── validate-step-07
+    └── validate-step-08
+        └── validate-step-09
+            └── validate-step-09c-scientific-evidence
+                └── post09-targeted-reruns
 ```
 
 Each validation branch receives its inspected evidence/status docpatch,
 clean-status/history check, and push before the next branch is created.
-`step-09a-roadmap-docpatch` is documentation-only and receives one docs commit,
-validation, clean-history inspection, and push. `step-09b` is a later
-scientific evidence/decision gate, not a runnable compute step.
+Each remote validation branch must also regenerate the structured run summary
+and consolidated HTML/PDF report in results storage after evidence inspection,
+then record the report paths and hashes in its evidence docpatch. Cluster proof
+and biological readiness remain independent.
 
 ## Step 08: VCF Preprocessing
 
@@ -1708,7 +1779,8 @@ Status:
 ```text
 implemented locally at implementation commit 90335d8
 locally tested with shell/fake-R coverage
-real-R semantic fixture execution pending because local Rscript is unavailable
+real-R suite executes locally without SKIP
+real-R semantic validation failing; corrective branch required
 cluster validation pending
 not cluster-proven
 ```
@@ -1956,7 +2028,8 @@ Status:
 ```text
 implemented locally at implementation commit e4371de
 locally tested with shell/fake-R coverage
-real-R semantic fixture execution pending because local Rscript is unavailable
+real-R suite executes locally without SKIP
+fixture PDF EOF assertion failing; corrective branch required
 cluster validation pending
 not cluster-proven
 ```
@@ -2264,16 +2337,79 @@ perform an explicit operator recovery before another run.
 Status:
 
 ```text
-planned evidence-and-decision package
-not implemented as a script or SLURM job
-not a runnable Step 10
-requires inspected production Step 09 outputs
+approved local Step 09c evidence-package contract
+not yet implemented at the Step 09b boundary
+production evidence and scientific review remain unavailable
+not a rerun of CMH and not a biological interpretation engine
 ```
 
-Create `step-09b-scientific-validation` only from the clean, pushed
-`validate-step-09` evidence branch. This section is a review checklist, not a
-command interface; do not invent a wrapper, output directory, or submission
-command until an actual evidence package is approved.
+After the required `step-09b1-real-r-fixes` gate passes, create
+`step-09c-scientific-validation` from that clean, pushed, docpatched branch.
+Implement a local dry-run-first Python/shell evidence package with this public
+interface:
+
+```bash
+scripts/step_09c_scientific_validation.sh \
+  --review-id REVIEW_ID \
+  --sample-manifest SAMPLE_MANIFEST \
+  --partition-manifest PARTITION_MANIFEST \
+  --step08-sites STEP08_SITES \
+  --step08-inputs STEP08_INPUTS \
+  --step08-summary STEP08_SUMMARY \
+  --step09-analysis-dir STEP09_ANALYSIS_DIR \
+  --review-plan REVIEW_PLAN \
+  --evidence-manifest EVIDENCE_MANIFEST \
+  --output-root OUTPUT_ROOT
+
+# add --execute only to publish validated evidence records
+```
+
+Execute mode publishes atomically under
+`results/scientific_validation/<review_id>/`:
+
+```text
+<review>.step09c_review_plan.tsv
+<review>.step09c_evidence_index.tsv
+<review>.step09c_orientation_locus_audit.tsv
+<review>.step09c_annotation_audit.tsv
+<review>.step09c_qc_funnel.tsv
+<review>.step09c_replicate_effects.tsv
+<review>.step09c_sensitivity_matrix.tsv
+<review>.step09c_leave_one_pair_out.tsv
+<review>.step09c_candidate_selection.tsv
+<review>.step09c_candidate_adjudication.tsv
+<review>.step09c_decisions.tsv
+<review>.step09c_limitations.tsv
+<review>.step09c_review_summary.tsv
+```
+
+The summary is published last as the transaction marker. The package validates
+and summarizes explicit evidence; it does not rerun CMH statistics, infer
+reviewer decisions, or turn synthetic fixtures into production evidence.
+Only schemas, examples, and synthetic fixtures are committed.
+
+Keep these status dimensions independent:
+
+```text
+computational status:
+  implementation / local tests / runtime blocking /
+  cluster dry-run / cluster proof
+
+overall science status:
+  evidence_incomplete
+  science_review_complete_exploratory
+
+evidence category:
+  missing / incomplete / complete / justified not_applicable
+
+orientation:
+  provisional / validated / replacement_required
+```
+
+`biological_interpretation_ready` is reserved and Step `09c` must reject it
+until a separately approved policy branch unlocks explicit exit criteria.
+Background, matched-DNA, orthogonal-evidence, annotation, threshold, and
+adjudication decisions remain separate explicit dimensions.
 
 Review:
 
@@ -2308,8 +2444,8 @@ matched-DNA availability, and decisions. A>G enrichment is supportive but does
 not independently validate orientation. Candidate review/PI approval is not
 orthogonal experimental validation. Close as
 `science_review_complete_exploratory` when review is complete but results
-remain provisional. Use `biological_interpretation_ready` only with a validated
-orientation policy and all stricter exits.
+remain provisional. Do not emit `biological_interpretation_ready` under the
+current policy.
 
 Keep production-derived audit/adjudication tables in approved results storage.
 Commit only compact non-sensitive summaries, paths, hashes, and decisions

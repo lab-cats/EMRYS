@@ -36,22 +36,34 @@ The intended high-level workflow is:
 | `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
 | `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
 | `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
-| `08` VCF preprocessing | implemented locally and locally shell/fake-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Real-R semantic fixtures are blocked on this workstation because `Rscript` is unavailable; no cluster evidence exists, and this step is not cluster-proven. |
-| `09` CMH editing-site calling | implemented locally and locally shell/fake-R tested | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. The real-R suite is blocked on this workstation because `Rscript` is unavailable; no cluster evidence exists, and this step is not cluster-proven. |
+| `08` VCF preprocessing | implemented locally; shell/fake-R tested; real-R defect exposed | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Its real-R suite executes without `SKIP` but currently fails because overlapping partition selectors are unexpectedly accepted. No cluster evidence exists, and this step is not cluster-proven. |
+| `09` CMH editing-site calling | implemented locally; shell/fake-R tested; real-R fixture defect exposed | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. Its real-R suite executes without `SKIP` but currently fails only at a locale-sensitive PDF EOF fixture assertion. No cluster evidence exists, and this step is not cluster-proven. |
 
 Current demo state:
 
 * Cluster-proven: Steps `00a`-`00c`; Steps `01`-`06` across all six samples.
 * Implemented locally and locally tested: Step `07`, using mocked bcftools rather than a real bcftools runtime.
-* Implemented locally and wrapper-tested: Step `08` at implementation commit `90335d8`, using a fake `Rscript`; the real-R fixtures exist but have not run.
-* Implemented locally and wrapper-tested: Step `09` at implementation commit `e4371de`, using a fake `Rscript`; the real-R fixtures exist but report `SKIP` because no local `Rscript` is available.
+* Local R runtime: official signed/notarized Apple-silicon CRAN R `4.6.1`,
+  verified against published SHA-1
+  `fc9f4ada15589e8e037b9bf05563d21e97181635`, with guarded `renv` `1.2.3`,
+  Bioconductor `3.23`, and the exact eight direct Step `08` namespaces plus
+  their dependency closure.
+* Locally runtime-checked: normal and empty cache-disabled binary restores,
+  namespace loading, `BiocManager::valid()`, `renv::status()`, and headless PDF
+  creation pass.
+* Step `08` real-R fixtures run without `SKIP` but expose an
+  overlapping-output-path failure.
+* Step `09` real-R fixtures run without `SKIP` but expose a locale-sensitive
+  PDF EOF assertion failure.
 * The Step `09` implementation/docpatch gate is complete and pushed at
   `9ac8307`.
 * Documentation-only `step-09a-roadmap-docpatch` records the reconciled
-  roadmap and is the required clean/pushed base for `validate-step-07`.
-* Later cluster promotion begins with Step `07`: dry-run, pilot, one
-  chromosome, then the approved primary-contig manifest. No Step `07` cluster
-  evidence has yet been inspected.
+  roadmap and is the clean/pushed base of `step-09b-local-r-runtime`.
+* The conditional next branch is `step-09b1-real-r-fixes`, followed by local
+  scientific-validation, artifact/run-summary, immediate HTML/PDF reporting,
+  foundational read-only tooling, and one validator branch per pipeline step.
+* Remote promotion is paused. No Step `07` cluster evidence has yet been
+  inspected, and the CSU batch-visible R environment remains unresolved.
 * Not cluster-proven: Steps `07`, `08`, and `09`.
 * No final biological result exists. Even future computational cluster proof
   will leave the provisional orientation policy and candidate interpretation
@@ -120,10 +132,14 @@ Current downstream conclusions must remain bounded:
 * A separate post-Step-09 scientific gate must resolve orientation evidence,
   annotation provenance, sensitivity/replicate robustness, candidate
   adjudication, and the eligible-background decision before interpretation.
+  Its Step `09c` schemas/tooling are now scheduled for immediate local
+  fixture-based implementation; that does not create or complete a production
+  review.
 * `science_review_complete_exploratory` records a completed review while
-  retaining provisional results. Only `biological_interpretation_ready`
-  permits biological interpretation and requires a validated orientation
-  policy plus every stricter scientific exit.
+  retaining provisional results. `biological_interpretation_ready` is the only
+  state that could permit biological interpretation, but it is currently
+  reserved and unavailable until a separately approved policy defines and
+  unlocks its stricter exits.
 
 ## Main Entry Points
 
@@ -131,6 +147,8 @@ Implemented scripts:
 
 ```text
 scripts/validate_manifest.py
+scripts/restore_r_environment.R
+scripts/check_r_environment.R
 scripts/gtf_to_bed12.py
 scripts/step_00c_prepare_gatk_reference.sh
 scripts/step_01_star_align.sh
@@ -191,6 +209,17 @@ tests/r/test_step_09_cmh_editing_site_calling.R
 configs/step_09_pairs.NORAD_EV_PUM1.tsv
 ```
 
+Local R interfaces:
+
+```text
+NORAD_USE_RENV=1 make r-restore RSCRIPT_BIN=/usr/local/bin/Rscript
+NORAD_USE_RENV=1 make r-check RSCRIPT_BIN=/usr/local/bin/Rscript
+NORAD_USE_RENV=1 make local-real-r-test RSCRIPT_BIN=/usr/local/bin/Rscript
+```
+
+The project library is activated only when `NORAD_USE_RENV=1`. Existing
+compute and SLURM wrappers never install or bootstrap packages.
+
 ## Operator Pointers
 
 For operational commands, validation checklists, cluster setup, and per-step run examples, start with `docs/operations/RUNBOOK.md`.
@@ -239,7 +268,7 @@ results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
 results/editing/<analysis>/<analysis>.depth_delta.pdf
 ```
 
-Deferred output families, once their roadmap work is implemented:
+Activated but not yet implemented local-roadmap output families:
 
 ```text
 results/artifacts/
@@ -508,9 +537,11 @@ part of those totals or the correction universe.
 ## Step 08 Current State
 
 Step `08` is implemented locally at implementation commit `90335d8`. Its
-shell wrapper and publication behavior pass active fake-R tests. This
-workstation has no `Rscript`, so the semantic R fixture suite has not run;
-there is also no cluster dry-run, execute job, log, or inspected output
+shell wrapper and publication behavior pass active fake-R tests. Its semantic
+suite now executes locally under the guarded real-R environment without
+`SKIP`, but currently fails because overlapping partition selectors are unexpectedly
+accepted. This observed defect requires `step-09b1-real-r-fixes`; the suite is
+not passing. There is no cluster dry-run, execute job, log, or inspected output
 evidence. Step `08` is not cluster-proven.
 
 Implemented entry points:
@@ -574,10 +605,11 @@ job must be `COMPLETED 0:0`, and no owned lock or run-token residue may remain.
 ## Step 09 Current State
 
 Step `09` is implemented locally at implementation commit `e4371de`. The
-active shell/fake-R suite passes, but the real-R fixture runner reports `SKIP`
-because this workstation has no `Rscript`; a skip is not semantic R
-validation. There is no Step `09` cluster dry-run, execute job, log, or
-inspected output evidence, so the step is not cluster-proven.
+active shell/fake-R suite passes. The real-R fixture runner now executes
+without `SKIP` and currently fails only at a locale-sensitive PDF EOF fixture
+assertion. This requires `step-09b1-real-r-fixes`; the suite is not passing.
+There is no Step `09` cluster dry-run, execute job, log, or inspected output
+evidence, so the step is not cluster-proven.
 
 The full sample manifest is the only pairing source. It must contain
 `replicate`, with exactly one control and one treatment per replicate,
@@ -655,31 +687,63 @@ proof only.
 Use this clean descendant sequence:
 
 ```text
-step-09-cmh
-└── step-09a-roadmap-docpatch
-    └── validate-step-07
-        └── validate-step-08
-            └── validate-step-09
-                └── step-09b-scientific-validation
+step-09b-local-r-runtime
+└── step-09b1-real-r-fixes
+    └── step-09c-scientific-validation
+        └── artifact-schema-v1
+            └── artifact-adapters-v1
+                └── artifact-run-summary
+                    └── report-html-v1
+                        └── report-exports-v1
+                            └── post09-runtime-preflight
+                                └── post09-reference-provenance
+                                    └── post09-storage-inventory-retention
+                                        └── post09-validation-report-00a
+                                            └── post09-validation-report-00b
+                                                └── post09-validation-report-00c
+                                                    └── post09-validation-report-01
+                                                        └── post09-validation-report-02
+                                                            └── post09-validation-report-02b
+                                                                └── post09-validation-report-03
+                                                                    └── post09-validation-report-04
+                                                                        └── post09-validation-report-05
+                                                                            └── post09-validation-report-06
+                                                                                └── post09-validation-report-07
+                                                                                    └── post09-validation-report-08
+                                                                                        └── post09-validation-report-09
 ```
 
-1. Establish the immutable replicate-bearing runtime manifest; resolve the
-   compute-node R/package/hash environment; run both real-R suites; verify all
-   Step `06` BAM/BAI inputs, FASTA/FAI selectors including `MT`, storage/quota,
-   logs, and provisional resources. If tracked manifest/config content must
-   change, insert a gated `step-07a-runtime-manifest`-style package before the
-   evidence-only validation branch.
-2. Promote Step `07`, then Step `08`, then Step `09`, using the numeric exit
-   contracts above. After each stage, commit an inspected evidence/status
-   docpatch, require clean history, and push before branching.
-3. Run `step-09b-scientific-validation` over actual production outputs. It is
-   an evidence-and-decision gate, not Step `10`; any approved policy, GTF,
-   manifest, threshold, or code change reopens the affected implementation,
-   tests, docpatch, and runtime stages.
-4. Only after those gates activate the ordered post-proof engineering
-   packages documented in `TODO.md` and `docs/design/PIPELINE_PLAN.md`.
-   Exploratory review completion may unlock operational/artifact tooling, but
-   biological candidate reports require `biological_interpretation_ready`.
+1. Complete the Step `09b` docpatch honestly: local runtime checks pass, but
+   the two real-R semantic suites do not.
+2. On `step-09b1-real-r-fixes`, correct Step `08` overlapping-partition
+   rejection and the Step `09` locale-sensitive PDF EOF fixture, then pass
+   both real-R suites and the full gate.
+3. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
+   package with synthetic fixtures. It may publish `evidence_incomplete` or
+   `science_review_complete_exploratory`; it must reject the reserved
+   `biological_interpretation_ready` state.
+4. Implement the artifact schema/adapters/run-summary and immediate
+   self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. Reporting is
+   activated but is not implemented at this handoff boundary.
+5. Implement the three read-only foundation packages and then one explicit
+   validator branch for each of `00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`,
+   `04`, `05`, `06`, `07`, `08`, and `09`.
+6. Stop local work after `post09-validation-report-09`.
+
+When remote work resumes, continue only from that final clean branch:
+
+```text
+validate-step-07
+-> validate-step-08
+-> validate-step-09
+-> validate-step-09c-scientific-evidence
+-> post09-targeted-reruns
+```
+
+Each remote validation branch regenerates the structured run summary and
+HTML/PDF report after evidence inspection and records their paths and hashes
+in its evidence docpatch. Remote promotion remains upstream-sequential.
+Cluster proof and biological readiness remain independent.
 
 ## Java And Picard Handoff
 
@@ -710,17 +774,21 @@ cd /Users/elisteiger/dev/norad
 git diff --check
 bash -n scripts/*.sh
 bash -n jobs/*.slurm
-python -m compileall scripts tests
-python -m pytest
+.venv/bin/python -m compileall scripts tests
+.venv/bin/python -m pytest
 make shell-test
-make real-r-test
+NORAD_USE_RENV=1 make r-check RSCRIPT_BIN=/usr/local/bin/Rscript
+NORAD_USE_RENV=1 make local-real-r-test RSCRIPT_BIN=/usr/local/bin/Rscript
 git status --short
 git diff --name-status
 ```
 
 Local tests are lightweight and should not require real full-size BAM/FASTQ
-data. `make real-r-test` reports `SKIP` when the default `Rscript` is absent;
-that skip is not semantic R validation.
+data. Bare `python` is absent on this workstation, so the passing Python gate
+uses the existing project `.venv`. The R environment check passes. The two
+real-R runners execute without `SKIP` but currently expose the Step `08` and
+Step `09` defects recorded above; the conditional fix branch must make both
+suites pass before Step `09c`.
 
 ## Development Rule
 

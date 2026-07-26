@@ -1,22 +1,26 @@
 # Future Planned Architecture
 
-This page describes a deferred target architecture. It is not the current
-implementation contract. The current pipeline is documented in
-`docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step
-`06`; Steps `07`-`09` are implemented and tested at their available local
-boundaries but are not cluster-proven; and the Step `08` and Step `09` real-R
-fixture suites are runtime-blocked because this workstation has no `Rscript`.
-The Step `09` implementation/docpatch gate is complete and pushed at
-`9ac8307`; the current `step-09a-roadmap-docpatch` is documentation-only and
-has no runtime or biological evidence.
+This page describes the activated local roadmap beyond the current compute
+pipeline. It is not a claim that its tooling already exists. The current
+pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the
+cluster-proven boundary remains Step `06`, and Steps `07`-`09` remain not
+cluster-proven.
+
+The local runtime boundary has moved. Signed and notarized Apple-silicon CRAN
+R `4.6.1` is installed, and the repository has a guarded `renv` environment
+locked to Bioconductor `3.23`. Namespace, lock, headless-PDF, and empty
+cache-disabled binary restore checks pass. The Step `08` and Step `09` real-R
+suites execute without `SKIP`, but they currently expose a partition-overlap
+rejection defect and a locale-sensitive PDF EOF test assertion, respectively.
+The triggered `step-09b1-real-r-fixes` branch is therefore next.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de` and shell/fake-R tested locally, with real-R runtime validation blocked; none has cluster evidence | Assay-specific modules consuming validated artifacts |
-| Reporting | Demo/QC docs and generated step artifacts | Configurable report generation from artifact indexes |
+| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, with real-R suites now executable but two open fixture defects; none has cluster evidence | Scientific-validation tooling followed by later assay-specific modules |
+| Reporting | Handwritten demo/QC docs and generated step artifacts | Activated immediate artifact schema, adapters, run summary, self-contained HTML, and bundled-Typst PDF/TSV reports; not yet implemented |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
 ## Ordered roadmap boundary
@@ -24,44 +28,72 @@ has no runtime or biological evidence.
 Standalone source: `docs/architecture/diagrams/future_roadmap_sequence.mmd`.
 
 ```mermaid
-flowchart LR
+flowchart TB
     classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-    classDef validation fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
     classDef science fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
     classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
 
     s09["step-09-cmh<br/>local implementation/docpatch complete"]
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
-    v07["validate-step-07<br/>25 receipts / 50 primary VCFs"]
-    v08["validate-step-08<br/>50 receipt rows / 3 outputs"]
-    v09["validate-step-09<br/>6 reconciled outputs"]
-    science09b["step-09b-scientific-validation<br/>exploratory-complete or interpretation-ready"]
-    operations["operational foundations<br/>preflight -> provenance -> storage/retention<br/>-> validators -> targeted reruns"]
-    artifacts["structured artifacts<br/>schema -> adapters -> run summary"]
-    reports["reporting<br/>HTML -> PDF/TSV exports"]
-    configmodule["analysis config -> thin rna_editing_cmh module"]
-    second["general core refactor<br/>only after a second real cohort"]
-    public["public SRA/GEO/ENA ingestion<br/>last"]
+    rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
+    rfix["step-09b1-real-r-fixes<br/>triggered by two fixture failures"]
+    science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
+    artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
+    reports["report-html-v1<br/>-> report-exports-v1"]
+    foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
+    validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
+    remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
 
-    s09 --> s09a --> v07 --> v08 --> v09 --> science09b
-    science09b --> operations --> artifacts --> reports --> configmodule --> second
-    second -.-> public
+    s09 --> s09a --> rlocal --> rfix --> science09c
+    science09c --> artifacts --> reports --> foundations --> validators
+    validators -.-> remote
 
     class s09 current
     class s09a docs
-    class v07,v08,v09 validation
-    class science09b science
-    class operations,artifacts,reports,configmodule future
-    class second,public deferred
+    class rlocal runtime
+    class rfix,science09c science
+    class artifacts,reports,foundations,validators future
+    class remote deferred
 ```
 
-Every branch is a clean descendant. The three validation branches require
-inspected runtime evidence and an evidence docpatch before continuing.
-`step-09b-scientific-validation` is a separate scientific-policy gate, not a
-runnable Step `10`. Only after it exits may the ordered operational,
-artifact/reporting, config/module, and generalization packages begin.
+Every branch is a clean, docpatched descendant. The complete local lineage is:
+
+```text
+step-09b-local-r-runtime
+-> step-09b1-real-r-fixes
+-> step-09c-scientific-validation
+-> artifact-schema-v1
+-> artifact-adapters-v1
+-> artifact-run-summary
+-> report-html-v1
+-> report-exports-v1
+-> post09-runtime-preflight
+-> post09-reference-provenance
+-> post09-storage-inventory-retention
+-> post09-validation-report-00a
+-> post09-validation-report-00b
+-> post09-validation-report-00c
+-> post09-validation-report-01
+-> post09-validation-report-02
+-> post09-validation-report-02b
+-> post09-validation-report-03
+-> post09-validation-report-04
+-> post09-validation-report-05
+-> post09-validation-report-06
+-> post09-validation-report-07
+-> post09-validation-report-08
+-> post09-validation-report-09
+```
+
+The `step-09b1-real-r-fixes` package was inserted because real-R execution
+found two defects. Step `09c` validates and summarizes declared evidence; it
+does not rerun CMH or infer review decisions. Reports move before the
+foundation/validator packages and are immediate, activated work, but they
+remain unimplemented at this boundary. Remote validation is paused until the
+final local validator branch.
 
 ## Future modular dataflow
 
@@ -101,11 +133,11 @@ flowchart LR
         results["Standardized result artifacts"]
     end
 
-    subgraph science["Scientific gate before module generalization"]
+    subgraph science["Scientific evidence and decision records"]
         direction TB
-        proven09["Runtime-proven Step 09 outputs"]
-        science_review["Step 09b scientific review"]
-        decision_record["Review decision record"]
+        declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
+        science_review["Step 09c validation package"]
+        decision_record["Review status + limitations<br/>ready state remains locked"]
     end
 
     subgraph reports["Reporting"]
@@ -123,8 +155,8 @@ flowchart LR
     policy_record --> config
     policy_record --> assays
     backbone --> ready --> assays --> results --> registry --> report_layer --> outputs
-    proven09 --> science_review --> decision_record --> policy_record
-    proven09 --> registry
+    declared09 --> science_review --> decision_record --> policy_record
+    declared09 --> registry
     decision_record --> report_layer
 
     class lab current
@@ -132,7 +164,7 @@ flowchart LR
     class manifest,config,policy_record,decision_record contract
     class backbone,ready future
     class registry contract
-    class assays,results,proven09,science_review future
+    class assays,results,declared09,science_review future
     class report_layer,outputs reporting
 ```
 
@@ -152,7 +184,7 @@ flowchart TD
         manifest["Manifest<br/>what data exist"]
         config["Analysis config<br/>what analysis to run"]
         policy["Predeclared analysis policy<br/>contrast / orientation / thresholds"]
-        review["Review decision/status record<br/>interpretation + limitations"]
+        review["Step 09c review record<br/>state + decisions + limitations"]
         provenance["Provenance<br/>what code/reference/tools produced results"]
         registry["Artifact registry<br/>what outputs exist and where"]
     end
@@ -161,7 +193,7 @@ flowchart TD
         direction TB
         fastqs["Validated FASTQ inputs"]
         ready["Validated analysis-ready artifacts"]
-        existing["Existing Step 07 receipts<br/>Step 08 receipt/summary<br/>Step 09 summary"]
+        existing["Declared Step 00a-09 artifacts<br/>missing/incomplete represented explicitly"]
     end
 
     subgraph modules["Assay module execution"]
@@ -182,7 +214,7 @@ flowchart TD
     existing --> adapters
     existing --> review
     provenance --> registry
-    registry --> reports["Report-ready artifact index"]
+    registry --> reports["Run-summary JSON<br/>single structured report entry point"]
     review --> reports
 
     class manifest,config,policy,review,provenance,registry contract
@@ -207,18 +239,18 @@ flowchart TD
         artifacts_tsv["schema-validated artifact index"]
         qc_summary["qc_summary.tsv"]
         provenance["runtime/provenance records"]
-        final_tables["approved final result tables"]
+        final_tables["explicitly approved report-table paths"]
     end
 
     aggregate["Run-summary aggregation"]
     run_summary["run_summary.json"]
-    generator["HTML report generator"]
-    html["Stable HTML report"]
-    exports["PDF / TSV export renderers"]
+    generator["Static QMD / Quarto renderer<br/>no analysis execution"]
+    html["Self-contained HTML report"]
+    exports["Bundled Typst PDF + TSV bundle"]
 
     subgraph review["Scientific review fields"]
         direction TB
-        review_status["review status"]
+        review_status["evidence_incomplete or<br/>science_review_complete_exploratory"]
         orientation_status["orientation policy status/version"]
         annotation_status["annotation provenance status"]
         adjudication_status["candidate adjudication status"]
@@ -229,13 +261,13 @@ flowchart TD
 
     subgraph outputs["Generated reports"]
         direction TB
-        qc_report["QC summary"]
-        validation_report["Preprocessing validation report"]
-        candidate_report["Status-labeled candidate report"]
-        pi_report["Biological-results PI report"]
-        handoff_report["Handoff/operator report"]
-        pdf_output["PDF exports"]
-        tsv_output["TSV exports"]
+        qc_report["QC and funnel summary"]
+        validation_report["Steps 00a-09 evidence matrix"]
+        candidate_report["CMH-ranked candidate section"]
+        pi_report["Status-labeled PI report"]
+        handoff_report["Methods / evidence appendix"]
+        pdf_output["State-bannered PDF"]
+        tsv_output["Run-summary TSV"]
     end
 
     schema --> artifacts_tsv
@@ -262,8 +294,10 @@ flowchart TD
     limitations --> review_record
     review_record --> candidate_report
     review_record --> pi_report
+    readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
+    readylock -.-> review_status
 
-    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record contract
+    class schema,run_summary,artifacts_tsv,qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
     class aggregate,generator,html,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting
 ```
@@ -275,57 +309,70 @@ flowchart TD
 * Reporting should consume standardized artifact indexes rather than guessing file paths.
 * Artifact schemas and read-only adapters should precede native emitter
   retrofits.
+* Missing, failed, incomplete, and externally unavailable evidence should be
+  represented explicitly, never omitted by glob discovery.
 * Operational/QC reports may describe computational evidence. Candidate
   reports may consume an exploratory review record only when they render that
-  state and limitations explicitly; biological claims require
-  `biological_interpretation_ready`.
+  state and limitations explicitly. Step `09c` rejects the reserved
+  `biological_interpretation_ready` state until a separate approved policy
+  branch unlocks its exit criteria.
+* Report generation never establishes computational validation, scientific
+  review completion, or biological truth.
 * Public datasets should enter through the same manifest/config/provenance model as lab-generated data.
 * Invalid states should be refused loudly, especially missing contrasts, missing replicate structure, missing orientation policy, or inconsistent strandedness assumptions.
 * Strand/orientation interpretation should stay explicit and PI-approved.
 
 The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
 
-Ordered post-proof packages (candidate labels until each package is separately
-activated; dependency order fixed):
+Activated local packages (each remains unimplemented until its own branch;
+dependency order fixed):
 
 ```text
-post09-runtime-preflight
--> post09-reference-provenance
--> post09-storage-inventory-retention
--> post09-validation-reports
--> post09-targeted-reruns
+step-09b1-real-r-fixes
+-> step-09c-scientific-validation
 -> artifact-schema-v1
 -> artifact-adapters-v1
 -> artifact-run-summary
 -> report-html-v1
 -> report-exports-v1
--> analysis-config-v1
--> rna-editing-cmh-module
--> reusable-core refactor after a second real cohort
--> public SRA/GEO/ENA ingestion
+-> post09-runtime-preflight
+-> post09-reference-provenance
+-> post09-storage-inventory-retention
+-> post09-validation-report-00a
+-> post09-validation-report-00b
+-> post09-validation-report-00c
+-> post09-validation-report-01
+-> post09-validation-report-02
+-> post09-validation-report-02b
+-> post09-validation-report-03
+-> post09-validation-report-04
+-> post09-validation-report-05
+-> post09-validation-report-06
+-> post09-validation-report-07
+-> post09-validation-report-08
+-> post09-validation-report-09
 ```
 
-The preflight and storage inventory are read-only; no automatic installation
-or cleanup is implied. Step-specific validators come before a generic
-dispatcher. Job arrays require demonstrated repeated need. The module is a
-thin wrapper that preserves proven Step `07`-`09` CLIs and paths. General
-refactoring needs a second cohort, and public ingestion comes last through the
-same manifest/config/provenance contracts.
+The preflight, reference inventory, and storage inventory are read-only; no
+automatic installation, repair, or cleanup is implied. Each step validator
+uses explicit inputs and its own branch; no generic dispatcher or job array is
+part of this sequence. Analysis config, module extraction, generalized
+orchestration, public-data ingestion, and broad refactors remain deferred.
 
-Promotion-specific environment, reference, and storage evidence is collected
-manually now. The first three later packages productize those checks into
-reusable tooling for future runs/cohorts; their later position does not defer
-the current runbook prerequisites.
+When remote work resumes after `post09-validation-report-09`, promotion remains
+upstream-sequential through `validate-step-07`, `validate-step-08`,
+`validate-step-09`, and `validate-step-09c-scientific-evidence`, followed only
+by targeted reruns. Every remote evidence branch regenerates the structured
+run summary and reports after evidence inspection.
 
-## Deferred implementation note
+## Implementation-boundary note
 
-This architecture is deferred. Steps `07`-`09` are now implemented locally;
-the documentation-only `step-09a-roadmap-docpatch` is the clean/pushed roadmap
-boundary. Cluster promotion begins with Step `07` and proceeds sequentially
-through Steps `08` and `09`, with
-evidence docpatches between stages, followed by
-`step-09b-scientific-validation`. The ordered packages above remain
-non-runnable until activated. Do not preempt them with generic dispatchers,
-arrays, broad helper-library extraction, automatic R installation, unproven
-tool-path config, cleanup/lock deletion, report globbing/recomputation, moving
-proven scripts, or public-data import.
+Only the local R environment is implemented at this boundary; its two
+environment/restore checks pass, while the Step `08` and Step `09` semantic
+real-R suites still fail at the recorded defects. The remaining activated
+packages above are plans, not runnable commands. Reports are immediate work,
+but no generated report may be presented as production evidence or biological
+interpretation. Do not preempt the branch sequence with remote validation,
+generic dispatchers, arrays, broad helper extraction, automatic R-package
+installation in compute wrappers, cleanup/lock deletion, report
+globbing/recomputation, moved compute CLIs, or public-data import.
