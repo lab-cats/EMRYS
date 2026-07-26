@@ -898,9 +898,9 @@ step-09b-local-r-runtime
 -> post09-validation-report-09
 ```
 
-The completed local `step-09b1-real-r-fixes` package makes Step `09c` the next
-descendant after its docpatch and clean/push gate. Structured run summaries
-and HTML/PDF reports are immediate, before the three foundational engineering
+The local `step-09b1-real-r-fixes` package is complete and pushed at docpatch
+`859aba2`, making Step `09c` the next descendant. Structured run summaries and
+HTML/PDF reports are immediate, before the three foundational engineering
 packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the

@@ -79,20 +79,22 @@ evidence, and none is cluster-proven.
 
 ### Approved immediate local sequence
 
-1. Complete the `step-09b1-real-r-fixes` docpatch and clean/push gate; both
-   Step `08` and Step `09` real-R suites pass locally without `SKIP`.
-2. Implement the dry-run-first `step-09c-scientific-validation` evidence
+The `step-09b1-real-r-fixes` branch is complete and pushed at docpatch
+`859aba2`; both Step `08` and Step `09` real-R suites pass locally without
+`SKIP`.
+
+1. Implement the dry-run-first `step-09c-scientific-validation` evidence
    package. Its fixture statuses are `evidence_incomplete` or
    `science_review_complete_exploratory`; it must reject the reserved
    `biological_interpretation_ready` value.
-3. Implement the immediate reporting slice:
+2. Implement the immediate reporting slice:
    `artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
    `report-html-v1`, and `report-exports-v1`. The synthetic reports must label
    incomplete/exploratory state and never imply validation.
-4. Implement read-only runtime, reference-provenance, and storage-retention
+3. Implement read-only runtime, reference-provenance, and storage-retention
    foundations, then one validation-report branch for every pipeline step from
    `00a` through `09`.
-5. Stop local work at `post09-validation-report-09`. Remote Step `07`-`09`
+4. Stop local work at `post09-validation-report-09`. Remote Step `07`-`09`
    promotion remains paused until then.
 
 ## Pipeline Status
@@ -515,13 +517,14 @@ deferred.
 
 ## Next Steps
 
-1. Complete the `step-09b1-real-r-fixes` docpatch and clean/push gate; both
-   real-R suites pass locally without `SKIP`.
-2. Implement Step `09c`, the artifact schema/adapters/run summary, and the
+The `step-09b1-real-r-fixes` branch is complete and pushed at docpatch
+`859aba2`; both real-R suites pass locally without `SKIP`.
+
+1. Implement Step `09c`, the artifact schema/adapters/run summary, and the
    immediate HTML/PDF reporting slice in separate gated descendant branches.
-3. Implement read-only foundations and one validator branch per pipeline step;
+2. Implement read-only foundations and one validator branch per pipeline step;
    stop local work at `post09-validation-report-09`.
-4. Resume remote validation later in upstream order. Even then, keep
+3. Resume remote validation later in upstream order. Even then, keep
    computational proof independent from biological readiness.
 
 ## Demo Talking Points

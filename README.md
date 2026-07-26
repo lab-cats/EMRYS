@@ -15,7 +15,7 @@ The uploaded legacy workflow is treated as a protocol reference, not as producti
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
 approved immediate local implementation sequence. It will consume explicit,
 versioned pipeline artifacts without rerunning computation. At the current
-Step `09b1` boundary that layer is activated but not yet implemented.
+completed Step `09b1` boundary that layer is activated but not yet implemented.
 
 ## Current Status
 
@@ -420,7 +420,7 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the Step `09b1` boundary the R environment
+uses the existing `.venv`. At the completed Step `09b1` boundary the R environment
 check, both Step `08` and Step `09` real-R runners, and the aggregate
 `local-real-r-test` pass without `SKIP`. The complete shell, Python, R, and
 `r-check` gates pass locally. These checks use synthetic fixtures and do not

@@ -792,10 +792,10 @@ cluster runtime and output evidence remain pending
 ```
 
 These passes establish local fixture behavior only. They do not prove CSU
-batch visibility, production input behavior, or cluster outputs. The next
-descendant is `step-09c-scientific-validation` only after the current
+batch visibility, production input behavior, or cluster outputs. The
 `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
-complete.
+complete at docpatch `859aba2`; the next descendant is
+`step-09c-scientific-validation`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 

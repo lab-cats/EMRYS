@@ -529,9 +529,9 @@ Step 09 validates the PDF EOF marker by scanning raw bytes
 
 Therefore the guarded environment and both semantic fixture suites are
 validated locally. This does not validate production data, establish CSU
-batch/compute visibility, or make Steps `08` or `09` cluster-proven. After the
-`step-09b1-real-r-fixes` documentation, clean-history, and push gate, the next
-descendant is `step-09c-scientific-validation`.
+batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
+`step-09b1-real-r-fixes` branch is complete and pushed at docpatch `859aba2`;
+the next descendant is `step-09c-scientific-validation`.
 
 ## Cluster Execution Pattern
 
@@ -2359,10 +2359,10 @@ production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
 ```
 
-After the current `step-09b1-real-r-fixes` documentation, clean-history, and
-push gate passes, create `step-09c-scientific-validation` from that completed
-branch. Implement a local dry-run-first Python/shell evidence package with
-this public interface:
+The `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
+complete at docpatch `859aba2`. Create `step-09c-scientific-validation` from
+that completed branch and implement a local dry-run-first Python/shell evidence
+package with this public interface:
 
 ```bash
 scripts/step_09c_scientific_validation.sh \

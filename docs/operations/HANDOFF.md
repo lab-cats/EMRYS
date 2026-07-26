@@ -722,19 +722,21 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-1. Complete the Step `09b1` docpatch and clean/push gate. Its implementation
-   commit is `eae5eca`; both real-R suites and the complete local gate pass.
-2. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
+The Step `09b1` branch is complete and pushed: implementation `eae5eca`,
+docpatch `859aba2`, with both real-R suites and the complete local gate
+passing.
+
+1. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
    package with synthetic fixtures. It may publish `evidence_incomplete` or
    `science_review_complete_exploratory`; it must reject the reserved
    `biological_interpretation_ready` state.
-3. Implement the artifact schema/adapters/run-summary and immediate
+2. Implement the artifact schema/adapters/run-summary and immediate
    self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. Reporting is
    activated but is not implemented at this handoff boundary.
-4. Implement the three read-only foundation packages and then one explicit
+3. Implement the three read-only foundation packages and then one explicit
    validator branch for each of `00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`,
    `04`, `05`, `06`, `07`, `08`, and `09`.
-5. Stop local work after `post09-validation-report-09`.
+4. Stop local work after `post09-validation-report-09`.
 
 When remote work resumes, continue only from that final clean branch:
 
@@ -794,8 +796,8 @@ data. Bare `python` is absent on this workstation, so the passing Python gate
 uses the existing project `.venv`. The R environment check passes. The two
 real-R runners and the aggregate local R target pass without `SKIP` after
 `eae5eca`; the shell, Python, and `r-check` gates also pass locally. This is
-synthetic/local evidence only. Step `09c` follows after this docpatch branch is
-clean and pushed.
+synthetic/local evidence only. The Step `09b1` docpatch branch is clean and
+pushed at `859aba2`, and Step `09c` is next.
 
 ## Development Rule
 

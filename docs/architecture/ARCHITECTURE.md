@@ -350,24 +350,25 @@ of computational or biological validation.
 
 ## What Remains
 
-1. Complete the `step-09b1-real-r-fixes` docpatch and clean/push gate; its
-   implementation commit is `eae5eca`, and both real-R suites pass locally.
-2. Implement `step-09c-scientific-validation` as local, explicit-input,
+The `step-09b1-real-r-fixes` branch is complete and pushed: implementation
+`eae5eca`, docpatch `859aba2`, with both real-R suites passing locally.
+
+1. Implement `step-09c-scientific-validation` as local, explicit-input,
    dry-run-first evidence tooling. Fixture completion can produce
    `evidence_incomplete` or `science_review_complete_exploratory`; it cannot
    produce `biological_interpretation_ready`.
-3. Implement the immediate report vertical slice in order:
+2. Implement the immediate report vertical slice in order:
    `artifact-schema-v1`, `artifact-adapters-v1`,
    `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`.
    Synthetic/incomplete reports must carry their state banners and must not be
    presented as validation evidence.
-4. Implement the read-only foundations
+3. Implement the read-only foundations
    `post09-runtime-preflight`, `post09-reference-provenance`, and
    `post09-storage-inventory-retention`.
-5. Add one descendant validation-report branch for each of `00a`, `00b`,
+4. Add one descendant validation-report branch for each of `00a`, `00b`,
    `00c`, `01`, `02`, `02b`, `03`, `04`, `05`, `06`, `07`, `08`, and `09`,
    ending local work at `post09-validation-report-09`.
-6. When remote work resumes, promote Steps `07`, `08`, and `09` in order,
+5. When remote work resumes, promote Steps `07`, `08`, and `09` in order,
    then validate Step `09c` scientific evidence and perform only targeted
    reruns, regenerating the structured run summary and reports after inspected
    evidence. Remote work is not part of the current sequence.

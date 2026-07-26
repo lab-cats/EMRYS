@@ -49,7 +49,7 @@ Steps 00a-00c cluster-proven reference prep
   repository `renv`/Bioconductor `3.23` environment are installed locally.
   Namespace, lock, headless-PDF, and empty cache-disabled restore checks pass;
   compute wrappers do not install packages.
-- After the `step-09b1-real-r-fixes` docpatch and clean/push gate, the local sequence implements Step `09c`
+- The `step-09b1-real-r-fixes` branch is complete and pushed at docpatch `859aba2`; the local sequence now implements Step `09c`
   scientific-validation tooling, artifact schemas/adapters/run summary,
   self-contained HTML and bundled-Typst PDF/TSV reports, read-only
   runtime/reference/storage foundations, and one validator branch per
