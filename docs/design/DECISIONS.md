@@ -107,7 +107,7 @@ Reason: this prevents accidentally submitting placeholder jobs and mistaking sca
 Current application: Steps `07`, `08`, and `09` are implemented locally and
 locally tested at their available local boundaries, but none is
 cluster-proven. The Step `08` and Step `09` real-R fixtures now execute
-without `SKIP` under the guarded local runtime, but respectively expose an
+without `SKIP` under the guarded local runtime, but respectively expose a
 partition-overlap contract defect and a locale-sensitive PDF EOF test defect.
 Both require the triggered `step-09b1-real-r-fixes` package before their
 semantic suites can be called passing. No currently scoped Step `07`-`09`

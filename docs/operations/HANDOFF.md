@@ -52,7 +52,7 @@ Current demo state:
   namespace loading, `BiocManager::valid()`, `renv::status()`, and headless PDF
   creation pass.
 * Step `08` real-R fixtures run without `SKIP` but expose an
-  overlapping-output-path failure.
+  overlapping-partition-selector failure.
 * Step `09` real-R fixtures run without `SKIP` but expose a locale-sensitive
   PDF EOF assertion failure.
 * The Step `09` implementation/docpatch gate is complete and pushed at
@@ -715,7 +715,7 @@ step-09b-local-r-runtime
 
 1. Complete the Step `09b` docpatch honestly: local runtime checks pass, but
    the two real-R semantic suites do not.
-2. On `step-09b1-real-r-fixes`, correct Step `08` overlapping-partition
+2. On `step-09b1-real-r-fixes`, correct Step `08` partition-overlap
    rejection and the Step `09` locale-sensitive PDF EOF fixture, then pass
    both real-R suites and the full gate.
 3. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
