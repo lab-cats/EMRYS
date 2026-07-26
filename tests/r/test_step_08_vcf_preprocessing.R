@@ -294,6 +294,14 @@ build_case <- function(root, mode = "positive") {
         p1_fwd[[1L]] <- sub(
             "12:10,2", "12:10,x", p1_fwd[[1L]], fixed = TRUE
         )
+    } else if (mode == "malformed_dp_count") {
+        p1_fwd[[1L]] <- sub(
+            "12:10,2", "x:10,2", p1_fwd[[1L]], fixed = TRUE
+        )
+    } else if (mode == "malformed_info_count") {
+        p1_fwd[[1L]] <- sub(
+            "AD=25,5", "AD=25,x", p1_fwd[[1L]], fixed = TRUE
+        )
     } else if (mode == "missing_format_definition") {
         omit_ad_definition <- TRUE
     } else if (mode == "duplicate_candidate") {
@@ -410,7 +418,8 @@ engine_arguments <- function(case, output_dir) {
 }
 
 run_engine <- function(
-    engine, case, output_dir, expect_success, environment = character()
+    engine, case, output_dir, expect_success, environment = character(),
+    expected_error = NULL
 ) {
     invocation <- engine_arguments(case, output_dir)
     log <- file.path(output_dir, "engine.log")
@@ -430,9 +439,26 @@ run_engine <- function(
         abort_test("Positive Step 08 fixture failed:\n", output)
     }
     if (!expect_success && status == 0L) {
-        abort_test("Negative Step 08 fixture unexpectedly succeeded.")
+        abort_test(
+            "Negative Step 08 fixture unexpectedly succeeded: ",
+            basename(output_dir)
+        )
     }
     if (!expect_success) {
+        if (!is.null(expected_error)) {
+            assert_true(
+                any(grepl(
+                    expected_error,
+                    readLines(log, warn = FALSE),
+                    fixed = TRUE
+                )),
+                paste0(
+                    basename(output_dir),
+                    " did not fail for the expected reason: ",
+                    expected_error
+                )
+            )
+        }
         assert_true(
             !file.exists(invocation$paths$sites) &&
                 !file.exists(invocation$paths$inputs) &&
@@ -765,10 +791,18 @@ negative_modes <- c(
     "partial_ad_missing",
     "negative_count",
     "malformed_count",
+    "malformed_dp_count",
+    "malformed_info_count",
     "missing_format_definition",
     "duplicate_candidate",
     "receipt_path_mismatch",
     "declared_count_mismatch"
+)
+expected_negative_errors <- list(
+    overlap = "Partition selectors overlap",
+    malformed_count = "FORMAT/AD must contain",
+    malformed_dp_count = "FORMAT/DP must contain",
+    malformed_info_count = "INFO/AD must contain"
 )
 for (mode in negative_modes) {
     case <- build_case(file.path(test_root, paste0("negative-", mode)), mode)
@@ -776,7 +810,8 @@ for (mode in negative_modes) {
         engine,
         case,
         file.path(test_root, paste0("negative-output-", mode)),
-        expect_success = FALSE
+        expect_success = FALSE,
+        expected_error = expected_negative_errors[[mode]]
     )
 }
 

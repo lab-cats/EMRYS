@@ -1025,6 +1025,126 @@ validate_numeric_counts <- function(value, label) {
     invisible(TRUE)
 }
 
+validate_raw_count_value <- function(value, expected_width, label) {
+    if (identical(value, ".")) {
+        return(invisible(TRUE))
+    }
+    parts <- strsplit(value, ",", fixed = TRUE)[[1L]]
+    if (length(parts) != expected_width ||
+        any(!grepl("^([0-9]+|\\.)$", parts))) {
+        abort(
+            label, " must contain ", expected_width,
+            " comma-separated non-negative integer count(s) or '.': ", value
+        )
+    }
+    counts <- rep(NA_real_, length(parts))
+    present <- parts != "."
+    counts[present] <- suppressWarnings(as.numeric(parts[present]))
+    validate_numeric_counts(counts, label)
+    invisible(TRUE)
+}
+
+validate_raw_vcf_counts <- function(path, sample_ids) {
+    connection <- open_text_connection(path)
+    on.exit(close(connection), add = TRUE)
+    record_number <- 0L
+
+    repeat {
+        lines <- readLines(connection, n = 10000L, warn = FALSE)
+        if (length(lines) == 0L) {
+            break
+        }
+        lines <- sub("\r$", "", lines)
+        records <- lines[nzchar(lines) & !startsWith(lines, "#")]
+        for (line in records) {
+            record_number <- record_number + 1L
+            fields <- strsplit(line, "\t", fixed = TRUE)[[1L]]
+            expected_fields <- 9L + length(sample_ids)
+            if (length(fields) != expected_fields) {
+                abort(
+                    "VCF record ", record_number, " must contain exactly ",
+                    expected_fields, " tab-separated fields: ", path
+                )
+            }
+
+            alt_count <- length(strsplit(fields[[5L]], ",", fixed = TRUE)[[1L]])
+            expected_ad_width <- alt_count + 1L
+            info_fields <- strsplit(fields[[8L]], ";", fixed = TRUE)[[1L]]
+            info_ad <- startsWith(info_fields, "AD=") | info_fields == "AD"
+            if (sum(info_ad) > 1L) {
+                abort("VCF record ", record_number, " repeats INFO/AD: ", path)
+            }
+            if (any(info_ad)) {
+                entry <- info_fields[which(info_ad)[[1L]]]
+                if (!startsWith(entry, "AD=")) {
+                    abort(
+                        "VCF record ", record_number,
+                        " has malformed INFO/AD: ", path
+                    )
+                }
+                validate_raw_count_value(
+                    substring(entry, 4L),
+                    expected_ad_width,
+                    paste0("VCF record ", record_number, " INFO/AD")
+                )
+            }
+
+            format_keys <- strsplit(fields[[9L]], ":", fixed = TRUE)[[1L]]
+            if (anyDuplicated(format_keys)) {
+                abort(
+                    "VCF record ", record_number,
+                    " repeats a FORMAT key: ", path
+                )
+            }
+            required <- match(c("DP", "AD"), format_keys)
+            if (any(is.na(required))) {
+                abort(
+                    "VCF record ", record_number,
+                    " must include FORMAT/DP and FORMAT/AD: ", path
+                )
+            }
+            for (sample_index in seq_along(sample_ids)) {
+                sample_value <- fields[[9L + sample_index]]
+                sample_fields <- if (identical(sample_value, ".")) {
+                    rep(".", length(format_keys))
+                } else {
+                    strsplit(sample_value, ":", fixed = TRUE)[[1L]]
+                }
+                if (length(sample_fields) > length(format_keys)) {
+                    abort(
+                        "VCF record ", record_number, ", sample ",
+                        sample_ids[[sample_index]],
+                        " has more values than FORMAT keys: ", path
+                    )
+                }
+                if (length(sample_fields) < length(format_keys)) {
+                    sample_fields <- c(
+                        sample_fields,
+                        rep(".", length(format_keys) - length(sample_fields))
+                    )
+                }
+                validate_raw_count_value(
+                    sample_fields[[required[[1L]]]],
+                    1L,
+                    paste0(
+                        "VCF record ", record_number, ", sample ",
+                        sample_ids[[sample_index]], " FORMAT/DP"
+                    )
+                )
+                validate_raw_count_value(
+                    sample_fields[[required[[2L]]]],
+                    expected_ad_width,
+                    paste0(
+                        "VCF record ", record_number, ", sample ",
+                        sample_ids[[sample_index]], " FORMAT/AD"
+                    )
+                )
+            }
+        }
+    }
+    invisible(TRUE)
+}
+
 extract_genotype_dp <- function(value, row_count, sample_count) {
     dimensions <- dim(value)
     if (is.null(dimensions) || length(dimensions) != 2L ||
@@ -1306,6 +1426,7 @@ process_vcf <- function(
     vcf_path, partition_id, orientation, declared_count, sample_ids,
     annotation_model
 ) {
+    validate_raw_vcf_counts(vcf_path, sample_ids)
     vcf <- tryCatch(
         withCallingHandlers(
             VariantAnnotation::readVcf(file = vcf_path, row.names = FALSE),

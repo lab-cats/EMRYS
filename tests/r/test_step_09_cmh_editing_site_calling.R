@@ -359,12 +359,16 @@ assert_pdf <- function(path) {
         identical(bytes[seq_len(5L)], charToRaw("%PDF-")),
         paste("Missing PDF signature:", path)
     )
-    tail_text <- paste(
-        rawToChar(bytes[max(1L, length(bytes) - 2047L):length(bytes)],
-                  multiple = TRUE),
-        collapse = ""
-    )
-    assert_true(grepl("%%EOF", tail_text, fixed = TRUE), "Missing PDF EOF.")
+    tail_bytes <- bytes[max(1L, length(bytes) - 2047L):length(bytes)]
+    eof_signature <- charToRaw("%%EOF")
+    possible <- seq_len(length(tail_bytes) - length(eof_signature) + 1L)
+    has_eof <- any(vapply(possible, function(index) {
+        identical(
+            tail_bytes[index:(index + length(eof_signature) - 1L)],
+            eof_signature
+        )
+    }, logical(1)))
+    assert_true(has_eof, "Missing PDF EOF.")
 }
 
 main <- function() {
