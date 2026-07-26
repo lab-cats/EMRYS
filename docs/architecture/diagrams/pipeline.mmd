@@ -26,13 +26,13 @@ flowchart LR
     subgraph downstream["Downstream editing workflow"]
         direction TB
         s07["07 bcftools mpileup<br/>implemented + mocked-bcftools tested locally<br/>not cluster-proven"]
-        s08["08 VCF preprocessing<br/>real-R suite executed; partition-overlap defect open<br/>not cluster-proven"]
-        s09["09 CMH/editing-site calling<br/>real-R suite executed; PDF-test defect open<br/>not cluster-proven"]
+        s08["08 VCF preprocessing<br/>real-R suite passes locally; raw-count preflight<br/>not cluster-proven"]
+        s09["09 CMH/editing-site calling<br/>real-R suite passes locally; raw-byte PDF fixture<br/>not cluster-proven"]
     end
 
     localr["09b local R runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23<br/>environment checks pass"]
-    fixes["09b1 real-R fixes<br/>next local branch"]
-    science["09c scientific-validation tooling<br/>local evidence package; no biological-readiness claim"]
+    fixes["09b1 real-R fixes<br/>complete locally"]
+    science["09c scientific-validation tooling<br/>next local branch; no biological-readiness claim"]
     reports["immediate artifact + report slice<br/>schema -> adapters -> run summary -> HTML -> PDF<br/>activated, not implemented"]
 
     fastq --> s01 --> s02
@@ -46,5 +46,5 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr boundary
-    class fixes,science,reports pending
+    class s07,s08,s09,localr,fixes boundary
+    class science,reports pending

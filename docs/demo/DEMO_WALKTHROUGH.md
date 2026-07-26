@@ -16,7 +16,7 @@ Steps 00a-00c cluster-proven reference prep
 -> Steps 01-06 cluster-proven across all six samples
 -> Step 07 implemented and locally tested with mocked bcftools; no real or cluster run
 -> local signed/notarized R 4.6.1 + guarded renv/Bioconductor 3.23 checks pass
--> Step 08 and Step 09 real-R suites execute individually without SKIP but expose two defects
+-> Step 08 and Step 09 real-R suites pass locally without SKIP after eae5eca
 -> remote validation paused; immediate reports are activated but not implemented
 ```
 
@@ -29,8 +29,8 @@ Steps 00a-00c cluster-proven reference prep
 5. Operations troubleshooting guide - Step `05` `/tmp` temp-spill failure and hardening.
 6. Optional terminal evidence - Step `05` / Step `06` cluster validation
    outputs, Step `07` mocked-bcftools results, and the local R environment
-   checks. The Step `08`/`09` real-R suites now run, but their current failures
-   are defect evidence, not semantic passes or biological output evidence.
+   checks. The Step `08`/`09` real-R suites now pass locally, but synthetic
+   fixture evidence is not production, cluster, or biological output evidence.
 
 ## 3. Talk Track
 
@@ -39,9 +39,9 @@ Steps 00a-00c cluster-proven reference prep
 - Reference prep and sample preprocessing are cluster-proven through Step `06` across the six-sample cohort.
 - Step `06` publishes `FWD_like` / `REV_like` mechanical read-orientation BAMs and orientation counts TSVs for all six samples.
 - Step `07` is implemented locally and locally tested with mocked bcftools at commit `e68b00c`; real-bcftools and cluster validation remain pending.
-- Step `08` is implemented locally at commit `90335d8`; its deterministic partition-manifest × orientation contract and wrapper reliability behavior pass shell/fake-R tests. Its real-R suite now executes without `SKIP` and exposes a partition-overlap rejection defect; semantic real-R acceptance is pending `step-09b1-real-r-fixes`.
+- Step `08` is implemented locally at commit `90335d8` and hardened at `eae5eca`; its deterministic partition-manifest × orientation contract and wrapper reliability behavior pass shell/fake-R and guarded real-R tests. Raw DP/AD/INFO AD lexemes are checked before `VariantAnnotation`; the existing partition-overlap validator was already correct.
 - Step `08` writes the wide sites table, complete input receipt, and preprocessing QC summary under `results/vcf_preprocessed/` and `results/qc/vcf_preprocessing/`; no production or cluster output is being presented.
-- Step `09` is implemented locally at commit `e4371de`; shell/fake-R tests cover explicit replicate pairing, Step `08` sites/input-receipt validation, Step `09` output-contract validation, threshold forwarding, six-output publication, locks, cleanup, and rollback. Its real-R suite now executes without `SKIP` and exposes a locale-sensitive PDF EOF test assertion; semantic real-R acceptance is pending the same fix branch.
+- Step `09` is implemented locally at commit `e4371de`; shell/fake-R tests cover explicit replicate pairing, Step `08` sites/input-receipt validation, Step `09` output-contract validation, threshold forwarding, six-output publication, locks, cleanup, and rollback. Its real-R suite passes without `SKIP` after `eae5eca` made PDF EOF fixture validation raw-byte and locale-independent.
 - Step `09` uses only manifest-defined EV/PUM1 replicate pairs and is designed to publish all-sites, significant-sites, summary, mutation-spectrum, and depth/delta outputs under `results/editing/<analysis>/`. These are implementation contracts, not inspected biological results.
 - A real cluster failure in Step `05` was diagnosed as GATK/HTSJDK temp spill to node-local `/tmp` and hardened with project-storage temp handling.
 - Biological interpretation is intentionally cautious: read-orientation labels are mechanical flag groups, and the Step `08`/`09` `orientation_policy=legacy_provisional_v1` mapping is explicitly provisional rather than biologically validated.
@@ -49,7 +49,7 @@ Steps 00a-00c cluster-proven reference prep
   repository `renv`/Bioconductor `3.23` environment are installed locally.
   Namespace, lock, headless-PDF, and empty cache-disabled restore checks pass;
   compute wrappers do not install packages.
-- After `step-09b1-real-r-fixes`, the local sequence implements Step `09c`
+- After the `step-09b1-real-r-fixes` docpatch and clean/push gate, the local sequence implements Step `09c`
   scientific-validation tooling, artifact schemas/adapters/run summary,
   self-contained HTML and bundled-Typst PDF/TSV reports, read-only
   runtime/reference/storage foundations, and one validator branch per
@@ -63,13 +63,9 @@ Steps 00a-00c cluster-proven reference prep
 
 - Do not claim final biological editing-site results yet.
 - Do not claim Step `07` has run with real bcftools, passed a cluster dry-run, executed on the cluster, produced inspected cluster VCFs, or become cluster-proven.
-- Do not claim the Step `08` real-R suite passes: it runs without `SKIP` but
-  currently fails partition-overlap rejection. Do not claim a cluster dry-run,
-  production table, or cluster proof.
-- Do not claim the Step `09` real-R suite passes: it runs without `SKIP` but
-  currently fails a locale-sensitive PDF EOF assertion. Do not claim a
-  cluster dry-run, production table/plot, biological candidate, or cluster
-  proof.
+- The Step `08` and Step `09` real-R suites pass on synthetic local fixtures.
+  Do not turn that into a claim of a cluster dry-run, production table/plot,
+  biological candidate, or cluster proof.
 - Do not describe `orientation_policy=legacy_provisional_v1` as biologically validated.
 - Do not equate `FWD_like` / `REV_like` with biological strand, sense, antisense, or transcript-strand labels.
 - Do not describe CMH-ranked `significant_up`/`significant_down` candidates as

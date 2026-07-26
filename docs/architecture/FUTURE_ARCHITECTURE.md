@@ -10,16 +10,17 @@ The local runtime boundary has moved. Signed and notarized Apple-silicon CRAN
 R `4.6.1` is installed, and the repository has a guarded `renv` environment
 locked to Bioconductor `3.23`. Namespace, lock, headless-PDF, and empty
 cache-disabled binary restore checks pass. The Step `08` and Step `09` real-R
-suites execute without `SKIP`, but they currently expose a partition-overlap
-rejection defect and a locale-sensitive PDF EOF test assertion, respectively.
-The triggered `step-09b1-real-r-fixes` branch is therefore next.
+suites now pass locally without `SKIP`. The `step-09b1-real-r-fixes`
+implementation at `eae5eca` adds raw DP/AD/INFO AD lexical preflight for Step
+`08` and locale-independent raw-byte PDF fixture validation for Step `09`.
+Step `09c` is therefore next.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, with real-R suites now executable but two open fixture defects; none has cluster evidence | Scientific-validation tooling followed by later assay-specific modules |
+| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; none has production or cluster evidence | Scientific-validation tooling followed by later assay-specific modules |
 | Reporting | Handwritten demo/QC docs and generated step artifacts | Activated immediate artifact schema, adapters, run summary, self-contained HTML, and bundled-Typst PDF/TSV reports; not yet implemented |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
@@ -39,7 +40,7 @@ flowchart TB
     s09["step-09-cmh<br/>local implementation/docpatch complete"]
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
     rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
-    rfix["step-09b1-real-r-fixes<br/>triggered by two fixture failures"]
+    rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
     science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
     artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
     reports["report-html-v1<br/>-> report-exports-v1"]
@@ -51,10 +52,10 @@ flowchart TB
     science09c --> artifacts --> reports --> foundations --> validators
     validators -.-> remote
 
-    class s09 current
+    class s09,rfix current
     class s09a docs
     class rlocal runtime
-    class rfix,science09c science
+    class science09c science
     class artifacts,reports,foundations,validators future
     class remote deferred
 ```
@@ -88,8 +89,11 @@ step-09b-local-r-runtime
 -> post09-validation-report-09
 ```
 
-The `step-09b1-real-r-fixes` package was inserted because real-R execution
-found two defects. Step `09c` validates and summarizes declared evidence; it
+The `step-09b1-real-r-fixes` package was inserted after real-R execution found
+one raw-count engine defect and one PDF fixture defect. The initial generic
+Step `08` negative-fixture message had misattributed the later malformed-count
+failure to its already-working partition-overlap validator. Step `09c`
+validates and summarizes declared evidence; it
 does not rerun CMH or infer review decisions. Reports move before the
 foundation/validator packages and are immediate, activated work, but they
 remain unimplemented at this boundary. Remote validation is paused until the
@@ -324,8 +328,8 @@ flowchart TD
 
 The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
 
-Activated local packages (each remains unimplemented until its own branch;
-dependency order fixed):
+Activated local packages (Step `09b1` is complete; every later package remains
+unimplemented until its own branch; dependency order fixed):
 
 ```text
 step-09b1-real-r-fixes
@@ -367,10 +371,10 @@ run summary and reports after evidence inspection.
 
 ## Implementation-boundary note
 
-Only the local R environment is implemented at this boundary; its two
-environment/restore checks pass, while the Step `08` and Step `09` semantic
-real-R suites still fail at the recorded defects. The remaining activated
-packages above are plans, not runnable commands. Reports are immediate work,
+The local R environment and `step-09b1-real-r-fixes` are implemented at this
+boundary. Environment/restore checks and both Step `08` and Step `09` semantic
+real-R suites pass locally; there is no production or cluster evidence. The
+remaining activated packages above are plans, not runnable commands. Reports are immediate work,
 but no generated report may be presented as production evidence or biological
 interpretation. Do not preempt the branch sequence with remote validation,
 generic dispatchers, arrays, broad helper extraction, automatic R-package

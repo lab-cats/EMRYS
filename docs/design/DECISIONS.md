@@ -106,12 +106,9 @@ Reason: this prevents accidentally submitting placeholder jobs and mistaking sca
 
 Current application: Steps `07`, `08`, and `09` are implemented locally and
 locally tested at their available local boundaries, but none is
-cluster-proven. The Step `08` and Step `09` real-R fixtures now execute
-without `SKIP` under the guarded local runtime, but respectively expose a
-partition-overlap contract defect and a locale-sensitive PDF EOF test defect.
-Both require the triggered `step-09b1-real-r-fixes` package before their
-semantic suites can be called passing. No currently scoped Step `07`-`09`
-entry point is a non-runnable scaffold.
+cluster-proven. After `step-09b1-real-r-fixes`, the Step `08` and Step `09`
+real-R fixtures both pass without `SKIP` under the guarded local runtime. No
+currently scoped Step `07`-`09` entry point is a non-runnable scaffold.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -529,6 +526,13 @@ truncated. Overlapping partition selectors, duplicate candidate IDs, missing
 or incorrect required FORMAT/INFO definitions, malformed or negative counts,
 partial DP/AD missingness, and AD greater than DP are hard failures.
 
+Decision: validate raw count lexemes before semantic VCF parsing.
+FORMAT/DP must contain exactly one non-negative integer or `.`;
+FORMAT/AD and present INFO/AD values may be a single `.` when the whole vector
+is missing. Otherwise they must contain exactly one token for REF plus one for
+every ALT, and every token must be a non-negative integer or `.`. This lexical
+preflight streams through the VCF before `VariantAnnotation` parses it.
+
 The orientation mapping is explicitly provisional:
 
 ```text
@@ -545,7 +549,12 @@ interpretation.
 Reason: a declared, hash-checked input universe prevents stale or extra VCFs
 from silently changing candidate membership, while semantic ALT/count parsing
 avoids the legacy failure modes of positional truncation and implicit strand
-interpretation.
+interpretation. Raw lexical validation is also required because a semantic
+parser may coerce malformed count tokens into parsed numeric values and erase
+the distinction between valid missingness and invalid input. The additional pass
+is bounded-memory but adds one full VCF read; benchmark its I/O cost on the
+first supported Step `08` pilot and primary-universe cluster runs before
+claiming acceptable production scaling.
 
 ## Step 08 Publishes Deterministic Wide Tables As One Transaction
 
@@ -659,12 +668,13 @@ contract is exactly 50 rows in partition-manifest order, with `FWD_like` then
 or incomplete transaction, not a harmless presentation change.
 
 Current evidence: this contract is implemented locally at commit `90335d8`.
-The fake-R shell suite passes. The committed real-R fixture suite executes
-without `SKIP` in the guarded local environment but fails the negative
-partition-overlap contract because overlapping partition selectors are unexpectedly
-accepted. The fix is assigned to `step-09b1-real-r-fixes`. There is no cluster
-dry-run, execute, log, or output evidence, and Step `08` is not
-cluster-proven.
+The fake-R shell suite passes. Hardening commit `eae5eca` adds the raw lexical
+preflight and reason-specific negative-fixture assertions; the complete
+real-R suite passes without `SKIP` in the guarded local environment. The
+earlier generic fixture failure was misattributed to partition overlap, which
+already rejected correctly; malformed raw DP/AD/INFO AD coercion was the
+actual defect. There is no cluster dry-run, execute, log, or output evidence,
+and Step `08` is not cluster-proven.
 
 ## Step 09 Pairing Comes Only From Explicit Manifest Replicates
 
@@ -763,11 +773,12 @@ set as committed while retaining recoverable evidence when restoration itself
 fails.
 
 Current evidence: this contract is implemented locally at commit `e4371de`.
-The shell/fake-R suite passes. The committed real-R fixture suite executes
-without `SKIP` in the guarded local environment but fails a locale-sensitive
-raw-PDF EOF test assertion. The fix is assigned to
-`step-09b1-real-r-fixes`. There is no cluster dry-run, execute, log, or
-inspected output evidence, and Step `09` is not cluster-proven. It retains
+The shell/fake-R suite passes. Hardening commit `eae5eca` replaces the
+locale-sensitive raw-to-text PDF assertion with raw-byte signature matching;
+the complete real-R suite passes without `SKIP` in the guarded local
+environment. The prior failure was a fixture defect, not evidence of a
+corrupt PDF. There is no cluster dry-run, execute, log, or inspected output
+evidence, and Step `09` is not cluster-proven. It retains
 `orientation_policy=legacy_provisional_v1`, which is not biologically
 validated.
 
@@ -804,8 +815,8 @@ and must never bootstrap or install them. Step `09` uses only base R
 
 Local acceptance evidence includes normal restore, an empty cache-disabled
 binary restore, all required namespace loads, `BiocManager::valid()`,
-`renv::status()`, and headless PDF creation. The real-R suites execute but
-still require `step-09b1-real-r-fixes` for the two observed test failures.
+`renv::status()`, headless PDF creation, and both real-R suites passing without
+`SKIP` after `step-09b1-real-r-fixes`.
 
 This decision does not select a CSU module or batch-visible `Rscript`.
 Cluster runtime and package availability remain unresolved and must be proven
@@ -887,9 +898,10 @@ step-09b-local-r-runtime
 -> post09-validation-report-09
 ```
 
-The real-R failures trigger `step-09b1-real-r-fixes`; Step `09c` follows only
-after that branch passes its gate. Structured run summaries and HTML/PDF
-reports are immediate, before the three foundational engineering packages.
+The completed local `step-09b1-real-r-fixes` package makes Step `09c` the next
+descendant after its docpatch and clean/push gate. Structured run summaries
+and HTML/PDF reports are immediate, before the three foundational engineering
+packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the
 fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
@@ -959,7 +971,7 @@ editing sites. Full-table truncation records the explicit full-table path and
 hash, and every PDF page carries the state banner. Report generation itself
 is never validation evidence.
 
-At the Step `09b` boundary these packages are approved but unimplemented.
+At the Step `09b1` boundary these packages are approved but unimplemented.
 Only schemas, templates, and synthetic fixtures will be committed; generated
 production reports remain ignored.
 

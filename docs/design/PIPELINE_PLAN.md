@@ -66,8 +66,8 @@ it is not an overlay, and pairing is never inferred from names.
 | `05` | Run RNA-seq SplitNCigarReads. | duplicate-marked BAM, Step `00c` reference FASTA/FAI/DICT | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | implemented and cluster-proven across all six samples | GATK SplitNCigarReads |
 | `06` | Split processed BAMs by read-orientation group. | `results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam` and `.bai` | `results/orientation/<sample_id>/<sample_id>.FWD_like.bam` and `.bai`; `results/orientation/<sample_id>/<sample_id>.REV_like.bam` and `.bai`; `results/qc/orientation/<sample_id>.orientation_counts.tsv` | cluster-proven across all six samples | samtools |
 | `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
-| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally and shell/fake-R tested; real-R suite executed without `SKIP` but exposed a partition-overlap contract defect; fix pending; no cluster evidence; not cluster-proven | R / Bioconductor |
-| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally and shell/fake-R tested; real-R suite executed without `SKIP` but exposed a locale-sensitive PDF EOF test defect; fix pending; no cluster evidence; not cluster-proven | base R |
+| `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally; shell/fake-R and guarded real-R suites pass locally; raw-count lexical validation hardened; no cluster evidence; not cluster-proven | R / Bioconductor |
+| `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally; shell/fake-R and guarded real-R suites pass locally; locale-independent raw-byte PDF fixture validation; no cluster evidence; not cluster-proven | base R |
 
 ## Validated Outputs And Results
 
@@ -492,15 +492,16 @@ enters those totals or the primary correction universe.
 
 ### Step 08
 
-Step `08` is implemented locally at implementation commit `90335d8`. The
-shell wrapper and its publication transaction are locally tested with a fake
-`Rscript`. The real-R semantic fixture suite now runs under the guarded local
-R environment without `SKIP`, but it fails its negative partition-overlap
-contract because overlapping partition selectors are unexpectedly accepted. That
-defect triggers the dedicated descendant `step-09b1-real-r-fixes`; do not
-describe Step `08` semantic real-R validation as passing yet. No cluster
-dry-run, execute job, log, or output evidence has been inspected; Step `08` is
-not cluster-proven.
+Step `08` was implemented locally at implementation commit `90335d8` and
+hardened on `step-09b1-real-r-fixes` at `eae5eca`. The shell wrapper and its
+publication transaction pass the fake-`Rscript` suite, and the semantic
+fixture suite passes under the guarded local R environment without `SKIP`.
+The earlier generic negative-fixture failure was misdiagnosed as a
+partition-overlap defect: expected-reason assertions confirmed that overlap
+rejection already worked. The actual defect was permissive semantic-parser
+coercion of malformed raw count tokens, now rejected by a lexical preflight.
+No cluster dry-run, execute job, log, or output evidence has been inspected;
+Step `08` is not cluster-proven.
 
 Implemented entry points and active tests:
 
@@ -541,12 +542,26 @@ and VCFs must not change during execution.
 
 The R implementation uses `VariantAnnotation`, `GenomicRanges`,
 `rtracklayer`, and their required Bioconductor dependencies; base R is used
-otherwise. It imports the project Novogene GTF directly, expands each
-multiallelic record by ALT index, and extracts the matching alternate AD.
-Symbolic and non-SNV alleles are counted and excluded rather than truncated.
-Missing FORMAT definitions, malformed or negative counts, one-sided missing
-DP/AD, AD greater than DP, sample mismatches, partition overlap, duplicate
-candidate IDs, or receipt/count inconsistencies fail.
+otherwise. Before semantic VCF parsing, a bounded-memory streaming lexical
+preflight requires FORMAT/DP to contain one non-negative integer or `.`, and
+allows FORMAT/AD and present INFO/AD to be a single `.` when the entire vector
+is missing. Otherwise, each AD value must contain exactly one token for REF
+plus one for every ALT, with each token a non-negative integer or `.`.
+This fail-closed pass prevents malformed tokens from being silently coerced
+into parsed numeric values by the semantic parser. The implementation then
+imports the project Novogene GTF directly, expands each multiallelic record by
+ALT index, and extracts the matching alternate AD. Symbolic and non-SNV
+alleles are counted and excluded rather than truncated. Missing FORMAT
+definitions, malformed or negative counts, one-sided missing DP/AD, AD greater
+than DP, sample mismatches, partition overlap, duplicate candidate IDs, or
+receipt/count inconsistencies fail.
+
+The lexical preflight intentionally adds one complete streaming read of every
+VCF before `VariantAnnotation` parses it. Memory use is bounded, but the added
+I/O has not been measured on production inputs. Record elapsed time and input
+size for this pass during the first supported Step `08` pilot benchmark and
+again during primary-universe cluster validation before claiming acceptable
+production scaling.
 
 The approved provisional legacy mapping is:
 
@@ -639,10 +654,11 @@ The active shell test covers wrapper CLI and dry-run behavior, exact input
 enumeration, locks, cleanup, validation, publication order, and rollback with a
 fake R executable. The real-R fixture suite covers semantic VCF/GTF parsing,
 multiallelic mapping, annotation, deterministic ordering, count reconciliation,
-header-only inputs, and strict failures. It executes without `SKIP` in the
-local pinned runtime, but currently fails the negative partition-overlap case.
-Passing that case and the complete suite is the acceptance condition for
-`step-09b1-real-r-fixes`.
+header-only inputs, partition overlap, and strict raw FORMAT/DP, FORMAT/AD,
+and INFO/AD failures. Negative fixtures identify their mode and selected
+contracts assert the expected failure reason, preventing another generic
+failure from being attributed to the wrong case. The complete suite passes
+without `SKIP` in the local pinned runtime.
 
 Cluster-proof exit contract: both real-R fixture suites must pass in the same
 supported batch-visible environment used for execution. One successful
@@ -654,15 +670,15 @@ must be `COMPLETED 0:0`; and no owned lock or run-token residue may remain.
 
 ### Step 09
 
-Step `09` is implemented locally at implementation commit `e4371de`. The
-shell/fake-R suite and complete local repository gate pass, including 23 Python
-tests and shell tests through Step `09`. The real-R fixture runner now
-executes without `SKIP` under the guarded local runtime, but its PDF EOF test
-uses locale-sensitive raw-to-text coercion and fails even though the PDF
-contract itself is checked in the engine. That test defect also belongs on
-`step-09b1-real-r-fixes`; do not call the complete real-R suite passing yet.
-No cluster dry-run, execute job, log, or output evidence has been inspected,
-and Step `09` is not cluster-proven.
+Step `09` was implemented locally at implementation commit `e4371de` and its
+fixture was hardened on `step-09b1-real-r-fixes` at `eae5eca`. The
+shell/fake-R suite and complete local repository gate pass, including 23
+Python tests and shell tests through Step `09`. The real-R fixture runner now
+passes without `SKIP` under the guarded local runtime. Its former
+locale-sensitive raw-to-text PDF EOF assertion was a test defect, not a
+corrupt-PDF finding; the fixture now searches for `%PDF-` and `%%EOF` as raw
+bytes. No cluster dry-run, execute job, log, or output evidence has been
+inspected, and Step `09` is not cluster-proven.
 
 Implemented entry points and active tests:
 
@@ -871,11 +887,8 @@ RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1 make local-real-r-test
 The normal restore and a cache-disabled restore into an empty temporary
 library both passed using binary packages. Namespace loading,
 `BiocManager::valid()`, `renv::status()`, and headless PDF creation also
-passed. The Step `08` and Step `09` real-R suites executed individually
-without `SKIP`, but
-exposed the two defects recorded in their sections above. Therefore the
-runtime itself is installed and checked locally, while semantic acceptance of
-both suites remains pending the triggered `step-09b1-real-r-fixes` package.
+passed. After the `step-09b1-real-r-fixes` hardening, the Step `08` and Step
+`09` real-R suites both pass without `SKIP` under the guarded local runtime.
 The CSU batch-visible R path and packages remain unresolved. This evidence is
 local only and does not make Steps `07`-`09` cluster-proven.
 
@@ -1267,9 +1280,9 @@ Step `07` now provides the locally tested cohort/partition mpileup boundary,
 Step `08` provides the locally shell/fake-R-tested preprocessing boundary, and
 Step `09` provides the locally shell/fake-R-tested paired-CMH boundary. All
 three reproduce the legacy path conservatively. The local real-R runtime is
-available, but the Step `08` and Step `09` suites exposed the two pending
-`step-09b1-real-r-fixes` defects. All three remain upstream-gated for remote
-and cluster promotion and are not cluster-proven.
+available, and the Step `08` and Step `09` suites pass after the completed
+local `step-09b1-real-r-fixes` package. All three remain upstream-gated for
+remote and cluster promotion and are not cluster-proven.
 
 Core preprocessing should preserve mechanical labels such as `FWD_like` and `REV_like`. Mapping those groups to `pos`, `neg`, sense, antisense, or edit direction belongs in the assay-specific analysis module and must be explicit in config or PI-approved. Incorrect strand/orientation interpretation can produce plausible-looking but biologically wrong results. As above, `samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
 
@@ -1399,10 +1412,11 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-At this boundary only `step-09b-local-r-runtime` is implemented. The
-`step-09b1-real-r-fixes` branch is required next because the real-R suites
-exposed defects; every later package remains approved but unimplemented.
-Remote work stays paused through the final Step `09` validator branch.
+At this boundary `step-09b1-real-r-fixes` is implemented and locally tested;
+its docpatch and clean/push gate make `step-09c-scientific-validation` the
+next descendant package. Every later package remains approved but
+unimplemented. Remote work stays paused through the final Step `09` validator
+branch.
 
 When remote work resumes, continue from that final clean branch:
 
@@ -1444,9 +1458,9 @@ For the local pinned runtime, use explicit
 `RSCRIPT_BIN=/usr/local/bin/Rscript NORAD_USE_RENV=1` or the consolidated
 `make local-real-r-test` target. `make real-r-test` may report `SKIP` only
 when its default R executable is absent; the explicit local runtime must not
-skip. The current real-R suites execute but do not yet pass, which is why
-`step-09b1-real-r-fixes` is mandatory. `make report-test` becomes applicable
-only after `report-html-v1` exists.
+skip. Both real-R suites pass in the guarded local environment after
+`step-09b1-real-r-fixes`. `make report-test` becomes applicable only after
+`report-html-v1` exists.
 
 ## Known Cluster Notes
 

@@ -785,15 +785,17 @@ Current evidence is deliberately narrower:
 ```text
 local runtime/package/headless-PDF checks pass
 an empty cache-disabled binary restore passes
-both real-R suites execute without SKIP when run individually
-Step 08 fails the partition-overlap fixture
-Step 09 fails the fixture's PDF EOF inspection
+both real-R suites pass locally without SKIP
+Step 08 raw lexical count validation and partition-overlap fixtures pass
+Step 09 raw-byte PDF signature/EOF fixtures pass
 cluster runtime and output evidence remain pending
 ```
 
-The required corrective branch is `step-09b1-real-r-fixes`. Do not call the
-current Step `08`/`09` real-R run a pass and do not proceed to scientific
-validation until that branch completes its own implementation/docpatch gate.
+These passes establish local fixture behavior only. They do not prove CSU
+batch visibility, production input behavior, or cluster outputs. The next
+descendant is `step-09c-scientific-validation` only after the current
+`step-09b1-real-r-fixes` documentation, clean-history, and push gate is
+complete.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -939,8 +941,15 @@ partial DP/AD missingness, or AD greater than DP.
 The declared partitions must not overlap, and candidate identity is global
 across partitions. VCF parsing also requires the Step `07` FORMAT/INFO
 definitions and integer, non-negative, internally consistent DP/AD values.
-Silently deduplicating sites, truncating multiallelic vectors, or coercing
-malformed counts would change the declared analysis universe.
+`VariantAnnotation` can coerce some malformed lexical count tokens into parsed
+numeric values while parsing; the local fixture observed an invalid `x`
+becoming zero. Step `08` therefore performs a bounded-memory raw VCF pass
+before semantic parsing and validates the consumed `FORMAT/DP`,
+`FORMAT/AD`, and present `INFO/AD` token syntax and widths. A single `.` is
+valid for a wholly missing AD vector; otherwise AD width must equal REF plus
+every ALT. Silently deduplicating sites, truncating multiallelic vectors, or
+accepting coerced malformed counts would change the declared analysis
+universe.
 
 Symbolic and non-SNV alternate alleles are different: valid instances are
 counted and excluded intentionally rather than causing failure.
@@ -952,12 +961,19 @@ the approved Step `07` workflow. Preserve ALT indexing and complete DP/AD pairs.
 Do not delete duplicate rows, clamp counts, convert missing values to zero, or
 change AD to fit DP after the fact.
 
-These paths are covered by committed real-R fixtures. The local suite now
-executes without `SKIP`, but the current run stops earlier because the engine
-unexpectedly accepts overlapping partition selectors. After that defect is repaired,
-the same suite must run to completion and may expose the separately identified
-multiallelic INFO/AD indexing risk. Until then, this is failing test evidence,
-not Step `08` semantic validation.
+These paths are covered by committed real-R fixtures, and the complete local
+suite now passes without `SKIP`. Partition-overlap rejection was already
+correct; the earlier unlabeled negative-fixture failure was misdiagnosed as an
+overlap defect. The fixtures now identify each negative mode, assert the
+expected overlap error, and cover malformed `FORMAT/DP`, `FORMAT/AD`, and
+`INFO/AD` values before parser coercion can hide them.
+
+The raw lexical check adds one bounded-memory streaming pass over each VCF.
+Its production-scale I/O cost is not yet measured. During future runtime
+promotion, benchmark a representative pilot or chromosome-scale input set in
+an isolated output namespace and record input size, elapsed time, and maximum
+RSS before running the full declared universe. A local fixture pass is not
+production or cluster performance evidence.
 
 ## Step 08 finds a lock, partial output set, or input mutation
 
@@ -1105,11 +1121,11 @@ summary count, background status, hash, subset, or PDF signature to force
 publication.
 
 These independent output checks and rollback behavior are locally tested with
-a fake R executable. The real-R engine suite executes locally, and its
-statistical/ordering checks pass when the fixture's raw PDF EOF assertion is
-corrected; the committed fixture currently misreads raw PDF bytes as locale
-text and fails that assertion. Repair and rerun it on
-`step-09b1-real-r-fixes`. Cluster output validation remains pending.
+a fake R executable. The real-R suite also passes locally without `SKIP`. Its
+PDF fixture now searches the trailing raw bytes for the `%%EOF` marker instead
+of coercing arbitrary PDF bytes through locale-sensitive text conversion.
+This was a fixture-portability correction, not production output evidence.
+Cluster output validation remains pending.
 
 ## Step 09 finds a lock or incomplete six-output set
 

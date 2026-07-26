@@ -43,10 +43,10 @@ rtracklayer
 Those eight namespaces and their transitive closure are locked. Normal restore,
 an empty cache-disabled binary restore, namespace loading,
 `BiocManager::valid()`, `renv::status()`, and headless PDF creation passed.
-The Step `08` and Step `09` suites both executed without `SKIP`; Step `08`
-exposed a partition-overlap contract defect, and Step `09` exposed a
-locale-sensitive PDF EOF test defect. Those failures trigger
-`step-09b1-real-r-fixes` and must not be described as passing semantic suites.
+After `step-09b1-real-r-fixes`, the Step `08` and Step `09` suites both pass
+without `SKIP` in the guarded local environment. Step `08` now performs
+fail-closed lexical validation before semantic parsing, and the Step `09` PDF
+fixture checks its signatures as raw bytes rather than locale-sensitive text.
 
 Still unresolved:
 
@@ -450,25 +450,22 @@ workstation, has not completed a cluster dry-run or execute job, and has no
 inspected cluster output. It is not cluster-proven.
 
 Step `08` is implemented locally at commit `90335d8`, and its fake-R wrapper
-and shell tests pass. Its real-R fixture suite executes without `SKIP` under
-the guarded local runtime but currently fails the negative partition-overlap
-contract; `step-09b1-real-r-fixes` must correct and revalidate it. Step `08`
-has no cluster dry-run, execute, log, or output evidence and is not
-cluster-proven.
+and shell tests pass. Its `step-09b1-real-r-fixes` hardening is at `eae5eca`,
+and the complete real-R fixture suite passes without `SKIP` under the guarded
+local runtime. Step `08` has no cluster dry-run, execute, log, or output
+evidence and is not cluster-proven.
 
 Step `09` is implemented locally at commit `e4371de`, and its shell/fake-R
-suite passes. Its real-R fixture suite executes without `SKIP` but currently
-fails a locale-sensitive PDF EOF test assertion;
-`step-09b1-real-r-fixes` must correct and revalidate it. Step `09` has no
-cluster dry-run, execute, log, or output evidence and is not cluster-proven.
+suite passes. After the raw-byte PDF assertion fix at `eae5eca`, its complete
+real-R fixture suite also passes without `SKIP`. Step `09` has no cluster
+dry-run, execute, log, or output evidence and is not cluster-proven.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
 Steps `07`, `08`, and `09` have now been cleanly reimplemented as
 parameterized, manifest-driven stages. Step `07` real-bcftools and cluster
-validation remain pending. Steps `08` and `09` have run under the local real-R
-environment but do not yet pass their complete semantic suites; their targeted
-fixes and all cluster validation remain pending.
+validation remain pending. Steps `08` and `09` pass their complete local
+real-R semantic suites; all cluster validation remains pending.
 
 Steps `05` SplitNCigarReads and `06` read-orientation BAM splitting are already implemented and cluster-proven across all six samples. The reference workflow should not be run directly because it is hardcoded and not manifest-driven.
 
@@ -535,14 +532,20 @@ it validates each Step `07` receipt, manifest hashes, exact VCF paths,
 manifest-ordered sample columns, sample counts, and declared record counts.
 Overlapping partitions and globally duplicate candidate IDs are errors.
 
-The R implementation uses `VariantAnnotation` for semantic VCF parsing and ALT
-expansion, and `rtracklayer` plus `GenomicRanges` for direct parsing and
-strand-aware use of the Novogene GTF. Every multiallelic record is expanded by
-ALT index, and the matching FORMAT/AD and INFO/AD alternate value is retained.
-Symbolic and non-SNV alternate alleles are counted and excluded. Missing or
-incorrect required FORMAT/INFO definitions, malformed or negative counts,
-partial DP/AD missingness, and AD greater than DP fail rather than being
-truncated or repaired.
+Before `VariantAnnotation` semantic parsing and ALT expansion, Step `08`
+streams through the raw VCF and validates FORMAT/DP, FORMAT/AD, and present
+INFO/AD tokens lexically. DP has exactly one non-negative integer or `.`;
+an AD value may be a single `.` when its whole vector is missing, but otherwise
+has exactly one token for REF plus one for every ALT. Every token is a
+non-negative integer or `.`. This prevents a semantic parser from coercing
+malformed raw tokens into parsed numeric values. `rtracklayer` plus
+`GenomicRanges` provide direct parsing and strand-aware use of the Novogene
+GTF. Every multiallelic record is expanded by ALT index, and the matching
+FORMAT/AD and INFO/AD alternate value is retained. Symbolic and non-SNV
+alternate alleles are counted and excluded. Missing or incorrect required
+FORMAT/INFO definitions, malformed or negative counts, partial DP/AD
+missingness, and AD greater than DP fail rather than being truncated or
+repaired.
 
 The provisional mapping is:
 
@@ -599,12 +602,16 @@ an owned cohort lock, run-token temporary paths, validation before publication,
 rollback of a prior complete set, and publishes `step08_inputs.tsv` last as the
 transaction commit marker.
 
-This contract is implemented locally at commit `90335d8` and locally tested
-through the fake-R shell suite. The local real-R suite executes without
-`SKIP`, but its negative partition-overlap case currently fails because
-overlapping partition selectors are unexpectedly accepted. The fix belongs to the
-triggered `step-09b1-real-r-fixes` branch. No cluster evidence has been
-inspected, and Step `08` is not cluster-proven.
+This contract is implemented locally at commit `90335d8`, hardened at
+`eae5eca`, and locally tested through both the fake-R shell suite and passing
+real-R suite without `SKIP`. The earlier generic negative-fixture failure was
+misattributed to partition overlap; reason-specific assertions confirmed that
+overlap rejection already worked. The actual defect was malformed raw
+DP/AD/INFO AD coercion, now rejected by the streaming lexical preflight. That
+preflight adds one bounded-memory streaming pass over each VCF; its I/O cost
+still requires a future pilot benchmark and primary-universe cluster
+measurement. No cluster evidence has been inspected, and Step `08` is not
+cluster-proven.
 
 ### What Is The Step 09 Paired CMH Contract?
 
@@ -697,12 +704,12 @@ reconciliation, and rollback. The summary is published last as the transaction
 commit marker. An incomplete rollback retains the owned lock for explicit
 operator recovery.
 
-This contract is implemented locally at commit `e4371de` and locally tested
-through the shell/fake-R suite. The local real-R fixture suite executes
-without `SKIP`, but its locale-sensitive raw-PDF EOF assertion currently
-fails. The fix belongs to the triggered `step-09b1-real-r-fixes` branch. No
-Step `09` cluster evidence has been inspected, and the step is not
-cluster-proven. The workflow preserves
+This contract is implemented locally at commit `e4371de`, its fixture was
+hardened at `eae5eca`, and it is locally tested through the shell/fake-R suite
+and passing real-R suite without `SKIP`. The fixture now searches for the PDF
+header and EOF marker as raw bytes; the prior failure was a locale-sensitive
+test assertion, not a corrupt-PDF finding. No Step `09` cluster evidence has
+been inspected, and the step is not cluster-proven. The workflow preserves
 `orientation_policy=legacy_provisional_v1`; the all-sites,
 significant-sites, and summary tables record it. The policy is not
 biologically validated.

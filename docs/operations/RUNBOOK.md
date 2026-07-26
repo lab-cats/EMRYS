@@ -142,9 +142,8 @@ Step `07` source and mocked local-test evidence may be inspected during the
 demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
 run has been validated. Step `08` and Step `09` source and fake-R wrapper tests
 may also be inspected. Their real-R suites now execute locally without `SKIP`,
-but the current semantic fixture run fails and is not validation evidence.
-Neither step has cluster output evidence. Do not demonstrate Step `09` as a
-biological result.
+and pass with synthetic fixtures. Neither step has production or cluster
+output evidence. Do not demonstrate Step `09` as a biological result.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -253,8 +252,9 @@ Step `07` is implemented locally and locally tested with mocked bcftools. The ex
 The signed Apple-silicon CRAN R `4.6.1` runtime is installed locally and the
 guarded repository `renv` environment is locked to Bioconductor `3.23`. Local
 runtime and package-environment checks pass. The Step `08` and Step `09`
-real-R suites execute individually without `SKIP`, but currently fail semantic fixtures; see
-the local R section and troubleshooting guide.
+real-R suites also pass locally without `SKIP` after the `step-09b1` fixes.
+This is local fixture evidence only; see the local R section and
+troubleshooting guide for the exact scope.
 
 A supported R/Rscript path and compatible package library visible in the CSU
 batch/compute environment remain unresolved. Local runtime evidence is not
@@ -520,14 +520,18 @@ BiocManager::valid() passes
 renv::status() reports synchronization
 empty cache-disabled binary restore passes
 headless PDF creation passes
-Step 08 and Step 09 real-R suites execute without SKIP when run individually
-Step 08 fails the partition-overlap fixture and may expose a multiallelic INFO/AD defect
-Step 09 fails its fixture's PDF EOF inspection despite the engine semantic checks otherwise passing
+Step 08 and Step 09 real-R suites pass without SKIP
+Step 08 validates consumed FORMAT/DP, FORMAT/AD, and INFO/AD lexical values
+  before VariantAnnotation parsing, including wholly missing AD vectors;
+  its overlap-rejection fixture passes
+Step 09 validates the PDF EOF marker by scanning raw bytes
 ```
 
-Therefore the environment is locally validated, but Steps `08` and `09` have
-not passed real-R semantic validation. The required next branch is
-`step-09b1-real-r-fixes`; do not proceed directly to Step `09c`.
+Therefore the guarded environment and both semantic fixture suites are
+validated locally. This does not validate production data, establish CSU
+batch/compute visibility, or make Steps `08` or `09` cluster-proven. After the
+`step-09b1-real-r-fixes` documentation, clean-history, and push gate, the next
+descendant is `step-09c-scientific-validation`.
 
 ## Cluster Execution Pattern
 
@@ -1779,8 +1783,7 @@ Status:
 ```text
 implemented locally at implementation commit 90335d8
 locally tested with shell/fake-R coverage
-real-R suite executes locally without SKIP
-real-R semantic validation failing; corrective branch required
+real-R fixture suite passes locally without SKIP
 cluster validation pending
 not cluster-proven
 ```
@@ -1909,7 +1912,12 @@ EXECUTE=0
 ```
 
 The current job requests the `long` partition, eight hours, and one CPU. Those
-resources are provisional and have not been cluster-proven.
+resources are provisional and have not been cluster-proven. The engine now
+makes one additional bounded-memory streaming pass over each VCF before
+`VariantAnnotation` parsing. During future runtime promotion, benchmark that
+extra I/O on a representative pilot or chromosome-scale input set using an
+isolated output namespace, and record input size, elapsed time, and maximum
+RSS before relying on the full-universe resource request.
 
 Step `08` constructs the exact partition-manifest cross-product with
 `FWD_like` and `REV_like`; it never globs VCFs. It requires each partition's
@@ -1919,11 +1927,19 @@ hashes, and exact sample-manifest VCF column order. It also rejects overlapping
 partition selectors, duplicate partition-independent candidate IDs, and
 inputs that change during the run.
 
-The R implementation expands multiallelic records by ALT index and extracts
-the matching alternate AD. It counts and excludes symbolic and non-SNV alleles
-and fails on missing FORMAT/INFO definitions, malformed or negative counts,
+Before semantic VCF parsing, the R implementation streams the raw records in
+bounded chunks and validates the lexical values and expected widths of every
+consumed `FORMAT/DP`, `FORMAT/AD`, and present `INFO/AD` field. This prevents a
+malformed token from being coerced into a parsed numeric value by
+`VariantAnnotation`. An AD value may be a single `.` when the whole vector is
+missing; otherwise its width must equal REF plus every ALT.
+The semantic parse then expands multiallelic records by ALT index, extracts the
+matching alternate AD, counts and excludes symbolic and non-SNV alleles, and
+fails on missing FORMAT/INFO definitions, malformed or negative counts,
 one-sided missing DP/AD, AD greater than DP, or sample/count inconsistencies.
-Header-only VCFs are valid when their receipts and zero counts reconcile.
+Partition-overlap rejection was already correct and its fixture now asserts
+the expected failure reason. Header-only VCFs remain valid when their receipts
+and zero counts reconcile.
 
 The provisional mapping is:
 
@@ -2028,8 +2044,8 @@ Status:
 ```text
 implemented locally at implementation commit e4371de
 locally tested with shell/fake-R coverage
-real-R suite executes locally without SKIP
-fixture PDF EOF assertion failing; corrective branch required
+real-R fixture suite passes locally without SKIP
+PDF signature/EOF fixture scans raw bytes
 cluster validation pending
 not cluster-proven
 ```
@@ -2338,15 +2354,15 @@ Status:
 
 ```text
 approved local Step 09c evidence-package contract
-not yet implemented at the Step 09b boundary
+not yet implemented at the Step 09b1 boundary
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
 ```
 
-After the required `step-09b1-real-r-fixes` gate passes, create
-`step-09c-scientific-validation` from that clean, pushed, docpatched branch.
-Implement a local dry-run-first Python/shell evidence package with this public
-interface:
+After the current `step-09b1-real-r-fixes` documentation, clean-history, and
+push gate passes, create `step-09c-scientific-validation` from that completed
+branch. Implement a local dry-run-first Python/shell evidence package with
+this public interface:
 
 ```bash
 scripts/step_09c_scientific_validation.sh \

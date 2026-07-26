@@ -15,7 +15,7 @@ The uploaded legacy workflow is treated as a protocol reference, not as producti
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
 approved immediate local implementation sequence. It will consume explicit,
 versioned pipeline artifacts without rerunning computation. At the current
-Step `09b` boundary that layer is activated but not yet implemented.
+Step `09b1` boundary that layer is activated but not yet implemented.
 
 ## Current Status
 
@@ -35,14 +35,17 @@ closure locked. Normal restore, an empty cache-disabled binary restore,
 namespace loading, `BiocManager::valid()`, `renv::status()`, and headless PDF
 creation pass locally.
 
-Both semantic real-R suites now execute without `SKIP` when run individually,
-but they do not yet pass: Step `08` unexpectedly accepts overlapping partition
-selectors, and Step `09`
-fails only at a locale-sensitive PDF EOF fixture assertion. Those defects
-require the conditional `step-09b1-real-r-fixes` descendant before scientific
-validation begins. No Step `07`-`09` cluster or production evidence was
-created, the CSU batch-visible R environment remains unresolved, and Steps
-`07`-`09` are not cluster-proven.
+The `step-09b1-real-r-fixes` package is implemented at `eae5eca`. Both
+semantic real-R suites now pass without `SKIP` under the guarded local
+environment. Step `08` already rejected overlapping partition selectors; a
+generic negative-fixture message had misattributed the later failure. The
+actual engine defect was silent coercion of malformed `FORMAT/DP`,
+`FORMAT/AD`, and `INFO/AD` lexemes during semantic VCF parsing. Step `08` now
+streams a raw-count preflight before `VariantAnnotation`, and its fixtures
+assert the expected failure reason. Step `09` now checks PDF EOF signatures as
+raw bytes without locale-sensitive text conversion. No Step `07`-`09` cluster
+or production evidence was created, the CSU batch-visible R environment
+remains unresolved, and Steps `07`-`09` are not cluster-proven.
 
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
@@ -57,8 +60,8 @@ created, the CSU batch-visible R environment remains unresolved, and Steps
 | `05` | SplitNCigarReads | implemented and cluster-proven across all six samples |
 | `06` | read-orientation BAM split | cluster-proven across all six samples |
 | `07` | cohort mpileup by declared partition and mechanical orientation | implemented locally; mocked-bcftools tests pass; runtime and cluster validation pending; not cluster-proven |
-| `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R tests pass; real-R suite runs without `SKIP` but exposes a partition-overlap rejection defect; cluster validation pending; not cluster-proven |
-| `09` | paired CMH editing-site calling | implemented locally; shell/fake-R tests pass; real-R suite runs without `SKIP` but exposes a locale-sensitive PDF EOF fixture defect; cluster validation pending; not cluster-proven |
+| `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R and guarded real-R suites pass; raw count lexemes are preflighted before semantic parsing; cluster validation pending; not cluster-proven |
+| `09` | paired CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R suites pass; PDF fixture validation is locale-independent and byte-based; cluster validation pending; not cluster-proven |
 
 ### Local Runtime, Scientific Review, Reporting, And Validation Roadmap
 
@@ -68,7 +71,7 @@ The approved descendant history is:
 step-09-cmh
 └── step-09a-roadmap-docpatch
     └── step-09b-local-r-runtime
-        └── step-09b1-real-r-fixes       # required by observed real-R failures
+        └── step-09b1-real-r-fixes       # local fixes and real-R acceptance complete
             └── step-09c-scientific-validation
                 └── artifact-schema-v1
                     └── artifact-adapters-v1
@@ -191,10 +194,14 @@ The wide sites table has fixed metadata followed by manifest-ordered
 is published last as the commit marker. Owned locks, stable input hashes,
 run-token temporary paths, validation-before-publication, cleanup, and rollback
 protect the output set. The shell/fake-R suite tests that wrapper contract.
-The Step `08` semantic suite now runs with the guarded local R environment and
-does not `SKIP`, but it currently fails because overlapping partition
-selectors are unexpectedly accepted. This is an observed local semantic-test defect, not a
-pass and not cluster evidence.
+The Step `08` semantic suite now passes without `SKIP` under the guarded local
+R environment. Its partition-overlap validator was already working; generic
+failure text had hidden a later malformed-count case. Commit `eae5eca` adds
+streaming lexical validation before `VariantAnnotation`: `FORMAT/DP` must have
+one token; a `FORMAT/AD` or present `INFO/AD` value may be a single `.` when
+the entire vector is missing, but otherwise must have one token per
+reference-plus-alternate allele. Every token must be `.` or a non-negative
+integer. This is local fixture evidence, not production or cluster evidence.
 
 ### Step 09 Local Implementation
 
@@ -247,9 +254,10 @@ candidates with explicit statuses and preserves
 validated. The summary is published last as the six-output transaction commit
 marker. Owned locks, immutable input hashes, run-token temporary and backup
 paths, exact output reconciliation, cleanup, and rollback protect the set. The
-Step `09` semantic suite now runs with real R and does not `SKIP`, but it
-currently fails only at its locale-sensitive PDF EOF fixture assertion. This
-is not a semantic-suite pass and does not establish runtime or cluster proof.
+Step `09` semantic suite now passes without `SKIP` under real R after its PDF
+EOF fixture was changed to search raw bytes rather than locale-sensitive text.
+This is local fixture evidence and does not establish production runtime or
+cluster proof.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
@@ -412,11 +420,11 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the Step `09b` boundary the R environment check
-passes. The Step `08` and Step `09` runners each execute without `SKIP` when
-invoked individually and expose the two defects assigned to
-`step-09b1-real-r-fixes`; the aggregate `local-real-r-test` stops at the first
-Step `08` failure and therefore does not reach Step `09`.
+uses the existing `.venv`. At the Step `09b1` boundary the R environment
+check, both Step `08` and Step `09` real-R runners, and the aggregate
+`local-real-r-test` pass without `SKIP`. The complete shell, Python, R, and
+`r-check` gates pass locally. These checks use synthetic fixtures and do not
+constitute production or cluster validation.
 
 Shortcut for the Makefile-covered checks:
 

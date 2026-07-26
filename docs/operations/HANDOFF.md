@@ -36,8 +36,8 @@ The intended high-level workflow is:
 | `05` GATK SplitNCigarReads | implemented and cluster-proven across all six samples | Dry-run-first script/job consume Step `04` markdup BAMs and Step `00c` sidecars, publish validated `results/split_ncigar/<sample>/<sample>.split_ncigar.bam`, and route GATK temp spill files to project storage. |
 | `06` read-orientation BAM split | cluster-proven across all six samples | Consumes Step `05` split-N-cigar BAMs and writes validated `FWD_like` / `REV_like` mechanical flag-group BAMs plus orientation counts TSVs. |
 | `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
-| `08` VCF preprocessing | implemented locally; shell/fake-R tested; real-R defect exposed | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Its real-R suite executes without `SKIP` but currently fails because overlapping partition selectors are unexpectedly accepted. No cluster evidence exists, and this step is not cluster-proven. |
-| `09` CMH editing-site calling | implemented locally; shell/fake-R tested; real-R fixture defect exposed | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. Its real-R suite executes without `SKIP` but currently fails only at a locale-sensitive PDF EOF fixture assertion. No cluster evidence exists, and this step is not cluster-proven. |
+| `08` VCF preprocessing | implemented locally; shell/fake-R and guarded real-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Its real-R suite passes without `SKIP`; raw DP/AD/INFO AD lexemes are preflighted before semantic parsing. No cluster evidence exists, and this step is not cluster-proven. |
+| `09` CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R tested | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. Its real-R suite passes without `SKIP`, including locale-independent raw-byte PDF validation. No cluster evidence exists, and this step is not cluster-proven. |
 
 Current demo state:
 
@@ -51,17 +51,20 @@ Current demo state:
 * Locally runtime-checked: normal and empty cache-disabled binary restores,
   namespace loading, `BiocManager::valid()`, `renv::status()`, and headless PDF
   creation pass.
-* Step `08` real-R fixtures run without `SKIP` but expose an
-  overlapping-partition-selector failure.
-* Step `09` real-R fixtures run without `SKIP` but expose a locale-sensitive
-  PDF EOF assertion failure.
+* Step `08` and Step `09` real-R fixtures pass without `SKIP` after the
+  `step-09b1-real-r-fixes` implementation at `eae5eca`.
+* Step `08` now validates raw `FORMAT/DP`, `FORMAT/AD`, and `INFO/AD` lexemes
+  before `VariantAnnotation`; its partition-overlap validator was already
+  correct, and the prior generic fixture error had misattributed the failure.
+* Step `09` now validates PDF EOF signatures as raw bytes without
+  locale-sensitive text conversion.
 * The Step `09` implementation/docpatch gate is complete and pushed at
   `9ac8307`.
 * Documentation-only `step-09a-roadmap-docpatch` records the reconciled
   roadmap and is the clean/pushed base of `step-09b-local-r-runtime`.
-* The conditional next branch is `step-09b1-real-r-fixes`, followed by local
-  scientific-validation, artifact/run-summary, immediate HTML/PDF reporting,
-  foundational read-only tooling, and one validator branch per pipeline step.
+* The next branch is `step-09c-scientific-validation`, followed by
+  artifact/run-summary, immediate HTML/PDF reporting, foundational read-only
+  tooling, and one validator branch per pipeline step.
 * Remote promotion is paused. No Step `07` cluster evidence has yet been
   inspected, and the CSU batch-visible R environment remains unresolved.
 * Not cluster-proven: Steps `07`, `08`, and `09`.
@@ -538,11 +541,14 @@ part of those totals or the correction universe.
 
 Step `08` is implemented locally at implementation commit `90335d8`. Its
 shell wrapper and publication behavior pass active fake-R tests. Its semantic
-suite now executes locally under the guarded real-R environment without
-`SKIP`, but currently fails because overlapping partition selectors are unexpectedly
-accepted. This observed defect requires `step-09b1-real-r-fixes`; the suite is
-not passing. There is no cluster dry-run, execute job, log, or inspected output
-evidence. Step `08` is not cluster-proven.
+suite now passes locally under the guarded real-R environment without `SKIP`
+after the corrective implementation at `eae5eca`. The existing
+partition-overlap validator already rejected overlapping selectors; the
+earlier generic negative-fixture message had misidentified the later failure.
+The actual defect was malformed DP/AD/INFO AD lexemes being silently coerced
+during semantic parsing. A streaming raw-count preflight now rejects those
+lexemes before `VariantAnnotation`. There is no cluster dry-run, execute job,
+log, or inspected output evidence. Step `08` is not cluster-proven.
 
 Implemented entry points:
 
@@ -562,10 +568,13 @@ globally unique partition-independent candidate IDs.
 The R engine uses `VariantAnnotation`, `GenomicRanges`, and `rtracklayer`
 with the Novogene GTF. It expands multiallelic records by ALT index, extracts
 the matching AD value, and counts/excludes symbolic and non-SNV alleles.
-Missing required FORMAT definitions, malformed or negative counts, one-sided
-missing DP/AD, AD greater than DP, overlaps, duplicates, or receipt
-inconsistencies fail rather than being coerced. A paired missing DP/AD value is
-retained as missing.
+Before semantic parsing, it requires raw `FORMAT/DP` width `1` and raw
+`FORMAT/AD`/present `INFO/AD` values to be a single `.` when the whole vector
+is missing or otherwise have width equal to reference plus alternate allele
+count; each token must be `.` or a non-negative integer. Missing required
+FORMAT definitions, malformed or negative counts, one-sided missing DP/AD, AD
+greater than DP, overlaps, duplicates, or receipt inconsistencies fail rather
+than being coerced. A paired missing DP/AD value is retained as missing.
 
 The retained legacy mapping is explicit and provisional:
 
@@ -605,11 +614,11 @@ job must be `COMPLETED 0:0`, and no owned lock or run-token residue may remain.
 ## Step 09 Current State
 
 Step `09` is implemented locally at implementation commit `e4371de`. The
-active shell/fake-R suite passes. The real-R fixture runner now executes
-without `SKIP` and currently fails only at a locale-sensitive PDF EOF fixture
-assertion. This requires `step-09b1-real-r-fixes`; the suite is not passing.
-There is no Step `09` cluster dry-run, execute job, log, or inspected output
-evidence, so the step is not cluster-proven.
+active shell/fake-R suite passes. The real-R fixture runner now also passes
+without `SKIP` after `eae5eca` replaced locale-sensitive PDF raw-to-text
+conversion with raw-byte EOF matching. There is no Step `09` cluster dry-run,
+execute job, log, or inspected output evidence, so the step is not
+cluster-proven.
 
 The full sample manifest is the only pairing source. It must contain
 `replicate`, with exactly one control and one treatment per replicate,
@@ -713,22 +722,19 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-1. Complete the Step `09b` docpatch honestly: local runtime checks pass, but
-   the two real-R semantic suites do not.
-2. On `step-09b1-real-r-fixes`, correct Step `08` partition-overlap
-   rejection and the Step `09` locale-sensitive PDF EOF fixture, then pass
-   both real-R suites and the full gate.
-3. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
+1. Complete the Step `09b1` docpatch and clean/push gate. Its implementation
+   commit is `eae5eca`; both real-R suites and the complete local gate pass.
+2. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
    package with synthetic fixtures. It may publish `evidence_incomplete` or
    `science_review_complete_exploratory`; it must reject the reserved
    `biological_interpretation_ready` state.
-4. Implement the artifact schema/adapters/run-summary and immediate
+3. Implement the artifact schema/adapters/run-summary and immediate
    self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. Reporting is
    activated but is not implemented at this handoff boundary.
-5. Implement the three read-only foundation packages and then one explicit
+4. Implement the three read-only foundation packages and then one explicit
    validator branch for each of `00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`,
    `04`, `05`, `06`, `07`, `08`, and `09`.
-6. Stop local work after `post09-validation-report-09`.
+5. Stop local work after `post09-validation-report-09`.
 
 When remote work resumes, continue only from that final clean branch:
 
@@ -786,9 +792,10 @@ git diff --name-status
 Local tests are lightweight and should not require real full-size BAM/FASTQ
 data. Bare `python` is absent on this workstation, so the passing Python gate
 uses the existing project `.venv`. The R environment check passes. The two
-real-R runners execute without `SKIP` but currently expose the Step `08` and
-Step `09` defects recorded above; the conditional fix branch must make both
-suites pass before Step `09c`.
+real-R runners and the aggregate local R target pass without `SKIP` after
+`eae5eca`; the shell, Python, and `r-check` gates also pass locally. This is
+synthetic/local evidence only. Step `09c` follows after this docpatch branch is
+clean and pushed.
 
 ## Development Rule
 

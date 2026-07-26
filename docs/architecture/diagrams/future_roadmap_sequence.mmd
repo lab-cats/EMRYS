@@ -9,7 +9,7 @@ flowchart TB
     s09["step-09-cmh<br/>local implementation/docpatch complete"]
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
     rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
-    rfix["step-09b1-real-r-fixes<br/>triggered by two fixture failures"]
+    rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
     science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
     artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
     reports["report-html-v1<br/>-> report-exports-v1"]
@@ -21,9 +21,9 @@ flowchart TB
     science09c --> artifacts --> reports --> foundations --> validators
     validators -.-> remote
 
-    class s09 current
+    class s09,rfix current
     class s09a docs
     class rlocal runtime
-    class rfix,science09c science
+    class science09c science
     class artifacts,reports,foundations,validators future
     class remote deferred

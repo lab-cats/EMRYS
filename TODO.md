@@ -51,11 +51,12 @@ environment is pinned to Bioconductor `3.23` and locks the eight direct Step
 
 Normal restore and an empty cache-disabled binary restore pass. Namespace
 loading, `BiocManager::valid()`, `renv::status()`, and headless PDF creation
-also pass. Both Step `08` and Step `09` real-R suites now run without `SKIP`
-when invoked individually, but neither semantic suite passes yet: Step `08`
-unexpectedly accepts overlapping partition selectors, and Step `09` fails only
-at a locale-sensitive PDF
-EOF fixture assertion. The shell/fake-R contracts remain passing. No Step
+also pass. On `step-09b1-real-r-fixes`, both Step `08` and Step `09` real-R
+suites now pass without `SKIP`, as do the aggregate local R, shell, Python,
+and `r-check` gates. Step `08` now rejects malformed raw `FORMAT/DP`,
+`FORMAT/AD`, and `INFO/AD` lexemes before `VariantAnnotation` can coerce them;
+its existing partition-overlap rejection was already correct. Step `09` now
+checks PDF EOF bytes without locale-sensitive text conversion. No Step
 `07`-`09` cluster or production evidence has been added.
 
 All six libraries are paired-end and reverse-stranded / first-strand-style.
@@ -96,27 +97,11 @@ step-09a-roadmap-docpatch
                                                                                             └── post09-validation-report-09
 ```
 
-### 1. Close `step-09b-local-r-runtime`
+The Step `09b` runtime and Step `09b1` corrective implementation gates are
+complete locally. Commit `eae5eca` contains the Step `09b1` implementation and
+tests; this docpatch closes that branch before its clean/push gate.
 
-- Keep `.Rprofile` opt-in: activate the project library only when
-  `NORAD_USE_RENV=1`.
-- Preserve the explicit interfaces
-  `RSCRIPT_BIN=<executable> make r-restore`, `make r-check`, and
-  `make local-real-r-test`.
-- Do not let compute or SLURM wrappers bootstrap or install packages.
-- Record the passing restore/package/status/PDF checks and the two observed
-  semantic-suite failures without calling either suite a pass.
-- Use the existing `.venv` for Python gates because bare `python` is absent on
-  this workstation.
-
-### 2. Fix The Real-R Defects On `step-09b1-real-r-fixes`
-
-- Make overlapping Step `08` partition selectors fail as required.
-- Make the Step `09` PDF EOF fixture locale-independent.
-- Re-run both real-R suites without `SKIP`, the complete local gate, an
-  implementation commit, and a separate docpatch before branching onward.
-
-### 3. Implement `step-09c-scientific-validation`
+### 1. Implement `step-09c-scientific-validation`
 
 Add the dry-run-first explicit-input evidence package under
 `results/scientific_validation/<review_id>/`. It summarizes review plans,
@@ -135,7 +120,7 @@ science_review_complete_exploratory
 It must reject the reserved `biological_interpretation_ready` state until a
 separately approved policy branch unlocks its scientific exit criteria.
 
-### 4. Implement Artifacts, Run Summary, And Reports Immediately
+### 2. Implement Artifacts, Run Summary, And Reports Immediately
 
 Do not defer reporting. Implement, in order:
 
@@ -155,7 +140,7 @@ limitations banners, call rows “CMH-ranked candidates,” declare any
 truncation with full-table path/hash, and never imply that rendering is
 validation.
 
-### 5. Implement Foundational Read-Only Engineering
+### 3. Implement Foundational Read-Only Engineering
 
 After reporting, implement:
 
@@ -166,7 +151,7 @@ After reporting, implement:
 These packages inspect and record explicit inputs. They do not install tools,
 repair references, or delete/move/compress outputs.
 
-### 6. Add One Validator Branch Per Pipeline Step
+### 4. Add One Validator Branch Per Pipeline Step
 
 Each branch publishes
 `results/qc/validation/<step>/<scope>.validation.tsv`, adds its artifact
@@ -179,7 +164,7 @@ run summary and consolidated HTML/PDF report. Use one branch each for:
 
 Stop local work after `post09-validation-report-09`.
 
-### 7. Resume Remote Work Later
+### 5. Resume Remote Work Later
 
 Only after that final clean branch, continue:
 
@@ -259,10 +244,10 @@ normal and empty cache-disabled binary restores
 namespace, BiocManager, renv-status, and headless-PDF checks
 ```
 
-The two semantic suites run without `SKIP` but still require the
-`step-09b1-real-r-fixes` corrections described above. CSU compute/batch R,
-package restore, and hash-tool visibility remain unresolved and will be
-handled only when remote validation resumes.
+Both semantic suites pass without `SKIP` under the guarded local environment
+after `step-09b1-real-r-fixes`. CSU compute/batch R, package restore, and
+hash-tool visibility remain unresolved and will be handled only when remote
+validation resumes.
 
 ### Storage Quotas
 
@@ -377,10 +362,14 @@ input receipt published last as the three-output commit marker
 
 The wrapper uses an owned lock, run-token temporary paths, stable hashes,
 validation-before-publication, cleanup, and rollback. Active shell/fake-R tests
-pass locally. The real-R suite executes locally without `SKIP`, but currently
-fails because overlapping partition selectors are unexpectedly accepted. Do not call
-the semantic suite passing until `step-09b1-real-r-fixes` corrects and retests
-that contract. All cluster validation remains pending.
+pass locally. The real-R suite now also passes without `SKIP`. The prior
+generic negative-fixture error had misattributed a later malformed-count
+failure to the already-working partition-overlap validator. Commit `eae5eca`
+adds a streaming raw-VCF preflight that checks exact DP/AD widths and permits
+only `.` or non-negative integer tokens before semantic parsing. A single `.`
+is valid for a wholly missing AD vector; otherwise AD width must equal REF
+plus every ALT. Negative fixtures assert each failure reason. All production
+and cluster validation remains pending.
 
 ### Step 09: CMH Editing-Site Calling
 
@@ -400,15 +389,15 @@ missing, low-coverage, degenerate, and non-target rows retained with statuses
 optional explicit background condition; disabled by default; EV is not no-dox
 four TSVs plus fixed-size, signature-validated mutation-spectrum and depth-delta PDFs
 summary published last as the six-output transaction commit marker
-real-R suite executes locally; locale-sensitive PDF EOF fixture fix pending
+real-R suite passes locally; PDF EOF fixture uses raw-byte matching
 ```
 
 The shell/fake-R suite is locally passing. The real-R fixtures include a known
 CMH result and odds-ratio direction, global BH behavior, strict threshold
 boundaries, background mode, empty and degenerate inputs, deterministic
-subsets, and PDF signatures. They now execute locally without `SKIP`; the only
-current failure is the locale-sensitive PDF EOF fixture assertion. This is not
-a semantic-suite pass.
+subsets, and PDF signatures. They now pass locally without `SKIP` after the
+fixture was changed to search raw PDF bytes without locale-sensitive text
+conversion. This local fixture pass is not production or cluster evidence.
 
 ## Activated Roadmap And Deferred Boundaries
 
@@ -442,7 +431,7 @@ vertical slice:
 ### Reporting And Artifact Layer
 
 This layer is activated for immediate local implementation after Step `09c`.
-It remains non-runnable at the current Step `09b` boundary.
+It remains non-runnable at the current Step `09b1` boundary.
 
 Ordered packages:
 
@@ -488,8 +477,7 @@ These are refactor candidates, not active implementation requirements:
 * Future helper-library refactors must preserve existing step CLIs, output paths, dry-run/execute semantics, and proven cluster contracts.
 * The explicit `00a` and `00b` validator branches will add their focused
   validation coverage. `make real-r-test` now executes both semantic suites
-  locally under the guarded environment; their current defects are tracked
-  above and must not be described as passes.
+  locally under the guarded environment, and both pass without `SKIP`.
 * Keep active runnable tests under `tests/shell/` and non-runnable future test plans under `tests/pending/`.
 * Add validation/reporting Makefile targets only on the branch that implements
   the underlying stable command.
@@ -555,7 +543,10 @@ Reconcile the descendant runtime, scientific-validation, and post-proof roadmap 
 Install and verify signed CRAN R 4.6.1 locally without using the damaged Homebrew checkout.
 Create the guarded renv 1.2.3 / Bioconductor 3.23 lock and pass normal plus empty cache-disabled restores.
 Pass local namespace, BiocManager, renv-status, and headless-PDF runtime checks.
-Execute both real-R suites without SKIP and record, without overstating, the two defects they expose.
+Execute both real-R suites without SKIP and record the initial failing fixtures without overstating them.
+Correct Step 08 raw DP/AD/INFO AD lexical validation and make its negative fixtures reason-specific at eae5eca.
+Make the Step 09 PDF EOF fixture locale-independent with raw-byte matching at eae5eca.
+Pass both real-R suites, the aggregate local R target, shell/Python gates, and r-check locally after those corrections.
 ```
 
 ## Development Rule
