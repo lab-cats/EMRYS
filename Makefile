@@ -18,6 +18,7 @@ shell-test:
 	bash tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/shell/test_step_08_vcf_preprocessing.sh
 	bash tests/shell/test_step_09_cmh_editing_site_calling.sh
+	bash tests/shell/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
 
 real-r-test:
