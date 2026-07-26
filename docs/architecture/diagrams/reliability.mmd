@@ -13,7 +13,7 @@ flowchart LR
     descendant["next descendant<br/>local stage branch"]
     localr["local R gate<br/>guarded renv / runtime checks"]
     realrfix["09b1 real-R fixes<br/>both suites pass locally"]
-    sciencebranch["scientific-validation tooling<br/>explicit evidence; dry-run first"]
+    sciencebranch["09c implemented locally<br/>synthetic fixtures pass"]
     artifacts["artifact contracts<br/>schema -> adapters -> run summary"]
     reports["immediate reports<br/>HTML -> PDF exports"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
@@ -53,9 +53,9 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
-    class sciencebranch,artifacts,reports,foundations,validators safeguard
+    class artifacts,reports,foundations,validators safeguard
     class remotehold docs

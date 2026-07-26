@@ -2,7 +2,6 @@ flowchart TB
     classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
     classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef science fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
     classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
 
@@ -10,7 +9,7 @@ flowchart TB
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
     rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
     rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
-    science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
+    science09c["step-09c-scientific-validation<br/>implemented + synthetic-fixture-tested locally<br/>production evidence unavailable"]
     artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
     reports["report-html-v1<br/>-> report-exports-v1"]
     foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
@@ -21,9 +20,8 @@ flowchart TB
     science09c --> artifacts --> reports --> foundations --> validators
     validators -.-> remote
 
-    class s09,rfix current
+    class s09,rfix,science09c current
     class s09a docs
     class rlocal runtime
-    class science09c science
     class artifacts,reports,foundations,validators future
     class remote deferred

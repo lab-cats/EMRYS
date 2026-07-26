@@ -38,6 +38,7 @@ The intended high-level workflow is:
 | `07` cohort mpileup | implemented locally and locally tested | Runs all manifest samples together for one declared partition and publishes neutral `FWD_like` / `REV_like` VCFs plus a receipt. Mocked-bcftools tests pass. Real-bcftools runtime validation, cluster dry-run, execute, and inspected cluster output evidence are pending; this step is not cluster-proven. |
 | `08` VCF preprocessing | implemented locally; shell/fake-R and guarded real-R tested | Deterministically consumes the declared Step `07` receipt/VCF set and publishes a wide sites table, input receipt, and QC summary. Its real-R suite passes without `SKIP`; raw DP/AD/INFO AD lexemes are preflighted before semantic parsing. No cluster evidence exists, and this step is not cluster-proven. |
 | `09` CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R tested | Validates manifest-defined EV/PUM1 replicate pairs plus the Step `08` sites table and complete input receipt, retains every candidate with explicit statuses, and publishes four TSVs plus two PDFs. Its real-R suite passes without `SKIP`, including locale-independent raw-byte PDF validation. No cluster evidence exists, and this step is not cluster-proven. |
+| `09c` scientific-evidence validation | implemented and fixture-tested locally at `b674a31` | Validates explicit Step `08`/`09` inputs, review plans, and evidence manifests; publishes 13 TSVs with the review summary last. No production review evidence, completed production science review, cluster evidence, or biological-readiness claim is recorded or supported by inspected evidence. |
 
 Current demo state:
 
@@ -62,15 +63,21 @@ Current demo state:
   `9ac8307`.
 * Documentation-only `step-09a-roadmap-docpatch` records the reconciled
   roadmap and is the clean/pushed base of `step-09b-local-r-runtime`.
-* The next branch is `step-09c-scientific-validation`, followed by
-  artifact/run-summary, immediate HTML/PDF reporting, foundational read-only
-  tooling, and one validator branch per pipeline step.
+* Step `09c` is implemented locally at `b674a31`, with active Python and shell
+  fixtures for dry-run, status policy, evidence validation, locking,
+  publication, rollback, and cleanup.
+* After the Step `09c` docpatch/push gate, the next branch is
+  `artifact-schema-v1`, followed by artifact adapters/run summary, immediate
+  HTML/PDF reporting, foundational read-only tooling, and one validator branch
+  per pipeline step.
 * Remote promotion is paused. No Step `07` cluster evidence has yet been
   inspected, and the CSU batch-visible R environment remains unresolved.
 * Not cluster-proven: Steps `07`, `08`, and `09`.
 * No final biological result exists. Even future computational cluster proof
   will leave the provisional orientation policy and candidate interpretation
   for the separate scientific evidence-and-decision gate.
+* No production Step `09c` evidence package is recorded or supported by
+  inspected evidence; production science remains `evidence_incomplete`.
 
 ## Cohort
 
@@ -135,9 +142,8 @@ Current downstream conclusions must remain bounded:
 * A separate post-Step-09 scientific gate must resolve orientation evidence,
   annotation provenance, sensitivity/replicate robustness, candidate
   adjudication, and the eligible-background decision before interpretation.
-  Its Step `09c` schemas/tooling are now scheduled for immediate local
-  fixture-based implementation; that does not create or complete a production
-  review.
+  Its Step `09c` schemas/tooling are implemented and fixture-tested locally;
+  that does not create or complete a production review.
 * `science_review_complete_exploratory` records a completed review while
   retaining provisional results. `biological_interpretation_ready` is the only
   state that could permit biological interpretation, but it is currently
@@ -166,6 +172,8 @@ scripts/step_08_vcf_preprocessing.sh
 scripts/step_08_vcf_preprocessing.R
 scripts/step_09_cmh_editing_site_calling.sh
 scripts/step_09_cmh_editing_site_calling.R
+scripts/step_09c_scientific_validation.sh
+scripts/step_09c_scientific_validation.py
 ```
 
 Implemented SLURM jobs:
@@ -210,6 +218,17 @@ tests/shell/test_step_09_cmh_editing_site_calling.sh
 tests/r/run_step_09_cmh_tests.sh
 tests/r/test_step_09_cmh_editing_site_calling.R
 configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+Step `09c` also has:
+
+```text
+tests/test_step_09c_scientific_validation.py
+tests/shell/test_step_09c_scientific_validation.sh
+tests/fixtures/step09c/build_fixture.py
+configs/step_09c_review_plan.example.tsv
+configs/step_09c_evidence_manifest.example.tsv
+configs/step_09c_evidence_schemas/
 ```
 
 Local R interfaces:
@@ -269,6 +288,19 @@ results/editing/<analysis>/<analysis>.cmh_summary.tsv
 results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
 results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
 results/editing/<analysis>/<analysis>.depth_delta.pdf
+results/scientific_validation/<review_id>/<review_id>.step09c_review_plan.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_evidence_index.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_orientation_locus_audit.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_annotation_audit.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_qc_funnel.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_replicate_effects.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_sensitivity_matrix.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_leave_one_pair_out.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_candidate_selection.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_candidate_adjudication.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_decisions.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_limitations.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_review_summary.tsv
 ```
 
 Activated but not yet implemented local-roadmap output families:
@@ -691,6 +723,56 @@ signatures/EOF markers, background disabled for the default analysis, and no
 owned lock or run-token residue. Passing this gate establishes computational
 proof only.
 
+## Step 09c Current State
+
+Step `09c` is implemented locally at `b674a31`. It is a local,
+dry-run-first Python/shell evidence validator, not a compute stage, SLURM job,
+CMH rerun, decision engine, or biological-interpretation gate.
+
+Public interface:
+
+```bash
+scripts/step_09c_scientific_validation.sh \
+  --review-id REVIEW_ID \
+  --sample-manifest SAMPLE_MANIFEST \
+  --partition-manifest PARTITION_MANIFEST \
+  --step08-sites STEP08_SITES \
+  --step08-inputs STEP08_INPUTS \
+  --step08-summary STEP08_SUMMARY \
+  --step09-analysis-dir STEP09_ANALYSIS_DIR \
+  --review-plan REVIEW_PLAN \
+  --evidence-manifest EVIDENCE_MANIFEST \
+  --output-root results/scientific_validation
+
+# add --execute only to publish
+```
+
+Dry-run validates and prints the declared context without creating the output
+directory, acquiring a lock, or writing stable files. Execute mode verifies
+the exact Step `08` three-file and Step `09` six-file contracts, manifest and
+artifact hashes, row counts, sample/partition/candidate relationships,
+scientific evidence schemas, status coherence, policy versions, decisions,
+and immutable inputs.
+
+It publishes all 13 named TSVs under
+`results/scientific_validation/<review_id>/` as one rollback-protected
+transaction and writes `<review_id>.step09c_review_summary.tsv` last. The
+implementation uses a review-scoped regular lock file with review/PID/run-token
+metadata, run-token temporary and backup paths, validation before publication,
+stable-input hash rechecks, rollback, and explicit cleanup failure reporting.
+Existing stable outputs must be all 13 present or all absent. Incomplete
+rollback retains recovery state; cleanup-only failures report the paths that
+could not be removed and do not guarantee that the lock remains.
+
+The active Python and shell fixture suites cover incomplete and exploratory
+evidence, the reserved-state guard, unrelated-file immunity, input/hash
+mutation, side-effect-free dry-run, exact output publication, locks, cleanup,
+and rollback. The complete local Python, shell, and guarded R gates pass. This
+is synthetic local evidence only. No production review package is recorded or
+supported by inspected evidence;
+`science_review_complete_exploratory` has not been established for production,
+and `biological_interpretation_ready` is rejected by this implementation.
+
 ## Current Next Work
 
 Use this clean descendant sequence:
@@ -722,21 +804,17 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-The Step `09b1` branch is complete and pushed: implementation `eae5eca` plus
-its documentation-only commits, with both real-R suites and the complete local
-gate passing.
+The Step `09b1` branch is complete and pushed. Step `09c` implementation
+`b674a31` and its complete local fixture gate pass; this docpatch is the
+remaining predecessor gate before branching.
 
-1. Implement the explicit-input, dry-run-first Step `09c` scientific evidence
-   package with synthetic fixtures. It may publish `evidence_incomplete` or
-   `science_review_complete_exploratory`; it must reject the reserved
-   `biological_interpretation_ready` state.
-2. Implement the artifact schema/adapters/run-summary and immediate
+1. Implement the artifact schema/adapters/run-summary and immediate
    self-contained HTML plus Quarto/Typst PDF/TSV reporting slice. Reporting is
    activated but is not implemented at this handoff boundary.
-3. Implement the three read-only foundation packages and then one explicit
+2. Implement the three read-only foundation packages and then one explicit
    validator branch for each of `00a`, `00b`, `00c`, `01`, `02`, `02b`, `03`,
    `04`, `05`, `06`, `07`, `08`, and `09`.
-4. Stop local work after `post09-validation-report-09`.
+3. Stop local work after `post09-validation-report-09`.
 
 When remote work resumes, continue only from that final clean branch:
 
@@ -796,8 +874,9 @@ data. Bare `python` is absent on this workstation, so the passing Python gate
 uses the existing project `.venv`. The R environment check passes. The two
 real-R runners and the aggregate local R target pass without `SKIP` after
 `eae5eca`; the shell, Python, and `r-check` gates also pass locally. This is
-synthetic/local evidence only. The Step `09b1` branch is clean and pushed, and
-Step `09c` is next.
+synthetic/local evidence only. Step `09c` is implemented at `b674a31`; its
+Python/shell fixtures pass, production scientific evidence is unavailable, and
+`artifact-schema-v1` is next after this docpatch/push gate.
 
 ## Development Rule
 

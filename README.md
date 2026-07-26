@@ -14,8 +14,10 @@ The uploaded legacy workflow is treated as a protocol reference, not as producti
 
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
 approved immediate local implementation sequence. It will consume explicit,
-versioned pipeline artifacts without rerunning computation. At the current
-completed Step `09b1` boundary that layer is activated but not yet implemented.
+versioned pipeline artifacts without rerunning computation. Step `09c`
+scientific-validation tooling is now implemented and fixture-tested locally;
+`artifact-schema-v1` is the next package, and the artifact/reporting layer is
+still not implemented.
 
 ## Current Status
 
@@ -47,6 +49,15 @@ raw bytes without locale-sensitive text conversion. No Step `07`-`09` cluster
 or production evidence was created, the CSU batch-visible R environment
 remains unresolved, and Steps `07`-`09` are not cluster-proven.
 
+Step `09c` is implemented locally at `b674a31`. Its explicit-input Python/shell
+package validates a complete Step `08`/`09` transaction plus declared
+scientific-review evidence and publishes 13 TSVs with the review summary last.
+Dry-run, atomic publication, rollback, lock/cleanup, hash mutation, reserved
+state, incomplete evidence, and exploratory-state behavior are fixture-tested.
+This is local synthetic evidence only: no completed production scientific
+review is recorded or supported by inspected evidence, and biological
+interpretation readiness remains unavailable.
+
 | Step | Purpose | Status |
 | ---- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
@@ -62,6 +73,7 @@ remains unresolved, and Steps `07`-`09` are not cluster-proven.
 | `07` | cohort mpileup by declared partition and mechanical orientation | implemented locally; mocked-bcftools tests pass; runtime and cluster validation pending; not cluster-proven |
 | `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R and guarded real-R suites pass; raw count lexemes are preflighted before semantic parsing; cluster validation pending; not cluster-proven |
 | `09` | paired CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R suites pass; PDF fixture validation is locale-independent and byte-based; cluster validation pending; not cluster-proven |
+| `09c` | explicit scientific-evidence validation and review summary | implemented locally at `b674a31`; dry-run, Python, and shell fixture suites pass; production evidence/review and cluster validation are unavailable; does not establish biological interpretation readiness |
 
 ### Local Runtime, Scientific Review, Reporting, And Validation Roadmap
 
@@ -72,7 +84,7 @@ step-09-cmh
 └── step-09a-roadmap-docpatch
     └── step-09b-local-r-runtime
         └── step-09b1-real-r-fixes       # local fixes and real-R acceptance complete
-            └── step-09c-scientific-validation
+            └── step-09c-scientific-validation  # implemented and fixture-tested locally
                 └── artifact-schema-v1
                     └── artifact-adapters-v1
                         └── artifact-run-summary
@@ -101,9 +113,9 @@ when `NORAD_USE_RENV=1`. Existing compute and SLURM wrappers never install or
 bootstrap R packages. Use `RSCRIPT_BIN=<explicit executable>` with
 `make r-restore`, `make r-check`, and `make local-real-r-test`.
 
-`step-09c-scientific-validation` will validate explicit evidence and publish a
-synthetic-fixture-tested evidence package; it will not rerun CMH statistics or
-claim production review. Its allowed science states are
+`step-09c-scientific-validation` now validates explicit evidence and publishes
+a synthetic-fixture-tested evidence package; it does not rerun CMH statistics
+or claim production review. Its allowed science states are
 `evidence_incomplete` and `science_review_complete_exploratory`.
 `biological_interpretation_ready` is reserved and rejected until a separately
 approved policy branch unlocks its exit criteria.
@@ -113,7 +125,8 @@ schema, read-only adapters, canonical run summary, self-contained HTML report,
 and Quarto/Typst PDF/TSV bundle come directly after Step `09c`. They will be
 implemented from explicit inventories and validated structured inputs; report
 generation will never be evidence of computational or biological validation.
-At this boundary, all of those packages remain unimplemented.
+At this boundary, all of those artifact/reporting packages remain
+unimplemented; `artifact-schema-v1` is next.
 
 The reporting slice is followed by read-only runtime, reference-provenance,
 and storage/retention tooling, then one explicit validator branch for every
@@ -258,6 +271,68 @@ Step `09` semantic suite now passes without `SKIP` under real R after its PDF
 EOF fixture was changed to search raw bytes rather than locale-sensitive text.
 This is local fixture evidence and does not establish production runtime or
 cluster proof.
+
+### Step 09c Local Scientific-Validation Tooling
+
+Implemented entry points, example contracts, and active tests:
+
+```text
+scripts/step_09c_scientific_validation.sh
+scripts/step_09c_scientific_validation.py
+configs/step_09c_review_plan.example.tsv
+configs/step_09c_evidence_manifest.example.tsv
+configs/step_09c_evidence_schemas/
+tests/fixtures/step09c/build_fixture.py
+tests/test_step_09c_scientific_validation.py
+tests/shell/test_step_09c_scientific_validation.sh
+```
+
+Public dry-run-first interface:
+
+```bash
+scripts/step_09c_scientific_validation.sh \
+  --review-id REVIEW_ID \
+  --sample-manifest SAMPLE_MANIFEST \
+  --partition-manifest PARTITION_MANIFEST \
+  --step08-sites STEP08_SITES \
+  --step08-inputs STEP08_INPUTS \
+  --step08-summary STEP08_SUMMARY \
+  --step09-analysis-dir STEP09_ANALYSIS_DIR \
+  --review-plan REVIEW_PLAN \
+  --evidence-manifest EVIDENCE_MANIFEST \
+  --output-root results/scientific_validation
+
+# add --execute only to publish
+```
+
+Execute mode validates the explicitly named Step `08` and Step `09`
+transactions, evidence paths/hashes/row counts, review policy, status
+coherence, candidate/replicate/audit relationships, and immutable inputs. It
+publishes one rollback-protected 13-file transaction:
+
+```text
+results/scientific_validation/<review_id>/
+  <review_id>.step09c_review_plan.tsv
+  <review_id>.step09c_evidence_index.tsv
+  <review_id>.step09c_orientation_locus_audit.tsv
+  <review_id>.step09c_annotation_audit.tsv
+  <review_id>.step09c_qc_funnel.tsv
+  <review_id>.step09c_replicate_effects.tsv
+  <review_id>.step09c_sensitivity_matrix.tsv
+  <review_id>.step09c_leave_one_pair_out.tsv
+  <review_id>.step09c_candidate_selection.tsv
+  <review_id>.step09c_candidate_adjudication.tsv
+  <review_id>.step09c_decisions.tsv
+  <review_id>.step09c_limitations.tsv
+  <review_id>.step09c_review_summary.tsv
+```
+
+The summary is published last as the transaction marker. Missing and
+incomplete evidence remain explicit. `science_review_complete_exploratory`
+requires coherent completed evidence and decisions but remains provisional;
+`biological_interpretation_ready` is always rejected by this version. Local
+completion means implemented and synthetic-fixture-tested, not production
+scientific review, cluster proof, or biological validation.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
@@ -420,11 +495,12 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the completed Step `09b1` boundary the R environment
-check, both Step `08` and Step `09` real-R runners, and the aggregate
-`local-real-r-test` pass without `SKIP`. The complete shell, Python, R, and
-`r-check` gates pass locally. These checks use synthetic fixtures and do not
-constitute production or cluster validation.
+uses the existing `.venv`. At the Step `09c` implementation boundary the R
+environment check, both Step `08` and Step `09` real-R runners, the aggregate
+`local-real-r-test`, and the complete Step `09c` Python/shell fixtures pass.
+The complete shell, Python, R, and `r-check` gates pass locally. These checks
+use synthetic fixtures and do not constitute production, cluster, or
+scientific-review validation.
 
 Shortcut for the Makefile-covered checks:
 

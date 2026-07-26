@@ -116,11 +116,11 @@ mix config implementation into the evidence-only validation branch.
 
 ### Post-Step 09 Scientific Evidence And Decisions
 
-The local `step-09c-scientific-validation` package is approved to validate and
-summarize explicit evidence with synthetic fixtures. It will not answer these
-questions by itself, rerun CMH, or infer human decisions. With production
-evidence unavailable, its overall state must remain `evidence_incomplete`.
-Later inspected evidence can support
+The local `step-09c-scientific-validation` package is implemented at
+`b674a31` and synthetic-fixture-tested. It validates and summarizes explicit
+evidence but does not answer these questions by itself, rerun CMH, or infer
+human decisions. With production evidence unavailable, the production overall
+state remains `evidence_incomplete`. Later inspected evidence can support
 `science_review_complete_exploratory`; the reserved
 `biological_interpretation_ready` value must be rejected until a separate
 approved policy branch unlocks its exit criteria.
@@ -156,8 +156,8 @@ evidence has been inspected.
 ### Immediate Artifact And Reporting Implementation
 
 The design questions for the immediate artifact/report vertical slice are
-resolved. These packages are approved after Step `09c` but are not yet
-implemented:
+resolved. Step `09c` is implemented and fixture-tested locally; these packages
+are approved after its docpatch/push gate but are not yet implemented:
 
 ```text
 artifact-schema-v1
@@ -182,10 +182,10 @@ report generation never runs analysis and never proves validation
 state banners preserve incomplete or exploratory/provisional meaning
 ```
 
-Implementation and fixture evidence remain pending on the named branches.
-Production reports and biological conclusions remain unavailable because
-production Steps `07`-`09` and Step `09c` evidence have not been generated or
-inspected.
+Implementation and fixture evidence for the artifact/report packages remain
+pending on the named branches. Production reports and biological conclusions
+remain unavailable because production Steps `07`-`09` evidence and production
+Step `09c` review evidence have not been generated or inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -442,6 +442,7 @@ Implemented locally and locally tested:
 07   Cohort bcftools mpileup by manifest partition and neutral orientation
 08   VCF preprocessing of the declared Step 07 receipt set
 09   Paired CMH editing-site calling from the committed Step 08 tables
+09c  Explicit scientific-evidence validation and 13-TSV review transaction
 ```
 
 Step `07` passed its mocked-bcftools focused tests and the complete local
@@ -459,6 +460,13 @@ Step `09` is implemented locally at commit `e4371de`, and its shell/fake-R
 suite passes. After the raw-byte PDF assertion fix at `eae5eca`, its complete
 real-R fixture suite also passes without `SKIP`. Step `09` has no cluster
 dry-run, execute, log, or output evidence and is not cluster-proven.
+
+Step `09c` is implemented locally at `b674a31`. Its active Python/shell
+fixtures cover dry-run, exact summary-last publication, missing/incomplete and
+exploratory states, reserved-state rejection, hashes, locks, cleanup, and
+rollback. It has no production evidence package or completed production
+science review, and it is not a cluster computation or biological-readiness
+gate.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
@@ -713,6 +721,36 @@ been inspected, and the step is not cluster-proven. The workflow preserves
 `orientation_policy=legacy_provisional_v1`; the all-sites,
 significant-sites, and summary tables record it. The policy is not
 biologically validated.
+
+### What Is The Step 09c Scientific-Evidence Contract?
+
+Answered for local implementation.
+
+Step `09c` is explicit-input, dry-run-first Python/shell tooling implemented at
+`b674a31`. It validates the named sample/partition manifests, Step `08`
+three-file transaction, Step `09` six-file analysis directory, one-row review
+plan, and evidence manifest. It does not discover inputs by glob, rerun CMH,
+infer reviewer decisions, or act as a SLURM/compute stage.
+
+Execute mode publishes 13 TSVs under
+`results/scientific_validation/<review_id>/`, with
+`<review_id>.step09c_review_summary.tsv` last. It validates schemas, paths,
+SHA-256 hashes, row counts, identities, policies, dates, computational claims,
+scientific statuses, and cross-table evidence relationships. Publication uses
+an owned review lock, run-token scratch/backup paths, immutable-input rechecks,
+validation before publication, rollback, and cleanup.
+
+The only permitted overall science states are:
+
+```text
+evidence_incomplete
+science_review_complete_exploratory
+```
+
+The second remains provisional. `biological_interpretation_ready` is reserved
+and rejected. Active Python and shell synthetic fixtures pass, but no
+production review evidence is recorded or supported by inspected evidence;
+production science remains `evidence_incomplete`.
 
 ### Step 02b Final-BAM QC Refresh
 

@@ -1,10 +1,11 @@
 # Future Planned Architecture
 
 This page describes the activated local roadmap beyond the current compute
-pipeline. It is not a claim that its tooling already exists. The current
-pipeline is documented in `docs/architecture/ARCHITECTURE.md`: the
-cluster-proven boundary remains Step `06`, and Steps `07`-`09` remain not
-cluster-proven.
+pipeline. Step `09c` now exists and is fixture-tested locally; the later
+artifact/report, foundation, validator, and modular tooling remains planned
+until each named branch is implemented. The current pipeline is documented in
+`docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step
+`06`, and Steps `07`-`09` remain not cluster-proven.
 
 The local runtime boundary has moved. Signed and notarized Apple-silicon CRAN
 R `4.6.1` is installed, and the repository has a guarded `renv` environment
@@ -13,14 +14,15 @@ cache-disabled binary restore checks pass. The Step `08` and Step `09` real-R
 suites now pass locally without `SKIP`. The `step-09b1-real-r-fixes`
 implementation at `eae5eca` adds raw DP/AD/INFO AD lexical preflight for Step
 `08` and locale-independent raw-byte PDF fixture validation for Step `09`.
-Step `09c` is therefore next.
+Step `09c` is implemented at `b674a31` and fixture-tested locally; it has no
+production review evidence. `artifact-schema-v1` is next.
 
 ## Current vs future boundary
 
 | Area | Current state | Future direction |
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
-| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; none has production or cluster evidence | Scientific-validation tooling followed by later assay-specific modules |
+| Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; Step `09c` implemented at `b674a31` and synthetic-fixture-tested; none has production scientific or Step `07`-`09` cluster evidence | Later assay-specific modules after explicit evidence/report foundations |
 | Reporting | Handwritten demo/QC docs and generated step artifacts | Activated immediate artifact schema, adapters, run summary, self-contained HTML, and bundled-Typst PDF/TSV reports; not yet implemented |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
@@ -33,7 +35,6 @@ flowchart TB
     classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
     classDef runtime fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef science fill:#fff8e1,stroke:#f9a825,color:#5f4300
     classDef future fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
     classDef deferred fill:#fafafa,stroke:#757575,color:#424242,stroke-dasharray:4 3
 
@@ -41,7 +42,7 @@ flowchart TB
     s09a["step-09a-roadmap-docpatch<br/>documentation-only"]
     rlocal["step-09b-local-r-runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23"]
     rfix["step-09b1-real-r-fixes<br/>complete locally; both suites pass"]
-    science09c["step-09c-scientific-validation<br/>evidence_incomplete or exploratory"]
+    science09c["step-09c-scientific-validation<br/>implemented + synthetic-fixture-tested locally<br/>production evidence unavailable"]
     artifacts["artifact-schema-v1<br/>-> artifact-adapters-v1<br/>-> artifact-run-summary"]
     reports["report-html-v1<br/>-> report-exports-v1"]
     foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
@@ -52,10 +53,9 @@ flowchart TB
     science09c --> artifacts --> reports --> foundations --> validators
     validators -.-> remote
 
-    class s09,rfix current
+    class s09,rfix,science09c current
     class s09a docs
     class rlocal runtime
-    class science09c science
     class artifacts,reports,foundations,validators future
     class remote deferred
 ```
@@ -92,12 +92,13 @@ step-09b-local-r-runtime
 The `step-09b1-real-r-fixes` package was inserted after real-R execution found
 one raw-count engine defect and one PDF fixture defect. The initial generic
 Step `08` negative-fixture message had misattributed the later malformed-count
-failure to its already-working partition-overlap validator. Step `09c`
-validates and summarizes declared evidence; it
-does not rerun CMH or infer review decisions. Reports move before the
-foundation/validator packages and are immediate, activated work, but they
-remain unimplemented at this boundary. Remote validation is paused until the
-final local validator branch.
+failure to its already-working partition-overlap validator. Step `09c` is
+implemented at `b674a31`; it validates and summarizes declared evidence but
+does not rerun CMH or infer review decisions. Its local fixtures are not
+production review evidence. Reports move before the foundation/validator
+packages and are immediate, activated work, but they remain unimplemented at
+this boundary. Remote validation is paused until the final local validator
+branch.
 
 ## Future modular dataflow
 
@@ -140,7 +141,7 @@ flowchart LR
     subgraph science["Scientific evidence and decision records"]
         direction TB
         declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
-        science_review["Step 09c validation package"]
+        science_review["Step 09c validation package<br/>implemented + fixture-tested locally"]
         decision_record["Review status + limitations<br/>ready state remains locked"]
     end
 
@@ -165,10 +166,10 @@ flowchart LR
 
     class lab current
     class public deferred
-    class manifest,config,policy_record,decision_record contract
+    class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future
     class registry contract
-    class assays,results,declared09,science_review future
+    class assays,results,declared09 future
     class report_layer,outputs reporting
 ```
 
@@ -328,8 +329,10 @@ flowchart TD
 
 The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
 
-Activated local packages (Step `09b1` is complete; every later package remains
-unimplemented until its own branch; dependency order fixed):
+Activated local packages (Step `09b1` is complete; Step `09c` is implemented
+and synthetic-fixture-tested locally; `artifact-schema-v1` and every later
+package remain unimplemented until their own branches; dependency order
+fixed):
 
 ```text
 step-09b1-real-r-fixes
@@ -371,12 +374,14 @@ run summary and reports after evidence inspection.
 
 ## Implementation-boundary note
 
-The local R environment and `step-09b1-real-r-fixes` are implemented at this
-boundary. Environment/restore checks and both Step `08` and Step `09` semantic
-real-R suites pass locally; there is no production or cluster evidence. The
-remaining activated packages above are plans, not runnable commands. Reports are immediate work,
-but no generated report may be presented as production evidence or biological
-interpretation. Do not preempt the branch sequence with remote validation,
-generic dispatchers, arrays, broad helper extraction, automatic R-package
-installation in compute wrappers, cleanup/lock deletion, report
-globbing/recomputation, moved compute CLIs, or public-data import.
+The local R environment, `step-09b1-real-r-fixes`, and Step `09c` are
+implemented at this boundary. Environment/restore checks, both Step `08` and
+Step `09` semantic real-R suites, and the Step `09c` Python/shell fixtures pass
+locally; there is no production Step `07`-`09` or Step `09c` review evidence
+and no downstream cluster proof. `artifact-schema-v1` is next, and the
+remaining activated packages above are plans, not runnable commands. Reports
+are immediate work, but no generated report may be presented as production
+evidence or biological interpretation. Do not preempt the branch sequence
+with remote validation, generic dispatchers, arrays, broad helper extraction,
+automatic R-package installation in compute wrappers, cleanup/lock deletion,
+report globbing/recomputation, moved compute CLIs, or public-data import.

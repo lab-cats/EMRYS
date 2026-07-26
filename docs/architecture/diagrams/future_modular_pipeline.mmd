@@ -34,7 +34,7 @@ flowchart LR
     subgraph science["Scientific evidence and decision records"]
         direction TB
         declared09["Explicit Step 07-09 evidence<br/>missing/incomplete allowed"]
-        science_review["Step 09c validation package"]
+        science_review["Step 09c validation package<br/>implemented + fixture-tested locally"]
         decision_record["Review status + limitations<br/>ready state remains locked"]
     end
 
@@ -59,8 +59,8 @@ flowchart LR
 
     class lab current
     class public deferred
-    class manifest,config,policy_record,decision_record contract
+    class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future
     class registry contract
-    class assays,results,declared09,science_review future
+    class assays,results,declared09 future
     class report_layer,outputs reporting

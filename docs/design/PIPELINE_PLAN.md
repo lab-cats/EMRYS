@@ -68,6 +68,7 @@ it is not an overlay, and pairing is never inferred from names.
 | `07` | Run cohort mpileup by declared partition and neutral mechanical orientation. | `samples.tsv`; approved partition manifest; all Step `06` orientation BAM/BAI pairs; reference FASTA/FAI | two VCFs and `step07_outputs.tsv` under `results/mpileup/<cohort>/<partition>/` | implemented locally and locally tested with mocked bcftools; real runtime and cluster validation pending; not cluster-proven | bcftools |
 | `08` | Preprocess the exact Step `07` receipt set for editing-site statistics. | partition manifest; Step `07` VCFs and receipts; sample manifest; Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, input receipt, and QC summary | implemented locally; shell/fake-R and guarded real-R suites pass locally; raw-count lexical validation hardened; no cluster evidence; not cluster-proven | R / Bioconductor |
 | `09` | Run paired CMH editing-site calling and write summaries. | Step `08` table and input receipt; paired-replicate sample manifest; partition manifest | four tables and two plots under `results/editing/<analysis>/` | implemented locally; shell/fake-R and guarded real-R suites pass locally; locale-independent raw-byte PDF fixture validation; no cluster evidence; not cluster-proven | base R |
+| `09c` | Validate and summarize explicit scientific-review evidence without rerunning analysis. | sample/partition manifests; exact Step `08` transaction; Step `09` analysis directory; review plan; evidence manifest | 13 TSVs under `results/scientific_validation/<review_id>/`, with review summary last | implemented locally at `b674a31`; Python/shell synthetic fixtures pass; production evidence/review and cluster validation unavailable; no biological-readiness claim | Python / shell |
 
 ## Validated Outputs And Results
 
@@ -894,12 +895,25 @@ local only and does not make Steps `07`-`09` cluster-proven.
 
 ## Step 09c Scientific-Validation Tooling
 
-The approved `step-09c-scientific-validation` package is outside the core
-Steps `00a`-`09` computation and is not a runnable Step `10`. It follows the
-clean, pushed `step-09b1-real-r-fixes` branch. It is local,
-dry-run-first evidence tooling: it validates and summarizes explicit evidence
-but does not rerun CMH statistics, infer reviewer decisions, or claim
-production scientific validation.
+The `step-09c-scientific-validation` package is implemented locally at
+`b674a31`. It is outside the core Steps `00a`-`09` computation and is not a
+runnable Step `10` or a SLURM stage. It is local, dry-run-first evidence
+tooling: it validates and summarizes explicit evidence but does not rerun CMH
+statistics, infer reviewer decisions, or claim production scientific
+validation.
+
+Implemented files and active fixtures:
+
+```text
+scripts/step_09c_scientific_validation.sh
+scripts/step_09c_scientific_validation.py
+configs/step_09c_review_plan.example.tsv
+configs/step_09c_evidence_manifest.example.tsv
+configs/step_09c_evidence_schemas/
+tests/fixtures/step09c/build_fixture.py
+tests/test_step_09c_scientific_validation.py
+tests/shell/test_step_09c_scientific_validation.sh
+```
 
 Public interface:
 
@@ -922,19 +936,19 @@ Atomic output contract:
 
 ```text
 results/scientific_validation/<review_id>/
-  <review>.step09c_review_plan.tsv
-  <review>.step09c_evidence_index.tsv
-  <review>.step09c_orientation_locus_audit.tsv
-  <review>.step09c_annotation_audit.tsv
-  <review>.step09c_qc_funnel.tsv
-  <review>.step09c_replicate_effects.tsv
-  <review>.step09c_sensitivity_matrix.tsv
-  <review>.step09c_leave_one_pair_out.tsv
-  <review>.step09c_candidate_selection.tsv
-  <review>.step09c_candidate_adjudication.tsv
-  <review>.step09c_decisions.tsv
-  <review>.step09c_limitations.tsv
-  <review>.step09c_review_summary.tsv
+  <review_id>.step09c_review_plan.tsv
+  <review_id>.step09c_evidence_index.tsv
+  <review_id>.step09c_orientation_locus_audit.tsv
+  <review_id>.step09c_annotation_audit.tsv
+  <review_id>.step09c_qc_funnel.tsv
+  <review_id>.step09c_replicate_effects.tsv
+  <review_id>.step09c_sensitivity_matrix.tsv
+  <review_id>.step09c_leave_one_pair_out.tsv
+  <review_id>.step09c_candidate_selection.tsv
+  <review_id>.step09c_candidate_adjudication.tsv
+  <review_id>.step09c_decisions.tsv
+  <review_id>.step09c_limitations.tsv
+  <review_id>.step09c_review_summary.tsv
 ```
 
 The summary is published last as the transaction marker. Input records include
@@ -1044,6 +1058,16 @@ Any required implementation/fix receives tests and a separate docpatch before
 runtime reruns. An evidence-only package uses an evidence/status docpatch
 without fabricating an implementation commit.
 
+Current local evidence: dry-run creates no output directory or stable files;
+execute-mode fixtures publish exactly 13 validated TSVs with the review
+summary last; and active Python/shell tests cover incomplete and exploratory
+states, reserved-state rejection, unrelated-file immunity, input/hash
+mutation, exact output publication, locks, cleanup, and rollback. The complete
+repository Python, shell, guarded real-R, and R-environment gates pass at this
+implementation boundary. No production Step `07`-`09` transaction or Step
+`09c` evidence package is recorded or supported by inspected evidence, so
+production science remains `evidence_incomplete`.
+
 ## Reference Workflow Alignment
 
 Steps `04`-`09` are based on the uploaded/reference RNA-editing workflow:
@@ -1074,11 +1098,11 @@ Neither implementation nor local testing biologically validates that mapping.
 
 ## Immediate Artifact, Run-Summary, And Reporting Slice
 
-This layer is now an approved immediate local implementation sequence after
-Step `09c`; it is no longer deferred behind remote promotion. It remains
-outside the core Steps `00a`-`09` computation and none of its packages is a
-runnable Step `10`. At this docpatch boundary the packages below are approved
-but not yet implemented:
+This layer is now the approved immediate local implementation sequence after
+the completed local Step `09c` implementation; it is no longer deferred behind
+remote promotion. It remains outside the core Steps `00a`-`09` computation and
+none of its packages is a runnable Step `10`. At this docpatch boundary the
+packages below are approved but not yet implemented:
 
 ```text
 artifact-schema-v1
@@ -1412,11 +1436,12 @@ step-09b-local-r-runtime
                                                                                         └── post09-validation-report-09
 ```
 
-At this boundary `step-09b1-real-r-fixes` is implemented, locally tested,
-docpatched, clean, and pushed. The next descendant package is
-`step-09c-scientific-validation`. Every later package remains approved but
-unimplemented. Remote work stays paused through the final Step `09` validator
-branch.
+At this boundary `step-09b1-real-r-fixes` is complete and pushed, and
+`step-09c-scientific-validation` is implemented at `b674a31` with its local
+fixture gate passing. After this Step `09c` docpatch is committed and pushed,
+the next descendant package is `artifact-schema-v1`. Every later package
+remains approved but unimplemented. Remote work stays paused through the final
+Step `09` validator branch.
 
 When remote work resumes, continue from that final clean branch:
 
@@ -1461,6 +1486,11 @@ when its default R executable is absent; the explicit local runtime must not
 skip. Both real-R suites pass in the guarded local environment after
 `step-09b1-real-r-fixes`. `make report-test` becomes applicable only after
 `report-html-v1` exists.
+
+The Step `09c` Python and shell fixtures are active in these gates and pass at
+the local implementation boundary. They prove explicit-input validation and
+transaction behavior on synthetic evidence only; they do not establish a
+production science review, runtime/cluster proof, or biological readiness.
 
 ## Known Cluster Notes
 

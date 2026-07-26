@@ -38,6 +38,11 @@ conversion. Steps `07`-`09` still have no remote dry-run, execute, log, or
 inspected production-output evidence and are not cluster-proven. Remote
 validation is paused while the approved local scientific-validation,
 artifact/report, foundation, and per-step validator sequence is implemented.
+Step `09c` is implemented at `b674a31` and synthetic-fixture-tested locally.
+It validates explicit evidence and publishes a 13-TSV review transaction; no
+production evidence package or completed production science review exists.
+No production biological-readiness claim has been produced;
+`biological_interpretation_ready` remains reserved and rejected.
 
 ## PI Decision Brief
 
@@ -49,7 +54,9 @@ fake-tool-tested contracts, but none has cluster evidence. The local R
 environment itself passes its restore, namespace, lock, and PDF checks. Step
 `08` and Step `09` real-R fixtures also pass locally without skipping after
 `eae5eca`. No downstream editing-site stage has production or cluster
-evidence, and none is cluster-proven.
+evidence, and none is cluster-proven. Step `09c` is the local
+evidence-validation code boundary only; its fixture pass does not establish
+production scientific-review completion or move the cluster-proven boundary.
 
 ### Evidence table
 
@@ -68,6 +75,7 @@ evidence, and none is cluster-proven.
 | `07` cohort mpileup | Step `06` FWD_like/REV_like BAM/BAI pairs, sample manifest, partition manifest, FASTA/FAI | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implementation commit `e68b00c`; local Bash 3.2 and mocked-bcftools shell tests | implemented and locally tested; real-bcftools and cluster validation pending; not cluster-proven |
 | `08` VCF preprocessing | exact partition-manifest × `{FWD_like,REV_like}` Step `07` VCF/receipt set, sample manifest, Novogene GTF | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implementation commit `90335d8`, corrective commit `eae5eca`; shell/fake-R and guarded real-R suites pass; raw count preflight active | implemented and locally tested; cluster validation pending; not cluster-proven |
 | `09` CMH editing-site calling | Step `08` sites/input receipt, paired-replicate sample manifest, partition manifest | four TSVs and two PDFs under `results/editing/<analysis>/` | implementation commit `e4371de`, fixture correction `eae5eca`; shell/fake-R and guarded real-R suites pass; PDF EOF validation is raw-byte based | implemented and locally tested; cluster validation pending; not cluster-proven |
+| `09c` scientific-evidence validation | sample/partition manifests, exact Step `08` transaction, Step `09` analysis directory, review plan, evidence manifest | 13 TSVs under `results/scientific_validation/<review_id>/`, with review summary last | implementation `b674a31`; dedicated Python and active shell synthetic fixtures | implemented and fixture-tested locally; production review evidence unavailable; no production science-review completion, cluster proof, or biological readiness |
 
 ### PI scientific/QC questions
 
@@ -79,21 +87,18 @@ evidence, and none is cluster-proven.
 
 ### Approved immediate local sequence
 
-The `step-09b1-real-r-fixes` branch is complete and pushed; both Step `08` and
-Step `09` real-R suites pass locally without `SKIP`.
+The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
+implemented at `b674a31` and fixture-tested locally; no production review
+evidence is recorded or supported by inspected evidence.
 
-1. Implement the dry-run-first `step-09c-scientific-validation` evidence
-   package. Its fixture statuses are `evidence_incomplete` or
-   `science_review_complete_exploratory`; it must reject the reserved
-   `biological_interpretation_ready` value.
-2. Implement the immediate reporting slice:
+1. Implement the immediate reporting slice:
    `artifact-schema-v1`, `artifact-adapters-v1`, `artifact-run-summary`,
    `report-html-v1`, and `report-exports-v1`. The synthetic reports must label
    incomplete/exploratory state and never imply validation.
-3. Implement read-only runtime, reference-provenance, and storage-retention
+2. Implement read-only runtime, reference-provenance, and storage-retention
    foundations, then one validation-report branch for every pipeline step from
    `00a` through `09`.
-4. Stop local work at `post09-validation-report-09`. Remote Step `07`-`09`
+3. Stop local work at `post09-validation-report-09`. Remote Step `07`-`09`
    promotion remains paused until then.
 
 ## Pipeline Status
@@ -113,6 +118,7 @@ Step `09` real-R suites pass locally without `SKIP`.
 | `07` | bcftools mpileup | implemented locally and locally tested with mocked bcftools; no real or cluster runtime; not cluster-proven |
 | `08` | VCF preprocessing | implemented locally at `90335d8`, hardened at `eae5eca`; shell/fake-R and guarded real-R suites pass; not cluster-proven |
 | `09` | CMH editing-site calling | implemented locally at `e4371de`; shell/fake-R and guarded real-R suites pass after `eae5eca`; not cluster-proven |
+| `09c` | scientific-evidence validation | implemented at `b674a31` and synthetic-fixture-tested locally; no production review evidence or biological-readiness claim |
 
 Step 06: cluster-proven across all six samples.
 
@@ -135,6 +141,7 @@ Steps `05` and `06` are cluster-proven/cohort-proven across all six samples base
 | `07` cohort mpileup | per cohort partition, both mechanical orientations | no real runtime measured | Local mocked-bcftools execution only. The long-partition, 8-hour, 1-CPU job request is unvalidated configuration, not observed runtime evidence. |
 | `08` VCF preprocessing | one cohort across all declared partitions and both orientations | accepted synthetic fixture runtime only; no production or cluster runtime measured | The real-R fixture suite passes locally without `SKIP`, including raw-count and partition-overlap failures. |
 | `09` paired CMH calling | one analysis across the complete Step `08` candidate universe | accepted synthetic fixture runtime only; no production or cluster runtime measured | The real-R fixture suite passes locally without `SKIP`, including raw-byte PDF signature/EOF checks. |
+| `09c` scientific-evidence validation | one explicit review package | accepted synthetic fixture runtime only; no production review runtime or cluster runtime measured | Python/shell fixtures validate the 13-file transaction; this is not production scientific-review evidence. |
 
 These timings are preliminary operational estimates from the current ADAM/CSU cluster validation runs. They are intended to communicate approximate computational scale, not benchmark performance. Exact runtimes vary by sample size, mapping complexity, node load, and storage I/O.
 
@@ -377,11 +384,32 @@ The summary publishes last as the commit marker. The outputs preserve
 biologically validated.
 
 Current evidence includes implementation commit `e4371de`, passing
-shell/fake-R wrapper tests, 23 passing Python tests, the guarded local R
-environment, and a real-R suite that passes without `SKIP` after the
+shell/fake-R wrapper tests, the passing repository Python suite, the guarded
+local R environment, and a real-R suite that passes without `SKIP` after the
 `eae5eca` fixture correction. PDF EOF matching is now raw-byte based and
 locale-independent. No production Step `09` CMH output, cluster job, plot, or
 biological candidate result has been inspected.
+
+## Step 09c Scientific-Evidence Contract
+
+Step `09c` is implemented locally at `b674a31` as explicit-input,
+dry-run-first Python/shell tooling. Its CLI names the sample and partition
+manifests, all three Step `08` artifacts, the Step `09` analysis directory, one
+review plan, one evidence manifest, and the output root. It never discovers
+evidence by glob, reruns CMH, or infers reviewer decisions.
+
+Execute mode validates evidence paths, SHA-256 hashes, row counts, IDs,
+policies, dates, computational status, scientific state, audit/candidate
+relationships, and immutable inputs. It publishes 13 TSVs under
+`results/scientific_validation/<review_id>/`; the review summary is last and
+marks the complete rollback-protected transaction.
+
+Allowed overall states are `evidence_incomplete` and
+`science_review_complete_exploratory`. The latter remains provisional.
+`biological_interpretation_ready` is reserved and rejected. Active Python and
+shell fixtures exercise incomplete/exploratory states, exact publication,
+hash mutation, locks, cleanup, and rollback. No production Step `09c`
+transaction or scientific decision is presented in this report.
 
 ## Engineering And Reproducibility Features
 
@@ -391,7 +419,8 @@ The rebuilt pipeline emphasizes:
 - SLURM execution at scale
 - dry-run by default
 - explicit `EXECUTE=1`
-- scope-owned locking, including Step `07` cohort/partition, Step `08` cohort, and Step `09` analysis locks
+- scope-owned locking, including Step `07` cohort/partition, Step `08` cohort,
+  Step `09` analysis, and Step `09c` review locks
 - run-token temp files
 - validation before publish
 - rollback protection
@@ -409,8 +438,9 @@ This design is meant to make the workflow reproducible, reviewable, and handoff-
 - The current state is honest: preprocessing and read-orientation splitting
   are cluster-proven through Step `06`; Step `07` is mocked-bcftools tested
   locally; the Step `08` and Step `09` real-R suites pass locally without
-  `SKIP`; none has downstream production, cluster, or biological-result
-  evidence.
+  `SKIP`; Step `09c` validates explicit synthetic evidence locally; none has
+  downstream production, cluster, completed production-review, or
+  biological-result evidence.
 
 ## Near-Term Roadmap
 
@@ -448,9 +478,10 @@ and `09` are shell/fake-R tested and their real-R suites pass locally. All Step
 
 ### Phase 3 — Scientific review and refinement
 
-Status: activated as local `step-09c-scientific-validation` tooling immediately
-after the real-R fixes. It records explicit evidence and decisions without
-rerunning CMH or claiming a production scientific review.
+Status: implemented and synthetic-fixture-tested locally at `b674a31`
+immediately after the real-R fixes. It records explicit evidence and decisions
+without rerunning CMH or claiming a production scientific review. The audit
+items below remain production evidence requirements, not completed findings.
 
 - Validate the flag-group/transcript-strand/RNA-allele mapping independently
   at predeclared plus-strand and minus-strand transcript loci; A>G enrichment
@@ -516,10 +547,10 @@ deferred.
 
 ## Next Steps
 
-The `step-09b1-real-r-fixes` branch is complete and pushed; both real-R suites
-pass locally without `SKIP`.
+The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
+implemented at `b674a31`; its production evidence/review gate remains open.
 
-1. Implement Step `09c`, the artifact schema/adapters/run summary, and the
+1. Implement `artifact-schema-v1`, the artifact adapters/run summary, and the
    immediate HTML/PDF reporting slice in separate gated descendant branches.
 2. Implement read-only foundations and one validator branch per pipeline step;
    stop local work at `post09-validation-report-09`.
@@ -545,10 +576,12 @@ pass locally without `SKIP`.
 - Steps `08` and `09` use `orientation_policy=legacy_provisional_v1`, which preserves a legacy mapping but is not biologically validated.
 - The signed local R `4.6.1` and guarded `renv`/Bioconductor `3.23`
   environment pass namespace, lock, headless-PDF, and empty binary restore
-  checks; Step `09b1` fixes are complete locally and Step `09c` is next.
-- Scientific-validation tooling and immediate consolidated HTML/PDF reporting
-  are activated next, but neither is implemented at this boundary and neither
-  can establish validation.
+  checks; Step `09b1` fixes are complete, and Step `09c` is implemented and
+  synthetic-fixture-tested locally.
+- Step `09c` is implemented and synthetic-fixture-tested; it does not establish
+  a production scientific review. Consolidated HTML/PDF reporting is next and
+  remains unimplemented. Neither evidence validation nor report generation
+  establishes biological readiness.
 - Future cluster proof establishes computation, not biological truth;
   orientation, annotation, robustness, candidate evidence, and background
   eligibility remain a separate science gate.

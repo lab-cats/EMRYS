@@ -7,7 +7,7 @@ This is a short read-only path for PI demo use. It points to the current sources
 Show that the legacy NORAD / Novogene Remora workflow has been rebuilt into a
 reproducible preprocessing and paired-CMH code path, with a clear distinction
 between the cluster-proven RNA-seq preprocessing boundary and the locally
-implemented Steps `07`-`09`.
+implemented Steps `07`-`09` plus the local Step `09c` evidence validator.
 
 Current boundary:
 
@@ -17,6 +17,7 @@ Steps 00a-00c cluster-proven reference prep
 -> Step 07 implemented and locally tested with mocked bcftools; no real or cluster run
 -> local signed/notarized R 4.6.1 + guarded renv/Bioconductor 3.23 checks pass
 -> Step 08 and Step 09 real-R suites pass locally without SKIP after eae5eca
+-> Step 09c implemented and synthetic-fixture-tested locally at b674a31
 -> remote validation paused; immediate reports are activated but not implemented
 ```
 
@@ -31,6 +32,8 @@ Steps 00a-00c cluster-proven reference prep
    outputs, Step `07` mocked-bcftools results, and the local R environment
    checks. The Step `08`/`09` real-R suites now pass locally, but synthetic
    fixture evidence is not production, cluster, or biological output evidence.
+   The Step `09c` dry-run and fixture suite may be shown only as validator
+   implementation evidence, not a completed production scientific review.
 
 ## 3. Talk Track
 
@@ -49,15 +52,18 @@ Steps 00a-00c cluster-proven reference prep
   repository `renv`/Bioconductor `3.23` environment are installed locally.
   Namespace, lock, headless-PDF, and empty cache-disabled restore checks pass;
   compute wrappers do not install packages.
-- The `step-09b1-real-r-fixes` branch is complete and pushed; the local sequence now implements Step `09c`
-  scientific-validation tooling, artifact schemas/adapters/run summary,
-  self-contained HTML and bundled-Typst PDF/TSV reports, read-only
-  runtime/reference/storage foundations, and one validator branch per
-  pipeline step. Remote validation remains paused.
+- The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
+  implemented at `b674a31` and fixture-tested locally; `artifact-schema-v1` is
+  next. Artifact adapters/run summary, self-contained HTML and bundled-Typst
+  PDF/TSV reports, read-only runtime/reference/storage foundations, and one
+  validator branch per pipeline step remain unimplemented. Remote validation
+  remains paused.
 - Step `09c` can record `evidence_incomplete` or
   `science_review_complete_exploratory`; it rejects the reserved
-  `biological_interpretation_ready` value. Report generation is never evidence
-  of computational or biological validation.
+  `biological_interpretation_ready` value. It validates explicit evidence,
+  does not rerun CMH or infer decisions, and publishes 13 TSVs with the review
+  summary last. Report generation is never evidence of computational or
+  biological validation.
 
 ## 4. What Not To Claim
 
@@ -74,6 +80,8 @@ Steps 00a-00c cluster-proven reference prep
 - Do not treat `science_review_complete_exploratory` as
   `biological_interpretation_ready`; exploratory reports must show their
   provisional status and limitations.
-- Do not present Step `09c`, the artifact/run-summary/report slice, the
+- Do not present Step `09c` fixture output as a production scientific review,
+  science-review completion, cluster proof, or biological validation.
+- Do not present the artifact/run-summary/report slice, the
   preflight/provenance/storage foundations, or the per-step validators as
   implemented commands yet. They are activated descendant packages.

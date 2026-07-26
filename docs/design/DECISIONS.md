@@ -109,6 +109,9 @@ locally tested at their available local boundaries, but none is
 cluster-proven. After `step-09b1-real-r-fixes`, the Step `08` and Step `09`
 real-R fixtures both pass without `SKIP` under the guarded local runtime. No
 currently scoped Step `07`-`09` entry point is a non-runnable scaffold.
+Step `09c` is also implemented locally at `b674a31` and fixture-tested as an
+explicit evidence validator; it is not a core compute or SLURM stage and has
+no production-review evidence.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
 
@@ -866,6 +869,13 @@ Evidence categories use `missing`, `incomplete`, `complete`, or justified
 annotation, threshold, and adjudication decisions remain independent
 dimensions.
 
+Current evidence: the decision is implemented at `b674a31`. Active Python and
+shell fixtures cover explicit-input validation, incomplete and exploratory
+states, reserved-state rejection, exact 13-file summary-last publication,
+immutable hashes, locks, cleanup, and rollback. This local synthetic evidence
+does not establish a production science review, runtime or cluster proof, or
+biological readiness.
+
 ## Local Engineering Uses The Approved Report-First Descendant Order
 
 Decision: remote promotion remains paused while local implementation proceeds
@@ -898,9 +908,11 @@ step-09b-local-r-runtime
 -> post09-validation-report-09
 ```
 
-The local `step-09b1-real-r-fixes` package is complete and pushed, making Step
-`09c` the next descendant. Structured run summaries and HTML/PDF reports are
-immediate, before the three foundational engineering packages.
+The local `step-09b1-real-r-fixes` package is complete and pushed. Step `09c`
+is implemented locally at `b674a31`; after its docpatch/push gate,
+`artifact-schema-v1` is the next descendant. Structured run summaries and
+HTML/PDF reports remain immediate, before the three foundational engineering
+packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the
 fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
@@ -970,9 +982,10 @@ editing sites. Full-table truncation records the explicit full-table path and
 hash, and every PDF page carries the state banner. Report generation itself
 is never validation evidence.
 
-At the Step `09b1` boundary these packages are approved but unimplemented.
-Only schemas, templates, and synthetic fixtures will be committed; generated
-production reports remain ignored.
+At the completed local Step `09c` implementation boundary these artifact and
+report packages remain approved but unimplemented. Only schemas, templates,
+and synthetic fixtures will be committed; generated production reports remain
+ignored.
 
 ## Documentation Files Have Different Purposes
 

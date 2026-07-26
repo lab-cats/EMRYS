@@ -143,7 +143,10 @@ demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
 run has been validated. Step `08` and Step `09` source and fake-R wrapper tests
 may also be inspected. Their real-R suites now execute locally without `SKIP`,
 and pass with synthetic fixtures. Neither step has production or cluster
-output evidence. Do not demonstrate Step `09` as a biological result.
+output evidence. Step `09c` source, dry-run output, example contracts, and
+synthetic Python/shell fixtures may also be inspected. Do not present its
+fixture transaction as a production scientific review or demonstrate Step
+`09` as a biological result.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -392,8 +395,9 @@ If helpers are not installed, use the manual commands in the next section.
 
 ## Future Operational Helpers
 
-The approved local descendant roadmap implements scientific-validation tooling
-first, then the reporting vertical slice immediately:
+The approved local descendant roadmap has implemented Step `09c`
+scientific-validation tooling. The reporting vertical slice follows
+immediately:
 
 ```text
 step-09c-scientific-validation
@@ -413,7 +417,12 @@ remaining foundational engineering. Remote validation, targeted reruns,
 analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
-These helpers are roadmap ideas unless their scripts, tests, and runbook commands exist in the repo. Do not treat candidate helper names, config files, Makefile targets, validators, reports, or cleanup utilities as available commands.
+Step `09c` is no longer a helper idea: its explicit script, configs, schemas,
+fixtures, and commands are documented below. The artifact/report,
+foundation, and per-step validator helpers remain roadmap ideas until their
+scripts, tests, and runbook commands exist. Do not treat candidate helper
+names, Makefile targets, reports, validators, or cleanup utilities as
+available commands.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
@@ -530,8 +539,9 @@ Step 09 validates the PDF EOF marker by scanning raw bytes
 Therefore the guarded environment and both semantic fixture suites are
 validated locally. This does not validate production data, establish CSU
 batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
-`step-09b1-real-r-fixes` branch is complete and pushed; the next descendant is
-`step-09c-scientific-validation`.
+`step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
+implemented locally at `b674a31`; after its docpatch/push gate the next
+descendant is `artifact-schema-v1`.
 
 ## Cluster Execution Pattern
 
@@ -2353,16 +2363,27 @@ perform an explicit operator recovery before another run.
 Status:
 
 ```text
-approved local Step 09c evidence-package contract
-not yet implemented at the Step 09b1 boundary
+implemented locally at b674a31
+Python and shell synthetic-fixture suites pass
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
 ```
 
-The `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
-complete. Create `step-09c-scientific-validation` from that completed branch
-and implement a local dry-run-first Python/shell evidence package with this
-public interface:
+Implemented files:
+
+```text
+scripts/step_09c_scientific_validation.sh
+scripts/step_09c_scientific_validation.py
+configs/step_09c_review_plan.example.tsv
+configs/step_09c_evidence_manifest.example.tsv
+configs/step_09c_evidence_schemas/
+tests/fixtures/step09c/build_fixture.py
+tests/test_step_09c_scientific_validation.py
+tests/shell/test_step_09c_scientific_validation.sh
+```
+
+The local dry-run-first Python/shell evidence package has this public
+interface:
 
 ```bash
 scripts/step_09c_scientific_validation.sh \
@@ -2380,29 +2401,59 @@ scripts/step_09c_scientific_validation.sh \
 # add --execute only to publish validated evidence records
 ```
 
+Dry-run validates the complete explicit input contract and prints the
+resolved review, inputs, evidence, and output names. It does not create the
+output directory, acquire a lock, write scratch paths, or publish stable
+files. The tool has no SLURM wrapper and is not a production compute stage.
+
 Execute mode publishes atomically under
 `results/scientific_validation/<review_id>/`:
 
 ```text
-<review>.step09c_review_plan.tsv
-<review>.step09c_evidence_index.tsv
-<review>.step09c_orientation_locus_audit.tsv
-<review>.step09c_annotation_audit.tsv
-<review>.step09c_qc_funnel.tsv
-<review>.step09c_replicate_effects.tsv
-<review>.step09c_sensitivity_matrix.tsv
-<review>.step09c_leave_one_pair_out.tsv
-<review>.step09c_candidate_selection.tsv
-<review>.step09c_candidate_adjudication.tsv
-<review>.step09c_decisions.tsv
-<review>.step09c_limitations.tsv
-<review>.step09c_review_summary.tsv
+<review_id>.step09c_review_plan.tsv
+<review_id>.step09c_evidence_index.tsv
+<review_id>.step09c_orientation_locus_audit.tsv
+<review_id>.step09c_annotation_audit.tsv
+<review_id>.step09c_qc_funnel.tsv
+<review_id>.step09c_replicate_effects.tsv
+<review_id>.step09c_sensitivity_matrix.tsv
+<review_id>.step09c_leave_one_pair_out.tsv
+<review_id>.step09c_candidate_selection.tsv
+<review_id>.step09c_candidate_adjudication.tsv
+<review_id>.step09c_decisions.tsv
+<review_id>.step09c_limitations.tsv
+<review_id>.step09c_review_summary.tsv
 ```
 
 The summary is published last as the transaction marker. The package validates
 and summarizes explicit evidence; it does not rerun CMH statistics, infer
 reviewer decisions, or turn synthetic fixtures into production evidence.
 Only schemas, examples, and synthetic fixtures are committed.
+
+Execute-mode publication owns:
+
+```text
+results/scientific_validation/<review_id>/.<review_id>.step09c.lock
+```
+
+The lock is a regular metadata file created atomically with mode `0600`; it
+records `review_id`, PID, run token, and creation date. It is not a lock
+directory.
+
+Publication uses run-token temporary and backup directories, validates every
+staged TSV, rechecks all explicit input hashes before publication, requires
+either all 13 stable outputs or none, backs up the previous complete set,
+publishes the review summary last, and rolls back on failure. An incomplete
+rollback retains the lock and recovery paths and attempts to write this
+best-effort marker:
+
+```text
+results/scientific_validation/<review_id>/.<review_id>.step09c.<run_token>.RECOVERY.txt
+```
+
+A cleanup failure is reported with the owned paths that could not be removed;
+it does not guarantee that the lock or any other recovery path remains. Never
+infer a clean transaction from either error.
 
 Keep these status dimensions independent:
 
@@ -2467,6 +2518,19 @@ Keep production-derived audit/adjudication tables in approved results storage.
 Commit only compact non-sensitive summaries, paths, hashes, and decisions
 unless explicit approval permits tracking a safe fixture; never add full
 biological result snapshots by default.
+
+Local fixture gate:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_step_09c_scientific_validation.py
+bash tests/shell/test_step_09c_scientific_validation.sh
+```
+
+The active fixtures cover exact 13-file publication, side-effect-free dry-run,
+incomplete and exploratory evidence, reserved-state rejection, unrelated-file
+immunity, hash mutation, locks, cleanup, and rollback. A local fixture pass
+means implemented and fixture-tested only. It does not establish a production
+review, scheduler/runtime evidence, cluster proof, or biological readiness.
 
 Rerun matrix:
 

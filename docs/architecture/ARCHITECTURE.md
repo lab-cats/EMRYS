@@ -27,10 +27,11 @@ correct; a generic negative-fixture message had misattributed the later
 malformed-count failure.
 
 No Step `07`-`09` remote dry-run, execute, log, or output evidence was added;
-all three remain not cluster-proven. Remote promotion is intentionally paused
-while the approved local sequence implements scientific-validation tooling,
-the artifact/run-summary/report vertical slice, read-only foundations, and
-one validator branch per pipeline step.
+all three remain not cluster-proven. Step `09c` is implemented at `b674a31`
+and synthetic-fixture-tested locally, but no production evidence package or
+scientific review exists. Remote promotion is intentionally paused while the
+remaining local sequence implements the artifact/run-summary/report vertical
+slice, read-only foundations, and one validator branch per pipeline step.
 
 Current boundary:
 
@@ -40,7 +41,8 @@ cluster-proven reference prep through Steps 00a-00c
 -> Step 07 implemented and locally tested with mocked bcftools; cluster validation pending
 -> local R 4.6.1 + guarded renv/Bioconductor 3.23 environment checks pass
 -> Step 08 and Step 09 real-R suites pass locally without SKIP
--> step-09b1-real-r-fixes complete locally; Step 09c is next; remote validation remains paused
+-> Step 09c implemented at b674a31 and fixture-tested locally; no production science evidence
+-> artifact-schema-v1 is next; remote validation remains paused
 ```
 
 ## Pipeline Dataflow
@@ -80,7 +82,7 @@ flowchart LR
 
     localr["09b local R runtime<br/>R 4.6.1 + guarded renv / Bioc 3.23<br/>environment checks pass"]
     fixes["09b1 real-R fixes<br/>complete locally"]
-    science["09c scientific-validation tooling<br/>next local branch; no biological-readiness claim"]
+    science["09c scientific-validation tooling<br/>implemented + fixture-tested locally<br/>no production-review or readiness claim"]
     reports["immediate artifact + report slice<br/>schema -> adapters -> run summary -> HTML -> PDF<br/>activated, not implemented"]
 
     fastq --> s01 --> s02
@@ -94,8 +96,8 @@ flowchart LR
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes boundary
-    class science,reports pending
+    class s07,s08,s09,localr,fixes,science boundary
+    class reports pending
 ```
 
 Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
@@ -117,6 +119,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | `07` | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` | implemented locally and locally tested with mocked bcftools; not cluster-proven | Cohort-wide per declared partition. No real-bcftools runtime, cluster dry-run, execute run, or inspected cluster output yet. |
 | `08` | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` | implemented locally at `90335d8` and hardened at `eae5eca`; shell/fake-R and guarded real-R suites pass; not cluster-proven | Consumes the exact partition-manifest × `{FWD_like,REV_like}` receipt set. Raw DP/AD/INFO AD lexemes are validated before `VariantAnnotation`; no production or cluster evidence exists. |
 | `09` | four TSVs and two PDFs under `results/editing/<analysis>/` | implemented locally at `e4371de`; shell/fake-R and guarded real-R suites pass after the `eae5eca` fixture correction; not cluster-proven | Uses explicit manifest-defined pairs plus the Step `08` sites table and complete input receipt. PDF EOF fixture validation is raw-byte and locale-independent; no production or cluster evidence exists. |
+| `09c` | 13 TSVs under `results/scientific_validation/<review_id>/` | implemented locally at `b674a31`; Python/shell synthetic fixtures pass | Validates explicit evidence and publishes the review summary last. No production review evidence, production science completion, cluster proof, or biological readiness is recorded or supported by inspected evidence. |
 
 ## Data Contracts
 
@@ -131,6 +134,7 @@ Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
 | Cohort mpileup partition | `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.FWD_like.mpileup.vcf`, `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.REV_like.mpileup.vcf`, and `results/mpileup/<cohort>/<partition>/<cohort>.<partition>.step07_outputs.tsv` |
 | VCF preprocessing | `results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv`, `results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv`, and `results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv` |
 | Paired CMH calling | `results/editing/<analysis>/<analysis>.cmh_all_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_significant_sites.tsv`, `results/editing/<analysis>/<analysis>.cmh_summary.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.tsv`, `results/editing/<analysis>/<analysis>.mutation_spectrum.pdf`, and `results/editing/<analysis>/<analysis>.depth_delta.pdf` |
+| Scientific evidence validation | 13 declared TSVs under `results/scientific_validation/<review_id>/`; `<review_id>.step09c_review_summary.tsv` is published last |
 
 Step `08` enumerates the exact declared partition set in manifest order and both orientations in fixed `FWD_like`, then `REV_like`, order. It validates the Step `07` receipts, manifest hashes, VCF paths, declared record counts, and exact sample order rather than globbing available files. The deterministic wide candidate table starts with:
 
@@ -241,7 +245,7 @@ flowchart LR
     descendant["next descendant<br/>local stage branch"]
     localr["local R gate<br/>guarded renv / runtime checks"]
     realrfix["09b1 real-R fixes<br/>both suites pass locally"]
-    sciencebranch["scientific-validation tooling<br/>explicit evidence; dry-run first"]
+    sciencebranch["09c implemented locally<br/>synthetic fixtures pass"]
     artifacts["artifact contracts<br/>schema -> adapters -> run summary"]
     reports["immediate reports<br/>HTML -> PDF exports"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
@@ -281,11 +285,11 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
-    class sciencebranch,artifacts,reports,foundations,validators safeguard
+    class artifacts,reports,foundations,validators safeguard
     class remotehold docs
 ```
 
@@ -305,6 +309,8 @@ Safeguards:
   `NORAD_USE_RENV=1`
 - a locked Bioconductor `3.23` environment, explicit restore/check targets,
   and cache-disabled empty-library restore coverage
+- Step `09c` explicit-input validation, 13-file summary-last publication,
+  immutable-hash checks, owned lock, rollback, and synthetic fixtures
 - troubleshooting docs
 
 ## Local Vs Cluster Responsibilities
@@ -312,7 +318,7 @@ Safeguards:
 | Local macOS | CSU/ADAM SLURM |
 | ----------- | -------------- |
 | Edit scripts/docs/tests. | Run real STAR/samtools/Picard/GATK/bcftools jobs. |
-| Run fake-tool shell tests, syntax checks, guarded real-R fixtures, scientific-validation fixtures, artifact aggregation, and synthetic report rendering. | Execute sample/cohort-scale workflows through `jobs/*.slurm`; compute wrappers never install R packages. |
+| Run current fake-tool shell tests, syntax checks, guarded real-R fixtures, and Step `09c` scientific-validation fixtures. After their named branches exist, artifact aggregation and synthetic report rendering also run locally. | Execute sample/cohort-scale workflows through `jobs/*.slurm`; compute wrappers never install R packages. |
 | Validate command construction and dry-run behavior. | Inspect SLURM logs, scheduler status, and output files. |
 | Commit/push reviewed changes. | Pull committed changes before dry-run and execute gates. |
 
@@ -350,26 +356,22 @@ of computational or biological validation.
 
 ## What Remains
 
-The `step-09b1-real-r-fixes` branch is complete and pushed: implementation
-`eae5eca` plus its documentation-only commits, with both real-R suites passing
-locally.
+The `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
+implemented at `b674a31` and synthetic-fixture-tested locally; no production
+science evidence or review completion is claimed.
 
-1. Implement `step-09c-scientific-validation` as local, explicit-input,
-   dry-run-first evidence tooling. Fixture completion can produce
-   `evidence_incomplete` or `science_review_complete_exploratory`; it cannot
-   produce `biological_interpretation_ready`.
-2. Implement the immediate report vertical slice in order:
+1. Implement the immediate report vertical slice in order:
    `artifact-schema-v1`, `artifact-adapters-v1`,
    `artifact-run-summary`, `report-html-v1`, and `report-exports-v1`.
    Synthetic/incomplete reports must carry their state banners and must not be
    presented as validation evidence.
-3. Implement the read-only foundations
+2. Implement the read-only foundations
    `post09-runtime-preflight`, `post09-reference-provenance`, and
    `post09-storage-inventory-retention`.
-4. Add one descendant validation-report branch for each of `00a`, `00b`,
+3. Add one descendant validation-report branch for each of `00a`, `00b`,
    `00c`, `01`, `02`, `02b`, `03`, `04`, `05`, `06`, `07`, `08`, and `09`,
    ending local work at `post09-validation-report-09`.
-5. When remote work resumes, promote Steps `07`, `08`, and `09` in order,
+4. When remote work resumes, promote Steps `07`, `08`, and `09` in order,
    then validate Step `09c` scientific evidence and perform only targeted
    reruns, regenerating the structured run summary and reports after inspected
    evidence. Remote work is not part of the current sequence.

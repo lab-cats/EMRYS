@@ -794,7 +794,8 @@ cluster runtime and output evidence remain pending
 These passes establish local fixture behavior only. They do not prove CSU
 batch visibility, production input behavior, or cluster outputs. The
 `step-09b1-real-r-fixes` documentation, clean-history, and push gate is
-complete; the next descendant is `step-09c-scientific-validation`.
+complete. Step `09c` is implemented locally at `b674a31`; after its
+docpatch/push gate, the next descendant is `artifact-schema-v1`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1189,6 +1190,122 @@ remove an incomplete new set, validate the recovered state, record the
 operator action, and only then remove the owned lock. The normal wrapper
 cleanup removes only its own paths; incomplete-rollback lock retention is an
 intentional safety boundary.
+
+## Step 09c rejects evidence, status, hashes, or row counts
+
+### Symptom
+
+Step `09c` stops before publication with a schema, path, SHA-256, row-count,
+candidate, decision, computational-status, or scientific-status error. A
+review plan requesting:
+
+```text
+biological_interpretation_ready
+```
+
+is always rejected.
+
+### Cause
+
+Step `09c` consumes only the explicitly named manifests, Step `08`
+transaction, Step `09` analysis directory, one-row review plan, and evidence
+manifest. It requires declared evidence paths, hashes, row counts, IDs,
+reviewers, policy versions, dates, statuses, decisions, and cross-table
+relationships to agree. Missing and incomplete evidence must be represented
+explicitly rather than hidden. `science_review_complete_exploratory` has
+stricter completed-evidence and decision requirements. The current policy
+deliberately reserves `biological_interpretation_ready` for a separately
+approved future branch.
+
+### Fix
+
+Correct the source evidence or its declaration and rerun the dry-run. Do not
+edit a hash or row count to force acceptance, replace missing evidence with an
+empty file, infer a reviewer decision, downgrade an observed error, or request
+the reserved ready state. Use the tracked example review plan, evidence
+manifest, and header schemas at
+`configs/step_09c_review_plan.example.tsv`,
+`configs/step_09c_evidence_manifest.example.tsv`, and
+`configs/step_09c_evidence_schemas/` as structural references. Preserve
+production evidence under approved ignored results storage.
+
+These checks are implemented and synthetic-fixture-tested locally. A fixture
+pass is not proof that a production review is complete.
+
+## Step 09c finds a lock, partial output set, changed input, or incomplete rollback
+
+### Symptom
+
+Step `09c` reports that the output is locked, refuses an incomplete/partial
+transaction, reports that an input changed before publication, or retains
+recovery paths after an incomplete rollback. A cleanup failure instead names
+owned paths it could not remove; the lock or other paths may already be gone.
+
+### Cause
+
+One review transaction owns:
+
+```text
+results/scientific_validation/<review_id>/
+  .<review_id>.step09c.lock
+  .<review_id>.step09c.<run_token>.tmp/
+  .<review_id>.step09c.<run_token>.previous/
+  .<review_id>.step09c.<run_token>.RECOVERY.txt
+```
+
+The `.step09c.lock` path is a regular metadata file, not a directory. It is
+created atomically with mode `0600` and records the review ID, PID, run token,
+and creation date. The `.RECOVERY.txt` marker is a best-effort record created
+only when rollback is incomplete, so it may be absent even when the error
+reports retained recovery state.
+
+The 13 stable TSVs must be all present or all absent. The review summary is
+published last. A concurrent writer, interrupted/manual copy, changed input,
+publication/rollback failure, or cleanup error can leave evidence that must be
+inspected before another writer proceeds.
+
+### Fix
+
+Inspect any remaining lock metadata, all 13 stable outputs, the named input
+hashes, matching run-token temporary/previous paths, and any best-effort
+recovery marker. Do not delete a foreign lock, combine files from different
+attempts, manufacture the summary, or discard a retained backup. Wait for an
+active owner or perform an explicit, evidence-preserving recovery to either the
+complete previous 13-file set or no set, validate the result, record the
+operator action, and only then remove the owned lock when appropriate. For a
+cleanup-only error, inspect exactly the paths named in the error because the
+lock may already have been removed.
+
+Lock, mutation, rollback, and cleanup paths are synthetic-fixture-tested only;
+no production Step `09c` recovery incident has been observed.
+
+## Step 09c fixture output is mistaken for a completed scientific review
+
+### Symptom
+
+A local test transaction is described as production evidence,
+`science_review_complete_exploratory`, cluster proof, or biological
+interpretation readiness.
+
+### Cause
+
+The committed fixtures are synthetic and exist to test validation and
+publication contracts. Reported implementation/local-test statuses are
+independent from production evidence-category and overall-science status.
+
+### Fix
+
+Describe the current state as:
+
+```text
+implemented and fixture-tested locally
+production Step 09c evidence unavailable
+production science remains evidence_incomplete
+biological_interpretation_ready rejected
+```
+
+Only an inspected production evidence package and the applicable approved
+policy can change those statements. Report generation will not do so.
 
 ## Wrong log interpretation: empty `.err` file
 

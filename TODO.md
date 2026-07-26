@@ -30,12 +30,19 @@ Cluster-proven:
 06   Read-orientation BAM split across all six samples
 ```
 
-Implemented locally and locally tested, but not fully runtime-validated or cluster-proven:
+Implemented core compute stages, locally tested but not runtime/cluster-proven:
 
 ```text
 07   Cohort bcftools mpileup by declared partition and mechanical orientation
 08   Deterministic VCF preprocessing and annotation
 09   Paired CMH editing-site calling
+```
+
+Implemented local evidence tooling, fixture-tested but without production
+review evidence:
+
+```text
+09c  Explicit scientific-evidence validation and review-summary publication
 ```
 
 The active Step `07` shell suite uses a fake bcftools executable. Real
@@ -58,6 +65,14 @@ and `r-check` gates. Step `08` now rejects malformed raw `FORMAT/DP`,
 its existing partition-overlap rejection was already correct. Step `09` now
 checks PDF EOF bytes without locale-sensitive text conversion. No Step
 `07`-`09` cluster or production evidence has been added.
+
+Step `09c` is implemented locally at `b674a31`. Its Python and shell fixtures
+cover side-effect-free dry-run, the 13-file summary-last transaction, explicit
+incomplete evidence, exploratory completion, reserved-state rejection,
+immutable hashes, locks, cleanup, and rollback. No production Step `09c`
+evidence package or completed scientific review is recorded or supported by
+inspected evidence; local completion is fixture-only and does not unlock
+biological interpretation.
 
 All six libraries are paired-end and reverse-stranded / first-strand-style.
 
@@ -98,20 +113,21 @@ step-09a-roadmap-docpatch
 ```
 
 The Step `09b` runtime and Step `09b1` corrective gates are complete locally.
-Commit `eae5eca` contains the Step `09b1` implementation and tests; subsequent
-documentation-only commits record the corrected state. The branch is clean
-and pushed, so Step `09c` is next.
+Commit `eae5eca` contains the Step `09b1` implementation and tests. Step `09c`
+is implemented at `b674a31`; after this documentation gate is committed and
+pushed, `artifact-schema-v1` is next.
 
-### 1. Implement `step-09c-scientific-validation`
+Completed local gate:
 
-Add the dry-run-first explicit-input evidence package under
-`results/scientific_validation/<review_id>/`. It summarizes review plans,
-evidence, orientation/locus and annotation audits, the QC funnel, replicate
-effects, sensitivity and leave-one-pair-out checks, candidate selection and
-adjudication, decisions, limitations, and one summary published last.
+```text
+step-09c-scientific-validation
+  explicit-input dry-run-first validation
+  13-file atomic evidence transaction with summary last
+  Python and shell synthetic-fixture suites
+  no production scientific evidence or review
+```
 
-Fixture completion means implemented and locally tested, not production
-scientific review. Step `09c` may publish only:
+Step `09c` may publish only:
 
 ```text
 evidence_incomplete
@@ -121,7 +137,7 @@ science_review_complete_exploratory
 It must reject the reserved `biological_interpretation_ready` state until a
 separately approved policy branch unlocks its scientific exit criteria.
 
-### 2. Implement Artifacts, Run Summary, And Reports Immediately
+### 1. Implement Artifacts, Run Summary, And Reports Immediately
 
 Do not defer reporting. Implement, in order:
 
@@ -141,7 +157,7 @@ limitations banners, call rows “CMH-ranked candidates,” declare any
 truncation with full-table path/hash, and never imply that rendering is
 validation.
 
-### 3. Implement Foundational Read-Only Engineering
+### 2. Implement Foundational Read-Only Engineering
 
 After reporting, implement:
 
@@ -152,7 +168,7 @@ After reporting, implement:
 These packages inspect and record explicit inputs. They do not install tools,
 repair references, or delete/move/compress outputs.
 
-### 4. Add One Validator Branch Per Pipeline Step
+### 3. Add One Validator Branch Per Pipeline Step
 
 Each branch publishes
 `results/qc/validation/<step>/<scope>.validation.tsv`, adds its artifact
@@ -165,7 +181,7 @@ run summary and consolidated HTML/PDF report. Use one branch each for:
 
 Stop local work after `post09-validation-report-09`.
 
-### 5. Resume Remote Work Later
+### 4. Resume Remote Work Later
 
 Only after that final clean branch, continue:
 
@@ -216,11 +232,27 @@ results/editing/<analysis>/<analysis>.cmh_summary.tsv
 results/editing/<analysis>/<analysis>.mutation_spectrum.tsv
 results/editing/<analysis>/<analysis>.mutation_spectrum.pdf
 results/editing/<analysis>/<analysis>.depth_delta.pdf
+
+results/scientific_validation/<review_id>/<review_id>.step09c_review_plan.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_evidence_index.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_orientation_locus_audit.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_annotation_audit.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_qc_funnel.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_replicate_effects.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_sensitivity_matrix.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_leave_one_pair_out.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_candidate_selection.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_candidate_adjudication.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_decisions.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_limitations.tsv
+results/scientific_validation/<review_id>/<review_id>.step09c_review_summary.tsv
 ```
 
 The Step `05` and Step `06` portions of this layout are cluster-proven across
 all six samples. The Step `07`-`09` portions are implemented and tested only at
-their available local boundaries. Continue to treat `FWD_like` / `REV_like` as
+their available local boundaries. Step `09c` is implemented and
+synthetic-fixture-tested only; its output layout is a contract, not evidence
+that a production review exists. Continue to treat `FWD_like` / `REV_like` as
 mechanical read-orientation groups, not biological strand calls.
 
 ## External Blockers / Unresolved Items
@@ -402,12 +434,11 @@ conversion. This local fixture pass is not production or cluster evidence.
 
 ## Activated Roadmap And Deferred Boundaries
 
-Scientific-validation tooling, explicit artifact schemas/adapters, the
-canonical run summary, HTML/PDF/TSV reports, the three foundational read-only
-packages, and one validator branch per pipeline step are now activated in the
-exact local sequence above. They are not implemented merely because they are
-approved; each becomes available only after its own implementation/docpatch
-gate.
+Scientific-validation tooling is implemented and fixture-tested locally.
+Explicit artifact schemas/adapters, the canonical run summary, HTML/PDF/TSV
+reports, the three foundational read-only packages, and one validator branch
+per pipeline step remain activated in the exact local sequence above. Each
+becomes available only after its own implementation/docpatch gate.
 
 ### Foundational Operational Packages
 
@@ -432,7 +463,8 @@ vertical slice:
 ### Reporting And Artifact Layer
 
 This layer is activated for immediate local implementation after Step `09c`.
-It remains non-runnable at the completed Step `09b1` boundary.
+It remains non-runnable at the completed local Step `09c` implementation
+boundary; `artifact-schema-v1` is the next package.
 
 Ordered packages:
 
@@ -548,6 +580,9 @@ Execute both real-R suites without SKIP and record the initial failing fixtures 
 Correct Step 08 raw DP/AD/INFO AD lexical validation and make its negative fixtures reason-specific at eae5eca.
 Make the Step 09 PDF EOF fixture locale-independent with raw-byte matching at eae5eca.
 Pass both real-R suites, the aggregate local R target, shell/Python gates, and r-check locally after those corrections.
+Implement Step 09c locally as explicit-input, dry-run-first Python/shell evidence validation at b674a31.
+Publish and validate the synthetic-fixture Step 09c 13-file summary-last transaction with owned locking, immutable hashes, rollback, and cleanup.
+Promote Step 09c Python and shell fixtures into the active repository gate, including incomplete/exploratory and reserved-state cases.
 ```
 
 ## Development Rule
