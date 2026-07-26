@@ -1,7 +1,13 @@
 DEMO_SAMPLE ?= ABE_EV_2
 RSCRIPT_BIN ?= Rscript
+PYTHON_BIN ?= python3
+REPORT_PYTHON_BIN ?= $(CURDIR)/.venv/bin/python
+QUARTO_VERSION := 1.9.38
+QUARTO_SHA256 := 47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
+QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
+QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
 
-.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
@@ -20,6 +26,7 @@ shell-test:
 	bash tests/shell/test_step_09_cmh_editing_site_calling.sh
 	bash tests/shell/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
+	bash tests/shell/test_render_run_report.sh
 
 real-r-test:
 	bash tests/r/run_step_08_vcf_preprocessing_tests.sh
@@ -45,6 +52,24 @@ local-real-r-test:
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
 		$(MAKE) real-r-test
 
+quarto-restore:
+	"$(PYTHON_BIN)" scripts/restore_quarto.py \
+		--install-root "$(QUARTO_TOOLS_ROOT)"
+
+report-test:
+	test -x "$(QUARTO_BIN)" || { \
+		printf 'ERROR: pinned Quarto is unavailable: %s\nRun make quarto-restore first.\n' \
+			"$(QUARTO_BIN)" >&2; \
+			exit 1; \
+	}
+	"$(PYTHON_BIN)" scripts/restore_quarto.py \
+		--install-root "$(QUARTO_TOOLS_ROOT)"
+	NORAD_REQUIRE_QUARTO=1 QUARTO_BIN="$(QUARTO_BIN)" \
+		"$(REPORT_PYTHON_BIN)" -m pytest \
+		tests/test_quarto_restore.py tests/test_report_html_v1.py
+	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
+		bash tests/shell/test_render_run_report.sh
+
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
 
@@ -55,7 +80,7 @@ smoke:
 lint:
 	python -m compileall scripts tests
 
-all-checks: test shell-test real-r-test validate smoke lint
+all-checks: test shell-test real-r-test validate smoke lint report-test
 
 demo-step03-dry-run:
 	mkdir -p logs

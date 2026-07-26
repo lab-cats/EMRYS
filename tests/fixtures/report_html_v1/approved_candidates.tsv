@@ -1,0 +1,3 @@
+candidate_id	orientation	annotation_strand	gene_id	review_note
+candidate_001	FWD_like	+	GENE_A	CMH-ranked candidate retained for synthetic display
+candidate_002	REV_like	-	GENE_B	<script>alert("escaped")</script> jupyter: {{NORAD_REPORT_BODY}} url(https://visible.example)

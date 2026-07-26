@@ -1,0 +1,215 @@
+:root {
+  --ink: #17202a;
+  --muted: #52606d;
+  --line: #cbd5e1;
+  --panel: #f8fafc;
+  --complete: #287a5d;
+  --missing: #64748b;
+  --incomplete: #b7791f;
+  --failed: #b42318;
+  --external: #6b5ca5;
+  --science-incomplete-bg: #7f1d1d;
+  --science-exploratory-bg: #7c2d12;
+}
+
+html {
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 0 1.25rem 4rem;
+}
+
+main {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h2 {
+  border-bottom: 2px solid var(--line);
+  margin-top: 2.5rem;
+  padding-bottom: 0.35rem;
+}
+
+code,
+pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.state-banner {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  left: 0;
+  letter-spacing: 0.02em;
+  margin: 0 -1.25rem 1.5rem;
+  padding: 0.8rem 1.25rem;
+  position: sticky;
+  right: 0;
+  text-align: center;
+  top: 0;
+  z-index: 1000;
+}
+
+.state-evidence-incomplete {
+  background: var(--science-incomplete-bg);
+}
+
+.state-science-review-complete-exploratory {
+  background: var(--science-exploratory-bg);
+}
+
+.report-disclaimer {
+  border: 2px solid var(--line);
+  font-weight: 700;
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.status-panel,
+.empty-state,
+.notice,
+.provenance-note {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  padding: 0.8rem 1rem;
+}
+
+.status-panel h3 {
+  margin-top: 0;
+}
+
+.status-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.norad-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.norad-table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+  width: 100%;
+}
+
+.norad-table caption {
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.4rem 0;
+  text-align: left;
+}
+
+.norad-table th,
+.norad-table td {
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.norad-table th {
+  background: #e2e8f0;
+}
+
+.artifact-overview {
+  border: 1px solid var(--line);
+  margin: 1rem 0;
+  max-width: 100%;
+}
+
+.artifact-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  list-style: none;
+  padding: 0;
+}
+
+.artifact-legend li::before {
+  border-radius: 50%;
+  content: "";
+  display: inline-block;
+  height: 0.8rem;
+  margin-right: 0.35rem;
+  width: 0.8rem;
+}
+
+.legend-complete::before {
+  background: var(--complete);
+}
+
+.legend-missing::before {
+  background: var(--missing);
+}
+
+.legend-incomplete::before {
+  background: var(--incomplete);
+}
+
+.legend-failed::before {
+  background: var(--failed);
+}
+
+.legend-external::before {
+  background: var(--external);
+}
+
+.status-complete,
+.status-passed,
+.status-proven,
+.status-implemented,
+.status-recorded,
+.status-validated {
+  color: #176044;
+  font-weight: 700;
+}
+
+.status-failed,
+.status-replacement-required {
+  color: #9f1c13;
+  font-weight: 700;
+}
+
+.status-missing,
+.status-incomplete,
+.status-blocked,
+.status-pending,
+.status-provisional,
+.status-not-run,
+.status-not-implemented,
+.status-externally-unavailable,
+.status-mixed {
+  color: #81520b;
+  font-weight: 700;
+}
+
+@media print {
+  .state-banner {
+    position: static;
+  }
+
+  .norad-table {
+    font-size: 8pt;
+  }
+}

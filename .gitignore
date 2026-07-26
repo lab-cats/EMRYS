@@ -1,4 +1,5 @@
 .venv/
+.tools/
 data/raw/
 data/full/
 refs/*
