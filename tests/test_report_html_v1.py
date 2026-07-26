@@ -138,6 +138,30 @@ def write_summary_copy(
     return path
 
 
+def attach_fixture_approval_provenance(
+    document: dict[str, Any],
+    root: Path,
+) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    approval_count = len(document["approved_report_tables"])
+    manifest = root / "fixture_report_table_approvals.tsv"
+    manifest.write_text(
+        "table_id\n"
+        + "".join(
+            f"{record['table_id']}\n"
+            for record in document["approved_report_tables"]
+        ),
+        encoding="utf-8",
+    )
+    document["parameters"]["report_table_approvals"] = {
+        "path": str(manifest),
+        "sha256": sha256_file(manifest),
+        "size_bytes": manifest.stat().st_size,
+        "row_count": approval_count,
+        "media_type": "text/tab-separated-values",
+    }
+
+
 def build_fake_quarto(
     root: Path,
     *,
@@ -331,6 +355,7 @@ def make_approved_summary(
             },
         }
     ]
+    attach_fixture_approval_provenance(document, root)
     return write_summary_copy(document, root)
 
 
@@ -649,6 +674,49 @@ def test_approved_table_limits_paths_hashes_and_escaping(
         assert "Displayed 2 of 2 rows" not in qmd
 
 
+def test_builder_approved_tables_render_end_to_end(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "producer",
+        science_status="science_review_complete_exploratory",
+        display_limits={
+            "candidate_selection": 1,
+            "candidate_adjudication": 1,
+        },
+    )
+    summary = publish_run_summary(fixture)
+    untouched = summary.read_bytes()
+    document = read_summary(summary)
+    quarto, _log = build_fake_quarto(tmp_path / "quarto")
+    output_root = tmp_path / "reports"
+
+    result = run_renderer(
+        summary=summary,
+        output_root=output_root,
+        quarto=quarto,
+        execute=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert summary.read_bytes() == untouched
+    output = expected_output(output_root, summary)
+    rendered = output.read_text(encoding="utf-8")
+    assert (
+        "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED."
+        in rendered
+    )
+    assert "CMH-ranked candidates: approved selection summary" in rendered
+    assert "CMH-ranked candidates: approved adjudication summary" in rendered
+    for approval in document["approved_report_tables"]:
+        assert approval["path"] in rendered
+        assert approval["sha256"] in rendered
+    assert (
+        str(fixture.report_table_approvals)
+        in json.dumps(document["parameters"], sort_keys=True)
+    )
+
+
 def test_unknown_approved_role_is_never_silently_omitted(
     incomplete_summary: Path,
     tmp_path: Path,
@@ -738,6 +806,10 @@ def test_header_only_approved_candidate_table_is_rendered_as_zero_rows(
             },
         }
     ]
+    attach_fixture_approval_provenance(
+        document,
+        tmp_path / "approval-provenance",
+    )
     summary = write_summary_copy(document, tmp_path / "summary")
     loaded = RENDER._load_run_summary(summary)
     tables = tuple(
@@ -791,6 +863,10 @@ def test_mutated_approved_table_hash_and_row_shape_fail_closed(
             },
         }
     ]
+    attach_fixture_approval_provenance(
+        document,
+        tmp_path / "approval-provenance",
+    )
     summary = write_summary_copy(document, tmp_path / "summary")
     loaded = RENDER._load_run_summary(summary)
 

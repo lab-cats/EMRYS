@@ -214,6 +214,7 @@ def test_help_and_dry_run_validate_without_summary_writes(
         "--artifact-receipt",
         "--output-root",
         "--science-review-summary",
+        "--report-table-approvals",
         "--execute",
     ):
         assert option in help_result.stdout
@@ -260,7 +261,404 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
         run_summary_fixture.qc_summary_path
     )
     assert document["summary_state"] == "complete"
+    assert document["approved_report_tables"] == []
+    assert document["parameters"]["report_table_approvals"] is None
     assert_no_summary_residue_after_success(run_summary_fixture)
+
+
+def test_explicit_report_table_approvals_are_normalized_and_provenanced(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "approved",
+        science_status="evidence_incomplete",
+    )
+
+    dry_run = run_cli(fixture)
+
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert str(fixture.report_table_approvals) in dry_run.stdout
+    assert "Approved report tables: 2" in dry_run.stdout
+    assert_no_summary_outputs(fixture)
+
+    result = run_cli(fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    document = validate_summary_document(fixture)
+    approvals = document["approved_report_tables"]
+    assert [row["role"] for row in approvals] == [
+        "candidate_selection",
+        "candidate_adjudication",
+    ]
+    assert [row["table_id"] for row in approvals] == [
+        "synthetic_candidate_selection",
+        "synthetic_candidate_adjudication",
+    ]
+    assert all(row["approval"]["status"] == "approved" for row in approvals)
+    assert all(
+        row["approval"]["policy_version"]
+        == "synthetic_report_policy_v1"
+        for row in approvals
+    )
+    assert all(
+        row["approval"]["approved_by"]
+        == "synthetic_scientific_owner"
+        for row in approvals
+    )
+    artifact_index = {
+        artifact["artifact_id"]: artifact
+        for artifact in document["artifacts"]
+    }
+    for approval in approvals:
+        source = artifact_index[approval["artifact_id"]]["source"]
+        assert approval["path"] == source["path"]
+        assert approval["sha256"] == source["sha256"]
+        assert approval["row_count"] == source["row_count"]
+    approval_source = document["parameters"]["report_table_approvals"]
+    assert approval_source == {
+        "path": str(fixture.report_table_approvals),
+        "sha256": sha256_file(fixture.report_table_approvals),
+        "size_bytes": fixture.report_table_approvals.stat().st_size,
+        "row_count": 2,
+        "media_type": "text/tab-separated-values",
+    }
+    receipt = read_tsv(fixture.summary_receipt_path)[0]
+    assert receipt["producer_version"] == RUN_SUMMARY.PRODUCER_VERSION
+    assert receipt["run_summary_json_sha256"] == sha256_file(
+        fixture.summary_json_path
+    )
+    assert document["science_status"] == "evidence_incomplete"
+    assert_no_summary_residue_after_success(fixture)
+
+
+def test_header_only_report_table_is_a_valid_explicit_approval(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "header-only",
+        roles=("candidate_selection",),
+        header_only_roles=("candidate_selection",),
+    )
+    rows = read_tsv(fixture.report_table_approvals)
+    assert rows[0]["row_count"] == "0"
+
+    result = run_cli(fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    approval = validate_summary_document(fixture)[
+        "approved_report_tables"
+    ][0]
+    assert approval["row_count"] == 0
+    assert approval["display_row_limit"] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("run_id", "wrong_run", "wrong run_id"),
+        (
+            "run_contract_sha256",
+            "f" * 64,
+            "wrong run_contract_sha256",
+        ),
+        ("approval_status", "pending", "approval_status"),
+        ("display_row_limit", "", "canonical non-negative"),
+        ("row_count", "00", "canonical non-negative"),
+    ],
+)
+def test_report_table_approvals_fail_closed_on_identity_and_scalar_errors(
+    tmp_path: Path,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / field,
+        roles=("candidate_selection",),
+    )
+    rows = read_tsv(fixture.report_table_approvals)
+    rows[0][field] = value
+    write_tsv(
+        fixture.report_table_approvals,
+        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        rows,
+    )
+
+    result = run_cli(fixture)
+
+    assert result.returncode != 0
+    assert message in result.stderr
+    assert_no_summary_outputs(fixture)
+
+
+def test_report_table_approvals_reject_empty_duplicate_and_decoy_inputs(
+    tmp_path: Path,
+) -> None:
+    empty = FIXTURE.build_approved_science_fixture(
+        tmp_path / "empty",
+        roles=("candidate_selection",),
+    )
+    write_tsv(
+        empty.report_table_approvals,
+        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        [],
+    )
+    empty_result = run_cli(empty)
+    assert empty_result.returncode != 0
+    assert "must contain at least one" in empty_result.stderr
+    assert_no_summary_outputs(empty)
+
+    duplicate = FIXTURE.build_approved_science_fixture(
+        tmp_path / "duplicate",
+        roles=("candidate_selection",),
+    )
+    rows = read_tsv(duplicate.report_table_approvals)
+    write_tsv(
+        duplicate.report_table_approvals,
+        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        [rows[0], rows[0]],
+    )
+    duplicate_result = run_cli(duplicate)
+    assert duplicate_result.returncode != 0
+    assert "Duplicate" in duplicate_result.stderr
+    assert_no_summary_outputs(duplicate)
+
+    decoy = FIXTURE.build_explicit_science_fixture(tmp_path / "decoy")
+    decoy_path = decoy.output_dir / "report_table_approvals.tsv"
+    decoy_path.write_text("not\tdiscovered\n", encoding="utf-8")
+    omitted = run_cli(decoy, execute=True)
+    assert omitted.returncode == 0, omitted.stderr
+    document = validate_summary_document(decoy)
+    assert document["approved_report_tables"] == []
+    assert document["parameters"]["report_table_approvals"] is None
+    assert decoy_path.read_text(encoding="utf-8") == "not\tdiscovered\n"
+
+
+def test_report_table_approval_header_role_source_and_time_fail_closed(
+    tmp_path: Path,
+) -> None:
+    bad_header = FIXTURE.build_approved_science_fixture(
+        tmp_path / "header",
+        roles=("candidate_selection",),
+    )
+    rows = read_tsv(bad_header.report_table_approvals)
+    write_tsv(
+        bad_header.report_table_approvals,
+        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER[:-1],
+        [
+            {
+                field: rows[0][field]
+                for field in RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER[:-1]
+            }
+        ],
+    )
+    header_result = run_cli(bad_header)
+    assert header_result.returncode != 0
+    assert "invalid TSV header" in header_result.stderr
+    assert_no_summary_outputs(bad_header)
+
+    mutations = (
+        ("role", "candidate_adjudication", "artifact contract"),
+        ("sha256", "0" * 64, "hash or row count"),
+        ("row_count", "999", "hash or row count"),
+        ("display_row_limit", "999", "must not exceed"),
+        ("approved_at", "2999-01-01T00:00:00Z", "must not be later"),
+    )
+    for index, (field, value, message) in enumerate(mutations):
+        fixture = FIXTURE.build_approved_science_fixture(
+            tmp_path / f"mutation-{index}",
+            roles=("candidate_selection",),
+        )
+        approval_rows = read_tsv(fixture.report_table_approvals)
+        approval_rows[0][field] = value
+        write_tsv(
+            fixture.report_table_approvals,
+            RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+            approval_rows,
+        )
+        result = run_cli(fixture)
+        assert result.returncode != 0
+        assert message in result.stderr
+        assert_no_summary_outputs(fixture)
+
+
+def test_report_table_approvals_require_exact_science_and_non_symlink_manifest(
+    tmp_path: Path,
+) -> None:
+    no_science = FIXTURE.build_approved_science_fixture(
+        tmp_path / "no-science",
+        roles=("candidate_selection",),
+    )
+    arguments = no_science.command_args(
+        include_science=False,
+        include_approvals=True,
+    )
+    result = run_cli(no_science, arguments=arguments)
+    assert result.returncode != 0
+    assert "require the exact committed Step 09c" in result.stderr
+    assert_no_summary_outputs(no_science)
+
+    symlinked = FIXTURE.build_approved_science_fixture(
+        tmp_path / "symlinked",
+        roles=("candidate_selection",),
+    )
+    link = symlinked.root / "approval-link.tsv"
+    link.symlink_to(symlinked.report_table_approvals)
+    arguments = symlinked.command_args()
+    arguments[
+        arguments.index("--report-table-approvals") + 1
+    ] = str(link)
+    result = run_cli(symlinked, arguments=arguments)
+    assert result.returncode != 0
+    assert "symbolic link" in result.stderr
+    assert_no_summary_outputs(symlinked)
+
+
+def test_fixed_approval_retry_is_deterministic_and_supersedes(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "retry",
+        roles=("candidate_selection",),
+    )
+    first = run_cli(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    before = {
+        path.name: path.read_bytes()
+        for path in fixture.summary_paths[:3]
+    }
+    first_receipt = read_tsv(fixture.summary_receipt_path)[0]
+
+    second = run_cli(fixture, execute=True)
+
+    assert second.returncode == 0, second.stderr
+    assert {
+        path.name: path.read_bytes()
+        for path in fixture.summary_paths[:3]
+    } == before
+    second_receipt = read_tsv(fixture.summary_receipt_path)[0]
+    assert second_receipt["supersedes_run_summary_attempt_id"] == (
+        first_receipt["run_summary_attempt_id"]
+    )
+    assert second_receipt["run_summary_attempt_history"].split(",") == [
+        first_receipt["run_summary_attempt_id"],
+        second_receipt["run_summary_attempt_id"],
+    ]
+    validate_summary_document(fixture)
+
+
+def test_changed_approval_policy_creates_a_new_summary_attempt(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "changed",
+        roles=("candidate_selection",),
+    )
+    first = run_cli(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    first_json = fixture.summary_json_path.read_bytes()
+    first_receipt = read_tsv(fixture.summary_receipt_path)[0]
+    rows = read_tsv(fixture.report_table_approvals)
+    rows[0]["display_row_limit"] = "1"
+    rows[0]["approval_policy_version"] = "synthetic_report_policy_v2"
+    write_tsv(
+        fixture.report_table_approvals,
+        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        rows,
+    )
+
+    second = run_cli(fixture, execute=True)
+
+    assert second.returncode == 0, second.stderr
+    assert fixture.summary_json_path.read_bytes() != first_json
+    document = validate_summary_document(fixture)
+    approval = document["approved_report_tables"][0]
+    assert approval["display_row_limit"] == 1
+    assert approval["approval"]["policy_version"] == (
+        "synthetic_report_policy_v2"
+    )
+    second_receipt = read_tsv(fixture.summary_receipt_path)[0]
+    assert second_receipt["supersedes_run_summary_attempt_id"] == (
+        first_receipt["run_summary_attempt_id"]
+    )
+
+
+def test_legacy_empty_approval_summary_can_be_safely_superseded(
+    run_summary_fixture: Any,
+) -> None:
+    first = run_cli(run_summary_fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    document = read_json(run_summary_fixture.summary_json_path)
+    document["provenance"]["producer_version"] = (
+        RUN_SUMMARY.LEGACY_PRODUCER_VERSION
+    )
+    document["parameters"].pop("report_table_approvals")
+    legacy_json = canonical_json_bytes(document)
+    run_summary_fixture.summary_json_path.write_bytes(legacy_json)
+    receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
+    receipt["producer_version"] = RUN_SUMMARY.LEGACY_PRODUCER_VERSION
+    receipt["run_summary_json_sha256"] = hashlib.sha256(
+        legacy_json
+    ).hexdigest()
+    receipt["run_summary_json_size_bytes"] = str(len(legacy_json))
+    write_tsv(
+        run_summary_fixture.summary_receipt_path,
+        RUN_SUMMARY.RUN_SUMMARY_RECEIPT_HEADER,
+        [receipt],
+    )
+
+    replacement = run_cli(run_summary_fixture, execute=True)
+
+    assert replacement.returncode == 0, replacement.stderr
+    current = validate_summary_document(run_summary_fixture)
+    assert current["provenance"]["producer_version"] == (
+        RUN_SUMMARY.PRODUCER_VERSION
+    )
+    assert current["parameters"]["report_table_approvals"] is None
+    current_receipt = read_tsv(
+        run_summary_fixture.summary_receipt_path
+    )[0]
+    assert current_receipt["producer_version"] == (
+        RUN_SUMMARY.PRODUCER_VERSION
+    )
+    assert current_receipt["supersedes_run_summary_attempt_id"] == (
+        receipt["run_summary_attempt_id"]
+    )
+
+
+def test_report_table_approval_manifest_and_table_mutation_fail_closed(
+    tmp_path: Path,
+) -> None:
+    manifest_fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "manifest-mutation",
+        roles=("candidate_selection",),
+    )
+    manifest_context = context_for(manifest_fixture)
+    manifest_fixture.report_table_approvals.write_bytes(
+        manifest_fixture.report_table_approvals.read_bytes() + b"\n"
+    )
+    with pytest.raises(
+        RUN_SUMMARY.RunSummaryError,
+        match="changed after its immutable snapshot",
+    ):
+        RUN_SUMMARY.publish_context(manifest_context)
+    assert_no_summary_outputs(manifest_fixture)
+
+    table_fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "table-mutation",
+        roles=("candidate_selection",),
+    )
+    table_context = context_for(table_fixture)
+    table_path = Path(
+        table_context.document["approved_report_tables"][0]["path"]
+    )
+    table_path.write_bytes(table_path.read_bytes() + b"\n")
+    with pytest.raises(
+        RUN_SUMMARY.RunSummaryError,
+        match="Approved report table",
+    ):
+        RUN_SUMMARY.publish_context(table_context)
+    assert_no_summary_outputs(table_fixture)
 
 
 def assert_no_summary_residue_after_success(fixture: Any) -> None:

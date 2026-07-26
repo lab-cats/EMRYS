@@ -1462,6 +1462,63 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 "artifact"
             )
 
+    if "report_table_approvals" in document["parameters"]:
+        approval_source = document["parameters"]["report_table_approvals"]
+        if approval_source is None:
+            if report_tables:
+                raise ContractValidationError(
+                    "approved report tables require explicit approval-manifest "
+                    "provenance"
+                )
+        else:
+            expected_fields = {
+                "path",
+                "sha256",
+                "size_bytes",
+                "row_count",
+                "media_type",
+            }
+            if (
+                not isinstance(approval_source, dict)
+                or set(approval_source) != expected_fields
+            ):
+                raise ContractValidationError(
+                    "report-table approval provenance has an invalid shape"
+                )
+            if not isinstance(approval_source["path"], str):
+                raise ContractValidationError(
+                    "report-table approval provenance path is invalid"
+                )
+            validate_resolved_path(
+                approval_source["path"],
+                "report-table approval provenance path",
+            )
+            if (
+                not isinstance(approval_source["sha256"], str)
+                or not re.fullmatch(
+                    r"[0-9a-f]{64}",
+                    approval_source["sha256"],
+                )
+            ):
+                raise ContractValidationError(
+                    "report-table approval provenance SHA-256 is invalid"
+                )
+            if (
+                not isinstance(approval_source["size_bytes"], int)
+                or isinstance(approval_source["size_bytes"], bool)
+                or approval_source["size_bytes"] < 0
+                or not isinstance(approval_source["row_count"], int)
+                or isinstance(approval_source["row_count"], bool)
+                or approval_source["row_count"] < 1
+                or approval_source["row_count"] != len(report_tables)
+                or approval_source["media_type"]
+                != "text/tab-separated-values"
+            ):
+                raise ContractValidationError(
+                    "report-table approval provenance does not reconcile with "
+                    "the approved records"
+                )
+
     qc_metrics = require_unique_key(
         document["qc_metrics"],
         "metric_id",

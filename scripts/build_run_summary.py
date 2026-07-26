@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import os
@@ -20,7 +21,7 @@ import sys
 import uuid
 from collections import Counter, OrderedDict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -32,12 +33,47 @@ import validate_artifact_contracts as contracts
 
 
 PRODUCER = "build_run_summary"
-PRODUCER_VERSION = "1.0.0"
+PRODUCER_VERSION = "1.1.0"
+LEGACY_PRODUCER_VERSION = "1.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 RUN_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 QC_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 RUN_SUMMARY_RECEIPT_SCHEMA_VERSION = "1.0.0"
 RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
+
+REPORT_TABLE_APPROVALS_HEADER = (
+    "run_id",
+    "run_contract_sha256",
+    "table_id",
+    "artifact_id",
+    "role",
+    "title",
+    "path",
+    "sha256",
+    "row_count",
+    "display_row_limit",
+    "approval_status",
+    "approval_policy_version",
+    "approved_by",
+    "approved_at",
+)
+
+REPORT_ROLE_ADAPTERS = {
+    role: f"step09c_{role}_v1"
+    for role in (
+        "orientation_locus_audit",
+        "annotation_audit",
+        "qc_funnel",
+        "replicate_effects",
+        "sensitivity_matrix",
+        "leave_one_pair_out",
+        "candidate_selection",
+        "candidate_adjudication",
+        "decisions",
+        "evidence_index",
+        "limitations",
+    )
+}
 
 RUN_SUMMARY_HEADER = (
     "run_id",
@@ -192,6 +228,9 @@ class BuildContext:
     artifacts: list[dict[str, Any]]
     science_review_summary_path: Path | None
     science_review_summary_sha256: str | None
+    report_table_approvals_path: Path | None
+    report_table_approvals_sha256: str | None
+    report_table_snapshots: tuple[FileSnapshot, ...]
     document: dict[str, Any]
     summary_json_bytes: bytes
     summary_rows: list[dict[str, Any]]
@@ -239,6 +278,15 @@ def parse_arguments(
         help=(
             "Optional exact committed Step 09c review-summary TSV. It is "
             "never discovered automatically."
+        ),
+    )
+    parser.add_argument(
+        "--report-table-approvals",
+        type=Path,
+        help=(
+            "Optional exact report-table approvals TSV. It is never "
+            "discovered automatically and must be bound to this run and its "
+            "explicit Step 09c scientific-review artifacts."
         ),
     )
     parser.add_argument(
@@ -361,7 +409,11 @@ def _read_exact_tsv_bytes(
 ) -> list[dict[str, str]]:
     try:
         text = payload.decode("utf-8")
-        reader = csv.DictReader(io.StringIO(text, newline=""), delimiter="\t")
+        reader = csv.DictReader(
+            io.StringIO(text, newline=""),
+            delimiter="\t",
+            strict=True,
+        )
         if tuple(reader.fieldnames or ()) != tuple(header):
             _fail(f"{label} has an invalid TSV header: {path}")
         rows = list(reader)
@@ -396,6 +448,438 @@ def _load_json_bytes(
     if not isinstance(value, dict):
         _fail(f"{label} must contain a JSON object: {path}")
     return value
+
+
+def _reject_symlink_components(path: Path, label: str) -> None:
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        current = current / part
+        if not os.path.lexists(current):
+            continue
+        try:
+            metadata = current.lstat()
+        except OSError as exc:
+            _fail(f"Could not inspect {label} component {current}: {exc}")
+        if stat.S_ISLNK(metadata.st_mode):
+            _fail(f"{label} must not traverse a symbolic link: {current}")
+
+
+def _require_explicit_regular_file(
+    label: str,
+    value: str | Path,
+) -> Path:
+    try:
+        contracts.validate_resolved_path(str(value), label)
+    except contracts.ContractValidationError as exc:
+        _fail(str(exc))
+    lexical = _resolved_path(value)
+    _reject_symlink_components(lexical, label)
+    resolved = _require_regular_file(label, lexical)
+    if resolved != lexical:
+        _fail(f"{label} must not traverse a symbolic link: {value}")
+    return resolved
+
+
+def _require_contract_regular_file(label: str, value: str) -> Path:
+    try:
+        contracts.validate_resolved_path(value, label)
+    except contracts.ContractValidationError as exc:
+        _fail(str(exc))
+    declared = Path(value)
+    lexical = (
+        declared
+        if declared.is_absolute()
+        else contracts.REPO_ROOT / declared
+    ).absolute()
+    _reject_symlink_components(lexical, label)
+    resolved = _require_regular_file(label, lexical)
+    if resolved != lexical:
+        _fail(f"{label} must not traverse a symbolic link: {value}")
+    return resolved
+
+
+def _capture_report_table_snapshot(
+    label: str,
+    path: Path,
+) -> tuple[FileSnapshot, int]:
+    descriptor: int | None = None
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = None
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                _fail(f"{label} is not a regular file: {path}")
+            digest = hashlib.sha256()
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+            stream.seek(0)
+            wrapper = io.TextIOWrapper(
+                stream,
+                encoding="utf-8",
+                newline="",
+            )
+            try:
+                reader = csv.reader(wrapper, delimiter="\t", strict=True)
+                try:
+                    header = next(reader)
+                except StopIteration:
+                    _fail(f"{label} is empty: {path}")
+                if not header or any(not column for column in header):
+                    _fail(f"{label} has a blank TSV header column: {path}")
+                if len(header) != len(set(header)):
+                    _fail(f"{label} has duplicate TSV header columns: {path}")
+                row_count = 0
+                for row_number, row in enumerate(reader, start=2):
+                    if len(row) != len(header):
+                        _fail(
+                            f"{label} row {row_number} has {len(row)} fields; "
+                            f"expected {len(header)}: {path}"
+                        )
+                    row_count += 1
+            finally:
+                wrapper.detach()
+            after = os.fstat(stream.fileno())
+        current = path.lstat()
+    except RunSummaryError:
+        raise
+    except (OSError, UnicodeError, csv.Error) as exc:
+        _fail(f"Could not inspect {label} {path}: {exc}")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    before_identity = (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+    )
+    after_identity = (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    )
+    current_identity = (
+        current.st_dev,
+        current.st_ino,
+        current.st_size,
+        current.st_mtime_ns,
+        current.st_ctime_ns,
+    )
+    if (
+        before_identity != after_identity
+        or before_identity != current_identity
+        or stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISREG(current.st_mode)
+    ):
+        _fail(f"{label} changed while it was inspected: {path}")
+    return (
+        FileSnapshot(
+            path=path,
+            sha256=digest.hexdigest(),
+            device=before.st_dev,
+            inode=before.st_ino,
+            size_bytes=before.st_size,
+            mtime_ns=before.st_mtime_ns,
+            ctime_ns=before.st_ctime_ns,
+        ),
+        row_count,
+    )
+
+
+def _verify_report_table_snapshot(expected: FileSnapshot) -> None:
+    observed, _row_count = _capture_report_table_snapshot(
+        "Approved report table",
+        expected.path,
+    )
+    if observed != expected:
+        _fail(
+            "Approved report table changed after its immutable snapshot was "
+            f"captured: {expected.path}"
+        )
+
+
+def _canonical_nonnegative_integer(value: str, label: str) -> int:
+    if not re.fullmatch(r"0|[1-9][0-9]*", value):
+        _fail(f"{label} must be a canonical non-negative integer")
+    return int(value)
+
+
+def _parse_approval_timestamp(value: str, build_started_at: str) -> str:
+    if not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+        r"[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+        value,
+    ):
+        _fail(
+            "approved_at must be a canonical UTC timestamp ending in Z with "
+            "second precision"
+        )
+    try:
+        approved_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        started_at = datetime.fromisoformat(
+            build_started_at.replace("Z", "+00:00")
+        )
+    except ValueError as exc:
+        raise RunSummaryError("approved_at is not a valid timestamp") from exc
+    if approved_at.tzinfo is None or started_at.tzinfo is None:
+        _fail("approved_at must include a timezone")
+    if approved_at.astimezone(timezone.utc) > started_at.astimezone(
+        timezone.utc
+    ):
+        _fail("approved_at must not be later than the run-summary attempt")
+    return value
+
+
+def _normalize_report_table_approvals(
+    *,
+    manifest_value: Path,
+    run_id: str,
+    run_contract: Mapping[str, Any],
+    artifacts: Sequence[dict[str, Any]],
+    scientific_review: Mapping[str, Any],
+    build_started_at: str,
+) -> tuple[
+    Path,
+    FileSnapshot,
+    list[dict[str, Any]],
+    tuple[FileSnapshot, ...],
+]:
+    manifest_path = _require_explicit_regular_file(
+        "Report-table approvals manifest",
+        manifest_value,
+    )
+    payload, manifest_snapshot = _capture_file_snapshot(
+        "Report-table approvals manifest",
+        manifest_path,
+    )
+    rows = _read_exact_tsv_bytes(
+        label="Report-table approvals manifest",
+        path=manifest_path,
+        payload=payload,
+        header=REPORT_TABLE_APPROVALS_HEADER,
+    )
+    if not rows:
+        _fail(
+            "A supplied report-table approvals manifest must contain at least "
+            "one run-bound approval row; omit the option when no tables are "
+            "approved"
+        )
+    if scientific_review["record_state"] != "present":
+        _fail(
+            "Report-table approvals require the exact committed Step 09c "
+            "science-review summary"
+        )
+    review_id = scientific_review["record"]["review_id"]
+    artifacts_by_id = {
+        artifact["artifact_id"]: artifact for artifact in artifacts
+    }
+    observed_table_ids: set[str] = set()
+    observed_sources: set[tuple[str, str]] = set()
+    snapshots_by_path: OrderedDict[Path, FileSnapshot] = OrderedDict()
+    records: list[dict[str, Any]] = []
+    for row_number, row in enumerate(rows, start=2):
+        if any(
+            key is None
+            or value is None
+            or not isinstance(value, str)
+            for key, value in row.items()
+        ):
+            _fail(
+                "Report-table approvals manifest has a non-rectangular row "
+                f"at line {row_number}"
+            )
+        if row["run_id"] != run_id:
+            _fail(
+                f"Report-table approval line {row_number} has the wrong run_id"
+            )
+        if row["run_contract_sha256"] != run_contract[
+            "run_contract_sha256"
+        ]:
+            _fail(
+                "Report-table approval line "
+                f"{row_number} has the wrong run_contract_sha256"
+            )
+        for field in (
+            "table_id",
+            "artifact_id",
+            "role",
+            "approval_policy_version",
+            "approved_by",
+        ):
+            if not contracts.SAFE_ID_RE.fullmatch(row[field]):
+                _fail(
+                    f"Report-table approval line {row_number} field {field} "
+                    "must be a safe non-empty ID"
+                )
+        table_id = row["table_id"]
+        if table_id in observed_table_ids:
+            _fail(f"Duplicate report-table approval table_id: {table_id}")
+        observed_table_ids.add(table_id)
+        title = row["title"]
+        if (
+            not title
+            or title.strip() != title
+            or any(character in title for character in "\t\r\n")
+        ):
+            _fail(
+                f"Report-table approval {table_id!r} title must be one "
+                "trimmed non-empty line"
+            )
+        role = row["role"]
+        expected_adapter = REPORT_ROLE_ADAPTERS.get(role)
+        if expected_adapter is None:
+            _fail(
+                f"Report-table approval {table_id!r} has unsupported role "
+                f"{role!r}"
+            )
+        artifact = artifacts_by_id.get(row["artifact_id"])
+        if artifact is None:
+            _fail(
+                f"Report-table approval {table_id!r} references an unknown "
+                f"artifact: {row['artifact_id']}"
+            )
+        scope = artifact["scope"]
+        if (
+            artifact["completion_status"] != "complete"
+            or artifact["adapter"] != expected_adapter
+            or scope["step_id"] != "09c"
+            or scope["scope_type"] != "scientific_review"
+            or scope["scope_id"] != review_id
+        ):
+            _fail(
+                f"Report-table approval {table_id!r} does not match the "
+                f"complete active Step 09c artifact contract for role {role!r}"
+            )
+        declared_path = row["path"]
+        sources = [
+            source
+            for source in (
+                artifact["source"],
+                *artifact["members"],
+            )
+            if source is not None and source["path"] == declared_path
+        ]
+        if len(sources) != 1:
+            _fail(
+                f"Report-table approval {table_id!r} path must match exactly "
+                "one source or member of its named artifact"
+            )
+        source = sources[0]
+        if source["media_type"] != "text/tab-separated-values":
+            _fail(
+                f"Report-table approval {table_id!r} must reference a TSV "
+                "artifact"
+            )
+        if source["row_count"] is None:
+            _fail(
+                f"Report-table approval {table_id!r} source has no declared "
+                "row count"
+            )
+        declared_sha256 = row["sha256"]
+        if not adapter.SHA256_RE.fullmatch(declared_sha256):
+            _fail(
+                f"Report-table approval {table_id!r} sha256 must be lowercase "
+                "hexadecimal"
+            )
+        declared_row_count = _canonical_nonnegative_integer(
+            row["row_count"],
+            f"Report-table approval {table_id!r} row_count",
+        )
+        if (
+            declared_sha256 != source["sha256"]
+            or declared_row_count != source["row_count"]
+        ):
+            _fail(
+                f"Report-table approval {table_id!r} hash or row count does "
+                "not match its artifact record"
+            )
+        if row["display_row_limit"] == "NA":
+            display_row_limit: int | None = None
+        else:
+            display_row_limit = _canonical_nonnegative_integer(
+                row["display_row_limit"],
+                (
+                    f"Report-table approval {table_id!r} "
+                    "display_row_limit"
+                ),
+            )
+            if display_row_limit > declared_row_count:
+                _fail(
+                    f"Report-table approval {table_id!r} display_row_limit "
+                    "must not exceed row_count"
+                )
+        if row["approval_status"] != "approved":
+            _fail(
+                f"Report-table approval {table_id!r} approval_status must be "
+                "'approved'"
+            )
+        source_path = _require_contract_regular_file(
+            f"Approved report table {table_id!r}",
+            declared_path,
+        )
+        source_key = (str(source_path), declared_sha256)
+        if source_key in observed_sources:
+            _fail(
+                "A physical report-table source may be approved only once: "
+                f"{declared_path}"
+            )
+        observed_sources.add(source_key)
+        table_snapshot, observed_row_count = (
+            _capture_report_table_snapshot(
+                f"Approved report table {table_id!r}",
+                source_path,
+            )
+        )
+        if (
+            table_snapshot.sha256 != declared_sha256
+            or table_snapshot.size_bytes != source["size_bytes"]
+            or observed_row_count != declared_row_count
+        ):
+            _fail(
+                f"Approved report table {table_id!r} current file differs "
+                "from its exact artifact and approval record"
+            )
+        snapshots_by_path[source_path] = table_snapshot
+        records.append(
+            {
+                "table_id": table_id,
+                "artifact_id": row["artifact_id"],
+                "role": role,
+                "title": title,
+                "path": declared_path,
+                "sha256": declared_sha256,
+                "row_count": declared_row_count,
+                "display_row_limit": display_row_limit,
+                "approval": {
+                    "status": "approved",
+                    "policy_version": row["approval_policy_version"],
+                    "approved_by": row["approved_by"],
+                    "approved_at": _parse_approval_timestamp(
+                        row["approved_at"],
+                        build_started_at,
+                    ),
+                },
+            }
+        )
+    _verify_file_snapshot(
+        "Report-table approvals manifest",
+        manifest_snapshot,
+    )
+    for snapshot in snapshots_by_path.values():
+        _verify_report_table_snapshot(snapshot)
+    return (
+        manifest_path,
+        manifest_snapshot,
+        records,
+        tuple(snapshots_by_path.values()),
+    )
 
 
 def _assert_output_directory_identity(paths: OutputPaths) -> None:
@@ -1007,6 +1491,8 @@ def _build_document(
     artifact_receipt: dict[str, str],
     artifacts: list[dict[str, Any]],
     scientific_review: dict[str, Any],
+    approved_report_tables: list[dict[str, Any]],
+    report_table_approvals_source: dict[str, Any] | None,
     generated_at: str,
     git_commit: str,
 ) -> tuple[dict[str, Any], dict[str, int]]:
@@ -1058,6 +1544,7 @@ def _build_document(
                 if value
             ],
         },
+        "report_table_approvals": report_table_approvals_source,
     }
     document = {
         "schema_name": "norad.run_summary",
@@ -1095,7 +1582,7 @@ def _build_document(
             artifacts=artifacts,
             scientific_review=scientific_review,
         ),
-        "approved_report_tables": [],
+        "approved_report_tables": approved_report_tables,
         "candidate_terminology": "CMH-ranked candidates",
         "warnings": _stable_unique(warnings),
         "errors": errors,
@@ -1276,7 +1763,6 @@ def _validate_existing_summary(
         _fail("Existing run-summary receipt is not complete")
     for field, expected in (
         ("producer", PRODUCER),
-        ("producer_version", PRODUCER_VERSION),
         ("run_summary_schema_version", RUN_SUMMARY_SCHEMA_VERSION),
         ("run_summary_tsv_schema_version", RUN_SUMMARY_TSV_SCHEMA_VERSION),
         ("qc_summary_tsv_schema_version", QC_SUMMARY_TSV_SCHEMA_VERSION),
@@ -1287,6 +1773,13 @@ def _validate_existing_summary(
     ):
         if receipt[field] != expected:
             _fail(f"Existing run-summary receipt field is invalid: {field}")
+    if receipt["producer_version"] not in {
+        LEGACY_PRODUCER_VERSION,
+        PRODUCER_VERSION,
+    }:
+        _fail(
+            "Existing run-summary receipt field is invalid: producer_version"
+        )
     _parse_history(
         receipt,
         id_field="run_summary_attempt_id",
@@ -1352,6 +1845,15 @@ def _validate_existing_summary(
     if receipt["git_commit"] != document["provenance"]["git_commit"]:
         _fail(
             "Existing run-summary receipt Git commit differs from its "
+            "canonical JSON provenance"
+        )
+    if (
+        receipt["producer"] != document["provenance"]["producer"]
+        or receipt["producer_version"]
+        != document["provenance"]["producer_version"]
+    ):
+        _fail(
+            "Existing run-summary receipt producer differs from its "
             "canonical JSON provenance"
         )
     adapter_transaction = document["parameters"]["adapter_transaction"]
@@ -1442,6 +1944,33 @@ def _validate_existing_summary(
     ):
         _fail(
             "Existing receipt claims a science summary while JSON has none"
+        )
+    approval_source = document["parameters"].get(
+        "report_table_approvals",
+    )
+    if receipt["producer_version"] == LEGACY_PRODUCER_VERSION:
+        if approval_source is not None or document["approved_report_tables"]:
+            _fail(
+                "Legacy run-summary predecessor must not claim report-table "
+                "approvals"
+            )
+    elif "report_table_approvals" not in document["parameters"]:
+        _fail(
+            "Current run-summary predecessor is missing explicit "
+            "report-table approval provenance"
+        )
+    elif approval_source is None:
+        if document["approved_report_tables"]:
+            _fail(
+                "Existing run summary has approvals without their manifest "
+                "provenance"
+            )
+    elif approval_source["row_count"] != len(
+        document["approved_report_tables"]
+    ):
+        _fail(
+            "Existing report-table approval provenance row count differs "
+            "from its canonical JSON records"
         )
     if receipt["summary_state"] != document["summary_state"] or (
         receipt["science_status"] != document["science_status"]
@@ -1573,6 +2102,8 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     )
     git_commit = adapter.get_git_commit()
     generated_at = artifact_receipt["finished_at"]
+    started_at = adapter.utc_now()
+    finished_at = started_at
 
     science_path: Path | None = None
     science_sha256: str | None = None
@@ -1606,6 +2137,35 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             "overall_status": record["scientific_state"]["overall_status"],
         }
 
+    approvals_path: Path | None = None
+    approvals_sha256: str | None = None
+    approval_records: list[dict[str, Any]] = []
+    approval_table_snapshots: tuple[FileSnapshot, ...] = ()
+    approval_source: dict[str, Any] | None = None
+    if arguments.report_table_approvals is not None:
+        (
+            approvals_path,
+            approvals_snapshot,
+            approval_records,
+            approval_table_snapshots,
+        ) = _normalize_report_table_approvals(
+            manifest_value=arguments.report_table_approvals,
+            run_id=arguments.run_id,
+            run_contract=run_contract,
+            artifacts=artifacts,
+            scientific_review=scientific_review,
+            build_started_at=started_at,
+        )
+        approvals_sha256 = approvals_snapshot.sha256
+        input_snapshots = (*input_snapshots, approvals_snapshot)
+        approval_source = _path_hash(
+            approvals_path,
+            sha256=approvals_snapshot.sha256,
+            size_bytes=approvals_snapshot.size_bytes,
+            row_count=len(approval_records),
+            media_type="text/tab-separated-values",
+        )
+
     document, artifact_scope_order = _build_document(
         run_id=arguments.run_id,
         run_contract=run_contract,
@@ -1619,6 +2179,8 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         artifact_receipt=artifact_receipt,
         artifacts=artifacts,
         scientific_review=scientific_review,
+        approved_report_tables=approval_records,
+        report_table_approvals_source=approval_source,
         generated_at=generated_at,
         git_commit=git_commit,
     )
@@ -1648,8 +2210,6 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             history_field="run_summary_attempt_history",
         )
 
-    started_at = adapter.utc_now()
-    finished_at = started_at
     attempt_id = _new_attempt_id(started_at)
     receipt_row = _build_receipt_row(
         run_id=arguments.run_id,
@@ -1705,6 +2265,9 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         artifacts=artifacts,
         science_review_summary_path=science_path,
         science_review_summary_sha256=science_sha256,
+        report_table_approvals_path=approvals_path,
+        report_table_approvals_sha256=approvals_sha256,
+        report_table_snapshots=approval_table_snapshots,
         document=document,
         summary_json_bytes=summary_json_bytes,
         summary_rows=summary_rows,
@@ -1731,6 +2294,8 @@ def _recheck_inputs(context: BuildContext) -> None:
     _assert_output_directory_identity(context.paths)
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
+    for snapshot in context.report_table_snapshots:
+        _verify_report_table_snapshot(snapshot)
     adapter.validate_published_transaction(
         run_id=context.run_id,
         run_contract=context.run_contract,
@@ -1746,6 +2311,8 @@ def _recheck_inputs(context: BuildContext) -> None:
     )
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
+    for snapshot in context.report_table_snapshots:
+        _verify_report_table_snapshot(snapshot)
     if context.science_review_summary_path is not None:
         if contracts.sha256_file(context.science_review_summary_path) != (
             context.science_review_summary_sha256
@@ -1761,6 +2328,25 @@ def _recheck_inputs(context: BuildContext) -> None:
         )
         if normalized != context.document["scientific_review"]["record"]:
             _fail("The explicit scientific-review package changed")
+    approval_source = context.document["parameters"][
+        "report_table_approvals"
+    ]
+    if context.report_table_approvals_path is None:
+        if approval_source is not None or context.document[
+            "approved_report_tables"
+        ]:
+            _fail("Run-summary approval state changed after preparation")
+    elif (
+        approval_source is None
+        or approval_source["path"] != str(
+            context.report_table_approvals_path
+        )
+        or approval_source["sha256"]
+        != context.report_table_approvals_sha256
+        or approval_source["row_count"]
+        != len(context.document["approved_report_tables"])
+    ):
+        _fail("The explicit report-table approval package changed")
 
 
 def _validate_receipt_against_context(
@@ -2157,6 +2743,17 @@ def print_context(context: BuildContext) -> None:
         f"{rollup['externally_unavailable_artifact_count']}"
     )
     print(f"  Science status: {context.document['science_status']}")
+    if context.report_table_approvals_path is None:
+        print("  Report-table approvals: not supplied")
+    else:
+        print(
+            "  Report-table approvals: "
+            f"{context.report_table_approvals_path}"
+        )
+    print(
+        "  Approved report tables: "
+        f"{len(context.document['approved_report_tables'])}"
+    )
     print(f"  Output JSON: {context.paths.summary_json}")
     print(f"  Output TSV: {context.paths.summary_tsv}")
     print(f"  QC TSV: {context.paths.qc_summary}")

@@ -299,17 +299,6 @@ def _reject_symlink_components(path: Path, label: str) -> None:
             _fail(f"{label} must not traverse a symbolic link: {current}")
 
 
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    try:
-        with path.open("rb") as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
-    except OSError as exc:
-        _fail(f"Could not hash {path}: {exc}")
-    return digest.hexdigest()
-
-
 def _snapshot_regular(
     path: Path,
     label: str,
@@ -318,24 +307,67 @@ def _snapshot_regular(
 ) -> FileSnapshot:
     path = _explicit_path(path, label)
     _reject_symlink_components(path, label)
-    if not os.path.lexists(path):
-        _fail(f"{label} does not exist: {path}")
+    descriptor: int | None = None
     try:
-        metadata = path.lstat()
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = None
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                _fail(f"{label} must be a regular non-symlink file: {path}")
+            if executable and not before.st_mode & stat.S_IXUSR:
+                _fail(f"{label} is not executable: {path}")
+            digest = hashlib.sha256()
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+            after = os.fstat(stream.fileno())
+        current = path.lstat()
+    except ReportRenderError:
+        raise
     except OSError as exc:
-        _fail(f"Could not inspect {label} {path}: {exc}")
-    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-        _fail(f"{label} must be a regular non-symlink file: {path}")
-    if executable and not metadata.st_mode & stat.S_IXUSR:
-        _fail(f"{label} is not executable: {path}")
+        _fail(f"Could not inspect and hash {label} {path}: {exc}")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    before_identity = (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+    )
+    after_identity = (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    )
+    current_identity = (
+        current.st_dev,
+        current.st_ino,
+        current.st_size,
+        current.st_mtime_ns,
+        current.st_ctime_ns,
+    )
+    if (
+        before_identity != after_identity
+        or before_identity != current_identity
+        or stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISREG(current.st_mode)
+    ):
+        _fail(f"{label} changed while its snapshot was captured: {path}")
     return FileSnapshot(
         path=path,
-        sha256=_sha256_file(path),
-        device=metadata.st_dev,
-        inode=metadata.st_ino,
-        size_bytes=metadata.st_size,
-        mtime_ns=metadata.st_mtime_ns,
-        ctime_ns=metadata.st_ctime_ns,
+        sha256=digest.hexdigest(),
+        device=before.st_dev,
+        inode=before.st_ino,
+        size_bytes=before.st_size,
+        mtime_ns=before.st_mtime_ns,
+        ctime_ns=before.st_ctime_ns,
     )
 
 
