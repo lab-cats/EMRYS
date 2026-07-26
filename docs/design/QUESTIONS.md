@@ -159,7 +159,8 @@ The design questions for the immediate artifact/report vertical slice are
 resolved. Step `09c` is implemented and fixture-tested locally.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
-`4dbd32d`. The remaining packages are approved but not yet implemented:
+`4dbd32d`; `artifact-run-summary` is implemented and locally fixture-tested
+at `209bb19`. The report packages are approved but not yet implemented:
 
 ```text
 artifact-schema-v1
@@ -180,6 +181,8 @@ explicit missing/failed/incomplete evidence records
 typed local/runtime/cluster evidence and independent scientific state
 reserved biological_interpretation_ready is rejected
 read-only schema/inventory validation; no source inspection or output creation
+artifact-record remains 1.0.0
+scientific-review-record, run-summary, and report-receipt are 1.1.0
 ```
 
 Implemented adapter decisions:
@@ -196,25 +199,37 @@ adapter completion alone creates or promotes no runtime, cluster, science, or re
 a valid native Step 09c science state may be propagated after reconciliation
 ```
 
-Fixed decisions for the remaining pending packages:
+Implemented run-summary decisions:
 
 ```text
 canonical run-summary JSON as the report layer's sole structured entry point
+one exact complete adapter receipt and optional exact Step 09c summary
+no glob discovery, analysis execution, or status promotion
+deterministic artifact and QC TSV views
+rollback-protected four-file transaction with the receipt published last
+distinct summary attempt IDs under one unchanged immutable run contract
+explicit missing, failed, incomplete, and unavailable evidence remains visible
+```
+
+Fixed decisions for the remaining report packages:
+
+```text
 Quarto 1.9.38 with bundled Typst
 self-contained HTML and PDF plus TSV summary and receipt
 report generation never runs analysis and never proves validation
 state banners preserve incomplete or exploratory/provisional meaning
 ```
 
-The schema package has implementation and synthetic fixture evidence,
-including 54 focused passing tests. The adapter package has 50 focused passing
-tests and 104 combined schema/adapter passes. Its synthetic fixtures exercise
-explicit native-source inspection and receipt-last publication, but no
-production source has been inspected and no production artifact index exists.
-Run-summary and report implementation evidence remain pending on the named
-branches. Production reports and biological conclusions remain unavailable
-because production Steps `07`-`09` evidence and production Step `09c` review
-evidence have not been generated or inspected.
+The current gate has 58 schema tests, 50 adapter tests, 108 combined
+schema/adapter tests, 39 run-summary tests, 147 combined artifact-layer tests,
+and 213 total Python tests. Synthetic fixtures exercise explicit native-source
+inspection plus adapter and summary receipt-last publication. No production
+source has been inspected by these artifact-layer packages, and no production
+artifact index or run summary exists. Report implementation remains pending
+on `report-html-v1` and
+`report-exports-v1`. Production reports and biological conclusions remain
+unavailable because production Steps `07`-`09` evidence and production Step
+`09c` review evidence have not been generated or inspected.
 
 The separate longer-term module/refactor questions remain deferred:
 
@@ -481,6 +496,8 @@ artifact-schema-v1  Draft 2020-12 contracts, explicit synthetic inventory,
                     read-only validator, and fixtures
 artifact-adapters-v1 49 read-only Step 00a-09c adapters, explicit immutable
                      run contract, and receipt-last artifact transaction
+artifact-run-summary Canonical JSON, deterministic artifact/QC TSV views, and
+                     a receipt-last summary transaction
 ```
 
 Step `07` passed its mocked-bcftools focused tests and the complete local
@@ -508,7 +525,7 @@ gate.
 
 `artifact-schema-v1` is implemented locally at `5f4d3b4`. It contains one
 shared and four public schemas, a 67-row synthetic explicit inventory, a
-read-only validator, and fixtures covered by 54 focused tests. It is not a
+read-only validator, and fixtures covered by the current 58 focused tests. It is not a
 compute step and has not inspected production artifacts or changed any
 runtime, cluster, scientific-review, or biological-readiness status.
 
@@ -516,8 +533,15 @@ runtime, cluster, scientific-review, or biological-readiness status.
 explicit adapters covering the full 67-row inventory; 50 focused tests pass.
 Its synthetic fixtures inspect representative native outputs and publish
 records/index/receipt transactions. No production source has been inspected
-or indexed, no run summary/report has been generated, and no runtime, cluster,
-scientific-review, or biological-readiness status has changed.
+or indexed, and no runtime, cluster, scientific-review, or
+biological-readiness status has changed.
+
+`artifact-run-summary` is implemented locally at `209bb19`. It publishes
+canonical JSON, deterministic artifact/QC TSV views, and a receipt-last
+four-file transaction from exact synthetic adapter inputs. All 39 focused
+tests and the complete 213-test Python gate pass. Synthetic fixture summaries
+exist; no production artifact transaction, production run summary, or report
+has been generated, and no evidence status has been promoted.
 
 ### Which Steps Need Clean Reimplementation From The Reference Workflow?
 
@@ -783,6 +807,23 @@ three-file transaction, Step `09` six-file analysis directory, one-row review
 plan, and evidence manifest. It does not discover inputs by glob, rerun CMH,
 infer reviewer decisions, or act as a SLURM/compute stage.
 
+The run-summary package hardens this contract without changing its allowed
+science states. Human reviewer, decision-owner, and evidence-owner names are
+retained as human-readable text while machine identifiers and policy versions
+remain safe IDs. Complete or incomplete source evidence requires a date;
+source-free missing/not-applicable evidence may normalize with a null date.
+Primary, superseded, and sensitivity analysis sets must be disjoint, and
+category-specific evidence must belong to the declared analysis role.
+Pending decisions cannot cite supporting evidence; recorded decisions require
+complete or justified-not-applicable support, and rerun booleans/scopes must
+agree. Passed/failed/proven computational claims require their defined
+complete evidence roles; runtime and cluster roles additionally require
+explicit underlying paths/hashes. Blocked/not-run states are not proof and
+must not be given invented claim evidence. The tracked example declares
+`local_test_status=not_run` because it attaches no computational evidence;
+that declaration is separate from the repository tooling's passing fixture
+tests.
+
 Execute mode publishes 13 TSVs under
 `results/scientific_validation/<review_id>/`, with
 `<review_id>.step09c_review_summary.tsv` last. It validates schemas, paths,
@@ -836,9 +877,56 @@ incomplete, failed, unavailable, or unknown evidence. Runtime, cluster, and
 scientific status remain independent.
 
 This contract is implemented at `4dbd32d`. All 50 focused adapter tests and
-104 combined schema/adapter tests pass on synthetic fixtures. No production
-source or artifact transaction has been inspected, and the run-summary/report
-packages remain pending.
+108 combined schema/adapter tests pass on synthetic fixtures. No production
+source or artifact transaction has been inspected. The run-summary package is
+implemented separately; HTML/PDF report packages remain pending.
+
+### What Is The Artifact Run Summary Contract?
+
+Answered for local implementation.
+
+`scripts/build_run_summary.py` is dry-run-first and explicit-input-only:
+
+```text
+--run-id RUN_ID
+--artifact-receipt ARTIFACT_RECEIPT
+--output-root OUTPUT_ROOT
+[--science-review-summary REVIEW_SUMMARY_TSV]
+[--execute]
+```
+
+The artifact receipt must be the exact complete receipt under the declared
+`OUTPUT_ROOT/<run_id>/` adapter transaction. The optional Step `09c` summary
+is an exact committed path and is never discovered. Dry-run validates the
+complete adapter transaction, immutable run identity, receipt/run-contract/
+inventory/index/record hashes, ordering, attempt lineage, and optional science
+evidence without writing. It carries native-source hashes recorded by the
+adapter but does not rehash native Step `00`-`09` sources. Execute mode
+publishes:
+
+```text
+results/artifacts/<run_id>/
+  <run_id>.run_summary.json
+  <run_id>.run_summary.tsv
+  <run_id>.qc_summary.tsv
+  <run_id>.run_summary_receipt.tsv
+```
+
+Canonical, stably ordered JSON is the report layer's sole structured entry
+point. The two TSVs are deterministic artifact and QC views, and the receipt
+is published last. A complete summary transaction can legitimately retain
+missing, failed, incomplete, or unavailable evidence. Retries receive
+distinct run-summary attempt IDs under the unchanged immutable run contract.
+Owned locking, adapter transaction-member and optional Step `09c` input
+rechecks, output-directory identity checks, validation-before-publication,
+rollback, and recovery protect publication.
+The builder never invokes analysis or promotes computational, scientific, or
+biological status.
+
+This contract is implemented at `209bb19`. All 39 focused tests, 147 combined
+artifact-layer tests, and 213 total Python tests pass on synthetic fixtures.
+No production adapter transaction or run summary exists, and no HTML/PDF
+report or validation claim was created. `report-html-v1` is next.
 
 ### Step 02b Final-BAM QC Refresh
 

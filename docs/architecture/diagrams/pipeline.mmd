@@ -35,7 +35,8 @@ flowchart LR
     science["09c scientific-validation tooling<br/>implemented + fixture-tested locally<br/>no production-review or readiness claim"]
     artifact_schema["artifact-schema-v1<br/>versioned schemas + explicit inventory<br/>implemented + fixture-tested locally"]
     artifact_adapters["artifact-adapters-v1<br/>explicit inventory + run contract<br/>implemented + fixture-tested locally<br/>no production index"]
-    reports["remaining report slice<br/>run summary -> HTML -> PDF<br/>pending"]
+    runsummary["artifact-run-summary<br/>canonical JSON + deterministic TSV/QC<br/>implemented + fixture-tested locally<br/>no production summary"]
+    reports["remaining report slice<br/>report-html-v1 next -> PDF exports<br/>pending"]
 
     fastq --> s01 --> s02
     s00a --> s01
@@ -44,9 +45,9 @@ flowchart LR
     s02 --> s02b
     s02 --> s03
     s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-    s09 --> localr --> fixes --> science --> artifact_schema --> artifact_adapters --> reports
+    s09 --> localr --> fixes --> science --> artifact_schema --> artifact_adapters --> runsummary --> reports
 
     class fastq input
     class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters boundary
+    class s07,s08,s09,localr,fixes,science,artifact_schema,artifact_adapters,runsummary boundary
     class reports pending

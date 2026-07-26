@@ -16,7 +16,7 @@ flowchart LR
     sciencebranch["09c implemented locally<br/>synthetic fixtures pass"]
     artifact_schema["artifact-schema-v1<br/>schemas + explicit inventory<br/>fixture-tested locally"]
     artifact_adapters["artifact-adapters-v1<br/>explicit native adapters<br/>fixture-tested locally"]
-    runsummary["artifact-run-summary<br/>pending"]
+    runsummary["artifact-run-summary<br/>implemented + fixture-tested locally"]
     reports["immediate reports<br/>HTML -> PDF exports<br/>pending"]
     foundations["read-only foundations<br/>runtime -> reference -> storage"]
     validators["one validator branch per step<br/>00a through 09"]
@@ -55,9 +55,9 @@ flowchart LR
     trouble -.-> validationpatch
     trouble -.-> sciencebranch
 
-    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,localstop gate
+    class stagebranch,local,tests,implcommit,cleanpush,descendant,localr,realrfix,sciencebranch,artifact_schema,artifact_adapters,runsummary,localstop gate
     class pull,dryrun,execute,validate cluster
     class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
     class stagepatch,validationpatch docs
-    class runsummary,reports,foundations,validators safeguard
+    class reports,foundations,validators safeguard
     class remotehold docs

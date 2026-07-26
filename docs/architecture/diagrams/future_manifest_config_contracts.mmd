@@ -43,10 +43,9 @@ flowchart TD
     existing --> adapters
     existing --> review
     provenance --> registry
-    registry --> reports["Run-summary JSON<br/>single structured report entry point"]
+    registry --> reports["Run-summary JSON<br/>implemented + fixture-tested locally<br/>single structured report entry point"]
     review --> reports
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters current
+    class fastqs,existing,adapters,reports current
     class ready,module,results future
-    class reports reporting

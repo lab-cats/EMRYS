@@ -259,7 +259,10 @@ schemas/artifacts/v1/
 
 The contract set contains one shared common schema and four public Draft
 2020-12 record schemas: artifact record, scientific-review record, run
-summary, and report receipt.
+summary, and report receipt. The common schema keeps its `v1` URN and the
+artifact-record document remains `1.0.0`. Scientific-review, run-summary, and
+report-receipt documents are `1.1.0`; never silently change a closed public
+shape without an explicit schema-version change.
 
 Expected-artifact inventories must use this exact tab-separated header:
 
@@ -280,6 +283,7 @@ When changing an artifact schema or inventory, run:
   --inventory configs/artifact_inventory.example.tsv
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
 .venv/bin/python -m pytest -q tests/test_artifact_adapters.py
+.venv/bin/python -m pytest -q tests/test_artifact_run_summary.py
 ```
 
 The artifact-contract validator is read-only. A passing schema, document, or
@@ -308,6 +312,14 @@ only that its records, ordered index, and receipt were validated and published
 as one set. It may legitimately contain missing, incomplete, failed, or
 externally unavailable sources, and it does not establish runtime, cluster,
 scientific-review, or biological evidence.
+
+The implemented run-summary layer consumes one exact completed adapter
+receipt under the declared output root and, optionally, one exact committed
+Step `09c` review summary. It never discovers either input. Execute mode
+publishes canonical JSON, deterministic artifact and QC TSV views, and the
+run-summary receipt last. Transaction completion does not promote missing,
+failed, incomplete, unavailable, local-test, runtime, cluster, scientific, or
+biological state.
 
 ## Script conventions
 

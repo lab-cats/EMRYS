@@ -3,9 +3,9 @@
 This page describes the activated local roadmap beyond the current compute
 pipeline. Step `09c` now exists and is fixture-tested locally. The
 `artifact-schema-v1` foundation is also implemented and locally fixture-tested;
-`artifact-adapters-v1` is implemented and locally fixture-tested. Run-summary/
-report generation, foundation, validator, and modular tooling remain planned
-until each named branch is implemented. The current pipeline is documented in
+`artifact-adapters-v1` and `artifact-run-summary` are implemented and locally
+fixture-tested. Report generation, foundation, validator, and modular tooling
+remain planned until each named branch is implemented. The current pipeline is documented in
 `docs/architecture/ARCHITECTURE.md`: the cluster-proven boundary remains Step
 `06`, and Steps `07`-`09` remain not cluster-proven.
 
@@ -20,8 +20,10 @@ Step `09c` is implemented at `b674a31` and fixture-tested locally; it has no
 production review evidence. `artifact-schema-v1` is implemented and locally
 fixture-tested at `5f4d3b4`; `artifact-adapters-v1` is implemented and locally
 fixture-tested at `4dbd32d`, with 50 focused adapter tests passing.
-`artifact-run-summary` is next. No production artifact index, run summary, or
-report exists.
+`artifact-run-summary` is implemented and locally fixture-tested at
+`209bb19`, with 39 focused and 213 total Python tests passing.
+`report-html-v1` is next. No production artifact index, run summary, or report
+exists.
 
 ## Current vs future boundary
 
@@ -29,7 +31,7 @@ report exists.
 | ---- | ------------- | ---------------- |
 | Core preprocessing | Steps `00a`-`06` cluster-proven across six samples | Generalized manifest-driven preprocessing backbone |
 | Downstream analysis | Step `07` implemented and mocked-bcftools tested locally; Steps `08` and `09` implemented at `90335d8` and `e4371de`, hardened at `eae5eca`, and guarded real-R tested; Step `09c` implemented at `b674a31` and synthetic-fixture-tested; none has production scientific or Step `07`-`09` cluster evidence | Later assay-specific modules after explicit evidence/report foundations |
-| Reporting | Handwritten demo/QC docs and generated step artifacts; Draft 2020-12 schemas and explicit 67-row inventory implemented at `5f4d3b4`; dry-run-first explicit adapter indexer and 50 focused fixtures implemented at `4dbd32d`; no production artifact index | Canonical run summary, self-contained HTML, and bundled-Typst PDF/TSV reports; not yet implemented |
+| Reporting | Handwritten demo/QC docs and generated step artifacts; Draft 2020-12 schemas and explicit 67-row inventory implemented at `5f4d3b4`; dry-run-first explicit adapter indexer implemented at `4dbd32d`; canonical JSON plus deterministic TSV/QC run-summary builder implemented at `209bb19`; no production artifact index or summary | Self-contained HTML and bundled-Typst PDF/TSV reports; not yet implemented |
 | Data sources | Lab FASTQs on ADAM | Lab FASTQs first; possible public-dataset import later |
 
 ## Ordered roadmap boundary
@@ -51,8 +53,8 @@ flowchart TB
     science09c["step-09c-scientific-validation<br/>implemented + synthetic-fixture-tested locally<br/>production evidence unavailable"]
     artifact_schema["artifact-schema-v1<br/>implemented + locally fixture-tested<br/>no production artifact index"]
     artifact_adapters["artifact-adapters-v1<br/>implemented + locally fixture-tested<br/>no production index"]
-    runsummary["artifact-run-summary<br/>next"]
-    reports["report-html-v1<br/>-> report-exports-v1"]
+    runsummary["artifact-run-summary<br/>implemented + locally fixture-tested<br/>no production summary"]
+    reports["report-html-v1 next<br/>-> report-exports-v1"]
     foundations["post09-runtime-preflight<br/>-> post09-reference-provenance<br/>-> post09-storage-inventory-retention"]
     validators["one validation-report branch per step<br/>00a -> 00b -> 00c -> 01 -> 02 -> 02b<br/>-> 03 -> 04 -> 05 -> 06 -> 07 -> 08 -> 09"]
     remote["remote validation resumes later<br/>07 -> 08 -> 09 -> 09c -> targeted reruns"]
@@ -61,10 +63,10 @@ flowchart TB
     science09c --> artifact_schema --> artifact_adapters --> runsummary --> reports --> foundations --> validators
     validators -.-> remote
 
-    class s09,rfix,science09c,artifact_schema,artifact_adapters current
+    class s09,rfix,science09c,artifact_schema,artifact_adapters,runsummary current
     class s09a docs
     class rlocal runtime
-    class runsummary,reports,foundations,validators future
+    class reports,foundations,validators future
     class remote deferred
 ```
 
@@ -109,8 +111,10 @@ versioned definitions and its explicit inventory declares 67 expected
 artifacts without glob discovery. It has not generated a production artifact
 index. `artifact-adapters-v1` is implemented at `4dbd32d`; its 49 read-only
 adapters require the explicit run contract plus inventory, and its 50 focused
-tests pass on synthetic native-output fixtures. Run summaries and reports
-remain immediate, activated work before the foundation/validator packages.
+tests pass on synthetic native-output fixtures. `artifact-run-summary` is
+implemented at `209bb19`; its 39 focused tests pass on synthetic adapter and
+Step `09c` fixtures. HTML/PDF reports remain immediate, activated work before
+the foundation/validator packages.
 Remote validation is paused until the final local validator branch.
 
 ## Future modular dataflow
@@ -160,7 +164,8 @@ flowchart LR
 
     subgraph reports["Reporting"]
         direction TB
-        report_layer["Reporting layer"]
+        run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
+        report_layer["HTML/PDF reporting layer<br/>pending"]
         outputs["QC reports / PI reports / candidate result reports / handoff reports"]
     end
 
@@ -172,12 +177,12 @@ flowchart LR
     config --> assays
     policy_record --> config
     policy_record --> assays
-    backbone --> ready --> assays --> results --> registry --> report_layer --> outputs
+    backbone --> ready --> assays --> results --> registry --> run_summary --> report_layer --> outputs
     declared09 --> science_review --> decision_record --> policy_record
     declared09 --> registry
-    decision_record --> report_layer
+    decision_record --> run_summary
 
-    class lab current
+    class lab,run_summary current
     class public deferred
     class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future
@@ -236,18 +241,32 @@ flowchart TD
     existing --> adapters
     existing --> review
     provenance --> registry
-    registry --> reports["Run-summary JSON<br/>single structured report entry point"]
+    registry --> reports["Run-summary JSON<br/>implemented + fixture-tested locally<br/>single structured report entry point"]
     review --> reports
 
     class manifest,config,policy,review,provenance,registry contract
-    class fastqs,existing,adapters current
+    class fastqs,existing,adapters,reports current
     class ready,module,results future
-    class reports reporting
 ```
 
 ## Reporting layer
 
 Standalone source: `docs/architecture/diagrams/future_reporting_layer.mmd`.
+
+The implemented summary boundary is:
+
+```text
+build_run_summary.py
+  exact complete artifact receipt
+  + optional exact Step 09c review summary
+  -> canonical run_summary.json
+  -> deterministic run_summary.tsv
+  -> deterministic qc_summary.tsv
+  -> run_summary_receipt.tsv published last
+```
+
+Only canonical JSON crosses into the future renderer. The TSV views are
+outputs, not independent renderer inputs. No production summary exists.
 
 ```mermaid
 flowchart TD
@@ -262,15 +281,16 @@ flowchart TD
         run_contract["Explicit six-field run contract"]
         inventory["Explicit expected-artifact inventory"]
         declared_sources["Explicit declared native sources<br/>missing/incomplete allowed"]
-        qc_summary["qc_summary.tsv"]
-        provenance["runtime/provenance records"]
-        final_tables["explicitly approved report-table paths"]
+        science_summary["Optional exact Step 09c review summary<br/>never discovered"]
     end
 
     adapter_builder["artifact-adapters-v1 builder<br/>implemented + fixture-tested locally"]
-    artifacts_tsv["artifact records + artifacts.tsv + receipt<br/>fixture transaction proven<br/>production index absent"]
-    aggregate["Run-summary aggregation"]
-    run_summary["run_summary.json<br/>pending"]
+    artifacts_tsv["artifact records + artifacts.tsv + receipt<br/>fixture-tested transaction<br/>production index absent"]
+    aggregate["artifact-run-summary builder<br/>implemented + fixture-tested locally"]
+    run_summary["run_summary.json<br/>canonical report entry point"]
+    run_summary_tsv["run_summary.tsv<br/>deterministic artifact view"]
+    qc_summary["qc_summary.tsv<br/>deterministic metric view"]
+    summary_receipt["run_summary_receipt.tsv<br/>published last"]
     generator["Static QMD / Quarto renderer<br/>no analysis execution"]
     html["Self-contained HTML report"]
     exports["Bundled Typst PDF + TSV bundle"]
@@ -283,7 +303,7 @@ flowchart TD
         adjudication_status["candidate adjudication status"]
         orthogonal_status["orthogonal validation status"]
         limitations["limitations"]
-        review_record["Rendered review/limitations record"]
+        review_record["Normalized Step 09c review record"]
     end
 
     subgraph outputs["Generated reports (pending)"]
@@ -294,7 +314,7 @@ flowchart TD
         pi_report["Status-labeled PI report"]
         handoff_report["Methods / evidence appendix"]
         pdf_output["State-bannered PDF"]
-        tsv_output["Run-summary TSV"]
+        tsv_output["Report-bundle run-summary TSV"]
     end
 
     schema --> adapter_builder
@@ -303,11 +323,12 @@ flowchart TD
     declared_sources --> adapter_builder
     adapter_builder --> artifacts_tsv
     artifacts_tsv --> aggregate
-    qc_summary --> aggregate
-    provenance --> aggregate
+    science_summary --> review_record --> aggregate
     aggregate --> run_summary
+    aggregate --> run_summary_tsv
+    aggregate --> qc_summary
+    aggregate --> summary_receipt
     run_summary --> generator
-    final_tables --> generator
     generator --> html
     html --> qc_report
     html --> validation_report
@@ -323,15 +344,13 @@ flowchart TD
     adjudication_status --> review_record
     orthogonal_status --> review_record
     limitations --> review_record
-    review_record --> candidate_report
-    review_record --> pi_report
     readylock["biological_interpretation_ready<br/>reserved and rejected by Step 09c"]
     readylock -.-> review_status
 
-    class schema,adapter_builder current
+    class schema,adapter_builder,aggregate,run_summary,run_summary_tsv,qc_summary,summary_receipt current
     class run_contract,inventory,declared_sources,artifacts_tsv contract
-    class qc_summary,provenance,final_tables,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
-    class aggregate,run_summary,generator,html,exports future
+    class science_summary,review_status,orientation_status,annotation_status,adjudication_status,orthogonal_status,limitations,review_record,readylock contract
+    class generator,html,exports future
     class qc_report,validation_report,candidate_report,pi_report,handoff_report,pdf_output,tsv_output reporting
 ```
 
@@ -358,10 +377,10 @@ flowchart TD
 The current Step `08` reproduction uses `orientation_policy=legacy_provisional_v1`: `FWD_like` selects compatible `+` transcripts and complements genomic REF/ALT into RNA-normalized alleles, while `REV_like` selects compatible `-` transcripts and retains genomic REF/ALT. This is an implemented legacy-preservation contract, not a biologically validated policy or a future generalized module interface.
 
 Activated local packages (Step `09b1` is complete; Step `09c` and
-`artifact-schema-v1` and `artifact-adapters-v1` are implemented and
-synthetic/contract-fixture-tested locally; `artifact-run-summary` and every
-later package remain unimplemented until their own branches; dependency order
-fixed):
+`artifact-schema-v1`, `artifact-adapters-v1`, and `artifact-run-summary` are
+implemented and synthetic/contract-fixture-tested locally; `report-html-v1`
+and every later package remain unimplemented until their own branches;
+dependency order fixed):
 
 ```text
 step-09b1-real-r-fixes
@@ -404,13 +423,14 @@ run summary and reports after evidence inspection.
 ## Implementation-boundary note
 
 The local R environment, `step-09b1-real-r-fixes`, Step `09c`, and
-`artifact-schema-v1` and `artifact-adapters-v1` are implemented at this
+`artifact-schema-v1`, `artifact-adapters-v1`, and `artifact-run-summary` are implemented at this
 boundary. Environment/restore checks, both Step `08` and Step `09` semantic
 real-R suites, the Step `09c` Python/shell fixtures, the artifact
-schema/inventory fixtures, and 50 focused adapter tests pass locally. There is
+schema/inventory fixtures, 50 focused adapter tests, and 39 focused
+run-summary tests pass locally. There is
 no production Step `07`-`09` or Step `09c` review evidence, no production
-artifact index or report, and no downstream cluster proof.
-`artifact-run-summary` is next, and the remaining activated packages above are
+artifact index, run summary, or report, and no downstream cluster proof.
+`report-html-v1` is next, and the remaining activated packages above are
 plans, not runnable commands. Reports are immediate work, but no generated
 report may be presented as production evidence or biological interpretation.
 Do not preempt the branch sequence with remote validation, generic dispatchers,

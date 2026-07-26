@@ -40,7 +40,8 @@ flowchart LR
 
     subgraph reports["Reporting"]
         direction TB
-        report_layer["Reporting layer"]
+        run_summary["Canonical run-summary JSON<br/>implemented + fixture-tested locally"]
+        report_layer["HTML/PDF reporting layer<br/>pending"]
         outputs["QC reports / PI reports / candidate result reports / handoff reports"]
     end
 
@@ -52,12 +53,12 @@ flowchart LR
     config --> assays
     policy_record --> config
     policy_record --> assays
-    backbone --> ready --> assays --> results --> registry --> report_layer --> outputs
+    backbone --> ready --> assays --> results --> registry --> run_summary --> report_layer --> outputs
     declared09 --> science_review --> decision_record --> policy_record
     declared09 --> registry
-    decision_record --> report_layer
+    decision_record --> run_summary
 
-    class lab current
+    class lab,run_summary current
     class public deferred
     class manifest,config,policy_record,decision_record,science_review contract
     class backbone,ready future

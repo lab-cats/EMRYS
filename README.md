@@ -14,13 +14,15 @@ The uploaded legacy workflow is treated as a protocol reference, not as producti
 
 A decoupled artifact, run-summary, and HTML/PDF reporting layer is now in the
 approved immediate local implementation sequence. `artifact-schema-v1` is
-implemented locally at `5f4d3b4`, and `artifact-adapters-v1` is implemented
-locally at `4dbd32d`. Together they define versioned contracts and build a
-dry-run-first, explicit-input, read-only artifact transaction without
-rerunning computation or changing native pipeline outputs. The adapter suite
-has 50 focused passing tests, and the combined schema/adapter gate has 104.
-No production artifact index has been built. `artifact-run-summary` is next;
-canonical run-summary outputs and HTML/PDF/TSV reports remain unimplemented.
+implemented locally at `5f4d3b4`, `artifact-adapters-v1` is implemented
+locally at `4dbd32d`, and `artifact-run-summary` is implemented locally at
+`209bb19`. Together they define versioned contracts, build a dry-run-first
+explicit-input artifact transaction, and assemble its canonical JSON plus
+deterministic TSV/QC views without rerunning computation or changing native
+pipeline outputs. The run-summary package has 39 focused passing tests, and
+the complete Python gate has 213. No production artifact index or run summary
+has been built. `report-html-v1` is next; HTML/PDF/TSV reports remain
+unimplemented.
 
 ## Current Status
 
@@ -64,8 +66,8 @@ interpretation readiness remains unavailable.
 The `artifact-schema-v1` package is implemented locally at `5f4d3b4`. It
 tracks five schema files total (one shared common schema plus four public
 Draft 2020-12 record schemas), a 67-row synthetic explicit physical-artifact
-inventory, a read-only contract validator, and valid synthetic fixtures. All
-54 focused artifact-contract tests pass.
+inventory, a read-only contract validator, and valid synthetic fixtures.
+All 58 current focused artifact-contract tests pass.
 
 The `artifact-adapters-v1` package is implemented locally at `4dbd32d`. Its
 49 registered read-only adapters cover the 67 explicit Step `00a`-`09c`
@@ -74,12 +76,24 @@ native receipt/summary relationships, explicit missing and incomplete states,
 stable output ordering, binary structure where applicable, immutable run
 identity, revisionable inventory attempts, and receipt-last rollback
 publication. This is synthetic local fixture evidence only: no production
-source has been inspected or indexed, and no run summary, report,
+source has been inspected or indexed, and no production run summary, report,
 runtime/cluster evidence, completed production science review, or biological
 readiness was generated.
 
-| Step | Purpose | Status |
-| ---- | ------- | ------ |
+The `artifact-run-summary` package is implemented locally at `209bb19`. Its
+dry-run-first builder consumes one exact complete adapter receipt and an
+optional exact Step `09c` review-summary path, validates the complete
+records/index/receipt transaction, and publishes canonical run-summary JSON,
+a deterministic artifact TSV view, a deterministic QC TSV view, and a
+receipt last. It preserves every expected scope and explicit
+missing/incomplete/failed state without promoting computational or scientific
+status. All 39 focused tests and the complete 213-test Python gate pass on
+synthetic fixtures. No production adapter transaction or run summary has been
+created, and no report, runtime/cluster evidence, completed production
+science review, or biological readiness was generated.
+
+| Step / package | Purpose | Status |
+| -------------- | ------- | ------ |
 | `00a` | Build Novogene STAR index | cluster-proven |
 | `00b` | Convert GTF to BED12 for RSeQC | cluster-proven |
 | `00c` | GATK reference sidecars / reference FASTA index and sequence dictionary | cluster-proven |
@@ -94,6 +108,7 @@ readiness was generated.
 | `08` | deterministic VCF preprocessing and annotation | implemented locally; shell/fake-R and guarded real-R suites pass; raw count lexemes are preflighted before semantic parsing; cluster validation pending; not cluster-proven |
 | `09` | paired CMH editing-site calling | implemented locally; shell/fake-R and guarded real-R suites pass; PDF fixture validation is locale-independent and byte-based; cluster validation pending; not cluster-proven |
 | `09c` | explicit scientific-evidence validation and review summary | implemented locally at `b674a31`; dry-run, Python, and shell fixture suites pass; production evidence/review and cluster validation are unavailable; does not establish biological interpretation readiness |
+| `artifact-run-summary` | canonical structured report input and deterministic TSV/QC views | implemented locally at `209bb19`; 39 focused synthetic-fixture tests pass; no production summary or validation claim |
 
 ### Local Runtime, Scientific Review, Reporting, And Validation Roadmap
 
@@ -107,8 +122,8 @@ step-09-cmh
             └── step-09c-scientific-validation  # implemented and fixture-tested locally
                 └── artifact-schema-v1          # implemented and focused-tested locally
                     └── artifact-adapters-v1    # implemented and focused-tested locally
-                        └── artifact-run-summary # next
-                            └── report-html-v1
+                        └── artifact-run-summary # implemented and focused-tested locally
+                            └── report-html-v1   # next
                                 └── report-exports-v1
                                     └── post09-runtime-preflight
                                         └── post09-reference-provenance
@@ -141,11 +156,12 @@ or claim production review. Its allowed science states are
 approved policy branch unlocks its exit criteria.
 
 Run-summary and reporting work is immediate, not deferred. The artifact
-schema and read-only adapter indexer are now implemented from explicit
-contracts and synthetic fixtures. The canonical run summary, self-contained
-HTML report, and Quarto/Typst PDF/TSV bundle remain pending in that order.
-Report or index generation will never be evidence of computational or
-biological validation. At this boundary, `artifact-run-summary` is next.
+schema, read-only adapter indexer, and canonical run-summary builder are now
+implemented from explicit contracts and synthetic fixtures. The
+self-contained HTML report and Quarto/Typst PDF/TSV bundle remain pending in
+that order. Summary, report, or index generation will never be evidence of
+computational or biological validation. At this boundary, `report-html-v1` is
+next.
 
 The reporting slice is followed by read-only runtime, reference-provenance,
 and storage/retention tooling, then one explicit validator branch for every
@@ -353,6 +369,19 @@ requires coherent completed evidence and decisions but remains provisional;
 completion means implemented and synthetic-fixture-tested, not production
 scientific review, cluster proof, or biological validation.
 
+The normalized review contract retains human reviewer/owner names while
+keeping machine IDs and policy versions constrained. Complete/incomplete
+source evidence requires a date; analysis sets are disjoint and evidence
+categories have explicit analysis ownership. Pending decisions cannot cite
+support; recorded decisions require complete/not-applicable support and
+consistent rerun fields. Passed/failed/proven computational claims require
+their defined complete evidence roles; runtime and cluster roles additionally
+require explicit underlying paths/hashes. Blocked/not-run states are not proof
+and must not be given invented claim evidence. The tracked example declares
+`local_test_status=not_run` because it attaches no local-test evidence; that
+review declaration does not contradict the repository tooling's passing
+fixtures.
+
 ### Artifact Schema V1 Local Contract
 
 Implemented contract files and tests:
@@ -382,14 +411,19 @@ inventory with:
 
 The four public document types are `artifact-record`,
 `scientific-review-record`, `run-summary`, and `report-receipt`; the shared
-common schema is loaded with them. The validator is explicit-input-only and
-read-only. It validates schema, record, inventory, run/attempt, path/hash,
-typed evidence, rollup, and reserved-science-state consistency, but it does
-not discover or inspect production pipeline outputs. Artifact-index
-publication is implemented by `artifact-adapters-v1`; canonical run-summary
-files and reports remain later packages.
+common schema is loaded with them. Artifact records remain schema `1.0.0`.
+The run-summary implementation corrected the closed scientific-review,
+run-summary, and report-receipt contracts to `1.1.0` so retained human review
+context, decision provenance, limitations, and report input versions are
+explicit rather than silently changing `1.0.0`. The validator is
+explicit-input-only and read-only. It validates schema, record, inventory,
+run/attempt, path/hash, typed evidence, rollup, and reserved-science-state
+consistency, but it does not discover or inspect production pipeline outputs.
+Artifact-index publication is implemented by `artifact-adapters-v1`, and
+canonical run-summary publication is implemented by
+`artifact-run-summary`; reports remain later packages.
 
-The 54 focused tests are synthetic local contract evidence. They do not
+The current 58 focused tests are synthetic local contract evidence. They do not
 establish production artifact availability, runtime validation, a cluster
 dry-run or cluster proof, scientific-review completion, biological readiness,
 or report generation.
@@ -438,8 +472,63 @@ record set and index were reconciled and committed; individual records may
 still explicitly report missing, incomplete, failed, externally unavailable,
 or unknown evidence. Adapters never discover inputs by glob, invoke analysis
 engines, or infer runtime/cluster/scientific proof from tool presence or prose.
-All 50 focused adapter tests and all 104 combined schema/adapter tests pass on
+All 50 focused adapter tests and all 108 combined schema/adapter tests pass on
 synthetic fixtures. No production adapter transaction exists.
+
+### Artifact Run Summary Local Implementation
+
+Implemented files and tests:
+
+```text
+scripts/build_run_summary.py
+scripts/_run_summary_science.py
+tests/fixtures/artifact_run_summary_v1/build_fixture.py
+tests/test_artifact_run_summary.py
+```
+
+The dry-run-first interface is:
+
+```bash
+.venv/bin/python scripts/build_run_summary.py \
+  --run-id RUN_ID \
+  --artifact-receipt ARTIFACT_RECEIPT \
+  --output-root OUTPUT_ROOT \
+  [--science-review-summary REVIEW_SUMMARY_TSV]
+
+# add --execute only to publish
+```
+
+`ARTIFACT_RECEIPT` must be the exact complete receipt inside the declared
+`OUTPUT_ROOT/<run_id>/` adapter transaction. The optional science-review
+summary is also exact-input-only; it is never discovered automatically.
+Dry-run validates inputs and prints the resolved summary plan without
+creating stable outputs, locks, or scratch paths. Execute mode publishes:
+
+```text
+results/artifacts/<run_id>/
+  <run_id>.run_summary.json
+  <run_id>.run_summary.tsv
+  <run_id>.qc_summary.tsv
+  <run_id>.run_summary_receipt.tsv
+```
+
+The receipt is published last. Canonical JSON is the report layer's single
+structured entry point; the TSVs are deterministic views of its artifact and
+QC data. The builder validates run identity, adapter transaction-member
+hashes, inventory and artifact ordering, attempt lineage, prior summary
+transactions, and exact optional Step `09c` evidence. It uses an owned regular
+lock, run-token temporary/backup paths, validation-before-publication,
+rollback/recovery, transaction-member input rechecks, and output-directory
+identity checks. It carries native Step `00`-`09` source hashes recorded by
+the adapter but does not rehash those native sources. A successful
+summary records existing evidence; it never promotes local, runtime, cluster,
+scientific, or biological status.
+
+All 39 focused run-summary tests and the complete 213-test Python suite pass,
+along with shell syntax/tests, both guarded real-R semantic suites, and
+`r-check`. This is synthetic/local fixture evidence only. No production
+artifact transaction or summary has been built, and `report-html-v1` remains
+the next package.
 
 For demo details, start with `docs/demo/DEMO_WALKTHROUGH.md`, then use `docs/architecture/ARCHITECTURE.md` for the visual pipeline/dataflow architecture, `docs/demo/PI_DEMO_REPORT.md` for preliminary validation and QC summary, `docs/design/PIPELINE_PLAN.md` as the tactical map, `docs/operations/HANDOFF.md` for current state, `docs/operations/RUNBOOK.md` for safe inspection commands, the operations troubleshooting guide for known failure modes, and `TODO.md` for the next gates. Standalone Mermaid sources live under `docs/architecture/diagrams/`, including current pipeline/reliability diagrams and `future_roadmap_sequence.mmd`.
 
@@ -602,14 +691,14 @@ git diff --name-status
 ```
 
 Bare `python` is absent on the current workstation, so the passing Python gate
-uses the existing `.venv`. At the `artifact-adapters-v1` implementation
-boundary, the complete Python suite passes with 150 tests; all shell tests,
+uses the existing `.venv`. At the `artifact-run-summary` implementation
+boundary, the complete Python suite passes with 213 tests; all shell tests,
 both Step `08` and Step `09` real-R runners, the aggregate local R target, and
-the R environment check also pass. The adapter-focused gate has 50 tests and
-the combined schema/adapter gate has 104. These checks use synthetic fixtures
-and do not constitute production input inspection or publication,
-run-summary/report evidence, cluster validation, production scientific-review
-completion, or biological readiness.
+the R environment check also pass. The run-summary-focused gate has 39 tests.
+These checks use synthetic fixtures and do not constitute production input
+inspection or publication, a production run summary/report, cluster
+validation, production scientific-review completion, or biological
+readiness.
 
 Shortcut for the Makefile-covered checks:
 

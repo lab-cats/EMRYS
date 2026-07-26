@@ -797,8 +797,9 @@ batch visibility, production input behavior, or cluster outputs. The
 complete. Step `09c` is implemented locally at `b674a31`.
 `artifact-schema-v1` is implemented and locally fixture-tested at `5f4d3b4`;
 `artifact-adapters-v1` is implemented and locally fixture-tested at
-`4dbd32d`. After its docpatch/push gate, the next descendant is
-`artifact-run-summary`.
+`4dbd32d`. `artifact-run-summary` is implemented and locally fixture-tested at
+`209bb19`. After its docpatch/push gate, the next descendant is
+`report-html-v1`.
 
 ## `renv` startup uses sustained CPU or repeatedly creates directories
 
@@ -1218,7 +1219,15 @@ relationships to agree. Missing and incomplete evidence must be represented
 explicitly rather than hidden. `science_review_complete_exploratory` has
 stricter completed-evidence and decision requirements. The current policy
 deliberately reserves `biological_interpretation_ready` for a separately
-approved future branch.
+approved future branch. Complete/incomplete source evidence requires dates;
+analysis sets must be disjoint and category ownership must agree; pending
+decisions cannot cite support; recorded decisions require
+complete/not-applicable support; rerun booleans/scopes must agree; and
+passed/failed/proven computational claims require their defined complete
+evidence roles. Runtime and cluster roles additionally require explicit
+underlying paths/hashes; blocked/not-run states are not proof. The tracked
+example's `local_test_status=not_run` is intentional because it attaches no
+local-test evidence.
 
 ### Fix
 
@@ -1377,8 +1386,10 @@ required
 `required` is lowercase `true` or `false`. Each artifact ID and physical
 source path must be unique, including after path normalization. Rows belonging
 to one logical `(step_id, scope_type, scope_id)` must be contiguous.
+The common schema retains its `v1` URN. Artifact records remain `1.0.0`;
+scientific-review, run-summary, and report-receipt documents are `1.1.0`.
 `biological_interpretation_ready` and non-null readiness authorization are
-intentionally rejected by v1.
+intentionally rejected by the current contracts.
 
 Combining `--inventory` with a document performs reconciliation only for an
 `artifact-record` or `run-summary`. A `scientific-review-record` or
@@ -1429,7 +1440,7 @@ The focused regression command is:
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
 ```
 
-Current local focused evidence is `54 passed`. This is schema/fixture evidence,
+Current local focused evidence is `58 passed`. This is schema/fixture evidence,
 not production artifact validation.
 
 ## Artifact adapter rejects `--run-contract` or an existing run ID
@@ -1537,8 +1548,8 @@ gates.
 Treat the explicit record statuses as the result. Do not try to promote them
 manually or by adding undeclared native evidence. Later validator packages
 may publish typed validation evidence through their own contracts; the
-run-summary package may aggregate that evidence but must never infer or
-promote it. If Step `09c` science propagation was expected, correct its
+implemented run-summary package aggregates existing evidence but never infers
+or promotes it. If Step `09c` science propagation was expected, correct its
 declared transaction or evidence relationships and rerun the adapter. Keep
 production science `evidence_incomplete` when reconciliation does not pass,
 and continue rejecting `biological_interpretation_ready`.
@@ -1576,16 +1587,168 @@ Describe the current boundary as:
 artifact-schema-v1 implemented at 5f4d3b4
 shared common schema plus four public Draft 2020-12 schemas
 67-row synthetic explicit physical inventory
-read-only validator and 54 focused tests pass locally
+read-only validator and 58 focused tests pass locally
 artifact-adapters-v1 implemented at 4dbd32d
 49 read-only adapters and 50 focused tests pass locally
+artifact-run-summary implemented at 209bb19
+canonical JSON, deterministic TSV/QC views, and receipt-last publication
+39 focused run-summary and 147 combined artifact-layer tests pass locally
 no production artifact index, run summary, report, or production evidence
-artifact-run-summary is next
+report-html-v1 is next
 ```
 
 Keep production and cluster status unchanged. Keep production science
 `evidence_incomplete`, and continue rejecting
 `biological_interpretation_ready`.
+
+## Run-summary input transaction or immutable run contract is rejected
+
+### Symptom
+
+`build_run_summary.py` reports a receipt path/run-ID mismatch, changed
+immutable contract field, invalid inventory/index/record hash, record-set
+count mismatch, disconnected attempt history, or non-canonical/unsafe input.
+
+### Cause
+
+The builder accepts only the exact complete adapter receipt under the declared
+`OUTPUT_ROOT/<run_id>/` transaction. Moving, editing, copying, manufacturing,
+or mixing receipt/index/inventory/record members breaks their path, hash,
+ordering, identity, and attempt relationships.
+
+### Fix
+
+Point `--artifact-receipt` at the exact committed receipt and use the output
+root that directly contains its `<run_id>/` directory. Validate or regenerate
+the complete adapter transaction from its explicit run contract and inventory.
+Never edit hashes, row counts, run IDs, attempt IDs, or receipts to force a
+match.
+
+## Explicit Step 09c summary is rejected by the run-summary builder
+
+### Symptom
+
+The optional `--science-review-summary` path exists, but identity, hashes,
+counts, evidence categories/records, decisions, computational claims, or
+science state do not reconcile.
+
+### Cause
+
+The optional input must be the exact summary marker of one committed 13-file
+Step `09c` transaction. Complete/incomplete source evidence requires dates;
+analysis sets and category ownership must agree; pending decisions cannot cite
+support; recorded decisions require complete/not-applicable support; and
+passed/failed/proven claims require their defined complete computational
+evidence roles. Runtime and cluster roles additionally require explicit
+underlying paths/hashes; blocked/not-run states are not proof.
+
+### Fix
+
+Correct and republish the Step `09c` evidence transaction from its explicit
+inputs. If no committed review exists, omit `--science-review-summary`; the
+run summary will retain `evidence_incomplete` and an explicit warning. Do not
+point at a copied summary, decoy, incomplete directory, or hand-edited table.
+
+## Run-summary lock, partial output set, or recovery state remains
+
+### Symptom
+
+Execute mode reports a foreign lock, partial four-file set, changed output
+directory identity, unsafe symlink, input mutation, rollback failure, or
+cleanup failure. Relevant paths may include:
+
+```text
+results/artifacts/<run_id>/.<run_id>.run-summary.lock
+results/artifacts/<run_id>/.<output-name>.<run_token>.tmp
+results/artifacts/<run_id>/.<output-name>.<run_token>.previous
+results/artifacts/<run_id>/.<run_id>.run-summary.<run_token>.RECOVERY.txt
+```
+
+### Cause
+
+The canonical JSON, two TSV views, and receipt are one transaction, with the
+receipt published last. A concurrent writer, adapter transaction-member or
+optional Step `09c` input mutation, output-directory replacement, signal,
+publication failure, incomplete rollback, or incomplete cleanup can leave
+evidence that must be inspected before another writer runs. Native Step
+`00`-`09` source hashes are carried from adapter records rather than rehashed
+by the summary builder.
+
+### Fix
+
+Inspect the regular lock metadata, owning process, current four outputs, all
+reported temporary/backup/recovery paths, and exact adapter/Step `09c` inputs.
+Do not delete a foreign lock or recovery evidence, combine attempts, or
+manufacture a receipt. If output-directory identity changed, resolve and
+verify that identity before touching any contained path. First validate the
+current new four-file transaction: a post-commit cleanup failure may leave it
+complete and it should then be retained. If it is not complete, restore the
+validated prior transaction or a clean first-publication state as appropriate.
+Validate the chosen state, record the operator action, then remove only
+proven-owned residue and a lock whose ownership is proven.
+
+## Run-summary receipt is complete but evidence is missing or failed
+
+### Symptom
+
+`<run_id>.run_summary_receipt.tsv` and `summary_state=complete` coexist with
+missing, failed, incomplete, or externally unavailable artifacts,
+`evidence_incomplete`, or `not_run` validation fields.
+
+### Cause
+
+Summary completion describes the validated four-file publication transaction,
+not completion or promotion of the evidence it summarizes.
+
+### Fix
+
+Use the explicit computational rollups, per-scope statuses, science state,
+warnings, errors, and limitations as the result. Do not edit or promote them.
+Later evidence/validator packages may supply new typed inputs, after which the
+adapter and summary can be regenerated through their normal contracts.
+
+## A record is validated against the wrong 1.0 or 1.1 schema
+
+### Symptom
+
+Validation reports an unexpected `$id`, `schema_version`, missing retained
+review/decision/limitation field, or a report receipt that expects the wrong
+run-summary version.
+
+### Cause
+
+The common schema retains its `v1` URN and artifact records remain `1.0.0`.
+Scientific-review, run-summary, and report-receipt documents are `1.1.0`.
+Run-summary TSV, QC TSV, and run-summary receipt TSV producer contracts remain
+`1.0.0`.
+
+### Fix
+
+Regenerate the record with the implemented producer and validate it against
+the matching tracked schema. Do not change only a version string or `$id`;
+the closed shapes differ intentionally.
+
+## A synthetic run summary is mistaken for production evidence or a report
+
+### Symptom
+
+A run-summary fixture or passing test is described as a production run,
+HTML/PDF report, runtime/cluster proof, completed scientific review, or
+biological validation.
+
+### Cause
+
+The current implementation evidence uses synthetic adapter and Step `09c`
+fixtures. The summary builder records existing evidence and runs no analysis
+or renderer.
+
+### Fix
+
+Describe the boundary as implemented and locally fixture-tested at `209bb19`,
+with 39 focused, 147 combined artifact-layer, and 213 total Python tests
+passing. No production adapter transaction or run summary and no HTML/PDF
+report exists. `report-html-v1` is next, and future report generation will
+still not promote validation.
 
 ## Wrong log interpretation: empty `.err` file
 
@@ -1650,9 +1813,9 @@ A future troubleshooting index may summarize repeated failure patterns as
 symptom, likely cause, confirmation command, and fix. Keep the generic index as
 a deferred roadmap idea until enough real failures exist. The artifact-schema
 validator, inventory, and explicit artifact adapter indexer are now
-implemented, so their concrete failure modes are documented above; do not add
-entries that imply generated run summaries, general cleanup tools, reports,
-foundation tools, or per-step validators exist before their branches
+implemented, as is the run-summary builder, so their concrete failure modes
+are documented above. Do not add entries that imply general cleanup tools,
+reports, foundation tools, or per-step validators exist before their branches
 implement them.
 
 ## General success checklist

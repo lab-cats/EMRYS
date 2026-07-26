@@ -115,7 +115,9 @@ no production-review evidence. `artifact-schema-v1` is implemented locally at
 `5f4d3b4` with a read-only validator and synthetic fixtures.
 `artifact-adapters-v1` is implemented locally at `4dbd32d` with explicit
 read-only native adapters and receipt-last synthetic transactions. No
-production artifact index exists; run summaries and reports remain
+production artifact index exists. `artifact-run-summary` is implemented
+locally at `209bb19` with exact-input, receipt-last synthetic transactions.
+No production artifact index or run summary exists; report rendering remains
 non-runnable.
 
 ## Active Tests Live Under `tests/shell/`; Future Test Plans Live Under `tests/pending/`
@@ -881,6 +883,31 @@ immutable hashes, locks, cleanup, and rollback. This local synthetic evidence
 does not establish a production science review, runtime or cluster proof, or
 biological readiness.
 
+Decision: scientific-review normalization must retain human context without
+weakening machine contracts. Reviewer, decision-owner, and evidence-owner
+names are human-readable text; identifiers and policy versions remain safe
+machine IDs. Complete or incomplete source evidence requires a date.
+Source-free missing/not-applicable TSV evidence uses `NA` (or a valid date);
+v1.1 normalization maps `NA` to JSON `null`.
+
+Decision: primary, superseded, and sensitivity analysis sets are disjoint.
+Each evidence category has explicit analysis ownership, and non-sensitivity
+payloads must bind to the primary analysis. Pending decisions cannot cite
+supporting evidence. Recorded decisions require their own complete or
+justified-not-applicable status plus nonempty complete/not-applicable support;
+rerun booleans and scopes must agree.
+
+Decision: passed/failed/proven computational-status claims require their
+defined complete status-specific evidence roles. Runtime and cluster roles
+additionally require explicit underlying paths/hashes. Blocked/not-run states
+have no claim-role requirement and must never be represented as proof.
+Local-test, runtime, cluster-dry-run, and cluster-proof claims are never
+inferred from a wrapper summary, package installation, or prose. The tracked
+example review plan therefore declares `local_test_status=not_run` because it
+attaches no local-test evidence, even though the repository tooling itself is
+fixture-tested. These stricter contracts preserve the existing science-state
+and readiness lock.
+
 ## Local Engineering Uses The Approved Report-First Descendant Order
 
 Decision: remote promotion remains paused while local implementation proceeds
@@ -916,10 +943,10 @@ step-09b-local-r-runtime
 The local `step-09b1-real-r-fixes` package is complete and pushed. Step `09c`
 is implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
-locally fixture-tested at `4dbd32d`; after its docpatch/push gate,
-`artifact-run-summary` is the next descendant. Structured run summaries and
-HTML/PDF reports remain immediate, before the three foundational engineering
-packages.
+locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
+locally fixture-tested at `209bb19`; after its docpatch/push gate,
+`report-html-v1` is the next descendant. HTML/PDF reports remain immediate,
+before the three foundational engineering packages.
 Each foundation publishes an atomic read-only TSV, adds an artifact adapter,
 and appears in report fixtures. Each step-specific validator publishes the
 fixed `step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`,
@@ -947,16 +974,17 @@ does not apply to the implemented
 `scripts/validate_artifact_contracts.py`,
 `configs/artifact_inventory.example.tsv`, or
 `schemas/artifacts/v1/`, `scripts/build_artifact_index.py`, or
-`configs/artifact_run_contract.example.json` interfaces; it still applies to
-run-summary builders, renderers, foundation tools, and per-step validators.
+`configs/artifact_run_contract.example.json`,
+`scripts/build_run_summary.py`, or
+`scripts/_run_summary_science.py` interfaces; it still applies to renderers,
+foundation tools, and per-step validators.
 
 ## Reporting Is Decoupled From Computation Through Structured Artifacts
 
 Decision: compute steps and report rendering should remain decoupled.
 
 The implemented `artifact-schema-v1` package uses JSON Schema Draft 2020-12.
-It provides one shared common schema and four public schema-version `1.0.0`
-contracts:
+It provides one shared common schema and four public record contracts:
 
 ```text
 schemas/artifacts/v1/common.schema.json
@@ -965,6 +993,15 @@ schemas/artifacts/v1/scientific_review_record.schema.json
 schemas/artifacts/v1/run_summary.schema.json
 schemas/artifacts/v1/report_receipt.schema.json
 ```
+
+Decision: the common schema retains its `v1` URN, and the artifact-record
+document remains `1.0.0`. Scientific-review-record, run-summary, and
+report-receipt documents are explicitly `1.1.0`. Their closed shapes were
+enriched during run-summary implementation to retain human review context,
+decision/evidence provenance, limitations, and the report's required input
+version. Advancing them to `1.1.0` avoids silently mutating the already closed
+`1.0.0` contracts. The run-summary TSV, QC TSV, and run-summary receipt TSV
+producer contracts remain `1.0.0`.
 
 An explicit expected-artifact inventory supplies every future adapter and
 source path; neither adapters nor renderers may discover inputs by glob. The
@@ -1058,9 +1095,33 @@ Canonical, stably ordered `<run_id>.run_summary.json` is the report layer's
 single structured input. `artifact-adapters-v1` first inspects existing
 Step `00a`-`09` and Step `09c` outputs and publishes per-artifact records,
 `<run_id>.artifacts.tsv`, and `<run_id>.artifact_receipt.tsv`. The separate
-`artifact-run-summary` package will assemble those validated adapter outputs
-into the canonical summary. Existing compute CLIs and paths remain unchanged;
-native per-step JSON emission is not added.
+`artifact-run-summary` package now assembles those validated adapter outputs
+into the canonical summary plus deterministic artifact and QC TSV views.
+Existing compute CLIs and paths remain unchanged; native per-step JSON
+emission is not added.
+
+Decision: one exact complete adapter receipt under
+`OUTPUT_ROOT/<run_id>/` is the only required run-summary entry point. An
+optional Step `09c` review summary is supplied by exact path and is never
+discovered. Dry-run performs full validation without stable writes. Execute
+mode publishes canonical JSON, artifact TSV, QC TSV, and the run-summary
+receipt last as one transaction.
+
+Decision: `summary_state=complete` means the four-file summary transaction was
+validated and committed. It does not mean the underlying evidence is
+complete. Missing, failed, incomplete, and externally unavailable artifacts
+remain explicit, and no local, runtime, cluster, scientific, or biological
+status is inferred or promoted.
+
+Decision: each execute-mode publication under one unchanged immutable run
+contract receives a distinct run-summary attempt ID and preserves ordered
+supersession history. Existing summary transactions, adapter
+receipt/run-contract/inventory/index/record members, optional Step `09c`
+inputs, and output-directory identity must validate before replacement. The
+builder carries native-source hashes recorded by the adapter but does not
+rehash native Step `00`-`09` sources. Owned locking, run-token
+temporary/backup paths, validation-before-publication, rollback, and recovery
+protect the receipt-last boundary.
 
 Decision: adapter transaction completion and evidence completion are separate.
 The adapter receipt is published last and may be complete while individual
@@ -1109,14 +1170,17 @@ is never validation evidence.
 
 Current evidence: `artifact-schema-v1` is implemented at `5f4d3b4`. The shared
 schema, four public schemas, read-only validator, 67-row synthetic physical
-inventory, valid fixtures, and `54` focused tests pass locally.
+inventory, valid fixtures, and current `58` focused tests pass locally.
 `artifact-adapters-v1` is implemented at `4dbd32d`; its 49 adapters, synthetic
 native fixtures, receipt-last transaction, and 50 focused tests pass locally
-(104 combined schema/adapter tests). No production source/index exists, and
-no canonical run summary, HTML/PDF report, production runtime or cluster
-evidence, completed production scientific review, or biological readiness
-exists. Run-summary and report packages remain approved but unimplemented,
-and generated production outputs/reports remain ignored.
+(108 combined schema/adapter tests). `artifact-run-summary` is implemented at
+`209bb19`; its 39 focused tests, 147 combined artifact-layer tests, and the
+complete 213-test Python gate pass on synthetic fixtures. No production
+source/index or canonical run summary exists, and no HTML/PDF report,
+production runtime or cluster evidence, completed production scientific
+review, or biological readiness exists. Report packages remain approved but
+unimplemented, `report-html-v1` is next, and generated production
+outputs/reports remain ignored.
 
 ## Documentation Files Have Different Purposes
 

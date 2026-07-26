@@ -150,8 +150,10 @@ fixture transaction as a production scientific review or demonstrate Step
 explicit synthetic inventory, read-only validator, and focused tests may also
 be shown. The implemented `artifact-adapters-v1` help text, dry-run, and
 synthetic focused tests may also be shown, but not as a production artifact
-index. No run summary or generated report exists, and neither package is
-production-output, cluster, or scientific evidence.
+index. The implemented `artifact-run-summary` help text, side-effect-free
+dry-run, and synthetic four-file fixture transaction may also be shown. No
+production run summary or generated report exists, and none of these packages
+is production-output, cluster, or scientific evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -401,17 +403,17 @@ If helpers are not installed, use the manual commands in the next section.
 ## Artifact And Future Operational Helpers
 
 The approved local descendant roadmap has implemented Step `09c`
-scientific-validation tooling, the `artifact-schema-v1` contract package, and
-the `artifact-adapters-v1` index package. The next descendant is
-`artifact-run-summary`; the rest of the reporting vertical slice follows in
-order:
+scientific-validation tooling, the `artifact-schema-v1` contract package, the
+`artifact-adapters-v1` index package, and the `artifact-run-summary` package.
+The next descendant is `report-html-v1`; the rest of the reporting vertical
+slice follows in order:
 
 ```text
 step-09c-scientific-validation
 -> artifact-schema-v1                         # implemented and locally tested
 -> artifact-adapters-v1                       # implemented and locally tested
--> artifact-run-summary                       # next
--> report-html-v1
+-> artifact-run-summary                       # implemented and locally tested
+-> report-html-v1                             # next
 -> report-exports-v1
 -> post09-runtime-preflight
 -> post09-reference-provenance
@@ -424,13 +426,14 @@ remaining foundational engineering. Remote validation, targeted reruns,
 analysis configuration, module wrapping, job arrays, public-data ingestion,
 publishing infrastructure, and broad refactors remain deferred.
 
-Step `09c`, `artifact-schema-v1`, and `artifact-adapters-v1` are no longer
-helper ideas. Their schemas, example contracts, validators, fixtures, and
-commands documented below exist. The adapter output contract is implemented,
-but no production transaction exists. Run summaries, HTML/PDF reports,
-foundation records, and per-step validators remain roadmap work until their
-own branches implement and test them. Do not treat their candidate commands,
-Makefile targets, outputs, reports, or cleanup utilities as available.
+Step `09c`, `artifact-schema-v1`, `artifact-adapters-v1`, and
+`artifact-run-summary` are no longer helper ideas. Their schemas, example
+contracts, validators, fixtures, and commands documented below exist. The
+adapter and run-summary output contracts are implemented, but no production
+transaction exists. HTML/PDF reports, foundation records, and per-step
+validators remain roadmap work until their own branches implement and test
+them. Do not treat their candidate commands, Makefile targets, reports, or
+cleanup utilities as available.
 
 The future preflight will supplement, not replace, each step's own validation.
 It must not install packages, guess tool paths, delete outputs, or clear locks.
@@ -454,11 +457,14 @@ tests/test_artifact_schema_contracts.py
 ```
 
 The shared common schema and four public record schemas use JSON Schema Draft
-2020-12 and public schema version `1.0.0`. The example inventory contains 67
-synthetic physical artifacts across Steps `00a`-`09c`. It is a fixture
-contract, not a production inventory. Every row names one explicit source
-path; multiple physical artifacts may share one logical scope, whose rows must
-remain contiguous.
+2020-12. The common schema retains its `v1` URN; artifact records remain
+`1.0.0`; scientific-review, run-summary, and report-receipt documents are
+`1.1.0`. The latter three advanced explicitly when their closed shapes gained
+retained review/decision/limitation fields and report input-version
+requirements. The example inventory contains 67 synthetic physical artifacts
+across Steps `00a`-`09c`. It is a fixture contract, not a production
+inventory. Every row names one explicit source path; multiple physical
+artifacts may share one logical scope, whose rows must remain contiguous.
 
 Validate the schemas and example inventory:
 
@@ -495,7 +501,7 @@ Run the focused suite:
 .venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
 ```
 
-Current focused evidence is `54 passed`. This is local schema/fixture evidence
+Current focused evidence is `58 passed`. This is local schema/fixture evidence
 only; the repository-wide gate remains a separate required stage check.
 
 The validator is read-only. It validates strict JSON, schema and semantic
@@ -530,7 +536,7 @@ tests/test_artifact_adapters.py
 The adapter builder has 49 registered read-only adapters covering the 67
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
-the later canonical run summary.
+the separate downstream canonical run summary.
 
 Dry-run with explicit inputs:
 
@@ -634,11 +640,102 @@ Run the focused gates:
   tests/test_artifact_adapters.py
 ```
 
-Current local evidence is 50 adapter tests and 104 combined schema/adapter
-tests passing. The full Python suite passes with 150 tests. All source
-inspection and publication evidence is synthetic fixture evidence; no
-production adapter transaction, run summary, report, runtime/cluster proof,
-completed production science review, or biological-readiness evidence exists.
+Current local evidence is 50 adapter tests and 108 combined schema/adapter
+tests passing. All adapter source inspection and publication evidence is
+synthetic fixture evidence; no production adapter transaction, production run
+summary, report, runtime/cluster proof, completed production science review,
+or biological-readiness evidence exists.
+
+### Build An `artifact-run-summary` Transaction
+
+Implemented locally at `209bb19`:
+
+```text
+scripts/build_run_summary.py
+scripts/_run_summary_science.py
+tests/fixtures/artifact_run_summary_v1/build_fixture.py
+tests/test_artifact_run_summary.py
+```
+
+The adapter output directory must already contain the exact complete
+records/index/receipt transaction for `RUN_ID`. Dry-run:
+
+```bash
+.venv/bin/python scripts/build_run_summary.py \
+  --run-id RUN_ID \
+  --artifact-receipt \
+    results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
+  --output-root results/artifacts
+```
+
+When a committed Step `09c` review exists, append these arguments to the
+dry-run or execute command:
+
+```bash
+  --science-review-summary \
+    results/scientific_validation/REVIEW_ID/REVIEW_ID.step09c_review_summary.tsv
+```
+
+The option is never discovered automatically. Omitting it is valid and keeps
+science state `evidence_incomplete` with an explicit warning. Dry-run
+validates the receipt, index, inventory, records, immutable run contract,
+transaction-member hashes, ordering, attempt lineage, and optional Step `09c`
+evidence without creating stable outputs, locks, or scratch paths. It carries
+native-source hashes recorded by the adapter but does not rehash native Step
+`00`-`09` sources.
+
+Execute only after inspecting dry-run:
+
+```bash
+.venv/bin/python scripts/build_run_summary.py \
+  --run-id RUN_ID \
+  --artifact-receipt \
+    results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
+  --output-root results/artifacts \
+  --execute
+```
+
+Successful execute mode publishes:
+
+```text
+results/artifacts/<run_id>/
+  <run_id>.run_summary.json
+  <run_id>.run_summary.tsv
+  <run_id>.qc_summary.tsv
+  <run_id>.run_summary_receipt.tsv
+```
+
+The receipt is last. Canonical JSON is the report layer's single structured
+entry point; the TSVs are deterministic artifact and QC views. Every expected
+scope remains represented, including explicit missing, failed, incomplete,
+and externally unavailable states. `summary_state=complete` describes the
+committed four-file transaction, not evidence completeness.
+
+Each execute-mode publication receives a distinct run-summary attempt ID under
+the unchanged immutable run contract. Existing summary transactions must
+validate before replacement. Publication uses an owned regular lock, run-token
+temporary and backup paths, adapter transaction-member and optional Step `09c`
+input rechecks, output-directory identity checks, validation-before-
+publication, rollback, and recovery safeguards. Never move or edit adapter
+transaction members, manufacture receipts, combine attempts, delete a foreign
+lock, or manually promote evidence status.
+
+Run focused and combined checks:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_artifact_run_summary.py
+.venv/bin/python -m pytest -q \
+  tests/test_artifact_schema_contracts.py \
+  tests/test_artifact_adapters.py \
+  tests/test_artifact_run_summary.py
+```
+
+Current evidence is 39 focused run-summary tests, 147 combined artifact-layer
+tests, and 213 total Python tests passing. Shell tests, both guarded real-R
+suites, and `r-check` also pass. This is local synthetic fixture evidence
+only. No production adapter transaction or run summary exists; the builder
+runs no analysis and establishes no runtime, cluster, scientific, or
+biological validation. `report-html-v1` is next.
 
 ## Manual Job Checking
 
@@ -691,8 +788,8 @@ cd /Users/elisteiger/dev/norad
 git diff --check
 bash -n scripts/*.sh
 bash -n jobs/*.slurm
-python -m compileall scripts tests
-python -m pytest
+.venv/bin/python -m compileall scripts tests
+.venv/bin/python -m pytest
 make shell-test
 make real-r-test
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
@@ -753,8 +850,9 @@ batch/compute visibility, or make Steps `08` or `09` cluster-proven. The
 `step-09b1-real-r-fixes` branch is complete and pushed. Step `09c` is
 implemented locally at `b674a31`. `artifact-schema-v1` is implemented and
 locally fixture-tested at `5f4d3b4`. `artifact-adapters-v1` is implemented and
-locally fixture-tested at `4dbd32d`; after its docpatch/push gate the next
-descendant is `artifact-run-summary`.
+locally fixture-tested at `4dbd32d`. `artifact-run-summary` is implemented and
+locally fixture-tested at `209bb19`; after its docpatch/push gate the next
+descendant is `report-html-v1`.
 
 ## Cluster Execution Pattern
 
@@ -2690,6 +2788,28 @@ orientation:
 until a separately approved policy branch unlocks explicit exit criteria.
 Background, matched-DNA, orthogonal-evidence, annotation, threshold, and
 adjudication decisions remain separate explicit dimensions.
+
+Contract details tightened with the run-summary implementation:
+
+* reviewer, decision-owner, and evidence-owner names retain human-readable
+  text; machine IDs and policy versions remain safe IDs;
+* complete or incomplete source evidence requires a date; source-free
+  missing/not-applicable TSV rows use `NA` (or a valid date), and v1.1 JSON
+  normalization maps `NA` to `null`;
+* primary, superseded, and sensitivity analysis sets are disjoint, and each
+  evidence category must use its declared analysis role;
+* pending decisions cannot cite support; recorded decisions require complete
+  or justified-not-applicable support; rerun booleans and scopes must agree;
+* passed/failed/proven computational claims require their defined complete
+  evidence roles; runtime and cluster roles additionally require explicit
+  underlying paths/hashes; blocked/not-run states are not proof and must not
+  receive invented claim evidence.
+
+The tracked example review plan declares `local_test_status=not_run` because
+it attaches no computational evidence. That review declaration is separate
+from the repository's passing Step `09c` fixture tests; do not change a
+review-plan status to match repository CI unless the matching evidence is
+actually declared.
 
 Review:
 
