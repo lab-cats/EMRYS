@@ -693,6 +693,25 @@ a separately authorized Step `04` workflow for regeneration. Do not modify
 duplicate flags, remove reads, repair the pair, or edit metrics/report values
 inside the validator.
 
+## Step 05 structured validation reports output or reference disagreement
+
+### Symptom
+
+The Step `05` validation TSV reports a BAM/BAI, quickcheck, sort/read-group,
+or FASTA/FAI/DICT agreement failure.
+
+### Cause
+
+The split output pair may be incomplete or from another attempt, or one shared
+reference sidecar may not match the explicit FASTA.
+
+### Fix
+
+Inspect the exact outputs, reference triplet, samtools path/version, and
+producing job/log. Use separately authorized Step `00c` or Step `05` workflows
+as appropriate. Do not invoke GATK, create/repair sidecars, or modify outputs
+from the validator.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1884,7 +1903,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 75-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 76-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

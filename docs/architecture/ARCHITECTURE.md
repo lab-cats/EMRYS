@@ -186,3 +186,7 @@ translates those labels into biological strand claims.
 Step `04` validates one marked BAM/BAI pair, its preserved sample read group,
 and one bounded Picard duplication-metrics row. It observes duplicate-marking
 evidence without marking or removing reads.
+
+Step `05` validates one split-N-cigar BAM/BAI pair against explicit
+FASTA/FAI/DICT prerequisites. It never invokes GATK or repairs shared
+reference sidecars.

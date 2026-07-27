@@ -18,6 +18,7 @@ flowchart LR
     bam --> markdup["04 MarkDuplicates"]
     markdup --> validate04["04 read-only validation TSV"]
     markdup --> splitn["05 SplitNCigarReads"]
+    splitn --> validate05["05 read-only validation TSV"]
     splitn --> splitread["06 mechanical orientation split"]
     partitions["Explicit partition manifest"] --> mpileup["07 cohort mpileup"]
     splitread --> mpileup
@@ -34,5 +35,6 @@ flowchart LR
     validate02b --> adapters
     validate03 --> adapters
     validate04 --> adapters
+    validate05 --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]
