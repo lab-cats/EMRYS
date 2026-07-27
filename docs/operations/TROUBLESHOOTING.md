@@ -1527,6 +1527,50 @@ of coercing arbitrary PDF bytes through locale-sensitive text conversion.
 This was a fixture-portability correction, not production output evidence.
 Cluster output validation remains pending.
 
+## Step 09 structured validation reports transaction or semantic disagreement
+
+### Symptom
+
+`<analysis_id>.validation.tsv` contains `status=fail` for one or more of:
+
+```text
+output_transaction
+upstream_identity_and_candidate_order
+status_semantics
+significant_subset
+summary_count_reconciliation
+mutation_spectrum_reconciliation
+pdf_structure
+```
+
+The validator may exit zero because successful inspection/publication is
+separate from the seven row statuses. Missing, empty, symlinked, or nonregular
+inputs instead exit nonzero and publish nothing.
+
+### Cause
+
+The six readable native outputs may have wrong headers or analysis-bound
+names, span multiple directories, alias the same physical file, omit or
+reorder a Step `08` candidate, use a different cohort or orientation policy,
+or disagree with immutable counts and declared thresholds. The validator also
+recomputes enabled-background status/maximum AF and one global BH family, then
+reconciles the exact significant subset, summary provenance/counts, canonical
+mutation spectrum, and both PDF structures.
+
+### Fix
+
+Inspect the first failed row and every explicit manifest, Step `08`, and Step
+`09` path passed to `validate_step_09_cmh_outputs.py`. Compare the six native
+outputs as one completed Step `09` transaction and inspect its producing job
+and logs. Regenerate an invalid set only through the separately authorized
+Step `09` workflow. Do not move one member into place, hardlink outputs, edit
+candidate order, counts, hashes, FDR values, status labels, policy, or PDF
+markers, and do not rewrite a failed validation row into a pass.
+
+The structured validator is read-only and locally fixture-tested. Its report
+does not establish production execution, cluster proof, scientific review, or
+biological validity.
+
 ## Step 09 finds a lock or incomplete six-output set
 
 ### Symptom
@@ -1967,7 +2011,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 80-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 81-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

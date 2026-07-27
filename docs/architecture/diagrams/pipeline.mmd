@@ -27,6 +27,7 @@ flowchart LR
     mpileup --> preprocess["08 VCF preprocessing"]
     preprocess --> validate08["08 read-only validation TSV"]
     preprocess --> cmh["09 paired CMH ranking"]
+    cmh --> validate09["09 read-only validation TSV"]
     cmh --> science["09c scientific evidence review"]
     cmh --> adapters["Read-only artifact adapters"]
     science --> adapters
@@ -42,5 +43,6 @@ flowchart LR
     validate06 --> adapters
     validate07 --> adapters
     validate08 --> adapters
+    validate09 --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]

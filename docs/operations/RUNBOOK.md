@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 80 synthetic physical artifacts
+requirements. The example inventory contains 81 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 61 registered read-only adapters covering the 80
+The adapter builder has 62 registered read-only adapters covering the 81
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1195,9 +1195,10 @@ git log --oneline -3
 git push
 ```
 
-Remote promotion is currently paused. After local work reaches the clean,
-pushed, docpatched `post09-validation-report-09` branch and remote work is
-explicitly resumed, open a cluster shell:
+Remote promotion is currently paused. After the approved documentation,
+roadmap, and coverage packages reach the clean, pushed, docpatched
+`post09-test-coverage` branch and remote work is explicitly resumed, open a
+cluster shell:
 
 ```bash
 ssh csu-hpc
@@ -1239,7 +1240,7 @@ pushed:
 ```bash
 set -euo pipefail
 
-predecessor=post09-validation-report-09
+predecessor=post09-test-coverage
 next_branch=validate-step-07
 
 git switch "$predecessor"
@@ -2817,7 +2818,7 @@ When it resumes, create validation branches only after the final local
 validator branch is clean, docpatched, and pushed:
 
 ```text
-post09-validation-report-09
+post09-test-coverage
 └── validate-step-07
     └── validate-step-08
         └── validate-step-09
@@ -3117,11 +3118,89 @@ Implemented files:
 ```text
 scripts/step_09_cmh_editing_site_calling.sh
 scripts/step_09_cmh_editing_site_calling.R
+scripts/validate_step_09_cmh_outputs.py
 jobs/step_09_cmh_editing_site_calling.slurm
 tests/shell/test_step_09_cmh_editing_site_calling.sh
 tests/r/run_step_09_cmh_tests.sh
 tests/r/test_step_09_cmh_editing_site_calling.R
+tests/test_validate_step_09_cmh_outputs.py
 configs/step_09_pairs.NORAD_EV_PUM1.tsv
+```
+
+The structured Step `09` validator consumes the exact six native outputs and
+their explicit Step `08`/manifest inputs without invoking R:
+
+```bash
+analysis=NORAD_EV_vs_PUM1
+cohort=NORAD_EV_PUM1
+analysis_dir="results/editing/$analysis"
+
+.venv/bin/python scripts/validate_step_09_cmh_outputs.py \
+  --analysis-id "$analysis" \
+  --cohort-id "$cohort" \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step08-sites \
+    "results/vcf_preprocessed/$cohort/$cohort.step08_sites.tsv" \
+  --step08-inputs \
+    "results/vcf_preprocessed/$cohort/$cohort.step08_inputs.tsv" \
+  --all-sites "$analysis_dir/$analysis.cmh_all_sites.tsv" \
+  --significant-sites "$analysis_dir/$analysis.cmh_significant_sites.tsv" \
+  --summary "$analysis_dir/$analysis.cmh_summary.tsv" \
+  --mutation-spectrum "$analysis_dir/$analysis.mutation_spectrum.tsv" \
+  --mutation-spectrum-pdf "$analysis_dir/$analysis.mutation_spectrum.pdf" \
+  --depth-delta-pdf "$analysis_dir/$analysis.depth_delta.pdf" \
+  --output "results/qc/validation/09/$analysis.validation.tsv"
+```
+
+Dry-run snapshots every declared regular non-symlink input and prints seven
+checks without writing. It verifies four exact TSV headers; six
+analysis-bound basenames under one parent and six distinct physical files;
+safe analysis/cohort identity and `legacy_provisional_v1`; the complete
+ordered Step `08` candidate universe; target/test/call, depth, AF,
+enabled-background, CMH, and global-BH semantics recomputed from immutable
+counts; the exact significant subset; summary paths/hashes/pairings/counts;
+the canonical 12-SNV spectrum; and both PDF containers.
+
+After inspecting every row, create the exact report parent and add
+`--execute`:
+
+```bash
+analysis=NORAD_EV_vs_PUM1
+cohort=NORAD_EV_PUM1
+analysis_dir="results/editing/$analysis"
+
+mkdir -p results/qc/validation/09
+.venv/bin/python scripts/validate_step_09_cmh_outputs.py \
+  --analysis-id "$analysis" \
+  --cohort-id "$cohort" \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --step08-sites \
+    "results/vcf_preprocessed/$cohort/$cohort.step08_sites.tsv" \
+  --step08-inputs \
+    "results/vcf_preprocessed/$cohort/$cohort.step08_inputs.tsv" \
+  --all-sites "$analysis_dir/$analysis.cmh_all_sites.tsv" \
+  --significant-sites "$analysis_dir/$analysis.cmh_significant_sites.tsv" \
+  --summary "$analysis_dir/$analysis.cmh_summary.tsv" \
+  --mutation-spectrum "$analysis_dir/$analysis.mutation_spectrum.tsv" \
+  --mutation-spectrum-pdf "$analysis_dir/$analysis.mutation_spectrum.pdf" \
+  --depth-delta-pdf "$analysis_dir/$analysis.depth_delta.pdf" \
+  --output "results/qc/validation/09/$analysis.validation.tsv" \
+  --execute
+```
+
+Readable semantic disagreements publish `status=fail` evidence and retain a
+zero command exit when publication succeeds. Missing, empty, symlinked, or
+nonregular inputs and unsafe publication state fail closed without a report.
+The `step09_validation_report_v1` adapter carries the seven rows into the
+canonical summary and consolidated HTML/PDF reports without changing native
+outputs or promoting runtime, cluster, scientific, or biological state.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_09_cmh_outputs.py
 ```
 
 Runtime requirements:

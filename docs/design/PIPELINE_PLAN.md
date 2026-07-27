@@ -53,6 +53,10 @@ a completed production review.
 | `post09-validation-report-06` | Structured mechanical-orientation output/count validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-07` | Structured VCF/receipt/selector/manifest/count validation and report propagation | implemented and locally fixture-tested; real-runtime and production report pending |
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
+| `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
+| `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | approved; pending |
+| `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | approved; pending |
+| `post09-test-coverage` | High-value test-coverage extensions and coverage roadmap | approved; pending |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
@@ -80,6 +84,9 @@ report-html-v1a-report-table-approvals
                                                             └── post09-validation-report-07
                                                                 └── post09-validation-report-08
                                                                     └── post09-validation-report-09
+                                                                        └── post09-comprehensive-docpatch
+                                                                            └── post09-refactor-roadmap
+                                                                                └── post09-test-coverage
 ```
 
 Do not perform remote or cluster
@@ -180,14 +187,19 @@ Checks cover:
 - `06`: orientation outputs and count arithmetic;
 - `07`: receipts, VCF structure, selectors, hashes, order, and counts;
 - `08`: three-output transaction, schemas, hashes, ordering, uniqueness, counts;
-- `09`: six-output transaction, statuses, subsets, spectrum, and PDFs.
+- `09`: four exact TSV headers; analysis-bound basenames; one shared native
+  output parent; six distinct physical outputs; explicit analysis/cohort and
+  provisional-policy identity; complete ordered Step `08` candidate universe;
+  independently recomputed target/test/call, depth, AF, enabled-background,
+  CMH, and global-BH semantics; exact significant subset; summary/provenance
+  reconciliation; canonical mutation spectrum; and PDF structure.
 
 ## Deferred remote lineage
 
 Only after new user direction and completion of the local sequence:
 
 ```text
-post09-validation-report-09
+post09-test-coverage
 └── validate-step-07
     └── validate-step-08
         └── validate-step-09

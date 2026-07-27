@@ -208,3 +208,13 @@ transaction against the declared manifests and annotation. It reuses the
 native semantic contracts for ordered inputs, candidate uniqueness, sample
 fields, AF arithmetic, provenance hashes, and aggregate counts without
 invoking R or rediscovering upstream artifacts.
+
+Step `09` validates the six explicit native CMH outputs as one analysis-bound
+transaction. It requires exact TSV headers and basenames, one shared parent,
+distinct physical files, explicit cohort/provisional-policy identity, and the
+complete ordered Step `08` candidate universe. It independently recomputes
+target/test/call, depth, AF, enabled-background, CMH, and global-BH semantics,
+then reconciles the significant subset, summary provenance/counts, mutation
+spectrum, and PDF containers. Its seven-row typed report enters the artifact,
+summary, and report graph without invoking R, changing native outputs, or
+promoting evidence state.

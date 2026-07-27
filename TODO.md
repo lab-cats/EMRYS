@@ -8,11 +8,13 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Implement `post09-validation-report-09` from the clean, pushed
-   `post09-validation-report-08` branch.
-2. Continue the approved local implementation sequence without pausing between
-   clean stage gates.
-3. Continue any approved local-only descendant sequence one package at a time.
+1. Create `post09-comprehensive-docpatch` from the clean, pushed
+   `post09-validation-report-09` branch and perform the approved repository-wide
+   documentation consistency pass.
+2. Create the descendant `post09-refactor-roadmap` documentation package and
+   record the evidence-ranked future implementation roadmap.
+3. Create `post09-test-coverage`, implement the reasonable high-value test
+   extensions identified by the coverage audit, and docpatch that package.
 
 ## Runtime and scientific blockers
 
