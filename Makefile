@@ -68,7 +68,8 @@ report-test:
 		"$(REPORT_PYTHON_BIN)" -m pytest \
 		tests/test_quarto_restore.py \
 		tests/test_artifact_run_summary.py \
-		tests/test_report_html_v1.py
+		tests/test_report_html_v1.py \
+		tests/test_report_exports_v1.py
 	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
 		bash tests/shell/test_render_run_report.sh
 

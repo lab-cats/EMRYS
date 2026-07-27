@@ -44,6 +44,9 @@ with log.open("a", encoding="utf-8") as stream:
 if sys.argv[1:] == ["--version"]:
     print("1.9.38")
     raise SystemExit(0)
+if sys.argv[1:] == ["pandoc", "--version"]:
+    print("pandoc 3.8.3")
+    raise SystemExit(0)
 if len(sys.argv) < 2 or sys.argv[1] != "render":
     raise SystemExit(97)
 output_name = sys.argv[sys.argv.index("--output") + 1]
@@ -81,13 +84,13 @@ grep -Fq 'Missing required argument: --quarto-bin' "$tmp/missing.out" ||
 
 if scripts/render_run_report.sh \
     --run-summary "$run_summary" \
-    --output-root "$tmp/reports-pdf" \
+    --output-root "$tmp/reports-invalid" \
     --quarto-bin "$fake_quarto" \
-    --formats pdf >"$tmp/pdf.out" 2>&1; then
-    fail "HTML-only stage accepted --formats pdf"
+    --formats docx >"$tmp/invalid.out" 2>&1; then
+    fail "renderer accepted an unsupported format"
 fi
-grep -Fq 'supports only --formats html' "$tmp/pdf.out" ||
-    fail "PDF stage-boundary failure was not specific"
+grep -Fq -- '--formats must be html, pdf, or all' "$tmp/invalid.out" ||
+    fail "unsupported-format failure was not specific"
 
 default_root="$tmp/reports-default"
 env -u PYTHON_BIN_OVERRIDE \
@@ -100,7 +103,9 @@ grep -Fq "  Python: $repo_root/.venv/bin/python" "$tmp/default.out" ||
 [[ ! -e "$default_root" ]] ||
     fail "default-Python dry-run created report output storage"
 grep -Fxq -- '--version' "$fake_log" ||
-    fail "default-Python dry-run did not reach Quarto validation"
+    fail "default-Python dry-run did not reach Quarto version validation"
+grep -Fxq -- $'pandoc\t--version' "$fake_log" ||
+    fail "default all dry-run did not inspect bundled Pandoc"
 : >"$fake_log"
 
 bad_python="$tmp/bad-python"
@@ -134,15 +139,18 @@ PYTHON_BIN_OVERRIDE="$python_bin" \
     scripts/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$dry_root" \
-    --quarto-bin "$fake_quarto" >"$tmp/dry.out"
+    --quarto-bin "$fake_quarto" \
+    --formats html >"$tmp/dry.out"
 grep -Fiq 'dry-run' "$tmp/dry.out" ||
     fail "wrapper did not report dry-run mode"
 [[ ! -e "$dry_root" ]] ||
     fail "dry-run created report output storage"
-[[ "$(wc -l <"$fake_log" | tr -d ' ')" -eq 1 ]] ||
-    fail "dry-run invoked more than Quarto --version"
+[[ "$(wc -l <"$fake_log" | tr -d ' ')" -eq 2 ]] ||
+    fail "dry-run did not perform exactly the Quarto and Pandoc version checks"
 grep -Fxq -- '--version' "$fake_log" ||
-    fail "dry-run did not invoke only Quarto --version"
+    fail "dry-run did not inspect Quarto version"
+grep -Fxq -- $'pandoc\t--version' "$fake_log" ||
+    fail "dry-run did not inspect bundled Pandoc"
 
 unrelated="$tmp/unrelated.tsv"
 printf 'must\tremain\nunchanged\ttrue\n' >"$unrelated"
@@ -157,7 +165,13 @@ PYTHON_BIN_OVERRIDE="$python_bin" \
     --execute >"$tmp/execute.out"
 
 report="$execute_root/synthetic_run/synthetic_run.run_report.html"
+summary_export="$execute_root/synthetic_run/synthetic_run.run_summary.tsv"
+receipt="$execute_root/synthetic_run/synthetic_run.report_outputs.tsv"
 [[ -s "$report" ]] || fail "execute mode did not publish the exact HTML path"
+[[ -s "$summary_export" ]] ||
+    fail "HTML mode did not publish the deterministic summary TSV"
+[[ -s "$receipt" ]] ||
+    fail "HTML mode did not publish the receipt last"
 grep -Fq 'SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.' \
     "$report" || fail "HTML report lacks the exact incomplete-science banner"
 grep -Fq 'CMH-ranked candidates' "$report" ||
@@ -177,4 +191,4 @@ if rg -n 'restore_quarto|step_0[0-9]|bcftools|samtools|Rscript|mantelhaen' \
     fail "public renderer wrapper contains an install or analysis invocation"
 fi
 
-printf 'PASS: static HTML report wrapper contract\n'
+printf 'PASS: static report wrapper contract\n'

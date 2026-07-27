@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render one canonical NORAD run summary as a static self-contained HTML report.
+"""Render one canonical NORAD run summary as a static report bundle.
 
 The command is explicit-input-only and dry-run-first. It validates one
 ``norad.run_summary`` v1.1 document and may read only the TSVs explicitly
@@ -258,11 +258,12 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--formats",
-        choices=("html",),
-        default="html",
+        choices=("html", "pdf", "all"),
+        default="all",
         help=(
-            "Output format for this stage. Only html is implemented; PDF and "
-            "all are added by report-exports-v1."
+            "Presentation format. The default all publishes HTML and PDF; "
+            "every mode also publishes a deterministic summary TSV and "
+            "receipt."
         ),
     )
     parser.add_argument(
@@ -2959,9 +2960,13 @@ def print_plan(context: RenderContext) -> None:
     )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def html_core_main(argv: Sequence[str] | None = None) -> int:
+    """Run the established HTML core used by the bundle coordinator."""
+
     try:
         arguments = parse_arguments(argv)
+        if arguments.formats != "html":
+            _fail("The internal HTML core accepts only --formats html")
         context = prepare_context(arguments)
         print_plan(context)
         if context.execute:
@@ -2976,6 +2981,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ReportRenderError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the public report-bundle interface."""
+
+    import render_run_report_bundle
+
+    return render_run_report_bundle.main(
+        list(sys.argv[1:] if argv is None else argv)
+    )
 
 
 if __name__ == "__main__":

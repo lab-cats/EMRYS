@@ -1,0 +1,15 @@
+---
+pagetitle: "NORAD consolidated run report"
+lang: en
+format:
+  typst:
+    papersize: us-letter
+    margin:
+      x: 0.7in
+      y: 0.75in
+execute:
+  enabled: false
+---
+
+<!-- Static Typst/PDF view. It contains no executable cells. -->
+{{NORAD_REPORT_PDF_BODY}}

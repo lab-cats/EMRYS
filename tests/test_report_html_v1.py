@@ -21,7 +21,14 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "render_run_report.py"
+RENDER_SCRIPT = REPO_ROOT / "scripts" / "render_run_report.py"
+SCRIPT = (
+    REPO_ROOT
+    / "tests"
+    / "fixtures"
+    / "report_html_v1"
+    / "run_html_core.py"
+)
 RUN_SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
@@ -51,7 +58,7 @@ def load_module(name: str, path: Path) -> ModuleType:
 
 
 FIXTURE = load_module("norad_report_html_fixture_builder", FIXTURE_BUILDER)
-RENDER = load_module("norad_report_html_renderer", SCRIPT)
+RENDER = load_module("norad_report_html_renderer", RENDER_SCRIPT)
 
 
 def canonical_json_bytes(value: Any) -> bytes:
@@ -554,9 +561,11 @@ def test_renderer_signal_terminates_complete_quarto_process_group(
             str(incomplete_summary),
             "--output-root",
             str(output_root),
-            "--quarto-bin",
-            str(quarto),
-            "--execute",
+                "--quarto-bin",
+                str(quarto),
+                "--formats",
+                "html",
+                "--execute",
         ],
         cwd=REPO_ROOT,
         text=True,

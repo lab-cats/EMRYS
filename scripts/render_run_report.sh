@@ -14,16 +14,18 @@ Usage:
     --run-summary RUN_SUMMARY_JSON \
     --output-root OUTPUT_ROOT \
     --quarto-bin QUARTO_BIN \
-    [--formats html] \
+    [--formats html|pdf|all] \
     [--execute]
 
-Render one canonical NORAD run-summary JSON as a static self-contained HTML
-report. Dry-run is the default. Add --execute to publish:
+Render one canonical NORAD run-summary JSON as a static report bundle.
+Dry-run is the default. Add --execute to publish:
 
-  <output-root>/<run-id>/<run-id>.run_report.html
+  <output-root>/<run-id>/<run-id>.run_report.html   (html/all)
+  <output-root>/<run-id>/<run-id>.run_report.pdf    (pdf/all)
+  <output-root>/<run-id>/<run-id>.run_summary.tsv
+  <output-root>/<run-id>/<run-id>.report_outputs.tsv  (published last)
 
-This stage supports only --formats html. PDF, exported summary TSV, and the
-final report receipt are added by report-exports-v1.
+The default format is all.
 
 Environment:
   PYTHON_BIN_OVERRIDE  Explicit Python executable or command name.
@@ -73,7 +75,7 @@ print_command() {
 run_summary=""
 output_root=""
 quarto_bin=""
-formats="html"
+formats="all"
 formats_seen=false
 execute=false
 
@@ -127,8 +129,8 @@ done
 [[ -n "$run_summary" ]] || die "Missing required argument: --run-summary."
 [[ -n "$output_root" ]] || die "Missing required argument: --output-root."
 [[ -n "$quarto_bin" ]] || die "Missing required argument: --quarto-bin."
-[[ "$formats" == "html" ]] ||
-    die "This stage supports only --formats html; observed: $formats"
+[[ "$formats" == "html" || "$formats" == "pdf" || "$formats" == "all" ]] ||
+    die "--formats must be html, pdf, or all; observed: $formats"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
@@ -151,6 +153,7 @@ preflight_code='
 import sys
 sys.path.insert(0, sys.argv[1])
 import jsonschema
+import pypdf
 import yaml
 import validate_artifact_contracts
 '
@@ -159,7 +162,7 @@ if ! preflight_output="$(
 )"; then
     printf '%s\n' \
         "ERROR: Selected Python cannot import required report dependencies" \
-        "       (jsonschema, PyYAML, validate_artifact_contracts): $python_bin" \
+        "       (jsonschema, pypdf, PyYAML, validate_artifact_contracts): $python_bin" \
         "       Use the repository .venv or set PYTHON_BIN_OVERRIDE to a compatible Python." \
         >&2
     if [[ -n "$preflight_output" ]]; then

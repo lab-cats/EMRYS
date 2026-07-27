@@ -12,6 +12,7 @@ packaging==26.2
 pandas==3.0.3
 pillow==12.2.0
 pluggy==1.6.0
+pypdf==6.14.2
 Pygments==2.20.0
 pyparsing==3.3.2
 pytest==9.0.3
