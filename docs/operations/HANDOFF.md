@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-00a`
+  `post09-validation-report-00b`
 - Parent:
-  `post09-storage-inventory-retention`
+  `post09-validation-report-00a`
 - Verified parent HEAD:
-  `4b9151b72cb59af66a08ba1724ba9b4e48e27cb5`
+  `f571602d8f3cf12081b7b6ab6212ce4f33f5087d`
 - Parent implementation:
-  `2616bd8 implement storage inventory and retention reporting`
-- Current implementation:
   `1ce1bda implement step 00a validation report`
+- Current implementation:
+  `807cf2c implement step 00b validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `00a` validation branch was created only after fetching remote refs and
+The Step `00b` validation branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -36,6 +36,8 @@ The local descendant sequence has implemented:
 - explicit read-only reference artifact, provenance, hash, and contig reconciliation;
 - explicit read-only storage-root measurement and retention-policy recording;
 - a Step `00a` STAR-index validation report, typed artifact adapter, and
+  summary/HTML/PDF propagation fixture;
+- a Step `00b` BED12/GTF validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
@@ -62,6 +64,7 @@ The local descendant sequence has implemented:
 | Reference provenance | explicit FASTA/FAI/DICT/GTF/BED12/STAR inventory and reconciliation implemented and locally fixture-tested; no production reference report |
 | Storage inventory and retention | explicit root size/capacity measurement and retention-policy recording implemented and locally fixture-tested; no production storage report or approved production policy |
 | Step `00a` structured validation | index members, source identities, ordered contig names/lengths, and `sjdbOverhang` validator implemented and locally fixture/report tested; no new production execution |
+| Step `00b` structured validation | BED12 structure, sorting, blocks, uniqueness, and exact GTF normalization agreement implemented and locally fixture/report tested; no new production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -141,9 +144,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-00a` implementation and documentation gates are
+The `post09-validation-report-00b` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-00b`.
+`post09-validation-report-00c`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

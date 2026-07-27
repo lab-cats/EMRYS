@@ -4,6 +4,7 @@ flowchart LR
     storage_contracts["Explicit storage roots + retention policy"] --> storage_inventory["Read-only storage evidence TSVs"]
     reference["Reference inputs"] --> prep["00a STAR index<br/>00b BED12<br/>00c FASTA sidecars"]
     prep --> validate00a["00a read-only validation TSV"]
+    prep --> validate00b["00b read-only validation TSV"]
     manifest["Explicit sample manifest"] --> align["01 STAR alignment"]
     prep --> align
     align --> bam["02 canonical BAM"]
@@ -20,5 +21,6 @@ flowchart LR
     cmh --> adapters["Read-only artifact adapters"]
     science --> adapters
     validate00a --> adapters
+    validate00b --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]

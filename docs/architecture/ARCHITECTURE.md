@@ -154,3 +154,8 @@ FASTA/GTF sources, then publishes the common seven-column validation TSV. Its
 typed adapter keeps passing and failing check evidence in the artifact graph;
 the canonical summary and both report formats project the resulting expected-
 scope state without promoting runtime or cluster evidence.
+
+Step `00b` applies the same boundary to the explicit BED12 and source GTF. It
+separately reports structural, ordering, block, uniqueness, and deterministic
+normalization agreement, then uses its own typed adapter rather than a generic
+dispatcher.

@@ -533,6 +533,26 @@ paths. Do not delete a foreign lock or manufacture a passing TSV. Establish
 ownership, recover the validated predecessor or clean first-publication state,
 record the operator action, and rerun dry-run before execute mode.
 
+## Step 00b structured validation reports BED12 or GTF disagreement
+
+### Symptom
+
+The Step `00b` validation TSV reports failed structure, sorting, block,
+uniqueness, or GTF-agreement checks.
+
+### Cause
+
+The BED may be malformed or unsorted, contain invalid block sizes/offsets or
+duplicate transcript names, or no longer equal deterministic normalization of
+the explicit GTF exon models.
+
+### Fix
+
+Inspect the failed row and both exact inputs. Regenerate the BED only through
+`gtf_to_bed12.py` after confirming the intended GTF and conversion contract.
+Do not reorder, repair, deduplicate, or rewrite either input inside the
+validator, and do not hand-edit a failed report into a pass.
+
 ## Step 00c FAI/DICT validation fails
 
 ### Symptom
@@ -1740,7 +1760,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 68-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 69-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 68 synthetic physical artifacts
+requirements. The example inventory contains 69 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 50 registered read-only adapters covering the 68
+The adapter builder has 51 registered read-only adapters covering the 69
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1427,6 +1427,45 @@ Status:
 
 ```text
 cluster-proven
+```
+
+The structured Step `00b` validator reads one explicit BED12 and source GTF:
+
+```bash
+.venv/bin/python scripts/validate_step_00b_bed12.py \
+  --scope-id novogene_ref \
+  --bed12 refs/novogene_ref/genome.bed \
+  --source-gtf refs/novogene_ref/genome.gtf \
+  --output results/qc/validation/00b/novogene_ref.validation.tsv
+```
+
+Dry-run reports exact 12-column structure, deterministic coordinate sorting,
+block geometry, transcript-name uniqueness, and byte-for-byte agreement with
+the deterministic exon normalization performed by `gtf_to_bed12.py`. It does
+not create an output path. After inspection, create the parent and add
+`--execute`:
+
+```bash
+mkdir -p results/qc/validation/00b
+.venv/bin/python scripts/validate_step_00b_bed12.py \
+  --scope-id novogene_ref \
+  --bed12 refs/novogene_ref/genome.bed \
+  --source-gtf refs/novogene_ref/genome.gtf \
+  --output results/qc/validation/00b/novogene_ref.validation.tsv \
+  --execute
+```
+
+The validator never rewrites the BED or GTF. Check failures remain explicit
+evidence, and the `step00b_validation_report_v1` adapter carries the resulting
+failed scope into the canonical summary and HTML/PDF reports without changing
+historical cluster state. Publication uses the same exact output-name,
+predecessor-validation, lock, stable-input, staging, backup, and rollback
+contract as Step `00a`.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_00b_bed12.py
 ```
 
 ### Step 00c: GATK Reference Sidecars
