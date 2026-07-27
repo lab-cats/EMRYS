@@ -32,14 +32,26 @@ Exit codes:
 USAGE
 }
 
+require_option_value() {
+  local option="$1"
+  local value="${2:-}"
+
+  if [[ -z "$value" || "$value" == --* ]]; then
+    echo "ERROR: $option requires a value" >&2
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --jobs)
-      JOB_FILE="${2:-}"
+      require_option_value "$1" "${2:-}"
+      JOB_FILE="$2"
       shift 2
       ;;
     --output)
-      OUTPUT_TSV="${2:-}"
+      require_option_value "$1" "${2:-}"
+      OUTPUT_TSV="$2"
       shift 2
       ;;
     -h|--help)
@@ -49,6 +61,10 @@ while [[ $# -gt 0 ]]; do
     --)
       shift
       break
+      ;;
+    --*)
+      echo "ERROR: unknown option: $1" >&2
+      exit 1
       ;;
     *)
       break
@@ -67,12 +83,15 @@ if [[ ! -x "$SAMTOOLS" ]]; then
   exit 1
 fi
 
+if [[ -n "$JOB_FILE" && ! -f "$JOB_FILE" ]]; then
+  echo "ERROR: job file does not exist or is not a file: $JOB_FILE" >&2
+  exit 1
+fi
+
 if [[ -z "$OUTPUT_TSV" ]]; then
   echo "ERROR: --output requires a nonempty path" >&2
   exit 1
 fi
-
-mkdir -p "$(dirname "$OUTPUT_TSV")"
 
 output_dir="$(dirname "$OUTPUT_TSV")"
 mkdir -p "$output_dir" || {
@@ -92,10 +111,23 @@ if ! : > "$tmp_output_check"; then
 fi
 rm -f "$tmp_output_check"
 
-exec > >(tee "$OUTPUT_TSV")
+: > "$OUTPUT_TSV" || {
+  echo "ERROR: could not initialize output file: $OUTPUT_TSV" >&2
+  exit 1
+}
 
-# Keep stdout visible while also saving a durable TSV snapshot.
-exec > >(tee "$OUTPUT_TSV")
+emit_output() {
+  local format="$1"
+  local rendered
+  shift
+
+  printf -v rendered "$format" "$@"
+  printf '%s' "$rendered"
+  if ! printf '%s' "$rendered" >> "$OUTPUT_TSV"; then
+    echo "ERROR: could not write output file: $OUTPUT_TSV" >&2
+    exit 1
+  fi
+}
 
 job_for_sample() {
   local sample="$1"
@@ -123,7 +155,7 @@ pass_count=0
 pending_count=0
 fail_count=0
 
-printf 'sample_id\tjob_id\tjob_state\tbam_exists\tbai_exists\tbam_size\tbai_size\tquickcheck_ok\thd_coordinate\trg_ok\tscratch_count\tstatus\n'
+emit_output 'sample_id\tjob_id\tjob_state\tbam_exists\tbai_exists\tbam_size\tbai_size\tquickcheck_ok\thd_coordinate\trg_ok\tscratch_count\tstatus\n'
 
 for s in "${samples[@]}"; do
   dir="results/split_ncigar/$s"
@@ -207,7 +239,7 @@ for s in "${samples[@]}"; do
     fi
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  emit_output '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$s" "${jid:-NA}" "$jstate" "$bam_exists" "$bai_exists" "$bam_size" "$bai_size" \
     "$quickcheck_ok" "$hd_coordinate" "$rg_ok" "$scratch_count" "$status"
 done

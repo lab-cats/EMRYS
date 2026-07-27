@@ -206,6 +206,72 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
     assert rows["missing"]["status"] == "fail"
 
 
+def test_hash_utility_digest_mismatch_is_reported_without_aborting(
+    tmp_path: Path,
+) -> None:
+    fake_hash = tmp_path / "sha256sum"
+    fake_hash.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "cat >/dev/null\n"
+        "printf '%064d  -\\n' 0\n",
+        encoding="utf-8",
+    )
+    fake_hash.chmod(0o755)
+    profile = write_profile(
+        tmp_path / "profile.tsv",
+        [
+            [
+                "bad_digest",
+                "hash_utility",
+                "any",
+                "true",
+                str(fake_hash),
+                json.dumps(["sha256sum"]),
+                "sha256",
+                "Synthetic mismatching hash utility",
+            ]
+        ],
+    )
+    output = tmp_path / "preflight.tsv"
+
+    result = run_cli(profile, output, "--execute")
+
+    assert result.returncode == 0, result.stderr
+    row = read_rows(output)[0]
+    assert row["status"] == "fail"
+    assert row["observed"] == "0" * 64
+    assert row["detail"] == "SHA-256 digest mismatch"
+
+
+def test_probe_timeout_is_recorded_as_a_failed_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    check = PREFLIGHT.Check(
+        check_id="timeout",
+        check_type="tool_version",
+        runtime_context="any",
+        required=True,
+        target=sys.executable,
+        probe_args=("--version",),
+        expected=r"^Python",
+        description="Synthetic timeout",
+    )
+
+    def time_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=args[0],
+            timeout=kwargs["timeout"],
+        )
+
+    monkeypatch.setattr(PREFLIGHT.subprocess, "run", time_out)
+    result = PREFLIGHT._probe_tool(check)
+
+    assert result.status == "fail"
+    assert result.detail == "Version probe failed"
+    assert "timed out" in result.observed
+
+
 def test_executable_visibility_uses_absolute_target_and_matching_expectation(
     tmp_path: Path,
 ) -> None:
@@ -450,3 +516,116 @@ def test_publish_failure_rolls_back_valid_prior(
     assert not list(tmp_path.glob(".*.lock"))
     assert not list(tmp_path.glob(".*.tmp"))
     assert not list(tmp_path.glob(".*.previous"))
+
+
+def test_first_publication_validation_failure_cleans_owned_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    profile_data, checks = PREFLIGHT.load_profile(profile)
+    digest = hashlib.sha256(profile_data).hexdigest()
+    rendered = PREFLIGHT.result_bytes(
+        digest,
+        "local",
+        PREFLIGHT.run_checks(checks, "local"),
+    )
+    output = tmp_path / "preflight.tsv"
+    real_validate = PREFLIGHT.validate_result_bytes
+    calls = 0
+
+    def fail_published(data, profile_sha256, runtime_context, expected_checks):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise PREFLIGHT.PreflightError("injected published validation failure")
+        return real_validate(data, profile_sha256, runtime_context, expected_checks)
+
+    monkeypatch.setattr(PREFLIGHT, "validate_result_bytes", fail_published)
+    with pytest.raises(PREFLIGHT.PreflightError, match="injected published"):
+        PREFLIGHT.publish(output, rendered, digest, "local", checks)
+
+    assert not output.exists()
+    assert not list(tmp_path.glob(".*.lock"))
+    assert not list(tmp_path.glob(".*.tmp"))
+    assert not list(tmp_path.glob(".*.previous"))
+
+
+def test_rollback_failure_retains_lock_and_previous_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    profile_data, checks = PREFLIGHT.load_profile(profile)
+    digest = hashlib.sha256(profile_data).hexdigest()
+    rendered = PREFLIGHT.result_bytes(
+        digest,
+        "local",
+        PREFLIGHT.run_checks(checks, "local"),
+    )
+    output = tmp_path / "preflight.tsv"
+    output.write_bytes(rendered)
+    real_validate = PREFLIGHT.validate_result_bytes
+    real_replace = os.replace
+    calls = 0
+
+    def fail_published(data, profile_sha256, runtime_context, expected_checks):
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise PREFLIGHT.PreflightError("injected published validation failure")
+        return real_validate(data, profile_sha256, runtime_context, expected_checks)
+
+    def fail_restore(source, destination):
+        source_path = Path(source)
+        if ".previous" in source_path.name and Path(destination) == output:
+            raise OSError("injected restore failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(PREFLIGHT, "validate_result_bytes", fail_published)
+    monkeypatch.setattr(PREFLIGHT.os, "replace", fail_restore)
+    with pytest.raises(
+        PREFLIGHT.PreflightError,
+        match="rollback was incomplete",
+    ):
+        PREFLIGHT.publish(output, rendered, digest, "local", checks)
+
+    lock = tmp_path / ".preflight.tsv.lock"
+    previous = list(tmp_path.glob(".*.previous"))
+    assert lock.is_file()
+    assert len(previous) == 1
+    assert previous[0].read_bytes() == rendered
+    assert not output.exists()
+
+
+def test_previous_report_cleanup_failure_retains_lock_and_backup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    profile_data, checks = PREFLIGHT.load_profile(profile)
+    digest = hashlib.sha256(profile_data).hexdigest()
+    rendered = PREFLIGHT.result_bytes(
+        digest,
+        "local",
+        PREFLIGHT.run_checks(checks, "local"),
+    )
+    output = tmp_path / "preflight.tsv"
+    output.write_bytes(rendered)
+    real_unlink = Path.unlink
+
+    def fail_backup_cleanup(path: Path, *args, **kwargs):
+        if ".previous" in path.name:
+            raise OSError("injected backup cleanup failure")
+        return real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(PREFLIGHT.Path, "unlink", fail_backup_cleanup)
+    with pytest.raises(
+        PREFLIGHT.PreflightError,
+        match="cleanup was incomplete",
+    ):
+        PREFLIGHT.publish(output, rendered, digest, "local", checks)
+
+    lock = tmp_path / ".preflight.tsv.lock"
+    previous = list(tmp_path.glob(".*.previous"))
+    assert output.read_bytes() == rendered
+    assert lock.is_file()
+    assert len(previous) == 1
+    assert previous[0].read_bytes() == rendered

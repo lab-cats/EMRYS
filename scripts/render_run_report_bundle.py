@@ -766,13 +766,19 @@ def publish_bundle(context: BundleContext) -> None:
     committed = False
     recovery_required = False
 
+    def directory_matches() -> bool:
+        try:
+            metadata = context.html.output_dir.lstat()
+        except OSError:
+            return False
+        return (
+            not stat.S_ISLNK(metadata.st_mode)
+            and stat.S_ISDIR(metadata.st_mode)
+            and (metadata.st_dev, metadata.st_ino) == directory_identity
+        )
+
     def assert_directory() -> None:
-        metadata = context.html.output_dir.lstat()
-        if (
-            stat.S_ISLNK(metadata.st_mode)
-            or not stat.S_ISDIR(metadata.st_mode)
-            or (metadata.st_dev, metadata.st_ino) != directory_identity
-        ):
+        if not directory_matches():
             _fail("Report output directory changed identity during publication")
 
     try:
@@ -906,13 +912,14 @@ def publish_bundle(context: BundleContext) -> None:
             rollback_errors.append(str(rollback_exc))
         if rollback_errors:
             recovery_required = True
-            html_report._write_recovery_marker(
-                recovery,
-                "Report bundle rollback was incomplete.\n"
-                f"Original error: {original}\n"
-                f"Rollback errors: {'; '.join(rollback_errors)}\n"
-                f"Stage: {stage}\nLock: {context.html.lock_path}\n",
-            )
+            if directory_matches():
+                html_report._write_recovery_marker(
+                    recovery,
+                    "Report bundle rollback was incomplete.\n"
+                    f"Original error: {original}\n"
+                    f"Rollback errors: {'; '.join(rollback_errors)}\n"
+                    f"Stage: {stage}\nLock: {context.html.lock_path}\n",
+                )
             raise html_report.ReportRenderError(
                 "Report bundle publication failed and rollback was incomplete; "
                 "preserve the owned lock and recovery state"
@@ -926,17 +933,22 @@ def publish_bundle(context: BundleContext) -> None:
         cleanup_errors: list[str] = []
         active = sys.exc_info()[1]
         if not recovery_required:
-            try:
-                html_report._remove_owned_stage(stage, token, stage_identity)
-                for _, (backup, backup_snapshot) in backups.items():
-                    if os.path.lexists(backup):
-                        if not committed:
-                            _fail(f"Unexpected backup remains after rollback: {backup}")
-                        html_report._assert_snapshot(backup_snapshot, f"committed backup {backup.name}")
-                        backup.unlink()
-                html_report._fsync_directory(context.html.output_dir)
-            except BaseException as exc:
-                cleanup_errors.append(str(exc))
+            if not directory_matches():
+                cleanup_errors.append(
+                    "Report output directory changed identity during cleanup"
+                )
+            else:
+                try:
+                    html_report._remove_owned_stage(stage, token, stage_identity)
+                    for _, (backup, backup_snapshot) in backups.items():
+                        if os.path.lexists(backup):
+                            if not committed:
+                                _fail(f"Unexpected backup remains after rollback: {backup}")
+                            html_report._assert_snapshot(backup_snapshot, f"committed backup {backup.name}")
+                            backup.unlink()
+                    html_report._fsync_directory(context.html.output_dir)
+                except BaseException as exc:
+                    cleanup_errors.append(str(exc))
         if ownership is not None and not recovery_required and not cleanup_errors:
             try:
                 html_report._release_lock(ownership)
@@ -945,12 +957,13 @@ def publish_bundle(context: BundleContext) -> None:
         if handlers is not None:
             html_report._restore_signal_handlers(handlers)
         if cleanup_errors:
-            html_report._write_recovery_marker(
-                recovery,
-                "Report bundle cleanup was incomplete.\n"
-                f"Active error: {active}\n"
-                f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
-            )
+            if directory_matches():
+                html_report._write_recovery_marker(
+                    recovery,
+                    "Report bundle cleanup was incomplete.\n"
+                    f"Active error: {active}\n"
+                    f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
+                )
             raise html_report.ReportRenderError(
                 "Report bundle cleanup failed; preserve recovery evidence: "
                 + "; ".join(cleanup_errors)

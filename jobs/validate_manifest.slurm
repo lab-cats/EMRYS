@@ -22,6 +22,7 @@ echo "TMPDIR: ${TMPDIR:-unset}"
 
 # Load Python inside the job so validation does not depend on the submit shell.
 module load python39
+module list 2>&1 || true
 
 python --version
 

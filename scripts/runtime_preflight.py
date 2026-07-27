@@ -516,6 +516,7 @@ def publish(
     backup = output.with_name(f".{output.name}.{token}.previous")
     descriptor = _acquire_lock(lock)
     had_previous = output.exists()
+    keep_recovery = False
     try:
         if output.is_symlink():
             _fail(f"Output must not be a symbolic link: {output}")
@@ -544,22 +545,80 @@ def publish(
                 runtime_context,
                 checks,
             )
-        except BaseException:
+        except BaseException as publication_error:
+            rollback_failures: list[str] = []
             if output.exists() and not output.is_symlink():
-                output.unlink()
-            if had_previous and backup.exists():
-                os.replace(backup, output)
+                try:
+                    output.unlink()
+                except OSError as exc:
+                    rollback_failures.append(f"remove published report: {exc}")
+            elif output.is_symlink():
+                rollback_failures.append(
+                    f"published report became a symbolic link: {output}"
+                )
+            if had_previous:
+                if backup.exists() and not backup.is_symlink():
+                    try:
+                        os.replace(backup, output)
+                    except OSError as exc:
+                        rollback_failures.append(
+                            f"restore previous report: {exc}"
+                        )
+                else:
+                    rollback_failures.append(
+                        f"previous report is unavailable or unsafe: {backup}"
+                    )
+            if rollback_failures:
+                keep_recovery = True
+                raise PreflightError(
+                    f"{publication_error}\n"
+                    "Runtime preflight rollback was incomplete; lock and "
+                    f"recovery paths were retained: {lock}; "
+                    + "; ".join(rollback_failures)
+                ) from publication_error
             raise
         if backup.exists():
-            backup.unlink()
+            try:
+                backup.unlink()
+            except OSError as exc:
+                keep_recovery = True
+                _fail(
+                    "Runtime preflight cleanup was incomplete; lock and "
+                    f"recovery paths were retained: {lock}; "
+                    f"remove previous report: {exc}"
+                )
     finally:
-        if staged.exists() and not staged.is_symlink():
-            staged.unlink()
-        os.close(descriptor)
+        cleanup_failures: list[str] = []
+        active = sys.exc_info()[1]
+        if not keep_recovery and staged.exists() and not staged.is_symlink():
+            try:
+                staged.unlink()
+            except OSError as exc:
+                keep_recovery = True
+                cleanup_failures.append(f"remove staged report: {exc}")
         try:
-            lock.unlink()
-        except OSError:
-            pass
+            os.close(descriptor)
+        except OSError as exc:
+            keep_recovery = True
+            cleanup_failures.append(f"close lock descriptor: {exc}")
+        if not keep_recovery:
+            if lock.exists() and not lock.is_symlink():
+                try:
+                    lock.unlink()
+                except OSError as exc:
+                    keep_recovery = True
+                    cleanup_failures.append(f"remove owned lock: {exc}")
+            else:
+                keep_recovery = True
+                cleanup_failures.append(
+                    f"owned lock is unavailable or unsafe: {lock}"
+                )
+        if cleanup_failures:
+            raise PreflightError(
+                "Runtime preflight cleanup was incomplete; lock and recovery "
+                f"paths were retained: {lock}; "
+                + "; ".join(cleanup_failures)
+            ) from active
 
 
 def main(argv: Sequence[str] | None = None) -> int:

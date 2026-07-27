@@ -407,7 +407,7 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
         "summary": f"{reference_id}.reference_summary.tsv",
     }
     finals = {key: destination / name for key, name in names.items()}
-    present = [path.exists() for path in finals.values()]
+    present = [path.exists() or path.is_symlink() for path in finals.values()]
     if any(present) and not all(present):
         fail("Existing reference provenance outputs are incomplete")
     lock = destination / f".{reference_id}.reference-provenance.lock"
@@ -432,8 +432,16 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
         validate_output(read_regular(staged["contigs"], "staged contigs"), CONTIG_HEADER)
         validate_output(read_regular(staged["summary"], "staged summary"), SUMMARY_HEADER, 1)
         if all(present):
-            for key in finals:
-                os.replace(finals[key], backups[key])
+            backed_up: list[str] = []
+            try:
+                for key in finals:
+                    os.replace(finals[key], backups[key])
+                    backed_up.append(key)
+            except BaseException:
+                for key in reversed(backed_up):
+                    if backups[key].exists():
+                        os.replace(backups[key], finals[key])
+                raise
         published: list[str] = []
         try:
             for key in ("artifacts", "contigs", "summary"):

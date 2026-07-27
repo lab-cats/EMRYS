@@ -127,6 +127,48 @@ def test_summary_disagreement_is_failed_evidence(tmp_path):
     assert status["summary_count_reconciliation"] == "fail"
 
 
+def test_duplicate_candidate_id_is_failed_sites_and_summary_evidence(tmp_path):
+    values = fixture(tmp_path)
+    values[3].write_text(
+        values[3].read_text().replace(
+            "p1\tc2\tREV_like",
+            "p1\tc1\tREV_like",
+        )
+    )
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["sites_order_uniqueness"] == "fail"
+    assert status["summary_count_reconciliation"] == "fail"
+
+
+def test_annotation_hash_disagreement_is_failed_identity_evidence(tmp_path):
+    values = fixture(tmp_path)
+    annotation_hash = hashlib.sha256(values[2].read_bytes()).hexdigest()
+    values[4].write_text(
+        values[4].read_text().replace(annotation_hash, "0" * 64)
+    )
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["manifest_annotation_identity"] == "fail"
+    assert status["input_receipt_reconciliation"] == "pass"
+
+
+def test_missing_orientation_receipt_row_fails_downstream_reconciliation(
+    tmp_path,
+):
+    values = fixture(tmp_path)
+    input_lines = values[4].read_text().splitlines()
+    values[4].write_text("\n".join(input_lines[:2]) + "\n")
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["input_receipt_reconciliation"] == "fail"
+    assert status["sites_order_uniqueness"] == "fail"
+    assert status["summary_count_reconciliation"] == "fail"
+
+
 def test_missing_input_and_wrong_output_fail_closed(tmp_path):
     values = fixture(tmp_path)
     values[3].unlink()

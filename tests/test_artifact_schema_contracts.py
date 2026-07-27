@@ -168,6 +168,7 @@ def test_valid_synthetic_fixtures_pass_public_validator(
 def test_cli_checks_all_schemas_inventory_and_help() -> None:
     result = run_cli("--check-schemas", "--inventory", str(INVENTORY))
     help_result = run_cli("--help")
+    normalized_help = " ".join(help_result.stdout.split())
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("Schema passed Draft 2020-12") == 5
@@ -175,6 +176,8 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
     assert "--inventory" in help_result.stdout
+    assert "shared schema" in normalized_help
+    assert "four public record schemas" in normalized_help
 
     unsupported = run_cli(
         "--schema",

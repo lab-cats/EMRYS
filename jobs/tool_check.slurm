@@ -14,6 +14,7 @@ set -euo pipefail
 
 # Print job context before loading modules.
 echo "Job ID: ${SLURM_JOB_ID:-none}"
+echo "Job name: ${SLURM_JOB_NAME:-none}"
 echo "Node: $(hostname)"
 echo "Started: $(date)"
 echo "Working directory: $PWD"
@@ -27,7 +28,7 @@ module load picard/3.1.1
 
 echo
 echo "Loaded modules:"
-module list 2>&1
+module list 2>&1 || true
 
 # Record resolved executables so PATH/module problems are visible.
 echo

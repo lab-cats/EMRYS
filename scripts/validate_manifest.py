@@ -52,8 +52,9 @@ def parse_args() -> argparse.Namespace:
         "--check-files",
         action="store_true",
         help=(
-            "Verify that r1_fastq and r2_fastq paths exist. Relative paths "
-            "are resolved against --base-dir; absolute paths are checked as-is."
+            "Verify that r1_fastq and r2_fastq paths are regular files. "
+            "Relative paths are resolved against --base-dir; absolute paths "
+            "are checked as-is."
         ),
     )
     return parser.parse_args()
@@ -125,6 +126,8 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
                 for column in ALLOWED_COLUMNS
             }
 
+            # Empty physical lines and rows containing only empty/whitespace
+            # fields do not represent samples and are intentionally ignored.
             if not any(values.values()):
                 continue
 
@@ -158,7 +161,9 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
             else:
                 strandedness_values.add(strandedness)
 
-            if condition:
+            if not condition:
+                errors.append(f"Row {row_number}: condition must be non-empty")
+            else:
                 conditions.add(condition)
 
             if check_files:
@@ -169,6 +174,11 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
                     if not resolved_path.exists():
                         errors.append(
                             f"Row {row_number}: {column} file does not exist: {resolved_path}"
+                        )
+                    elif not resolved_path.is_file():
+                        errors.append(
+                            f"Row {row_number}: {column} is not a regular file: "
+                            f"{resolved_path}"
                         )
 
     if sample_count == 0:

@@ -7,8 +7,10 @@ import csv
 import importlib.util
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -113,6 +115,46 @@ raise SystemExit(97)
     return path
 
 
+def blocking_quarto(
+    root: Path,
+    *,
+    child_ready: Path,
+    child_sentinel: Path,
+) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / "quarto"
+    path.write_text(
+        f"""#!{sys.executable}
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+if sys.argv[1:] == ["--version"]:
+    print("1.9.38")
+    raise SystemExit(0)
+if sys.argv[1:] == ["pandoc", "--version"]:
+    print("pandoc 3.8.3")
+    raise SystemExit(0)
+if len(sys.argv) < 2 or sys.argv[1] != "render":
+    raise SystemExit(97)
+child_code = (
+    "import time\\n"
+    "from pathlib import Path\\n"
+    "time.sleep(1.0)\\n"
+    "Path({str(child_sentinel)!r}).write_text("
+    "'survived', encoding='utf-8')\\n"
+)
+subprocess.Popen([sys.executable, "-c", child_code])
+Path({str(child_ready)!r}).write_text("ready", encoding="utf-8")
+time.sleep(60)
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+    return path
+
+
 def arguments(
     summary: Path,
     output_root: Path,
@@ -128,6 +170,56 @@ def arguments(
         formats=formats,
         execute=execute,
     )
+
+
+@pytest.fixture
+def stub_html_bundle_renderer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def render_html(
+        context: Any,
+        stage: Path,
+    ) -> Path:
+        output = stage / context.output_html.name
+        BUNDLE.html_report._write_owned_file(
+            output,
+            (
+                "<!doctype html><html lang=\"en\"><head>"
+                "<meta charset=\"utf-8\"><title>NORAD fixture</title>"
+                "</head><body><main><h1>NORAD fixture</h1></main>"
+                "</body></html>\n"
+            ).encode("utf-8"),
+        )
+        return output
+
+    monkeypatch.setattr(
+        BUNDLE.html_report,
+        "_render_with_quarto",
+        render_html,
+    )
+    monkeypatch.setattr(
+        BUNDLE.html_report,
+        "validate_rendered_html",
+        lambda *_args, **_kwargs: None,
+    )
+
+
+def publish_stub_html_bundle(
+    summary: Path,
+    output_root: Path,
+    quarto: Path,
+) -> Any:
+    context = BUNDLE.prepare_context(
+        arguments(
+            summary,
+            output_root,
+            quarto,
+            formats="html",
+            execute=True,
+        )
+    )
+    BUNDLE.publish_bundle(context)
+    return context
 
 
 def test_default_format_is_all() -> None:
@@ -233,6 +325,35 @@ def test_partial_existing_bundle_is_rejected(
         )
 
 
+def test_symlinked_output_root_is_rejected_without_touching_target(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "operator-owned"
+    target.mkdir()
+    marker = target / "keep.txt"
+    marker.write_text("operator-owned\n", encoding="utf-8")
+    output_root = tmp_path / "reports"
+    output_root.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="symbolic link",
+    ):
+        BUNDLE.prepare_context(
+            arguments(
+                incomplete_summary,
+                output_root,
+                fake_quarto(tmp_path / "fake"),
+                formats="html",
+                execute=True,
+            )
+        )
+
+    assert marker.read_text(encoding="utf-8") == "operator-owned\n"
+    assert list(target.iterdir()) == [marker]
+
+
 def test_receipt_projection_round_trips_valid_schema(
     incomplete_summary: Path,
     tmp_path: Path,
@@ -269,6 +390,307 @@ def test_receipt_projection_round_trips_valid_schema(
     assert BUNDLE._read_receipt_tsv(receipt) == document
     assert document["analysis_execution_performed"] is False
     assert document["validation_claimed"] is False
+
+
+def test_publication_failure_restores_complete_bundle_without_residue(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stub_html_bundle_renderer: None,
+) -> None:
+    output_root = tmp_path / "reports"
+    quarto = fake_quarto(tmp_path / "fake")
+    first = publish_stub_html_bundle(incomplete_summary, output_root, quarto)
+    before = {
+        path: path.read_bytes()
+        for path in first.stable_paths
+        if path.is_file()
+    }
+    context = BUNDLE.prepare_context(
+        arguments(
+            incomplete_summary,
+            output_root,
+            quarto,
+            formats="html",
+            execute=True,
+        )
+    )
+    original_link = BUNDLE.os.link
+    failure_injected = False
+
+    def fail_summary_publication(
+        source: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        nonlocal failure_injected
+        if (
+            Path(destination) == context.output_summary_tsv
+            and not failure_injected
+        ):
+            failure_injected = True
+            raise OSError("injected bundle publication failure")
+        original_link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(BUNDLE.os, "link", fail_summary_publication)
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="injected bundle publication failure",
+    ):
+        BUNDLE.publish_bundle(context)
+
+    assert {
+        path: path.read_bytes()
+        for path in before
+    } == before
+    assert not context.html.lock_path.exists()
+    assert not list(context.html.output_dir.glob(".run-report-bundle.*.tmp"))
+    assert not list(context.html.output_dir.glob(".*.previous"))
+    assert not list(context.html.output_dir.glob("*.RECOVERY.txt"))
+
+
+def test_incomplete_rollback_preserves_foreign_final_lock_and_recovery(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stub_html_bundle_renderer: None,
+) -> None:
+    output_root = tmp_path / "reports"
+    quarto = fake_quarto(tmp_path / "fake")
+    publish_stub_html_bundle(incomplete_summary, output_root, quarto)
+    context = BUNDLE.prepare_context(
+        arguments(
+            incomplete_summary,
+            output_root,
+            quarto,
+            formats="html",
+            execute=True,
+        )
+    )
+    foreign = b"operator-owned late summary\n"
+    original_link = BUNDLE.os.link
+
+    def inject_foreign_summary(
+        source: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        destination_path = Path(destination)
+        if destination_path == context.output_summary_tsv:
+            destination_path.write_bytes(foreign)
+            raise OSError("injected failure after foreign summary appeared")
+        original_link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(BUNDLE.os, "link", inject_foreign_summary)
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="rollback was incomplete",
+    ):
+        BUNDLE.publish_bundle(context)
+
+    assert context.output_summary_tsv.read_bytes() == foreign
+    assert context.html.lock_path.is_file()
+    assert list(context.html.output_dir.glob(".run-report-bundle.*.tmp"))
+    assert list(context.html.output_dir.glob(".*.previous"))
+    assert list(context.html.output_dir.glob("*.RECOVERY.txt"))
+
+
+def test_post_commit_cleanup_failure_retains_new_bundle_lock_and_recovery(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stub_html_bundle_renderer: None,
+) -> None:
+    output_root = tmp_path / "reports"
+    quarto = fake_quarto(tmp_path / "fake")
+    publish_stub_html_bundle(incomplete_summary, output_root, quarto)
+    context = BUNDLE.prepare_context(
+        arguments(
+            incomplete_summary,
+            output_root,
+            quarto,
+            formats="html",
+            execute=True,
+        )
+    )
+
+    def fail_stage_cleanup(
+        _path: Path,
+        _token: str,
+        _identity: tuple[int, int] | None,
+    ) -> None:
+        raise OSError("injected bundle stage cleanup failure")
+
+    monkeypatch.setattr(
+        BUNDLE.html_report,
+        "_remove_owned_stage",
+        fail_stage_cleanup,
+    )
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="cleanup failed",
+    ):
+        BUNDLE.publish_bundle(context)
+
+    receipt = BUNDLE._read_receipt_tsv(context.output_receipt)
+    assert receipt["publication_state"] == "complete"
+    assert context.html.output_html.is_file()
+    assert context.output_summary_tsv.is_file()
+    assert context.html.lock_path.is_file()
+    assert list(context.html.output_dir.glob(".run-report-bundle.*.tmp"))
+    assert list(context.html.output_dir.glob(".*.previous"))
+    assert list(context.html.output_dir.glob("*.RECOVERY.txt"))
+
+
+def test_output_directory_replacement_is_never_modified_during_recovery(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_root = tmp_path / "reports"
+    context = BUNDLE.prepare_context(
+        arguments(
+            incomplete_summary,
+            output_root,
+            fake_quarto(tmp_path / "fake"),
+            formats="html",
+            execute=True,
+        )
+    )
+    detached = tmp_path / "detached-owned-run-directory"
+    foreign_marker = context.html.output_dir / "operator-owned.txt"
+    original_acquire = BUNDLE.html_report._acquire_lock
+
+    def replace_directory_after_lock(
+        render_context: Any,
+        token: str,
+    ) -> Any:
+        ownership = original_acquire(render_context, token)
+        context.html.output_dir.rename(detached)
+        context.html.output_dir.mkdir()
+        foreign_marker.write_text("operator-owned\n", encoding="utf-8")
+        return ownership
+
+    monkeypatch.setattr(
+        BUNDLE.html_report,
+        "_acquire_lock",
+        replace_directory_after_lock,
+    )
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="rollback was incomplete",
+    ):
+        BUNDLE.publish_bundle(context)
+
+    assert foreign_marker.read_text(encoding="utf-8") == "operator-owned\n"
+    assert list(context.html.output_dir.iterdir()) == [foreign_marker]
+    assert (detached / context.html.lock_path.name).is_file()
+
+
+def test_post_commit_directory_replacement_skips_all_path_cleanup(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    stub_html_bundle_renderer: None,
+) -> None:
+    output_root = tmp_path / "reports"
+    context = BUNDLE.prepare_context(
+        arguments(
+            incomplete_summary,
+            output_root,
+            fake_quarto(tmp_path / "fake"),
+            formats="html",
+            execute=True,
+        )
+    )
+    detached = tmp_path / "detached-committed-run-directory"
+    foreign_marker = context.html.output_dir / "operator-owned.txt"
+    original_recheck = BUNDLE._recheck_inputs
+    recheck_count = 0
+
+    def replace_directory_after_commit_inputs(
+        bundle_context: Any,
+    ) -> None:
+        nonlocal recheck_count
+        original_recheck(bundle_context)
+        recheck_count += 1
+        if recheck_count == 3:
+            context.html.output_dir.rename(detached)
+            context.html.output_dir.mkdir()
+            foreign_marker.write_text("operator-owned\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        BUNDLE,
+        "_recheck_inputs",
+        replace_directory_after_commit_inputs,
+    )
+    with pytest.raises(
+        BUNDLE.html_report.ReportRenderError,
+        match="changed identity during cleanup",
+    ):
+        BUNDLE.publish_bundle(context)
+
+    assert foreign_marker.read_text(encoding="utf-8") == "operator-owned\n"
+    assert list(context.html.output_dir.iterdir()) == [foreign_marker]
+    assert (detached / context.html.lock_path.name).is_file()
+    assert list(detached.glob(".run-report-bundle.*.tmp"))
+    assert (detached / context.html.output_html.name).is_file()
+    assert (detached / context.output_summary_tsv.name).is_file()
+    assert (detached / context.output_receipt.name).is_file()
+
+
+def test_pdf_renderer_signal_terminates_complete_quarto_process_group(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    child_ready = tmp_path / "child-ready"
+    child_sentinel = tmp_path / "child-survived"
+    quarto = blocking_quarto(
+        tmp_path / "fake",
+        child_ready=child_ready,
+        child_sentinel=child_sentinel,
+    )
+    output_root = tmp_path / "reports"
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            str(BUNDLE_SCRIPT),
+            "--run-summary",
+            str(incomplete_summary),
+            "--output-root",
+            str(output_root),
+            "--quarto-bin",
+            str(quarto),
+            "--formats",
+            "pdf",
+            "--execute",
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while not child_ready.exists() and time.monotonic() < deadline:
+            if process.poll() is not None:
+                break
+            time.sleep(0.05)
+        assert child_ready.is_file()
+        process.send_signal(signal.SIGTERM)
+        standard_output, standard_error = process.communicate(timeout=15)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+    assert process.returncode == 1, standard_output + standard_error
+    assert "interrupted by signal SIGTERM" in standard_error
+    time.sleep(1.2)
+    assert not child_sentinel.exists()
+    assert not output_root.exists()
 
 
 def _real_quarto() -> Path:

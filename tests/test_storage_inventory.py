@@ -3,6 +3,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from scripts import storage_inventory
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/storage_inventory.py"
@@ -97,3 +101,95 @@ def test_foreign_lock_and_partial_prior_are_preserved(tmp_path):
     result = run(roots, policy, output, "--execute")
     assert result.returncode == 2
     assert partial.read_text() == "foreign\n"
+
+
+def test_backup_failure_restores_complete_prior_transaction(tmp_path, monkeypatch):
+    roots, policy, _ = contracts(tmp_path)
+    output = tmp_path / "out"; output.mkdir()
+    assert run(roots, policy, output, "--execute").returncode == 0
+    finals = sorted(path for path in output.iterdir() if not path.name.startswith("."))
+    original = {path.name: path.read_bytes() for path in finals}
+    generated = {
+        "inventory": (output / "storage_inventory.tsv").read_bytes(),
+        "policy": (output / "retention_policy.tsv").read_bytes(),
+        "summary": (output / "storage_retention_summary.tsv").read_bytes(),
+    }
+    real_replace = storage_inventory.os.replace
+    backup_attempts = 0
+
+    def fail_second_backup(source, destination):
+        nonlocal backup_attempts
+        if Path(destination).name.endswith(".previous"):
+            backup_attempts += 1
+            if backup_attempts == 2:
+                raise OSError("synthetic backup failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(storage_inventory.os, "replace", fail_second_backup)
+
+    with pytest.raises(OSError, match="synthetic backup failure"):
+        storage_inventory.publish(output, generated)
+
+    assert original == {
+        path.name: path.read_bytes()
+        for path in output.iterdir()
+        if not path.name.startswith(".")
+    }
+    assert not list(output.glob(".*.tmp"))
+    assert not list(output.glob(".*.previous"))
+    assert not (output / ".storage-inventory-retention.lock").exists()
+
+
+def test_publish_failure_restores_complete_prior_transaction(tmp_path, monkeypatch):
+    roots, policy, _ = contracts(tmp_path)
+    output = tmp_path / "out"; output.mkdir()
+    assert run(roots, policy, output, "--execute").returncode == 0
+    original = {
+        path.name: path.read_bytes()
+        for path in output.iterdir()
+        if not path.name.startswith(".")
+    }
+    generated = {
+        "inventory": (output / "storage_inventory.tsv").read_bytes(),
+        "policy": (output / "retention_policy.tsv").read_bytes(),
+        "summary": (output / "storage_retention_summary.tsv").read_bytes(),
+    }
+    real_replace = storage_inventory.os.replace
+    publication_attempts = 0
+
+    def fail_second_publication(source, destination):
+        nonlocal publication_attempts
+        if Path(source).name.endswith(".tmp"):
+            publication_attempts += 1
+            if publication_attempts == 2:
+                raise OSError("synthetic publication failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(storage_inventory.os, "replace", fail_second_publication)
+
+    with pytest.raises(OSError, match="synthetic publication failure"):
+        storage_inventory.publish(output, generated)
+
+    assert original == {
+        path.name: path.read_bytes()
+        for path in output.iterdir()
+        if not path.name.startswith(".")
+    }
+    assert not list(output.glob(".*.tmp"))
+    assert not list(output.glob(".*.previous"))
+    assert not (output / ".storage-inventory-retention.lock").exists()
+
+
+def test_broken_output_symlink_is_rejected_and_preserved(tmp_path):
+    roots, policy, _ = contracts(tmp_path)
+    output = tmp_path / "out"; output.mkdir()
+    broken = output / "storage_inventory.tsv"
+    broken.symlink_to(output / "missing-foreign-target.tsv")
+
+    result = run(roots, policy, output, "--execute")
+
+    assert result.returncode == 2
+    assert "incomplete" in result.stderr
+    assert broken.is_symlink()
+    assert not (output / "retention_policy.tsv").exists()
+    assert not (output / "storage_retention_summary.tsv").exists()

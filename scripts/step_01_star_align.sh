@@ -2,7 +2,8 @@
 # Run STAR alignment for one paired-end RNA-seq sample.
 #
 # The script validates inputs and prints the STAR command in dry-run mode by
-# default. Passing --execute runs STAR with the same validated parameters.
+# default. Passing --execute stages, validates, and publishes STAR's five
+# required outputs without leaving partial stable files after failure.
 set -euo pipefail
 
 # Print the command-line contract used by local smoke tests and SLURM wrappers.
@@ -151,7 +152,32 @@ if [[ "$r1_is_gz" == true ]]; then
     command -v gunzip >/dev/null 2>&1 || die "gunzip was not found on PATH but both FASTQ files end in .gz."
 fi
 
-mkdir -p "$output_dir"
+if [[ -L "$output_dir" ]]; then
+    die "Output directory must not be a symbolic link: $output_dir"
+fi
+if [[ -e "$output_dir" && ! -d "$output_dir" ]]; then
+    die "Output path exists but is not a directory: $output_dir"
+fi
+
+run_token="${SLURM_JOB_ID:-manual}.$$"
+stable_prefix="$output_dir/${sample_id}."
+staging_dir="$output_dir/.step01.${run_token}.tmp"
+staging_prefix="$staging_dir/output."
+
+output_suffixes=(
+    Aligned.sortedByCoord.out.bam
+    Log.final.out
+    Log.out
+    Log.progress.out
+    SJ.out.tab
+)
+
+stable_outputs=()
+staged_outputs=()
+for suffix in "${output_suffixes[@]}"; do
+    stable_outputs+=("${stable_prefix}${suffix}")
+    staged_outputs+=("${staging_prefix}${suffix}")
+done
 
 # Report the resolved run context so cluster logs are reproducible.
 mode="dry-run"
@@ -165,16 +191,18 @@ printf '  R1 FASTQ: %s\n' "$r1_fastq"
 printf '  R2 FASTQ: %s\n' "$r2_fastq"
 printf '  STAR index: %s\n' "$star_index"
 printf '  Output directory: %s\n' "$output_dir"
+printf '  Stable output prefix: %s\n' "$stable_prefix"
 printf '  Threads: %s\n' "$threads"
 printf '  Mode: %s\n' "$mode"
 
-# Write coordinate-sorted BAM directly to avoid large default SAM output.
+# Write a coordinate-sorted BAM into an owned staging directory. Execute mode
+# publishes the five required files only after all of them are nonempty.
 star_command=(
     STAR
     --runThreadN "$threads"
     --genomeDir "$star_index"
     --readFilesIn "$r1_fastq" "$r2_fastq"
-    --outFileNamePrefix "$output_dir/${sample_id}."
+    --outFileNamePrefix "$staging_prefix"
     --outSAMtype BAM SortedByCoordinate
 )
 
@@ -184,6 +212,8 @@ fi
 
 printf 'STAR command:\n'
 print_command "${star_command[@]}"
+printf 'Required stable outputs:\n'
+printf '  %s\n' "${stable_outputs[@]}"
 
 # Dry-run mode is the default safety path for local development and wrapper tests.
 if [[ "$execute" != true ]]; then
@@ -191,5 +221,69 @@ if [[ "$execute" != true ]]; then
     exit 0
 fi
 
+# Stable outputs are no-clobber. This prevents cleanup for a failed new attempt
+# from deleting or mixing with an earlier result family.
+for output in "${stable_outputs[@]}"; do
+    [[ ! -e "$output" && ! -L "$output" ]] \
+        || die "Refusing to overwrite existing STAR output: $output"
+done
+
+output_dir_created=false
+if [[ ! -d "$output_dir" ]]; then
+    output_dir_created=true
+fi
+mkdir -p "$output_dir"
+
+[[ ! -e "$staging_dir" && ! -L "$staging_dir" ]] \
+    || die "Refusing to reuse existing Step 01 staging path: $staging_dir"
+mkdir "$staging_dir"
+
+published_count=0
+cleanup_owned_attempt() {
+    local status=$?
+    local index
+
+    trap - EXIT HUP INT TERM
+
+    if [[ "$status" -ne 0 ]]; then
+        for ((index = 0; index < published_count; index++)); do
+            rm -f -- "${stable_outputs[$index]}" || true
+        done
+    fi
+
+    if [[ -d "$staging_dir" && ! -L "$staging_dir" ]]; then
+        rm -rf -- "$staging_dir" || true
+    fi
+
+    if [[ "$status" -ne 0 && "$output_dir_created" == true ]]; then
+        rmdir "$output_dir" 2>/dev/null || true
+    fi
+
+    exit "$status"
+}
+trap cleanup_owned_attempt EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Execute only after validation and command logging are complete.
 "${star_command[@]}"
+
+for output in "${staged_outputs[@]}"; do
+    [[ -s "$output" ]] || die "STAR required output is missing or empty: $output"
+done
+
+for ((index = 0; index < ${#stable_outputs[@]}; index++)); do
+    # A same-filesystem hard link makes the no-clobber decision atomic. The
+    # staging directory lives under the output directory by construction.
+    ln -- "${staged_outputs[$index]}" "${stable_outputs[$index]}"
+    published_count=$((published_count + 1))
+    rm -f -- "${staged_outputs[$index]}"
+done
+
+for output in "${stable_outputs[@]}"; do
+    [[ -s "$output" ]] || die "Published STAR output is missing or empty: $output"
+done
+
+printf 'Published STAR outputs:\n'
+printf '  %s\n' "${stable_outputs[@]}"

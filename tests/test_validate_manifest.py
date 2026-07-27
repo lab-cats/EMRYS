@@ -37,11 +37,13 @@ def valid_rows() -> list[list[str]]:
 
 def test_help_interface() -> None:
     result = run_validator("--help")
+    normalized_help = " ".join(result.stdout.split())
 
     assert result.returncode == 0
     assert "--manifest" in result.stdout
     assert "--base-dir" in result.stdout
     assert "--check-files" in result.stdout
+    assert "regular files" in normalized_help
 
 
 def test_legacy_manifest_without_replicate_is_allowed(tmp_path: Path) -> None:
@@ -150,6 +152,68 @@ def test_unexpected_column_fails(tmp_path: Path) -> None:
     assert "Unexpected column(s): batch" in result.stderr
 
 
+def test_duplicate_and_empty_header_names_fail(tmp_path: Path) -> None:
+    duplicate = write_manifest(
+        tmp_path / "duplicate.tsv",
+        valid_header() + [" sample_id "],
+        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "reverse", "control", "duplicate"]],
+    )
+    empty = write_manifest(
+        tmp_path / "empty.tsv",
+        valid_header() + ["   "],
+        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "reverse", "control", "value"]],
+    )
+
+    duplicate_result = run_validator("--manifest", str(duplicate))
+    empty_result = run_validator("--manifest", str(empty))
+
+    assert duplicate_result.returncode != 0
+    assert "Duplicate column name(s): sample_id" in duplicate_result.stderr
+    assert empty_result.returncode != 0
+    assert "Header contains an empty column name" in empty_result.stderr
+
+
+def test_extra_fields_fail_even_when_the_extra_field_is_empty(tmp_path: Path) -> None:
+    with_value = write_manifest(
+        tmp_path / "extra-value.tsv",
+        valid_header(),
+        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "reverse", "control", "unexpected"]],
+    )
+    empty_value = write_manifest(
+        tmp_path / "extra-empty.tsv",
+        valid_header(),
+        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "reverse", "control", ""]],
+    )
+
+    with_value_result = run_validator("--manifest", str(with_value))
+    empty_value_result = run_validator("--manifest", str(empty_value))
+
+    assert with_value_result.returncode != 0
+    assert (
+        "Row 2: too many tab-separated fields: unexpected"
+        in with_value_result.stderr
+    )
+    assert empty_value_result.returncode != 0
+    assert "Row 2: too many tab-separated fields" in empty_value_result.stderr
+
+
+def test_blank_lines_and_blank_rows_are_ignored(tmp_path: Path) -> None:
+    manifest = tmp_path / "samples.tsv"
+    manifest.write_text(
+        "\t".join(valid_header())
+        + "\n\n"
+        + "\t".join(valid_rows()[0])
+        + "\n\t\t\t\t\n"
+        + "\t".join(valid_rows()[1])
+        + "\n"
+    )
+
+    result = run_validator("--manifest", str(manifest))
+
+    assert result.returncode == 0, result.stderr
+    assert "Samples: 2" in result.stdout
+
+
 def test_duplicate_sample_id_fails(tmp_path: Path) -> None:
     manifest = write_manifest(
         tmp_path / "samples.tsv",
@@ -179,6 +243,19 @@ def test_empty_required_fields_fail(tmp_path: Path) -> None:
     assert "Row 2: sample_id must be non-empty" in result.stderr
     assert "Row 2: r1_fastq must be non-empty" in result.stderr
     assert "Row 2: r2_fastq must be non-empty" in result.stderr
+
+
+def test_empty_condition_fails(tmp_path: Path) -> None:
+    manifest = write_manifest(
+        tmp_path / "samples.tsv",
+        valid_header(),
+        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "reverse", ""]],
+    )
+
+    result = run_validator("--manifest", str(manifest))
+
+    assert result.returncode != 0
+    assert "Row 2: condition must be non-empty" in result.stderr
 
 
 def test_invalid_strandedness_fails(tmp_path: Path) -> None:
@@ -218,6 +295,38 @@ def test_missing_fastq_files_fail_when_check_files_is_set(tmp_path: Path) -> Non
     assert result.returncode != 0
     assert "Row 2: r1_fastq file does not exist:" in result.stderr
     assert "reads/sample_001_R1.fastq.gz" in result.stderr
+
+
+def test_fastq_directories_fail_when_check_files_is_set(tmp_path: Path) -> None:
+    reads_dir = tmp_path / "reads"
+    r1_dir = reads_dir / "sample_001_R1.fastq.gz"
+    r2 = reads_dir / "sample_001_R2.fastq.gz"
+    r1_dir.mkdir(parents=True)
+    r2.write_text("")
+    manifest = write_manifest(
+        tmp_path / "samples.tsv",
+        valid_header(),
+        [
+            [
+                "sample_001",
+                "reads/sample_001_R1.fastq.gz",
+                "reads/sample_001_R2.fastq.gz",
+                "reverse",
+                "control",
+            ]
+        ],
+    )
+
+    result = run_validator(
+        "--manifest",
+        str(manifest),
+        "--base-dir",
+        str(tmp_path),
+        "--check-files",
+    )
+
+    assert result.returncode != 0
+    assert "Row 2: r1_fastq is not a regular file:" in result.stderr
 
 
 def test_absolute_fastq_path_is_checked_directly(tmp_path: Path) -> None:

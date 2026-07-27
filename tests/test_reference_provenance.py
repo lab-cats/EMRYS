@@ -4,6 +4,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from scripts import reference_provenance
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "reference_provenance.py"
@@ -122,3 +126,101 @@ def test_partial_prior_and_foreign_lock_are_preserved(tmp_path):
     result = run(inventory, output, "--execute")
     assert result.returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_backup_failure_restores_complete_prior_transaction(tmp_path, monkeypatch):
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"; output.mkdir()
+    assert run(inventory, output, "--execute").returncode == 0
+    directory = output / "ref1"
+    finals = sorted(path for path in directory.iterdir() if not path.name.startswith("."))
+    original = {path.name: path.read_bytes() for path in finals}
+    generated = {
+        "artifacts": (directory / "ref1.reference_artifacts.tsv").read_bytes(),
+        "contigs": (directory / "ref1.reference_contigs.tsv").read_bytes(),
+        "summary": (directory / "ref1.reference_summary.tsv").read_bytes(),
+    }
+    real_replace = reference_provenance.os.replace
+    backup_attempts = 0
+
+    def fail_second_backup(source, destination):
+        nonlocal backup_attempts
+        if Path(destination).name.endswith(".previous"):
+            backup_attempts += 1
+            if backup_attempts == 2:
+                raise OSError("synthetic backup failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(reference_provenance.os, "replace", fail_second_backup)
+
+    with pytest.raises(OSError, match="synthetic backup failure"):
+        reference_provenance.publish(output, "ref1", generated)
+
+    assert original == {
+        path.name: path.read_bytes()
+        for path in directory.iterdir()
+        if not path.name.startswith(".")
+    }
+    assert not list(directory.glob(".*.tmp"))
+    assert not list(directory.glob(".*.previous"))
+    assert not (directory / ".ref1.reference-provenance.lock").exists()
+
+
+def test_publish_failure_restores_complete_prior_transaction(tmp_path, monkeypatch):
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"; output.mkdir()
+    assert run(inventory, output, "--execute").returncode == 0
+    directory = output / "ref1"
+    original = {
+        path.name: path.read_bytes()
+        for path in directory.iterdir()
+        if not path.name.startswith(".")
+    }
+    generated = {
+        "artifacts": (directory / "ref1.reference_artifacts.tsv").read_bytes(),
+        "contigs": (directory / "ref1.reference_contigs.tsv").read_bytes(),
+        "summary": (directory / "ref1.reference_summary.tsv").read_bytes(),
+    }
+    real_replace = reference_provenance.os.replace
+    publication_attempts = 0
+
+    def fail_second_publication(source, destination):
+        nonlocal publication_attempts
+        if Path(source).name.endswith(".tmp"):
+            publication_attempts += 1
+            if publication_attempts == 2:
+                raise OSError("synthetic publication failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(
+        reference_provenance.os, "replace", fail_second_publication
+    )
+
+    with pytest.raises(OSError, match="synthetic publication failure"):
+        reference_provenance.publish(output, "ref1", generated)
+
+    assert original == {
+        path.name: path.read_bytes()
+        for path in directory.iterdir()
+        if not path.name.startswith(".")
+    }
+    assert not list(directory.glob(".*.tmp"))
+    assert not list(directory.glob(".*.previous"))
+    assert not (directory / ".ref1.reference-provenance.lock").exists()
+
+
+def test_broken_output_symlink_is_rejected_and_preserved(tmp_path):
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"
+    directory = output / "ref1"
+    directory.mkdir(parents=True)
+    broken = directory / "ref1.reference_artifacts.tsv"
+    broken.symlink_to(directory / "missing-foreign-target.tsv")
+
+    result = run(inventory, output, "--execute")
+
+    assert result.returncode == 2
+    assert "incomplete" in result.stderr
+    assert broken.is_symlink()
+    assert not (directory / "ref1.reference_contigs.tsv").exists()
+    assert not (directory / "ref1.reference_summary.tsv").exists()

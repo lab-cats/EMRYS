@@ -77,6 +77,54 @@ def test_receipt_count_disagreement_is_failed_evidence(tmp_path):
     assert status["vcf_record_counts"] == "fail"
 
 
+def test_vcf_sample_order_disagreement_is_failed_evidence(tmp_path):
+    values = fixture(tmp_path)
+    values[3].write_text(
+        values[3].read_text().replace(
+            "\tFORMAT\tA\tB\n",
+            "\tFORMAT\tB\tA\n",
+        )
+    )
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["vcf_structure"] == "fail"
+    assert status["manifest_identity_and_sample_order"] == "fail"
+
+
+def test_out_of_range_selector_is_failed_without_masking_manifest_identity(
+    tmp_path,
+):
+    values = fixture(tmp_path)
+    old_partition_hash = hashlib.sha256(values[1].read_bytes()).hexdigest()
+    values[1].write_text(
+        values[1].read_text().replace("1:1-10", "1:1-101")
+    )
+    new_partition_hash = hashlib.sha256(values[1].read_bytes()).hexdigest()
+    values[5].write_text(
+        values[5]
+        .read_text()
+        .replace("1:1-10", "1:1-101")
+        .replace(old_partition_hash, new_partition_hash)
+    )
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["selector_reconciliation"] == "fail"
+    assert status["manifest_identity_and_sample_order"] == "pass"
+
+
+def test_receipt_manifest_hash_disagreement_is_failed_evidence(tmp_path):
+    values = fixture(tmp_path)
+    sample_hash = hashlib.sha256(values[0].read_bytes()).hexdigest()
+    values[5].write_text(values[5].read_text().replace(sample_hash, "0" * 64))
+
+    assert run(values, "--execute").returncode == 0
+    status = {row["check_id"]: row["status"] for row in rows(values[-1])}
+    assert status["manifest_identity_and_sample_order"] == "fail"
+    assert status["vcf_record_counts"] == "pass"
+
+
 def test_missing_input_and_wrong_output_fail_closed(tmp_path):
     values = fixture(tmp_path)
     values[3].unlink()

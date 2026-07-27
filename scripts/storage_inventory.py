@@ -318,7 +318,7 @@ def publish(output_root: Path, generated: dict[str, bytes]) -> None:
         "summary": "storage_retention_summary.tsv",
     }
     finals = {key: output_root / value for key, value in names.items()}
-    present = [path.exists() for path in finals.values()]
+    present = [path.exists() or path.is_symlink() for path in finals.values()]
     if any(present) and not all(present):
         fail("Existing storage/retention outputs are incomplete")
     lock = output_root / ".storage-inventory-retention.lock"
@@ -348,7 +348,16 @@ def publish(output_root: Path, generated: dict[str, bytes]) -> None:
                     expected[key][0],
                     expected[key][1],
                 )
-                os.replace(finals[key], backups[key])
+            backed_up: list[str] = []
+            try:
+                for key in names:
+                    os.replace(finals[key], backups[key])
+                    backed_up.append(key)
+            except BaseException:
+                for key in reversed(backed_up):
+                    if backups[key].exists():
+                        os.replace(backups[key], finals[key])
+                raise
         published = []
         try:
             for key in ("inventory", "policy", "summary"):

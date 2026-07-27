@@ -8,6 +8,7 @@ import io
 import json
 import os
 import stat
+import subprocess
 import sys
 import tarfile
 from pathlib import Path
@@ -322,6 +323,50 @@ def test_wrong_hash_fails_closed_and_cleans_owned_paths(tmp_path: Path) -> None:
     assert_no_restore_residue(install_root)
 
 
+def test_owned_archive_mutation_after_extraction_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "quarto"
+    original_extract = RESTORE._extract_archive
+
+    def extract_then_mutate(owned_archive: Path, destination: Path) -> None:
+        original_extract(owned_archive, destination)
+        owned_archive.write_bytes(owned_archive.read_bytes() + b"mutation")
+
+    monkeypatch.setattr(RESTORE, "_extract_archive", extract_then_mutate)
+    with pytest.raises(
+        RESTORE.QuartoRestoreError,
+        match="Owned Quarto archive changed",
+    ):
+        restore_fixture(archive, install_root)
+
+    assert not (install_root / RESTORE.QUARTO_VERSION).exists()
+    assert_no_restore_residue(install_root)
+
+
+def test_quarto_version_timeout_fails_and_cleans_owned_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "quarto"
+
+    def time_out(*args, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=args[0],
+            timeout=kwargs["timeout"],
+        )
+
+    monkeypatch.setattr(RESTORE.subprocess, "run", time_out)
+    with pytest.raises(RESTORE.QuartoRestoreError, match="timed out"):
+        restore_fixture(archive, install_root)
+
+    assert not (install_root / RESTORE.QUARTO_VERSION).exists()
+    assert_no_restore_residue(install_root)
+
+
 @pytest.mark.parametrize(
     ("member", "message"),
     [
@@ -430,3 +475,152 @@ def test_post_publish_validation_failure_removes_only_new_install(
 
     assert not (install_root / RESTORE.QUARTO_VERSION).exists()
     assert_no_restore_residue(install_root)
+
+
+def test_stage_cleanup_failure_retains_lock_stage_and_recovery_marker(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "quarto"
+
+    def fail_cleanup(
+        path: Path,
+        token: str,
+        identity: tuple[int, int] | None,
+    ) -> None:
+        raise OSError("injected stage cleanup failure")
+
+    monkeypatch.setattr(RESTORE, "_remove_owned_tree", fail_cleanup)
+    with pytest.raises(
+        RESTORE.QuartoRestoreError,
+        match="cleanup failed; preserve the lock",
+    ):
+        RESTORE.restore_from_archive(
+            archive=archive,
+            install_root=install_root,
+            expected_sha256="0" * 64,
+        )
+
+    lock = install_root / f".restore-{RESTORE.QUARTO_VERSION}.lock"
+    stages = list(install_root.glob(".restore-*.tmp"))
+    markers = list(install_root.glob(".restore-*.RECOVERY.txt"))
+    assert lock.is_file()
+    assert len(stages) == 1
+    assert len(markers) == 1
+    assert "owned stage cleanup failed" in markers[0].read_text(encoding="utf-8")
+
+
+def test_post_publish_rollback_failure_retains_recovery_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "quarto"
+    original_validate = RESTORE.validate_installation
+    real_replace = os.replace
+
+    def fail_after_publish(
+        target: Path,
+        *,
+        expected_sha256: str = RESTORE.QUARTO_SHA256,
+    ) -> Path:
+        if target.exists():
+            raise RESTORE.QuartoRestoreError("synthetic post-publish failure")
+        return original_validate(target, expected_sha256=expected_sha256)
+
+    def fail_target_recovery(source, destination):
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if (
+            source_path == install_root / RESTORE.QUARTO_VERSION
+            and destination_path.name == "published-install"
+        ):
+            raise OSError("injected rollback failure")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(RESTORE, "validate_installation", fail_after_publish)
+    monkeypatch.setattr(RESTORE.os, "replace", fail_target_recovery)
+    with pytest.raises(
+        RESTORE.QuartoRestoreError,
+        match="preserve the lock and recovery state",
+    ):
+        restore_fixture(archive, install_root)
+
+    lock = install_root / f".restore-{RESTORE.QUARTO_VERSION}.lock"
+    markers = list(install_root.glob(".restore-*.RECOVERY.txt"))
+    assert lock.is_file()
+    assert len(markers) == 1
+    assert "injected rollback failure" in markers[0].read_text(encoding="utf-8")
+    assert (install_root / RESTORE.QUARTO_VERSION).is_dir()
+
+
+def test_public_download_stage_cleanup_failure_is_normalized(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "tools" / "quarto"
+    archive_digest = sha256_file(archive)
+    original_remove = RESTORE._remove_owned_tree
+
+    def fail_download_cleanup(
+        path: Path,
+        token: str,
+        identity: tuple[int, int] | None,
+    ) -> None:
+        if path.name.startswith(".quarto-download-"):
+            raise OSError("injected download cleanup failure")
+        original_remove(path, token, identity)
+
+    monkeypatch.setattr(RESTORE.sys, "platform", "darwin")
+    monkeypatch.setattr(RESTORE, "QUARTO_SHA256", archive_digest)
+    monkeypatch.setattr(RESTORE, "_remove_owned_tree", fail_download_cleanup)
+    with pytest.raises(
+        RESTORE.QuartoRestoreError,
+        match="download staging cleanup failed",
+    ):
+        RESTORE.restore_quarto(install_root=install_root, archive=archive)
+
+    assert (install_root / RESTORE.QUARTO_VERSION / "bin" / "quarto").is_file()
+    stages = list(install_root.parent.glob(".quarto-download-*.tmp"))
+    assert len(stages) == 1
+
+
+def test_public_download_path_restores_verified_archive_and_cleans_stage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = build_archive(tmp_path / "quarto.tar.gz")
+    install_root = tmp_path / "tools" / "quarto"
+
+    def copy_download(destination: Path) -> None:
+        destination.write_bytes(archive.read_bytes())
+
+    monkeypatch.setattr(RESTORE.sys, "platform", "darwin")
+    monkeypatch.setattr(RESTORE, "QUARTO_SHA256", sha256_file(archive))
+    monkeypatch.setattr(RESTORE, "_download_archive", copy_download)
+    executable = RESTORE.restore_quarto(install_root=install_root)
+
+    assert executable == install_root / RESTORE.QUARTO_VERSION / "bin" / "quarto"
+    assert executable.is_file()
+    assert not list(install_root.parent.glob(".quarto-download-*.tmp"))
+
+
+def test_public_download_failure_cleans_partial_owned_stage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_root = tmp_path / "tools" / "quarto"
+
+    def fail_download(destination: Path) -> None:
+        destination.write_bytes(b"partial archive")
+        raise RESTORE.QuartoRestoreError("synthetic download failure")
+
+    monkeypatch.setattr(RESTORE.sys, "platform", "darwin")
+    monkeypatch.setattr(RESTORE, "_download_archive", fail_download)
+    with pytest.raises(RESTORE.QuartoRestoreError, match="synthetic download"):
+        RESTORE.restore_quarto(install_root=install_root)
+
+    assert not (install_root / RESTORE.QUARTO_VERSION).exists()
+    assert not list(install_root.parent.glob(".quarto-download-*.tmp"))

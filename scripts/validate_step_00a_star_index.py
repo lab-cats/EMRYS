@@ -291,6 +291,7 @@ def publish(
     except FileExistsError:
         fail(f"Validation report lock already exists: {lock}")
     replaced = False
+    keep_recovery = False
     try:
         os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
         with staged.open("xb") as stream:
@@ -313,20 +314,73 @@ def publish(
             validate_report(
                 path.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
             )
-        except BaseException:
+        except BaseException as publication_error:
+            rollback_failures: list[str] = []
             if path.exists() and not path.is_symlink():
-                path.unlink()
-            if replaced and previous.exists():
-                os.replace(previous, path)
+                try:
+                    path.unlink()
+                except OSError as exc:
+                    rollback_failures.append(f"remove published report: {exc}")
+            elif path.is_symlink():
+                rollback_failures.append(
+                    f"published report became a symbolic link: {path}"
+                )
+            if replaced:
+                if previous.exists() and not previous.is_symlink():
+                    try:
+                        os.replace(previous, path)
+                    except OSError as exc:
+                        rollback_failures.append(
+                            f"restore previous report: {exc}"
+                        )
+                else:
+                    rollback_failures.append(
+                        f"previous report is unavailable or unsafe: {previous}"
+                    )
+            if rollback_failures:
+                keep_recovery = True
+                raise ValidationError(
+                    f"{publication_error}\n"
+                    "Validation report rollback was incomplete; lock and "
+                    f"recovery paths were retained: {lock}; "
+                    + "; ".join(rollback_failures)
+                ) from publication_error
             raise
         if previous.exists():
-            previous.unlink()
+            try:
+                previous.unlink()
+            except OSError as exc:
+                keep_recovery = True
+                fail(
+                    "Validation report cleanup was incomplete; lock and "
+                    f"recovery paths were retained: {lock}; "
+                    f"remove previous report: {exc}"
+                )
     finally:
-        if staged.exists() and not staged.is_symlink():
-            staged.unlink()
-        os.close(descriptor)
-        if lock.exists() and not lock.is_symlink():
-            lock.unlink()
+        cleanup_failures: list[str] = []
+        if not keep_recovery and staged.exists() and not staged.is_symlink():
+            try:
+                staged.unlink()
+            except OSError as exc:
+                keep_recovery = True
+                cleanup_failures.append(f"remove staged report: {exc}")
+        try:
+            os.close(descriptor)
+        except OSError as exc:
+            keep_recovery = True
+            cleanup_failures.append(f"close lock descriptor: {exc}")
+        if not keep_recovery and lock.exists() and not lock.is_symlink():
+            try:
+                lock.unlink()
+            except OSError as exc:
+                keep_recovery = True
+                cleanup_failures.append(f"remove owned lock: {exc}")
+        if cleanup_failures:
+            raise ValidationError(
+                "Validation report cleanup was incomplete; lock and recovery "
+                f"paths were retained: {lock}; "
+                + "; ".join(cleanup_failures)
+            )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

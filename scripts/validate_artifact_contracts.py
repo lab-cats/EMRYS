@@ -139,7 +139,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check-schemas",
         action="store_true",
-        help="Validate all four tracked schemas against Draft 2020-12.",
+        help=(
+            "Validate the shared schema and all four public record schemas "
+            "against Draft 2020-12."
+        ),
     )
     parser.add_argument(
         "--schema",

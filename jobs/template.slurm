@@ -26,7 +26,7 @@ echo "Started: $(date)"
 echo "Working directory: $PWD"
 
 # Show the inherited module state before the job loads its own requirements.
-module list || true
+module list 2>&1 || true
 
 # Load modules here, e.g.:
 # CSU modules discovered so far.
@@ -38,7 +38,7 @@ module load python39
 # module load R/...
 
 # Show the final module state and basic tool versions for debugging logs.
-module list || true
+module list 2>&1 || true
 
 echo "Tool versions:"
 python --version

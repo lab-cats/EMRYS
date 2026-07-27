@@ -792,7 +792,18 @@ def restore_quarto(install_root: Path, archive: Path | None = None) -> Path:
             expected_sha256=QUARTO_SHA256,
         )
     finally:
-        _remove_owned_tree(download_stage, token, download_identity)
+        active = sys.exc_info()[1]
+        try:
+            _remove_owned_tree(download_stage, token, download_identity)
+        except Exception as cleanup_exc:
+            active_detail = (
+                f"; active restore error: {active}" if active is not None else ""
+            )
+            raise QuartoRestoreError(
+                "Quarto download staging cleanup failed; preserve the owned "
+                f"stage for inspection: {download_stage}: {cleanup_exc}"
+                f"{active_detail}"
+            ) from active
 
 
 def main(argv: list[str] | None = None) -> int:
