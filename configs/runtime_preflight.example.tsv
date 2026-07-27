@@ -1,0 +1,6 @@
+check_id	check_type	runtime_context	required	target	probe_args	expected	description
+python_version	tool_version	any	true	python3	["--version"]	^Python 3[.]	Batch-visible Python 3 runtime
+rscript_version	tool_version	cluster_batch	true	Rscript	["--version"]	^Rscript [(]R[)] version 4[.]	Batch-visible Rscript runtime
+variant_annotation	r_namespace	cluster_batch	true	VariantAnnotation	["Rscript"]	^[0-9]+[.][0-9]+[.][0-9]+$	Required Step 08 R namespace
+sha256_python	hash_utility	any	true	python3	["python_hashlib"]	sha256	Functional SHA-256 implementation
+results_visibility	path_visibility	cluster_batch	true	/explicit/cluster/results	["directory_readable"]	readable	Batch-readable results root
