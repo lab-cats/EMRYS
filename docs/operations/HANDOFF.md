@@ -7,20 +7,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-06`
+  `post09-validation-report-07`
 - Parent:
-  `post09-validation-report-05`
+  `post09-validation-report-06`
 - Verified parent HEAD:
-  `d1e05121f3d3b7894eb52d38e73a923c645e30a4`
+  `f14ebbda18aceaf209403fdc365acd05afbdbd31`
 - Parent implementation:
-  `c002f7e implement step 05 validation report`
-- Current implementation:
   `fcf5a8f implement step 06 validation report`
+- Current implementation:
+  `dc31967 implement step 07 validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `06` validation branch was created only after fetching remote refs and
-verifying a clean, upstream-equal parent and an absent target branch.
+The Step `07` validation branch was created only after verifying a clean,
+upstream-equal parent and an absent target branch.
 
 ## Completed boundary
 
@@ -57,6 +57,8 @@ The local descendant sequence has implemented:
   summary/HTML/PDF propagation fixture.
 - a Step `06` mechanical-orientation output/count validation report, typed
   artifact adapter, and summary/HTML/PDF propagation fixture.
+- a Step `07` VCF/receipt/selector/manifest/count validation report, typed
+  artifact adapter, and summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
 
@@ -91,6 +93,7 @@ The local descendant sequence has implemented:
 | Step `04` structured validation | BAM/BAI containers, quickcheck, coordinate sorting, read-group preservation, and bounded Picard duplication metrics implemented and locally fixture/report tested; no new production execution |
 | Step `05` structured validation | BAM/BAI containers, quickcheck, coordinate/read-group preservation, and exact FASTA/FAI/DICT agreement implemented and locally fixture/report tested; no new production execution |
 | Step `06` structured validation | two BAM/BAI output pairs, exact counts-table structure, per-flag mechanical-orientation sums, assigned/unassigned totals, and assigned-fraction reconciliation implemented and locally fixture/report tested; no new production execution |
+| Step `07` structured validation | exact two-row receipt, VCF structure, selector/FAI reconciliation, manifest hashes and sample order, and VCF paths/counts implemented and locally fixture/report tested; no real-bcftools or cluster execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -170,9 +173,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-06` implementation and documentation gates are
+The `post09-validation-report-07` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-07`.
+`post09-validation-report-08`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

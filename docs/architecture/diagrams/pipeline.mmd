@@ -23,6 +23,7 @@ flowchart LR
     splitread --> validate06["06 read-only validation TSV"]
     partitions["Explicit partition manifest"] --> mpileup["07 cohort mpileup"]
     splitread --> mpileup
+    mpileup --> validate07["07 read-only validation TSV"]
     mpileup --> preprocess["08 VCF preprocessing"]
     preprocess --> cmh["09 paired CMH ranking"]
     cmh --> science["09c scientific evidence review"]
@@ -38,5 +39,6 @@ flowchart LR
     validate04 --> adapters
     validate05 --> adapters
     validate06 --> adapters
+    validate07 --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]

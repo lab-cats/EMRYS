@@ -735,6 +735,27 @@ separately authorized Step `06` workflow to regenerate an invalid set. Do not
 merge reads, create indexes, rewrite counts, or reinterpret `FWD_like` and
 `REV_like` as biological strand labels inside the validator.
 
+## Step 07 structured validation reports transaction disagreement
+
+### Symptom
+
+The Step `07` validation TSV reports a receipt, VCF, selector, manifest
+identity/sample-order, path, or record-count failure.
+
+### Cause
+
+The declared receipt and VCFs may not be one completed transaction, the
+manifests may have changed, the VCF sample columns may differ from manifest
+order, or the selector may not reconcile with the declared FAI. A valid
+header-only VCF has zero records and is not itself a failure.
+
+### Fix
+
+Inspect the exact receipt, two VCFs, manifests, FAI, producing job, and logs.
+Use the separately authorized Step `07` workflow to regenerate an invalid set.
+Do not edit hashes, counts, sample columns, selectors, or receipt paths inside
+the validator.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1926,7 +1947,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 77-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 79-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

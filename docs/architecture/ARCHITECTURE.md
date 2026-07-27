@@ -195,3 +195,10 @@ Step `06` validates the two explicit mechanical-orientation BAM/BAI pairs and
 the exact one-row orientation counts contract. It reconciles the flag-group,
 assigned/unassigned, and fraction arithmetic without invoking samtools,
 changing outputs, or inferring biological strand.
+
+Step `07` validates one explicit cohort-partition receipt and its two VCFs
+against the declared sample manifest, partition manifest, and FAI. It
+reconciles selector membership, immutable hashes, sample order, paths, and
+record counts without invoking bcftools. Failed expected scopes are projected
+as a compact named list in both report formats so late matrix rows remain
+visible in PDF text.

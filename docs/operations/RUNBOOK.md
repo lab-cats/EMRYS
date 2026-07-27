@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 77 synthetic physical artifacts
+requirements. The example inventory contains 79 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 59 registered read-only adapters covering the 77
+The adapter builder has 60 registered read-only adapters covering the 79
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -2489,6 +2489,32 @@ configs/step_07_partitions.pilot.tsv
 configs/step_07_partitions.primary_contigs.tsv
 configs/step_07_partitions.example.tsv
 ```
+
+Structured validation consumes one exact completed partition transaction and
+is dry-run-first:
+
+```bash
+cohort=<cohort_id>
+partition=<partition_id>
+partition_dir="results/mpileup/$cohort/$partition"
+
+.venv/bin/python scripts/validate_step_07_mpileup_outputs.py \
+  --cohort-id "$cohort" \
+  --partition-id "$partition" \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --reference-fai refs/novogene_ref/genome.fa.fai \
+  --fwd-vcf "$partition_dir/$cohort.$partition.FWD_like.mpileup.vcf" \
+  --rev-vcf "$partition_dir/$cohort.$partition.REV_like.mpileup.vcf" \
+  --receipt "$partition_dir/$cohort.$partition.step07_outputs.tsv" \
+  --output "results/qc/validation/07/${cohort}__${partition}.validation.tsv"
+```
+
+After inspecting the five printed checks, publish with the same command plus
+`--execute`. The validator reads only the declared manifests, FAI, two VCFs,
+and receipt. It reconciles receipt structure, VCF sample columns, selector
+membership, manifest hashes/order, paths, and record counts without invoking
+bcftools or promoting real-runtime or cluster state.
 
 Partition manifest schema:
 
