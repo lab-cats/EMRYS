@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters-v1 fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 74 explicit source paths into a caller-owned temporary directory
+rewrites its 75 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -145,9 +145,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 74:
+    if len(rows) != 75:
         raise RuntimeError(
-            f"Expected 74 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 75 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -426,6 +426,7 @@ def tsv_rows_for(
         "step02_validation_report_v1",
         "step02b_validation_report_v1",
         "step03_validation_report_v1",
+        "step04_validation_report_v1",
     }:
         check_ids = (
             (
@@ -482,6 +483,14 @@ def tsv_rows_for(
                 "paired_orientation_fraction_a",
                 "paired_orientation_fraction_b",
                 "fraction_sum",
+            )
+            if adapter == "step03_validation_report_v1"
+            else (
+                "bam_bai_structure",
+                "samtools_quickcheck",
+                "coordinate_sorting",
+                "read_group_preservation",
+                "duplication_metrics",
             )
         )
         for output_row, check_id in zip(rows, check_ids, strict=True):
@@ -812,8 +821,8 @@ def write_adapter_source(
     elif spec.kind == "picard_metrics":
         path.write_text(
             "## METRICS CLASS synthetic\n"
-            "LIBRARY\tUNPAIRED_READS_EXAMINED\n"
-            "synthetic\t1\n",
+            "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+            "synthetic\t10\t2\t0.2\n",
             encoding="utf-8",
         )
     elif spec.kind == "text":
