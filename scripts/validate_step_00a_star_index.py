@@ -170,7 +170,13 @@ def render(rows: Sequence[Sequence[str]]) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def validate_report(data: bytes, scope_id: str) -> None:
+def validate_report(
+    data: bytes,
+    scope_id: str,
+    *,
+    step_id: str = "00a",
+    check_ids: set[str] | None = None,
+) -> None:
     try:
         reader = csv.DictReader(data.decode("utf-8").splitlines(), delimiter="\t")
     except UnicodeError as exc:
@@ -179,16 +185,16 @@ def validate_report(data: bytes, scope_id: str) -> None:
         fail("Validation report header is invalid")
     rows = list(reader)
     if len(rows) != 5:
-        fail("Step 00a validation report must contain exactly five checks")
+        fail(f"Step {step_id} validation report must contain exactly five checks")
     if any(None in item or any(value is None for value in item.values()) for item in rows):
         fail("Validation report contains an invalid row")
-    expected_ids = {
+    expected_ids = check_ids or {
         "index_members", "fasta_identity", "gtf_identity",
         "contig_names_lengths", "sjdb_overhang",
     }
     if {item["check_id"] for item in rows} != expected_ids:
         fail("Validation report check IDs are invalid")
-    if any(item["step_id"] != "00a" or item["scope_id"] != scope_id for item in rows):
+    if any(item["step_id"] != step_id or item["scope_id"] != scope_id for item in rows):
         fail("Validation report scope identity is invalid")
     if any(item["status"] not in {"pass", "fail"} for item in rows):
         fail("Validation report status is invalid")
@@ -260,7 +266,14 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, Snapshot]]
     return data, snapshots
 
 
-def publish(path: Path, data: bytes, scope_id: str) -> None:
+def publish(
+    path: Path,
+    data: bytes,
+    scope_id: str,
+    *,
+    step_id: str = "00a",
+    check_ids: set[str] | None = None,
+) -> None:
     parent = path.parent
     if not parent.exists() or parent.is_symlink() or not parent.is_dir():
         fail(f"Output parent must be an existing real directory: {parent}")
@@ -281,16 +294,22 @@ def publish(path: Path, data: bytes, scope_id: str) -> None:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        validate_report(staged.read_bytes(), scope_id)
+        validate_report(
+            staged.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
+        )
         if path.exists() or path.is_symlink():
             if path.is_symlink() or not path.is_file():
                 fail(f"Existing validation report is unsafe: {path}")
-            validate_report(path.read_bytes(), scope_id)
+            validate_report(
+                path.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
+            )
             os.replace(path, previous)
             replaced = True
         try:
             os.replace(staged, path)
-            validate_report(path.read_bytes(), scope_id)
+            validate_report(
+                path.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
+            )
         except BaseException:
             if path.exists() and not path.is_symlink():
                 path.unlink()

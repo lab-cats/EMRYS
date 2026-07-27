@@ -377,14 +377,23 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for validation-report propagation",
 )
-def test_step00a_failed_validation_reaches_summary_html_and_pdf(
+@pytest.mark.parametrize(
+    ("artifact_id", "step_id"),
+    [
+        ("ref.star_index.validation", "00a"),
+        ("ref.bed12.validation", "00b"),
+    ],
+)
+def test_failed_validation_reaches_summary_html_and_pdf(
     tmp_path: Path,
+    artifact_id: str,
+    step_id: str,
 ) -> None:
     adapter_fixture = FIXTURE.ADAPTER_FIXTURE.build_fixture(
         tmp_path / "adapter",
-        run_id="step00a_validation_run",
+        run_id=f"step{step_id}_validation_run",
     )
-    validation = adapter_fixture.source_for("ref.star_index.validation")
+    validation = adapter_fixture.source_for(artifact_id)
     validation.write_text(
         validation.read_text(encoding="utf-8").replace(
             "\tpass\tfixture\tfixture\tsynthetic passing validation",
@@ -406,7 +415,7 @@ def test_step00a_failed_validation_reaches_summary_html_and_pdf(
     validation_artifact = next(
         item
         for item in document["artifacts"]
-        if item["artifact_id"] == "ref.star_index.validation"
+        if item["artifact_id"] == artifact_id
     )
     assert validation_artifact["completion_status"] == "failed"
 
@@ -440,9 +449,9 @@ def test_step00a_failed_validation_reaches_summary_html_and_pdf(
         (page.extract_text() or "")
         for page in PdfReader(pdf, strict=True).pages
     )
-    assert "ref.star_index.validation" in html
+    assert artifact_id in html
     assert "failed" in html
-    assert "00a reference novogene_ref failed" in " ".join(pdf_text.split())
+    assert f"{step_id} reference novogene_ref failed" in " ".join(pdf_text.split())
 
 
 @pytest.mark.skipif(

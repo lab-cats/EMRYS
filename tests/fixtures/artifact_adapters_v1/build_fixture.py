@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters-v1 fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 68 explicit source paths into a caller-owned temporary directory
+rewrites its 69 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -145,9 +145,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 68:
+    if len(rows) != 69:
         raise RuntimeError(
-            f"Expected 68 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 69 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -418,18 +418,31 @@ def tsv_rows_for(
                 "assigned_fraction": "0.8",
             }
         )
-    elif adapter == "step00a_validation_report_v1":
+    elif adapter in {
+        "step00a_validation_report_v1",
+        "step00b_validation_report_v1",
+    }:
         check_ids = (
-            "index_members",
-            "fasta_identity",
-            "gtf_identity",
-            "contig_names_lengths",
-            "sjdb_overhang",
+            (
+                "index_members",
+                "fasta_identity",
+                "gtf_identity",
+                "contig_names_lengths",
+                "sjdb_overhang",
+            )
+            if adapter == "step00a_validation_report_v1"
+            else (
+                "bed12_structure",
+                "coordinate_sorting",
+                "block_structure",
+                "unique_transcript_names",
+                "gtf_transcript_agreement",
+            )
         )
         for output_row, check_id in zip(rows, check_ids, strict=True):
             output_row.update(
                 {
-                    "step_id": "00a",
+                    "step_id": row["step_id"],
                     "scope_id": row["scope_id"],
                     "check_id": check_id,
                     "status": "pass",

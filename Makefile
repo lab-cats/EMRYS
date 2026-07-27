@@ -31,6 +31,7 @@ shell-test:
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_00a_star_index.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_00b_bed12.py
 
 real-r-test:
 	bash tests/r/run_step_08_vcf_preprocessing_tests.sh
