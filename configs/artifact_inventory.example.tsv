@@ -47,6 +47,7 @@ sample.SYNTH_A.fwd_bai	06	sample	SYNTH_A	step06_fwd_bai_v1	tests/fixtures/artifa
 sample.SYNTH_A.rev_bam	06	sample	SYNTH_A	step06_rev_bam_v1	tests/fixtures/artifact_schema_v1/source/results/orientation/SYNTH_A/SYNTH_A.REV_like.bam	true
 sample.SYNTH_A.rev_bai	06	sample	SYNTH_A	step06_rev_bai_v1	tests/fixtures/artifact_schema_v1/source/results/orientation/SYNTH_A/SYNTH_A.REV_like.bam.bai	true
 sample.SYNTH_A.orientation_counts	06	sample	SYNTH_A	step06_orientation_counts_v1	tests/fixtures/artifact_schema_v1/source/results/qc/orientation/SYNTH_A.orientation_counts.tsv	true
+sample.SYNTH_A.orientation_validation	06	sample	SYNTH_A	step06_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/06/SYNTH_A.validation.tsv	true
 cohort.synthetic.p1.fwd_vcf	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.FWD_like.mpileup.vcf	true
 cohort.synthetic.p1.rev_vcf	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.REV_like.mpileup.vcf	true
 cohort.synthetic.p1.receipt	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_receipt_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.step07_outputs.tsv	true

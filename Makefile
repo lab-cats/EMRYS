@@ -39,6 +39,7 @@ shell-test:
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_03_rseqc_orientation.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_04_mark_duplicates.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_05_split_ncigar.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_06_orientation_outputs.py
 
 real-r-test:
 	bash tests/r/run_step_08_vcf_preprocessing_tests.sh
