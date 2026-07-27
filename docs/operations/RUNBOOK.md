@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 72 synthetic physical artifacts
+requirements. The example inventory contains 73 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 54 registered read-only adapters covering the 72
+The adapter builder has 55 registered read-only adapters covering the 73
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1863,6 +1863,40 @@ Outputs:
 ```bash
 results/qc/bam/<sample>.quickcheck.txt
 results/qc/bam/<sample>.flagstat.txt
+```
+
+The structured Step `02b` validator reads those two persisted evidence files:
+
+```bash
+.venv/bin/python scripts/validate_step_02b_bam_qc.py \
+  --scope-id ABE_EV_2 \
+  --quickcheck results/qc/bam/ABE_EV_2.quickcheck.txt \
+  --flagstat results/qc/bam/ABE_EV_2.flagstat.txt \
+  --output results/qc/validation/02b/ABE_EV_2.validation.tsv
+```
+
+Dry-run requires the exact quickcheck PASS marker, unique flagstat total and
+mapped rows, nonnegative combined QC-passed/QC-failed counts, and
+`mapped <= total`. It does not invoke samtools or create a report. After
+inspection, create the parent and add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/02b
+.venv/bin/python scripts/validate_step_02b_bam_qc.py \
+  --scope-id ABE_EV_2 \
+  --quickcheck results/qc/bam/ABE_EV_2.quickcheck.txt \
+  --flagstat results/qc/bam/ABE_EV_2.flagstat.txt \
+  --output results/qc/validation/02b/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+The `step02b_validation_report_v1` adapter propagates this persisted evidence
+without rerunning QC or changing historical cluster state.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_02b_bam_qc.py
 ```
 
 Dry-run:

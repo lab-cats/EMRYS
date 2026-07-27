@@ -633,6 +633,26 @@ commands. Regenerate only through a separately authorized Step `02` workflow
 when evidence requires it. Do not sort, index, retag, or repair the pair from
 the validator, substitute a sibling path, or edit the validation TSV.
 
+## Step 02b structured validation reports BAM-QC disagreement
+
+### Symptom
+
+The Step `02b` validation TSV reports a noncanonical quickcheck marker,
+malformed or duplicate flagstat rows, invalid counts, or mapped records
+greater than total records.
+
+### Cause
+
+The persisted QC files may be incomplete, manually altered, or drawn from
+different attempts. This validator intentionally reads the evidence rather
+than rerunning samtools.
+
+### Fix
+
+Inspect the exact quickcheck and flagstat files and their producing job/log.
+Use the Step `02b` workflow for any separately authorized regeneration. Do not
+invoke repair from the validator or edit counts/markers into a pass.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1824,7 +1844,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 72-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 73-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

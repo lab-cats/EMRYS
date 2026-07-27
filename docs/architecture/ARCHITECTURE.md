@@ -174,3 +174,7 @@ Step `02` uses an explicit samtools executable to validate one canonical
 BAM/BAI pair, coordinate sort order, the matching read-group header, and RG
 coverage across all alignments. It observes the pair without sorting,
 indexing, or changing tags.
+
+Step `02b` separately validates the persisted quickcheck marker and flagstat
+counts. It does not invoke samtools; its typed adapter exposes the recorded QC
+evidence and count reconciliation.

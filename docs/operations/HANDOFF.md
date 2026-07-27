@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-02`
+  `post09-validation-report-02b`
 - Parent:
-  `post09-validation-report-01`
+  `post09-validation-report-02`
 - Verified parent HEAD:
-  `bccdd836a5ac7b5af2d9fc6c7ac8db4099b1c321`
+  `5cfe8a25f3f635fcf05206616531131d842cbfab`
 - Parent implementation:
-  `e81d418 implement step 01 validation report`
-- Current implementation:
   `307eb40 implement step 02 validation report`
+- Current implementation:
+  `132e048 implement step 02b validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `02` validation branch was created only after fetching remote refs and
+The Step `02b` validation branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -44,6 +44,8 @@ The local descendant sequence has implemented:
 - a Step `01` STAR-output validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture;
 - a Step `02` canonical-BAM validation report, typed artifact adapter, and
+  summary/HTML/PDF propagation fixture;
+- a Step `02b` persisted BAM-QC validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
@@ -74,6 +76,7 @@ The local descendant sequence has implemented:
 | Step `00c` structured validation | FASTA, FAI, and DICT structure plus exact ordered contig-name/length agreement implemented and locally fixture/report tested; no new production execution |
 | Step `01` structured validation | five explicit STAR outputs, BAM container signature, final-log structure, mapping percentages, and splice-junction rows implemented and locally fixture/report tested; no new production execution |
 | Step `02` structured validation | BAM/BAI containers, samtools quickcheck, coordinate sorting, matching read-group header, and alignment RG coverage implemented and locally fixture/report tested; no new production execution |
+| Step `02b` structured validation | exact quickcheck marker, flagstat structure, total/mapped counts, and count reconciliation implemented and locally fixture/report tested; no new production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -153,9 +156,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-02` implementation and documentation gates are
+The `post09-validation-report-02b` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-02b`.
+`post09-validation-report-03`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

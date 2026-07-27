@@ -8,8 +8,8 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Implement `post09-validation-report-02b` from the clean, pushed
-   `post09-validation-report-02` branch.
+1. Implement `post09-validation-report-03` from the clean, pushed
+   `post09-validation-report-02b` branch.
 2. Continue the approved local implementation sequence without pausing between
    clean stage gates.
 3. Continue any approved local-only descendant sequence one package at a time.

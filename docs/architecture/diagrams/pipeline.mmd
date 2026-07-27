@@ -12,6 +12,7 @@ flowchart LR
     align --> bam["02 canonical BAM"]
     bam --> validate02["02 read-only validation TSV"]
     bam --> qc["02b BAM QC"]
+    qc --> validate02b["02b read-only validation TSV"]
     bam --> orientation["03 library orientation"]
     bam --> markdup["04 MarkDuplicates"]
     markdup --> splitn["05 SplitNCigarReads"]
@@ -28,5 +29,6 @@ flowchart LR
     validate00c --> adapters
     validate01 --> adapters
     validate02 --> adapters
+    validate02b --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]
