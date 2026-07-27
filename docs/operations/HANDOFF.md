@@ -7,19 +7,21 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `report-exports-v1`
+  `post09-runtime-preflight`
 - Parent:
-  `report-html-v1b-docs-responsibility-consolidation`
+  `report-exports-v1`
 - Verified parent HEAD:
-  `ec962940e3f82cd4e26150cf0a5909d53c06ae73`
+  `934e471fdfa609ee8bc7c7e44fa38b494e5cf876`
 - Parent implementation:
-  `ec96294 consolidate documentation responsibilities`
-- Current implementation:
   `d46c2be implement report export bundle`
+- Current implementation:
+  `0071450 implement runtime preflight`
+  plus `2895f33 harden runtime preflight paths`
+  and `fd76bfd validate prior preflight rows`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The export branch was created only after fetching remote refs and
+The runtime-preflight branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -31,7 +33,8 @@ The local descendant sequence has implemented:
 - versioned artifact/scientific-review/run-summary/report-receipt schemas;
 - explicit read-only artifact indexing;
 - canonical run-summary assembly and report-table approvals;
-- atomic, receipt-last HTML/PDF/summary-TSV reporting.
+- atomic, receipt-last HTML/PDF/summary-TSV reporting;
+- explicit-profile, read-only runtime availability preflight.
 
 ## Evidence boundary
 
@@ -53,6 +56,7 @@ The local descendant sequence has implemented:
 | `09c` scientific-evidence tooling | implemented and synthetic-fixture tested; no production review |
 | Artifact schemas/adapters/run summary | implemented and synthetic-fixture tested; no production transaction |
 | Static report bundle | HTML/PDF/summary TSV/report receipt implemented and tested with the pinned local Quarto/Typst renderer and PDF reader; no production report |
+| Runtime preflight | explicit tool, R-namespace, SHA-256, and path-visibility probes implemented and locally fixture-tested; no CSU batch report |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -62,6 +66,12 @@ No production artifact index, run summary, report-table approval manifest,
 Step `09c` evidence package, or report bundle is recorded in this checkout.
 The export evidence is local synthetic-fixture and real-renderer evidence
 only.
+
+No CSU runtime profile has been populated or executed in a batch allocation.
+The tracked runtime profile is an example contract. Local tests and a
+successfully published preflight report would establish only the checks
+recorded in their declared context, not workflow runtime validation or
+cluster proof.
 
 ## Cohort and preserved scientific evidence
 
@@ -121,10 +131,10 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `report-exports-v1` implementation and documentation gates are complete.
-Stop for review before creating `post09-runtime-preflight`. When that package
-is explicitly approved, begin from this clean, pushed descendant and follow
-the package acceptance criteria and lineage in the pipeline plan.
+The `post09-runtime-preflight` implementation and documentation gates are
+complete. Stop for review before creating `post09-reference-provenance`. When
+that package is explicitly approved, begin from this clean, pushed descendant
+and follow the package acceptance criteria and lineage in the pipeline plan.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

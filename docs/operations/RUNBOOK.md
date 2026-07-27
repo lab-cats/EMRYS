@@ -152,12 +152,14 @@ be shown. The implemented `artifact-adapters-v1` help text, dry-run, and
 synthetic focused tests may also be shown, but not as a production artifact
 index. The implemented `artifact-run-summary` help text, side-effect-free
 dry-run, and synthetic four-file fixture transaction may also be shown. The
-implemented `report-html-v1` help text, side-effect-free dry-run, pinned
-Quarto restore receipt, synthetic self-contained HTML, and
-`report-html-v1a-report-table-approvals` exact-input producer contract may be
-shown, but not as a production report or scientific approval. No production
-run summary, approval manifest, or report exists, and none of these packages
-is production-output, cluster, or scientific evidence.
+implemented report-bundle help text, side-effect-free dry-run, pinned Quarto
+restore receipt, synthetic HTML/PDF/summary-TSV/receipt transaction, and exact
+report-table approval producer contract may be shown, but not as a production
+report or scientific approval. The runtime-preflight help text, tracked
+example profile, local dry-run, and focused tests may also be shown, but not as
+a CSU batch report or runtime proof. No production run summary, approval
+manifest, report, or batch preflight exists, and none of these packages is
+production-output, cluster, or scientific evidence.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -412,6 +414,103 @@ artifacts, or clear locks. For package availability and the approved roadmap,
 consult `docs/design/PIPELINE_PLAN.md`.
 Do not use a generic dispatcher or job array before the step-specific
 validators and repeated operational need establish their contracts.
+
+### Run The Explicit Runtime Preflight
+
+```text
+configs/runtime_preflight.example.tsv
+scripts/runtime_preflight.py
+tests/test_runtime_preflight.py
+```
+
+Copy the example to an explicit operator-controlled profile and replace its
+illustrative targets and expectations. The exact tab-separated header is:
+
+```text
+check_id	check_type	runtime_context	required	target	probe_args	expected	description
+```
+
+Supported `check_type` contracts are:
+
+- `tool_version`: executable target, JSON-array version arguments, and an
+  expected output regular expression;
+- `r_namespace`: R package target, a one-item JSON array naming the exact
+  `Rscript`, and an expected package-version regular expression;
+- `hash_utility`: executable target, one closed adapter
+  (`python_hashlib`, `sha256sum`, or `shasum`), and `expected=sha256`;
+- `path_visibility`: absolute target, one closed probe
+  (`file_readable`, `directory_readable`, or `executable`), and matching
+  `expected=readable` or `expected=executable`.
+
+`runtime_context` is `local`, `cluster_batch`, or `any`; `required` is
+lowercase `true` or `false`. The program does not detect SLURM or infer the
+context. Declare `cluster_batch` only while actually running inside the
+approved batch/compute environment.
+
+Local dry-run:
+
+```bash
+.venv/bin/python scripts/runtime_preflight.py \
+  --profile configs/runtime_preflight.example.tsv \
+  --output results/qc/runtime/local.runtime_preflight.tsv \
+  --runtime-context local
+```
+
+Dry-run parses the byte-stable profile and performs only context-applicable
+read-only probes. It prints results but creates no output directory, lock,
+temporary path, or report. Required cluster rows are `blocked` locally;
+optional cluster rows are `not_checked`.
+
+For an approved batch profile, first enter the actual allocated
+batch/compute context, then run its dry-run with:
+
+```bash
+python3 scripts/runtime_preflight.py \
+  --profile /explicit/path/to/csu.runtime_profile.tsv \
+  --output results/qc/runtime/csu.runtime_preflight.tsv \
+  --runtime-context cluster_batch
+```
+
+After inspecting the printed targets and statuses, create the explicit output
+parent and publish:
+
+```bash
+mkdir -p results/qc/runtime
+python3 scripts/runtime_preflight.py \
+  --profile /explicit/path/to/csu.runtime_profile.tsv \
+  --output results/qc/runtime/csu.runtime_preflight.tsv \
+  --runtime-context cluster_batch \
+  --execute
+```
+
+Execute mode requires an existing real output parent and a `.tsv` output
+name. It rechecks the profile and atomically publishes one deterministic TSV
+with this header:
+
+```text
+profile_sha256	runtime_context	check_id	check_type	target	required	status	observed	expected	detail
+```
+
+Statuses are `pass`, `fail`, `blocked`, or `not_checked`. A zero command exit
+means the probes completed and the optional report publication succeeded; it
+does not mean required rows passed. Inspect every required row explicitly.
+
+A valid previous report with the same profile hash, context, and row count may
+be replaced deterministically. Publication uses
+`.<output_name>.lock`, run-token `.tmp` and `.previous` paths, validation
+before replacement, and rollback. Never delete a foreign lock or hand-edit a
+report to change its statuses.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_runtime_preflight.py
+```
+
+The tracked example and tests are local fixture evidence only. A future
+all-pass CSU batch report establishes only the declared availability probes.
+It does not execute Steps `07`-`09`, validate production inputs, or establish
+runtime or cluster proof.
 
 ### Validate `artifact-schema-v1`
 

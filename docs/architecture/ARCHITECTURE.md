@@ -124,3 +124,12 @@ points never install software.
 Cluster tool modules and paths are operational profiles, not hardcoded
 scientific identity. Effective executable versions must be observed in the
 runtime where work occurs.
+
+The runtime preflight consumes one exact TSV profile and records tool-version,
+R-namespace, functional SHA-256, and absolute-path visibility probes in one
+deterministic TSV. Each row declares its required execution context. A check
+declared for `cluster_batch` is `blocked` or `not_checked` when the tool
+actually runs in `local` context; the program never infers scheduler context.
+It installs and repairs nothing, and its report is not connected to the
+artifact/run-summary evidence graph. Availability evidence remains distinct
+from workflow runtime validation and cluster proof.

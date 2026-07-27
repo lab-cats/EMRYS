@@ -682,6 +682,78 @@ header/sample validation fails.
 Header-only behavior is covered by local mocked tests; no real-bcftools or
 cluster header-only output has been inspected yet.
 
+## Runtime preflight profile or output contract is rejected
+
+### Symptom
+
+`scripts/runtime_preflight.py` exits before probing or publication with an
+error about the profile header, row shape, duplicate ID, check type, context,
+boolean, JSON probe arguments, regular expression, relative path, output
+suffix, symlink, or invalid previous report.
+
+### Cause
+
+The preflight accepts one exact, nonempty TSV profile. Check IDs are unique
+safe IDs; contexts, required values, check types, and probe adapters are
+closed; path-visibility targets are absolute; and each check type has matching
+argument and expectation rules. Profiles and previous reports must be regular,
+byte-stable files. Execute mode requires an existing real output parent and a
+`.tsv` filename.
+
+### Fix
+
+Compare the profile with `configs/runtime_preflight.example.tsv` and the exact
+contract in the runbook. Correct the declaration at its source. Do not relax a
+regular expression, change a required row, substitute local paths for cluster
+paths, or hand-edit a previous result merely to obtain a pass. Rerun dry-run
+before execute mode.
+
+## Runtime preflight reports fail, blocked, or not_checked but exits zero
+
+### Symptom
+
+The command exits zero and may publish a TSV even though one or more result
+rows have `status=fail`, `blocked`, or `not_checked`.
+
+### Cause
+
+Command success means the explicit probes completed and publication, when
+requested, succeeded. It is intentionally separate from the per-row result.
+A `cluster_batch` row evaluated with `--runtime-context local` is `blocked`
+when required and `not_checked` when optional. A context-applicable probe that
+cannot satisfy its expectation is `fail`.
+
+### Fix
+
+Inspect every required row. Run cluster-declared checks only inside the actual
+approved batch/compute context and declare that context explicitly. Correct
+the environment or profile through normal operator action; the preflight never
+loads modules, installs packages, repairs paths, or changes statuses. Do not
+call an all-pass report workflow runtime validation or cluster proof.
+
+## Runtime preflight lock or previous report blocks publication
+
+### Symptom
+
+Execute mode reports an existing `.<output_name>.lock`, an invalid prior TSV,
+an unsafe output parent, or a replacement/rollback failure.
+
+### Cause
+
+One output path has one owned publication transaction. A concurrent writer,
+foreign lock, hand-edited result, changed profile/context, symlinked parent,
+or interrupted replacement can make safe deterministic replacement
+impossible.
+
+### Fix
+
+Inspect the lock, owning process, exact profile hash/context, current report,
+and matching run-token `.tmp` and `.previous` paths. Do not delete a foreign
+lock, overwrite an invalid report, or manufacture statuses. Resolve ownership
+and preserve the prior report before an explicit recovery or a new output
+path. A passing local fixture test is not evidence that a cluster-side
+recovery or availability check occurred.
+
 ## Step 08 or Step 09 cannot find `Rscript`
 
 ### Symptom
@@ -2037,8 +2109,8 @@ implemented, as is the run-summary builder, so their concrete failure modes
 are documented above. Static HTML/PDF/summary-TSV bundle reporting is also
 implemented, so its concrete restore, validation, publication, and recovery
 failures are documented above. Do not add entries that imply general cleanup
-tools, foundation tools, or per-step validators exist before their branches
-implement them.
+tools, reference/storage foundation tools, or per-step validators exist before
+their branches implement them.
 
 ## General success checklist
 

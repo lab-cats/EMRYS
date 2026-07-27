@@ -186,6 +186,22 @@ Decision: Quarto restoration is separate from rendering and testing. Installed
 identity, receipt, tree, and version must validate before reuse. Rendering
 never installs or repairs software.
 
+### Probe runtime availability from explicit profiles
+
+Decision: runtime preflight consumes one exact TSV profile with closed
+tool-version, R-namespace, SHA-256, and absolute-path visibility check types.
+Each row declares `local`, `cluster_batch`, or `any`; the operator explicitly
+declares the context in which the probes run.
+
+Reason: login-shell availability, local development state, module names, and
+path assumptions do not prove batch visibility. Context mismatches remain
+`blocked` or `not_checked` rather than being silently promoted.
+
+Consequence: preflight installs and repairs nothing. Command success means the
+checks were evaluated and, in execute mode, the report was published; every
+required row still must be inspected. Even an all-pass batch report is
+availability evidence, not workflow runtime validation or cluster proof.
+
 ## Evidence and scientific state
 
 ### Separate computational proof and scientific interpretation
