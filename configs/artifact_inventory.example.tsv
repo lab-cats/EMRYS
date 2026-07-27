@@ -41,6 +41,7 @@ sample.SYNTH_A.markdup_metrics	04	sample	SYNTH_A	step04_markdup_metrics_v1	tests
 sample.SYNTH_A.markdup_validation	04	sample	SYNTH_A	step04_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/04/SYNTH_A.validation.tsv	true
 sample.SYNTH_A.split_bam	05	sample	SYNTH_A	step05_split_bam_v1	tests/fixtures/artifact_schema_v1/source/results/split_ncigar/SYNTH_A/SYNTH_A.split_ncigar.bam	true
 sample.SYNTH_A.split_bai	05	sample	SYNTH_A	step05_split_bai_v1	tests/fixtures/artifact_schema_v1/source/results/split_ncigar/SYNTH_A/SYNTH_A.split_ncigar.bam.bai	true
+sample.SYNTH_A.split_validation	05	sample	SYNTH_A	step05_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/05/SYNTH_A.validation.tsv	true
 sample.SYNTH_A.fwd_bam	06	sample	SYNTH_A	step06_fwd_bam_v1	tests/fixtures/artifact_schema_v1/source/results/orientation/SYNTH_A/SYNTH_A.FWD_like.bam	true
 sample.SYNTH_A.fwd_bai	06	sample	SYNTH_A	step06_fwd_bai_v1	tests/fixtures/artifact_schema_v1/source/results/orientation/SYNTH_A/SYNTH_A.FWD_like.bam.bai	true
 sample.SYNTH_A.rev_bam	06	sample	SYNTH_A	step06_rev_bam_v1	tests/fixtures/artifact_schema_v1/source/results/orientation/SYNTH_A/SYNTH_A.REV_like.bam	true
