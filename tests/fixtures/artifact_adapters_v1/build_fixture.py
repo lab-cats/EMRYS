@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters-v1 fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 71 explicit source paths into a caller-owned temporary directory
+rewrites its 72 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -145,9 +145,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 71:
+    if len(rows) != 72:
         raise RuntimeError(
-            f"Expected 71 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 72 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -423,6 +423,7 @@ def tsv_rows_for(
         "step00b_validation_report_v1",
         "step00c_validation_report_v1",
         "step01_validation_report_v1",
+        "step02_validation_report_v1",
     }:
         check_ids = (
             (
@@ -455,6 +456,14 @@ def tsv_rows_for(
                 "final_log_structure",
                 "mapping_summary",
                 "splice_junction_structure",
+            )
+            if adapter == "step01_validation_report_v1"
+            else (
+                "bam_bai_structure",
+                "samtools_quickcheck",
+                "coordinate_sorting",
+                "read_group_header",
+                "alignment_rg_tags",
             )
         )
         for output_row, check_id in zip(rows, check_ids, strict=True):

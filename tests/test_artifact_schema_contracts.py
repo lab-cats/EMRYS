@@ -171,7 +171,7 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("Schema passed Draft 2020-12") == 5
-    assert "Artifacts: 71" in result.stdout
+    assert "Artifacts: 72" in result.stdout
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
     assert "--inventory" in help_result.stdout
@@ -1306,7 +1306,7 @@ def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c()
         "00b": 2,
         "00c": 4,
         "01": 6,
-        "02": 2,
+        "02": 3,
         "02b": 2,
         "03": 1,
         "04": 3,
@@ -1319,8 +1319,8 @@ def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c()
     }
     assert all(row["required"] == "true" for row in rows)
     assert all(not any(token in row["source_path"] for token in "*?[]") for row in rows)
-    assert len({row["artifact_id"] for row in rows}) == 71
-    assert len({row["source_path"] for row in rows}) == 71
+    assert len({row["artifact_id"] for row in rows}) == 72
+    assert len({row["source_path"] for row in rows}) == 72
 
 
 @pytest.mark.parametrize(
@@ -1507,7 +1507,7 @@ def test_inventory_header_order_and_unrelated_files_are_fail_closed(
 
     unrelated = tmp_path / "unrelated.step09c_review_summary.tsv"
     unrelated.write_text("must\tnot\nbe\tread\n", encoding="utf-8")
-    assert len(CONTRACT.validate_inventory(INVENTORY)) == 71
+    assert len(CONTRACT.validate_inventory(INVENTORY)) == 72
 
 
 def test_duplicate_json_keys_are_rejected_before_schema_validation(
