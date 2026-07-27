@@ -183,15 +183,18 @@ def validate_report(
         fail(f"Validation report is not UTF-8: {exc}")
     if tuple(reader.fieldnames or ()) != HEADER:
         fail("Validation report header is invalid")
-    rows = list(reader)
-    if len(rows) != 5:
-        fail(f"Step {step_id} validation report must contain exactly five checks")
-    if any(None in item or any(value is None for value in item.values()) for item in rows):
-        fail("Validation report contains an invalid row")
     expected_ids = check_ids or {
         "index_members", "fasta_identity", "gtf_identity",
         "contig_names_lengths", "sjdb_overhang",
     }
+    rows = list(reader)
+    if len(rows) != len(expected_ids):
+        fail(
+            f"Step {step_id} validation report must contain exactly "
+            f"{len(expected_ids)} checks"
+        )
+    if any(None in item or any(value is None for value in item.values()) for item in rows):
+        fail("Validation report contains an invalid row")
     if {item["check_id"] for item in rows} != expected_ids:
         fail("Validation report check IDs are invalid")
     if any(item["step_id"] != step_id or item["scope_id"] != scope_id for item in rows):

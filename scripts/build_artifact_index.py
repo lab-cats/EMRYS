@@ -726,6 +726,18 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/pdf",
             suffixes=(suffix,),
         )
+    add_spec(
+        registry,
+        "step09_validation_report_v1",
+        "09",
+        "analysis",
+        "validation_report",
+        "text/tab-separated-values",
+        suffixes=(".validation.tsv",),
+        expected_header=VALIDATION_REPORT_HEADER,
+        exact_data_rows=7,
+        allow_header_only=False,
+    )
     step09c_specs = (
         (
             "step09c_review_plan_v1",
@@ -912,6 +924,7 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
             "step09_mutation_spectrum_tsv_v1": 1,
             "step09_mutation_spectrum_pdf_v1": 1,
             "step09_depth_delta_pdf_v1": 1,
+            "step09_validation_report_v1": 1,
         }
     ),
     "09c": Counter(

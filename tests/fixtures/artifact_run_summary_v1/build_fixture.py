@@ -197,7 +197,7 @@ def build_fixture(
     *,
     run_id: str = "synthetic_run",
 ) -> RunSummaryFixture:
-    """Build the full default 80-record adapter transaction."""
+    """Build the full default 81-record adapter transaction."""
 
     root = root.resolve()
     adapter_fixture = ADAPTER_FIXTURE.build_fixture(
@@ -429,6 +429,45 @@ def explicit_science_inventory_rows(
             "required": "true",
         }
         for suffix, adapter, source in step09_sources
+    )
+    step09_validation = (
+        fixture.root / "results" / "qc" / "validation" / "09"
+        / f"{analysis_id}.validation.tsv"
+    )
+    write_tsv(
+        step09_validation,
+        ADAPTER.VALIDATION_REPORT_HEADER,
+        [
+            {
+                "step_id": "09",
+                "scope_id": analysis_id,
+                "check_id": check_id,
+                "status": "pass",
+                "observed": "fixture",
+                "expected": "fixture",
+                "detail": "synthetic passing validation",
+            }
+            for check_id in (
+                "output_transaction",
+                "upstream_identity_and_candidate_order",
+                "status_semantics",
+                "significant_subset",
+                "summary_count_reconciliation",
+                "mutation_spectrum_reconciliation",
+                "pdf_structure",
+            )
+        ],
+    )
+    rows.append(
+        {
+            "artifact_id": f"analysis.{analysis_id}.cmh_validation",
+            "step_id": "09",
+            "scope_type": "analysis",
+            "scope_id": analysis_id,
+            "adapter": "step09_validation_report_v1",
+            "source_path": str(step09_validation),
+            "required": "true",
+        }
     )
     for key, suffix in STEP09C.OUTPUT_SUFFIXES:
         rows.append(

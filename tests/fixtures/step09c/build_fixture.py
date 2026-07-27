@@ -248,7 +248,7 @@ def candidate_specs() -> list[dict[str, object]]:
             "delta": "-0.16",
             "cmh_statistic": "10.0",
             "cmh_p_value": "0.001",
-            "cmh_fdr_bh": "0.002",
+            "cmh_fdr_bh": "0.0015",
             "common_odds_ratio": "0.35",
         },
         {
@@ -368,7 +368,7 @@ def candidate_specs() -> list[dict[str, object]]:
             "delta": "0.02",
             "cmh_statistic": "0.5",
             "cmh_p_value": "0.01",
-            "cmh_fdr_bh": "0.02",
+            "cmh_fdr_bh": "0.01",
             "common_odds_ratio": "1.2",
         },
     ]
@@ -894,7 +894,7 @@ def write_evidence_tables(
                 "significant_down",
                 "-0.16",
                 "0.35",
-                "0.002",
+                "0.0015",
             ),
         ):
             loo_rows.append(
@@ -941,7 +941,7 @@ def write_evidence_tables(
             "top_down",
             "REV_like|1|20|A>G",
             "significant_down",
-            "0.002",
+            "0.0015",
             "0.35",
             "-0.16",
         ),
@@ -957,7 +957,7 @@ def write_evidence_tables(
             "near_threshold",
             "REV_like|2|60|A>G",
             "effect_not_met",
-            "0.02",
+            "0.01",
             "1.2",
             "0.02",
         ),

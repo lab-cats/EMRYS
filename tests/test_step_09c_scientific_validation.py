@@ -1099,3 +1099,97 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
             context.step09_summary,
             context.sample_rows,
         )
+
+
+@pytest.mark.parametrize(
+    ("background_status", "dp", "ad", "maximum"),
+    [
+        ("pass", "100", "0", "0"),
+        ("fail_fraction", "100", "5", "0.05"),
+        ("missing_counts", "NA", "NA", "NA"),
+        ("low_coverage", "0", "0", "NA"),
+    ],
+)
+def test_step09_enabled_background_reconciles_from_immutable_counts(
+    tmp_path: Path,
+    background_status: str,
+    dp: str,
+    ad: str,
+    maximum: str,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    summary = dict(context.step09_summary)
+    summary["background_condition"] = "BACKGROUND"
+    background_sample = dict(context.sample_rows[0])
+    background_sample.update(
+        {
+            "sample_id": "BACKGROUND_1",
+            "condition": "BACKGROUND",
+            "replicate": "1",
+        }
+    )
+    sample_rows = [*context.sample_rows, background_sample]
+    rows = [dict(row) for row in context.step09_all_rows]
+    for row in rows:
+        row.update(
+            {
+                "background_condition": "BACKGROUND",
+                "background_status": background_status,
+                "max_background_af": maximum,
+                "DP__BACKGROUND_1": dp,
+                "AD__BACKGROUND_1": ad,
+            }
+        )
+        if (
+            row["test_status"] == "tested"
+            and background_status != "pass"
+        ):
+            row["call_status"] = "background_not_passed"
+
+    FIXTURES.CONTRACT.validate_step09_result_semantics(
+        rows, summary, sample_rows
+    )
+
+    rows[0]["max_background_af"] = (
+        "0.5" if maximum != "NA" else "0"
+    )
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="enabled-background",
+    ):
+        FIXTURES.CONTRACT.validate_step09_result_semantics(
+            rows, summary, sample_rows
+        )
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [
+        ("min_sample_dp", "0"),
+        ("absolute_difference_threshold", "1.1"),
+        ("background_max_fraction", "0"),
+        ("background_max_fraction", "1"),
+    ],
+)
+def test_step09_native_threshold_boundaries_are_enforced(
+    tmp_path: Path,
+    column: str,
+    value: str,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    summary = dict(context.step09_summary)
+    summary[column] = value
+
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="thresholds",
+    ):
+        FIXTURES.CONTRACT.validate_step09_result_semantics(
+            context.step09_all_rows,
+            summary,
+            context.sample_rows,
+        )

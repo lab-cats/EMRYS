@@ -1533,6 +1533,7 @@ def validate_step09_results(
 def validate_step09_summary(
     value: str | Path,
     analysis_id: str,
+    cohort_id: str,
     sample_ids: Sequence[str],
     sample_rows: Sequence[Mapping[str, str]],
     all_rows: Sequence[Mapping[str, str]],
@@ -1546,12 +1547,20 @@ def validate_step09_summary(
     inputs_hash: str,
     step08_orientation_policy: str,
 ) -> Table:
+    validate_safe_id("analysis_id", analysis_id)
+    validate_safe_id("cohort_id", cohort_id)
     table = read_tsv("Step 09 summary", value, STEP09_SUMMARY_HEADER)
     if len(table.rows) != 1:
         fail("Step 09 summary must contain exactly one data row.")
     row = table.rows[0]
     if row["analysis_id"] != analysis_id:
         fail("Step 09 summary analysis_id differs from its directory.")
+    if row["cohort_id"] != cohort_id:
+        fail("Step 09 summary cohort_id differs from the Step 08 receipt.")
+    validate_safe_id("control_condition", row["control_condition"])
+    validate_safe_id("treatment_condition", row["treatment_condition"])
+    if row["background_condition"] != NA_VALUE:
+        validate_safe_id("background_condition", row["background_condition"])
     if (
         row["multiple_testing_method"] != "BH"
         or row["cmh_alternative"] != "two.sided"
@@ -1611,9 +1620,18 @@ def validate_step09_summary(
         "Step 09 summary replicate_count", row["replicate_count"]
     ) != len(replicates):
         fail("Step 09 summary replicate_count differs from the sample manifest.")
-    if row["orientation_policy"] != step08_orientation_policy:
-        fail("Step 09 summary orientation policy differs from Step 08.")
-    if any(result["orientation_policy"] != row["orientation_policy"] for result in all_rows):
+    if (
+        step08_orientation_policy != "legacy_provisional_v1"
+        or row["orientation_policy"] != step08_orientation_policy
+    ):
+        fail(
+            "Step 09 summary and Step 08 must use "
+            "orientation_policy=legacy_provisional_v1."
+        )
+    if any(
+        result["orientation_policy"] != row["orientation_policy"]
+        for result in all_rows
+    ):
         fail("Step 09 results contain an inconsistent orientation policy.")
     background = row["background_condition"]
     if background != NA_VALUE:
@@ -1666,13 +1684,22 @@ def validate_step09_result_semantics(
         summary["absolute_difference_threshold"],
         nonnegative=True,
     )
+    background_threshold = parse_number(
+        "Step 09 background_max_fraction",
+        summary["background_max_fraction"],
+        nonnegative=True,
+    )
     if (
-        mean_dp_threshold is None
+        min_sample_dp < 1
+        or mean_dp_threshold is None
         or fdr_threshold is None
         or not 0 < fdr_threshold <= 1
         or odds_threshold is None
         or odds_threshold <= 1
         or difference_threshold is None
+        or difference_threshold > 1
+        or background_threshold is None
+        or not 0 < background_threshold < 1
     ):
         fail("Step 09 summary thresholds are outside the supported contract.")
     _, pairs = paired_samples(
@@ -1685,6 +1712,12 @@ def validate_step09_result_semantics(
     ]
     control_samples = [pair[0] for pair in pairs.values()]
     treatment_samples = [pair[1] for pair in pairs.values()]
+    background_samples = [
+        row["sample_id"]
+        for row in sample_rows
+        if row["condition"] == summary["background_condition"]
+    ]
+    tested_statistics: list[tuple[str, float, float]] = []
     for row in rows:
         is_target = (
             row["rna_ref"] == target_ref and row["rna_alt"] == target_alt
@@ -1707,6 +1740,70 @@ def validate_step09_result_semantics(
                 fail(
                     "Step 09 background-disabled result contains a "
                     "background claim."
+                )
+        else:
+            background_dp = [
+                row[f"DP__{sample}"] for sample in background_samples
+            ]
+            background_ad = [
+                row[f"AD__{sample}"] for sample in background_samples
+            ]
+            background_missing = any(
+                value == NA_VALUE for value in background_dp + background_ad
+            )
+            background_low = (
+                not background_missing
+                and any(int(value) < min_sample_dp for value in background_dp)
+            )
+            background_positive = (
+                not background_missing
+                and all(int(value) > 0 for value in background_dp)
+            )
+            background_af = (
+                [
+                    int(ad) / int(dp)
+                    for dp, ad in zip(
+                        background_dp, background_ad, strict=True
+                    )
+                ]
+                if background_positive
+                else []
+            )
+            if background_missing:
+                expected_background_status = "missing_counts"
+                expected_background_max = None
+            elif background_low:
+                expected_background_status = "low_coverage"
+                expected_background_max = (
+                    max(background_af) if background_af else None
+                )
+            elif not background_af:
+                fail(
+                    "Step 09 enabled background has zero depth at or above "
+                    "the minimum depth threshold."
+                )
+            else:
+                expected_background_max = max(background_af)
+                expected_background_status = (
+                    "pass"
+                    if all(value < background_threshold for value in background_af)
+                    else "fail_fraction"
+                )
+            observed_background_max = parse_number(
+                "Step 09 max_background_af",
+                row["max_background_af"],
+                allow_na=True,
+                nonnegative=True,
+            )
+            if (
+                row["background_status"] != expected_background_status
+                or not values_close(
+                    observed_background_max, expected_background_max
+                )
+            ):
+                fail(
+                    "Step 09 enabled-background status or maximum AF does "
+                    f"not reconcile for candidate {row['candidate_id']}."
                 )
         sample_dp = [row[f"DP__{sample}"] for sample in analysis_samples]
         sample_ad = [row[f"AD__{sample}"] for sample in analysis_samples]
@@ -1891,6 +1988,7 @@ def validate_step09_result_semantics(
             or not values_close(delta, treatment_af - control_af)
         ):
             fail("Step 09 tested-candidate statistics are malformed.")
+        tested_statistics.append((row["candidate_id"], p_value, fdr))
         if mean_dp <= mean_dp_threshold:
             expected_call = "below_mean_dp"
         elif row["background_status"] not in ("disabled", "pass"):
@@ -1908,6 +2006,27 @@ def validate_step09_result_semantics(
                 "Step 09 call_status conflicts with the declared strict "
                 f"thresholds for candidate {row['candidate_id']}."
             )
+    if tested_statistics:
+        p_values = [value[1] for value in tested_statistics]
+        count = len(p_values)
+        descending = sorted(
+            range(count), key=lambda index: p_values[index], reverse=True
+        )
+        adjusted = [0.0] * count
+        running = 1.0
+        for rank, index in zip(
+            range(count, 0, -1), descending, strict=True
+        ):
+            running = min(running, count * p_values[index] / rank)
+            adjusted[index] = min(1.0, running)
+        for (candidate_id, p_value, observed), expected in zip(
+            tested_statistics, adjusted, strict=True
+        ):
+            if observed < p_value or not values_close(observed, expected):
+                fail(
+                    "Step 09 cmh_fdr_bh does not match global BH adjustment "
+                    f"for candidate {candidate_id}."
+                )
 
 
 def validate_significant_subset(
@@ -3943,6 +4062,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     step09_summary_table = validate_step09_summary(
         paths["step09_summary"],
         analysis_id,
+        step08_inputs.rows[0]["cohort_id"],
         sample_ids,
         sample_rows,
         all_sites.rows,
