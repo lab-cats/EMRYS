@@ -435,7 +435,7 @@ def validate_result_bytes(
     data: bytes,
     profile_sha256: str,
     runtime_context: str,
-    check_count: int,
+    checks: Sequence[Check],
 ) -> None:
     try:
         text = data.decode("utf-8")
@@ -445,10 +445,10 @@ def validate_result_bytes(
     if tuple(reader.fieldnames or ()) != RESULT_HEADER:
         _fail("Runtime preflight output has an invalid header")
     rows = list(reader)
-    if len(rows) != check_count:
+    if len(rows) != len(checks):
         _fail("Runtime preflight output row count does not match the profile")
     seen: set[str] = set()
-    for row in rows:
+    for row, check in zip(rows, checks, strict=True):
         if None in row or any(value is None for value in row.values()):
             _fail("Runtime preflight output has an invalid row shape")
         if row["profile_sha256"] != profile_sha256:
@@ -460,6 +460,19 @@ def validate_result_bytes(
         if row["check_id"] in seen:
             _fail("Runtime preflight output has duplicate check IDs")
         seen.add(row["check_id"])
+        expected_fields = {
+            "check_id": check.check_id,
+            "check_type": check.check_type,
+            "target": check.target,
+            "required": "true" if check.required else "false",
+            "expected": check.expected,
+        }
+        for field, expected_value in expected_fields.items():
+            if row[field] != expected_value:
+                _fail(
+                    f"Runtime preflight output {field} does not match the "
+                    f"profile for check {check.check_id}"
+                )
 
 
 def _ensure_output_parent(output: Path) -> None:
@@ -494,7 +507,7 @@ def publish(
     data: bytes,
     profile_sha256: str,
     runtime_context: str,
-    check_count: int,
+    checks: Sequence[Check],
 ) -> None:
     _ensure_output_parent(output)
     lock = output.with_name(f".{output.name}.lock")
@@ -509,7 +522,7 @@ def publish(
         if had_previous:
             previous = _read_regular_file(output, "Existing runtime preflight output")
             validate_result_bytes(
-                previous, profile_sha256, runtime_context, check_count
+                previous, profile_sha256, runtime_context, checks
             )
         with staged.open("xb") as handle:
             handle.write(data)
@@ -519,7 +532,7 @@ def publish(
             _read_regular_file(staged, "Staged runtime preflight output"),
             profile_sha256,
             runtime_context,
-            check_count,
+            checks,
         )
         if had_previous:
             os.replace(output, backup)
@@ -529,7 +542,7 @@ def publish(
                 _read_regular_file(output, "Published runtime preflight output"),
                 profile_sha256,
                 runtime_context,
-                check_count,
+                checks,
             )
         except BaseException:
             if output.exists() and not output.is_symlink():
@@ -556,7 +569,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         profile_sha256 = hashlib.sha256(profile_data).hexdigest()
         results = run_checks(checks, args.runtime_context)
         rendered = result_bytes(profile_sha256, args.runtime_context, results)
-        validate_result_bytes(rendered, profile_sha256, args.runtime_context, len(checks))
+        validate_result_bytes(rendered, profile_sha256, args.runtime_context, checks)
 
         print(f"Runtime profile: {args.profile}")
         print(f"Profile SHA-256: {profile_sha256}")
@@ -583,7 +596,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             rendered,
             profile_sha256,
             args.runtime_context,
-            len(checks),
+            checks,
         )
         print(f"Published runtime preflight report: {args.output}")
         return 0

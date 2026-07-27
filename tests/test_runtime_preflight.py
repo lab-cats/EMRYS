@@ -384,6 +384,19 @@ def test_foreign_lock_and_invalid_prior_are_preserved(tmp_path: Path) -> None:
     assert output.read_text() == "foreign\n"
 
 
+def test_prior_report_rows_must_reconcile_to_profile(tmp_path: Path) -> None:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    output = tmp_path / "preflight.tsv"
+    assert run_cli(profile, output, "--execute").returncode == 0
+    original = output.read_text(encoding="utf-8")
+    output.write_text(original.replace("\tpython\ttool_version\t", "\ttampered\ttool_version\t"))
+
+    result = run_cli(profile, output, "--execute")
+    assert result.returncode == 2
+    assert "check_id does not match the profile" in result.stderr
+    assert "\ttampered\ttool_version\t" in output.read_text(encoding="utf-8")
+
+
 def test_execute_requires_existing_real_parent_and_tsv_suffix(tmp_path: Path) -> None:
     profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
     missing_parent = run_cli(
@@ -423,16 +436,16 @@ def test_publish_failure_rolls_back_valid_prior(
     real_validate = PREFLIGHT.validate_result_bytes
     calls = 0
 
-    def fail_after_publish(data, profile_sha256, runtime_context, check_count):
+    def fail_after_publish(data, profile_sha256, runtime_context, expected_checks):
         nonlocal calls
         calls += 1
         if calls == 3:
             raise PREFLIGHT.PreflightError("injected validation failure")
-        return real_validate(data, profile_sha256, runtime_context, check_count)
+        return real_validate(data, profile_sha256, runtime_context, expected_checks)
 
     monkeypatch.setattr(PREFLIGHT, "validate_result_bytes", fail_after_publish)
     with pytest.raises(PREFLIGHT.PreflightError, match="injected"):
-        PREFLIGHT.publish(output, previous, digest, "local", len(checks))
+        PREFLIGHT.publish(output, previous, digest, "local", checks)
     assert output.read_bytes() == previous
     assert not list(tmp_path.glob(".*.lock"))
     assert not list(tmp_path.glob(".*.tmp"))
