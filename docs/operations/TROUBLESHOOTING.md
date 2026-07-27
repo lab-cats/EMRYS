@@ -590,6 +590,28 @@ sidecar. Do not rewrite reference files inside the validator and do not
 hand-edit a failed report into a pass. A published failure is valid evidence
 and does not revoke or replace historical cluster status.
 
+## Step 01 structured validation reports STAR output disagreement
+
+### Symptom
+
+The Step `01` validation TSV reports a missing/empty output, invalid BAM
+container, malformed final log, missing or invalid mapping percentage, or
+malformed splice-junction row.
+
+### Cause
+
+The five explicit paths may not belong to one complete STAR attempt, an output
+may be truncated, or the STAR log/table shape may not satisfy the declared
+contract.
+
+### Fix
+
+Inspect the failed row and the exact BAM, three log files, and SJ table. Use
+scheduler and native STAR logs to decide whether a separately authorized
+alignment rerun is required. Do not rerun STAR from the validator, substitute
+paths by glob, or edit a failed report into a pass. Publishing local validation
+evidence does not replace historical cluster evidence.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1781,7 +1803,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 70-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 71-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

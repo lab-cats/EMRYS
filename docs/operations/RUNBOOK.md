@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 70 synthetic physical artifacts
+requirements. The example inventory contains 71 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 52 registered read-only adapters covering the 70
+The adapter builder has 53 registered read-only adapters covering the 71
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1634,6 +1634,51 @@ Known alignment summaries:
 | `ABE_PUM1_2` | 21.1 million | 77.51% |
 | `ABE_PUM1_3` | 23.2 million | 85.38% |
 | `ABE_PUM1_4` | 22.5 million | 70.96% |
+
+The structured Step `01` validator consumes the five exact output paths for
+one sample:
+
+```bash
+.venv/bin/python scripts/validate_step_01_star_alignment.py \
+  --scope-id ABE_EV_2 \
+  --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \
+  --log-out results/star/ABE_EV_2/ABE_EV_2.Log.out \
+  --log-progress results/star/ABE_EV_2/ABE_EV_2.Log.progress.out \
+  --sj-out results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab \
+  --output results/qc/validation/01/ABE_EV_2.validation.tsv
+```
+
+Dry-run verifies that every explicit output is nonempty, checks the BAM/BGZF
+container signature, parses unique `Log.final.out` key/value rows, requires
+the unique/multimapping/too-many-loci percentages to be valid values from zero
+through 100, and validates every nonempty splice-junction row as nine columns
+with valid coordinates and counts. It creates no report. After inspection,
+create the parent and add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/01
+.venv/bin/python scripts/validate_step_01_star_alignment.py \
+  --scope-id ABE_EV_2 \
+  --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \
+  --log-out results/star/ABE_EV_2/ABE_EV_2.Log.out \
+  --log-progress results/star/ABE_EV_2/ABE_EV_2.Log.progress.out \
+  --sj-out results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab \
+  --output results/qc/validation/01/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+Failed checks remain report evidence. The `step01_validation_report_v1`
+adapter carries the sample scope into canonical summaries and HTML/PDF reports
+without changing historical cluster state. The validator never runs STAR or
+modifies its outputs.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_01_star_alignment.py
+```
 
 ## Step 02: Canonical Sort, Read-Group Tagging, And BAM Indexing
 

@@ -164,3 +164,8 @@ Step `00c` reads the explicit FASTA, FAI, and DICT and reports their individual
 structure plus exact ordered contig-name/length agreement. Its typed adapter
 uses the same evidence-only path; it never creates or repairs reference
 sidecars.
+
+Step `01` validates the five explicit STAR outputs for one sample, including
+the BAM container, final-log mapping percentages, and splice-junction table.
+The per-sample typed adapter exposes those checks to the same summary and
+report path without rerunning alignment.

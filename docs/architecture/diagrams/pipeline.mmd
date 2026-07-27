@@ -8,6 +8,7 @@ flowchart LR
     prep --> validate00c["00c read-only validation TSV"]
     manifest["Explicit sample manifest"] --> align["01 STAR alignment"]
     prep --> align
+    align --> validate01["01 read-only validation TSV"]
     align --> bam["02 canonical BAM"]
     bam --> qc["02b BAM QC"]
     bam --> orientation["03 library orientation"]
@@ -24,5 +25,6 @@ flowchart LR
     validate00a --> adapters
     validate00b --> adapters
     validate00c --> adapters
+    validate01 --> adapters
     adapters --> summary["Canonical run summary"]
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]
