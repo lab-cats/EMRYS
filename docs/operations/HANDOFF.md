@@ -7,20 +7,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-comprehensive-docpatch`
+  `post09-refactor-roadmap`
 - Parent:
-  `post09-validation-report-09`
+  `post09-comprehensive-docpatch`
 - Verified parent HEAD:
-  `5bdf53664d72f047d88f4a59d38ff2d8c80dc503`
+  `c72ec9e1ee6b7c9e76f1d6f3f0d7f002ed7ac05e`
 - Parent implementation:
   `d6458ea implement step 09 validation report`
 - Parent documentation:
-  `5bdf536 step 09 validation report docpatch`
+  `c72ec9e comprehensive repository docpatch`
 - Package type: documentation-only
 - Remote and cluster work: paused
 
-The comprehensive-docpatch branch was created only after verifying a clean,
-upstream-equal parent and an absent target branch.
+The refactor-roadmap branch was created only after verifying a clean,
+upstream-equal comprehensive-docpatch parent and an absent target branch.
 
 ## Completed boundary
 
@@ -64,10 +64,14 @@ The local descendant sequence has implemented:
 - a Step `09` seven-check transaction/identity/semantics/subset/summary/
   spectrum/PDF validation report, typed artifact adapter, and summary/HTML/PDF
   propagation fixture.
+- a repository-wide structural audit and evidence-ranked future implementation
+  roadmap with explicit compatibility, production, second-cohort, and
+  evidence-triggered gates.
 
-The current package reconciles all tracked Markdown and Mermaid sources with
-the completed local validator sequence. It changes no executable behavior,
-schema, test, workflow contract, or generated output.
+The current documentation-only package records refactor opportunities without
+activating them. It changes no executable behavior, schema, test, workflow
+contract, generated output, runtime status, scientific state, or biological
+state.
 
 ## Evidence boundary
 
@@ -184,9 +188,12 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-comprehensive-docpatch` documentation gate is complete. Continue
-from this clean, pushed descendant with the approved
-`post09-refactor-roadmap` documentation package.
+The `post09-refactor-roadmap` documentation gate is complete. Continue from
+this clean, pushed descendant with the approved `post09-test-coverage`
+implementation and documentation package. Use
+[`../design/FUTURE_IMPLEMENTATION_ROADMAP.md`](../design/FUTURE_IMPLEMENTATION_ROADMAP.md)
+for refactor prerequisites, but keep live sequencing in the authoritative
+plan.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

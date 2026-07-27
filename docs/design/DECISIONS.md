@@ -343,12 +343,18 @@ Decision: each information category has one canonical owner:
 - `TROUBLESHOOTING.md`: symptom, cause, diagnosis, and fix;
 - `ARCHITECTURE.md`: current topology and contracts;
 - `FUTURE_ARCHITECTURE.md`: target-state constraints;
+- `FUTURE_IMPLEMENTATION_ROADMAP.md`: evidence-ranked engineering
+  opportunities, prerequisites, and exit gates without live status;
 - demo documents: presentation material or dated snapshots;
 - standalone `.mmd` files: canonical diagrams.
 
 Reason: mutable facts otherwise drift across independently maintained copies.
 Documents link to canonical owners instead of repeating branch names, commit
 IDs, test totals, commands, live status, or diagrams.
+
+An engineering opportunity is not approved work merely because it appears in
+the future implementation roadmap. Approved status, sequencing, and lineage
+enter `PIPELINE_PLAN.md` explicitly.
 
 ## Deferred engineering
 

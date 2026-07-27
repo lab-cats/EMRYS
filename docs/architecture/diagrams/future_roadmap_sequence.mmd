@@ -1,5 +1,9 @@
 flowchart TB
-    contracts["Stabilized native, validation, and report contracts"] --> coverage["Risk-ranked coverage hardening"]
-    coverage --> remote["Upstream-sequential remote validation"]
-    remote --> science["Production scientific-evidence review"]
-    science --> later["Evidence-ranked reruns and refactor implementation"]
+    contracts["Stabilized native, validation, and report contracts"] --> coverage["Compatibility, fault-injection, and coverage foundation"]
+    coverage --> remote["Upstream-sequential runtime and cluster validation"]
+    remote --> production["Production artifact, summary, report, and recovery baselines"]
+    production --> science["Production scientific-evidence review"]
+    science --> control["Narrow control-plane refactors with exact parity"]
+    control --> cohort["Second real cohort through unchanged interfaces"]
+    cohort --> analysis["Evidence-gated analysis configuration and Step 07-09 refactors"]
+    analysis -. repeated operational need .-> orchestration["Narrow helpers or orchestration"]

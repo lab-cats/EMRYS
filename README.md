@@ -68,6 +68,7 @@ logs/           ignored runtime logs
 | [`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Symptom-to-fix guidance |
 | [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
 | [`FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md) | Target-state design and deferred constraints |
+| [`FUTURE_IMPLEMENTATION_ROADMAP.md`](docs/design/FUTURE_IMPLEMENTATION_ROADMAP.md) | Evidence-ranked refactor opportunities, prerequisites, and exit gates |
 | [`DEMO_WALKTHROUGH.md`](docs/demo/DEMO_WALKTHROUGH.md) | Presentation-oriented walkthrough |
 | [`PI_DEMO_REPORT.md`](docs/demo/PI_DEMO_REPORT.md) | Presentation-oriented evidence-model snapshot |
 

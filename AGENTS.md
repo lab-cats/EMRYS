@@ -218,12 +218,17 @@ Each mutable fact has one canonical owner:
 | `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
 | `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
 | `FUTURE_ARCHITECTURE.md` | Target architecture and future constraints |
+| `FUTURE_IMPLEMENTATION_ROADMAP.md` | Evidence-ranked engineering opportunities, prerequisites, and exit gates; no live status |
 | Demo documents | Presentation walkthroughs or explicitly dated snapshots |
 | Standalone `.mmd` files | Canonical diagram sources |
 
 Do not duplicate live branch names, commit IDs, test totals, tool versions,
 roadmaps, or next-step narratives outside their canonical owner. Link instead.
 Do not maintain inline copies of standalone Mermaid sources.
+
+`PIPELINE_PLAN.md` remains the only owner of approved package status and
+lineage. `FUTURE_IMPLEMENTATION_ROADMAP.md` is a non-authoritative opportunity
+register; an item becomes active only when it enters the approved plan.
 
 After each task, suggest relevant updates to these documents. When behavior
 changes, complete the repository-wide docpatch; update every affected status,

@@ -55,7 +55,7 @@ a completed production review.
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | completed; documentation-only |
-| `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | approved; pending |
+| `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | completed; documentation-only |
 | `post09-test-coverage` | High-value test-coverage extensions and coverage roadmap | approved; pending |
 
 Schema validation, adapter completion, summary completion, table approval, and
@@ -111,6 +111,29 @@ validation during this sequence.
 - demos are explicitly presentation material or dated snapshots;
 - unique scientific and validation evidence is preserved;
 - no executable behavior changes;
+- complete applicable local and documentation gates pass.
+
+### Refactor and future implementation roadmap
+
+- one non-authoritative opportunity register at
+  [`FUTURE_IMPLEMENTATION_ROADMAP.md`](FUTURE_IMPLEMENTATION_ROADMAP.md);
+- repository-wide evidence covers concentrated modules, producer coupling,
+  repeated test support, validation targets, dependencies, operational
+  documentation, stale scaffolding, and repository policy;
+- every opportunity has a value, risk, readiness class, prerequisites, and
+  an observable exit gate;
+- characterization and coverage precede structural extraction;
+- production/recovery baselines precede transaction and evidence-product
+  decomposition;
+- a second real cohort precedes Step `07`–`09` analysis-core or configuration
+  refactoring;
+- broad shell/SLURM abstraction and orchestration remain evidence-triggered;
+- public CLIs, paths, identities, schemas, scientific semantics, evidence
+  states, and recovery contracts remain explicit invariants;
+- live approval, status, and lineage remain in this file rather than the
+  opportunity register;
+- no executable behavior, runtime status, cluster status, scientific state,
+  or biological state changes;
 - complete applicable local and documentation gates pass.
 
 ### Report exports

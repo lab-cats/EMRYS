@@ -3,7 +3,9 @@
 This document describes target-state architecture and future constraints. It
 does not track current branch, test, runtime, or validation status. See
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for the approved
-roadmap.
+package roadmap and
+[`../design/FUTURE_IMPLEMENTATION_ROADMAP.md`](../design/FUTURE_IMPLEMENTATION_ROADMAP.md)
+for evidence-ranked engineering opportunities and their prerequisite gates.
 
 Canonical future diagrams:
 
@@ -70,6 +72,9 @@ RNA-editing/CMH module. Such a module must preserve:
 
 Implementing broad core refactoring requires evidence from another real
 cohort; documenting evidence-ranked opportunities does not alter that gate.
+Control-plane extractions that preserve exact public behavior still require
+the characterization, fault-injection, and production baselines assigned by
+the future implementation roadmap.
 
 ## Deferred capabilities
 

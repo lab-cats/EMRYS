@@ -8,11 +8,11 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Create `post09-refactor-roadmap` from the clean, pushed
-   `post09-comprehensive-docpatch` branch and
-   record the evidence-ranked future implementation roadmap.
-2. Create `post09-test-coverage`, implement the reasonable high-value test
+1. Create `post09-test-coverage` from the clean, pushed
+   `post09-refactor-roadmap` branch, implement the reasonable high-value test
    extensions identified by the coverage audit, and docpatch that package.
+2. Record the comprehensive test-coverage audit and future coverage roadmap
+   without weakening the fixture, real-R, or real-renderer gates.
 3. Complete the final repository-wide validation, clean-history, push, and
    upstream-equality audit without beginning remote or cluster promotion.
 
