@@ -40,6 +40,7 @@ a completed production review.
 | `report-exports-v1` | Atomic HTML/PDF/TSV/report-receipt bundle | implemented and locally tested |
 | `post09-runtime-preflight` | Explicit-profile runtime availability checks | implemented and locally fixture-tested; CSU batch execution pending |
 | `post09-reference-provenance` | Explicit reference hashes, provenance, and contig reconciliation | implemented and locally fixture-tested; production execution pending |
+| `post09-storage-inventory-retention` | Explicit storage measurement and retention-policy recording | implemented and locally fixture-tested; production inventory and approvals pending |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
@@ -69,8 +70,7 @@ report-html-v1a-report-table-approvals
                                                                     └── post09-validation-report-09
 ```
 
-Stop the approved local-only sequence after the clean, pushed
-`post09-validation-report-09` branch. Do not perform remote or cluster
+Do not perform remote or cluster
 validation during this sequence.
 
 ## Package acceptance criteria

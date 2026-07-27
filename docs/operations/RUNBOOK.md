@@ -512,6 +512,76 @@ all-pass CSU batch report establishes only the declared availability probes.
 It does not execute Steps `07`-`09`, validate production inputs, or establish
 runtime or cluster proof.
 
+### Inventory Storage And Record Retention Policy
+
+Use `configs/storage_roots.example.tsv` and
+`configs/retention_policy.example.tsv` only as structural starting points.
+Replace every illustrative path and pending approval through an
+operator-controlled contract. The exact headers are:
+
+```text
+storage_id	path	required	purpose	quota_bytes_expected	notes
+policy_id	storage_id	artifact_class	action	retention_days	approval_status	approved_by	approved_at	notes
+```
+
+Root paths must be absolute, traversal-free, and unique after resolution.
+`quota_bytes_expected` is `NA` or a positive integer. Retention actions are
+`retain`, `archive`, or `review_then_delete`; approval state is `approved`,
+`pending`, or `rejected`. Approved rows require an approver and a canonical
+non-future UTC time. The policy table records authorization state but is never
+executed by this tool.
+
+Read-only dry-run:
+
+```bash
+.venv/bin/python scripts/storage_inventory.py \
+  --roots /explicit/path/to/storage_roots.tsv \
+  --retention-policy /explicit/path/to/retention_policy.tsv \
+  --output-root results/qc/storage
+```
+
+Dry-run parses the exact contracts and measures only the named roots. It does
+not create the output root, locks, scratch paths, or stable reports. Symlinks
+are counted but never followed. After inspection, create the explicit output
+root and publish:
+
+```bash
+mkdir -p results/qc/storage
+.venv/bin/python scripts/storage_inventory.py \
+  --roots /explicit/path/to/storage_roots.tsv \
+  --retention-policy /explicit/path/to/retention_policy.tsv \
+  --output-root results/qc/storage \
+  --execute
+```
+
+Execute mode publishes:
+
+```text
+results/qc/storage/
+  storage_inventory.tsv
+  retention_policy.tsv
+  storage_retention_summary.tsv
+```
+
+The summary is last. It reports missing required roots, measurement errors,
+approved/pending/rejected policy counts, roots without approved policy, and
+overall status. A zero command exit means measurement and optional publication
+completed; inspect `overall_status` and every row before relying on the
+evidence. Publication requires an existing real output directory, refuses a
+partial or invalid predecessor, and uses an owned lock, run-token staging and
+backups, validation-before-publication, and rollback.
+
+The tool never deletes, moves, archives, compresses, repairs, or cleans any
+storage content. Production paths, quota values, and approvals remain
+unresolved until an operator populates and inspects the contracts in the
+appropriate CSU context.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_storage_inventory.py
+```
+
 ### Reconcile Explicit Reference Provenance
 
 Use `configs/reference_provenance.example.tsv` as the structural starting

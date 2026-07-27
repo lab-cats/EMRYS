@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-reference-provenance`
+  `post09-storage-inventory-retention`
 - Parent:
-  `post09-runtime-preflight`
+  `post09-reference-provenance`
 - Verified parent HEAD:
-  `bd9104ee7ece7cae7b5800233942938acac42ff1`
+  `97e17ba4f96213663590259baf7137549cdd5f95`
 - Parent implementation:
-  `0071450 implement runtime preflight`
-- Current implementation:
   `c1204db implement reference provenance`
+- Current implementation:
+  `2616bd8 implement storage inventory and retention reporting`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The reference-provenance branch was created only after fetching remote refs and
+The storage-inventory branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -33,7 +33,8 @@ The local descendant sequence has implemented:
 - canonical run-summary assembly and report-table approvals;
 - atomic, receipt-last HTML/PDF/summary-TSV reporting;
 - explicit-profile, read-only runtime availability preflight;
-- explicit read-only reference artifact, provenance, hash, and contig reconciliation.
+- explicit read-only reference artifact, provenance, hash, and contig reconciliation;
+- explicit read-only storage-root measurement and retention-policy recording.
 
 ## Evidence boundary
 
@@ -57,6 +58,7 @@ The local descendant sequence has implemented:
 | Static report bundle | HTML/PDF/summary TSV/report receipt implemented and tested with the pinned local Quarto/Typst renderer and PDF reader; no production report |
 | Runtime preflight | explicit tool, R-namespace, SHA-256, and path-visibility probes implemented and locally fixture-tested; no CSU batch report |
 | Reference provenance | explicit FASTA/FAI/DICT/GTF/BED12/STAR inventory and reconciliation implemented and locally fixture-tested; no production reference report |
+| Storage inventory and retention | explicit root size/capacity measurement and retention-policy recording implemented and locally fixture-tested; no production storage report or approved production policy |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -72,6 +74,11 @@ The tracked runtime profile is an example contract. Local tests and a
 successfully published preflight report would establish only the checks
 recorded in their declared context, not workflow runtime validation or
 cluster proof.
+
+No production storage-root contract or retention-policy approval has been
+populated. The tracked contracts use illustrative paths and pending approvals.
+The inventory tool is read-only; report publication does not authorize or
+perform deletion, movement, archival, compression, or cleanup.
 
 ## Cohort and preserved scientific evidence
 
@@ -131,9 +138,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-reference-provenance` implementation and documentation gates are
-complete. Continue from this clean, pushed descendant with
-`post09-storage-inventory-retention`.
+The `post09-storage-inventory-retention` implementation and documentation
+gates are complete. Continue from this clean, pushed descendant with
+`post09-validation-report-00a`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

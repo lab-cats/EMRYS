@@ -140,3 +140,10 @@ members; records annotation source/release declarations; compares
 FASTA/FAI/DICT/STAR ordered names and lengths; and verifies that GTF/BED12
 contigs belong to the FASTA universe. It publishes artifact and contig TSVs
 with a summary last, reports inconsistencies, and never repairs references.
+
+Storage inventory consumes one exact root contract and one exact retention
+policy. It measures only the named absolute directory trees without following
+symlinks, records filesystem capacity and declared quota, and publishes the
+inventory and normalized policy with a summary last. Approval state is
+evidence, not an executable instruction: this boundary never deletes, moves,
+archives, compresses, or cleans data.

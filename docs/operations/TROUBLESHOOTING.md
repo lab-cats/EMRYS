@@ -778,6 +778,53 @@ through their formal upstream stage only after review. Never make this
 read-only tool rebuild sidecars/indexes, rename contigs, edit hashes, discard
 an unresolved annotation release, or delete a foreign lock.
 
+## Storage inventory reports missing roots, measurement failures, or unapproved policy
+
+### Symptom
+
+`storage_retention_summary.tsv` records `overall_status=fail`, a root is
+`missing_required`, `invalid`, or `measurement_error`, or
+`unapproved_storage_count` is nonzero.
+
+### Cause
+
+An explicit required directory may be absent or unreadable, a declared root
+may resolve to a non-directory or duplicate, filesystem metadata may be
+unavailable, or no approved policy row covers that storage ID. Pending and
+rejected approvals intentionally do not authorize retention handling.
+
+### Fix
+
+Inspect the exact root and policy rows, resolved path, observed capacity, quota
+declaration, approval fields, and summary counts in the intended CSU execution
+context. Correct the source contracts or storage environment through an
+explicit operator action, then rerun dry-run. Do not change a status, invent a
+quota or approval, or treat a local path measurement as cluster evidence. The
+tool never executes retention actions.
+
+## Storage inventory lock or prior transaction blocks publication
+
+### Symptom
+
+Execute mode reports an existing `.storage-inventory-retention.lock`, a
+partial or invalid three-file predecessor, an unsafe output root, or a
+publication/rollback failure.
+
+### Cause
+
+The inventory, normalized policy, and summary are one summary-last
+transaction. A concurrent writer, foreign lock, manual edit, interrupted
+replacement, symlink, or partial copy makes safe replacement impossible.
+
+### Fix
+
+Inspect the lock owner metadata, all three stable files, and matching
+run-token `.tmp` and `.previous` paths. Do not delete a foreign lock, combine
+attempts, manufacture a summary, or use this reporting tool to alter storage
+content. Resolve ownership, recover either the complete prior transaction or
+a clean first-publication state, validate it, and record any operator action
+before retrying.
+
 ## Step 08 or Step 09 cannot find `Rscript`
 
 ### Symptom

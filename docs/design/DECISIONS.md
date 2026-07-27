@@ -215,6 +215,19 @@ Consequently, missing files, hash differences, malformed metadata, and contig
 disagreement are reported in a summary-last transaction and require separate
 operator resolution.
 
+### Measure storage without acting on retention policy
+
+Decision: storage evidence comes from an exact TSV inventory of absolute roots
+and a separate exact retention-policy TSV. The inventory records declared and
+resolved paths, tree size, entry counts, filesystem capacity, expected quota,
+and policy approval state in a three-file summary-last transaction.
+
+Reason: capacity evidence and retention authorization must be inspectable
+before large runs, but an observational foundation tool must not become an
+implicit cleanup engine. Consequently, pending or rejected approvals and
+missing required storage are reported without deleting, moving, archiving,
+compressing, or otherwise changing data.
+
 ## Evidence and scientific state
 
 ### Separate computational proof and scientific interpretation

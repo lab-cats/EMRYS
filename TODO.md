@@ -8,12 +8,11 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Implement `post09-storage-inventory-retention` from the clean, pushed
-   `post09-reference-provenance` branch.
+1. Implement `post09-validation-report-00a` from the clean, pushed
+   `post09-storage-inventory-retention` branch.
 2. Continue the approved local implementation sequence without pausing between
    clean stage gates.
-3. Continue any approved local-only descendant sequence one package at a time,
-   stopping at the boundary defined in the pipeline plan.
+3. Continue any approved local-only descendant sequence one package at a time.
 
 ## Runtime and scientific blockers
 
