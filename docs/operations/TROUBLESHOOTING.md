@@ -490,6 +490,39 @@ After failure, cleanup should remove only owned temp BAM/BAI files, alternate GA
 
 The later Step `05` revalidation is cluster-proven across all six samples; keep this entry as the record of why GATK temp files must stay on project storage.
 
+## Step 05 multi-sample inspection helper rejects arguments or status output
+
+### Symptom
+
+`tests/data_checks/validate_step05_outputs.sh` rejects an unknown option,
+missing `--jobs` or `--output` value, nonexistent job file, non-executable
+samtools path, or unwritable output. It may also exit `2` even though no sample
+has status `FAIL`.
+
+### Cause
+
+The helper has an explicit CLI and writes one synchronous TSV, with one row per
+requested sample. Exit `0` means every sample passed, exit `1` means at least
+one failed, and exit `2` means there are no failures but at least one sample is
+pending or running. `SAMTOOLS` is an environment override; the optional job
+file contains `SAMPLE_ID JOBID` pairs.
+
+### Fix
+
+Run from the repository root with explicit paths:
+
+```bash
+SAMTOOLS=/explicit/path/to/samtools \
+  tests/data_checks/validate_step05_outputs.sh \
+  --jobs /explicit/path/to/step05_jobs.txt \
+  --output results/qc/step05/step05_validation_status.tsv \
+  ABE_EV_2 ABE_EV_3 ABE_EV4 ABE_PUM1_2 ABE_PUM1_3 ABE_PUM1_4
+```
+
+Inspect both the TSV and stderr summary. Do not reinterpret exit `2` as a
+failure or exit `0` as new cluster proof; reconcile scheduler state, native
+outputs, and logs under the normal Step `05` evidence gate.
+
 ## Step 00a structured validation reports failed checks
 
 ### Symptom
@@ -513,7 +546,7 @@ them relative to the index automatically. Regenerate or repair source
 artifacts only through their formal upstream stage after review. Never make
 the validator rewrite index members, parameters, references, or statuses.
 
-## Step 00a validation report lock or predecessor blocks publication
+## Structured validation report lock or predecessor blocks publication
 
 ### Symptom
 
@@ -523,15 +556,20 @@ replacement/rollback state.
 ### Cause
 
 One scope owns one exact `.validation.tsv` and its adjacent lock/run-token
-paths. A concurrent writer, foreign lock, symlink, hand edit, partial copy, or
-interrupted replacement prevents safe publication.
+paths. The Step `00a` publisher provides this transaction contract to all
+structured step validators. A concurrent writer, foreign lock, symlink, hand
+edit, partial copy, or interrupted replacement prevents safe publication.
 
 ### Fix
 
 Inspect the lock metadata, stable report, and matching `.tmp`/`.previous`
-paths. Do not delete a foreign lock or manufacture a passing TSV. Establish
-ownership, recover the validated predecessor or clean first-publication state,
-record the operator action, and rerun dry-run before execute mode.
+paths. Do not delete a foreign or retained lock, discard recovery evidence, or
+manufacture a passing TSV. Incomplete rollback or cleanup retains the owned
+lock when it remains safely addressable and leaves whatever run-token
+temporary or predecessor path remains. A hostile late lock replacement can
+make the original lock unavailable. Establish ownership, recover the
+validated predecessor or clean first-publication state, record the operator
+action, and rerun dry-run before execute mode.
 
 ## Step 00b structured validation reports BED12 or GTF disagreement
 
@@ -589,6 +627,33 @@ before using the formal Step `00c` preparation workflow to create a missing
 sidecar. Do not rewrite reference files inside the validator and do not
 hand-edit a failed report into a pass. A published failure is valid evidence
 and does not revoke or replace historical cluster status.
+
+## Step 01 execution leaves no published output or refuses the destination
+
+### Symptom
+
+`step_01_star_align.sh --execute` reports a symlinked output directory, an
+existing STAR output, a missing or empty staged member, or a nonzero STAR
+failure. After the failure, the requested new output directory may no longer
+exist.
+
+### Cause
+
+The five STAR outputs are one no-clobber family. STAR writes them beneath an
+owned `.step01.<run-token>.tmp` directory, all five must be nonempty, and each
+stable name is created with a same-filesystem hard link. Any pre-existing
+stable path—including a broken symlink—or a symlinked output directory is
+unsafe. When the command created a new output directory and the attempt fails,
+cleanup removes that directory if it is empty.
+
+### Fix
+
+Inspect the exact error, STAR log, destination, and any stable outputs. Do not
+remove or replace an existing path merely to force publication, and do not
+combine members from separate attempts. Correct the explicit inputs or choose
+an operator-approved clean destination, rerun dry-run, and authorize execute
+mode separately. The cleanup contract is locally fake-STAR tested; it does not
+establish that a production alignment was rerun.
 
 ## Step 01 structured validation reports STAR output disagreement
 
@@ -932,6 +997,44 @@ header/sample validation fails.
 Header-only behavior is covered by local mocked tests; no real-bcftools or
 cluster header-only output has been inspected yet.
 
+## Sample manifest validation rejects the table or FASTQ paths
+
+### Symptom
+
+`scripts/validate_manifest.py` reports a missing, duplicate, empty, or unknown
+column; an extra field; an empty or duplicate sample ID; an empty FASTQ or
+condition; an unsupported strandedness value; or a FASTQ path that is missing
+or not a regular file.
+
+### Cause
+
+The manifest has a closed tab-separated contract. It requires `sample_id`,
+`r1_fastq`, `r2_fastq`, `strandedness`, and `condition`; only `notes` and
+`replicate` are optional. Header whitespace is normalized before duplicate
+checks, blank rows are ignored, and `--check-files` rejects directories even
+when they exist. Relative FASTQ paths resolve only against the explicit
+`--base-dir`.
+
+### Fix
+
+Correct the source manifest rather than relaxing the validator. First run
+schema-only validation, then repeat with the data root visible:
+
+```bash
+.venv/bin/python scripts/validate_manifest.py \
+  --manifest /explicit/path/to/samples.tsv
+
+.venv/bin/python scripts/validate_manifest.py \
+  --manifest /explicit/path/to/samples.tsv \
+  --base-dir /explicit/read/root \
+  --check-files
+```
+
+Do not replace a file with a directory, add unapproved columns, or infer
+condition, pairing, compression, or biological validity from path existence.
+The tracked SLURM smoke job validates only `samples.example.tsv` without file
+checks and is not production-manifest evidence.
+
 ## Runtime preflight profile or output contract is rejected
 
 ### Symptom
@@ -999,7 +1102,10 @@ impossible.
 
 Inspect the lock, owning process, exact profile hash/context, current report,
 and matching run-token `.tmp` and `.previous` paths. Do not delete a foreign
-lock, overwrite an invalid report, or manufacture statuses. Resolve ownership
+or retained lock, overwrite an invalid report, discard recovery evidence, or
+manufacture statuses. Incomplete rollback or cleanup leaves safely
+addressable owned lock, `.previous`, or staged state in place; a hostile late
+lock replacement can make the original lock unavailable. Resolve ownership
 and preserve the prior report before an explicit recovery or a new output
 path. A passing local fixture test is not evidence that a cluster-side
 recovery or availability check occurred.
@@ -1017,7 +1123,8 @@ The explicit inventory may name a missing/non-regular source, an incorrect
 expected hash, malformed FASTA/FAI/DICT/GTF/BED12/STAR metadata, different
 ordered names or lengths across FASTA/FAI/DICT/STAR, or annotation contigs
 outside the FASTA universe. A partial or hand-edited three-file predecessor is
-also unsafe to replace.
+also unsafe to replace. A broken stable-output symlink remains an occupied
+destination rather than an absent file.
 
 ### Fix
 
@@ -1026,7 +1133,10 @@ summary agreement fields, current files, and any owned/foreign lock or
 run-token paths. Correct provenance declarations or regenerate artifacts
 through their formal upstream stage only after review. Never make this
 read-only tool rebuild sidecars/indexes, rename contigs, edit hashes, discard
-an unresolved annotation release, or delete a foreign lock.
+an unresolved annotation release, or delete a foreign lock. If moving a
+predecessor into backup fails partway through, the publisher restores members
+already moved before reporting failure; verify the stable transaction rather
+than combining it with backup paths.
 
 ## Storage inventory reports missing roots, measurement failures, or unapproved policy
 
@@ -1064,7 +1174,9 @@ publication/rollback failure.
 
 The inventory, normalized policy, and summary are one summary-last
 transaction. A concurrent writer, foreign lock, manual edit, interrupted
-replacement, symlink, or partial copy makes safe replacement impossible.
+replacement, symlink, or partial copy makes safe replacement impossible. A
+broken stable-output symlink is occupied and unsafe, not an available
+destination.
 
 ### Fix
 
@@ -1073,7 +1185,9 @@ run-token `.tmp` and `.previous` paths. Do not delete a foreign lock, combine
 attempts, manufacture a summary, or use this reporting tool to alter storage
 content. Resolve ownership, recover either the complete prior transaction or
 a clean first-publication state, validate it, and record any operator action
-before retrying.
+before retrying. If backup fails after some predecessor members have moved,
+the publisher first restores those members; inspect the full stable set and
+do not splice it together with a backup.
 
 ## Step 08 or Step 09 cannot find `Rscript`
 
@@ -2261,6 +2375,11 @@ Owned or recovery paths may include:
 .tools/.quarto-download-<run_token>.tmp
 ```
 
+If cleanup of an owned public-download stage fails, restore normalizes the
+failure and retains the named `.quarto-download-*.tmp` path rather than hiding
+the original residue. That retained path is recovery evidence, not a valid
+archive or installed renderer.
+
 ### Fix
 
 For a normal first restore, run:
@@ -2285,7 +2404,8 @@ invalid, the restore intentionally refuses to overwrite it. Inspect and
 record the tree, receipt, lock owner, and any recovery paths first; then use an
 explicit operator-reviewed relocation or removal of only the proven ignored
 tooling target before restoring again. Never delete a foreign lock or retained
-recovery evidence merely to make the command pass.
+recovery evidence merely to make the command pass. For a retained download
+stage, verify its exact ownership and contents before any cleanup or retry.
 
 `make report-test` requires the executable to exist, revalidates the installed
 receipt/tree/version, and then exercises the real pinned executable. A fake
@@ -2379,12 +2499,16 @@ inspected. Symlinked, mutated, late-appearing, or identity-changed files and
 directories are never clobbered.
 
 Quarto runs in a dedicated process group. HUP, INT, TERM, launch errors, and
-the render timeout terminate and reap that complete group before publication
-cleanup continues. If publication fails, the renderer restores each validated
-prior member when it can prove ownership and identity. If rollback or cleanup
-cannot be proved, it retains the lock and best-effort recovery marker. If the
-output directory itself changed identity, path-based rollback is skipped to
-avoid modifying the replacement directory.
+the render timeout send `SIGTERM` to that group, escalate to `SIGKILL` if the
+direct Quarto process does not exit, and reap the direct process before
+publication cleanup continues. If publication fails, the renderer restores
+each validated prior member when it can prove ownership and identity. If
+rollback or cleanup cannot be proved, it retains the lock and best-effort
+recovery marker. If the output directory itself changed identity, path-based
+rollback is skipped to avoid modifying the replacement directory. Cleanup and
+marker writes use the same identity guard, so no recovery marker is written
+into a foreign replacement; the owned lock and staged/backup evidence remain
+with the original directory, which may now be detached from its former path.
 
 ### Fix
 
@@ -2395,7 +2519,9 @@ unrelated process, overwrite a late foreign report, combine attempts, or
 discard recovery evidence. Determine whether the validated new report is
 already committed or whether the exact prior bundle must be restored. Validate
 the chosen bundle state, record the operator action, and only then remove
-residue and a lock whose ownership is proven.
+residue and a lock whose ownership is proven. If the directory was replaced,
+locate and preserve the detached original rather than expecting a recovery
+marker under the new foreign directory.
 
 ## A synthetic report bundle is mistaken for production or validation evidence
 

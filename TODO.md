@@ -8,13 +8,12 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Create `post09-test-coverage` from the clean, pushed
-   `post09-refactor-roadmap` branch, implement the reasonable high-value test
-   extensions identified by the coverage audit, and docpatch that package.
-2. Record the comprehensive test-coverage audit and future coverage roadmap
-   without weakening the fixture, real-R, or real-renderer gates.
-3. Complete the final repository-wide validation, clean-history, push, and
-   upstream-equality audit without beginning remote or cluster promotion.
+- No approved local implementation package remains in the current sequence.
+- Keep remote and cluster promotion paused until the user explicitly resumes
+  it.
+- When promotion resumes, satisfy the production manifest, runtime,
+  reference, storage, and upstream Step `07` gates before creating or running
+  a downstream validation branch.
 
 ## Runtime and scientific blockers
 

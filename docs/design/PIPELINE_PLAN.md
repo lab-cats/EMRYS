@@ -3,7 +3,9 @@
 This is the authoritative pipeline/package roadmap, status matrix, acceptance
 criteria, and approved branch lineage. Current checkout details belong in
 [`../operations/HANDOFF.md`](../operations/HANDOFF.md); commands belong in
-[`../operations/RUNBOOK.md`](../operations/RUNBOOK.md).
+[`../operations/RUNBOOK.md`](../operations/RUNBOOK.md). The non-authoritative
+coverage inventory and residual-gap register are in
+[`TEST_COVERAGE_ROADMAP.md`](TEST_COVERAGE_ROADMAP.md).
 
 ## Pipeline
 
@@ -12,7 +14,7 @@ criteria, and approved branch lineage. Current checkout details belong in
 | `00a` | Build STAR index | Source identity, contigs, index structure, and configured overhang inspected | cluster-proven |
 | `00b` | Convert GTF to BED12 | BED12 structure, sorting, blocks, and GTF agreement inspected | cluster-proven |
 | `00c` | Build FASTA sidecars | FASTA/FAI/DICT identity and contig agreement inspected | cluster-proven |
-| `01` | STAR alignment | STAR outputs, logs, mapping summary, and BAM inspected | cluster-proven |
+| `01` | STAR alignment | STAR outputs, logs, mapping summary, and BAM inspected | historical six-sample outputs cluster-proven; current hardened publisher locally fixture-tested only |
 | `02` | Canonical BAM | BAM/BAI, coordinate sorting, read groups, and alignment RG tags inspected | cluster-proven |
 | `02b` | BAM QC | quickcheck and flagstat evidence inspected | cluster-proven evidence set |
 | `03` | Infer library orientation | RSeQC structure and paired-orientation fractions inspected | cluster-proven |
@@ -56,7 +58,7 @@ a completed production review.
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | completed; documentation-only |
 | `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | completed; documentation-only |
-| `post09-test-coverage` | High-value test-coverage extensions and coverage roadmap | approved; pending |
+| `post09-test-coverage` | High-value characterization/fault-injection extensions and coverage roadmap | completed; locally tested and docpatched |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
@@ -135,6 +137,29 @@ validation during this sequence.
 - no executable behavior, runtime status, cluster status, scientific state,
   or biological state changes;
 - complete applicable local and documentation gates pass.
+
+### Test coverage foundation
+
+- one canonical coverage inventory and residual-gap register at
+  [`TEST_COVERAGE_ROADMAP.md`](TEST_COVERAGE_ROADMAP.md);
+- fast fixtures, default real-R, strict guarded real-R, real renderer,
+  runtime/cluster, and scientific evidence remain independent tiers;
+- manifest/schema edge cases, utility jobs/data checks, Step `01`
+  validation-before-publication, and Step `07`/`08` validator negatives have
+  explicit characterization;
+- validation-report, runtime-preflight, Quarto, report-bundle, reference, and
+  storage publication receive focused fault injection at their highest-value
+  local seams;
+- incomplete rollback or cleanup retains recovery evidence wherever the
+  implemented transaction contract promises it;
+- report recovery and cleanup never write through a replaced output
+  directory;
+- no percentage target, coverage dependency, CI claim, runtime status,
+  cluster status, scientific state, or biological state is invented;
+- residual deterministic and external-evidence gaps are ranked with observable
+  acceptance gates;
+- complete Python, shell, real-R, R-environment, and pinned-renderer gates
+  pass before the separate docpatch.
 
 ### Report exports
 

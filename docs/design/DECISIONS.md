@@ -37,6 +37,20 @@ stage. The authoritative current lineage belongs in `PIPELINE_PLAN.md`.
 Decision: active runnable shell tests live under `tests/shell/`; future plans
 live under `tests/pending/` and are not wired into active targets.
 
+### Ratchet behavior before percentages
+
+Decision: coverage is tracked first through a source-to-suite ledger, named
+negative and transaction scenarios, independent real-R and real-renderer
+tiers, and explicit external-evidence gates. A future Python instrumentation
+package may establish branch-aware measurement from a clean baseline, but the
+global percentage remains diagnostic and has no invented target.
+
+Reason: line totals do not prove scientific semantics, fail-closed contracts,
+rollback, process-group cleanup, or cluster behavior. Shell and R ratchets use
+named scenarios and cross-language conformance rather than line percentages.
+The canonical inventory and residual-gap register live in
+`TEST_COVERAGE_ROADMAP.md`.
+
 ### Treat legacy scripts as protocol references
 
 Decision: translate legacy behavior into parameterized, tested interfaces.
@@ -345,6 +359,8 @@ Decision: each information category has one canonical owner:
 - `FUTURE_ARCHITECTURE.md`: target-state constraints;
 - `FUTURE_IMPLEMENTATION_ROADMAP.md`: evidence-ranked engineering
   opportunities, prerequisites, and exit gates without live status;
+- `TEST_COVERAGE_ROADMAP.md`: coverage inventory, residual gaps, tier
+  boundaries, and measurement/ratchet strategy without live status;
 - demo documents: presentation material or dated snapshots;
 - standalone `.mmd` files: canonical diagrams.
 

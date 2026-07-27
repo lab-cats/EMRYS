@@ -219,6 +219,7 @@ Each mutable fact has one canonical owner:
 | `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
 | `FUTURE_ARCHITECTURE.md` | Target architecture and future constraints |
 | `FUTURE_IMPLEMENTATION_ROADMAP.md` | Evidence-ranked engineering opportunities, prerequisites, and exit gates; no live status |
+| `TEST_COVERAGE_ROADMAP.md` | Coverage inventory, residual gaps, tier boundaries, and measurement/ratchet strategy; no live status |
 | Demo documents | Presentation walkthroughs or explicitly dated snapshots |
 | Standalone `.mmd` files | Canonical diagram sources |
 

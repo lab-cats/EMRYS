@@ -421,6 +421,55 @@ consult `docs/design/PIPELINE_PLAN.md`.
 Do not use a generic dispatcher or job array before the step-specific
 validators and repeated operational need establish their contracts.
 
+### Validate A Sample Manifest
+
+The manifest validator accepts one tab-separated table with this required
+header contract:
+
+```text
+sample_id	r1_fastq	r2_fastq	strandedness	condition
+```
+
+`notes` and `replicate` are the only optional columns. Column names and
+`sample_id` values must be unique; required fields must be nonempty; and
+`strandedness` must be `forward`, `reverse`, `unstranded`, or `unknown`.
+Blank physical lines and rows containing only empty fields are ignored.
+Unknown columns, duplicate or empty header names, and extra tab-separated
+fields are rejected.
+
+Schema and metadata validation does not require access to the reads:
+
+```bash
+.venv/bin/python scripts/validate_manifest.py \
+  --manifest samples.example.tsv
+```
+
+Use `--check-files` only in a context where the named inputs should be
+visible:
+
+```bash
+.venv/bin/python scripts/validate_manifest.py \
+  --manifest /explicit/path/to/samples.tsv \
+  --base-dir /explicit/read/root \
+  --check-files
+```
+
+Relative FASTQ paths resolve against `--base-dir`; absolute paths are checked
+as written. File checking requires regular files and therefore rejects both
+missing paths and directories. It does not inspect FASTQ contents, compression,
+pairing, read counts, or biological metadata.
+
+After creating `logs/`, this lightweight smoke job validates only the tracked
+example without `--check-files`:
+
+```bash
+mkdir -p logs
+sbatch jobs/validate_manifest.slurm
+```
+
+Passing that smoke job establishes only the example schema contract, not
+production-manifest or data-path validation.
+
 ### Run The Explicit Runtime Preflight
 
 ```text
@@ -504,8 +553,13 @@ does not mean required rows passed. Inspect every required row explicitly.
 A valid previous report with the same profile hash, context, and row count may
 be replaced deterministically. Publication uses
 `.<output_name>.lock`, run-token `.tmp` and `.previous` paths, validation
-before replacement, and rollback. Never delete a foreign lock or hand-edit a
-report to change its statuses.
+before replacement, and rollback. If rollback or cleanup cannot complete, the
+program fails closed and leaves safely addressable owned lock, `.previous`, or
+staged evidence rather than deliberately discarding it. The error identifies
+the lock and failed recovery operations; a hostile late lock replacement can
+make the original lock unavailable. Inspect the output directory and
+run-token paths before recovery; never delete a retained or foreign lock,
+discard recovery evidence, or hand-edit a report to change its statuses.
 
 Focused validation:
 
@@ -575,7 +629,10 @@ overall status. A zero command exit means measurement and optional publication
 completed; inspect `overall_status` and every row before relying on the
 evidence. Publication requires an existing real output directory, refuses a
 partial or invalid predecessor, and uses an owned lock, run-token staging and
-backups, validation-before-publication, and rollback.
+backups, validation-before-publication, and rollback. A broken stable-output
+symlink is still an occupied, unsafe destination. If moving a predecessor into
+backup fails partway through the output set, already moved members are restored
+before the command reports failure.
 
 The tool never deletes, moves, archives, compresses, repairs, or cleans any
 storage content. Production paths, quota values, and approvals remain
@@ -638,7 +695,9 @@ invalid artifacts, FASTA contig count, exact ordered FAI/DICT/STAR agreement,
 GTF/BED12 membership in the FASTA universe, and overall status. Execute mode
 rechecks inventory and source snapshots, validates a complete predecessor,
 uses an owned lock and run-token staging/backups, and rolls back replacement
-failures.
+failures. Broken stable-output symlinks are treated as occupied unsafe
+destinations. A failure while backing up a predecessor restores every member
+already moved before reporting the publication failure.
 
 The tool reads and reports only. It never creates sidecars, rebuilds STAR,
 rewrites annotations, renames contigs, or establishes production/cluster
@@ -1000,6 +1059,10 @@ version directory atomically. It is the only report-layer command that may
 download or install Quarto; the renderer never installs dependencies. An
 already downloaded official archive can be supplied directly to
 `scripts/restore_quarto.py --archive`, but it is still checksum-verified.
+If cleanup of an owned download stage fails, restore returns a normalized
+error and retains the named `.quarto-download-*.tmp` path for inspection.
+Do not delete that path blindly; verify its ownership and contents before
+recovering or retrying.
 
 Install the pinned Python dependencies through the normal environment setup
 before rendering. This includes the pure-Python PDF reader recorded in
@@ -1014,9 +1077,11 @@ scripts/render_run_report.sh \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto
 ```
 
-Dry-run validates the canonical run-summary `1.1.0` document, Quarto, Pandoc,
-Typst, PDF-reader and tracked-template identities, output state, and each
-explicitly approved table's exact path, hash, row count, and display limit. It
+Dry-run validates the canonical run-summary `1.1.0` document, exact Quarto and
+bundled-Pandoc identities, required Python report imports, tracked-template
+identities, output state, and each explicitly approved table's exact path,
+hash, row count, and display limit. Typst execution and PDF parsing are
+exercised only in execute mode and the real `make report-test` gate. Dry-run
 creates no output directory, lock, scratch path, or report.
 
 Execute only after inspecting the dry-run:
@@ -1056,7 +1121,12 @@ An owned regular `.<run_id>.report-bundle.lock`, run-token stage/backup paths,
 stable-input and template rechecks, output validation, receipt-last
 publication, rollback, signal cleanup, and retained recovery safeguards
 protect replacement. A validated HTML-only predecessor can be upgraded.
-Never delete a foreign lock or hand-edit a canonical run summary.
+Rollback, cleanup, and recovery-marker writes first require the same
+output-directory identity observed when execution began. If that directory is
+replaced, the renderer does not mutate the foreign replacement; its owned lock
+and recoverable paths remain with the original, possibly detached directory.
+Never delete a foreign or retained lock, discard recovery evidence, or
+hand-edit a canonical run summary.
 
 The run-summary producer populates approved records from the optional exact
 manifest and emits an empty list when it is omitted.
@@ -1384,9 +1454,13 @@ are published as evidence; command success means validation and optional
 publication completed, not that every check passed. Publication requires an
 existing real parent, validates any predecessor, uses an owned lock and
 run-token staging/backup paths, rechecks inputs, and rolls back replacement
-failure. The `step00a_validation_report_v1` adapter preserves a failed check as
-a failed artifact/scope in the canonical summary and consolidated reports; it
-does not alter historical cluster status.
+failure. If rollback or cleanup is incomplete, the validator retains its
+safely addressable owned lock and any available run-token staging or
+predecessor backup for explicit recovery; hostile late lock replacement
+remains a fail-closed residual. This shared publisher is also used by the
+other structured step validators. The `step00a_validation_report_v1` adapter
+preserves a failed check as a failed artifact/scope in the canonical summary
+and consolidated reports; it does not alter historical cluster status.
 
 Focused validation:
 
@@ -1619,7 +1693,8 @@ results/star/<sample>/<sample>.SJ.out.tab
 Status:
 
 ```text
-complete and cluster-proven across all six samples
+historical six-sample outputs cluster-proven
+current hardened publisher locally fixture-tested only
 ```
 
 Known alignment summaries:
@@ -1632,6 +1707,23 @@ Known alignment summaries:
 | `ABE_PUM1_2` | 21.1 million | 77.51% |
 | `ABE_PUM1_3` | 23.2 million | 85.38% |
 | `ABE_PUM1_4` | 22.5 million | 70.96% |
+
+The current Step `01` script keeps dry-run side-effect free: it validates the
+explicit inputs and prints STAR's resolved command and five stable outputs
+without creating the output directory. Execute mode creates an owned
+`.step01.<run-token>.tmp` directory beneath the real output directory, directs
+STAR there, and requires all five staged outputs to be nonempty before any
+stable name is published. Same-filesystem hard links provide atomic
+no-clobber publication one member at a time.
+
+Execute mode rejects a symlinked output directory and any existing stable
+output path, including a broken symlink. The tested STAR-command,
+missing/empty-member, and ordinary partial-publication failures remove
+published names and the staging path; a newly created output directory is also
+removed when it is empty. Signal behavior and late foreign replacement of a
+published name remain explicit coverage residuals because cleanup does not
+perform an identity recheck before removing those names. No production
+alignment was rerun, and the historical cluster status above is unchanged.
 
 The structured Step `01` validator consumes the five exact output paths for
 one sample:
@@ -2319,6 +2411,25 @@ ls -lh "$bam" "$bam.bai"
 ```
 
 Step `05` requires the Step `00c` sidecars, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is dry-run by default, writes GATK output to run-token temporary paths in execute mode, validates the temporary BAM/BAI pair before publication, and rolls back an existing final pair if publication fails after backups begin.
+
+The historical multi-sample inspection helper is read-only with respect to
+Step `05` outputs but writes one explicit status TSV:
+
+```bash
+SAMTOOLS=/explicit/path/to/samtools \
+  tests/data_checks/validate_step05_outputs.sh \
+  --jobs /explicit/path/to/step05_jobs.txt \
+  --output results/qc/step05/step05_validation_status.tsv \
+  ABE_EV_2 ABE_EV_3 ABE_EV4 ABE_PUM1_2 ABE_PUM1_3 ABE_PUM1_4
+```
+
+The optional job file contains `SAMPLE_ID JOBID` pairs. Without sample
+arguments the helper uses the six historical samples; without `--jobs` it
+reports `NA` job IDs. It writes the header and exactly one row per requested
+sample synchronously, rejects unknown options, missing option values, a
+nonexistent job file, or a non-executable `SAMTOOLS`, and exits `0` for all
+`PASS`, `1` for any `FAIL`, or `2` when there are no failures but at least one
+sample remains pending or running.
 
 The six-sample Step `05` output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
 

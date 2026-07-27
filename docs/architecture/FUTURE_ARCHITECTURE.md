@@ -5,7 +5,9 @@ does not track current branch, test, runtime, or validation status. See
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for the approved
 package roadmap and
 [`../design/FUTURE_IMPLEMENTATION_ROADMAP.md`](../design/FUTURE_IMPLEMENTATION_ROADMAP.md)
-for evidence-ranked engineering opportunities and their prerequisite gates.
+for evidence-ranked engineering opportunities and their prerequisite gates,
+and [`../design/TEST_COVERAGE_ROADMAP.md`](../design/TEST_COVERAGE_ROADMAP.md)
+for the coverage ledger, residual gaps, and ratchet strategy.
 
 Canonical future diagrams:
 

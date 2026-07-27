@@ -7,20 +7,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-refactor-roadmap`
+  `post09-test-coverage`
 - Parent:
-  `post09-comprehensive-docpatch`
+  `post09-refactor-roadmap`
 - Verified parent HEAD:
-  `c72ec9e1ee6b7c9e76f1d6f3f0d7f002ed7ac05e`
-- Parent implementation:
-  `d6458ea implement step 09 validation report`
+  `64c9448d6b680d3c48bcb879cce90f31b7bfd772`
+- Package implementation:
+  `1945067 extend post09 test coverage`
 - Parent documentation:
-  `c72ec9e comprehensive repository docpatch`
-- Package type: documentation-only
+  `64c9448 post09 refactor roadmap`
+- Package type: implementation/testing plus separate documentation docpatch
 - Remote and cluster work: paused
 
-The refactor-roadmap branch was created only after verifying a clean,
-upstream-equal comprehensive-docpatch parent and an absent target branch.
+The test-coverage branch was created only after verifying a clean,
+upstream-equal refactor-roadmap parent and an absent target branch.
 
 ## Completed boundary
 
@@ -67,10 +67,20 @@ The local descendant sequence has implemented:
 - a repository-wide structural audit and evidence-ranked future implementation
   roadmap with explicit compatibility, production, second-cohort, and
   evidence-triggered gates.
+- an evidence-ranked test-coverage inventory and future ratchet strategy;
+- expanded manifest, utility-job, data-check, wrapper, Step `01`, Step `07`,
+  Step `08`, runtime, reference/storage, Quarto, report-bundle, and shared
+  validator characterization/fault-injection coverage;
+- validation-before-publication for Step `01`, including side-effect-free
+  dry-run, exact five-file staging, per-member atomic no-clobber hard-link
+  publication, symlink rejection, and tested normal-failure cleanup;
+- retained safely addressable recovery state for tested incomplete shared-
+  validator and runtime-preflight rollback/cleanup, plus output-directory
+  identity protection for report-bundle recovery.
 
-The current documentation-only package records refactor opportunities without
-activating them. It changes no executable behavior, schema, test, workflow
-contract, generated output, runtime status, scientific state, or biological
+The coverage package changes safety/helper behavior and tests, with that new
+behavior tested locally only. It changes no public schema, native output
+basename, historical runtime/cluster status, scientific state, or biological
 state.
 
 ## Evidence boundary
@@ -80,7 +90,7 @@ state.
 | `00a` STAR index | cluster-proven |
 | `00b` GTF to BED12 | cluster-proven |
 | `00c` reference sidecars | cluster-proven |
-| `01` STAR alignment | cluster-proven across all six samples |
+| `01` STAR alignment | historical six-sample outputs cluster-proven; current hardened publisher locally fake-STAR tested only |
 | `02` canonical BAM | cluster-proven across all six samples |
 | `02b` BAM QC | refreshed across all six final Step `02` BAMs |
 | `03` RSeQC orientation inference | cluster-proven across all six samples |
@@ -109,6 +119,7 @@ state.
 | Step `07` structured validation | exact two-row receipt, VCF structure, selector/FAI reconciliation, manifest hashes and sample order, and VCF paths/counts implemented and locally fixture/report tested; no real-bcftools or cluster execution |
 | Step `08` structured validation | sites/input-receipt/summary transaction, manifest and annotation identity, ordered partition-orientation inputs, candidate uniqueness/sample fields, and aggregate counts implemented and locally fixture/report tested; no production execution |
 | Step `09` structured validation | six native outputs, exact headers/basenames/shared parent/distinct files, explicit cohort and provisional policy, complete Step `08` candidate order, status/background/BH semantics, subset, summary, mutation spectrum, and PDFs implemented and locally fixture/report tested; no production execution |
+| Test coverage foundation | source-to-suite ledger, high-value characterization, fault injection, guarded real-R, and pinned-renderer gates completed locally; residual deterministic and external-evidence work remains ranked in the coverage roadmap |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -188,12 +199,14 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-refactor-roadmap` documentation gate is complete. Continue from
-this clean, pushed descendant with the approved `post09-test-coverage`
-implementation and documentation package. Use
-[`../design/FUTURE_IMPLEMENTATION_ROADMAP.md`](../design/FUTURE_IMPLEMENTATION_ROADMAP.md)
-for refactor prerequisites, but keep live sequencing in the authoritative
-plan.
+The approved local descendant sequence through the comprehensive docpatch,
+refactor roadmap, and test-coverage foundation is complete. No further local
+implementation package is approved. Keep remote and cluster work paused until
+the user explicitly resumes it.
 
-The authoritative continuation sequence is in
-[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).
+When promotion resumes, use the deferred upstream-first sequence and
+acceptance gates in
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md), the coverage
+boundary in
+[`../design/TEST_COVERAGE_ROADMAP.md`](../design/TEST_COVERAGE_ROADMAP.md),
+and the exact commands in [`RUNBOOK.md`](RUNBOOK.md).

@@ -9,8 +9,8 @@ This is not the live package plan. Approved branch lineage, package status,
 and current acceptance criteria belong in
 [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md). Target-state constraints belong in
 [`../architecture/FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md).
-The detailed test-coverage audit belongs in `TEST_COVERAGE_ROADMAP.md` once
-that package is completed.
+The detailed coverage inventory, residual gaps, and ratchet strategy belong in
+[`TEST_COVERAGE_ROADMAP.md`](TEST_COVERAGE_ROADMAP.md).
 
 ## Decision rule
 
@@ -64,19 +64,19 @@ not quality scores and do not authorize a rewrite.
 
 | Area | Observed signal | Interpretation |
 | --- | --- | --- |
-| Validation reports | `validate_step_00a_star_index.py` is 357 lines; the other 12 step validators import it and make 165 `report.*` references | Generic report and publication ownership is inverted through a Step `00a` module |
+| Validation reports | `validate_step_00a_star_index.py` is 411 lines after recovery hardening; the other 12 step validators import it and make 165 `report.*` references | Generic report and publication ownership is inverted through a Step `00a` module |
 | Scientific review | `step_09c_scientific_validation.py` is 4,533 lines and combines shared contracts, semantic law, evidence assembly, CLI behavior, and transaction publication | Pure contracts and executable coordination need separate ownership |
-| Artifact contracts | `validate_artifact_contracts.py` is 1,893 lines and validates four public record types plus the shared schema and inventory | Record-specific semantics can be isolated behind the existing CLI |
+| Artifact contracts | `validate_artifact_contracts.py` is 1,896 lines and validates four public record types plus the shared schema and inventory | Record-specific semantics can be isolated behind the existing CLI |
 | Artifact index | `build_artifact_index.py` is 5,404 lines with 92 top-level definitions, 62 adapter specifications, and 14 step rosters serving the explicit 81-row fixture inventory | Registry, inspection, reconciliation, projection, and publication concerns are concentrated in one module |
 | Run summary | `build_run_summary.py` is 2,789 lines with 53 top-level definitions and uses 21 artifact-index symbols through 45 references | A producer imports another producer as a transaction utility library |
-| Reports | `render_run_report.py` and `render_run_report_bundle.py` total 4,022 lines and 100 definitions; each imports the other, and the bundle uses 29 HTML-module symbols through 76 references | Format-neutral content, format validation, tool execution, and publication lack leaf-module boundaries |
+| Reports | `render_run_report.py` and `render_run_report_bundle.py` total 4,035 lines and 100 definitions; each imports the other, and the bundle uses 29 HTML-module symbols through 76 references | Format-neutral content, format validation, tool execution, and publication lack leaf-module boundaries |
 | Steps `08` and `09` | Their shell and R implementations total 5,499 lines | Size is real, but duplicated cross-language checks protect scientific contracts and are not automatically redundant |
-| Tests | Python, shell, and R test sources total 24,092 lines and contain 351 pytest functions; 14 shell suites define `fail()`, 12 dynamic module loaders are constructed, and the inventory count `81` appears 23 times | Test-only support can reduce maintenance before production code moves |
+| Tests | The coverage roadmap owns current inventory totals; this refactor scan found repeated test support in shell assertions, dynamic Python script loaders, and hardcoded inventory-size expectations | Test-only support can reduce maintenance before production code moves without duplicating mutable coverage status here |
 | Local gate | `Makefile` mixes ambient `python`, `PYTHON_BIN`, and `REPORT_PYTHON_BIN`; `all-checks` omits the strict R-environment checks and can accept a skipped default R path | Target names do not accurately communicate the canonical gate |
 | Python environment | `requirements.txt` is a flat 24-pin environment; repository imports do not use the scientific plotting/data roots `matplotlib`, `pandas`, or `scipy` | Direct requirements and transitive constraints are not distinguished; removal still requires a clean restore |
-| Operational docs | The nine required documents total 7,476 lines; `RUNBOOK.md` and `TROUBLESHOOTING.md` account for 6,239 | Navigation and shared recovery explanations can improve without changing canonical ownership |
-| Scaffolding | Two pending Step `04`/`06` plans have active replacements; two YAML examples and two old SLURM utility files have no current consumer or operator entry point | Stale scaffolding can imply capabilities that do not exist |
-| Data checks | `tests/data_checks/validate_step05_outputs.sh` retains a cluster-specific samtools default, six hardcoded samples, duplicated directory creation, and duplicated `tee` redirection | Its historical-evidence and operator-tool roles are conflated |
+| Operational docs | The nine required documents exceed 7,500 lines; `RUNBOOK.md` and `TROUBLESHOOTING.md` remain the majority | Navigation and shared recovery explanations can improve without changing canonical ownership |
+| Scaffolding | Two pending Step `04`/`06` plans have active replacements; two YAML examples are unconsumed, and two legacy SLURM utility files are fixture-covered but have no confirmed operator consumer | Stale scaffolding can imply capabilities that do not exist |
+| Data checks | `tests/data_checks/validate_step05_outputs.sh` retains a cluster-specific samtools default and six hardcoded samples after its arguments and deterministic TSV publication were fixture-hardened | Its historical-evidence and maintained operator-tool roles remain conflated |
 | Repository policy | `.gitignore` excludes primary sequence/alignment data but not common VCF indexes and compressed/indexed variant forms | Preventive data guards should match the documented policy |
 
 ## Opportunity register
@@ -123,6 +123,10 @@ start before remote promotion.
 5. Establish branch-aware coverage measurement as a diagnostic and ratchet
    only after a reproducible baseline. Do not invent a percentage target.
 
+The current source-to-suite ledger and remaining scenario matrix are in
+[`TEST_COVERAGE_ROADMAP.md`](TEST_COVERAGE_ROADMAP.md); use that document
+rather than copying test status here.
+
 ### Exit gate
 
 - The complete local validation gate passes.
@@ -143,9 +147,6 @@ Readiness: Foundation.
 - Retire or modernize `jobs/template.slurm` and `jobs/tool_check.slurm` only
   after confirming that no operator depends on them. Preserve
   `jobs/validate_manifest.slurm`.
-- Correct the artifact-schema CLI description, which currently says “four
-  tracked schemas” although the validation set contains one shared schema and
-  four public record schemas.
 - Extend ignored data forms to include the compressed/indexed variant and
   alignment-index files prohibited by repository policy.
 - Introduce small test-only support:
