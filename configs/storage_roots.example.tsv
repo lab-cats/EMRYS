@@ -1,0 +1,3 @@
+storage_id	path	required	purpose	quota_bytes_expected	notes
+project_storage	/explicit/project/storage	true	durable_project_outputs	NA	Replace with approved CSU project storage
+scratch	/explicit/scratch	true	temporary_working_storage	NA	Replace with approved CSU scratch
