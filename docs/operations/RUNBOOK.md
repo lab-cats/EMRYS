@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 79 synthetic physical artifacts
+requirements. The example inventory contains 80 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 60 registered read-only adapters covering the 79
+The adapter builder has 61 registered read-only adapters covering the 80
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -2848,6 +2848,29 @@ tests/shell/test_step_08_vcf_preprocessing.sh
 tests/r/run_step_08_vcf_preprocessing_tests.sh
 tests/r/test_step_08_vcf_preprocessing.R
 ```
+
+Structured validation consumes the exact published three-TSV transaction and
+is dry-run-first:
+
+```bash
+.venv/bin/python scripts/validate_step_08_preprocessing_outputs.py \
+  --cohort-id NORAD_EV_PUM1 \
+  --sample-manifest samples.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --annotation-gtf refs/novogene_ref/genome.gtf \
+  --sites results/vcf_preprocessed/NORAD_EV_PUM1/NORAD_EV_PUM1.step08_sites.tsv \
+  --inputs results/vcf_preprocessed/NORAD_EV_PUM1/NORAD_EV_PUM1.step08_inputs.tsv \
+  --summary results/qc/vcf_preprocessing/NORAD_EV_PUM1.step08_summary.tsv \
+  --output results/qc/validation/08/NORAD_EV_PUM1.validation.tsv
+```
+
+After inspecting the five printed checks, publish with the same command plus
+`--execute`. The validator uses the existing Step `08` semantic contracts to
+reconcile exact headers, manifest and annotation identity, ordered
+partition-orientation inputs, candidate uniqueness/sample fields, AF/count
+arithmetic, and the one-row summary. It never invokes R, discovers Step `07`
+inputs, changes native outputs, or promotes runtime, cluster, scientific, or
+biological state.
 
 Runtime requirements:
 

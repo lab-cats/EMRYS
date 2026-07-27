@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-07`
+  `post09-validation-report-08`
 - Parent:
-  `post09-validation-report-06`
+  `post09-validation-report-07`
 - Verified parent HEAD:
-  `f14ebbda18aceaf209403fdc365acd05afbdbd31`
+  `8f05fe6ab8982fdbd1259f84aaa2e30d9984ea68`
 - Parent implementation:
-  `fcf5a8f implement step 06 validation report`
-- Current implementation:
   `dc31967 implement step 07 validation report`
+- Current implementation:
+  `db1150f implement step 08 validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `07` validation branch was created only after verifying a clean,
+The Step `08` validation branch was created only after verifying a clean,
 upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -59,6 +59,8 @@ The local descendant sequence has implemented:
   artifact adapter, and summary/HTML/PDF propagation fixture.
 - a Step `07` VCF/receipt/selector/manifest/count validation report, typed
   artifact adapter, and summary/HTML/PDF propagation fixture.
+- a Step `08` three-TSV transaction/identity/schema/count validation report,
+  typed artifact adapter, and summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
 
@@ -94,6 +96,7 @@ The local descendant sequence has implemented:
 | Step `05` structured validation | BAM/BAI containers, quickcheck, coordinate/read-group preservation, and exact FASTA/FAI/DICT agreement implemented and locally fixture/report tested; no new production execution |
 | Step `06` structured validation | two BAM/BAI output pairs, exact counts-table structure, per-flag mechanical-orientation sums, assigned/unassigned totals, and assigned-fraction reconciliation implemented and locally fixture/report tested; no new production execution |
 | Step `07` structured validation | exact two-row receipt, VCF structure, selector/FAI reconciliation, manifest hashes and sample order, and VCF paths/counts implemented and locally fixture/report tested; no real-bcftools or cluster execution |
+| Step `08` structured validation | sites/input-receipt/summary transaction, manifest and annotation identity, ordered partition-orientation inputs, candidate uniqueness/sample fields, and aggregate counts implemented and locally fixture/report tested; no production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -173,9 +176,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-07` implementation and documentation gates are
+The `post09-validation-report-08` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-08`.
+`post09-validation-report-09`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

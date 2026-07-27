@@ -1244,6 +1244,26 @@ damaged Homebrew checkout, or add source-build tooling merely to silence the
 check. A necessary dependency or runtime contract change requires its own
 reviewed implementation and lockfile update.
 
+## Step 08 structured validation reports transaction disagreement
+
+### Symptom
+
+The Step `08` validation TSV reports a transaction-header, manifest/annotation
+identity, input-receipt, sites schema/uniqueness, or summary-count failure.
+
+### Cause
+
+The sites, input receipt, and summary may not be one completed publication;
+manifests or annotation may have changed; the partition-orientation universe
+may be incomplete; or candidate/sample/count fields may not reconcile.
+
+### Fix
+
+Inspect the exact three outputs and declared manifests/annotation. Use the
+separately authorized Step `08` workflow to regenerate an invalid transaction.
+Do not edit hashes, rows, counts, policy values, or native outputs inside the
+validator.
+
 ## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
 
 ### Symptom
@@ -1947,7 +1967,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 79-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 80-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

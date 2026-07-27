@@ -202,3 +202,9 @@ reconciles selector membership, immutable hashes, sample order, paths, and
 record counts without invoking bcftools. Failed expected scopes are projected
 as a compact named list in both report formats so late matrix rows remain
 visible in PDF text.
+
+Step `08` validates the explicit sites, input-receipt, and summary TSV
+transaction against the declared manifests and annotation. It reuses the
+native semantic contracts for ordered inputs, candidate uniqueness, sample
+fields, AF arithmetic, provenance hashes, and aggregate counts without
+invoking R or rediscovering upstream artifacts.
