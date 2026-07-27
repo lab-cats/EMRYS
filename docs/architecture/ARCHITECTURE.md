@@ -182,3 +182,7 @@ evidence and count reconciliation.
 Step `03` validates the three required RSeQC fractions and their sum while
 retaining RSeQC's mechanical paired-orientation labels. Its adapter never
 translates those labels into biological strand claims.
+
+Step `04` validates one marked BAM/BAI pair, its preserved sample read group,
+and one bounded Picard duplication-metrics row. It observes duplicate-marking
+evidence without marking or removing reads.

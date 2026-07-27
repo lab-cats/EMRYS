@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-03`
+  `post09-validation-report-04`
 - Parent:
-  `post09-validation-report-02b`
+  `post09-validation-report-03`
 - Verified parent HEAD:
-  `875d84dc815604a9a782c26d80ffc90840eedaf7`
+  `e28075ef1cf79ca9739a6a50578af34543b9a64e`
 - Parent implementation:
-  `132e048 implement step 02b validation report`
-- Current implementation:
   `6bca653 implement step 03 validation report`
+- Current implementation:
+  `1f9e530 implement step 04 validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `03` validation branch was created only after fetching remote refs and
+The Step `04` validation branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -48,6 +48,9 @@ The local descendant sequence has implemented:
 - a Step `02b` persisted BAM-QC validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture;
 - a Step `03` RSeQC-fraction validation report, typed artifact adapter, and
+  summary/HTML/PDF propagation fixture;
+- a Step `04` marked-BAM/Picard-metrics validation report, typed artifact
+  adapter, and
   summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
@@ -80,6 +83,7 @@ The local descendant sequence has implemented:
 | Step `02` structured validation | BAM/BAI containers, samtools quickcheck, coordinate sorting, matching read-group header, and alignment RG coverage implemented and locally fixture/report tested; no new production execution |
 | Step `02b` structured validation | exact quickcheck marker, flagstat structure, total/mapped counts, and count reconciliation implemented and locally fixture/report tested; no new production execution |
 | Step `03` structured validation | required RSeQC labels, finite paired-orientation fractions, failed-to-determine fraction, and sum reconciliation implemented and locally fixture/report tested; no new production execution |
+| Step `04` structured validation | BAM/BAI containers, quickcheck, coordinate sorting, read-group preservation, and bounded Picard duplication metrics implemented and locally fixture/report tested; no new production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -159,9 +163,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-03` implementation and documentation gates are
+The `post09-validation-report-04` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-04`.
+`post09-validation-report-05`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

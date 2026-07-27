@@ -673,6 +673,26 @@ separately authorized Step `03` workflow when required. Do not rename the
 paired-orientation groups as biological strands, normalize values inside the
 validator, or edit a failed report into a pass.
 
+## Step 04 structured validation reports BAM or duplication-metrics disagreement
+
+### Symptom
+
+The Step `04` validation TSV reports an invalid BAM/BAI pair, quickcheck or
+sort/read-group failure, or malformed/out-of-range Picard duplication metrics.
+
+### Cause
+
+The three explicit outputs may be incomplete or from different attempts, or
+the selected samtools runtime cannot inspect the BAM. Picard metrics may lack
+the required single data row or contain inconsistent counts/fraction.
+
+### Fix
+
+Inspect the exact triplet, samtools path/version, producing job, and logs. Use
+a separately authorized Step `04` workflow for regeneration. Do not modify
+duplicate flags, remove reads, repair the pair, or edit metrics/report values
+inside the validator.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1864,7 +1884,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 74-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 75-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 74 synthetic physical artifacts
+requirements. The example inventory contains 75 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 56 registered read-only adapters covering the 74
+The adapter builder has 57 registered read-only adapters covering the 75
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -2056,6 +2056,47 @@ Outputs:
 results/markdup/<sample>/<sample>.markdup.bam
 results/markdup/<sample>/<sample>.markdup.bam.bai
 results/qc/markdup/<sample>.markdup.metrics.txt
+```
+
+The structured Step `04` validator reads the exact output triplet plus one
+explicit samtools executable:
+
+```bash
+.venv/bin/python scripts/validate_step_04_mark_duplicates.py \
+  --scope-id ABE_EV_2 \
+  --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \
+  --metrics results/qc/markdup/ABE_EV_2.markdup.metrics.txt \
+  --samtools-bin /explicit/path/to/samtools \
+  --output results/qc/validation/04/ABE_EV_2.validation.tsv
+```
+
+Dry-run checks BAM/BAI container signatures, quickcheck, coordinate sort
+order, one preserved sample-matching read group, and exactly one Picard metrics
+row with nonnegative examined pairs, duplicate pairs no greater than examined,
+and a finite duplication fraction from zero through one. After inspection,
+create the output parent and add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/04
+.venv/bin/python scripts/validate_step_04_mark_duplicates.py \
+  --scope-id ABE_EV_2 \
+  --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \
+  --metrics results/qc/markdup/ABE_EV_2.markdup.metrics.txt \
+  --samtools-bin /explicit/path/to/samtools \
+  --output results/qc/validation/04/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+The validator does not mark/remove duplicates or modify the BAM pair. The
+`step04_validation_report_v1` adapter propagates explicit evidence without
+changing historical cluster or scientific state.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_04_mark_duplicates.py
 ```
 
 Dry-run:
