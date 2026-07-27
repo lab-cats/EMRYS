@@ -512,6 +512,66 @@ all-pass CSU batch report establishes only the declared availability probes.
 It does not execute Steps `07`-`09`, validate production inputs, or establish
 runtime or cluster proof.
 
+### Reconcile Explicit Reference Provenance
+
+Use `configs/reference_provenance.example.tsv` as the structural starting
+point. Replace illustrative paths, hashes, and provenance values rather than
+editing generated results. Dry-run:
+
+```bash
+.venv/bin/python scripts/reference_provenance.py \
+  --inventory configs/reference_provenance.example.tsv \
+  --base-dir . \
+  --output-root results/qc/reference_provenance
+```
+
+The exact inventory header is:
+
+```text
+reference_id	artifact_id	role	path	required	expected_sha256	provenance_source	provenance_release	notes
+```
+
+Exactly one FASTA, FAI, DICT, GTF, BED12, STAR `chrName.txt`, and STAR
+`chrLength.txt` row is required, plus at least one explicit additional STAR
+index member. Relative paths resolve only against `--base-dir`; traversal,
+globs, duplicate paths/IDs, symlinks, and implicit directory discovery are
+rejected. `expected_sha256` is `NA` or an exact lowercase digest.
+
+After inspecting the dry-run, create the explicit root and execute:
+
+```bash
+mkdir -p results/qc/reference_provenance
+.venv/bin/python scripts/reference_provenance.py \
+  --inventory /explicit/path/to/reference_provenance.tsv \
+  --base-dir /explicit/reference/root \
+  --output-root results/qc/reference_provenance \
+  --execute
+```
+
+The tool publishes:
+
+```text
+results/qc/reference_provenance/<reference_id>/
+  <reference_id>.reference_artifacts.tsv
+  <reference_id>.reference_contigs.tsv
+  <reference_id>.reference_summary.tsv
+```
+
+The summary is last. It records required missing files, hash mismatches,
+invalid artifacts, FASTA contig count, exact ordered FAI/DICT/STAR agreement,
+GTF/BED12 membership in the FASTA universe, and overall status. Execute mode
+rechecks inventory and source snapshots, validates a complete predecessor,
+uses an owned lock and run-token staging/backups, and rolls back replacement
+failures.
+
+The tool reads and reports only. It never creates sidecars, rebuilds STAR,
+rewrites annotations, renames contigs, or establishes production/cluster
+proof. Focused tests:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_reference_provenance.py
+```
+
 ### Validate `artifact-schema-v1`
 
 Implemented locally at `5f4d3b4`:

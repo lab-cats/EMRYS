@@ -7,21 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-runtime-preflight`
+  `post09-reference-provenance`
 - Parent:
-  `report-exports-v1`
+  `post09-runtime-preflight`
 - Verified parent HEAD:
-  `934e471fdfa609ee8bc7c7e44fa38b494e5cf876`
+  `bd9104ee7ece7cae7b5800233942938acac42ff1`
 - Parent implementation:
-  `d46c2be implement report export bundle`
-- Current implementation:
   `0071450 implement runtime preflight`
-  plus `2895f33 harden runtime preflight paths`
-  and `fd76bfd validate prior preflight rows`
+- Current implementation:
+  `c1204db implement reference provenance`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The runtime-preflight branch was created only after fetching remote refs and
+The reference-provenance branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -34,7 +32,8 @@ The local descendant sequence has implemented:
 - explicit read-only artifact indexing;
 - canonical run-summary assembly and report-table approvals;
 - atomic, receipt-last HTML/PDF/summary-TSV reporting;
-- explicit-profile, read-only runtime availability preflight.
+- explicit-profile, read-only runtime availability preflight;
+- explicit read-only reference artifact, provenance, hash, and contig reconciliation.
 
 ## Evidence boundary
 
@@ -57,6 +56,7 @@ The local descendant sequence has implemented:
 | Artifact schemas/adapters/run summary | implemented and synthetic-fixture tested; no production transaction |
 | Static report bundle | HTML/PDF/summary TSV/report receipt implemented and tested with the pinned local Quarto/Typst renderer and PDF reader; no production report |
 | Runtime preflight | explicit tool, R-namespace, SHA-256, and path-visibility probes implemented and locally fixture-tested; no CSU batch report |
+| Reference provenance | explicit FASTA/FAI/DICT/GTF/BED12/STAR inventory and reconciliation implemented and locally fixture-tested; no production reference report |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -131,10 +131,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-runtime-preflight` implementation and documentation gates are
-complete. Stop for review before creating `post09-reference-provenance`. When
-that package is explicitly approved, begin from this clean, pushed descendant
-and follow the package acceptance criteria and lineage in the pipeline plan.
+The `post09-reference-provenance` implementation and documentation gates are
+complete. Continue from this clean, pushed descendant with
+`post09-storage-inventory-retention`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

@@ -8,11 +8,10 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Stop for review before creating or implementing
-   `post09-reference-provenance`.
-2. After explicit approval, implement that package from the clean, pushed
-   `post09-runtime-preflight` branch using its pipeline-plan acceptance
-   criteria.
+1. Implement `post09-storage-inventory-retention` from the clean, pushed
+   `post09-reference-provenance` branch.
+2. Continue the approved local implementation sequence without pausing between
+   clean stage gates.
 3. Continue any approved local-only descendant sequence one package at a time,
    stopping at the boundary defined in the pipeline plan.
 
@@ -25,8 +24,9 @@ checkout and evidence boundary are in
   inspect every required status without installing software.
 - Record storage quotas, scratch availability, and an approved retention
   policy before large downstream runs.
-- Recover the exact Novogene annotation release if possible and verify
-  reference-contig agreement, including the mitochondrial contig.
+- Populate and execute the reference-provenance inventory against production
+  references; recover the exact Novogene annotation release if possible and
+  inspect contig agreement, including the mitochondrial contig.
 - Validate real bcftools behavior and Step `07` outputs before promoting Steps
   `08` or `09`.
 - Complete the explicit production scientific-evidence gate before making

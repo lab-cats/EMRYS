@@ -754,6 +754,30 @@ and preserve the prior report before an explicit recovery or a new output
 path. A passing local fixture test is not evidence that a cluster-side
 recovery or availability check occurred.
 
+## Reference provenance reports missing, malformed, hash, or contig failures
+
+### Symptom
+
+The reference summary records `overall_status=fail`, or dry-run/execute rejects
+the inventory, base directory, source type, prior transaction, or lock.
+
+### Cause
+
+The explicit inventory may name a missing/non-regular source, an incorrect
+expected hash, malformed FASTA/FAI/DICT/GTF/BED12/STAR metadata, different
+ordered names or lengths across FASTA/FAI/DICT/STAR, or annotation contigs
+outside the FASTA universe. A partial or hand-edited three-file predecessor is
+also unsafe to replace.
+
+### Fix
+
+Inspect the exact inventory row, observed digest, per-source contig rows,
+summary agreement fields, current files, and any owned/foreign lock or
+run-token paths. Correct provenance declarations or regenerate artifacts
+through their formal upstream stage only after review. Never make this
+read-only tool rebuild sidecars/indexes, rename contigs, edit hashes, discard
+an unresolved annotation release, or delete a foreign lock.
+
 ## Step 08 or Step 09 cannot find `Rscript`
 
 ### Symptom

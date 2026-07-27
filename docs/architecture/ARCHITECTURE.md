@@ -133,3 +133,10 @@ actually runs in `local` context; the program never infers scheduler context.
 It installs and repairs nothing, and its report is not connected to the
 artifact/run-summary evidence graph. Availability evidence remains distinct
 from workflow runtime validation and cluster proof.
+
+Reference provenance similarly consumes one explicit inventory and base
+directory. It hashes regular FASTA, FAI, DICT, GTF, BED12, and named STAR index
+members; records annotation source/release declarations; compares
+FASTA/FAI/DICT/STAR ordered names and lengths; and verifies that GTF/BED12
+contigs belong to the FASTA universe. It publishes artifact and contig TSVs
+with a summary last, reports inconsistencies, and never repairs references.

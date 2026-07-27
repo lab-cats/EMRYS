@@ -202,6 +202,19 @@ checks were evaluated and, in execute mode, the report was published; every
 required row still must be inspected. Even an all-pass batch report is
 availability evidence, not workflow runtime validation or cluster proof.
 
+### Reconcile references without repair
+
+Decision: reference provenance uses an explicit TSV inventory and base
+directory, hashes every named physical member, retains declared annotation
+source/release, and compares contig identities across FASTA, FAI, DICT, GTF,
+BED12, and STAR metadata.
+
+Reason: filenames and colocated directories are not provenance, while an
+inspection tool must not silently regenerate or normalize shared references.
+Consequently, missing files, hash differences, malformed metadata, and contig
+disagreement are reported in a summary-last transaction and require separate
+operator resolution.
+
 ## Evidence and scientific state
 
 ### Separate computational proof and scientific interpretation
