@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-00b`
+  `post09-validation-report-00c`
 - Parent:
-  `post09-validation-report-00a`
+  `post09-validation-report-00b`
 - Verified parent HEAD:
-  `f571602d8f3cf12081b7b6ab6212ce4f33f5087d`
+  `796bf30a143cc22658f24a93ed13eb268d5c10c5`
 - Parent implementation:
-  `1ce1bda implement step 00a validation report`
-- Current implementation:
   `807cf2c implement step 00b validation report`
+- Current implementation:
+  `3275156 implement step 00c validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The Step `00b` validation branch was created only after fetching remote refs and
+The Step `00c` validation branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -38,6 +38,8 @@ The local descendant sequence has implemented:
 - a Step `00a` STAR-index validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture;
 - a Step `00b` BED12/GTF validation report, typed artifact adapter, and
+  summary/HTML/PDF propagation fixture.
+- a Step `00c` FASTA/FAI/DICT validation report, typed artifact adapter, and
   summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
@@ -65,6 +67,7 @@ The local descendant sequence has implemented:
 | Storage inventory and retention | explicit root size/capacity measurement and retention-policy recording implemented and locally fixture-tested; no production storage report or approved production policy |
 | Step `00a` structured validation | index members, source identities, ordered contig names/lengths, and `sjdbOverhang` validator implemented and locally fixture/report tested; no new production execution |
 | Step `00b` structured validation | BED12 structure, sorting, blocks, uniqueness, and exact GTF normalization agreement implemented and locally fixture/report tested; no new production execution |
+| Step `00c` structured validation | FASTA, FAI, and DICT structure plus exact ordered contig-name/length agreement implemented and locally fixture/report tested; no new production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -144,9 +147,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-00b` implementation and documentation gates are
+The `post09-validation-report-00c` implementation and documentation gates are
 complete. Continue from this clean, pushed descendant with
-`post09-validation-report-00c`.
+`post09-validation-report-01`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

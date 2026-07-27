@@ -159,3 +159,8 @@ Step `00b` applies the same boundary to the explicit BED12 and source GTF. It
 separately reports structural, ordering, block, uniqueness, and deterministic
 normalization agreement, then uses its own typed adapter rather than a generic
 dispatcher.
+
+Step `00c` reads the explicit FASTA, FAI, and DICT and reports their individual
+structure plus exact ordered contig-name/length agreement. Its typed adapter
+uses the same evidence-only path; it never creates or repairs reference
+sidecars.

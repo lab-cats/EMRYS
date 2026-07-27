@@ -569,6 +569,27 @@ Do not let Step `05` create or repair these files inside a per-sample job. Inspe
 
 Step `00c` intentionally does not overwrite invalid existing sidecars by default.
 
+## Step 00c structured validation reports FASTA/FAI/DICT disagreement
+
+### Symptom
+
+The Step `00c` validation TSV reports failed FASTA, FAI, or DICT structure, or
+failed ordered contig-name/length agreement.
+
+### Cause
+
+One explicit input is malformed, truncated, or belongs to a different
+reference. The validator reports disagreement but does not infer, regenerate,
+or repair shared reference inputs.
+
+### Fix
+
+Inspect the failed row and all three exact input paths. Resolve provenance
+before using the formal Step `00c` preparation workflow to create a missing
+sidecar. Do not rewrite reference files inside the validator and do not
+hand-edit a failed report into a pass. A published failure is valid evidence
+and does not revoke or replace historical cluster status.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1760,7 +1781,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 69-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 70-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a
