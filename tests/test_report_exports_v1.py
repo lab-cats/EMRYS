@@ -382,6 +382,7 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
     [
         ("ref.star_index.validation", "00a"),
         ("ref.bed12.validation", "00b"),
+        ("ref.sidecars.validation", "00c"),
     ],
 )
 def test_failed_validation_reaches_summary_html_and_pdf(

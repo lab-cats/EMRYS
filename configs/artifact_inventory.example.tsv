@@ -20,6 +20,7 @@ ref.bed12.validation	00b	reference	novogene_ref	step00b_validation_report_v1	tes
 ref.fasta	00c	reference	novogene_ref	step00c_reference_fasta_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.fa	true
 ref.fai	00c	reference	novogene_ref	step00c_reference_fai_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.fa.fai	true
 ref.dict	00c	reference	novogene_ref	step00c_reference_dict_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.dict	true
+ref.sidecars.validation	00c	reference	novogene_ref	step00c_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/00c/novogene_ref.validation.tsv	true
 sample.SYNTH_A.star_bam	01	sample	SYNTH_A	step01_star_bam_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.Aligned.sortedByCoord.out.bam	true
 sample.SYNTH_A.star_log_final	01	sample	SYNTH_A	step01_star_log_final_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.Log.final.out	true
 sample.SYNTH_A.star_log	01	sample	SYNTH_A	step01_star_log_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.Log.out	true
