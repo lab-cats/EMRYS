@@ -263,6 +263,14 @@ Decision: reports are self-contained, script-free, accessible projections of
 one canonical run summary. They use exact scientific-state banners and disclose
 truncation with the full source path and hash.
 
+The public renderer defaults to one atomic HTML/PDF/summary-TSV bundle with a
+deterministic report receipt published last. Operators may explicitly select
+`html`, `pdf`, or `all`; every mode still publishes the summary and receipt.
+PDF uses pinned Quarto with bundled Typst and a pinned pure-Python reader for
+structural, text-order, and every-page banner validation. Format-neutral
+content keeps the HTML and PDF projections aligned while allowing
+format-specific validation.
+
 Rendering never discovers inputs, invokes analysis engines, installs
 dependencies, or promotes evidence state.
 

@@ -7,17 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `report-html-v1b-docs-responsibility-consolidation`
+  `report-exports-v1`
 - Parent:
-  `report-html-v1a-report-table-approvals`
+  `report-html-v1b-docs-responsibility-consolidation`
 - Verified parent HEAD:
-  `41df822b60cbe3af16c12fc6326b69adf54c9f69`
+  `ec962940e3f82cd4e26150cf0a5909d53c06ae73`
 - Parent implementation:
-  `2a4b8f8 implement report table approval producer`
-- Package type: documentation-only
+  `ec96294 consolidate documentation responsibilities`
+- Current implementation:
+  `d46c2be implement report export bundle`
+- Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The consolidation branch was created only after fetching remote refs and
+The export branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -29,10 +31,7 @@ The local descendant sequence has implemented:
 - versioned artifact/scientific-review/run-summary/report-receipt schemas;
 - explicit read-only artifact indexing;
 - canonical run-summary assembly and report-table approvals;
-- static, self-contained HTML reporting.
-
-The current package consolidates documentation responsibilities. It changes no
-executable behavior, schema, test, workflow contract, or generated output.
+- atomic, receipt-last HTML/PDF/summary-TSV reporting.
 
 ## Evidence boundary
 
@@ -53,7 +52,7 @@ executable behavior, schema, test, workflow contract, or generated output.
 | `09` paired CMH ranking | implemented; shell/fake-R and guarded real-R tested locally; no cluster proof |
 | `09c` scientific-evidence tooling | implemented and synthetic-fixture tested; no production review |
 | Artifact schemas/adapters/run summary | implemented and synthetic-fixture tested; no production transaction |
-| Static HTML report | implemented and tested with the pinned local renderer; no production report |
+| Static report bundle | HTML/PDF/summary TSV/report receipt implemented and tested with the pinned local Quarto/Typst renderer and PDF reader; no production report |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -61,10 +60,8 @@ runtime, cluster, scientific, or biological state.
 
 No production artifact index, run summary, report-table approval manifest,
 Step `09c` evidence package, or report bundle is recorded in this checkout.
-
-The last predecessor snapshot recorded a complete local Python, shell,
-guarded-R, environment, and real-renderer pass. Exact totals are historical and
-must be regenerated for this branch rather than copied forward.
+The export evidence is local synthetic-fixture and real-renderer evidence
+only.
 
 ## Cohort and preserved scientific evidence
 
@@ -124,13 +121,10 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-Complete this documentation-only package:
-
-1. finish the repository-wide ownership consolidation;
-2. run the documentation checks and complete local validation gate;
-3. commit once as `consolidate documentation responsibilities`;
-4. push and verify upstream equality;
-5. stop for review before creating the next descendant package.
+The `report-exports-v1` implementation and documentation gates are complete.
+Stop for review before creating `post09-runtime-preflight`. When that package
+is explicitly approved, begin from this clean, pushed descendant and follow
+the package acceptance criteria and lineage in the pipeline plan.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

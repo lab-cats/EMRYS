@@ -8,17 +8,11 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Complete the documentation-responsibility consolidation package:
-   - establish one canonical owner for each mutable fact;
-   - remove duplicated live status, hashes, test totals, commands, and roadmap
-     prose;
-   - make standalone `.mmd` files the canonical diagram sources;
-   - preserve unique scientific and inspected validation evidence;
-   - pass the complete local and documentation validation gates;
-   - push the clean branch and confirm upstream equality.
-2. After explicit approval of that completed gate, implement the next package
-   shown in the pipeline plan.
-3. Continue the approved local-only descendant sequence one package at a time,
+1. Stop for review before creating or implementing
+   `post09-runtime-preflight`.
+2. After explicit approval, implement that package from the clean, pushed
+   `report-exports-v1` branch using its pipeline-plan acceptance criteria.
+3. Continue any approved local-only descendant sequence one package at a time,
    stopping at the boundary defined in the pipeline plan.
 
 ## Runtime and scientific blockers

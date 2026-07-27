@@ -46,15 +46,14 @@ validators are proven and a concrete operational need exists.
 
 ## Reporting layer
 
-The target report bundle contains deterministic HTML, PDF, summary TSV, and a
-receipt committed last. It consumes the canonical run summary and authorized
-tables only.
+Future stage-specific validators feed the existing canonical summary and
+report bundle through explicit adapters. They must not bypass the current
+explicit-input, table-authorization, deterministic publication, or
+receipt-last contracts described in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-PDF generation must use the renderer’s bundled toolchain, validate signatures,
-EOF, text, page order, and banners, and remain deterministic under fixed
-inputs and time.
-
-Rendering is a projection of evidence, never evidence generation.
+New report projections remain projections of evidence, never evidence
+generation, and require their own closed contract and transaction tests.
 
 ## Potential analysis modules
 

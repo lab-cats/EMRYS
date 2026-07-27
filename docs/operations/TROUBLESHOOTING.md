@@ -1572,7 +1572,7 @@ synthetic explicit physical inventory and read-only validator
 explicit read-only artifact adapters
 canonical JSON, deterministic TSV/QC views, exact Step 09c table approvals,
   and receipt-last publication
-one static script-free self-contained HTML-only output
+one atomic static HTML/PDF/summary-TSV bundle with its report receipt last
 no production artifact index, run summary, approval manifest, report, or evidence
 ```
 
@@ -1835,20 +1835,21 @@ receipt/tree/version, and then exercises the real pinned executable. A fake
 Quarto fixture is useful for wrapper behavior but is not local renderer-runtime
 evidence.
 
-## HTML report rendering rejects the run summary, approved table, or output
+## Report bundle rendering rejects the run summary, approved table, or output
 
 ### Symptom
 
 `scripts/render_run_report.sh` fails during dry-run or execute mode with a
 run-summary schema/identity error, approved-table path/hash/row-count error,
-Quarto version error, input mutation, or static HTML validation error.
-Messages may identify a script, remote active resource, sidecar resource
-directory, missing state banner, inaccessible table/image/figure, duplicate
-ID, or invalid heading structure.
+report-tool identity error, input mutation, static HTML validation error, PDF
+signature/EOF/text/page-order error, missing per-page banner, or invalid
+summary/receipt error. Messages may also identify a script, remote active
+resource, sidecar resource directory, inaccessible table/image/figure,
+duplicate ID, or invalid heading structure.
 
 ### Cause
 
-The HTML renderer accepts one explicit canonical run-summary document and no
+The bundle renderer accepts one explicit canonical run-summary document and no
 discovered inputs:
 
 ```bash
@@ -1856,21 +1857,27 @@ scripts/render_run_report.sh \
   --run-summary results/artifacts/<run_id>/<run_id>.run_summary.json \
   --output-root results/reports \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto \
-  --formats html
+  --formats all
 ```
 
 Dry-run is the default and creates no stable output, lock, or scratch path.
-Add `--execute` to publish exactly:
+Add `--execute` to publish the selected report formats and always publish the
+summary TSV and receipt. The default `all` set is:
 
 ```text
 results/reports/<run_id>/<run_id>.run_report.html
+results/reports/<run_id>/<run_id>.run_report.pdf
+results/reports/<run_id>/<run_id>.run_summary.tsv
+results/reports/<run_id>/<run_id>.report_outputs.tsv
 ```
 
 The run summary, QMD/CSS templates, Quarto executable, and every explicitly
 approved table must remain byte-stable. Approved table records must supply
 the exact normalized path, SHA-256, row count, role, and display limit. The
-rendered document must be script-free, self-contained, accessible, and carry
-the exact applicable scientific-state banner.
+rendered HTML must be script-free, self-contained, and accessible. The PDF
+must have valid boundaries, extractable ordered section text, and the exact
+applicable scientific-state banner on every page. Summary and receipt TSVs
+must reconcile with the canonical summary and selected outputs.
 
 The implemented normal run-summary producer emits an empty
 `approved_report_tables` list when its optional approval manifest is omitted.
@@ -1881,61 +1888,59 @@ failure and must not be bypassed by editing canonical JSON.
 
 ### Fix
 
-Correct or regenerate the canonical run summary and any future approved table
+Correct or regenerate the canonical run summary and approved table
 through their normal validated producers. Use the exact pinned Quarto
 executable. Do not edit a run ID, schema version, receipt, path, hash, row
-count, banner, template, or rendered HTML merely to force acceptance; do not
-glob for candidate tables or add external assets/scripts. Rerun dry-run first,
-then execute only after all printed inputs and hashes are correct.
+count, banner, template, rendered report, summary TSV, or report receipt merely
+to force acceptance; do not glob for candidate tables or add external
+assets/scripts. Rerun dry-run first, then execute only after all printed
+inputs and hashes are correct.
 
-This branch publishes HTML only. A PDF, exported summary TSV, or
-`<run_id>.report_outputs.tsv` report receipt does not exist until
-`report-exports-v1`.
-
-## HTML report lock, rollback, cleanup, or recovery state remains
+## Report bundle lock, rollback, cleanup, or recovery state remains
 
 ### Symptom
 
-Execute mode reports a foreign lock, invalid prior HTML report, changed output
+Execute mode reports a foreign lock, invalid prior report bundle, changed output
 directory identity, late foreign replacement, failed Quarto child, signal,
 timeout, incomplete rollback, or incomplete cleanup. Relevant paths may
 include:
 
 ```text
-results/reports/<run_id>/.<run_id>.report-html.lock
-results/reports/<run_id>/.run-report.<run_token>.tmp
-results/reports/<run_id>/.<run_id>.run_report.html.<run_token>.previous
-results/reports/<run_id>/.<run_id>.report-html.<run_token>.RECOVERY.txt
+results/reports/<run_id>/.<run_id>.report-bundle.lock
+results/reports/<run_id>/.run-report-bundle.<run_token>.tmp
+results/reports/<run_id>/.<output_name>.<run_token>.previous
+results/reports/<run_id>/.<run_id>.report-bundle.<run_token>.RECOVERY.txt
 ```
 
 ### Cause
 
-One validated HTML file is the complete `report-html-v1` publication. The
-renderer validates any prior report, snapshots every input, acquires an owned
-lock, renders into a run-token stage, and replaces only the exact predecessor
-it inspected. Symlinked, mutated, late-appearing, or identity-changed files
-and directories are never clobbered.
+The selected reports, summary TSV, and receipt-last TSV are one
+`report-exports-v1` publication. The renderer validates any prior bundle or
+valid HTML-only predecessor, snapshots every input, acquires an owned lock,
+renders into a run-token stage, and replaces only exact predecessors it
+inspected. Symlinked, mutated, late-appearing, or identity-changed files and
+directories are never clobbered.
 
 Quarto runs in a dedicated process group. HUP, INT, TERM, launch errors, and
 the render timeout terminate and reap that complete group before publication
-cleanup continues. If publication fails, the renderer restores the validated
-prior HTML when it can prove ownership and identity. If rollback or cleanup
+cleanup continues. If publication fails, the renderer restores each validated
+prior member when it can prove ownership and identity. If rollback or cleanup
 cannot be proved, it retains the lock and best-effort recovery marker. If the
 output directory itself changed identity, path-based rollback is skipped to
 avoid modifying the replacement directory.
 
 ### Fix
 
-Inspect the lock metadata, owning process, current HTML, run-summary and
+Inspect the lock metadata, owning process, current bundle members, run-summary and
 approved-table hashes, Quarto process state, output-directory identity, and
 all named stage/backup/recovery paths. Do not delete a foreign lock, kill an
 unrelated process, overwrite a late foreign report, combine attempts, or
 discard recovery evidence. Determine whether the validated new report is
-already committed or whether the exact prior report must be restored. Validate
-the chosen single-file state, record the operator action, and only then remove
+already committed or whether the exact prior bundle must be restored. Validate
+the chosen bundle state, record the operator action, and only then remove
 residue and a lock whose ownership is proven.
 
-## A synthetic HTML report is mistaken for production or validation evidence
+## A synthetic report bundle is mistaken for production or validation evidence
 
 ### Symptom
 
@@ -1954,9 +1959,9 @@ evidence.
 Describe the boundary as:
 
 ```text
-HTML renderer implemented and fixture-tested locally
-real pinned local Quarto runtime exercised
-one synthetic HTML-only output contract validated
+HTML/PDF/summary-TSV/report-receipt renderer implemented and fixture-tested locally
+real pinned local Quarto/Typst runtime and PDF reader exercised
+one synthetic atomic report-bundle contract validated
 no production report or pipeline runtime/cluster validation
 no completed production science review or biological readiness
 ```
@@ -2029,11 +2034,11 @@ symptom, likely cause, confirmation command, and fix. Keep the generic index as
 a deferred roadmap idea until enough real failures exist. The artifact-schema
 validator, inventory, and explicit artifact adapter indexer are now
 implemented, as is the run-summary builder, so their concrete failure modes
-are documented above. Static HTML reporting is also implemented, so its
-concrete restore, validation, publication, and recovery failures are
-documented above. Do not add entries that imply general cleanup tools,
-PDF/TSV exports, foundation tools, or per-step validators exist before their
-branches implement them.
+are documented above. Static HTML/PDF/summary-TSV bundle reporting is also
+implemented, so its concrete restore, validation, publication, and recovery
+failures are documented above. Do not add entries that imply general cleanup
+tools, foundation tools, or per-step validators exist before their branches
+implement them.
 
 ## General success checklist
 

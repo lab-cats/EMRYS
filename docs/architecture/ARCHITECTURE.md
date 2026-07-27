@@ -92,6 +92,14 @@ Report renderers:
   before publication.
 
 Reports use “CMH-ranked candidates.” Scientific-state banners remain visible.
+The public renderer accepts explicit `html`, `pdf`, or `all` formats and
+defaults to `all`. It publishes the selected static report formats, one
+deterministic per-scope summary TSV, and a deterministic report-output receipt
+last as a single recoverable transaction. PDF rendering uses pinned Quarto
+with bundled Typst; a pinned pure-Python reader validates the PDF signature,
+EOF, extractable section order, page count, and exact banner on every page.
+A valid predecessor containing only the former HTML output may be upgraded
+without weakening identity or no-clobber checks.
 
 ## Scientific boundary
 

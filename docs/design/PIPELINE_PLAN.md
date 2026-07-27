@@ -36,8 +36,8 @@ a completed production review.
 | `artifact-run-summary` | Canonical summary and deterministic TSV/QC projections | implemented and fixture-tested |
 | `report-html-v1` | Static self-contained HTML rendering | implemented and locally renderer-tested |
 | `report-html-v1a-report-table-approvals` | Exact run-bound supplemental-table approvals | implemented and fixture-tested |
-| `report-html-v1b-docs-responsibility-consolidation` | One canonical owner per documentation category | in progress |
-| `report-exports-v1` | Atomic HTML/PDF/TSV/report-receipt bundle | pending |
+| `report-html-v1b-docs-responsibility-consolidation` | One canonical owner per documentation category | completed |
+| `report-exports-v1` | Atomic HTML/PDF/TSV/report-receipt bundle | implemented and locally tested |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological

@@ -729,16 +729,19 @@ Passing fixture tests establish only local summary-builder behavior. The
 builder runs no analysis and establishes no runtime, cluster, scientific, or
 biological validation.
 
-### Restore Quarto And Render The Static HTML Report
+### Restore Quarto And Render The Static Report Bundle
 
 ```text
 scripts/restore_quarto.py
 scripts/render_run_report.sh
 scripts/render_run_report.py
+scripts/render_run_report_bundle.py
 reports/run_report.qmd
+reports/run_report_pdf.qmd
 reports/run_report.css
 tests/test_quarto_restore.py
 tests/test_report_html_v1.py
+tests/test_report_exports_v1.py
 tests/shell/test_render_run_report.sh
 ```
 
@@ -763,7 +766,11 @@ download or install Quarto; the renderer never installs dependencies. An
 already downloaded official archive can be supplied directly to
 `scripts/restore_quarto.py --archive`, but it is still checksum-verified.
 
-HTML dry-run:
+Install the pinned Python dependencies through the normal environment setup
+before rendering. This includes the pure-Python PDF reader recorded in
+`requirements.txt`; the renderer never installs it.
+
+Default all-format dry-run:
 
 ```bash
 scripts/render_run_report.sh \
@@ -772,10 +779,10 @@ scripts/render_run_report.sh \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto
 ```
 
-Dry-run validates the canonical run-summary `1.1.0` document, Quarto version,
-tracked templates, output state, and each explicitly approved table's exact
-path, hash, row count, and display limit. It creates no output directory,
-lock, scratch path, or report.
+Dry-run validates the canonical run-summary `1.1.0` document, Quarto, Pandoc,
+Typst, PDF-reader and tracked-template identities, output state, and each
+explicitly approved table's exact path, hash, row count, and display limit. It
+creates no output directory, lock, scratch path, or report.
 
 Execute only after inspecting the dry-run:
 
@@ -784,31 +791,40 @@ scripts/render_run_report.sh \
   --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
   --output-root results/reports \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto \
-  --formats html \
   --execute
 ```
 
-The wrapper accepts only `--formats html` on this branch. It prefers
+The wrapper accepts `--formats html`, `--formats pdf`, or `--formats all` and
+defaults to `all`. It prefers
 `.venv/bin/python`, falls back to `python3`, and treats an explicitly supplied
-`PYTHON_BIN_OVERRIDE` as authoritative. Execute mode invokes only Quarto with
-document execution disabled and atomically publishes:
+`PYTHON_BIN_OVERRIDE` as authoritative. Execute mode invokes only pinned
+report tooling with document execution disabled and atomically publishes the
+selected report formats plus the summary and receipt:
 
 ```text
 results/reports/<run_id>/<run_id>.run_report.html
+results/reports/<run_id>/<run_id>.run_report.pdf
+results/reports/<run_id>/<run_id>.run_summary.tsv
+results/reports/<run_id>/<run_id>.report_outputs.tsv
 ```
 
-The output is one self-contained, script-free HTML file with no external
-active assets. It escapes input content, preserves the required scientific
-state banner, describes candidate rows only as “CMH-ranked candidates,” and
-never promotes computational or scientific state. An owned regular
-`.<run_id>.report-html.lock`, run-token stage/backup paths, stable-input and
-template rechecks, output validation, rollback, signal cleanup, and recovery
-safeguards protect replacement. Never delete a foreign lock or hand-edit a
-canonical run summary.
+The HTML is self-contained and script-free. The PDF is structurally validated
+and carries the exact scientific banner on every page. The summary TSV has one
+stably ordered row per expected scope. The final receipt records canonical
+report-receipt `1.1.0` records for every published member, including hashes,
+sizes, media types, renderer identities, requested formats, and applicable
+page counts. Every projection escapes input content, describes candidate rows
+only as “CMH-ranked candidates,” and never promotes computational or
+scientific state.
 
-The documented interface publishes HTML only. The run-summary producer
-populates approved records from the optional exact manifest and emits an empty
-list when it is omitted. Consult the pipeline plan for pending export work.
+An owned regular `.<run_id>.report-bundle.lock`, run-token stage/backup paths,
+stable-input and template rechecks, output validation, receipt-last
+publication, rollback, signal cleanup, and retained recovery safeguards
+protect replacement. A validated HTML-only predecessor can be upgraded.
+Never delete a foreign lock or hand-edit a canonical run summary.
+
+The run-summary producer populates approved records from the optional exact
+manifest and emits an empty list when it is omitted.
 
 Focused validation:
 
