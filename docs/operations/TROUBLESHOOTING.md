@@ -612,6 +612,27 @@ alignment rerun is required. Do not rerun STAR from the validator, substitute
 paths by glob, or edit a failed report into a pass. Publishing local validation
 evidence does not replace historical cluster evidence.
 
+## Step 02 structured validation reports canonical BAM disagreement
+
+### Symptom
+
+The Step `02` validation TSV reports an invalid BAM/BAI container, quickcheck
+diagnostic, non-coordinate sort order, missing or mismatched read-group
+header, or alignments without the sample RG tag.
+
+### Cause
+
+The pair may be incomplete or may not come from the hardened Step `02`
+transaction. The selected samtools executable may also fail to inspect the
+file in the current runtime context.
+
+### Fix
+
+Inspect the failed row, exact BAM/BAI, samtools path/version, header, and count
+commands. Regenerate only through a separately authorized Step `02` workflow
+when evidence requires it. Do not sort, index, retag, or repair the pair from
+the validator, substitute a sibling path, or edit the validation TSV.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1803,7 +1824,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 71-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 72-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 71 synthetic physical artifacts
+requirements. The example inventory contains 72 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 53 registered read-only adapters covering the 71
+The adapter builder has 54 registered read-only adapters covering the 72
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1717,6 +1717,46 @@ PL=ILLUMINA
 ```
 
 `LB=<sample_id>` is provisional until more specific library or lane metadata is recovered.
+
+The structured Step `02` validator consumes one exact BAM/BAI pair and one
+explicit samtools executable:
+
+```bash
+.venv/bin/python scripts/validate_step_02_canonical_bam.py \
+  --scope-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
+  --samtools-bin /explicit/path/to/samtools \
+  --output results/qc/validation/02/ABE_EV_2.validation.tsv
+```
+
+Dry-run checks BAM/BAI container signatures, `samtools quickcheck -v`, one
+coordinate-sorted `@HD`, one sample-matching `@RG` with both `ID` and `SM`,
+and equality between all alignment records and records carrying the matching
+RG tag. It does not create a report. After inspection, create the parent and
+add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/02
+.venv/bin/python scripts/validate_step_02_canonical_bam.py \
+  --scope-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
+  --samtools-bin /explicit/path/to/samtools \
+  --output results/qc/validation/02/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+The validator never sorts, indexes, or edits alignments. Its
+`step02_validation_report_v1` adapter carries pass/fail evidence into the
+canonical summary and consolidated reports without changing historical
+cluster state.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_02_canonical_bam.py
+```
 
 Dry-run:
 

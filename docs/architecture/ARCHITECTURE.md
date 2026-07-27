@@ -169,3 +169,8 @@ Step `01` validates the five explicit STAR outputs for one sample, including
 the BAM container, final-log mapping percentages, and splice-junction table.
 The per-sample typed adapter exposes those checks to the same summary and
 report path without rerunning alignment.
+
+Step `02` uses an explicit samtools executable to validate one canonical
+BAM/BAI pair, coordinate sort order, the matching read-group header, and RG
+coverage across all alignments. It observes the pair without sorting,
+indexing, or changing tags.
