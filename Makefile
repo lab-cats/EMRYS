@@ -28,6 +28,7 @@ shell-test:
 	bash tests/shell/test_local_r_environment.sh
 	bash tests/shell/test_render_run_report.sh
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_runtime_preflight.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_reference_provenance.py
 
 real-r-test:
 	bash tests/r/run_step_08_vcf_preprocessing_tests.sh
