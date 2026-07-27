@@ -197,7 +197,7 @@ def build_fixture(
     *,
     run_id: str = "synthetic_run",
 ) -> RunSummaryFixture:
-    """Build the full default 73-record adapter transaction."""
+    """Build the full default 74-record adapter transaction."""
 
     root = root.resolve()
     adapter_fixture = ADAPTER_FIXTURE.build_fixture(

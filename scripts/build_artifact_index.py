@@ -506,6 +506,18 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
     )
     add_spec(
         registry,
+        "step03_validation_report_v1",
+        "03",
+        "sample",
+        "validation_report",
+        "text/tab-separated-values",
+        suffixes=(".validation.tsv",),
+        expected_header=VALIDATION_REPORT_HEADER,
+        exact_data_rows=5,
+        allow_header_only=False,
+    )
+    add_spec(
+        registry,
         "step04_markdup_metrics_v1",
         "04",
         "sample",
@@ -788,7 +800,10 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
         "step02b_flagstat_v1": 1,
         "step02b_validation_report_v1": 1,
     }),
-    "03": Counter({"step03_rseqc_infer_v1": 1}),
+    "03": Counter({
+        "step03_rseqc_infer_v1": 1,
+        "step03_validation_report_v1": 1,
+    }),
     "04": Counter(
         {
             "step04_markdup_bam_v1": 1,

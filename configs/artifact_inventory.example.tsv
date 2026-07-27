@@ -34,6 +34,7 @@ sample.SYNTH_A.quickcheck	02b	sample	SYNTH_A	step02b_quickcheck_v1	tests/fixture
 sample.SYNTH_A.flagstat	02b	sample	SYNTH_A	step02b_flagstat_v1	tests/fixtures/artifact_schema_v1/source/results/qc/bam/SYNTH_A.flagstat.txt	true
 sample.SYNTH_A.bam_qc_validation	02b	sample	SYNTH_A	step02b_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/02b/SYNTH_A.validation.tsv	true
 sample.SYNTH_A.strand	03	sample	SYNTH_A	step03_rseqc_infer_v1	tests/fixtures/artifact_schema_v1/source/results/qc/strandedness/SYNTH_A.infer_experiment.txt	true
+sample.SYNTH_A.strand_validation	03	sample	SYNTH_A	step03_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/03/SYNTH_A.validation.tsv	true
 sample.SYNTH_A.markdup_bam	04	sample	SYNTH_A	step04_markdup_bam_v1	tests/fixtures/artifact_schema_v1/source/results/markdup/SYNTH_A/SYNTH_A.markdup.bam	true
 sample.SYNTH_A.markdup_bai	04	sample	SYNTH_A	step04_markdup_bai_v1	tests/fixtures/artifact_schema_v1/source/results/markdup/SYNTH_A/SYNTH_A.markdup.bam.bai	true
 sample.SYNTH_A.markdup_metrics	04	sample	SYNTH_A	step04_markdup_metrics_v1	tests/fixtures/artifact_schema_v1/source/results/qc/markdup/SYNTH_A.markdup.metrics.txt	true
