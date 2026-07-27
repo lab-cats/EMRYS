@@ -699,6 +699,29 @@ def _artifact_overview(summary: Mapping[str, Any]) -> str:
     )
 
 
+def _failed_scope_summary(summary: Mapping[str, Any]) -> str:
+    failed = [
+        (
+            scope_record["scope"]["step_id"],
+            scope_record["scope"]["scope_type"],
+            scope_record["scope"]["scope_id"],
+        )
+        for scope_record in summary["expected_scopes"]
+        if scope_record["aggregate_state"] == "failed"
+    ]
+    if not failed:
+        return '<p class="provenance-note">Failed expected scopes: none.</p>'
+    items = "".join(
+        f"<li>{_escape(step_id)} {_escape(scope_type)} "
+        f"{_escape(scope_id)} failed</li>"
+        for step_id, scope_type, scope_id in failed
+    )
+    return (
+        '<div class="notice"><p><strong>Failed expected scopes</strong></p>'
+        f"<ul>{items}</ul></div>"
+    )
+
+
 def _render_approved_table(table: ApprovedTable) -> str:
     controlled_candidate_titles = {
         "candidate_selection": (
@@ -850,6 +873,7 @@ def _render_status_panels(summary: Mapping[str, Any]) -> str:
         f"{scientific}</div>\n"
         "</div>\n"
         + _artifact_overview(summary)
+        + _failed_scope_summary(summary)
     )
 
 

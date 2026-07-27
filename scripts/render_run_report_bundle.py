@@ -348,6 +348,21 @@ def _pdf_body(context: BundleContext) -> bytes:
     ):
         value = summary[key] if key == "summary_state" else rollup[key]
         lines.append(f"| {label} | `{_markdown_escape(value)}` |")
+    failed_scopes = [
+        item for item in summary["expected_scopes"]
+        if item["aggregate_state"] == "failed"
+    ]
+    lines.extend(["", "### Failed expected scopes", ""])
+    if failed_scopes:
+        for item in failed_scopes:
+            scope = item["scope"]
+            lines.append(
+                f"- {_markdown_escape(scope['step_id'])} "
+                f"{_markdown_escape(scope['scope_type'])} "
+                f"{_markdown_escape(scope['scope_id'])} failed"
+            )
+    else:
+        lines.append("- None.")
     lines.extend(["", f"## {PDF_SECTION_MARKERS[3]}", ""])
     if summary["limitations"]:
         for limitation in summary["limitations"]:

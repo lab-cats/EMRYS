@@ -51,9 +51,11 @@ sample.SYNTH_A.orientation_validation	06	sample	SYNTH_A	step06_validation_report
 cohort.synthetic.p1.fwd_vcf	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.FWD_like.mpileup.vcf	true
 cohort.synthetic.p1.rev_vcf	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.REV_like.mpileup.vcf	true
 cohort.synthetic.p1.receipt	07	cohort_partition	synthetic_cohort__p1	step07_mpileup_receipt_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p1/synthetic_cohort.p1.step07_outputs.tsv	true
+cohort.synthetic.p1.validation	07	cohort_partition	synthetic_cohort__p1	step07_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/07/synthetic_cohort__p1.validation.tsv	true
 cohort.synthetic.p2.fwd_vcf	07	cohort_partition	synthetic_cohort__p2	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p2/synthetic_cohort.p2.FWD_like.mpileup.vcf	true
 cohort.synthetic.p2.rev_vcf	07	cohort_partition	synthetic_cohort__p2	step07_mpileup_vcf_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p2/synthetic_cohort.p2.REV_like.mpileup.vcf	true
 cohort.synthetic.p2.receipt	07	cohort_partition	synthetic_cohort__p2	step07_mpileup_receipt_v1	tests/fixtures/artifact_schema_v1/source/results/mpileup/synthetic_cohort/p2/synthetic_cohort.p2.step07_outputs.tsv	true
+cohort.synthetic.p2.validation	07	cohort_partition	synthetic_cohort__p2	step07_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/07/synthetic_cohort__p2.validation.tsv	true
 cohort.synthetic.step08_sites	08	cohort	synthetic_cohort	step08_sites_v1	tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_sites.tsv	true
 cohort.synthetic.step08_inputs	08	cohort	synthetic_cohort	step08_inputs_v1	tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_inputs.tsv	true
 cohort.synthetic.step08_summary	08	cohort	synthetic_cohort	step08_summary_v1	tests/fixtures/artifact_schema_v1/source/results/qc/vcf_preprocessing/synthetic_cohort.step08_summary.tsv	true
