@@ -385,6 +385,7 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
         ("ref.sidecars.validation", "00c", "reference novogene_ref"),
         ("sample.SYNTH_A.star_validation", "01", "sample SYNTH_A"),
         ("sample.SYNTH_A.canonical_validation", "02", "sample SYNTH_A"),
+        ("sample.SYNTH_A.bam_qc_validation", "02b", "sample SYNTH_A"),
     ],
 )
 def test_failed_validation_reaches_summary_html_and_pdf(
