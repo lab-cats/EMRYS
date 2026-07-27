@@ -2484,19 +2484,6 @@ alignment records tagged with `RG:<sample_id>`.
 Regenerate the canonical BAM through hardened Step 02. Do not patch around
 missing read groups in Step 04.
 
-## Future Troubleshooting Taxonomy
-
-A future troubleshooting index may summarize repeated failure patterns as
-symptom, likely cause, confirmation command, and fix. Keep the generic index as
-a deferred roadmap idea until enough real failures exist. The artifact-schema
-validator, inventory, and explicit artifact adapter indexer are now
-implemented, as is the run-summary builder, so their concrete failure modes
-are documented above. Static HTML/PDF/summary-TSV bundle reporting is also
-implemented, so its concrete restore, validation, publication, and recovery
-failures are documented above. Do not add entries that imply general cleanup
-tools, reference/storage foundation tools, or per-step validators exist before
-their branches implement them.
-
 ## General success checklist
 
 A computational stage is only `cluster-proven` when all of these are true:

@@ -148,73 +148,24 @@ inventory and normalized policy with a summary last. Approval state is
 evidence, not an executable instruction: this boundary never deletes, moves,
 archives, compresses, or cleans data.
 
-Step-specific validators sit beside native outputs and never mutate them. The
-first implemented validator reads the explicit Step `00a` STAR index and its
-FASTA/GTF sources, then publishes the common seven-column validation TSV. Its
-typed adapter keeps passing and failing check evidence in the artifact graph;
-the canonical summary and both report formats project the resulting expected-
-scope state without promoting runtime or cluster evidence.
+Step-specific validators sit beside native outputs and never mutate them.
+Every implemented native pipeline stage from Step `00a` through Step `09` has
+an explicit validator that publishes the common seven-column validation TSV
+and a typed read-only adapter. Passing and failing checks remain visible in
+the artifact graph, canonical summary, and both report formats without
+promoting runtime or cluster evidence.
 
-Step `00b` applies the same boundary to the explicit BED12 and source GTF. It
-separately reports structural, ordering, block, uniqueness, and deterministic
-normalization agreement, then uses its own typed adapter rather than a generic
-dispatcher.
+The validators preserve three architectural boundaries:
 
-Step `00c` reads the explicit FASTA, FAI, and DICT and reports their individual
-structure plus exact ordered contig-name/length agreement. Its typed adapter
-uses the same evidence-only path; it never creates or repairs reference
-sidecars.
+- reference preparation (`00a`-`00c`) reconciles declared reference members
+  and identities without building or repairing them;
+- per-sample processing (`01`-`06`) inspects declared output/QC sets without
+  rerunning their analysis tools or reinterpreting mechanical orientation;
+- cohort analysis (`07`-`09`) reconciles declared manifests, transactions,
+  candidate order, counts, statistics, subsets, provenance, and containers
+  without discovering inputs or invoking bcftools or R.
 
-Step `01` validates the five explicit STAR outputs for one sample, including
-the BAM container, final-log mapping percentages, and splice-junction table.
-The per-sample typed adapter exposes those checks to the same summary and
-report path without rerunning alignment.
-
-Step `02` uses an explicit samtools executable to validate one canonical
-BAM/BAI pair, coordinate sort order, the matching read-group header, and RG
-coverage across all alignments. It observes the pair without sorting,
-indexing, or changing tags.
-
-Step `02b` separately validates the persisted quickcheck marker and flagstat
-counts. It does not invoke samtools; its typed adapter exposes the recorded QC
-evidence and count reconciliation.
-
-Step `03` validates the three required RSeQC fractions and their sum while
-retaining RSeQC's mechanical paired-orientation labels. Its adapter never
-translates those labels into biological strand claims.
-
-Step `04` validates one marked BAM/BAI pair, its preserved sample read group,
-and one bounded Picard duplication-metrics row. It observes duplicate-marking
-evidence without marking or removing reads.
-
-Step `05` validates one split-N-cigar BAM/BAI pair against explicit
-FASTA/FAI/DICT prerequisites. It never invokes GATK or repairs shared
-reference sidecars.
-
-Step `06` validates the two explicit mechanical-orientation BAM/BAI pairs and
-the exact one-row orientation counts contract. It reconciles the flag-group,
-assigned/unassigned, and fraction arithmetic without invoking samtools,
-changing outputs, or inferring biological strand.
-
-Step `07` validates one explicit cohort-partition receipt and its two VCFs
-against the declared sample manifest, partition manifest, and FAI. It
-reconciles selector membership, immutable hashes, sample order, paths, and
-record counts without invoking bcftools. Failed expected scopes are projected
-as a compact named list in both report formats so late matrix rows remain
-visible in PDF text.
-
-Step `08` validates the explicit sites, input-receipt, and summary TSV
-transaction against the declared manifests and annotation. It reuses the
-native semantic contracts for ordered inputs, candidate uniqueness, sample
-fields, AF arithmetic, provenance hashes, and aggregate counts without
-invoking R or rediscovering upstream artifacts.
-
-Step `09` validates the six explicit native CMH outputs as one analysis-bound
-transaction. It requires exact TSV headers and basenames, one shared parent,
-distinct physical files, explicit cohort/provisional-policy identity, and the
-complete ordered Step `08` candidate universe. It independently recomputes
-target/test/call, depth, AF, enabled-background, CMH, and global-BH semantics,
-then reconciles the significant subset, summary provenance/counts, mutation
-spectrum, and PDF containers. Its seven-row typed report enters the artifact,
-summary, and report graph without invoking R, changing native outputs, or
-promoting evidence state.
+Exact acceptance criteria belong in
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md), and executable
+validator commands belong in
+[`../operations/RUNBOOK.md`](../operations/RUNBOOK.md).

@@ -69,7 +69,7 @@ logs/           ignored runtime logs
 | [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
 | [`FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md) | Target-state design and deferred constraints |
 | [`DEMO_WALKTHROUGH.md`](docs/demo/DEMO_WALKTHROUGH.md) | Presentation-oriented walkthrough |
-| [`PI_DEMO_REPORT.md`](docs/demo/PI_DEMO_REPORT.md) | Dated evidence snapshot for discussion |
+| [`PI_DEMO_REPORT.md`](docs/demo/PI_DEMO_REPORT.md) | Presentation-oriented evidence-model snapshot |
 
 Canonical Mermaid sources live under
 [`docs/architecture/diagrams/`](docs/architecture/diagrams/). Architecture

@@ -29,7 +29,18 @@ flowchart LR
     preprocess --> cmh["09 paired CMH ranking"]
     cmh --> validate09["09 read-only validation TSV"]
     cmh --> science["09c scientific evidence review"]
-    cmh --> adapters["Read-only artifact adapters"]
+    native["Declared native outputs and receipts<br/>Steps 00a-09"] --> adapters["Read-only artifact adapters"]
+    prep --> native
+    align --> native
+    bam --> native
+    qc --> native
+    orientation --> native
+    markdup --> native
+    splitn --> native
+    splitread --> native
+    mpileup --> native
+    preprocess --> native
+    cmh --> native
     science --> adapters
     validate00a --> adapters
     validate00b --> adapters
@@ -45,4 +56,5 @@ flowchart LR
     validate08 --> adapters
     validate09 --> adapters
     adapters --> summary["Canonical run summary"]
+    approvals["Exact report-table approvals"] --> summary
     summary --> report["Receipt-last HTML/PDF/TSV report bundle"]

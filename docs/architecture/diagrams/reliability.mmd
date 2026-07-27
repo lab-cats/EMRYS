@@ -3,7 +3,7 @@ flowchart LR
     dryrun --> lock["Owned lock"]
     lock --> stage["Run-token staging"]
     stage --> validate["Validate outputs and recheck inputs"]
-    validate --> publish["Atomic publication"]
+    validate --> publish["Validated recoverable publication"]
     publish --> marker["Receipt or summary published last"]
     validate --> rollback["Rollback on failure"]
     rollback --> recovery["Preserve recovery evidence when uncertain"]

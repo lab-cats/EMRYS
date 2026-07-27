@@ -8,13 +8,13 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Create `post09-comprehensive-docpatch` from the clean, pushed
-   `post09-validation-report-09` branch and perform the approved repository-wide
-   documentation consistency pass.
-2. Create the descendant `post09-refactor-roadmap` documentation package and
+1. Create `post09-refactor-roadmap` from the clean, pushed
+   `post09-comprehensive-docpatch` branch and
    record the evidence-ranked future implementation roadmap.
-3. Create `post09-test-coverage`, implement the reasonable high-value test
+2. Create `post09-test-coverage`, implement the reasonable high-value test
    extensions identified by the coverage audit, and docpatch that package.
+3. Complete the final repository-wide validation, clean-history, push, and
+   upstream-equality audit without beginning remote or cluster promotion.
 
 ## Runtime and scientific blockers
 

@@ -54,7 +54,7 @@ a completed production review.
 | `post09-validation-report-07` | Structured VCF/receipt/selector/manifest/count validation and report propagation | implemented and locally fixture-tested; real-runtime and production report pending |
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
-| `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | approved; pending |
+| `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | completed; documentation-only |
 | `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | approved; pending |
 | `post09-test-coverage` | High-value test-coverage extensions and coverage roadmap | approved; pending |
 

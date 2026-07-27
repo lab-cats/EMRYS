@@ -1,6 +1,5 @@
 flowchart TB
-    reports["Complete deterministic report bundle"] --> foundations["Runtime, reference, and storage evidence foundations"]
-    foundations --> validators["One explicit validator per pipeline step"]
-    validators --> remote["Upstream-sequential remote validation"]
+    contracts["Stabilized native, validation, and report contracts"] --> coverage["Risk-ranked coverage hardening"]
+    coverage --> remote["Upstream-sequential remote validation"]
     remote --> science["Production scientific-evidence review"]
-    science --> later["Only then consider reruns and refactors"]
+    science --> later["Evidence-ranked reruns and refactor implementation"]

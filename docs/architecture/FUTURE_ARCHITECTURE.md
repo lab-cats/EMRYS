@@ -37,19 +37,20 @@ justifies migration. Filenames must not become identity.
 
 ## Validation records
 
-Each pipeline stage should have one explicit validator that emits a stable
-tabular record. Validators are read-only, dry-run-first, and stage-specific.
-They report failure and inconsistency rather than repairing outputs.
+Any new or versioned pipeline stage must provide one explicit validator that
+emits the established stable tabular record. Validators remain read-only,
+dry-run-first, and stage-specific. They report failure and inconsistency
+rather than repairing outputs.
 
 A generic dispatcher or job array is not part of the target until individual
 validators are proven and a concrete operational need exists.
 
 ## Reporting layer
 
-Future stage-specific validators feed the existing canonical summary and
-report bundle through explicit adapters. They must not bypass the current
-explicit-input, table-authorization, deterministic publication, or
-receipt-last contracts described in
+New or versioned stage-specific validators feed the canonical summary and
+report bundle through explicit adapters. They must not bypass the
+explicit-input, table-authorization, deterministic publication, or receipt-
+last contracts described in
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 New report projections remain projections of evidence, never evidence
@@ -67,7 +68,8 @@ RNA-editing/CMH module. Such a module must preserve:
 - provisional orientation language;
 - independent computational and scientific states.
 
-General core refactoring requires evidence from another real cohort.
+Implementing broad core refactoring requires evidence from another real
+cohort; documenting evidence-ranked opportunities does not alter that gate.
 
 ## Deferred capabilities
 

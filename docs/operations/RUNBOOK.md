@@ -92,7 +92,13 @@ sed -n '1,120p' docs/design/PIPELINE_PLAN.md
 3. Show the sample manifest:
 
 ```bash
-sed -n '1,20p' samples.tsv
+if [ -f samples.tsv ]; then
+  sed -n '1,20p' samples.tsv
+else
+  printf '%s\n' \
+    'production samples.tsv is unavailable; showing synthetic example'
+  sed -n '1,20p' samples.example.tsv
+fi
 ```
 
 4. Show proven output locations when present:
@@ -268,7 +274,7 @@ Step `07` is implemented locally and locally tested with mocked bcftools. The ex
 The signed Apple-silicon CRAN R `4.6.1` runtime is installed locally and the
 guarded repository `renv` environment is locked to Bioconductor `3.23`. Local
 runtime and package-environment checks pass. The Step `08` and Step `09`
-real-R suites also pass locally without `SKIP` after the `step-09b1` fixes.
+real-R suites also pass locally without `SKIP` in the guarded environment.
 This is local fixture evidence only; see the local R section and
 troubleshooting guide for the exact scope.
 
@@ -406,7 +412,7 @@ sjtail <JOBID>
 
 If helpers are not installed, use the manual commands in the next section.
 
-## Artifact And Future Operational Helpers
+## Artifact And Operational Helpers
 
 The commands below operate only on explicit inputs. They do not install
 analysis software, discover production outputs, promote evidence state, delete
@@ -644,7 +650,7 @@ proof. Focused tests:
 
 ### Validate `artifact-schema-v1`
 
-Implemented locally at `5f4d3b4`:
+Implemented components:
 
 ```text
 schemas/artifacts/v1/common.schema.json
@@ -723,7 +729,7 @@ was created by this package.
 
 ### Build An `artifact-adapters-v1` Index
 
-Implemented locally at `4dbd32d`:
+Implemented components:
 
 ```text
 configs/artifact_run_contract.example.json
@@ -1195,10 +1201,11 @@ git log --oneline -3
 git push
 ```
 
-Remote promotion is currently paused. After the approved documentation,
-roadmap, and coverage packages reach the clean, pushed, docpatched
-`post09-test-coverage` branch and remote work is explicitly resumed, open a
-cluster shell:
+Remote promotion is currently paused. After every approved local package
+reaches its clean, pushed, docpatched gate and remote work is explicitly
+resumed, use the exact predecessor and validation branch recorded in
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md), then open a cluster
+shell:
 
 ```bash
 ssh csu-hpc
@@ -1211,7 +1218,7 @@ set -euo pipefail
 
 cd ~/norad
 git fetch origin
-validation_branch=validate-step-07
+validation_branch=REPLACE_WITH_ACTIVE_VALIDATION_BRANCH
 git switch "$validation_branch" ||
   git switch --track -c "$validation_branch" "origin/$validation_branch"
 git pull --ff-only origin "$validation_branch"
@@ -1219,16 +1226,6 @@ test "$(git branch --show-current)" = "$validation_branch"
 git rev-parse HEAD
 test -z "$(git status --porcelain)"
 mkdir -p logs
-```
-
-Set `validation_branch` to the exact active gate:
-
-```text
-validate-step-07
-validate-step-08
-validate-step-09
-validate-step-09c-scientific-evidence
-post09-targeted-reruns
 ```
 
 Do not use an unqualified `git pull` and assume the checkout changed branches.
@@ -1240,8 +1237,8 @@ pushed:
 ```bash
 set -euo pipefail
 
-predecessor=post09-test-coverage
-next_branch=validate-step-07
+predecessor=REPLACE_WITH_CLEAN_PIPELINE_PLAN_PREDECESSOR
+next_branch=REPLACE_WITH_NEXT_PIPELINE_PLAN_BRANCH
 
 git switch "$predecessor"
 git pull --ff-only origin "$predecessor"
@@ -1252,10 +1249,10 @@ git switch -c "$next_branch"
 git push -u origin "$next_branch"
 ```
 
-For later gates, use `validate-step-07` -> `validate-step-08` ->
-`validate-step-09` -> `validate-step-09c-scientific-evidence` ->
-`post09-targeted-reruns`. Never create the descendant before the predecessor's
-inspected evidence/report docpatch, clean-history check, and push.
+Repeat only for the next edge in the authoritative lineage in
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md). Never create the
+descendant before the predecessor's inspected evidence/report docpatch,
+clean-history check, and push.
 
 Dry-run:
 
@@ -2286,7 +2283,7 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
 Direct script dry-run with explicit cluster tools:
 
 ```bash
-scripts/step_05_split_n_cigar_reads.sh \
+bash scripts/step_05_split_n_cigar_reads.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -2298,7 +2295,7 @@ scripts/step_05_split_n_cigar_reads.sh \
 Direct script execute with explicit cluster tools:
 
 ```bash
-scripts/step_05_split_n_cigar_reads.sh \
+bash scripts/step_05_split_n_cigar_reads.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -2814,17 +2811,11 @@ Step 07 dry-run
 ```
 
 Remote promotion is paused during the approved local implementation sequence.
-When it resumes, create validation branches only after the final local
-validator branch is clean, docpatched, and pushed:
-
-```text
-post09-test-coverage
-└── validate-step-07
-    └── validate-step-08
-        └── validate-step-09
-            └── validate-step-09c-scientific-evidence
-                └── post09-targeted-reruns
-```
+When it resumes, create validation branches only after the latest approved
+local package is clean, docpatched, pushed, and upstream-equal. Use the exact
+deferred remote lineage in
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); do not infer it
+from this operational guide.
 
 Each validation branch receives its inspected evidence/status docpatch,
 clean-status/history check, and push before the next branch is created.
@@ -3490,7 +3481,7 @@ perform an explicit operator recovery before another run.
 Status:
 
 ```text
-implemented locally at b674a31
+implemented locally
 Python and shell synthetic-fixture suites pass
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine

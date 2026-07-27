@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-validation-report-09`
+  `post09-comprehensive-docpatch`
 - Parent:
-  `post09-validation-report-08`
+  `post09-validation-report-09`
 - Verified parent HEAD:
-  `4c198dbef512cb409c5ce1866254330e3e00a55f`
+  `5bdf53664d72f047d88f4a59d38ff2d8c80dc503`
 - Parent implementation:
-  `db1150f implement step 08 validation report`
-- Current implementation:
   `d6458ea implement step 09 validation report`
-- Package type: implementation plus required documentation patch
+- Parent documentation:
+  `5bdf536 step 09 validation report docpatch`
+- Package type: documentation-only
 - Remote and cluster work: paused
 
-The Step `09` validation branch was created only after verifying a clean,
+The comprehensive-docpatch branch was created only after verifying a clean,
 upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -64,6 +64,10 @@ The local descendant sequence has implemented:
 - a Step `09` seven-check transaction/identity/semantics/subset/summary/
   spectrum/PDF validation report, typed artifact adapter, and summary/HTML/PDF
   propagation fixture.
+
+The current package reconciles all tracked Markdown and Mermaid sources with
+the completed local validator sequence. It changes no executable behavior,
+schema, test, workflow contract, or generated output.
 
 ## Evidence boundary
 
@@ -180,9 +184,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-validation-report-09` implementation and documentation gates are
-complete. Continue from this clean, pushed descendant with the approved
-documentation/audit sequence beginning at `post09-comprehensive-docpatch`.
+The `post09-comprehensive-docpatch` documentation gate is complete. Continue
+from this clean, pushed descendant with the approved
+`post09-refactor-roadmap` documentation package.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).
