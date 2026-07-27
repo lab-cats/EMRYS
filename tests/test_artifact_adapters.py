@@ -162,12 +162,12 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 ) -> None:
     rows = artifact_fixture.inventory_rows
 
-    assert len(rows) == 67
+    assert len(rows) == 68
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
     assert {row["adapter"] for row in rows} == set(ADAPTER.ADAPTER_REGISTRY)
-    assert len(artifact_fixture.source_paths) == 67
+    assert len(artifact_fixture.source_paths) == 68
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
 
@@ -195,9 +195,9 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
         assert option in help_result.stdout
     assert result.returncode == 0, result.stderr
     assert "Mode: dry-run" in result.stdout
-    assert "Inventory artifacts: 67" in result.stdout
-    assert "present=67" in result.stdout
-    assert "complete=67" in result.stdout
+    assert "Inventory artifacts: 68" in result.stdout
+    assert "present=68" in result.stdout
+    assert "complete=68" in result.stdout
     assert "Receipt (published last)" in result.stdout
     assert "Dry-run only" in result.stdout
     assert not artifact_fixture.output_root.exists()
@@ -212,7 +212,7 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     assert "Published receipt last" in result.stdout
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
-    assert len(index_rows) == 67
+    assert len(index_rows) == 68
     assert len(receipt_rows) == 1
     receipt = receipt_rows[0]
     assert [row["artifact_id"] for row in index_rows] == [
@@ -220,19 +220,19 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     ]
     assert {row["availability_status"] for row in index_rows} == {"present"}
     assert {row["completion_status"] for row in index_rows} == {"complete"}
-    assert receipt["inventory_row_count"] == "67"
-    assert receipt["artifact_record_count"] == "67"
-    assert receipt["present_artifact_count"] == "67"
-    assert receipt["complete_artifact_count"] == "67"
+    assert receipt["inventory_row_count"] == "68"
+    assert receipt["artifact_record_count"] == "68"
+    assert receipt["present_artifact_count"] == "68"
+    assert receipt["complete_artifact_count"] == "68"
     assert receipt["required_missing_artifact_count"] == "0"
     assert receipt["warning_count"] == "0"
     assert receipt["error_count"] == "0"
-    assert receipt["published_output_count"] == "69"
+    assert receipt["published_output_count"] == "70"
     assert receipt["transaction_state"] == "complete"
     assert receipt["artifacts_index_sha256"] == sha256_file(
         artifact_fixture.artifacts_path
     )
-    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 67
+    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 68
 
     for row in index_rows:
         record_path = Path(row["record_path"])
@@ -332,15 +332,40 @@ def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
     assert malformed_sibling["completion_status"] == "incomplete"
 
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["present_artifact_count"] == "66"
+    assert receipt["present_artifact_count"] == "67"
     assert receipt["missing_artifact_count"] == "1"
-    assert receipt["complete_artifact_count"] == "63"
+    assert receipt["complete_artifact_count"] == "64"
     assert receipt["incomplete_artifact_count"] == "3"
     assert receipt["failed_artifact_count"] == "1"
     assert receipt["required_missing_artifact_count"] == "1"
     assert receipt["warning_count"] == "3"
     assert receipt["error_count"] == "1"
     assert_published_records_are_valid(artifact_fixture)
+
+
+def test_step00a_validation_adapter_preserves_failed_check_status(
+    artifact_fixture: Any,
+) -> None:
+    report = artifact_fixture.source_for("ref.star_index.validation")
+    report.write_text(
+        report.read_text(encoding="utf-8").replace(
+            "\tpass\tfixture\tfixture\tsynthetic passing validation",
+            "\tfail\tmismatch\tfixture\tsynthetic failed validation",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_cli(artifact_fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    record = record_for(artifact_fixture, "ref.star_index.validation")
+    assert record["availability_status"] == "present"
+    assert record["completion_status"] == "failed"
+    assert record["state_reason"] == "Validation report contains failed checks."
+    assert [entry["code"] for entry in record["errors"]] == [
+        "validation_checks_failed"
+    ]
 
 
 def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
@@ -407,7 +432,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     assert second.returncode == 0, second.stderr
     assert unrelated.read_bytes() == unrelated_payload
     index_rows = read_tsv(artifact_fixture.artifacts_path)
-    assert len(index_rows) == 67
+    assert len(index_rows) == 68
     assert str(undeclared) not in {
         row["source_path"] for row in index_rows
     }
@@ -997,9 +1022,9 @@ def test_all_missing_sources_publish_complete_index_transaction(
 
     assert result.returncode == 0, result.stderr
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["missing_artifact_count"] == "67"
-    assert receipt["incomplete_artifact_count"] == "67"
-    assert receipt["required_missing_artifact_count"] == "67"
+    assert receipt["missing_artifact_count"] == "68"
+    assert receipt["incomplete_artifact_count"] == "68"
+    assert receipt["required_missing_artifact_count"] == "68"
     assert receipt["transaction_state"] == "complete"
 
 

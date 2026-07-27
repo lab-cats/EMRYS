@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters-v1 fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 67 explicit source paths into a caller-owned temporary directory
+rewrites its 68 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -145,9 +145,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 67:
+    if len(rows) != 68:
         raise RuntimeError(
-            f"Expected 67 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 68 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -418,6 +418,26 @@ def tsv_rows_for(
                 "assigned_fraction": "0.8",
             }
         )
+    elif adapter == "step00a_validation_report_v1":
+        check_ids = (
+            "index_members",
+            "fasta_identity",
+            "gtf_identity",
+            "contig_names_lengths",
+            "sjdb_overhang",
+        )
+        for output_row, check_id in zip(rows, check_ids, strict=True):
+            output_row.update(
+                {
+                    "step_id": "00a",
+                    "scope_id": row["scope_id"],
+                    "check_id": check_id,
+                    "status": "pass",
+                    "observed": "fixture",
+                    "expected": "fixture",
+                    "detail": "synthetic passing validation",
+                }
+            )
     elif adapter == "step07_mpileup_receipt_v1":
         partition = row["scope_id"].split("__", 1)[-1]
         vcfs = [
@@ -753,7 +773,7 @@ def write_adapter_source(
             "\tDP:AD:ADF:ADR:SP\t10:5,5:3,3:2,2:0\n",
             encoding="utf-8",
         )
-    elif spec.kind in {"tsv", "sample_blocks_tsv"}:
+    elif spec.kind in {"tsv", "sample_blocks_tsv", "validation_report"}:
         if spec.expected_header is None:
             raise RuntimeError(f"Fixture TSV adapter lacks a header: {spec}")
         header = (

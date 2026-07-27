@@ -14,6 +14,7 @@ ref.star_index.sjdb_info	00a	reference	novogene_ref	step00a_star_index_v1	tests/
 ref.star_index.sjdb_from_gtf	00a	reference	novogene_ref	step00a_star_index_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_star_index/sjdbList.fromGTF.out.tab	true
 ref.star_index.sjdb_list	00a	reference	novogene_ref	step00a_star_index_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_star_index/sjdbList.out.tab	true
 ref.star_index.transcript_info	00a	reference	novogene_ref	step00a_star_index_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_star_index/transcriptInfo.tab	true
+ref.star_index.validation	00a	reference	novogene_ref	step00a_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/00a/novogene_ref.validation.tsv	true
 ref.bed12	00b	reference	novogene_ref	step00b_bed12_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.bed	true
 ref.fasta	00c	reference	novogene_ref	step00c_reference_fasta_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.fa	true
 ref.fai	00c	reference	novogene_ref	step00c_reference_fai_v1	tests/fixtures/artifact_schema_v1/source/refs/novogene_ref/genome.fa.fai	true

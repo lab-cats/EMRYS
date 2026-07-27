@@ -375,6 +375,78 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
 
 @pytest.mark.skipif(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
+    reason="set NORAD_REQUIRE_QUARTO=1 for validation-report propagation",
+)
+def test_step00a_failed_validation_reaches_summary_html_and_pdf(
+    tmp_path: Path,
+) -> None:
+    adapter_fixture = FIXTURE.ADAPTER_FIXTURE.build_fixture(
+        tmp_path / "adapter",
+        run_id="step00a_validation_run",
+    )
+    validation = adapter_fixture.source_for("ref.star_index.validation")
+    validation.write_text(
+        validation.read_text(encoding="utf-8").replace(
+            "\tpass\tfixture\tfixture\tsynthetic passing validation",
+            "\tfail\tmismatch\tfixture\tsynthetic failed validation",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    FIXTURE.publish_adapter_fixture(adapter_fixture)
+    fixture = FIXTURE.RunSummaryFixture(
+        root=tmp_path,
+        run_id=adapter_fixture.run_id,
+        artifact_receipt=adapter_fixture.receipt_path,
+        output_root=adapter_fixture.output_root,
+        adapter_fixture=adapter_fixture,
+    )
+    summary = publish_summary(fixture)
+    document = json.loads(summary.read_text(encoding="utf-8"))
+    validation_artifact = next(
+        item
+        for item in document["artifacts"]
+        if item["artifact_id"] == "ref.star_index.validation"
+    )
+    assert validation_artifact["completion_status"] == "failed"
+
+    output_root = tmp_path / "reports"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--run-summary",
+            str(summary),
+            "--output-root",
+            str(output_root),
+            "--quarto-bin",
+            str(_real_quarto()),
+            "--formats",
+            "all",
+            "--execute",
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    report_dir = output_root / adapter_fixture.run_id
+    html = (
+        report_dir / f"{adapter_fixture.run_id}.run_report.html"
+    ).read_text(encoding="utf-8")
+    pdf = report_dir / f"{adapter_fixture.run_id}.run_report.pdf"
+    pdf_text = " ".join(
+        (page.extract_text() or "")
+        for page in PdfReader(pdf, strict=True).pages
+    )
+    assert "ref.star_index.validation" in html
+    assert "failed" in html
+    assert "00a reference novogene_ref failed" in " ".join(pdf_text.split())
+
+
+@pytest.mark.skipif(
+    os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for real rollback validation",
 )
 def test_bundle_failure_restores_valid_html_only_predecessor(

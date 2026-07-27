@@ -182,6 +182,15 @@ STEP00A_BASENAMES = (
     "sjdbList.out.tab",
     "transcriptInfo.tab",
 )
+VALIDATION_REPORT_HEADER = (
+    "step_id",
+    "scope_id",
+    "check_id",
+    "status",
+    "observed",
+    "expected",
+    "detail",
+)
 
 
 class ArtifactIndexError(RuntimeError):
@@ -312,6 +321,18 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "star_index",
         "application/octet-stream",
         basenames=STEP00A_BASENAMES,
+    )
+    add_spec(
+        registry,
+        "step00a_validation_report_v1",
+        "00a",
+        "reference",
+        "validation_report",
+        "text/tab-separated-values",
+        suffixes=(".validation.tsv",),
+        expected_header=VALIDATION_REPORT_HEADER,
+        exact_data_rows=5,
+        allow_header_only=False,
     )
     add_spec(
         registry,
@@ -672,7 +693,12 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
 ADAPTER_REGISTRY = build_adapter_registry()
 
 SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
-    "00a": Counter({"step00a_star_index_v1": 15}),
+    "00a": Counter(
+        {
+            "step00a_star_index_v1": 15,
+            "step00a_validation_report_v1": 1,
+        }
+    ),
     "00b": Counter({"step00b_bed12_v1": 1}),
     "00c": Counter(
         {
@@ -971,7 +997,11 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
                 f"observed {dict(observed)}, expected {dict(expected)}"
             )
         if step_id == "00a":
-            names = {Path(row["source_path"]).name for row in scope_rows}
+            names = {
+                Path(row["source_path"]).name
+                for row in scope_rows
+                if row["adapter"] == "step00a_star_index_v1"
+            }
             if names != set(STEP00A_BASENAMES):
                 raise ArtifactIndexError(
                     f"Inventory scope {scope!r} must declare the exact 15 "
@@ -1260,6 +1290,8 @@ def inspect_tsv(
                         mutation_pair_counts[mutation_type][
                             "significant_down_count"
                         ] += 1
+                if spec.kind == "validation_report":
+                    value_counts["status"][row["status"]] += 1
                 if capture_rows:
                     captured_rows.append(row)
                 if first_row is None:
@@ -1727,8 +1759,53 @@ def inspect_source(
             resolved, spec
         )
         source["row_count"] = row_count
+        if spec.kind == "validation_report":
+            validation_rows = native_metrics.get("rows", [])
+            if any(
+                item["step_id"] != spec.step_id
+                or item["scope_id"] != row["scope_id"]
+                or item["status"] not in {"pass", "fail"}
+                or not contracts.SAFE_ID_RE.fullmatch(item["check_id"])
+                for item in validation_rows
+            ):
+                raise ArtifactIndexError(
+                    "Validation report step, scope, check ID, or status is invalid"
+                )
+            check_ids = [item["check_id"] for item in validation_rows]
+            if len(check_ids) != len(set(check_ids)):
+                raise ArtifactIndexError(
+                    "Validation report contains duplicate check IDs"
+                )
         validate_native_run_anchors(first_row, row)
         metrics = build_metrics(row, row_count, native_metrics)
+        if (
+            spec.kind == "validation_report"
+            and native_metrics.get("value_counts", {})
+            .get("status", {})
+            .get("fail", 0)
+        ):
+            return Inspection(
+                row=row,
+                spec=spec,
+                resolved_path=resolved,
+                availability_status="present",
+                completion_status="failed",
+                state_reason="Validation report contains failed checks.",
+                attempt_provenance_status="unavailable",
+                source=source,
+                parameters=parameters,
+                metrics=metrics,
+                native=native_metrics,
+                first_row=first_row,
+                errors=[
+                    issue(
+                        "validation_checks_failed",
+                        "One or more explicit validation checks failed.",
+                        artifact_id,
+                    )
+                ],
+                snapshot=snapshot,
+            )
         return Inspection(
             row=row,
             spec=spec,
@@ -2029,7 +2106,7 @@ def inspect_present(
     path: Path,
     spec: AdapterSpec,
 ) -> tuple[int | None, dict[str, str] | None, dict[str, Any], dict[str, Any]]:
-    if spec.kind in {"tsv", "sample_blocks_tsv"}:
+    if spec.kind in {"tsv", "sample_blocks_tsv", "validation_report"}:
         return inspect_tsv(path, spec)
     if spec.kind == "vcf":
         row_count, native = inspect_vcf(path)
