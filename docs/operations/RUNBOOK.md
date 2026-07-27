@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 73 synthetic physical artifacts
+requirements. The example inventory contains 74 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 55 registered read-only adapters covering the 73
+The adapter builder has 56 registered read-only adapters covering the 74
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1955,6 +1955,39 @@ Output:
 
 ```bash
 results/qc/strandedness/<sample>.infer_experiment.txt
+```
+
+The structured Step `03` validator reads one exact persisted RSeQC report:
+
+```bash
+.venv/bin/python scripts/validate_step_03_rseqc_orientation.py \
+  --scope-id ABE_EV_2 \
+  --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
+  --output results/qc/validation/03/ABE_EV_2.validation.tsv
+```
+
+Dry-run requires exactly one finite value from zero through one for the
+failed-to-determine fraction and each of RSeQC's two paired-orientation
+labels. It requires their sum to equal one within the explicit default
+tolerance of `0.001`. It preserves the mechanical labels and does not infer a
+biological strand. After inspection, create the parent and add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/03
+.venv/bin/python scripts/validate_step_03_rseqc_orientation.py \
+  --scope-id ABE_EV_2 \
+  --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
+  --output results/qc/validation/03/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+The `step03_validation_report_v1` adapter propagates the explicit evidence
+without rerunning RSeQC or changing historical cluster/biological state.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_03_rseqc_orientation.py
 ```
 
 Dry-run:

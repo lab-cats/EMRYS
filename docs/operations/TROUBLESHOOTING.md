@@ -653,6 +653,26 @@ Inspect the exact quickcheck and flagstat files and their producing job/log.
 Use the Step `02b` workflow for any separately authorized regeneration. Do not
 invoke repair from the validator or edit counts/markers into a pass.
 
+## Step 03 structured validation reports RSeQC fraction disagreement
+
+### Symptom
+
+The Step `03` validation TSV reports missing/duplicate labels, a nonnumeric or
+out-of-range fraction, or three fractions that do not sum to one within the
+declared tolerance.
+
+### Cause
+
+The persisted RSeQC output may be malformed, truncated, manually changed, or
+from an unexpected report version.
+
+### Fix
+
+Inspect the exact report and producing job/log. Regenerate only through a
+separately authorized Step `03` workflow when required. Do not rename the
+paired-orientation groups as biological strands, normalize values inside the
+validator, or edit a failed report into a pass.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1844,7 +1864,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 73-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 74-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

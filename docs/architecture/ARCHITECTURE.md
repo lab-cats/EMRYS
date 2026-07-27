@@ -178,3 +178,7 @@ indexing, or changing tags.
 Step `02b` separately validates the persisted quickcheck marker and flagstat
 counts. It does not invoke samtools; its typed adapter exposes the recorded QC
 evidence and count reconciliation.
+
+Step `03` validates the three required RSeQC fractions and their sum while
+retaining RSeQC's mechanical paired-orientation labels. Its adapter never
+translates those labels into biological strand claims.
