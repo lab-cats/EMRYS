@@ -235,6 +235,11 @@ def _validate_check_contract(check: Check, row_number: int) -> None:
             _fail(f"Runtime profile row {row_number} tool_version needs probe_args")
         _validate_regex(check.expected, row_number)
     elif check.check_type == "r_namespace":
+        if re.fullmatch(r"[A-Za-z][A-Za-z0-9.]*", check.target) is None:
+            _fail(
+                f"Runtime profile row {row_number} r_namespace target "
+                "must be an R package name"
+            )
         if len(check.probe_args) != 1 or not check.probe_args[0]:
             _fail(
                 f"Runtime profile row {row_number} r_namespace probe_args must "
@@ -252,15 +257,25 @@ def _validate_check_contract(check: Check, row_number: int) -> None:
                 f"Runtime profile row {row_number} hash_utility expected must be sha256"
             )
     elif check.check_type == "path_visibility":
+        if not Path(check.target).is_absolute():
+            _fail(
+                f"Runtime profile row {row_number} path_visibility target "
+                "must be absolute"
+            )
         if len(check.probe_args) != 1 or check.probe_args[0] not in VISIBILITY_PROBES:
             _fail(
                 f"Runtime profile row {row_number} path_visibility probe_args "
                 f"must contain one of: {', '.join(sorted(VISIBILITY_PROBES))}"
             )
-        if check.expected != "readable":
+        expected = (
+            "executable"
+            if check.probe_args and check.probe_args[0] == "executable"
+            else "readable"
+        )
+        if check.expected != expected:
             _fail(
                 f"Runtime profile row {row_number} path_visibility expected "
-                "must be readable"
+                f"must be {expected}"
             )
 
 

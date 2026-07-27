@@ -206,6 +206,51 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
     assert rows["missing"]["status"] == "fail"
 
 
+def test_executable_visibility_uses_absolute_target_and_matching_expectation(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "tool"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    profile = write_profile(
+        tmp_path / "profile.tsv",
+        [
+            [
+                "executable",
+                "path_visibility",
+                "any",
+                "true",
+                str(executable),
+                json.dumps(["executable"]),
+                "executable",
+                "Executable path",
+            ]
+        ],
+    )
+    output = tmp_path / "preflight.tsv"
+    assert run_cli(profile, output, "--execute").returncode == 0
+    assert read_rows(output)[0]["status"] == "pass"
+
+    relative = write_profile(
+        tmp_path / "relative.tsv",
+        [
+            [
+                "relative",
+                "path_visibility",
+                "any",
+                "true",
+                "relative/path",
+                json.dumps(["file_readable"]),
+                "readable",
+                "Relative path",
+            ]
+        ],
+    )
+    rejected = run_cli(relative, tmp_path / "relative-output.tsv", "--execute")
+    assert rejected.returncode == 2
+    assert "must be absolute" in rejected.stderr
+
+
 def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
     fake = tmp_path / "Rscript"
     fake.write_text(
@@ -236,6 +281,27 @@ def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     observed = {row["check_id"]: row["status"] for row in read_rows(output)}
     assert observed == {"good": "pass", "missing": "fail"}
+
+
+def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
+    profile = write_profile(
+        tmp_path / "profile.tsv",
+        [
+            [
+                "bad_namespace",
+                "r_namespace",
+                "any",
+                "true",
+                "bad namespace",
+                json.dumps(["Rscript"]),
+                r"^[0-9]+[.]",
+                "Invalid package name",
+            ]
+        ],
+    )
+    result = run_cli(profile, tmp_path / "preflight.tsv", "--execute")
+    assert result.returncode == 2
+    assert "must be an R package name" in result.stderr
 
 
 @pytest.mark.parametrize(
