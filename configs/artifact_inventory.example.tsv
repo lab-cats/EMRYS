@@ -59,6 +59,7 @@ cohort.synthetic.p2.validation	07	cohort_partition	synthetic_cohort__p2	step07_v
 cohort.synthetic.step08_sites	08	cohort	synthetic_cohort	step08_sites_v1	tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_sites.tsv	true
 cohort.synthetic.step08_inputs	08	cohort	synthetic_cohort	step08_inputs_v1	tests/fixtures/artifact_schema_v1/source/results/vcf_preprocessed/synthetic_cohort/synthetic_cohort.step08_inputs.tsv	true
 cohort.synthetic.step08_summary	08	cohort	synthetic_cohort	step08_summary_v1	tests/fixtures/artifact_schema_v1/source/results/qc/vcf_preprocessing/synthetic_cohort.step08_summary.tsv	true
+cohort.synthetic.step08_validation	08	cohort	synthetic_cohort	step08_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/08/synthetic_cohort.validation.tsv	true
 analysis.synthetic.cmh_all_sites	09	analysis	synthetic_analysis	step09_cmh_all_sites_v1	tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv	true
 analysis.synthetic.cmh_significant_sites	09	analysis	synthetic_analysis	step09_cmh_significant_sites_v1	tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_significant_sites.tsv	true
 analysis.synthetic.cmh_summary	09	analysis	synthetic_analysis	step09_cmh_summary_v1	tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_summary.tsv	true

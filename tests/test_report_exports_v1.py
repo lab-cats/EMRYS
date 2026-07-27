@@ -391,6 +391,7 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
         ("sample.SYNTH_A.split_validation", "05", "sample SYNTH_A"),
         ("sample.SYNTH_A.orientation_validation", "06", "sample SYNTH_A"),
         ("cohort.synthetic.p1.validation", "07", "cohort_partition synthetic_cohort__p1"),
+        ("cohort.synthetic.step08_validation", "08", "cohort synthetic_cohort"),
     ],
 )
 def test_failed_validation_reaches_summary_html_and_pdf(

@@ -665,6 +665,18 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=1,
         allow_header_only=False,
     )
+    add_spec(
+        registry,
+        "step08_validation_report_v1",
+        "08",
+        "cohort",
+        "validation_report",
+        "text/tab-separated-values",
+        suffixes=(".validation.tsv",),
+        expected_header=VALIDATION_REPORT_HEADER,
+        exact_data_rows=5,
+        allow_header_only=False,
+    )
     for adapter_id, suffix in (
         ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
         ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
@@ -889,6 +901,7 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
             "step08_sites_v1": 1,
             "step08_inputs_v1": 1,
             "step08_summary_v1": 1,
+            "step08_validation_report_v1": 1,
         }
     ),
     "09": Counter(

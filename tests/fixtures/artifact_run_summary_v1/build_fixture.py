@@ -197,7 +197,7 @@ def build_fixture(
     *,
     run_id: str = "synthetic_run",
 ) -> RunSummaryFixture:
-    """Build the full default 79-record adapter transaction."""
+    """Build the full default 80-record adapter transaction."""
 
     root = root.resolve()
     adapter_fixture = ADAPTER_FIXTURE.build_fixture(
@@ -321,6 +321,33 @@ def explicit_science_inventory_rows(
     review_id = fixture.review_id
     step09_dir = fixture.step09_analysis_dir
     review_dir = fixture.output_root / review_id
+    step08_validation = (
+        fixture.root / "results" / "qc" / "validation" / "08"
+        / f"{cohort_id}.validation.tsv"
+    )
+    step08_validation.parent.mkdir(parents=True, exist_ok=True)
+    write_tsv(
+        step08_validation,
+        ADAPTER.VALIDATION_REPORT_HEADER,
+        [
+            {
+                "step_id": "08",
+                "scope_id": cohort_id,
+                "check_id": check_id,
+                "status": "pass",
+                "observed": "fixture",
+                "expected": "fixture",
+                "detail": "synthetic passing validation",
+            }
+            for check_id in (
+                "output_transaction",
+                "manifest_annotation_identity",
+                "input_receipt_reconciliation",
+                "sites_order_uniqueness",
+                "summary_count_reconciliation",
+            )
+        ],
+    )
     rows: list[dict[str, str]] = [
         {
             "artifact_id": f"cohort.{cohort_id}.step08_sites",
@@ -347,6 +374,15 @@ def explicit_science_inventory_rows(
             "scope_id": cohort_id,
             "adapter": "step08_summary_v1",
             "source_path": str(fixture.step08_summary),
+            "required": "true",
+        },
+        {
+            "artifact_id": f"cohort.{cohort_id}.step08_validation",
+            "step_id": "08",
+            "scope_type": "cohort",
+            "scope_id": cohort_id,
+            "adapter": "step08_validation_report_v1",
+            "source_path": str(step08_validation),
             "required": "true",
         },
     ]
