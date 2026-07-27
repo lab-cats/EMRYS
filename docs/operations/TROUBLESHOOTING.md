@@ -712,6 +712,29 @@ producing job/log. Use separately authorized Step `00c` or Step `05` workflows
 as appropriate. Do not invoke GATK, create/repair sidecars, or modify outputs
 from the validator.
 
+## Step 06 structured validation reports output or count disagreement
+
+### Symptom
+
+The Step `06` validation TSV reports an invalid orientation BAM/index
+container, malformed counts row, per-flag group-sum disagreement, incomplete
+assigned/unassigned total, or inconsistent assigned fraction.
+
+### Cause
+
+The two declared BAM/BAI pairs and counts TSV may be incomplete, malformed, or
+from different Step `06` attempts. The counts row may not match the declared
+sample, or its `99 + 147`, `83 + 163`, assigned, unassigned, and fraction
+values may not reconcile.
+
+### Fix
+
+Inspect the exact five output paths, counts row, producing job, and logs.
+Confirm that all files came from one completed Step `06` transaction. Use the
+separately authorized Step `06` workflow to regenerate an invalid set. Do not
+merge reads, create indexes, rewrite counts, or reinterpret `FWD_like` and
+`REV_like` as biological strand labels inside the validator.
+
 ## Step 07 selector does not match the FASTA index
 
 ### Symptom
@@ -1903,7 +1926,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 76-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 77-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

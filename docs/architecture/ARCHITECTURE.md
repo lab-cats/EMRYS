@@ -190,3 +190,8 @@ evidence without marking or removing reads.
 Step `05` validates one split-N-cigar BAM/BAI pair against explicit
 FASTA/FAI/DICT prerequisites. It never invokes GATK or repairs shared
 reference sidecars.
+
+Step `06` validates the two explicit mechanical-orientation BAM/BAI pairs and
+the exact one-row orientation counts contract. It reconciles the flag-group,
+assigned/unassigned, and fraction arithmetic without invoking samtools,
+changing outputs, or inferring biological strand.

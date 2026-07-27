@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 76 synthetic physical artifacts
+requirements. The example inventory contains 77 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 58 registered read-only adapters covering the 76
+The adapter builder has 59 registered read-only adapters covering the 77
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -2442,6 +2442,27 @@ cat "$counts"
 ```
 
 The counts TSV includes `input_records`, per-flag counts for `99`, `147`, `83`, and `163`, merged `fwd_like_records` and `rev_like_records`, `assigned_records`, `unassigned_records`, and `assigned_fraction`.
+
+Structured validation is explicit-input and dry-run-first:
+
+```bash
+.venv/bin/python scripts/validate_step_06_orientation_outputs.py \
+  --scope-id "$sample" \
+  --fwd-bam "$fwd" \
+  --fwd-bai "$fwd.bai" \
+  --rev-bam "$rev" \
+  --rev-bai "$rev.bai" \
+  --counts "$counts" \
+  --output "results/qc/validation/06/$sample.validation.tsv"
+```
+
+After inspecting the five printed checks, publish with the same command plus
+`--execute`. The validator reads only the declared two BAM/BAI pairs and
+counts TSV. It checks container signatures, the exact one-row counts contract,
+the `99 + 147` and `83 + 163` mechanical group sums, assigned/unassigned
+arithmetic, and the recorded assigned fraction. It never invokes samtools,
+splits reads, creates indexes, changes orientation labels, or promotes local
+evidence to runtime, cluster, scientific, or biological status.
 
 All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
 
