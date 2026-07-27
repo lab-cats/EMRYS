@@ -7,19 +7,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `post09-storage-inventory-retention`
+  `post09-validation-report-00a`
 - Parent:
-  `post09-reference-provenance`
+  `post09-storage-inventory-retention`
 - Verified parent HEAD:
-  `97e17ba4f96213663590259baf7137549cdd5f95`
+  `4b9151b72cb59af66a08ba1724ba9b4e48e27cb5`
 - Parent implementation:
-  `c1204db implement reference provenance`
-- Current implementation:
   `2616bd8 implement storage inventory and retention reporting`
+- Current implementation:
+  `1ce1bda implement step 00a validation report`
 - Package type: implementation plus required documentation patch
 - Remote and cluster work: paused
 
-The storage-inventory branch was created only after fetching remote refs and
+The Step `00a` validation branch was created only after fetching remote refs and
 verifying a clean, upstream-equal parent and an absent target branch.
 
 ## Completed boundary
@@ -34,7 +34,9 @@ The local descendant sequence has implemented:
 - atomic, receipt-last HTML/PDF/summary-TSV reporting;
 - explicit-profile, read-only runtime availability preflight;
 - explicit read-only reference artifact, provenance, hash, and contig reconciliation;
-- explicit read-only storage-root measurement and retention-policy recording.
+- explicit read-only storage-root measurement and retention-policy recording;
+- a Step `00a` STAR-index validation report, typed artifact adapter, and
+  summary/HTML/PDF propagation fixture.
 
 ## Evidence boundary
 
@@ -59,6 +61,7 @@ The local descendant sequence has implemented:
 | Runtime preflight | explicit tool, R-namespace, SHA-256, and path-visibility probes implemented and locally fixture-tested; no CSU batch report |
 | Reference provenance | explicit FASTA/FAI/DICT/GTF/BED12/STAR inventory and reconciliation implemented and locally fixture-tested; no production reference report |
 | Storage inventory and retention | explicit root size/capacity measurement and retention-policy recording implemented and locally fixture-tested; no production storage report or approved production policy |
+| Step `00a` structured validation | index members, source identities, ordered contig names/lengths, and `sjdbOverhang` validator implemented and locally fixture/report tested; no new production execution |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -138,9 +141,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `post09-storage-inventory-retention` implementation and documentation
-gates are complete. Continue from this clean, pushed descendant with
-`post09-validation-report-00a`.
+The `post09-validation-report-00a` implementation and documentation gates are
+complete. Continue from this clean, pushed descendant with
+`post09-validation-report-00b`.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

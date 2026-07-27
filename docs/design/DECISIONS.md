@@ -290,6 +290,18 @@ Decision: expected scopes remain in records and summaries when missing,
 failed, incomplete, externally unavailable, blocked, or not run. Absence is
 not silently dropped.
 
+### Adapt step validation reports without promotion
+
+Decision: each step validator publishes the exact seven-column report contract
+defined in the pipeline plan and receives a step-specific read-only artifact
+adapter. Failed checks remain failed artifact and expected-scope states through
+the canonical summary and consolidated reports.
+
+Reason: validation evidence must be visible without hand-editing artifact
+records or inferring a stronger runtime state. A published local validation
+report records only its explicit checks; it does not create cluster proof,
+scientific review, or biological readiness.
+
 ### Authorize supplemental report tables explicitly
 
 Decision: a report table enters the canonical summary only through an exact,

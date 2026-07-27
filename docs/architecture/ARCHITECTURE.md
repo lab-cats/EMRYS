@@ -147,3 +147,10 @@ symlinks, records filesystem capacity and declared quota, and publishes the
 inventory and normalized policy with a summary last. Approval state is
 evidence, not an executable instruction: this boundary never deletes, moves,
 archives, compresses, or cleans data.
+
+Step-specific validators sit beside native outputs and never mutate them. The
+first implemented validator reads the explicit Step `00a` STAR index and its
+FASTA/GTF sources, then publishes the common seven-column validation TSV. Its
+typed adapter keeps passing and failing check evidence in the artifact graph;
+the canonical summary and both report formats project the resulting expected-
+scope state without promoting runtime or cluster evidence.

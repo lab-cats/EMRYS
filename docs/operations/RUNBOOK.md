@@ -663,7 +663,7 @@ The shared common schema and four public record schemas use JSON Schema Draft
 `1.0.0`; scientific-review, run-summary, and report-receipt documents are
 `1.1.0`. The latter three advanced explicitly when their closed shapes gained
 retained review/decision/limitation fields and report input-version
-requirements. The example inventory contains 67 synthetic physical artifacts
+requirements. The example inventory contains 68 synthetic physical artifacts
 across Steps `00a`-`09c`. It is a fixture contract, not a production
 inventory. Every row names one explicit source path; multiple physical
 artifacts may share one logical scope, whose rows must remain contiguous.
@@ -732,7 +732,7 @@ tests/fixtures/artifact_adapters_v1/build_fixture.py
 tests/test_artifact_adapters.py
 ```
 
-The adapter builder has 49 registered read-only adapters covering the 67
+The adapter builder has 50 registered read-only adapters covering the 68
 explicit Step `00a`-`09c` rows in the example inventory. It never discovers
 sources by glob, invokes analysis engines, changes native outputs, or builds
 the separate downstream canonical run summary.
@@ -1343,6 +1343,57 @@ Status:
 
 ```text
 cluster-proven
+```
+
+The structured Step `00a` validator is separate from the historical proof. It
+reads one explicit STAR index, FASTA, GTF, path-resolution base, expected
+overhang, and scope ID:
+
+```bash
+.venv/bin/python scripts/validate_step_00a_star_index.py \
+  --scope-id novogene_ref \
+  --index-dir refs/novogene_star_index \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --reference-gtf refs/novogene_ref/genome.gtf \
+  --parameter-path-base . \
+  --expected-sjdb-overhang 149 \
+  --output results/qc/validation/00a/novogene_ref.validation.tsv
+```
+
+Dry-run prints five checks without writing: all 15 required STAR members,
+`genomeFastaFiles` identity, `sjdbGTFfile` identity, exact ordered FASTA/index
+contig names and lengths, and `sjdbOverhang`. Relative paths recorded in
+`genomeParameters.txt` resolve only against the explicit
+`--parameter-path-base`.
+
+After inspection, create the exact parent and add `--execute`:
+
+```bash
+mkdir -p results/qc/validation/00a
+.venv/bin/python scripts/validate_step_00a_star_index.py \
+  --scope-id novogene_ref \
+  --index-dir refs/novogene_star_index \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --reference-gtf refs/novogene_ref/genome.gtf \
+  --parameter-path-base . \
+  --expected-sjdb-overhang 149 \
+  --output results/qc/validation/00a/novogene_ref.validation.tsv \
+  --execute
+```
+
+The exact seven-column report is read-only and deterministic. Check failures
+are published as evidence; command success means validation and optional
+publication completed, not that every check passed. Publication requires an
+existing real parent, validates any predecessor, uses an owned lock and
+run-token staging/backup paths, rechecks inputs, and rolls back replacement
+failure. The `step00a_validation_report_v1` adapter preserves a failed check as
+a failed artifact/scope in the canonical summary and consolidated reports; it
+does not alter historical cluster status.
+
+Focused validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_validate_step_00a_star_index.py
 ```
 
 ### Step 00b: GTF To BED12

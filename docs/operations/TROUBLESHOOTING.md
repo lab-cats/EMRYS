@@ -490,6 +490,49 @@ After failure, cleanup should remove only owned temp BAM/BAI files, alternate GA
 
 The later Step `05` revalidation is cluster-proven across all six samples; keep this entry as the record of why GATK temp files must stay on project storage.
 
+## Step 00a structured validation reports failed checks
+
+### Symptom
+
+`novogene_ref.validation.tsv` contains `status=fail` for index members, FASTA
+or GTF identity, ordered contig names/lengths, or `sjdbOverhang`.
+
+### Cause
+
+The explicit index may be incomplete, `genomeParameters.txt` may point to a
+different source, the declared parameter path base may be wrong, FASTA and
+STAR contigs may differ, or the configured overhang may not equal the approved
+value. A zero validator exit is possible because command/publication success
+is distinct from check results.
+
+### Fix
+
+Inspect every report row and the exact declared inputs. Confirm relative
+`genomeParameters.txt` paths against `--parameter-path-base`; do not reinterpret
+them relative to the index automatically. Regenerate or repair source
+artifacts only through their formal upstream stage after review. Never make
+the validator rewrite index members, parameters, references, or statuses.
+
+## Step 00a validation report lock or predecessor blocks publication
+
+### Symptom
+
+Execute mode rejects a lock, unsafe output parent, invalid previous report, or
+replacement/rollback state.
+
+### Cause
+
+One scope owns one exact `.validation.tsv` and its adjacent lock/run-token
+paths. A concurrent writer, foreign lock, symlink, hand edit, partial copy, or
+interrupted replacement prevents safe publication.
+
+### Fix
+
+Inspect the lock metadata, stable report, and matching `.tmp`/`.previous`
+paths. Do not delete a foreign lock or manufacture a passing TSV. Establish
+ownership, recover the validated predecessor or clean first-publication state,
+record the operator action, and rerun dry-run before execute mode.
+
 ## Step 00c FAI/DICT validation fails
 
 ### Symptom
@@ -1697,7 +1740,7 @@ a completed scientific review or biological-readiness result
 
 ### Cause
 
-`artifact-schema-v1` defines and validates declarations. Its 67-row inventory
+`artifact-schema-v1` defines and validates declarations. Its 68-row inventory
 and valid JSON records are synthetic fixtures. The validator is read-only and
 does not discover pipeline outputs, build adapter records, inspect production
 source contents, publish files, render reports, or run analysis. Within a

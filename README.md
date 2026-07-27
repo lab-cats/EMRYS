@@ -9,7 +9,8 @@ library orientation, marks duplicates, applies `SplitNCigarReads`, separates
 mechanical read orientations, performs cohort mpileup, preprocesses VCFs, and
 runs paired CMH candidate ranking. Structured artifact, scientific-review,
 run-summary, and report contracts support explicit evidence inspection without
-changing native analysis outputs.
+changing native analysis outputs. Step-specific validation reports enter that
+evidence path through explicit read-only adapters.
 
 ## Evidence boundary
 
