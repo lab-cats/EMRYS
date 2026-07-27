@@ -378,17 +378,19 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
     reason="set NORAD_REQUIRE_QUARTO=1 for validation-report propagation",
 )
 @pytest.mark.parametrize(
-    ("artifact_id", "step_id"),
+    ("artifact_id", "step_id", "scope_label"),
     [
-        ("ref.star_index.validation", "00a"),
-        ("ref.bed12.validation", "00b"),
-        ("ref.sidecars.validation", "00c"),
+        ("ref.star_index.validation", "00a", "reference novogene_ref"),
+        ("ref.bed12.validation", "00b", "reference novogene_ref"),
+        ("ref.sidecars.validation", "00c", "reference novogene_ref"),
+        ("sample.SYNTH_A.star_validation", "01", "sample SYNTH_A"),
     ],
 )
 def test_failed_validation_reaches_summary_html_and_pdf(
     tmp_path: Path,
     artifact_id: str,
     step_id: str,
+    scope_label: str,
 ) -> None:
     adapter_fixture = FIXTURE.ADAPTER_FIXTURE.build_fixture(
         tmp_path / "adapter",
@@ -452,7 +454,7 @@ def test_failed_validation_reaches_summary_html_and_pdf(
     )
     assert artifact_id in html
     assert "failed" in html
-    assert f"{step_id} reference novogene_ref failed" in " ".join(pdf_text.split())
+    assert f"{step_id} {scope_label} failed" in " ".join(pdf_text.split())
 
 
 @pytest.mark.skipif(

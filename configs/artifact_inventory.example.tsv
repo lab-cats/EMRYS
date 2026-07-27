@@ -26,6 +26,7 @@ sample.SYNTH_A.star_log_final	01	sample	SYNTH_A	step01_star_log_final_v1	tests/f
 sample.SYNTH_A.star_log	01	sample	SYNTH_A	step01_star_log_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.Log.out	true
 sample.SYNTH_A.star_log_progress	01	sample	SYNTH_A	step01_star_log_progress_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.Log.progress.out	true
 sample.SYNTH_A.star_sj	01	sample	SYNTH_A	step01_star_sj_v1	tests/fixtures/artifact_schema_v1/source/results/star/SYNTH_A/SYNTH_A.SJ.out.tab	true
+sample.SYNTH_A.star_validation	01	sample	SYNTH_A	step01_validation_report_v1	tests/fixtures/artifact_schema_v1/source/results/qc/validation/01/SYNTH_A.validation.tsv	true
 sample.SYNTH_A.canonical_bam	02	sample	SYNTH_A	step02_canonical_bam_v1	tests/fixtures/artifact_schema_v1/source/results/bam/SYNTH_A/SYNTH_A.sorted.bam	true
 sample.SYNTH_A.canonical_bai	02	sample	SYNTH_A	step02_canonical_bai_v1	tests/fixtures/artifact_schema_v1/source/results/bam/SYNTH_A/SYNTH_A.sorted.bam.bai	true
 sample.SYNTH_A.quickcheck	02b	sample	SYNTH_A	step02b_quickcheck_v1	tests/fixtures/artifact_schema_v1/source/results/qc/bam/SYNTH_A.quickcheck.txt	true

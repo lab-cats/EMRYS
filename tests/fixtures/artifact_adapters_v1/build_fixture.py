@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters-v1 fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 70 explicit source paths into a caller-owned temporary directory
+rewrites its 71 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -145,9 +145,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 70:
+    if len(rows) != 71:
         raise RuntimeError(
-            f"Expected 70 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 71 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -422,6 +422,7 @@ def tsv_rows_for(
         "step00a_validation_report_v1",
         "step00b_validation_report_v1",
         "step00c_validation_report_v1",
+        "step01_validation_report_v1",
     }:
         check_ids = (
             (
@@ -446,6 +447,14 @@ def tsv_rows_for(
                 "dict_structure",
                 "fai_contig_agreement",
                 "dict_contig_agreement",
+            )
+            if adapter == "step00c_validation_report_v1"
+            else (
+                "output_files",
+                "bam_structure",
+                "final_log_structure",
+                "mapping_summary",
+                "splice_junction_structure",
             )
         )
         for output_row, check_id in zip(rows, check_ids, strict=True):
@@ -762,7 +771,10 @@ def write_adapter_source(
         )
     elif spec.kind == "star_log_final":
         path.write_text(
-            "Uniquely mapped reads % | 95.00%\n",
+            "Number of input reads | 100\n"
+            "Uniquely mapped reads % | 95.00%\n"
+            "% of reads mapped to multiple loci | 4.00%\n"
+            "% of reads mapped to too many loci | 1.00%\n",
             encoding="utf-8",
         )
     elif spec.kind == "star_sj":
