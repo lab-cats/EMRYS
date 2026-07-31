@@ -2615,6 +2615,46 @@ alignment records tagged with `RG:<sample_id>`.
 Regenerate the canonical BAM through hardened Step 02. Do not patch around
 missing read groups in Step 04.
 
+## Concurrent lane is in the wrong worktree, overlaps, or cannot integrate
+
+### Symptom
+
+An agent sees another lane's changes, the resolved worktree/branch/`HEAD` does
+not match its packet, a reserved card ID or path overlaps, a candidate handoff
+moved after review, or serialized integration reports a conflict.
+
+### Cause
+
+Agent identity was mistaken for filesystem isolation; the lane packet is
+missing or stale; a pre-existing worktree was reused without proof; candidate
+state changed after handoff; or documentation classified as independent now
+depends on an active contract, result, or canonical owner.
+
+### Diagnose
+
+Stop mutation and use the inspection commands under
+[`Concurrent Worktrees And Serialized Integration`](RUNBOOK.md#concurrent-worktrees-and-serialized-integration).
+Compare the assigned absolute path, branch, base, candidate SHA, worktree list,
+write set, untracked files, and coupling assumptions with the live lane table
+in [`HANDOFF.md`](HANDOFF.md#active-concurrent-lanes). Preserve conflict status
+and the candidate branch before taking recovery action.
+
+### Fix
+
+Do not add, stash, switch, reset, clean, force-remove, merge, rebase, or resolve
+the overlap opportunistically. The integration owner stops affected paths,
+aborts only an in-progress cherry-pick using the runbook sequence, preserves
+candidate commits and execution evidence, and then repairs the packet or
+returns the governing task to planning. A candidate with changed `HEAD` needs
+a fresh immutable handoff.
+
+If worktree metadata is stale but the intended checkout and branch are proved,
+inspect repair options without pruning unique state. Cleanup remains optional,
+explicitly authorized, and post-publication; candidate branches are preserved
+by default. When executable-tree identity or non-consuming documentation
+classification cannot be proved, rerun the applicable computational gate on
+the integrated state.
+
 ## Future Troubleshooting Taxonomy
 
 A future troubleshooting index may summarize repeated failure patterns as

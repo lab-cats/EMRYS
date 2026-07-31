@@ -62,8 +62,8 @@ a completed production review.
 | `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | complete; predecessor to the validation-publication characterization package |
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; verified clean, pushed, and upstream-equal before the documentation descendant |
 | `refactor-01-architecture-direction-docs` | Documentation-only task registry, durable architecture decisions, future constraints, open choices, and future diagrams | complete in this documentation package; no executable or evidence-state change |
-| `codex/context-start-policy` | Version-aware task-start routing, selective phase-boundary inspection, impact-directed documentation review, and explicit documentation-only validation; see [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md) | documentation-only package complete and ready for publication; live Git must still verify a clean push and upstream equality; no executable or evidence-state change |
-| Planned `CONCURRENCY-01` descendant | Isolated concurrent documentation/card sidecars with serialized integration; branch selected only through its approved task plan | next documentation-only operating-model package after the context-policy package is complete and upstream-equal |
+| `codex/context-start-policy` | Version-aware task-start routing, selective phase-boundary inspection, impact-directed documentation review, and explicit documentation-only validation; see [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md) | documentation-only package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable or evidence-state change |
+| `codex/concurrent-doc-sidecars` | Isolated concurrent documentation/card sidecars with serialized integration; see [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md) | documentation-only policy package complete and ready for publication; live Git must still verify a clean push and upstream equality; no active delivery experiment or executable/evidence-state change |
 | Conditional `PROGRAM-01` descendant | Rolling-wave planning and coordination cohorts; branch selected only through its separately approved task plan | must not be selected before `CONCURRENCY-01` is complete, pushed, and followed by the required user strategy discussion |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/TODO/TEST-01D-characterize-public-cli-contracts.md) | future package definition; workflow status is the linked card's directory |
@@ -92,9 +92,9 @@ Maintenance order is intentionally distinct from technical blocking. These
 cards do not block the Phase `01` characterization sequence and do not acquire
 dependency edges merely because one is preferred first:
 
-1. [`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-   should establish isolated candidate worktrees, multiple documentation/card
-   sidecars, single-owner integration, and combined validation.
+1. [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+   established isolated candidate worktrees, multiple documentation/card
+   sidecars, single-owner integration, and combined validation policy.
 2. Pause after `CONCURRENCY-01` is complete and pushed for the required user
    strategy discussion. Do not select `PROGRAM-01` or begin a concurrent
    delivery experiment before that discussion.
@@ -147,7 +147,7 @@ report-html-v1a-report-table-approvals
                                                                                             └── refactor-01b-validation-publication-faults
                                                                                                 └── refactor-01-architecture-direction-docs
                                                                                                     └── codex/context-start-policy
-                                                                                                        └── [planned: CONCURRENCY-01 task-selected branch]
+                                                                                                        └── codex/concurrent-doc-sidecars
                                                                                                             └── [required user strategy pause]
                                                                                                                 └── [conditional: PROGRAM-01 task-selected branch]
                                                                                                                     └── [future descendants selected after reassessment]
@@ -183,8 +183,10 @@ validation during this sequence.
 - demos are explicitly presentation material or dated snapshots;
 - every task card has one stable ID and status directory, the required sections,
   valid links, and no duplicate ID;
-- every hard dependency is direct, reciprocal, and acyclic; a `Fully` unblock
-  leaves no other card blocker, while `Partially` never authorizes a target;
+- new or edited active hard dependencies represent genuine technological
+  blockers, are reciprocal while both cards remain mutable, and are acyclic;
+  a `Fully` unblock leaves no other card blocker, while `Partially` never
+  authorizes a target; legacy-edge migration remains with `TASK-REG-01`;
 - cards link to canonical rationale/state/commands/topology instead of owning
   those facts, and moving a card updates every inbound link in the same commit;
 - moving a card to `IN_PROGRESS` starts read-only planning only; each card
@@ -197,6 +199,30 @@ validation during this sequence.
   dependency lock refresh is limited to resolving the guarded local gate;
 - the documentation gate passes; computational gates apply only to executable
   or test-affecting changes.
+
+### Concurrent authoring and serialized integration
+
+- one canonical integration/control worktree owns accepted history and current
+  state;
+- at most one implementation-candidate or immutable-execution lane coexists
+  with multiple disjoint documentation/card sidecars;
+- every authoring candidate has a unique branch and absolute sibling worktree;
+  immutable execution uses a locked detached worktree at its exact pushed
+  commit; every lane records its base and target, owner, role, reserved card
+  IDs and paths, prohibited overlaps, coupling classification, and validation
+  obligation;
+- candidate branches and card placement remain proposals until the integration
+  owner accepts them; only that owner moves canonical card status or publishes
+  lineage, priority, completion, or evidence;
+- independent sidecars may land one at a time, while coupled documentation
+  remains a draft or triggers a checkpoint and re-plan;
+- immutable execution records the exact commit, inputs, configuration,
+  command/job, and output/log identity without broadening runtime authority;
+- final combined validation governs closure, and computational evidence is
+  reused only when path classification and Git identity prove the tested
+  executable state unchanged; and
+- conflicts and unfinished candidates are preserved, never force-integrated or
+  automatically deleted.
 
 ### Comprehensive refactor program
 

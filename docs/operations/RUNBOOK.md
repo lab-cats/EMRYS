@@ -1168,6 +1168,414 @@ du -sh <output_dir>
 ls -lh <output_dir>
 ```
 
+## Concurrent Worktrees And Serialized Integration
+
+The policy and authority model are in
+[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md). These commands do not authorize a
+lane; use them only after an approved task plan and a canonical lane packet.
+The first active-delivery use also requires the recorded post-`CONCURRENCY-01`
+user strategy discussion.
+
+### Verify The Canonical Integration Lane
+
+Run in the primary worktree before recording or integrating lanes:
+
+```bash
+set -euo pipefail
+cd /Users/elisteiger/dev/norad
+test "$(pwd -P)" = '/Users/elisteiger/dev/norad'
+test "$(git rev-parse --show-toplevel)" = '/Users/elisteiger/dev/norad'
+norad_primary_branch=$(git branch --show-current)
+test "$norad_primary_branch" = '<canonical-branch>'
+norad_primary_status=$(git status --porcelain=v1)
+test -z "$norad_primary_status"
+git fetch origin \
+  refs/heads/<canonical-branch>:refs/remotes/origin/<canonical-branch>
+norad_primary_upstream_ref=$(
+  git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
+)
+test "$norad_primary_upstream_ref" = 'origin/<canonical-branch>'
+norad_primary_head=$(git rev-parse HEAD)
+norad_primary_upstream=$(git rev-parse '@{upstream}')
+test "$norad_primary_head" = "$norad_primary_upstream"
+norad_primary_counts=$(git rev-list --left-right --count HEAD...'@{upstream}')
+test "$norad_primary_counts" = $'0\t0'
+git worktree list --porcelain
+```
+
+The resolved top level must be `/Users/elisteiger/dev/norad`, status must be
+empty, and the ahead/behind result must be `0 0`. The fetch is integration-
+owner-only network access and requires explicit authorization for the named
+remote/ref; without it, equality is only against the last locally observed
+remote-tracking state. Inspect any pre-existing worktree before assigning it;
+do not treat a detached or preserved worktree as an available lane merely
+because it is not on a branch.
+
+### Publish A Lane Coordination Checkpoint
+
+When another authoring or execution lane will rely on new packets, create a
+fresh canonical descendant from the verified parent, update `HANDOFF.md` and
+only directly required status links, then run `git diff --check` and the
+complete documentation-only gate under
+[Local Validation Gate](#local-validation-gate).
+
+```bash
+set -euo pipefail
+cd /Users/elisteiger/dev/norad
+norad_coordination_status=$(git status --porcelain=v1)
+test -z "$norad_coordination_status"
+git fetch origin \
+  refs/heads/<latest-canonical-parent-branch>:refs/remotes/origin/<latest-canonical-parent-branch>
+norad_coordination_parent=$(git rev-parse <verified-parent-sha>)
+norad_coordination_remote_parent=$(
+  git rev-parse origin/<latest-canonical-parent-branch>
+)
+test "$norad_coordination_parent" = "$norad_coordination_remote_parent"
+norad_coordination_local_branch=$(
+  git branch --list 'codex/<coordination-branch>'
+)
+test -z "$norad_coordination_local_branch"
+norad_coordination_branch_status=0
+git ls-remote --exit-code --heads \
+  origin refs/heads/codex/<coordination-branch> || \
+  norad_coordination_branch_status=$?
+test "$norad_coordination_branch_status" -eq 2
+git switch -c codex/<coordination-branch> <verified-parent-sha>
+
+# Edit HANDOFF.md and only the exact status links required by the packets.
+git diff --check
+# Run the complete documentation-only gate below before staging.
+git add docs/operations/HANDOFF.md <exact-status-link-paths>
+git diff --cached --check
+git commit -m 'docs: coordinate concurrent lanes'
+norad_coordination_status=$(git status --porcelain=v1)
+test -z "$norad_coordination_status"
+git push -u origin codex/<coordination-branch>
+norad_coordination_counts=$(
+  git rev-list --left-right --count HEAD...'@{upstream}'
+)
+test "$norad_coordination_counts" = $'0\t0'
+```
+
+Fetch and push require explicit authorization for the exact remote and payload.
+The final count must be `0 0`. This special documentation-only coordination
+commit records active planning state; it does not complete a task or replace
+the later implementation/test and docpatch commits. Provision relying lanes
+only after the checkpoint is clean, pushed, and upstream-equal.
+
+### Create And Verify A Candidate Lane
+
+The default sibling root is `/Users/elisteiger/dev/norad-worktrees`. Replace
+every placeholder with the exact values already recorded in `HANDOFF.md`. Do
+not use `-f`, `-B`, an existing path, or an existing branch.
+
+```bash
+set -euo pipefail
+mkdir -p /Users/elisteiger/dev/norad-worktrees
+git check-ref-format --branch codex/<lane-id>
+git cat-file -e '<exact-base-sha>^{commit}'
+test ! -e /Users/elisteiger/dev/norad-worktrees/<lane-id>
+norad_candidate_local_branch=$(git branch --list 'codex/<lane-id>')
+test -z "$norad_candidate_local_branch"
+git worktree add --lock \
+  --reason 'NORAD concurrent lane <lane-id>' \
+  -b codex/<lane-id> \
+  /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  <exact-base-sha>
+```
+
+The assigned agent's first inspection uses the exact absolute path:
+
+```bash
+set -euo pipefail
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  rev-parse --show-toplevel)" = \
+  '/Users/elisteiger/dev/norad-worktrees/<lane-id>'
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  branch --show-current)" = 'codex/<lane-id>'
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  rev-parse HEAD)" = '<exact-base-sha>'
+norad_lane_status=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    status --porcelain=v1
+)
+test -z "$norad_lane_status"
+```
+
+Top level, branch, and `HEAD` must exactly match the packet and status must be
+empty. A lane does not switch branches, pull, merge, rebase, stash, clean,
+reset, remove worktrees, or edit outside its reserved write set.
+
+For an immutable-execution lane, first use an explicitly authorized fetch to
+prove the recorded remote ref contains the execution commit. Then create a
+locked detached worktree instead of a candidate branch:
+
+```bash
+set -euo pipefail
+git fetch origin \
+  refs/heads/<recorded-execution-remote-branch>:refs/remotes/origin/<recorded-execution-remote-branch>
+git merge-base --is-ancestor \
+  <exact-pushed-execution-sha> \
+  origin/<recorded-execution-remote-branch>
+test ! -e /Users/elisteiger/dev/norad-worktrees/<execution-lane-id>
+git worktree add --lock \
+  --reason 'NORAD immutable execution <execution-lane-id>' \
+  --detach \
+  /Users/elisteiger/dev/norad-worktrees/<execution-lane-id> \
+  <exact-pushed-execution-sha>
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<execution-lane-id> \
+  rev-parse HEAD)" = '<exact-pushed-execution-sha>'
+norad_execution_status=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<execution-lane-id> \
+    status --porcelain=v1
+)
+test -z "$norad_execution_status"
+git -C /Users/elisteiger/dev/norad-worktrees/<execution-lane-id> \
+  status --short --branch
+```
+
+The status header must report detached `HEAD`. Record the exact command or job,
+request/input hashes, configuration/profile, output root, log path, start time,
+and scheduler ID before execution. Do not switch, pull, commit, or reset that
+worktree while its run is active.
+
+### Inspect A Candidate Handoff
+
+The lane hands off an immutable candidate SHA and a clean worktree. The
+integration owner verifies it from the primary worktree:
+
+```bash
+set -euo pipefail
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  branch --show-current)" = 'codex/<lane-id>'
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  rev-parse HEAD)" = '<candidate-sha>'
+norad_handoff_status=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    status --porcelain=v1
+)
+test -z "$norad_handoff_status"
+git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  merge-base --is-ancestor <recorded-base-sha> <candidate-sha>
+test "$(git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  rev-list --count <recorded-base-sha>..<candidate-sha>)" -eq \
+  <expected-commit-count>
+git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  log --reverse --format='%H %s' <recorded-base-sha>..<candidate-sha>
+git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  diff --check <recorded-base-sha> <candidate-sha>
+git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+  diff --name-status <recorded-base-sha> <candidate-sha>
+norad_handoff_untracked=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    ls-files --others --exclude-standard
+)
+test -z "$norad_handoff_untracked"
+```
+
+Status and untracked output must be empty; the candidate must descend from the
+recorded base; and every changed path and commit must match the packet. Use an
+expected count of `1` for a documentation sidecar. Use `1` for an
+implementation/test-only candidate or `2` when its exact second commit is the
+separate coupled documentation draft. Inspect the ordered hashes and integrate
+each recorded role explicitly; never cherry-pick only the tip of an unreviewed
+range. Any movement after handoff invalidates the packet and freezes no write
+authority.
+
+### Integrate One Candidate At A Time
+
+First repeat the canonical-lane verification and inspect the candidate diff.
+Reclassify coupling against the latest canonical state. Do not integrate if a
+write set now overlaps, an assumption changed, or the primary worktree is
+dirty.
+
+Every landing starts on a fresh, unpublished canonical descendant; never
+cherry-pick onto the already-published parent branch. Fetch and later push only
+with explicit authorization for the named remote and payload.
+
+```bash
+set -euo pipefail
+cd /Users/elisteiger/dev/norad
+norad_integration_status=$(git status --porcelain=v1)
+test -z "$norad_integration_status"
+git fetch origin \
+  refs/heads/<latest-canonical-parent-branch>:refs/remotes/origin/<latest-canonical-parent-branch>
+norad_integration_parent=$(git rev-parse <verified-parent-sha>)
+norad_integration_remote_parent=$(
+  git rev-parse origin/<latest-canonical-parent-branch>
+)
+test "$norad_integration_parent" = "$norad_integration_remote_parent"
+norad_integration_local_branch=$(
+  git branch --list 'codex/<integration-package-branch>'
+)
+test -z "$norad_integration_local_branch"
+norad_integration_branch_status=0
+git ls-remote --exit-code --heads \
+  origin refs/heads/codex/<integration-package-branch> || \
+  norad_integration_branch_status=$?
+test "$norad_integration_branch_status" -eq 2
+git switch -c codex/<integration-package-branch> <verified-parent-sha>
+```
+
+Apply one frozen, single-commit documentation candidate with source-SHA
+provenance. A pending-link card sidecar and a coupled draft use the same local
+path: nothing is published until the integration owner adds central links and
+state, runs the complete documentation gate, and amends the still-unpushed
+commit into the one canonical documentation package.
+
+```bash
+set -euo pipefail
+git cherry-pick -x <documentation-candidate-sha>
+
+# Add the exact integration-owner links/state required by this package.
+git add <exact-integration-owner-paths>
+git diff --check
+git diff --cached --check
+# Run the complete documentation-only gate below.
+git commit --amend --no-edit
+```
+
+A self-contained independent sidecar must already contain a legitimate
+reserved inbound reference and pass its candidate gate. A pending-link card is
+only handoff-ready; the integration owner adds the link before the amend and
+final gate. The `-x` provenance line survives the amend.
+
+If the normal cherry-pick conflicts, preserve the candidate and inspect before
+aborting. This recovery applies to normal cherry-pick only; this workflow does
+not use `--no-commit` because Git 2.54 does not retain an abortable operation
+for that mode.
+
+```bash
+git status --porcelain=v2
+git diff --name-only --diff-filter=U
+git diff --cc
+git cherry-pick --abort
+git status --porcelain=v1
+```
+
+Do not resolve a canonical-owner conflict opportunistically. Repair the lane
+packet or return the governing task to planning.
+
+An implementation candidate hands off exactly one tested implementation/test
+commit and, optionally, one subsequent coupled documentation-draft commit.
+Apply the implementation commit first:
+
+```bash
+git cherry-pick -x <implementation-and-test-commit-sha>
+```
+
+If independent documentation landed after its base, first enumerate every
+intervening path:
+
+```bash
+git diff --name-status \
+  <implementation-base-sha> \
+  <latest-canonical-parent-sha>
+```
+
+Approve only exact, narrow, non-consuming documentation paths. Then compare
+the tested candidate and integrated implementation across the whole repository
+while excluding only that reviewed list—one exact pathspec per intervening
+path:
+
+```bash
+git diff --exit-code \
+  <implementation-and-test-commit-sha> \
+  <integrated-implementation-sha> \
+  -- . \
+  ':(exclude,top)<approved-non-consuming-doc-path-1>' \
+  ':(exclude,top)<approved-non-consuming-doc-path-2>'
+```
+
+Do not exclude a directory or wildcard. Computational evidence is reusable
+only when the comparison is empty, the exclusion list exactly equals the
+enumerated intervening paths, and each path is proven non-consuming
+documentation. Any extra difference, conflict, or change to executable
+configuration, dependencies, Make targets, schemas, fixtures, report
+templates, or test behavior requires the applicable gate on the integrated
+state.
+
+After the implementation gate or valid reuse proof, apply the exact optional
+documentation-draft commit normally, add integration-owner state, run the
+combined documentation gate, and amend that still-local commit as the separate
+canonical docpatch:
+
+```bash
+set -euo pipefail
+git cherry-pick -x <coupled-documentation-draft-sha>
+git add <exact-integration-owner-documentation-paths>
+git diff --check
+git diff --cached --check
+# Run the complete documentation-only gate below.
+git commit --amend --no-edit
+```
+
+If no draft commit exists, the integration owner authors and commits the
+separate docpatch normally. Always run the documentation gate on the final
+combined tree.
+
+### Publish And Preserve Candidate State
+
+Only the integration owner publishes the accepted canonical branch, with
+explicit authorization for the exact remote and payload:
+
+```bash
+set -euo pipefail
+norad_publication_status=$(git status --porcelain=v1)
+test -z "$norad_publication_status"
+git diff --check
+git push -u origin <canonical-integration-branch>
+git fetch origin \
+  refs/heads/<canonical-integration-branch>:refs/remotes/origin/<canonical-integration-branch>
+norad_publication_upstream_ref=$(
+  git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
+)
+test "$norad_publication_upstream_ref" = \
+  'origin/<canonical-integration-branch>'
+norad_publication_head=$(git rev-parse HEAD)
+norad_publication_upstream=$(git rev-parse '@{upstream}')
+test "$norad_publication_head" = "$norad_publication_upstream"
+norad_publication_counts=$(
+  git rev-list --left-right --count HEAD...'@{upstream}'
+)
+test "$norad_publication_counts" = $'0\t0'
+```
+
+Status must be empty, the SHAs must match, and ahead/behind must be `0 0` before
+closing a lane or card.
+
+Candidate worktrees and branches remain locked by default. Optional worktree
+retirement requires explicit operator authorization after accepted publication
+and inspection proves the candidate has no dirty or unique work:
+
+```bash
+set -euo pipefail
+norad_retirement_status=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    status --porcelain=v1
+)
+test -z "$norad_retirement_status"
+norad_retirement_untracked=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    ls-files --others --exclude-standard
+)
+test -z "$norad_retirement_untracked"
+norad_retirement_ignored=$(
+  git -C /Users/elisteiger/dev/norad-worktrees/<lane-id> \
+    ls-files --others --ignored --exclude-standard
+)
+test -z "$norad_retirement_ignored"
+git worktree list --porcelain
+git worktree unlock /Users/elisteiger/dev/norad-worktrees/<lane-id>
+git worktree remove /Users/elisteiger/dev/norad-worktrees/<lane-id>
+git show-ref --verify refs/heads/codex/<lane-id>
+git worktree prune --dry-run --verbose
+```
+
+Never use `worktree remove --force`. The final `show-ref` proves the candidate
+branch remains preserved; branch deletion is a separate explicit operator
+decision.
+
 ## Local Validation Gate
 
 Use focused tests while executable work is changing. Pytest's default capture

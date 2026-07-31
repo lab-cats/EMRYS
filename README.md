@@ -74,6 +74,7 @@ logs/           ignored runtime logs
 | [`QUESTIONS.md`](docs/design/QUESTIONS.md) | Open questions and resolved-question links |
 | [`RUNBOOK.md`](docs/operations/RUNBOOK.md) | Setup, validation, cluster, inspection, and recovery commands |
 | [`TASK_START.md`](docs/operations/TASK_START.md) | Minimum task-start context, freshness rules, and canonical routing |
+| [`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md) | Isolated lane roles, write authority, coupling, handoff, and serialized integration |
 | [`DECISIONS.md`](docs/design/DECISIONS.md) | Durable decisions and rationale |
 | [`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Symptom-to-fix guidance |
 | [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
@@ -110,6 +111,14 @@ Future work is selected from the
 task-specific read-only planning; it does not authorize implementation. Every
 card still requires live repository inspection, an approved plan, bounded
 execution, and inspected acceptance evidence.
+
+Approved work may be authored in isolated candidate worktrees, including
+multiple disjoint documentation/card sidecars beside at most one
+implementation or immutable-execution lane. Candidate state remains a proposal;
+accepted integration and validation are serialized under
+[`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md).
+The first active use waits until the required strategy discussion is recorded
+complete in [`HANDOFF.md`](docs/operations/HANDOFF.md).
 
 Remote and cluster promotion remain upstream-sequential. See
 [`AGENTS.md`](AGENTS.md) for the durable gate and

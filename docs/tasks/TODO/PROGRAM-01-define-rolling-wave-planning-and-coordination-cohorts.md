@@ -39,9 +39,10 @@ and unnecessary context for bounded work.
   gate or receiving speculative detailed plans.
 - Use minimal coordination metadata rather than recreating an external project
   tracker. `Blocked by` remains reserved for genuine technological blockers.
-- Do not select this card before `CONCURRENCY-01` is completed and the user has
-  discussed how to leverage the new workflow; this is approved program order,
-  not a technological blocker edge.
+- Do not select this card before the `CONCURRENCY-01` package is complete,
+  clean, pushed, and upstream-equal and `HANDOFF.md` records the user strategy
+  discussion about how to leverage the new workflow as complete. This is
+  approved program order, not a technological blocker edge.
 
 ## Blocked by
 
@@ -53,8 +54,9 @@ and unnecessary context for bounded work.
 
 ## Prerequisites
 
-- Reinspect every active card and the then-current roadmap after the required
-  post-concurrency strategy discussion.
+- Verify the published `CONCURRENCY-01` package is upstream-equal, then
+  reinspect every active card and the then-current roadmap after the required
+  post-concurrency strategy discussion is recorded complete in `HANDOFF.md`.
 - Preserve the approved behavior-first and evidence-language gates while
   separating structural mutation from safe discovery work.
 
@@ -128,5 +130,7 @@ and unnecessary context for bounded work.
 
 ## Completion record
 
-Not started. Select this card only after the required post-concurrency strategy
-discussion; implementation requires a separately approved task-specific plan.
+Not started. Select this card only after the `CONCURRENCY-01` package is clean,
+pushed, and upstream-equal and `HANDOFF.md` records the required post-
+concurrency strategy discussion as complete; implementation requires a
+separately approved task-specific plan.

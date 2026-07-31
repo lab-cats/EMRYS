@@ -19,9 +19,11 @@ worktree would instead corrupt status, staging, validation, and handoff truth.
 - Parallel authoring uses separate branches and sibling worktrees followed by
   serialized integration into one authoritative linear lineage.
 - Multiple documentation/card sidecars are permitted at the same time. Every
-  mutating lane receives an absolute worktree path, unique branch, exact base
+  authoring lane receives an absolute worktree path, unique branch, exact base
   commit, integration target, reserved card IDs or paths, explicit write set,
-  prohibited overlaps, and coupling classification.
+  prohibited overlaps, and coupling classification. Immutable execution uses a
+  locked detached worktree at its exact pushed commit and records that identity
+  instead of a branch.
 - At most one implementation-candidate or immutable-execution lane may be
   active beside those sidecars. This card does not authorize parallel
   implementation candidates.
@@ -139,5 +141,24 @@ worktree would instead corrupt status, staging, validation, and handoff truth.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed on 2026-07-31. The package added `CONCURRENT_WORK.md` as the canonical
+policy owner; aligned agent, task-start, task-registry, roadmap, handoff,
+decision, entry-point, and troubleshooting guidance; and added fail-closed Git
+2.54 worktree, handoff, integration, evidence-reuse, publication, and
+recoverable-cleanup commands to the runbook.
+
+The settled model permits multiple isolated documentation/card sidecars beside
+at most one implementation-candidate or locked detached immutable-execution
+lane. One integration owner records durable packets, reserves paths and card
+IDs, serializes frozen single-commit proposals into fresh canonical
+descendants, amends integration-owned state before publication, validates the
+combined tree, and preserves candidates by default. First active use remains
+paused for the required user strategy discussion.
+
+No concurrent delivery experiment ran and the preserved detached demo-report
+worktree was not modified. The complete predecessor-to-final diff contains
+Markdown only and changes no executable or test-affecting consumer, so
+computational suites were not applicable. `git diff --check` and the repository
+documentation gate passed with 72 Markdown documents, 51 task cards, and 6
+Mermaid sources. Independent policy/ownership and Git/recovery audits found no
+remaining actionable issue.

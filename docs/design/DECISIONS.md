@@ -45,11 +45,12 @@ staging, validation, and completion claims.
 
 Decision: preserve one authoritative linear lineage while permitting multiple
 simultaneous documentation/card sidecars beside at most one active
-implementation-candidate or immutable-execution lane. Every mutating lane uses
-a separate branch and sibling worktree. The primary worktree is the
-single-writer integration/control lane. Every candidate receives an exact base,
-absolute path, unique branch, integration target, reserved IDs/paths, declared
-write set, prohibited overlaps, and independent/coupled classification.
+implementation-candidate or immutable-execution lane. Every authoring candidate
+uses a separate branch and sibling worktree; immutable execution uses a locked
+detached worktree at its exact pushed commit. The primary worktree is the
+single-writer integration/control lane. Every lane receives an exact base,
+absolute path, branch-or-detached identity, integration target, reserved
+IDs/paths, declared write set, prohibited overlaps, and coupling classification.
 
 Independent documentation may land while implementation continues. A document
 that changes or depends on an unsettled active contract, acceptance criterion,
@@ -63,12 +64,18 @@ the task registry and unrelated documentation healthy without creating two
 sources of truth. Worktree isolation plus one integrator retains the evidence
 and recovery properties of the linear model.
 
-Consequences: the current serial conduct remains in force until
-[`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-operationalizes lane roles, multi-sidecar coordination, exact commands, status
-ownership, integration, and validation. After that card is complete and
-pushed, pause for the required user strategy discussion before using the new
-workflow or selecting `PROGRAM-01`.
+Consequences: [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) owns the
+operational roles, lane packet, write authority, coupling rules, handoff,
+integration, evidence reuse, and recovery policy. A candidate branch or packet
+is a proposal, not authorization or approved lineage. Every lane and landing
+still requires approved task scope; only combined canonical validation can
+publish status, completion, or evidence.
+
+[`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+operationalized lane roles, multi-sidecar coordination, exact commands, status
+ownership, integration, and validation. First active use remains intentionally
+paused until the required user strategy discussion is recorded complete. Do
+not select `PROGRAM-01` before that discussion and its own task approval.
 
 ### Run one complete computational gate per executable state
 

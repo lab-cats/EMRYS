@@ -50,6 +50,33 @@ separate approval for the task-specific plan before implementation.
 That status/link move is the only permitted repository mutation before the
 task-specific plan is approved.
 
+## Concurrent work
+
+Concurrent mutation is allowed only under
+[`docs/operations/CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md).
+Agent identity is not filesystem isolation: every lane must verify its assigned
+absolute worktree, base, packet, and write set before starting; authoring lanes
+also verify their unique branch, while immutable execution verifies detached
+`HEAD`. Use one canonical integration/control lane, at most one
+implementation-candidate or immutable-execution lane, and multiple disjoint
+documentation/card sidecars. Never share a mutable worktree, branch, card ID,
+or path across lanes.
+
+Candidate state is proposal state. Only the integration owner updates live
+status, priority, lineage, card lifecycle, completion, or evidence claims and
+serializes accepted changes into canonical history. Coupled documentation
+cannot land independently. Final validation applies to the combined canonical
+tree, and execution evidence remains bound to its recorded immutable commit
+and inputs. Exact commands belong in `RUNBOOK.md`.
+
+Do not provision the first active delivery lane until `HANDOFF.md` records the
+required post-`CONCURRENCY-01` strategy discussion as complete. When concurrent
+lanes depend on durable packets, one special documentation-only coordination
+commit may record those packets and directly required status links before the
+ordinary implementation/docpatch sequence. Validate, push, and prove that
+checkpoint upstream-equal; it does not establish implementation or completion
+evidence.
+
 ## Development gate
 
 Every implementation package uses a linear descendant branch from the latest
@@ -263,6 +290,7 @@ Each mutable fact has one canonical owner:
 | `QUESTIONS.md` | Open operational/scientific questions, open design choices, and a resolved-question index |
 | `RUNBOOK.md` | Executable setup, validation, cluster, and recovery commands |
 | `TASK_START.md` | Version-aware task-start routing, context freshness, expansion triggers, and documentation-impact selection |
+| `CONCURRENT_WORK.md` | Concurrent lane roles, authority, coupling, handoff, integration, and evidence-reuse policy |
 | `DECISIONS.md` | Durable decisions, rationale, alternatives, and consequences |
 | `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
 | `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |

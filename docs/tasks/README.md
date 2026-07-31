@@ -2,7 +2,7 @@
 
 This directory is the bounded planning registry for future repository work.
 One Markdown file represents one task card. The directory containing the card
-is its only status signal:
+on the canonical integration branch is its only authoritative status signal:
 
 - [`TODO/`](TODO/) — available or blocked work that has not entered planning;
 - [`IN_PROGRESS/`](IN_PROGRESS/) — a task selected for task-specific,
@@ -37,6 +37,8 @@ and completion history. They link rather than duplicate durable truth:
   [`../operations/HANDOFF.md`](../operations/HANDOFF.md);
 - exact commands belong in
   [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md);
+- concurrent lane roles and authority belong in
+  [`../operations/CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md);
 - task-start freshness, routing, and expansion rules belong in
   [`../operations/TASK_START.md`](../operations/TASK_START.md);
 - roadmap order belongs in
@@ -56,8 +58,9 @@ of copying mutable snapshots.
 
 1. Create a stable card ID and filename directly in `TODO` unless the card
    documents work completed by the same approved bootstrap package.
-2. Move a selected card to `IN_PROGRESS` with `git mv`; update every inbound
-   link in the same commit. This starts read-only planning only.
+2. The integration owner moves a selected card to `IN_PROGRESS` with `git mv`
+   and updates every inbound link in the same commit. This starts read-only
+   planning only.
 3. If planning is paused or blocked, move the card back to `TODO`, record the
    reason in its completion record, and update inbound links. There is no
    separate `BLOCKED` directory.
@@ -66,6 +69,24 @@ of copying mutable snapshots.
    link in the same commit.
 5. Completed cards are immutable historical records apart from link repair or
    factual correction. New work gets a new follow-up card.
+
+Multiple cards may be `IN_PROGRESS` only when
+[`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) records isolated,
+non-overlapping lanes. Candidate-directory placement is proposal state until
+the integration owner accepts it; sidecars never move canonical card status.
+
+## Concurrent card creation
+
+The integration owner reserves each sidecar's card IDs and paths before
+mutation. Sidecars create new cards directly in `TODO`, edit only the recorded
+write set, and never select, approve, or complete their own cards. The
+integration owner serializes landing, adds central inbound references, repairs
+status links, and runs the combined documentation gate. A card-only sidecar
+with a deliberately pending central inbound reference is handoff-ready, not
+complete or independently gate-passing.
+
+Concurrency preparation and preferred landing order never create `Blocked by`
+or `Completion unblocks` metadata.
 
 ## Dependency semantics
 
@@ -98,11 +119,12 @@ Some existing cards predate this forward rule. Do not copy or opportunistically
 migrate their sequence-only edges. `TASK-REG-01` owns the bounded legacy-graph
 migration and validator correction.
 
-When an inventory/design task creates concrete child cards, that same commit
-must replace every family prerequisite in affected cards with explicit direct
-`Blocked by` links and add reciprocal `Completion unblocks` links to the new
-cards. An affected card cannot enter planning while a known concrete blocker
-exists only as prose.
+When an inventory/design task creates a concrete child that is a genuine
+technological blocker, the integration commit replaces the affected mutable
+card's family prerequisite with an explicit direct `Blocked by` link and adds
+reciprocal `Completion unblocks` metadata when both cards remain mutable.
+Sequence, context, and preferred order stay in prose; completed cards are not
+rewritten merely for reciprocity.
 
 ## Card template
 
@@ -131,7 +153,8 @@ The problem, evidence, and user value.
 ## Completion unblocks
 
 - `CARD-ID` — Fully: link the target and explain why it can then start.
-- `CARD-ID` — Partially: link the target and explain the context supplied.
+- `CARD-ID` — Partially: link the target and explain which one of several
+  genuine technological blockers this completion removes.
 
 ## Prerequisites
 

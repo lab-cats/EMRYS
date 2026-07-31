@@ -1,0 +1,215 @@
+# Concurrent work
+
+This document owns NORAD's policy for isolated concurrent repository work. It
+defines roles, authority, coupling, handoff, and integration. Live lanes belong
+only in [`HANDOFF.md`](HANDOFF.md#active-concurrent-lanes), and exact commands
+belong only in
+[`RUNBOOK.md`](RUNBOOK.md#concurrent-worktrees-and-serialized-integration).
+
+Concurrency improves throughput; it does not relax task planning, evidence,
+safety, review, or publication gates. A lane packet coordinates approved work
+but never authorizes a task by itself.
+
+## Non-negotiable model
+
+- One primary worktree and branch is the canonical integration/control lane.
+- At most one implementation-candidate or immutable-execution lane may be
+  active beside the canonical lane.
+- Multiple documentation/card sidecars may be active when their worktrees,
+  branches, card IDs, and write sets are disjoint.
+- Every authoring candidate uses a unique sibling worktree and branch. An
+  immutable-execution lane instead uses a locked detached worktree at the exact
+  recorded pushed commit. Agent identity does not isolate a shared filesystem.
+- Candidate branches are proposals. The integration owner serializes accepted
+  changes into one canonical linear history.
+- No lane merges, rebases, force-pushes, or deletes another lane. Candidate
+  work is preserved until accepted publication or an explicit operator
+  decision.
+- Read-only reviewers may inspect any lane but must not mutate its worktree.
+
+The first use of this policy for active delivery remains paused until the
+required post-`CONCURRENCY-01` user strategy discussion.
+
+## Lane roles
+
+| Lane | Cardinality | Purpose | Publication authority |
+| --- | --- | --- | --- |
+| Canonical integration/control | Exactly one | Own accepted history, coordination, integration, current state, and final validation | Sole authoritative publisher |
+| Implementation candidate | At most one, mutually exclusive with immutable execution | Implement one approved package in isolation | Proposal only |
+| Immutable execution | At most one, mutually exclusive with implementation | Run an approved command or job against a pinned commit and declared inputs | Produces evidence attributed only to that commit and inputs |
+| Independent documentation/card sidecar | Multiple | Create disjoint TODO cards or documentation that does not affect an active contract or result | May land as a reviewed standalone documentation commit |
+| Coupled documentation draft | Multiple when disjoint | Prepare documentation tied to unsettled implementation, acceptance, architecture, test, or evidence state | Cannot land independently |
+
+An implementation lane may draft its directly required documentation when
+that write set is reserved to it. Source-code comments are source changes, not
+documentation-sidecar work, even when they do not alter runtime behavior.
+
+## Required lane packet
+
+Before any concurrent mutation, the integration owner records each lane under
+[`HANDOFF.md`](HANDOFF.md#active-concurrent-lanes). A lane packet contains:
+
+| Field | Requirement |
+| --- | --- |
+| Lane ID and type | Stable short identity and one role from the table above |
+| Owner | Responsible agent or maintainer |
+| Worktree | Resolved absolute path |
+| Branch or detached state | Unique candidate branch, or detached `HEAD` at the exact execution commit |
+| Base | Exact canonical commit from which the lane starts |
+| Integration target | Canonical branch and intended landing boundary |
+| Task/card | Selected task, or bounded objective if no card exists |
+| Reservations | Exact new card IDs, new paths, and existing paths the lane may edit |
+| Prohibited overlap | Active cards, paths, contracts, and owners the lane must not change |
+| Coupling | Independent, coupled draft, implementation candidate, or immutable execution |
+| Validation | Candidate checks and final combined gate required |
+| Execution identity | For execution only: commit, command/job identity, inputs, configuration, and output/log locations |
+
+Reservations use exact paths or narrow rooted patterns, never an unbounded
+`docs/**` or repository-wide claim. The integration owner resolves duplicate
+card IDs and path overlaps before provisioning a sidecar.
+
+When another authoring or execution lane will rely on the packet, publish it as
+a canonical coordination checkpoint before that lane starts. This is a narrow exception to
+the ordinary implementation/docpatch commit shape: a documentation-only state
+commit containing the active packets and directly required status links. It
+runs the documentation gate, is pushed, and is proved upstream-equal before a
+relying lane is provisioned. It records planning state only—not implementation
+evidence, package completion, or permission to bypass task-specific approval.
+
+## Write authority
+
+Only the integration owner finalizes:
+
+- checkout, active-lane, blocker, and resume state in `HANDOFF.md`;
+- live package status and authoritative lineage in `PIPELINE_PLAN.md`;
+- immediate priority in `TODO.md`;
+- card lifecycle moves, inbound status links, completion records, and evidence
+  claims;
+- accepted changes to `AGENTS.md`, `TASK_START.md`, this policy, registry
+  lifecycle rules, and integration/recovery commands; and
+- conflict resolution across canonical owners.
+
+A sidecar may author new TODO cards and explicitly reserved documentation. A
+new card remains in `TODO`; it cannot select, approve, or complete itself. A
+sidecar may draft an integration-owner path only when the packet labels it
+coupled. The integration owner then decides whether and how it enters the
+canonical package.
+
+Two concurrently mutable lanes must never edit the same path, card ID, current-
+state claim, or contract boundary. At handoff the candidate freezes at its
+recorded commit; only then may write authority for its reserved paths transfer
+to the integration owner. Any later candidate movement invalidates the handoff.
+When overlap appears before transfer, both proposals are preserved and
+integration stops until ownership and order are re-planned.
+
+## Independent or coupled
+
+Documentation is independent only when all of these are true:
+
+- it can land or be reverted without changing the active lane's code, inputs,
+  outputs, tests, contract, acceptance criteria, or evidence interpretation;
+- it does not depend on an unsettled decision or result from the active lane;
+- its complete write set is disjoint from every other mutating lane; and
+- it does not publish current status, priority, completion, or evidence.
+
+Documentation is coupled when any condition fails, including when it changes
+or relies on an active public interface, architecture decision, acceptance
+criterion, test behavior, scientific/evidence claim, or canonical current-
+state owner.
+
+A coupled draft stays on its sidecar until the governing result is stable. If
+it reveals that the active implementation's approved contract or acceptance
+criteria must change, the integration owner checkpoints the active lane and
+returns that task to planning. The change is never silently absorbed as a
+docpatch.
+
+## Authoring and handoff lifecycle
+
+1. The integration owner verifies the canonical lane is clean, pushed, and
+   upstream-equal, then records disjoint lane packets.
+2. Each mutating candidate is created from its packet's exact base in its own
+   sibling worktree. The lane verifies path, branch, and `HEAD` before editing.
+3. A sidecar edits only its reserved write set. New child or follow-up cards
+   stay TODO and use reserved IDs.
+4. A documentation sidecar hands off exactly one clean review-ready commit
+   after its base, the complete diff, validation result, remaining coupling,
+   and any unpublished-branch limitation. An implementation candidate hands
+   off exactly one tested implementation/test commit followed by at most one
+   coupled documentation-draft commit. Candidate publication requires normal
+   user authority.
+5. The integration owner rechecks coupling and overlap against the latest
+   canonical tree, then accepts one candidate at a time.
+6. The integration owner creates a fresh canonical descendant and applies one
+   frozen candidate commit with provenance. Before publication, the owner adds
+   central links/state and amends that still-local commit into one validated
+   documentation package. A card-only sidecar with a pending central inbound
+   link always uses this combined integration path. For an implementation
+   candidate, the tested implementation commit lands first; its optional
+   documentation draft is integrated and amended as the separate canonical
+   docpatch.
+7. The integration owner repairs central links and state, runs the combined
+   applicable gate, publishes the canonical branch, proves upstream equality,
+   and only then closes affected cards or lanes.
+
+Exact creation, inspection, integration, verification, and optional cleanup
+commands are in the runbook. Merge, rebase, and automatic conflict resolution
+are not part of this workflow.
+
+## Implementation after independent documentation lands
+
+An implementation candidate may begin at canonical commit `B` while one or
+more independent documentation sidecars land serially as canonical commits
+`D1`, `D2`, and so on. The implementation remains a proposal based on `B`.
+After its candidate gate passes, the integration owner applies the one reviewed
+implementation/test commit onto the latest canonical documentation descendant,
+then integrates any separate coupled documentation draft as the canonical
+docpatch. Final applicable validation runs against that combined state.
+
+Computational evidence may be reused only when path classification and Git
+comparison prove every intervening change is non-executable documentation with
+no configuration, schema, fixture, report-template, or test-harness consumer,
+and the integrated executable/test-affecting tree is identical to the tested
+candidate. If that proof is incomplete, rerun the applicable computational
+gate. Documentation validation always runs on the final combined tree.
+
+## Immutable execution
+
+An immutable-execution lane is an approved local process, validation run,
+runtime job, or cluster job whose evidence is bound to one exact repository
+commit plus declared inputs, configuration, command/job identity, and output
+or log locations. It does not grant production or cluster authority.
+
+Concurrent documentation can clarify later interpretation but cannot change
+which revision ran. If code, inputs, configuration, or execution semantics
+must change, stop or supersede the run under a new identity; never relabel old
+evidence as if it came from the new state.
+
+## Validation and recovery
+
+Each candidate checks its own clean diff and task-specific requirements. A
+self-contained independent sidecar must include a legitimate reserved inbound
+reference and pass its documentation gate. A card-only sidecar whose central
+inbound link is intentionally reserved for the integrator is `handoff-ready`,
+not independently complete; its commit stays local while the integrator adds
+that link, amends the combined package, and runs the final gate.
+
+The integration owner validates after every landing sufficiently to catch a
+bad boundary early and runs one final combined gate before publication. Only
+the canonical result can close a package or support evidence claims.
+
+On a conflict, stale assumption, unexpected write, dirty shared worktree, or
+failed validation:
+
+1. stop integration and further mutation on the affected paths;
+2. preserve candidate commits, worktrees, logs, and execution attribution;
+3. abort only the normal in-progress cherry-pick using the reviewed runbook
+   command;
+4. classify the conflict as independent, coupled, or contract-changing; and
+5. revise the lane packet or return the governing task to planning before
+   continuing.
+
+Do not force integration, move unique files manually between worktrees, or
+delete a candidate to make status look clean. Worktree cleanup is optional,
+explicitly authorized, and allowed only after accepted publication and proof
+that the candidate contains no unique work. Candidate branches are preserved
+by default.

@@ -7,37 +7,53 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/context-start-policy`
+  `codex/concurrent-doc-sidecars`
 - Parent:
-  `refactor-01-architecture-direction-docs`
+  `codex/context-start-policy`
 - Verified parent HEAD:
-  `d2ceb54e5a106b9a5dced7264a1bb5165b89dab6`
+  `d7b2cacb522b7a3e98806ee02b5874f3b59c5488`
 - Parent documentation commit:
-  `d2ceb54 docs: capture architecture direction and task registry`
+  `d7b2cac docs: define version-aware task start`
 - Current documentation commit:
-  `docs: define version-aware task start` (the branch commit containing this
-  handoff; resolve its exact SHA from Git)
-- Recorded package state: `CONTEXT-00` is complete and the documentation-only
-  tree is ready for publication; verify live cleanliness, push state, and
-  upstream equality from Git before takeover
-- Current package: documentation-only version-aware task-start routing,
-  selective phase-boundary inspection, impact-directed consistency review, and
-  explicit documentation-only validation semantics
+  `docs: define isolated concurrent documentation lanes` (the branch commit
+  containing this handoff; resolve its exact SHA from Git)
+- Recorded package state: `CONCURRENCY-01` is complete and the documentation-
+  only tree is ready for publication; verify live cleanliness, push state, and
+  upstream equality before takeover; no candidate sidecar or execution lane is
+  active
+- Current package: isolated concurrent documentation/card authoring,
+  serialized integration, write authority, lane handoff, evidence reuse, and
+  recovery policy
 - Package type: one documentation commit; computational validation is not
   applicable because the predecessor-to-final diff changes no executable or
   test-affecting surface
 - Remote and cluster work: paused
 
-The context-policy branch descends directly from the clean, pushed, upstream-
-equal architecture-direction documentation commit. The parent branch and live
-remote both resolved to the verified parent HEAD before this branch was
-created; the user's responsible-context instruction was preserved when the
-descendant was created. Review before push reopened the package to remove
-sequence-only dependency metadata, preserve completed-card history, and create
-bounded follow-up cards for registry semantics and the embedded documentation
-validator. The approved correction also records multiple isolated
-documentation/card sidecars plus rolling-wave program planning as future
-operating-model cards; neither policy is active until its own card completes.
+The concurrency branch descends directly from the clean, pushed, upstream-
+equal context-policy documentation commit. The parent branch and its upstream
+both resolved to the verified parent HEAD before this branch was created. This
+package defines policy and commands only; it does not run a concurrent delivery
+experiment or change NORAD workflow, test, runtime, cluster, or scientific
+behavior.
+
+## Active concurrent lanes
+
+No implementation-candidate, immutable-execution, or documentation/card
+sidecar lane is active. This checkout is the sole integration/control lane for
+the `CONCURRENCY-01` policy package. First use for active delivery remains
+paused until the required post-completion user strategy discussion is recorded
+complete.
+
+| Lane ID | Role and owner | Worktree and branch/detached state | Base and target | Reservations and coupling | Validation or execution identity |
+| --- | --- | --- | --- | --- | --- |
+| None | — | — | — | — | — |
+
+The detached worktree at `/Users/elisteiger/dev/norad-demo-report` on
+`f9aef17f4d6a2aa6e88feb41f85c1364af194889` predates this policy. It is
+preserved unmanaged state, not an active lane; do not reuse, move, or remove it
+without separate inspection and operator direction. Future active rows must
+contain or link the complete lane packet required by
+[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#required-lane-packet).
 
 ## Completed boundary
 
@@ -117,6 +133,10 @@ The local descendant sequence has implemented:
   selective phase-boundary inspection, explicit expansion triggers, impact-
   directed manual documentation review, and a quiet repository-wide structural
   gate;
+- an isolated concurrent-work policy with one canonical integrator, multiple
+  disjoint documentation/card sidecars, at most one implementation-candidate
+  or locked detached execution lane, durable lane packets, serialized frozen-
+  proposal integration, combined validation, and recoverable preservation;
 - explicit standalone documentation-package semantics: computational
   validation is not applicable when the complete diff has no executable or
   test-affecting consumer;
@@ -170,6 +190,7 @@ The local descendant sequence has implemented:
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
+| Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -291,19 +312,15 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The documentation-only context-policy package changes task-start and review
-instructions; it does not execute the active repository-spanning refactor. Its
-predecessor executable state remains the completed Phase `01b` implementation
-and its recorded computational evidence.
+The documentation-only concurrency package defines isolated authoring and
+serialized integration policy; it does not execute the active repository-
+spanning refactor. Its predecessor executable state remains the completed
+Phase `01b` implementation and its recorded computational evidence.
 
-`CONTEXT-00` is complete. After confirming its package commit is clean,
-published, and upstream-equal, select
-[`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-as the next documentation-only operating package. It must implement isolated
-worktrees, at most one implementation-candidate or immutable-execution lane,
-multiple documentation/card sidecars, single-owner integration, and combined
-validation. Complete and push it, then pause for the required user discussion
-about leverage and first-use strategy. Do not select
+[`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+is complete. After confirming its documentation commit is clean, pushed, and
+upstream-equal, remain paused for the required user discussion about leverage
+and first-use strategy. Do not provision an active lane or select
 [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 or begin concurrent delivery before that discussion.
 

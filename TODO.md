@@ -9,16 +9,16 @@ checkout and exact resume point belong in
 
 ## Immediate
 
-1. After the current context-policy documentation package is clean, pushed,
-   and upstream-equal, select and plan
-   [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md).
-2. Complete and push `CONCURRENCY-01`, then pause for the required user
+1. After the completed
+   [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+   package is clean, pushed, and upstream-equal, hold the required user
    discussion about how to leverage multiple documentation/card sidecars and
-   choose a safe first concurrency strategy.
-3. Select
+   choose a safe first concurrency strategy. Do not provision the first active
+   lane before that discussion is recorded complete.
+2. Select
    [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
    only after that discussion and separate task-specific approval.
-4. Reassess the maintenance and main-refactor tranches under the resulting
+3. Reassess the maintenance and main-refactor tranches under the resulting
    program model. `TEST-01C` remains the first uncompleted Phase `01`
    characterization card in the inherited roadmap, but its position and the
    rest of that sequence are provisional until this reassessment. Do not treat
@@ -40,10 +40,9 @@ The following is roadmap order, not card-blocker metadata. None of these cards
 technologically blocks `TEST-01C` or authorizes work without its own approved
 plan:
 
-1. Establish isolated multi-sidecar authoring and serialized integration
-   through
-   [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md),
-   then pause for the required user strategy discussion.
+1. Use the completed isolated multi-sidecar/serialized-integration policy in
+   [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+   only after the required user strategy discussion.
 2. If separately selected after that discussion, establish rolling-wave
    planning and coordination cohorts through
    [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
@@ -66,7 +65,7 @@ plan:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
   [`LOG-01`](docs/tasks/TODO/LOG-01-characterize-current-output.md) onward.
 - Operating model and coordination:
-  [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+  [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
   and
   [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 - Documentation ownership, glossary, READMEs, user overview, code comments, and

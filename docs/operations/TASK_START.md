@@ -17,10 +17,13 @@ exact current version, read it before planning.
 
 Before proposing a task-specific plan:
 
-1. Inspect the live branch, `HEAD`, worktree, upstream relationship, and the
-   latest clean, docpatched package predecessor identified by `HANDOFF.md` and
-   `PIPELINE_PLAN.md`, when applicable. Do not infer current state from
-   conversation or memory.
+1. Inspect the live branch, `HEAD`, worktree, upstream relationship, worktree
+   list, and the latest clean, docpatched package predecessor identified by
+   `HANDOFF.md` and `PIPELINE_PLAN.md`, when applicable. If concurrent work is
+   recorded, verify the assigned absolute worktree, candidate branch or
+   detached execution state, base, lane packet, and write set against
+   `CONCURRENT_WORK.md`. Do not infer current state from agent identity,
+   conversation, or memory.
 2. Read the selected task card in full. If no card exists, bound the objective
    explicitly and decide whether a card is required before mutation.
 3. Follow the card's `Required context` links, named anchors, and named local
@@ -60,6 +63,7 @@ relevant source when the retained summary lacks necessary wording or evidence.
 | Current checkout, evidence boundary, blockers, or resume point | Applicable sections of [`HANDOFF.md`](HANDOFF.md) |
 | Package status, lineage, order, or acceptance | Applicable sections of [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
 | Exact setup, validation, cluster, or recovery command | Applicable heading in [`RUNBOOK.md`](RUNBOOK.md) |
+| Concurrent lane roles, authority, coupling, handoff, or integration | [`CONCURRENT_WORK.md`](CONCURRENT_WORK.md) plus live lanes in `HANDOFF.md` |
 | Durable rationale or settled constraint | Applicable decision in [`DECISIONS.md`](../design/DECISIONS.md) |
 | Open operational, scientific, or design choice | Applicable entry in [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Symptom, cause, diagnosis, or fix | Applicable heading in [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
@@ -82,6 +86,8 @@ coverage may be repository-wide without loading every matching file in full.
 | New task in the same verified context | New card in full, live Git state, changes since the prior task, and newly relevant canonical sections |
 | Phase boundary | Closing evidence, new phase/card, applicable lineage and acceptance sections, diff since the prior boundary, and changed or affected owners |
 | Documentation patch | Complete final diff, affected sections and owners, inbound references, and affected diagrams |
+| Starting a candidate lane | Assigned lane packet, absolute worktree, candidate branch or detached execution state, base, write set, prohibited overlaps, and coupling assumptions |
+| Integrating a candidate | Latest canonical state, immutable candidate handoff, complete base-to-candidate diff, overlap/coupling recheck, and combined validation obligation |
 | Cross-cutting or high-risk uncertainty | Every relevant canonical owner and direct consumer; broaden until the risk is resolved |
 | Ownership migration, contradiction, or broad audit | Broader full-file or corpus reading as the evidence requires |
 
@@ -102,6 +108,8 @@ Broaden inspection when any of these applies:
   promotion state is involved;
 - safety, concurrency, locking, publication, rollback, cleanup, recovery,
   cluster execution, credentials, or production artifacts are involved;
+- a concurrent lane packet is missing or stale, the worktree/branch/base does
+  not match it, write sets overlap, or a coupling assumption changed;
 - shared code, dependencies, configuration, test-harness selection or
   execution, generated inputs, or several stages/domains may be affected; or
 - the affected surface cannot be bounded confidently from the selected card,
@@ -120,6 +128,11 @@ repository for each changed interface, path, command, schema, status, evidence
 term, and ownership claim. Inspect the affected sections, canonical owners,
 direct references, and changed diagrams. Broaden semantic reading only when an
 expansion trigger applies.
+
+Candidate-only validation is provisional. When concurrent work exists, impact
+classification and closure use the final combined canonical diff after
+serialized integration; no candidate branch alone can publish package status,
+completion, or evidence.
 
 Keep the automated repository-wide documentation gate. Its global link,
 anchor, card, dependency, and Mermaid checks provide broad structural coverage
