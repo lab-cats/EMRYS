@@ -1,13 +1,24 @@
 import csv
 import hashlib
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "reference_provenance.py"
 HEADER = ["reference_id", "artifact_id", "role", "path", "required", "expected_sha256", "provenance_source", "provenance_release", "notes"]
+SPEC = importlib.util.spec_from_file_location(
+    "norad_reference_provenance_faults",
+    SCRIPT,
+)
+assert SPEC and SPEC.loader
+PROVENANCE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = PROVENANCE
+SPEC.loader.exec_module(PROVENANCE)
 
 
 def make_fixture(root: Path, *, mismatch: bool = False, missing: bool = False) -> Path:
@@ -45,6 +56,20 @@ def run(inventory: Path, output: Path, *args: str):
 def rows(path: Path):
     with path.open() as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
+
+
+def publication_data(inventory: Path) -> dict[str, bytes]:
+    raw, items = PROVENANCE.load_inventory(inventory, inventory.parent)
+    return PROVENANCE.render(raw, PROVENANCE.observe(items))
+
+
+def publication_paths(output_root: Path) -> dict[str, Path]:
+    directory = output_root / "ref1"
+    return {
+        "artifacts": directory / "ref1.reference_artifacts.tsv",
+        "contigs": directory / "ref1.reference_contigs.tsv",
+        "summary": directory / "ref1.reference_summary.tsv",
+    }
 
 
 def test_help_and_dry_run_side_effect_free(tmp_path):
@@ -122,3 +147,131 @@ def test_partial_prior_and_foreign_lock_are_preserved(tmp_path):
     result = run(inventory, output, "--execute")
     assert result.returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_input_mutation_after_observation_fails_before_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"
+    output.mkdir()
+    fasta = tmp_path / "ref" / "genome.fa"
+    real_observe = PROVENANCE.observe
+    calls = 0
+
+    def observe_then_mutate(items):
+        nonlocal calls
+        observations = real_observe(items)
+        calls += 1
+        if calls == 1:
+            # Mutate after the first digest snapshot so the execute-time
+            # refresh must reject evidence assembled from stale bytes.
+            fasta.write_text(">1\nTGCA\n>MT\nAAA\n")
+        return observations
+
+    monkeypatch.setattr(PROVENANCE, "observe", observe_then_mutate)
+    status = PROVENANCE.main(
+        [
+            "--inventory",
+            str(inventory),
+            "--base-dir",
+            str(tmp_path),
+            "--output-root",
+            str(output),
+            "--execute",
+        ]
+    )
+
+    assert calls == 2
+    assert status == 2
+    assert not (output / "ref1").exists()
+
+
+def test_publication_failure_restores_complete_reference_predecessor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"
+    output.mkdir()
+    generated = publication_data(inventory)
+    PROVENANCE.publish(output, "ref1", generated)
+    finals = publication_paths(output)
+    before = {key: path.read_bytes() for key, path in finals.items()}
+    real_replace = PROVENANCE.os.replace
+    failed = False
+
+    def fail_second_publication(source, destination):
+        nonlocal failed
+        if (
+            not failed
+            and Path(destination) == finals["contigs"]
+            and Path(source).name.endswith(".tmp")
+        ):
+            failed = True
+            raise OSError("injected reference publication failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(PROVENANCE.os, "replace", fail_second_publication)
+    with pytest.raises(OSError, match="reference publication"):
+        PROVENANCE.publish(output, "ref1", generated)
+
+    assert failed
+    assert {key: path.read_bytes() for key, path in finals.items()} == before
+    assert not [
+        child for child in (output / "ref1").iterdir()
+        if child.name.startswith(".")
+    ]
+
+
+def test_characterizes_reference_incomplete_rollback_gap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inventory = make_fixture(tmp_path)
+    output = tmp_path / "out"
+    output.mkdir()
+    generated = publication_data(inventory)
+    PROVENANCE.publish(output, "ref1", generated)
+    finals = publication_paths(output)
+    real_replace = PROVENANCE.os.replace
+    publication_failed = False
+    restoration_failed = False
+
+    def fail_publication_and_restoration(source, destination):
+        nonlocal publication_failed, restoration_failed
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if (
+            not publication_failed
+            and destination_path == finals["contigs"]
+            and source_path.name.endswith(".tmp")
+        ):
+            publication_failed = True
+            raise OSError("injected reference publication failure")
+        if (
+            publication_failed
+            and not restoration_failed
+            and destination_path == finals["artifacts"]
+            and source_path.name.endswith(".previous")
+        ):
+            restoration_failed = True
+            raise OSError("injected reference restoration failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(
+        PROVENANCE.os,
+        "replace",
+        fail_publication_and_restoration,
+    )
+    with pytest.raises(OSError, match="reference restoration"):
+        PROVENANCE.publish(output, "ref1", generated)
+
+    directory = output / "ref1"
+    assert publication_failed and restoration_failed
+    assert len(list(directory.glob(".*.previous"))) == 3
+    # Known TG-02 gap: recovery bytes survive, but the owned lock and a
+    # recovery marker are removed even though restoration was incomplete.
+    assert not (directory / ".ref1.reference-provenance.lock").exists()
+    assert not list(directory.glob("*.RECOVERY.txt"))

@@ -75,6 +75,20 @@ def read_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
+def publication_values(
+    tmp_path: Path,
+) -> tuple[Path, str, list[object], bytes]:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    profile_data, checks = PREFLIGHT.load_profile(profile)
+    digest = hashlib.sha256(profile_data).hexdigest()
+    results = PREFLIGHT.run_checks(checks, "local")
+    return profile, digest, checks, PREFLIGHT.result_bytes(
+        digest,
+        "local",
+        results,
+    )
+
+
 def test_help_and_dry_run_are_side_effect_free(tmp_path: Path) -> None:
     help_result = subprocess.run(
         [sys.executable, str(SCRIPT), "--help"],
@@ -450,3 +464,141 @@ def test_publish_failure_rolls_back_valid_prior(
     assert not list(tmp_path.glob(".*.lock"))
     assert not list(tmp_path.glob(".*.tmp"))
     assert not list(tmp_path.glob(".*.previous"))
+
+
+def test_stage_fsync_failure_cleans_preflight_attempt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, digest, checks, data = publication_values(tmp_path)
+    output = tmp_path / "preflight.tsv"
+    real_fsync = PREFLIGHT.os.fsync
+    calls = 0
+
+    def fail_second_fsync(descriptor: int) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("injected staged preflight fsync failure")
+        real_fsync(descriptor)
+
+    # The first fsync commits lock ownership; the second belongs to the stage.
+    monkeypatch.setattr(PREFLIGHT.os, "fsync", fail_second_fsync)
+    with pytest.raises(OSError, match="staged preflight fsync"):
+        PREFLIGHT.publish(output, data, digest, "local", checks)
+
+    assert calls == 2
+    assert not output.exists()
+    assert not list(tmp_path.glob(".*.lock"))
+    assert not list(tmp_path.glob(".*.tmp"))
+
+
+def test_characterizes_preflight_lock_fsync_failure_gap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, digest, checks, data = publication_values(tmp_path)
+    output = tmp_path / "preflight.tsv"
+    lock = tmp_path / ".preflight.tsv.lock"
+    real_open = PREFLIGHT.os.open
+    real_close = PREFLIGHT.os.close
+    real_unlink = Path.unlink
+    opened: list[int] = []
+
+    def track_open(*args: object, **kwargs: object) -> int:
+        descriptor = real_open(*args, **kwargs)
+        opened.append(descriptor)
+        return descriptor
+
+    def fail_lock_fsync(descriptor: int) -> None:
+        raise OSError("injected preflight lock fsync failure")
+
+    monkeypatch.setattr(PREFLIGHT.os, "open", track_open)
+    monkeypatch.setattr(PREFLIGHT.os, "fsync", fail_lock_fsync)
+    with pytest.raises(OSError, match="lock fsync"):
+        PREFLIGHT.publish(output, data, digest, "local", checks)
+
+    # Known TG-02 gap: failure occurs before publish owns a descriptor in its
+    # try/finally, so the lock and descriptor are left behind.
+    assert lock.is_file()
+    assert not output.exists()
+    for descriptor in opened:
+        real_close(descriptor)
+    real_unlink(lock)
+
+
+def test_characterizes_preflight_incomplete_rollback_gap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, digest, checks, prior = publication_values(tmp_path)
+    output = tmp_path / "preflight.tsv"
+    output.write_bytes(prior)
+    real_replace = PREFLIGHT.os.replace
+    publication_failed = False
+    restoration_failed = False
+
+    def fail_publication_and_restoration(source, destination):
+        nonlocal publication_failed, restoration_failed
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if (
+            not publication_failed
+            and destination_path == output
+            and source_path.name.endswith(".tmp")
+        ):
+            publication_failed = True
+            raise OSError("injected preflight publication failure")
+        if (
+            publication_failed
+            and not restoration_failed
+            and destination_path == output
+            and source_path.name.endswith(".previous")
+        ):
+            restoration_failed = True
+            raise OSError("injected preflight restoration failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(
+        PREFLIGHT.os,
+        "replace",
+        fail_publication_and_restoration,
+    )
+    with pytest.raises(OSError, match="preflight restoration"):
+        PREFLIGHT.publish(output, prior, digest, "local", checks)
+
+    assert publication_failed and restoration_failed
+    assert not output.exists()
+    assert len(list(tmp_path.glob(".*.previous"))) == 1
+    # Known TG-02 gap: the only predecessor bytes survive without the lock or
+    # an explicit recovery marker.
+    assert not list(tmp_path.glob(".*.lock"))
+    assert not list(tmp_path.glob("*.RECOVERY.txt"))
+
+
+def test_characterizes_preflight_lock_cleanup_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, digest, checks, data = publication_values(tmp_path)
+    output = tmp_path / "preflight.tsv"
+    lock = tmp_path / ".preflight.tsv.lock"
+    real_unlink = Path.unlink
+
+    def fail_lock_cleanup(
+        path_value: Path,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        if path_value == lock:
+            raise OSError("injected preflight lock cleanup failure")
+        real_unlink(path_value, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_lock_cleanup)
+    PREFLIGHT.publish(output, data, digest, "local", checks)
+
+    assert output.read_bytes() == data
+    # Known TG-02 gap: lock cleanup errors are swallowed, so the caller sees
+    # success while the owned lock continues to block future attempts.
+    assert lock.is_file()
+    real_unlink(lock)
