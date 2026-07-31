@@ -13,9 +13,10 @@ is its only status signal:
 Cards preserve decisions already made, define scope and dependencies, and
 state what evidence would close the task. They are not implementation plans
 and never authorize mutation. Selecting a card means moving it to
-`IN_PROGRESS` with `git mv`, rereading its required context, inspecting the
-live repository, proposing a task-specific plan, and obtaining user approval
-before editing or running mutating commands.
+`IN_PROGRESS` with `git mv`, reading the card in full, following the
+[`task-start router`](../operations/TASK_START.md), inspecting the live
+repository, proposing a task-specific plan, and obtaining user approval before
+editing or running mutating commands.
 
 The registry begins with the completed `ARCH-DOC-00` bootstrap card. It does
 not reconstruct retrospective cards for earlier refactor packages; their
@@ -36,6 +37,8 @@ and completion history. They link rather than duplicate durable truth:
   [`../operations/HANDOFF.md`](../operations/HANDOFF.md);
 - exact commands belong in
   [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md);
+- task-start freshness, routing, and expansion rules belong in
+  [`../operations/TASK_START.md`](../operations/TASK_START.md);
 - roadmap order belongs in
   [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md);
 - unresolved choices belong in
@@ -66,14 +69,23 @@ of copying mutable snapshots.
 
 ## Dependency semantics
 
-`Blocked by` contains only card IDs that must be complete before task-specific
-planning may begin. Non-card conditions belong under `Prerequisites`.
+`Blocked by` contains only genuine technological blockers: card IDs whose
+incomplete work makes the task unsafe or impossible to proceed. Preferred
+sequence, roadmap order, useful context, and planning convenience are not
+blockers; record them under `Prerequisites`, `Required context`, or the
+canonical roadmap instead.
 
 `Completion unblocks` labels each relationship:
 
 - `Fully` means the target has no other card blocker after this card completes;
-- `Partially` means completion removes one of several hard blockers or supplies
-  useful context, so it does not by itself permit the target to start.
+- `Partially` means completion removes one of several genuine technological
+  blockers, so it does not by itself permit the target to proceed.
+
+Useful context alone never belongs in `Completion unblocks`. For new or edited
+active cards, maintain reciprocal metadata only between cards that are still
+mutable. Do not rewrite a completed card merely to add a reciprocal link;
+completed evidence needed by new work belongs under `Prerequisites` or
+`Required context`.
 
 Every card named under `Blocked by` must appear in the source card's
 `Completion unblocks` list as `Fully` or `Partially`, and every `Fully`
@@ -81,6 +93,10 @@ relationship must appear in the target's `Blocked by` list. Every referenced
 card must exist. Hard dependencies must be acyclic and free of
 self-dependencies. Do not create wildcard placeholder cards; an inventory or
 design card creates concrete children after their scope is known.
+
+Some existing cards predate this forward rule. Do not copy or opportunistically
+migrate their sequence-only edges. `TASK-REG-01` owns the bounded legacy-graph
+migration and validator correction.
 
 When an inventory/design task creates concrete child cards, that same commit
 must replace every family prerequisite in affected cards with explicit direct
@@ -123,7 +139,8 @@ The problem, evidence, and user value.
 
 ## Required context
 
-- Canonical owners and bounded implementation surfaces to inspect.
+- Exact canonical sections and bounded implementation, contract, consumer,
+  test, and fixture surfaces to inspect in addition to `TASK_START.md`.
 
 ## Questions owned by this card
 
@@ -151,7 +168,8 @@ The problem, evidence, and user value.
 
 ## Escalation conditions
 
-- Conditions that require stopping and requesting direction.
+- Card-specific conditions that require broader inspection, stopping, or
+  requesting direction in addition to the global `TASK_START.md` triggers.
 
 ## Completion record
 

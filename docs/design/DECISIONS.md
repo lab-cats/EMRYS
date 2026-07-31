@@ -36,6 +36,40 @@ documentation-only package uses one documentation commit.
 Reason: evidence, interfaces, and current state remain reviewable at every
 stage. The authoritative current lineage belongs in `PIPELINE_PLAN.md`.
 
+### Permit isolated concurrent authoring with serialized integration
+
+Context: the linear package gate protects evidence but currently serializes
+unrelated card creation and documentation work behind long implementation or
+execution. Multiple mutating agents in one worktree would contaminate status,
+staging, validation, and completion claims.
+
+Decision: preserve one authoritative linear lineage while permitting multiple
+simultaneous documentation/card sidecars beside at most one active
+implementation-candidate or immutable-execution lane. Every mutating lane uses
+a separate branch and sibling worktree. The primary worktree is the
+single-writer integration/control lane. Every candidate receives an exact base,
+absolute path, unique branch, integration target, reserved IDs/paths, declared
+write set, prohibited overlaps, and independent/coupled classification.
+
+Independent documentation may land while implementation continues. A document
+that changes or depends on an unsettled active contract, acceptance criterion,
+architecture decision, test behavior, or evidence claim is coupled and cannot
+silently land: preserve it as a draft or checkpoint and re-plan the active
+task. Long execution remains attributed to its immutable commit. Only combined
+canonical validation may close a package.
+
+Rationale: parallel authoring reduces idle time and allows maintainers to keep
+the task registry and unrelated documentation healthy without creating two
+sources of truth. Worktree isolation plus one integrator retains the evidence
+and recovery properties of the linear model.
+
+Consequences: the current serial conduct remains in force until
+[`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+operationalizes lane roles, multi-sidecar coordination, exact commands, status
+ownership, integration, and validation. After that card is complete and
+pushed, pause for the required user strategy discussion before using the new
+workflow or selecting `PROGRAM-01`.
+
 ### Run one complete computational gate per executable state
 
 Decision: use focused tests during implementation, then run one de-duplicated
@@ -43,7 +77,10 @@ complete computational gate against the final executable state before its
 implementation commit. A subsequent documentation-only patch runs the
 documentation gate and reuses that recorded computational evidence when Git
 inspection proves that executable configuration, dependencies, Make targets,
-schemas, fixtures, and test selection/execution semantics are unchanged.
+schemas, fixtures, report templates, and test-harness selection and execution
+semantics are unchanged. For a standalone documentation-only package with no
+executable or test-affecting consumer, computational validation is not
+applicable; run only Git and documentation validation.
 
 Reason: rerunning identical multi-runtime suites before both the implementation
 and documentation commits adds substantial latency without testing a new
@@ -75,18 +112,41 @@ Reason: this removes duplicate work and reduces feedback latency while keeping
 coverage, evidence boundaries, failure provenance, process cleanup, and a
 deterministic low-concurrency fallback reviewable.
 
-### Read canonical documentation by task boundary
+### Route task context by revision and impact
 
-Decision: every task starts with complete reads of the conduct and current
-handoff documents, the applicable roadmap sections, and task-relevant anchored
-sections of the other canonical owners. Complete reads of the nine-document
-corpus are reserved for phase boundaries, documentation-ownership changes,
-detected inconsistencies, and tasks that cannot otherwise be bounded safely.
+Decision: [`TASK_START.md`](../operations/TASK_START.md) is the concise routing
+owner. A task begins with live Git state, the selected card, its bounded local
+surfaces, and applicable canonical sections. Exact content already present in
+active context may be reused only when its revision is identifiable, Git proves
+it unchanged, and the retained detail is sufficient. Changed content requires
+the diff and affected sections; full-file or corpus reading is reserved for
+unknown revisions, contradictions, ownership or structural changes, dispersed
+impact, and scientific, evidence, safety, recovery, publication, public-
+contract, or other risk that cannot be bounded safely.
 
-Reason: canonical ownership and targeted repository searches preserve the
-safety boundary without repeatedly loading thousands of unrelated operational
-lines. Commands, rationale, current state, and roadmap remain in their single
-owners so targeted reading does not depend on a duplicate summary.
+A phase boundary requires reassessing closing evidence, new acceptance and
+lineage, changed canonical owners, and the diff since the prior boundary. It
+does not by itself require a complete canonical-corpus read.
+
+Reason: the former phase-boundary corpus exceeded 9,000 lines, much of it
+unrelated and unchanged. Version-aware reuse plus explicit expansion triggers
+preserves the correctness boundary without paying that cost repeatedly. An
+unversioned summary or another agent's statement remains orientation rather
+than live proof.
+
+### Make documentation consistency impact-directed
+
+Decision: use the final package diff, canonical ownership, inbound references,
+and repository-wide targeted searches to discover documentation and diagram
+impact. Inspect affected sections, owners, consumers, and changed diagrams;
+broaden semantic reading only when the impact is cross-cutting, contradictory,
+ownership-changing, or not safely bounded. Keep the automated repository-wide
+documentation gate because its global structural checks emit compact evidence
+without loading the corpus into agent context.
+
+Reason: repository-wide search and validation coverage protects consistency;
+repository-wide manual line-by-line reading is not a necessary proxy for that
+coverage.
 
 ### Keep active and future tests separate
 
@@ -443,6 +503,7 @@ Decision: each information category has one canonical owner:
   and lineage;
 - `QUESTIONS.md`: open questions and resolved index;
 - `RUNBOOK.md`: executable commands;
+- `TASK_START.md`: version-aware context routing and expansion rules;
 - `DECISIONS.md`: durable choices and rationale;
 - `TROUBLESHOOTING.md`: symptom, cause, diagnosis, and fix;
 - `ARCHITECTURE.md`: current topology and contracts;
@@ -513,6 +574,16 @@ of several blockers. Paused work may return to TODO with a reason; there is no
 `BLOCKED` directory. Completed cards are historical; follow-up work receives a
 new card.
 
+Correction approved on 2026-07-31: blocker fields are reserved for genuine
+technological blockers whose missing output makes meaningful progress
+impossible. Preferred order belongs in `PIPELINE_PLAN.md` or `TODO.md`;
+approval, environment, and repository-state conditions belong under
+`Prerequisites`; useful context alone is not an unblock relationship.
+Completed cards remain historical rather than being rewritten to maintain a
+live graph. The existing registry and validator still implement the original
+broader model until the separately planned `TASK-REG-01` evidence-based
+migration; this decision does not authorize a mechanical edge rewrite.
+
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative
 of expanding the roadmap into task specifications would duplicate status and
@@ -520,7 +591,43 @@ rationale across owners.
 
 Consequences: card moves use `git mv` and update inbound links in the same
 commit. The lifecycle and template are canonical in
-[`docs/tasks/README.md`](../tasks/README.md).
+[`docs/tasks/README.md`](../tasks/README.md). The approved semantic migration is
+owned by
+[`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
+
+### Use an architecture runway with rolling vertical delivery
+
+Context: the current program is iterative inside each card but waterfall-shaped
+across phases: all characterization, all design, one integrated plan, three
+whole-plan reviews, and then implementation. That shape can create stale plans,
+speculative cards, broad context requirements, and delayed empirical feedback.
+
+Decision: settle expensive-to-reverse cross-cutting invariants in small
+coordinated planning cohorts, then plan and execute bounded vertical cards just
+in time. A normal card closes its inspect, plan, approve, execute, validate,
+document, integrate, and feedback loop before dependent delivery advances. A
+design card executes by producing a reviewed decision; it does not absorb all
+downstream implementation.
+
+`TEST-01Z` continues to gate structural architectural mutation, not independent
+read-only inventory or characterization. `PLAN-02Z` will reconcile the minimum
+shared architecture and create only the next evidence-supported delivery
+tranche. Architecture, reliability, and usability reviews remain independent
+but attach to the risk boundaries they govern rather than one monolithic plan.
+Future-only cards preserve constraints without joining the current release
+gate or receiving speculative detailed plans.
+
+Rationale: high-fan-out topology, contract, state, recovery, and evidence
+decisions are cheaper and safer to reconcile before files move. Local
+implementation choices are more accurate after feedback from a completed
+slice. The hybrid keeps necessary architecture without front-loading the whole
+refactor.
+
+Consequences: after the required post-concurrency strategy discussion,
+[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+will classify active cards, define cohorts, revise `PLAN-02Z` and review
+boundaries, and select the first tranche. It will not execute implementation or
+migrate the legacy blocker graph.
 
 ### Target a vertical package with direct contract-preserving migrations
 
@@ -803,8 +910,23 @@ Documentation consolidation begins with an audience/navigation and source-to-
 destination ledger. Unique meaning must have a destination before relocation;
 intentional safety repetition may remain at the action point. Local stage/domain
 context should link purpose, contracts, direct neighbors, tests, and canonical
-owners so bounded work does not load the whole repository. Phase/cross-cutting
-work still requires broad reads; correctness outranks token reduction.
+owners so bounded work does not load the whole repository. Phase and cross-
+cutting work reassesses impact and broadens according to the global task-start
+triggers; correctness outranks token reduction.
+
+The repository-root `AGENTS.md` is a concise, automatically loaded project
+router, not the owner of detailed NORAD commands, topology, mutable state,
+scientific policy, or coding conventions. It retains only always-needed
+approval, safety, evidence, and routing guardrails plus canonical links.
+Reusable cross-repository preferences belong in global agent guidance. A
+rule-by-rule source-to-destination ledger must prove that slimming the root file
+does not lose critical protections.
+
+Operational documentation owns supported invocations and behavior summaries,
+not substantial embedded implementations. The current documentation validator
+must be behavior-locked, extracted, and tested before its dependency semantics
+change; `RUNBOOK.md` will retain only the supported invocation and concise
+operator-facing explanation.
 
 Rationale: conventional local documentation makes the repository inspectable
 without creating more canonical owners. A blind cleanup or blanket commenting
@@ -813,7 +935,8 @@ pass would either lose meaning or add noise.
 Consequences: see
 [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 through
-[`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
+[`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
+[`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md).
 Concrete consolidation/comment rollout cards are created only after inventories.
 
 ### Defer repository skills until the underlying practice is proven
@@ -859,7 +982,9 @@ Consequences: see
 | Discussion theme | Durable owner above | Task owner |
 | --- | --- | --- |
 | Behavior coverage before mutation and independent goldens | Protect behavior before architectural mutation | `TEST-01C`–`TEST-01Z` |
-| Card lifecycle, blockers, and separate approvals | File-backed task registry | `ARCH-DOC-00` and `docs/tasks/README.md` |
+| Card lifecycle, true technological blockers, and separate approvals | File-backed task registry | `ARCH-DOC-00`, `TASK-REG-01`, and `docs/tasks/README.md` |
+| Multiple isolated documentation/card sidecars and one canonical integrator | Concurrent authoring with serialized integration | `CONCURRENCY-01` |
+| Architecture runway, planning cohorts, rolling tranches, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, and `REVIEW-*` |
 | Vertical `src/norad`, black-box stages, mirrored tests, direct migration | Vertical package | `ARCH-02A`–`ARCH-02D` |
 | Semantic names, historical numbers, DAG, user overview | Semantic stages and DAG | `ARCH-02B`, `DOC-PIPE-04` |
 | Local/shared abstraction threshold and ownership | Shared-library promotion | `LIB-02F` |
@@ -870,7 +995,8 @@ Consequences: see
 | Installable `norad`, non-Python assets, materialized jobs | Later control plane | `FUT-CLI-03` |
 | Science default, comprehensive profile, projection, no nested scroll | Future reporting | `RPT-01`–`RPT-06` |
 | Quiet default, verbose/debug, durable logs, stdout/stderr | Two-sink logging | `LOG-01`–`LOG-05` plus generated `LOG-04-*` |
-| Glossary, READMEs, adjacent fixture docs, comments, consolidation, context | Documentation as architecture | `DOC-IA-01`–`CONTEXT-09` plus generated cleanup/comment cards |
+| Exact-revision context reuse, selective phase boundaries, impact-directed review | Task-start routing | `CONTEXT-00` |
+| Glossary, READMEs, adjacent fixture docs, comments, concise root agent router, validator extraction, consolidation, context | Documentation as architecture | `DOC-GATE-01`, `DOC-IA-01`–`CONTEXT-09` plus generated cleanup/comment cards |
 | Documentation-health skill and later skill review | Deferred skills | `DOC-SKILL-10`, `SKILL-11` |
 | Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |
 

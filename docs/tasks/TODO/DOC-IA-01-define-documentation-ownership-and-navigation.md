@@ -19,6 +19,13 @@ scientific meaning.
   and child READMEs own detail.
 - Consolidation requires a source-to-destination ledger and no-loss review;
   intentional safety repetition remains at action points.
+- The repository-root `AGENTS.md` remains a concise automatically loaded
+  project router: it keeps only always-needed approval, safety, evidence, and
+  task-routing guardrails plus links to canonical owners.
+- Reusable cross-repository working preferences belong in global agent
+  guidance, while detailed NORAD commands, topology, scientific policy,
+  conventions, and mutable state remain in repository documents rather than
+  being copied into `AGENTS.md`.
 - Do not create `docs/skills/`; reusable skills belong in the actual skill
   system after the practice is proven.
 
@@ -54,7 +61,8 @@ scientific meaning.
 
 - Audience/navigation map, responsibility matrix, source-to-destination ledger,
   orphan/stale classification, RUNBOOK/TROUBLESHOOTING boundary, historical
-  evidence treatment, and creation of concrete `DOC-CONS-08-*` cards.
+  evidence treatment, a rule-by-rule `AGENTS.md` disposition, and creation of
+  concrete `DOC-CONS-08-*` cards including a bounded `AGENTS.md` slim-down.
 
 ## Out of scope
 
@@ -65,11 +73,19 @@ scientific meaning.
 
 - A no-loss documentation information architecture and exact bounded cleanup
   cards with dependencies and acceptance evidence.
+- An `AGENTS.md` source-to-destination ledger classifying every current rule as
+  retained always-on guidance, moved repository detail, global reusable
+  preference, intentional duplication, or separately justified removal.
 
 ## Acceptance evidence
 
 - Every current document and unique fact has one retained owner/destination or
   an explicitly approved historical disposition.
+- Every current `AGENTS.md` rule has a reviewed disposition, all critical
+  approval, safety, scientific-evidence, and destructive-action guards remain
+  automatically reachable, and a concrete slim-down card has been created.
+- The proposed root file is materially shorter and functions as a router; line
+  count is diagnostic rather than a substitute for the no-loss review.
 - A user, operator, scientist, and maintainer each have a short navigable path.
 
 ## Canonical documentation updates

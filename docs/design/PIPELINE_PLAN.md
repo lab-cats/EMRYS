@@ -62,6 +62,9 @@ a completed production review.
 | `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | complete; predecessor to the validation-publication characterization package |
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; verified clean, pushed, and upstream-equal before the documentation descendant |
 | `refactor-01-architecture-direction-docs` | Documentation-only task registry, durable architecture decisions, future constraints, open choices, and future diagrams | complete in this documentation package; no executable or evidence-state change |
+| `codex/context-start-policy` | Version-aware task-start routing, selective phase-boundary inspection, impact-directed documentation review, and explicit documentation-only validation; see [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md) | documentation-only package complete and ready for publication; live Git must still verify a clean push and upstream equality; no executable or evidence-state change |
+| Planned `CONCURRENCY-01` descendant | Isolated concurrent documentation/card sidecars with serialized integration; branch selected only through its approved task plan | next documentation-only operating-model package after the context-policy package is complete and upstream-equal |
+| Conditional `PROGRAM-01` descendant | Rolling-wave planning and coordination cohorts; branch selected only through its separately approved task plan | must not be selected before `CONCURRENCY-01` is complete, pushed, and followed by the required user strategy discussion |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/TODO/TEST-01D-characterize-public-cli-contracts.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) | future package definition; workflow status is the linked card's directory |
@@ -82,6 +85,37 @@ placeholders are superseded by the bounded Phase `02` design cards plus
 `REVIEW-ARCH-01`, `REVIEW-REL-02`, and `REVIEW-UX-03`. Cards are not branch
 names: each live task-specific plan selects its descendant branch only after
 inspection and approval.
+
+## Recommended maintenance sequence
+
+Maintenance order is intentionally distinct from technical blocking. These
+cards do not block the Phase `01` characterization sequence and do not acquire
+dependency edges merely because one is preferred first:
+
+1. [`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+   should establish isolated candidate worktrees, multiple documentation/card
+   sidecars, single-owner integration, and combined validation.
+2. Pause after `CONCURRENCY-01` is complete and pushed for the required user
+   strategy discussion. Do not select `PROGRAM-01` or begin a concurrent
+   delivery experiment before that discussion.
+3. [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+   may then replace the waterfall-shaped whole-plan sequence with reviewed
+   architecture cohorts and rolling vertical tranches if separately approved.
+4. Reassess the remaining order under that model. The current expected
+   candidates begin with
+   [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
+   which should characterize, extract, and test the embedded documentation
+   validator without changing accepted behavior.
+5. [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md)
+   should then migrate active dependency metadata and validator behavior to the
+   approved true-technological-blocker model.
+6. [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+   should lead the Phase `02` documentation family and produce a no-loss,
+   bounded `AGENTS.md` slim-down card before broader consolidation packages.
+
+Each remains separately planned and approved. If live technical evidence later
+establishes a real blocker, record that evidence on the affected cards rather
+than inferring it from this order.
 
 ## Approved local lineage
 
@@ -112,14 +146,18 @@ report-html-v1a-report-table-approvals
                                                                                         └── refactor-01aa-validation-efficiency
                                                                                             └── refactor-01b-validation-publication-faults
                                                                                                 └── refactor-01-architecture-direction-docs
-                                                                                                    └── refactor-01c-validation-check-rosters
-                                                                                                        └── refactor-01d-public-cli-contracts
-                                                                                                            └── refactor-01e-slurm-contracts
-                                                                                                                └── refactor-01f-independent-goldens
-                                                                                                                    └── refactor-01z-test-sufficiency-gate
-                                                                                                                        └── ...task-specific descendant branches selected by approved cards...
-                                                                                                                            └── refactor-99-final-audit
+                                                                                                    └── codex/context-start-policy
+                                                                                                        └── [planned: CONCURRENCY-01 task-selected branch]
+                                                                                                            └── [required user strategy pause]
+                                                                                                                └── [conditional: PROGRAM-01 task-selected branch]
+                                                                                                                    └── [future descendants selected after reassessment]
+                                                                                                                        └── refactor-99-final-audit
 ```
+
+Bracketed entries are planning boundaries, not branch names or completed
+lineage. `TEST-01C` remains the first uncompleted characterization card in the
+inherited roadmap, but `PROGRAM-01` must confirm or revise its position before
+the next post-concurrency delivery card is selected.
 
 Do not perform remote or cluster
 validation during this sequence.
@@ -134,6 +172,8 @@ validation during this sequence.
 - one authoritative status matrix and branch lineage in this file;
 - takeover evidence only in `HANDOFF.md`;
 - executable commands only in `RUNBOOK.md`;
+- detailed operational task-start freshness, routing, and expansion rules in
+  `TASK_START.md`, with concise enforcement in `AGENTS.md`;
 - durable rationale only in `DECISIONS.md`;
 - open questions plus a resolved index only in `QUESTIONS.md`;
 - troubleshooting contains symptom, cause, diagnosis, and fix—not roadmap;
@@ -155,7 +195,8 @@ validation during this sequence.
 - no NORAD workflow, validator, schema, config, scientific-method, or
   public-contract behavior changes; the separately committed one-time
   dependency lock refresh is limited to resolving the guarded local gate;
-- complete applicable local and documentation gates pass.
+- the documentation gate passes; computational gates apply only to executable
+  or test-affecting changes.
 
 ### Comprehensive refactor program
 

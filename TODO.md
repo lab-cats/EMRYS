@@ -9,25 +9,53 @@ checkout and exact resume point belong in
 
 ## Immediate
 
-1. Select and plan
-   [`TEST-01C`](docs/tasks/TODO/TEST-01C-characterize-validation-check-rosters.md),
-   the next remaining behavior-characterization package.
-2. Complete the approved Phase 01 sequence through
-   [`TEST-01D`](docs/tasks/TODO/TEST-01D-characterize-public-cli-contracts.md),
-   [`TEST-01E`](docs/tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md),
-   and
-   [`TEST-01F`](docs/tasks/TODO/TEST-01F-create-independent-contract-goldens.md).
-3. Make the explicit behavior-readiness decision in
-   [`TEST-01Z`](docs/tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md).
-   A negative decision creates bounded closure cards; it does not begin
-   architecture work.
-4. Only after an affirmative decision, proceed through the Phase 02 design
-   cards and
-   [`PLAN-02Z`](docs/tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md),
-   then the three independent reviews.
+1. After the current context-policy documentation package is clean, pushed,
+   and upstream-equal, select and plan
+   [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md).
+2. Complete and push `CONCURRENCY-01`, then pause for the required user
+   discussion about how to leverage multiple documentation/card sidecars and
+   choose a safe first concurrency strategy.
+3. Select
+   [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+   only after that discussion and separate task-specific approval.
+4. Reassess the maintenance and main-refactor tranches under the resulting
+   program model. `TEST-01C` remains the first uncompleted Phase `01`
+   characterization card in the inherited roadmap, but its position and the
+   rest of that sequence are provisional until this reassessment. Do not treat
+   maintenance order as a blocker or these notes as task authorization.
 
-Selecting a card starts read-only planning and requires a separate approved
-plan before implementation.
+Before `PROGRAM-01`, the preserved baseline is `TEST-01C` through `TEST-01F`,
+then the explicit `TEST-01Z` behavior-readiness decision, followed only after
+an affirmative decision by architecture delivery, applicable reviews, and
+`PLAN-02Z`. `PROGRAM-01` must confirm or revise that sequence before another
+card is selected.
+
+Selecting a card starts read-only planning under the
+[`task-start router`](docs/operations/TASK_START.md) and requires a separate
+approved plan before implementation.
+
+## Recommended maintenance order
+
+The following is roadmap order, not card-blocker metadata. None of these cards
+technologically blocks `TEST-01C` or authorizes work without its own approved
+plan:
+
+1. Establish isolated multi-sidecar authoring and serialized integration
+   through
+   [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md),
+   then pause for the required user strategy discussion.
+2. If separately selected after that discussion, establish rolling-wave
+   planning and coordination cohorts through
+   [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+3. Reassess rather than freezing the remaining order now. The current expected
+   candidates begin with extracting and behavior-locking the documentation
+   validator through
+   [`DOC-GATE-01`](docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md).
+4. Correct live task-dependency semantics and validator enforcement through
+   [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
+5. Put [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+   first within the Phase `02` documentation family so it can produce the
+   no-loss `AGENTS.md` slim-down and later consolidation cards.
 
 ## Current-program task families
 
@@ -37,8 +65,15 @@ plan before implementation.
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
   [`LOG-01`](docs/tasks/TODO/LOG-01-characterize-current-output.md) onward.
+- Operating model and coordination:
+  [`CONCURRENCY-01`](docs/tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+  and
+  [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 - Documentation ownership, glossary, READMEs, user overview, code comments, and
-  local context:
+  local context, with documentation-validator and task-registry maintenance
+  tracked separately:
+  [`DOC-GATE-01`](docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
+  [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md),
   [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
   through [`CONTEXT-09`](docs/tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
 - Large-file dispositions:

@@ -5,6 +5,12 @@ RNA-editing workflow. Develop it as maintainable research software: explicit
 inputs and outputs, reproducible commands, small local tests, useful logs, and
 clear evidence boundaries.
 
+Use context and tokens responsibly. Correctness, safety, scientific and
+evidence integrity, and effective task completion take priority over token
+reduction. When approaches are otherwise equivalent, prefer targeted context,
+concise output, and de-duplicated work. Never omit required inspection,
+reasoning, validation, evidence, or user communication solely to save tokens.
+
 Current project state belongs in
 [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md). The authoritative
 roadmap and status matrix belong in
@@ -12,22 +18,27 @@ roadmap and status matrix belong in
 
 ## Required task start
 
-Begin every task in plan/review mode. Before editing, branching, installing
-dependencies, or running mutating commands:
+Begin each selected card or other explicitly bounded package in plan/review
+mode; a follow-up message within the same uninterrupted package is not a new
+task start. Before editing, branching, installing dependencies, or running
+mutating commands:
 
-1. read `AGENTS.md` and `docs/operations/HANDOFF.md` completely;
-2. read the applicable status, lineage, and acceptance sections of
-   `docs/design/PIPELINE_PLAN.md`;
-3. read the task-relevant anchored sections of `README.md`, `TODO.md`,
-   `docs/design/QUESTIONS.md`, `docs/operations/RUNBOOK.md`,
-   `docs/design/DECISIONS.md`, and
-   `docs/operations/TROUBLESHOOTING.md`;
-4. inspect the worktree and relevant implementation before proposing changes.
+1. apply this file's exact current instructions, reading it from disk when the
+   active context does not already contain that version;
+2. read [`docs/operations/TASK_START.md`](docs/operations/TASK_START.md) and
+   the selected task card, when one exists, in full unless the exact unchanged
+   version is already available in the active context;
+3. inspect live Git state and use the task-start router to select applicable
+   canonical sections and expansion triggers; and
+4. inspect the relevant implementation, contracts, consumers, tests, and
+   fixtures before proposing changes.
 
-Read all nine documents completely at a phase boundary, when documentation
-ownership changes, when targeted inspection exposes an inconsistency, or when
-the task cannot be bounded safely from the canonical owners. Do not edit until
-the user approves the plan.
+Existing context may replace a reread only when its exact revision is known,
+Git proves the relevant content unchanged, and the retained context is
+sufficient for the current decision. Phase boundaries require renewed impact,
+ownership, interface, and acceptance assessment—not an automatic complete-
+corpus read. Broaden immediately for the triggers in `TASK_START.md`. Do not
+edit until the user approves the task-specific plan.
 
 Future work may also have a card in [`docs/tasks/`](docs/tasks/). A card
 preserves settled constraints, bounded scope, direct dependencies, and required
@@ -50,20 +61,29 @@ clean, docpatched predecessor:
 4. Add focused tests and run one de-duplicated complete applicable local gate
    against the final executable state.
 5. Commit implementation and tests.
-6. Reread the changed documents and their canonical owners.
-7. Perform a repository-wide documentation and diagram consistency pass.
+6. Use the final diff, canonical ownership map, and targeted link/search
+   results to identify affected documents and diagrams. Inspect the affected
+   sections, their canonical owners, and direct references.
+7. Perform a repository-wide documentation impact check. Broaden semantic
+   inspection only when the change is cross-cutting, ownership changes, a
+   contradiction appears, or the affected scope cannot be bounded safely.
 8. Commit the docpatch separately.
-9. Run the documentation gate. Repeat computational suites only if the
-   docpatch changed executable configuration, dependencies, Make targets,
-   schemas, fixtures, or test selection/execution semantics. Require a clean
-   worktree, inspect history, and push.
+9. Run the documentation gate. Do not repeat computational suites when the
+   docpatch leaves executable configuration, dependencies, Make targets,
+   schemas, fixtures, report templates, and test-harness selection and execution
+   semantics unchanged. Require a clean worktree, inspect history, and push.
 10. Confirm upstream equality before creating another branch.
 
 If implementation changes after the docpatch, reopen the gate: retest, commit
 the correction, and perform another separate docpatch.
 
-A documentation-only package uses one documentation commit. Do not fabricate
-an implementation commit when no executable behavior changed.
+A standalone documentation-only package uses one documentation commit. When
+its complete predecessor-to-final diff changes only documentation artifacts
+that are not consumed by executable, configuration, generation, schema,
+fixture, report-template, or test-harness selection or execution behavior,
+computational validation is not applicable. Run Git and documentation
+validation only; do not fabricate an implementation commit or run
+computational Python, shell, R, or report-runtime test suites.
 
 During implementation, use focused tests repeatedly and reserve the complete
 computational gate for the final executable state. Pytest is quiet by default
@@ -242,6 +262,7 @@ Each mutable fact has one canonical owner:
 | `PIPELINE_PLAN.md` | Pipeline/package/evidence roadmap, status matrix, acceptance criteria, and branch lineage |
 | `QUESTIONS.md` | Open operational/scientific questions, open design choices, and a resolved-question index |
 | `RUNBOOK.md` | Executable setup, validation, cluster, and recovery commands |
+| `TASK_START.md` | Version-aware task-start routing, context freshness, expansion triggers, and documentation-impact selection |
 | `DECISIONS.md` | Durable decisions, rationale, alternatives, and consequences |
 | `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
 | `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
@@ -255,11 +276,11 @@ roadmaps, or next-step narratives outside their canonical owner. Link instead.
 Do not maintain inline copies of standalone Mermaid sources.
 
 After each task, suggest relevant updates to these documents. When behavior
-changes, complete the repository-wide docpatch; update every affected status,
-interface, command, path, schema, limitation, diagram, and next-step claim.
-Update the selected task card and all inbound links as part of the same
-docpatch. Durable architectural truth remains in the canonical owners above,
-not in the card.
+changes, complete the impact-directed docpatch and repository-wide impact
+check; update every affected status, interface, command, path, schema,
+limitation, diagram, and next-step claim. Update the selected task card and all
+inbound links as part of the same docpatch. Durable architectural truth remains
+in the canonical owners above, not in the card.
 
 ## Biological interpretation caution
 

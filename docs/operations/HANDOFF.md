@@ -7,28 +7,37 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01-architecture-direction-docs`
+  `codex/context-start-policy`
 - Parent:
-  `refactor-01b-validation-publication-faults`
+  `refactor-01-architecture-direction-docs`
 - Verified parent HEAD:
-  `dcdb371c766c337e4f6c864810d5c7bd4da023f2`
-- Parent implementation commit:
-  `f7e00e4 test: characterize validation publication faults`
-- Parent documentation patch:
-  `dcdb371 docs: record publication fault characterization`
+  `d2ceb54e5a106b9a5dced7264a1bb5165b89dab6`
+- Parent documentation commit:
+  `d2ceb54 docs: capture architecture direction and task registry`
 - Current documentation commit:
-  `docs: capture architecture direction and task registry` (branch HEAD)
-- Current package: documentation-only preparation for the remaining behavior
-  gate, architecture/design tasks, independent reviews, and later separately
-  planned refactor packages
-- Package type: one documentation commit; reuses the verified parent
-  computational evidence because no executable surface changed
+  `docs: define version-aware task start` (the branch commit containing this
+  handoff; resolve its exact SHA from Git)
+- Recorded package state: `CONTEXT-00` is complete and the documentation-only
+  tree is ready for publication; verify live cleanliness, push state, and
+  upstream equality from Git before takeover
+- Current package: documentation-only version-aware task-start routing,
+  selective phase-boundary inspection, impact-directed consistency review, and
+  explicit documentation-only validation semantics
+- Package type: one documentation commit; computational validation is not
+  applicable because the predecessor-to-final diff changes no executable or
+  test-affecting surface
 - Remote and cluster work: paused
 
-The architecture-direction documentation branch descends directly from the
-clean, pushed, upstream-equal validation-publication documentation commit. The
-parent branch and live remote both resolved to the verified parent HEAD before
-this branch was created.
+The context-policy branch descends directly from the clean, pushed, upstream-
+equal architecture-direction documentation commit. The parent branch and live
+remote both resolved to the verified parent HEAD before this branch was
+created; the user's responsible-context instruction was preserved when the
+descendant was created. Review before push reopened the package to remove
+sequence-only dependency metadata, preserve completed-card history, and create
+bounded follow-up cards for registry semantics and the embedded documentation
+validator. The approved correction also records multiple isolated
+documentation/card sidecars plus rolling-wave program planning as future
+operating-model cards; neither policy is active until its own card completes.
 
 ## Completed boundary
 
@@ -95,13 +104,22 @@ The local descendant sequence has implemented:
   all 13 step validators plus the distinct provenance, preflight, and storage
   transactions, with protected success/rollback behavior and current unsafe
   recovery states clearly distinguished in test names and comments.
-- a file-backed task registry initially created with one completed bootstrap
-  record and 45 TODO cards, direct reciprocal dependencies, bounded acceptance
-  evidence, and an explicit planning-before-implementation lifecycle;
+- a file-backed task registry with 51 cards in the current working tree,
+  bounded acceptance evidence, and an explicit planning-before-implementation
+  lifecycle; the legacy reciprocal dependency model remains unchanged pending
+  the separately planned `TASK-REG-01` migration;
 - durable architecture decisions and target constraints for behavior-first
   migration, vertical source/test ownership, semantic stages, YAML+TSV intake,
   report profiles, two-sink logging, documentation/local context, future
-  analysis/public-data/package seams, and the documentation-health skill;
+  analysis/public-data/package seams, the documentation-health skill,
+  isolated concurrent authoring, and rolling-wave delivery;
+- a version-aware task-start router with exact-revision context reuse,
+  selective phase-boundary inspection, explicit expansion triggers, impact-
+  directed manual documentation review, and a quiet repository-wide structural
+  gate;
+- explicit standalone documentation-package semantics: computational
+  validation is not applicable when the complete diff has no executable or
+  test-affecting consumer;
 - an open-choice ledger and updated future Mermaid sources. Current executable
   topology, report behavior, logging behavior, numeric stage identifiers, and
   runtime/scientific evidence remain unchanged.
@@ -150,7 +168,8 @@ The local descendant sequence has implemented:
 | Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
-| Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-selection, scientific-method, runtime, cluster, or evidence-state change |
+| Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
+| Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -272,19 +291,25 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The documentation-only architecture-direction package records decisions and
-future cards; it does not execute the active repository-spanning refactor. Its
+The documentation-only context-policy package changes task-start and review
+instructions; it does not execute the active repository-spanning refactor. Its
 predecessor executable state remains the completed Phase `01b` implementation
 and its recorded computational evidence.
 
-After confirming this documentation branch is clean, pushed, and upstream-
-equal, the next task is
-[`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md).
-Do not begin it automatically. Explicit selection moves the card to
-`IN_PROGRESS` for task-specific read-only planning; implementation still
-requires a separately approved plan. Its implementation branch remains
-`refactor-01c-validation-check-rosters` unless that live plan explicitly and
-lawfully changes the name.
+`CONTEXT-00` is complete. After confirming its package commit is clean,
+published, and upstream-equal, select
+[`CONCURRENCY-01`](../tasks/TODO/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
+as the next documentation-only operating package. It must implement isolated
+worktrees, at most one implementation-candidate or immutable-execution lane,
+multiple documentation/card sidecars, single-owner integration, and combined
+validation. Complete and push it, then pause for the required user discussion
+about leverage and first-use strategy. Do not select
+[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+or begin concurrent delivery before that discussion.
+
+`TEST-01C` remains the first uncompleted Phase `01` characterization card.
+Maintenance and program order are roadmap guidance rather than technological
+blockers; every selected card still requires its bounded planning and approval.
 
 The one-time Phase `00` dependency exception is exhausted and does not
 authorize future changes outside the normal development gate. Do not change

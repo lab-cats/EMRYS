@@ -184,20 +184,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   conceptual overview and a clearly dated `docs/history/`-style owner for
   noncanonical snapshots, subject to the inventory.
 
-### CHOICE-CONTEXT-01 — Exact scope-aware canonical reading policy
-
-- **Question:** After local context is proven, which task classes may use
-  anchored/local reads and which still require complete canonical-corpus reads?
-- **Why it matters:** token reduction must not omit scientific, recovery,
-  evidence, or public-contract context needed for correctness.
-- **Owning card:**
-  [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
-- **Decision deadline:** before changing the task-start rules in `AGENTS.md`.
-- **Recommendation:** retain complete reads for phase, ownership, contradiction,
-  and cross-cutting/safety boundaries; permit card-defined local context plus
-  anchored canonical reads only after representative stage/domain pilots prove
-  correct scoping.
-
 ### CHOICE-SKILL-01 — Documentation-health skill name and discovery location
 
 - **Question:** What supported skill name, filesystem/install scope, and
@@ -303,6 +289,11 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 - separation of computational proof, scientific review, and biological state;
 - structured artifact/reporting decoupling;
 - documentation ownership and task-bounded canonical reading;
+- `CHOICE-CONTEXT-01`: version-aware task-start routing, exact-revision context
+  reuse, selective phase-boundary inspection, explicit expansion triggers, and
+  impact-directed documentation review; see
+  [`TASK_START.md`](../operations/TASK_START.md) and the
+  [context-routing decision](DECISIONS.md#route-task-context-by-revision-and-impact);
 - one complete computational gate per executable state and failure-first local
   validation output;
 - de-duplicated validation lanes with measured bounded parallel defaults,

@@ -30,8 +30,9 @@ authoritative step/package matrix and descendant roadmap, read
 
 ## Minimal local start
 
-1. Read [`AGENTS.md`](AGENTS.md) and the handoff, then follow their targeted
-   canonical-document reading rule.
+1. Apply [`AGENTS.md`](AGENTS.md), read the concise
+   [`task-start router`](docs/operations/TASK_START.md), and follow the selected
+   card to the applicable current-state and canonical sections.
 2. Use the commands in
    [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md).
 3. Start with synthetic fixtures and dry-run mode.
@@ -72,6 +73,7 @@ logs/           ignored runtime logs
 | [`TEST_BASELINE.md`](docs/design/TEST_BASELINE.md) | Measured Python baseline and public-contract risk-to-test traceability |
 | [`QUESTIONS.md`](docs/design/QUESTIONS.md) | Open questions and resolved-question links |
 | [`RUNBOOK.md`](docs/operations/RUNBOOK.md) | Setup, validation, cluster, inspection, and recovery commands |
+| [`TASK_START.md`](docs/operations/TASK_START.md) | Minimum task-start context, freshness rules, and canonical routing |
 | [`DECISIONS.md`](docs/design/DECISIONS.md) | Durable decisions and rationale |
 | [`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Symptom-to-fix guidance |
 | [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
@@ -96,11 +98,12 @@ recorded before downstream runtime promotion; filenames are not provenance.
 
 ## Development model
 
-Each package uses a clean descendant branch, focused and complete local
-validation, an implementation commit when executable behavior changes, a
-separate repository-wide documentation commit, and a clean pushed gate before
-another branch begins. Documentation-only packages use one documentation
-commit.
+Each package uses a clean descendant branch, focused and complete applicable
+local validation, an implementation commit when executable behavior changes,
+a separate impact-directed documentation commit, and a clean pushed gate
+before another branch begins. Documentation-only packages use one
+documentation commit and no computational suite when the complete diff has no
+executable or test-affecting consumer.
 
 Future work is selected from the
 [`task registry`](docs/tasks/README.md). Moving a card to `IN_PROGRESS` begins

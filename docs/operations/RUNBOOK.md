@@ -11,7 +11,7 @@ create stage branch from latest clean docpatched predecessor
 -> implement only that stage
 -> focused and complete local validation
 -> implementation commit
--> reread required docs and repository-wide docpatch
+-> impact-directed documentation review and repository-wide impact check
 -> documentation-only commit
 -> clean status/history and push
 -> create the next descendant stage branch
@@ -1264,13 +1264,19 @@ each runner reports `SKIP`, and when ambient Step `08` packages are absent it
 fails. Neither a skip nor an ambient failure replaces the guarded semantic
 gate. An explicit bad override fails; Step `09` itself uses base R only.
 
-Commit implementation/tests first. Then read the changed documents and their
-canonical owners, perform the repository-wide targeted consistency and diagram
-pass, and make the separate documentation-only commit.
+Commit implementation/tests first. Then use the final implementation diff,
+canonical ownership map, and targeted repository-wide searches to identify
+affected documentation and diagrams. Inspect the affected sections, owners,
+direct references, and changed diagrams as routed by
+[`TASK_START.md`](TASK_START.md#documentation-impact-and-validation), then make
+the separate documentation-only commit.
 
-When the documentation patch changes only Markdown or Mermaid files, reuse the
-complete computational result recorded for the implementation state and run
-this documentation gate:
+When that documentation patch changes only documentation artifacts and none is
+consumed by executable, configuration, generation, schema, fixture, report-
+template, or test-harness selection or execution behavior, reuse the complete
+computational result recorded for the unchanged implementation state and run
+this documentation gate. A standalone package meeting the same condition
+records computational validation as not applicable and runs this gate only:
 
 ```bash
 cd /Users/elisteiger/dev/norad
@@ -1539,17 +1545,25 @@ git diff --name-status
 The checker validates local paths and GitHub-style heading anchors, includes
 untracked new documents, enforces task-card IDs/locations/headings/direct
 dependencies, rejects hard-dependency cycles and orphan cards/diagrams, and
-checks basic Mermaid source structure. It does not replace manual semantic
-comparison of every changed diagram with its owning architecture document.
+checks basic Mermaid source structure. It reads the repository globally but
+normally emits one compact result, so it does not require loading the corpus
+into agent context. It does not replace targeted semantic comparison of each
+changed or otherwise affected diagram with its owning architecture document.
 
-Inspect `git diff --name-only <validated-implementation-commit>` and require
-every path after that commit to be documentation-only. Repeat the complete
-computational gate if the patch changes executable configuration,
-dependencies, Make targets, schemas, fixtures, or test selection/execution
-semantics, or if the implementation changes after its recorded gate. Quiet
-flags, shorter tracebacks, Make command-echo suppression, and output
+Inspect the complete diff from `<validated-implementation-commit>` for a
+docpatch or from the package predecessor for a standalone documentation
+package; do not classify only one unstaged or staged view. Before commit,
+include staged, unstaged, and untracked paths; after commit, compare the exact
+commits. Require every changed path to be a documentation artifact with no
+executable or test-affecting consumer.
+Do not run computational Python, shell, R, or report-runtime test suites for a
+qualifying documentation-only diff. The complete computational gate becomes
+applicable if the patch changes executable configuration, dependencies, Make
+targets, schemas, fixtures, report templates, or test-harness selection and
+execution semantics, or if implementation changes after its recorded gate.
+Quiet flags, shorter tracebacks, Make command-echo suppression, and output
 redirection do not change test selection or assertions; smoke-test those
-command forms through focused checks.
+command forms through focused checks when they themselves change.
 
 A documentation-only package uses the documentation gate and one
 documentation commit. Before handing off or creating the next descendant,
@@ -1656,7 +1670,7 @@ cd /Users/elisteiger/dev/norad
 git status --short
 git add <changed-files>
 git commit -m "<stage implementation message>"
-# after the required document reread and repository-wide docpatch:
+# after impact-directed documentation review and the repository-wide impact check:
 git add <documentation-files>
 git commit -m "step NN docpatch"
 git diff --check

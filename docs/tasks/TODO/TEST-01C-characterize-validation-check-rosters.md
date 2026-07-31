@@ -33,8 +33,12 @@ regression.
 
 ## Required context
 
-- `TEST_BASELINE.md` `TG-03`, `REFACTOR_AUDIT.md` findings `RA-017` and
-  `RA-019`, every step validator, and the directly associated tests/fixtures.
+- [`TEST_BASELINE.md` `TG-03`](../../design/TEST_BASELINE.md#evidence-derived-characterization-gaps)
+  plus its [validator inventory](../../design/TEST_BASELINE.md#python-entry-points).
+- [`REFACTOR_AUDIT.md` `RA-017`](../../design/REFACTOR_AUDIT.md#ra-017--incomplete-public-contract-traceability)
+  and [`RA-019`](../../design/REFACTOR_AUDIT.md#ra-019--productiontest-shared-defect-exposure).
+- The live `scripts/validate_step_*.py` validator family and each directly
+  associated `tests/test_validate_step_*.py` module or fixture.
 
 ## Questions owned by this card
 

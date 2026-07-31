@@ -205,7 +205,9 @@ decomposition plan or explicit justification. Files above 1,500 lines require
 elimination during the active refactor or an explicit exception. These are
 review thresholds, not instructions to split at arbitrary line boundaries.
 
-Every mature stage/domain supplies a local maintainer context with:
+Every mature stage/domain supplements the global
+[`task-start router`](../operations/TASK_START.md) with local maintainer
+context containing:
 
 - purpose and scientific/operational boundary;
 - file map and local ownership;
@@ -215,9 +217,11 @@ Every mature stage/domain supplies a local maintainer context with:
 - safety, failure, recovery, and evidence cautions;
 - links to canonical cross-cutting decisions and commands.
 
-This context reduces routine repository-wide reading. Phase boundaries,
-cross-cutting changes, contradictions, and safety-critical uncertainty still
-require the broader canonical read set.
+This context reduces routine repository-wide reading. Phase boundaries trigger
+renewed ownership, interface, acceptance, and diff assessment. Cross-cutting
+changes, contradictions, unknown revisions, and scientific, evidence, safety,
+recovery, or public-contract uncertainty broaden inspection according to
+impact; they do not impose an unrelated fixed corpus.
 
 ## Reporting target
 

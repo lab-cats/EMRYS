@@ -13,8 +13,9 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 ## Fixed decisions
 
-- Correctness outranks token reduction; broad reads remain required at phase
-  and cross-cutting boundaries.
+- Correctness outranks token reduction; local bundles extend the freshness,
+  routing, and impact-based expansion rules in
+  [`TASK_START.md`](../../operations/TASK_START.md).
 - Each local context explains purpose, local files, input/output contracts,
   direct upstream/downstream interfaces, relevant tests, and canonical links.
 - Local context never duplicates mutable branch, evidence, command, or roadmap
@@ -37,12 +38,13 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 ## Required context
 
-- Target topology, semantic map, README matrix, contract placement, task-start
-  rules, and current canonical owner table.
+- Global `TASK_START.md` rules, target topology, semantic map, README matrix,
+  contract placement, representative cards, and the canonical owner table.
 
 ## Questions owned by this card
 
-- [`CHOICE-CONTEXT-01`](../../design/QUESTIONS.md#choice-context-01--exact-scope-aware-canonical-reading-policy).
+- None. The global reading policy is resolved by `CONTEXT-00`; this card owns
+  the later evidence needed to refine local stage/domain bundles.
 
 ## In scope
 
@@ -51,8 +53,8 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 ## Out of scope
 
-- Weakening canonical task-start reads globally, embedding full repository
-  state in each stage, or generating summaries from unverified code.
+- Replacing the global task-start router, embedding full repository state in
+  each stage, or generating summaries from unverified code.
 
 ## Deliverables
 
