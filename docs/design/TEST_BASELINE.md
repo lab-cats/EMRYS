@@ -211,8 +211,27 @@ legacy exceptions before any structural change.
 | `test`, `shell-test`, `real-r-test`, `local-real-r-test`, `report-test` | run as explicit local gates | adequate; each retains its own evidence boundary |
 | `r-restore`, `r-check`, `quarto-restore` | focused environment/restore tests plus explicit operator invocation | adequate; dependency mutation remains operator-only |
 | `python-coverage-measure`, `python-coverage-check`, `python-coverage-baseline-update` | `tests/test_python_coverage_baseline.py` and successful repository measurement | adequate; baseline update remains deliberate |
-| `validate`, `smoke`, `lint`, `all-checks` | target inspection plus component gates | partial: exact target/exit characterization under `TG-04` |
+| `all-checks` | orchestrator unit/process-tree tests plus exact serial/parallel result and coverage comparison | adequate for validation scheduling, failure propagation, interruption cleanup, and serial fallback; underlying public-contract completeness remains in `TG-04` |
+| `validate`, `smoke`, `lint` | target inspection plus component gates | partial: exact target/exit characterization under `TG-04` |
 | `demo-step03-dry-run`, `demo-step03` | command inspection only | partial: submission behavior remains deferred with cluster work |
+
+### Validation-efficiency characterization
+
+Phase `01aa` left the reviewed baseline file and its non-regression policy
+unchanged. The final executable state ran 463 Python tests with 17 expected
+conditional skips and measured 26 production modules, 8,542/10,551 lines, and
+3,074/4,404 branches. Serial and every characterized parallel candidate had
+identical per-file counts, totals, and coverage digest.
+
+The package separately characterized one through four Python workers and one
+through four top-level lane slots. It enabled two Python workers and three
+top-level slots only after exceeding the required improvement thresholds and
+selecting the smallest candidates within 5% of the fastest medians. Three
+consecutive default gates reproduced exact serial result/coverage equality.
+Controlled nonzero failure and `SIGINT` tests also proved exit propagation,
+retained failed output, process-group cleanup, handler restoration, and no
+stale owned logs. Exact timings and the current evidence boundary are recorded
+in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 
 ## Cross-cutting risk matrix
 

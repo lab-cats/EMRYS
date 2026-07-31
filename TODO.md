@@ -8,10 +8,9 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Verify `refactor-01a1-demo-report-command` is clean, pushed, and
-   upstream-equal, then add the validation-efficiency package with quiet
-   failure-first output, de-duplicated test lanes, and measured bounded
-   parallel execution.
+1. Verify `refactor-01aa-validation-efficiency` is clean, pushed, and
+   upstream-equal, then add the shared validation-publication fault
+   characterization package.
 2. Add the five remaining evidence-derived characterization packages in the
    exact descendant order owned by
    [`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
@@ -25,8 +24,6 @@ checkout and evidence boundary are in
 - Use the completed independent Step `09` CMH characterization oracle and
   corruption corpus to design a separately reviewed compatible validator
   correction; the production validator still does not recompute these fields.
-- Characterize safe Python and top-level test parallelism without weakening
-  coverage, failure evidence, cleanup, or serial fallback behavior.
 - Add high-risk characterization for shared validation publication/recheck
   faults and exact validation check rosters.
 - Complete public CLI/exit, SLURM-wrapper, and independent-golden

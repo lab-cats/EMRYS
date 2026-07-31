@@ -55,10 +55,21 @@ failure or an explicit verbose run.
 
 Reason: successful progress narration consumes operator attention and agent
 context without changing evidence. Failure logs must remain complete and
-diagnosable. Parallel execution is not enabled merely by adding `make -j`;
-the dedicated validation-efficiency package must prove independent lanes,
-exact serial/parallel result and coverage equality, bounded concurrency,
-failure reporting, cleanup, and a serial fallback first.
+diagnosable.
+
+Decision: the complete developer gate uses a bounded orchestrator rather than
+unconstrained `make -j`. Python coverage, shell contracts, sequential guarded
+R, and pinned report-runtime checks are independent lanes. A parallel default
+is allowed only after exact repeated serial/parallel result, file, line,
+branch, and coverage equality; the measured improvement thresholds and
+smallest-stable-concurrency rule in `PIPELINE_PLAN.md`; controlled failure and
+interruption cleanup; and a working serial fallback. Developer-only parallel
+dependencies are pinned and synchronized explicitly, never installed by tests
+or workflow entry points.
+
+Reason: this removes duplicate work and reduces feedback latency while keeping
+coverage, evidence boundaries, failure provenance, process cleanup, and a
+deterministic low-concurrency fallback reviewable.
 
 ### Read canonical documentation by task boundary
 

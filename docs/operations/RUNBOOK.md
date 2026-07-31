@@ -1184,68 +1184,65 @@ the implementation/test commit. The coverage target already runs the complete
 Python suite, so do not precede it with a duplicate uninstrumented full pytest
 run.
 
-For failure-first output, define this temporary Bash helper in the active
-shell. It removes successful logs, retains a failed log, and prints the full
-failed output:
+The canonical gate runs static preflight first and then these de-duplicated
+lanes:
 
-```bash
-run_quiet() {
-    local label="$1"
-    local log_path
-    local status
-    shift
-    log_path="$(mktemp "${TMPDIR:-/tmp}/norad-${label}.XXXXXX")" || return 1
-    if "$@" >"$log_path" 2>&1; then
-        printf 'PASS %s\n' "$label"
-        rm -f "$log_path"
-    else
-        status=$?
-        printf 'FAIL %s; full log retained at %s\n' \
-            "$label" "$log_path" >&2
-        cat "$log_path" >&2
-        return "$status"
-    fi
-}
-```
+- complete Python coverage and baseline comparison;
+- shell contracts without the Python modules already covered above;
+- repository-local R environment validation followed by guarded Step `08` and
+  Step `09` real-R tests, sequentially within one lane;
+- only the pinned real-Quarto/Typst report-runtime tests.
 
-Then run the serial complete gate:
+Run the default quiet gate with three top-level lane slots and two Python
+workers:
 
 ```bash
 cd /Users/elisteiger/dev/norad
-git diff --check
-bash -n scripts/*.sh
-bash -n jobs/*.slurm
-.venv/bin/python -m compileall -q scripts tests
-
-(
-    set -e
-    run_quiet python-coverage \
-        env PYTEST_ADDOPTS='-q --tb=short' \
-        make -s python-coverage-check
-    run_quiet shell \
-        env PYTEST_ADDOPTS='-q --tb=short' \
-        make -s shell-test
-    run_quiet r-environment \
-        env RSCRIPT_BIN=/usr/local/bin/Rscript \
-        make -s r-check
-    run_quiet real-r \
-        env RSCRIPT_BIN=/usr/local/bin/Rscript \
-        make -s local-real-r-test
-    run_quiet report-runtime \
-        env PYTEST_ADDOPTS='-q --tb=short' \
-        make -s report-test
-)
-
-git status --short
-git diff --name-status
+RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks
 ```
 
-For an explicitly verbose run, invoke the relevant component without
-`run_quiet`, `make -s`, or `PYTEST_ADDOPTS`. Do not discard a retained failed
-log until the failure is understood.
+The gate prints elapsed `PASS` lines and a final timing summary. Successful
+temporary logs are deleted. On the first failure it cancels and reaps the
+other lane process groups, retains and prints the failed lane's complete log,
+and returns that lane's status. `SIGINT` returns `130`, terminates descendants,
+and removes successful owned logs.
 
-The complete local gate uses `make local-real-r-test`, which opts into the
-repository-local R library through the guarded environment below. Bare
+Use the deterministic serial fallback to diagnose concurrency-specific
+behavior:
+
+```bash
+cd /Users/elisteiger/dev/norad
+RSCRIPT_BIN=/usr/local/bin/Rscript \
+    make -s all-checks VALIDATION_ARGS=--serial
+```
+
+Stream complete lane output for an explicitly verbose run:
+
+```bash
+cd /Users/elisteiger/dev/norad
+RSCRIPT_BIN=/usr/local/bin/Rscript \
+    make -s all-checks VALIDATION_ARGS=--verbose
+```
+
+Record the machine-readable timing, result, and coverage summary at an
+explicit ignored or temporary path when characterizing the gate:
+
+```bash
+cd /Users/elisteiger/dev/norad
+RSCRIPT_BIN=/usr/local/bin/Rscript \
+    make -s all-checks \
+    VALIDATION_ARGS="--result-json /private/tmp/norad-validation.json"
+```
+
+`VALIDATION_JOBS` and `VALIDATION_PYTHON_WORKERS` may override the measured
+defaults for an explicit characterization run. Each value must be between one
+and four. Use `--serial` for the supported fallback rather than maintaining a
+second command sequence. Do not discard a retained failed log until the
+failure is understood.
+
+The guarded-R lane uses `make local-real-r-test`, which opts into the
+repository-local R library through the guarded environment below after
+`make r-check` succeeds. Bare
 `make real-r-test` is an ambient-runtime diagnostic: when `Rscript` is absent,
 each runner reports `SKIP`, and when ambient Step `08` packages are absent it
 fails. Neither a skip nor an ambient failure replaces the guarded semantic
@@ -1333,7 +1330,10 @@ cd /Users/elisteiger/dev/norad
 ```
 
 Tests, workflow scripts, validators, jobs, and report renderers do not run that
-installation command.
+installation command. The measured parallel gate requires the exact
+developer-only `pytest-xdist` and `execnet` versions in `requirements.txt`.
+The serial fallback does not require xdist. Never install either package
+globally or automatically from an ordinary test or validation target.
 
 Measure the complete Python suite, trace configured Python subprocesses, and
 compare the result with the reviewed baseline:

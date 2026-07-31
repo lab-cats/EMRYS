@@ -7,29 +7,27 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01a1-demo-report-command`
+  `refactor-01aa-validation-efficiency`
 - Parent:
-  `refactor-01a-step09-independent-cmh-oracle`
+  `refactor-01a1-demo-report-command`
 - Verified parent HEAD:
-  `b83e468a448e79a2da409cce95bbddf3626accd4`
-- Parent implementation:
-  `bef0f97 test: characterize Step 09 CMH independently`
-- Parent documentation patch:
-  `b83e468 docs: complete Phase 01a handoff and validation policy`
-- Current implementation commits:
+  `f9aef17f4d6a2aa6e88feb41f85c1364af194889`
+- Parent implementation commits:
   - `79907fc feat: add synthetic demo report target`
   - `0169c13 feat: populate and categorize demo report`
-- Current package: populated synthetic demo-report command, science-first
-  native HTML categories, bounded wide-table behavior, and readable PDF
-  candidate projection
+- Parent documentation patch:
+  `f9aef17 docs: add demo report workflow`
+- Current implementation:
+  `dd19f0f test: add measured parallel validation gate`
+- Current package: de-duplicated Python-coverage, shell-contract, sequential
+  guarded-R, and pinned-report-runtime validation lanes with measured bounded
+  orchestration
 - Package type: implementation/tests plus separate documentation patch
 - Remote and cluster work: paused
 
-The demo branch was created at the Phase `01a` implementation commit in a
-dedicated sibling worktree while the Phase `01a` documentation patch was
-pending. It remained unpushed, never modified the active Phase `01a`
-worktree, and rebased without conflict onto the final clean, pushed,
-upstream-equal Phase `01a` parent before its post-rebase validation.
+The validation-efficiency branch descends directly from the clean, pushed,
+upstream-equal demo-report documentation commit. The parent branch and remote
+both resolved to the verified parent HEAD before this branch was created.
 
 ## Completed boundary
 
@@ -88,6 +86,10 @@ The local descendant sequence has implemented:
   p-value, common odds ratio, and one global BH family from paired DP/AD
   counts, with valid, zero-cell, all-zero, missing, low-coverage,
   infinite-odds, rounding, multi-stratum, and coordinated-corruption cases.
+- a de-duplicated complete developer-validation gate with four independent
+  lanes, quiet failure-first logs, explicit verbose and serial modes, bounded
+  process-group cleanup, timing/result summaries, and exact coverage
+  comparison.
 
 ## Evidence boundary
 
@@ -131,6 +133,18 @@ The local descendant sequence has implemented:
 | Phase `01` test baseline | measured developer-only Python line/branch baseline and public-contract matrix recorded in [`../design/TEST_BASELINE.md`](../design/TEST_BASELINE.md); the implementation gate passed with 432 Python tests passing, 17 expected skips, every shell suite passing, guarded R environment/current-release validation, Step `08`/`09` local real-R fixtures, and 143 pinned report-runtime tests; no production behavior or evidence state changed |
 | Phase `01a` independent Step `09` oracle | 20 focused Python oracle tests and the committed real-R Step `09` corpus comparison passed; the complete implementation gate passed with 452 Python tests, 17 expected conditional skips, unchanged 80.8701% line/69.6956% branch coverage across 26 production Python modules, every shell suite, guarded R environment checks, guarded Step `08`/`09` real-R fixtures, and 143 pinned report-runtime tests; the production validator and Step `09` method were unchanged |
 | Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
+| Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
+
+The measured parent serial workflow was approximately 554 seconds from its
+successful component timings. Removing duplicate Python and report execution
+reduced the final serial fallback to 440.821246 seconds. Python-worker medians
+for one through four workers were 200, 110, 107, and 108 seconds; two workers
+were selected as the smallest candidate within 5% of the fastest and improved
+the Python lane by 45%. Top-level medians for one through four lane slots were
+351.760131, 216.836257, 174.101133, and 170.702626 seconds; three slots were
+selected as the smallest candidate within 5% of the fastest. The final
+three-run default median was 168.979423 seconds, 61.667% faster than the final
+serial fallback.
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -219,19 +233,15 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `refactor-01a1-demo-report-command` implementation and documentation
-content are complete. Its complete applicable report gate applies to the
-executable state at `0169c13`; the subsequent documentation-only patch
-requires the documentation gate rather than another unchanged computational
-run. After confirming this branch is clean, pushed, and upstream-equal, create
-`refactor-01aa-validation-efficiency`.
+The `refactor-01aa-validation-efficiency` implementation is complete at
+`dd19f0f`. Its final executable state passed the serial fallback and three
+consecutive default parallel gates with exact result and coverage equality.
+The subsequent documentation-only patch reuses that computational evidence
+after Git inspection proves that only documentation changed.
 
-That package must preserve existing public Make targets while separating
-non-overlapping validation lanes, adding quiet failure-first per-lane logs and
-a serial fallback, and measuring safe bounded parallelism. It may pin
-developer-only `pytest-xdist` only through the normal dependency gate. Exact
-serial/parallel pass, skip, and coverage evidence must agree before a parallel
-default is enabled.
+After confirming this branch is clean, pushed, and upstream-equal, create
+`refactor-01b-validation-publication-faults`. Do not begin that package
+automatically.
 
 The one-time Phase `00` dependency exception is exhausted and does not
 authorize future changes outside the normal development gate. Do not change

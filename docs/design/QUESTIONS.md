@@ -69,7 +69,9 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 - structured artifact/reporting decoupling;
 - documentation ownership and task-bounded canonical reading;
 - one complete computational gate per executable state and failure-first local
-  validation output.
+  validation output;
+- de-duplicated validation lanes with measured bounded parallel defaults,
+  exact serial parity, and explicit failure/interruption cleanup.
 
 Implementation status and remaining package order are intentionally not copied
 here; see [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).

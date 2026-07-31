@@ -57,8 +57,8 @@ a completed production review.
 | `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete |
 | `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete |
 | `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete, pushed, and upstream-equal |
-| `refactor-01a1-demo-report-command` | Populated synthetic demo command plus bounded, broadly categorized HTML and readable PDF projection | complete locally; the next descendant requires clean, pushed, upstream-equal verification |
-| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | approved; next after the demo-report package reaches clean upstream equality |
+| `refactor-01a1-demo-report-command` | Populated synthetic demo command plus bounded, broadly categorized HTML and readable PDF projection | complete; predecessor to the completed validation-efficiency package |
+| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | implementation and docpatch complete; the next descendant requires clean, pushed, upstream-equal verification |
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | approved; pending |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
 | `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |

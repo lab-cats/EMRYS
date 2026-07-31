@@ -1086,24 +1086,24 @@ with a retained temporary-log path and the failed output.
 ### Cause
 
 Pytest captures test output by default, Make command echo is suppressed, and
-the local runbook helper redirects each shell, R, coverage, or report component
+the validation orchestrator redirects each shell, R, coverage, or report lane
 to its own temporary log. This is intentional output control, not evidence
-that the component was skipped. The current serial gate can still spend most
-of its time in Python coverage and the pinned real-Quarto suite.
+that the lane was skipped. The gate prints elapsed `PASS` lines and a final
+timing summary when lanes finish.
 
 ### Fix
 
 Use the retained failed log and the complete output already printed by the
-helper. Re-run only the failed component without quiet capture when additional
-live detail is required. Do not rerun every successful component merely to
-obtain progress narration, and do not delete a failed log before diagnosing
-the result.
+orchestrator. Re-run the gate with `--verbose` or use the serial fallback when
+additional live detail is required. The first failure cancels and reaps other
+lane process groups; an interruption returns `130` and performs the same
+descendant cleanup. Do not rerun every successful component merely to obtain
+progress narration, and do not delete a failed log before diagnosing the
+result.
 
 The quiet and verbose invocations are owned by the local-validation section of
-the runbook. Parallel execution is not yet an established gate; use the serial
-fallback until the dedicated validation-efficiency package records exact
-serial/parallel equivalence, bounded concurrency, cleanup, and failure-output
-evidence.
+the runbook. The measured bounded default and serial fallback exercise the same
+lanes and result checks.
 
 ## Python coverage baseline cannot run or reports a regression
 
@@ -1116,17 +1116,21 @@ rate, or a new shared module below the declared threshold.
 ### Cause
 
 The selected project virtual environment may not be synchronized with the
-tracked requirements, a subprocess may no longer start under coverage, source
-or test behavior may have changed, or a new shared module may lack sufficient
-characterization. A rounded percentage can also look unchanged while the
-exact covered/total ratio has decreased.
+tracked requirements, the exact developer-only `pytest-xdist` or `execnet`
+version may be absent for a parallel run, a subprocess may no longer start
+under coverage, source or test behavior may have changed, or a new shared
+module may lack sufficient characterization. A rounded percentage can also
+look unchanged while the exact covered/total ratio has decreased.
 
 ### Fix
 
 Use the explicit dependency synchronization and coverage commands in the
 runbook. Inspect the current and baseline JSON, the named module, the complete
 test output, and any subprocess warning. Correct the source or test gap and
-rerun the full gate.
+rerun the full gate. If only the parallel dependency identity is wrong,
+explicitly synchronize the project virtual environment from
+`requirements.txt` or use the supported serial fallback; do not install
+packages globally or from the test command.
 
 Do not update the baseline merely to make the command pass. A deliberate
 baseline change requires review of the exact JSON diff and the
