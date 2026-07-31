@@ -7,46 +7,67 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/concurrent-doc-sidecars`
+  `codex/strategy-task-cards`
 - Parent:
-  `codex/context-start-policy`
+  `codex/concurrent-doc-sidecars`
 - Verified parent HEAD:
-  `d7b2cacb522b7a3e98806ee02b5874f3b59c5488`
+  `32ee4e8f2527bc0b34e69752ab96d69391e3e74c`
 - Parent documentation commit:
-  `d7b2cac docs: define version-aware task start`
+  `32ee4e8 docs: define isolated concurrent documentation lanes`
 - Current documentation commit:
-  `docs: define isolated concurrent documentation lanes` (the branch commit
+  `docs: create strategy follow-up cards` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: `CONCURRENCY-01` is complete and the documentation-
-  only tree is ready for publication; verify live cleanliness, push state, and
-  upstream equality before takeover; no candidate sidecar or execution lane is
-  active
-- Current package: isolated concurrent documentation/card authoring,
-  serialized integration, write authority, lane handoff, evidence reuse, and
-  recovery policy
+- Recorded package state: the 2026-07-31 first-use strategy discussion is
+  complete and this documentation-only package records four unselected future
+  cards plus bounded canonical references; verify live commit, cleanliness,
+  push state, and upstream equality before takeover
+- Current package: integration-fragment protocol and enforcement cards,
+  proposal/review lifecycle and logical-epic cards, and rolling-program
+  coordination clarifications; no card execution or pilot integration
 - Package type: one documentation commit; computational validation is not
   applicable because the predecessor-to-final diff changes no executable or
   test-affecting surface
 - Remote and cluster work: paused
 
-The concurrency branch descends directly from the clean, pushed, upstream-
-equal context-policy documentation commit. The parent branch and its upstream
+This branch descends directly from the clean, pushed, upstream-equal
+concurrency-policy documentation commit. The parent branch and its upstream
 both resolved to the verified parent HEAD before this branch was created. This
-package defines policy and commands only; it does not run a concurrent delivery
-experiment or change NORAD workflow, test, runtime, cluster, or scientific
-behavior.
+package records decisions and creates future task cards only; it does not
+implement their policies, directories, validator behavior, tranche document,
+or epic indexes and does not change NORAD workflow, test, runtime, cluster, or
+scientific behavior.
 
 ## Active concurrent lanes
 
-No implementation-candidate, immutable-execution, or documentation/card
-sidecar lane is active. This checkout is the sole integration/control lane for
-the `CONCURRENCY-01` policy package. First use for active delivery remains
-paused until the required post-completion user strategy discussion is recorded
-complete.
+This checkout is the sole integration/control lane for the card-bootstrap
+package. One frozen documentation/card sidecar pilot exists on the verified
+concurrency-policy base. Its files and commit identity are recorded for future
+recovery, but its substance has not been reviewed, accepted, or integrated.
+The user explicitly authorized that pilot before the fragment checkpoint was
+defined; preserve that historical fact without claiming retroactive protocol
+compliance.
 
 | Lane ID | Role and owner | Worktree and branch/detached state | Base and target | Reservations and coupling | Validation or execution identity |
 | --- | --- | --- | --- | --- | --- |
-| None | — | — | — | — | — |
+| `researcher-path-cards` | Frozen documentation/card sidecar; user-directed pre-checkpoint pilot | `/Users/elisteiger/dev/norad-worktrees/researcher-path-cards`; `codex/researcher-path-cards`; clean at inspection | Base `32ee4e8f2527bc0b34e69752ab96d69391e3e74c`; future integration target must be selected after protocol/infrastructure review | Exact paths listed below; substantive coupling intentionally unreviewed | Candidate `9f1dcf170549eb7960b8fa76b06040188ab0f8be`; no integration or acceptance validation |
+
+The pilot reserves only these candidate paths:
+
+- `docs/CORE_DOC_CHANGES.md`;
+- `docs/tasks/TODO/CLI-03A-implement-local-pilot-control-plane.md`;
+- `docs/tasks/TODO/E2E-03A-prove-fresh-clone-local-pilot.md`;
+- `docs/tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md`;
+- `docs/tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md`;
+- `docs/tasks/TODO/PROFILE-03A-materialize-local-pilot-workflow-profile.md`;
+- `docs/tasks/TODO/SETUP-03A-implement-local-pilot-dependency-profile-and-doctor.md`;
+- `docs/tasks/UNREFINED/FUT-SITE-01-csu-slurm-execution-profile.md`;
+- `docs/tasks/UNREFINED/FUT-SITE-02-portable-site-and-container-profiles.md`;
+- `docs/tasks/UNREFINED/README.md`.
+
+These paths were inspected only as names. Do not inspect or integrate their
+content as part of this card-bootstrap package. A later integration package
+must reconcile the pilot against the then-current protocol, lifecycle,
+canonical owners, and combined validation requirements.
 
 The detached worktree at `/Users/elisteiger/dev/norad-demo-report` on
 `f9aef17f4d6a2aa6e88feb41f85c1364af194889` predates this policy. It is
@@ -120,7 +141,7 @@ The local descendant sequence has implemented:
   all 13 step validators plus the distinct provenance, preflight, and storage
   transactions, with protected success/rollback behavior and current unsafe
   recovery states clearly distinguished in test names and comments.
-- a file-backed task registry with 51 cards in the current working tree,
+- a file-backed task registry with 55 cards in the current working tree,
   bounded acceptance evidence, and an explicit planning-before-implementation
   lifecycle; the legacy reciprocal dependency model remains unchanged pending
   the separately planned `TASK-REG-01` migration;
@@ -137,6 +158,10 @@ The local descendant sequence has implemented:
   disjoint documentation/card sidecars, at most one implementation-candidate
   or locked detached execution lane, durable lane packets, serialized frozen-
   proposal integration, combined validation, and recoverable preservation;
+- four unselected follow-up cards that preserve the agreed manual integration-
+  fragment protocol, later structural enforcement, nonselectable `UNREFINED`
+  intake, frozen `INTEGRATION_REVIEW`, and orthogonal logical epic-index
+  boundaries without implementing them;
 - explicit standalone documentation-package semantics: computational
   validation is not applicable when the complete diff has no executable or
   test-affecting consumer;
@@ -191,6 +216,7 @@ The local descendant sequence has implemented:
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
+| Strategy follow-up card bootstrap | Four future cards plus reciprocal dependency and canonical roadmap/decision/question/handoff references recorded; no card selected and no pilot content reviewed or integrated; `git diff --check`, the 76-document/55-card/6-diagram structural gate, and independent dependency, ownership, and handoff/roadmap audits passed; computational validation is not applicable because the complete diff is non-consuming Markdown only, and publication state remains subject to live Git verification |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -312,17 +338,24 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The documentation-only concurrency package defines isolated authoring and
-serialized integration policy; it does not execute the active repository-
-spanning refactor. Its predecessor executable state remains the completed
-Phase `01b` implementation and its recorded computational evidence.
+The documentation-only card-bootstrap package records the completed strategy;
+it does not execute the active repository-spanning refactor. Its predecessor
+executable state remains the completed Phase `01b` implementation and its
+recorded computational evidence.
 
-[`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-is complete. After confirming its documentation commit is clean, pushed, and
-upstream-equal, remain paused for the required user discussion about leverage
-and first-use strategy. Do not provision an active lane or select
-[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-or begin concurrent delivery before that discussion.
+After confirming this package is clean, pushed, and upstream-equal, separately
+plan
+[`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
+Only after its task-specific plan is approved may the manual fragment protocol
+and synthetic non-substantive exchange be implemented; the preserved pilot is
+not that exchange. Then separately plan
+[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+That program must create the unselected pilot-integration card from recorded
+lane metadata. Do not review or integrate the pilot candidate until
+`CONCURRENCY-02`, `PROGRAM-01`, `DOC-GATE-01`, `CONCURRENCY-03`, and
+`TASK-LIFECYCLE-01` establish the applicable infrastructure and the integration
+card receives its own approved plan. Do not create future lifecycle/epic
+directories merely because their cards now exist.
 
 `TEST-01C` remains the first uncompleted Phase `01` characterization card.
 Maintenance and program order are roadmap guidance rather than technological

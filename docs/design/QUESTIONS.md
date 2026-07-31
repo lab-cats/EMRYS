@@ -269,6 +269,48 @@ task's planning deadline rather than rediscovered by an implementation agent.
   required success, preserve optional failure visibly, and never move raw data
   automatically.
 
+### CHOICE-PROGRAM-01 — First planning cohorts and delivery tranche
+
+- **Question:** Which live cards share a genuine decision boundary, and which
+  smallest low-risk vertical slice should become the first current tranche?
+- **Why it matters:** excessive grouping recreates the waterfall program,
+  while premature standalone work can settle cross-cutting contracts twice.
+- **Owning card:**
+  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+- **Decision deadline:** before `PROGRAM-01` initializes
+  `docs/operations/TRANCHE.md` or selects a post-program delivery card.
+- **Recommendation:** group only expensive-to-reverse shared invariants; choose
+  the smallest evidence-supported vertical slice and let integrated feedback
+  shape later tranches.
+
+### CHOICE-LIFECYCLE-01 — Durable integration-review trigger
+
+- **Question:** Must every frozen candidate enter `INTEGRATION_REVIEW`, or only
+  a candidate whose review persists beyond the current unpublished integration
+  package?
+- **Why it matters:** always transitioning makes short serialized integration
+  noisy, while an undefined optional transition can hide a durable review
+  queue.
+- **Owning card:**
+  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+- **Decision deadline:** before `TASK-LIFECYCLE-01` task-specific planning.
+- **Recommendation:** reserve the durable state for asynchronous review that
+  survives beyond one unpublished integration package; keep immediate frozen
+  handoff and integration within the active card lifecycle.
+
+### CHOICE-EPIC-01 — Initial logical epic taxonomy and membership
+
+- **Question:** Which stable epic IDs describe the live task families, and may
+  one card belong to more than one epic?
+- **Why it matters:** too many epics duplicate card state and context, while a
+  rigid single hierarchy makes cross-cutting work difficult to find.
+- **Owning card:**
+  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+- **Decision deadline:** before `TASK-EPIC-01` task-specific planning.
+- **Recommendation:** derive a small stable taxonomy from durable ownership,
+  use one primary membership when it is honest, and permit additional
+  navigation links only when they do not imply status, order, or dependency.
+
 ## Resolved index
 
 Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:

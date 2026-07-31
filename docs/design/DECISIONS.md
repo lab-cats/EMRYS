@@ -73,9 +73,22 @@ publish status, completion, or evidence.
 
 [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
 operationalized lane roles, multi-sidecar coordination, exact commands, status
-ownership, integration, and validation. First active use remains intentionally
-paused until the required user strategy discussion is recorded complete. Do
-not select `PROGRAM-01` before that discussion and its own task approval.
+ownership, integration, and validation. The required first-use strategy
+discussion was completed on 2026-07-31. Before a fragment protocol existed,
+the user explicitly authorized one researcher-path card sidecar as a pilot;
+that exception does not make its content canonical, reviewed, accepted, or
+retroactively compliant with a protocol that had not yet been defined. Live
+lane identity and disposition remain owned by `HANDOFF.md`.
+
+The next policy increment is a manual, reviewable integration-fragment
+protocol owned by
+[`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
+Only after real use establishes a stable contract and `DOC-GATE-01` provides a
+tested validator owner may
+[`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
+add structural enforcement. Fragments remain transient proposals; they never
+become a second canonical documentation system or acquire authority to publish
+status, evidence, decisions, or card transitions.
 
 ### Run one complete computational gate per executable state
 
@@ -591,6 +604,18 @@ live graph. The existing registry and validator still implement the original
 broader model until the separately planned `TASK-REG-01` evidence-based
 migration; this decision does not authorize a mechanical edge rewrite.
 
+Confirmed future lifecycle additions are `UNREFINED`, a nonselectable intake
+for lightweight rough proposals, and `INTEGRATION_REVIEW`, a frozen candidate
+state awaiting canonical integration. Logical epics are orthogonal planning
+groups and indexes, not lifecycle states, blocker substitutes, or nested card
+locations. The current three-state `TODO`/`IN_PROGRESS`/`COMPLETED` lifecycle
+remains authoritative until `PROGRAM-01` settles implementation-ready
+transition and authority semantics, `DOC-GATE-01` extracts the validator, and
+the separately approved `TASK-LIFECYCLE-01` package implements the result.
+Cards remain physically flat under lifecycle roots after that change;
+`TASK-EPIC-01` later adds orthogonal navigation indexes without changing
+lifecycle authority or moving cards.
+
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative
 of expanding the roadmap into task specifications would duplicate status and
@@ -624,6 +649,16 @@ but attach to the risk boundaries they govern rather than one monolithic plan.
 Future-only cards preserve constraints without joining the current release
 gate or receiving speculative detailed plans.
 
+Future `docs/operations/TRANCHE.md` will be a concise coordination view,
+not a task card, lifecycle state, substitute roadmap, or authorization. It will
+identify the current tranche, its included existing cards or epics, entry and
+exit evidence requirements, links to live evidence in `HANDOFF.md`,
+reconciliation basis, and next trigger. It never copies live results. A tranche
+is not complete until its frozen candidates are canonically integrated,
+combined validation passes, publication succeeds, and upstream equality is
+verified; individual cards remain the separately planned and approved
+execution units.
+
 Rationale: high-fan-out topology, contract, state, recovery, and evidence
 decisions are cheaper and safer to reconcile before files move. Local
 implementation choices are more accurate after feedback from a completed
@@ -633,8 +668,13 @@ refactor.
 Consequences: after the required post-concurrency strategy discussion,
 [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 will classify active cards, define cohorts, revise `PLAN-02Z` and review
-boundaries, and select the first tranche. It will not execute implementation or
-migrate the legacy blocker graph.
+boundaries, reconcile the existing refactor plan, define and initialize the
+`TRANCHE.md` contract, and select the first tranche. It will not execute
+implementation, implement lifecycle directories or epic indexes, integrate the
+pilot candidate, or migrate the legacy blocker graph. It will define the
+infrastructure boundary for that preserved pilot and create one bounded future
+integration card using recorded lane metadata only; substantive pilot review
+belongs to that later separately planned package.
 
 ### Target a vertical package with direct contract-preserving migrations
 
@@ -989,9 +1029,9 @@ Consequences: see
 | Discussion theme | Durable owner above | Task owner |
 | --- | --- | --- |
 | Behavior coverage before mutation and independent goldens | Protect behavior before architectural mutation | `TEST-01C`–`TEST-01Z` |
-| Card lifecycle, true technological blockers, and separate approvals | File-backed task registry | `ARCH-DOC-00`, `TASK-REG-01`, and `docs/tasks/README.md` |
-| Multiple isolated documentation/card sidecars and one canonical integrator | Concurrent authoring with serialized integration | `CONCURRENCY-01` |
-| Architecture runway, planning cohorts, rolling tranches, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, and `REVIEW-*` |
+| Card lifecycle, true technological blockers, separate approvals, future proposal/review states, and logical epic indexes | File-backed task registry | `ARCH-DOC-00`, `TASK-REG-01`, `TASK-LIFECYCLE-01`, `TASK-EPIC-01`, and `docs/tasks/README.md` |
+| Multiple isolated documentation/card sidecars, one canonical integrator, and transient integration fragments | Concurrent authoring with serialized integration | `CONCURRENCY-01`, `CONCURRENCY-02`, and `CONCURRENCY-03` |
+| Architecture runway, planning cohorts, rolling tranches, tranche coordination, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, `TRANCHE.md`, and `REVIEW-*` |
 | Vertical `src/norad`, black-box stages, mirrored tests, direct migration | Vertical package | `ARCH-02A`–`ARCH-02D` |
 | Semantic names, historical numbers, DAG, user overview | Semantic stages and DAG | `ARCH-02B`, `DOC-PIPE-04` |
 | Local/shared abstraction threshold and ownership | Shared-library promotion | `LIB-02F` |

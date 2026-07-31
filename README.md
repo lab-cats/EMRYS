@@ -117,8 +117,10 @@ multiple disjoint documentation/card sidecars beside at most one
 implementation or immutable-execution lane. Candidate state remains a proposal;
 accepted integration and validation are serialized under
 [`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md).
-The first active use waits until the required strategy discussion is recorded
-complete in [`HANDOFF.md`](docs/operations/HANDOFF.md).
+The required first-use strategy discussion is recorded complete; current lane
+state and candidate disposition remain in
+[`HANDOFF.md`](docs/operations/HANDOFF.md). That milestone does not select,
+accept, or authorize candidate work.
 
 Remote and cluster promotion remain upstream-sequential. See
 [`AGENTS.md`](AGENTS.md) for the durable gate and

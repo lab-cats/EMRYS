@@ -27,8 +27,10 @@ but never authorizes a task by itself.
   decision.
 - Read-only reviewers may inspect any lane but must not mutate its worktree.
 
-The first use of this policy for active delivery remains paused until the
-required post-`CONCURRENCY-01` user strategy discussion.
+The required post-`CONCURRENCY-01` first-use strategy discussion was completed
+on 2026-07-31. That removed only the discussion pause: it did not select a
+task, accept pilot content, or relax lane-packet, integration, validation, or
+publication requirements. Live lane and pilot state remains in `HANDOFF.md`.
 
 ## Lane roles
 

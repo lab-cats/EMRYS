@@ -32,7 +32,8 @@ test, review, reuse, or change safely.
 
 ## Completion unblocks
 
-- None.
+- [CONCURRENCY-03](CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Partially: Provides the extracted, testable validator required to enforce the integration-fragment lifecycle; `CONCURRENCY-02` must still define and pilot the protocol.
+- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Provides the extracted, testable validator required to enforce the new lifecycle states; `PROGRAM-01` and `CONCURRENCY-02` remain required.
 
 ## Prerequisites
 

@@ -63,8 +63,11 @@ a completed production review.
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; verified clean, pushed, and upstream-equal before the documentation descendant |
 | `refactor-01-architecture-direction-docs` | Documentation-only task registry, durable architecture decisions, future constraints, open choices, and future diagrams | complete in this documentation package; no executable or evidence-state change |
 | `codex/context-start-policy` | Version-aware task-start routing, selective phase-boundary inspection, impact-directed documentation review, and explicit documentation-only validation; see [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md) | documentation-only package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable or evidence-state change |
-| `codex/concurrent-doc-sidecars` | Isolated concurrent documentation/card sidecars with serialized integration; see [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md) | documentation-only policy package complete and ready for publication; live Git must still verify a clean push and upstream equality; no active delivery experiment or executable/evidence-state change |
-| Conditional `PROGRAM-01` descendant | Rolling-wave planning and coordination cohorts; branch selected only through its separately approved task plan | must not be selected before `CONCURRENCY-01` is complete, pushed, and followed by the required user strategy discussion |
+| `codex/concurrent-doc-sidecars` | Isolated concurrent documentation/card sidecars with serialized integration; see [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md) | documentation-only policy package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable/evidence-state change |
+| `codex/strategy-task-cards` | Capture the completed concurrency/program strategy as four bounded future cards ready for task-specific planning plus canonical references | documentation-only card-bootstrap package; no future card is selected, no pilot content is reviewed or integrated, and live Git remains authoritative for publication/upstream equality |
+| Conditional `CONCURRENCY-02` descendant | Manual integration-fragment protocol; see [`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md) | next recommended separately planned package after the card bootstrap; policy only, with no pilot-content integration |
+| Conditional `PROGRAM-01` descendant | Rolling-wave planning, current-tranche contract, refactor-plan reconciliation, and lifecycle/epic semantics; see [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | follows `CONCURRENCY-02` by roadmap choice, not blocker metadata; branch selected only through its separately approved task plan |
+| Conditional fragment/lifecycle infrastructure | Extract the validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current three-state flat registry and embedded validator remain unchanged |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/TODO/TEST-01D-characterize-public-cli-contracts.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) | future package definition; workflow status is the linked card's directory |
@@ -94,22 +97,44 @@ dependency edges merely because one is preferred first:
 
 1. [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
    established isolated candidate worktrees, multiple documentation/card
-   sidecars, single-owner integration, and combined validation policy.
-2. Pause after `CONCURRENCY-01` is complete and pushed for the required user
-   strategy discussion. Do not select `PROGRAM-01` or begin a concurrent
-   delivery experiment before that discussion.
-3. [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-   may then replace the waterfall-shaped whole-plan sequence with reviewed
-   architecture cohorts and rolling vertical tranches if separately approved.
-4. Reassess the remaining order under that model. The current expected
+   sidecars, single-owner integration, and combined validation policy. The
+   required first-use strategy discussion was completed on 2026-07-31.
+2. Complete and publish the `codex/strategy-task-cards` documentation package.
+   It records the resulting cards and decisions but selects none of them.
+3. Separately plan and, only after approval, implement the manual fragment
+   protocol in
+   [`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
+   Its synthetic, non-substantive manual exchange supplies observed protocol
+   evidence without reviewing or integrating the preserved pilot.
+4. Then separately plan and implement
+   [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
+   which will reconcile the existing refactor plan and define the current-
+   tranche and lifecycle/epic semantics without executing downstream work.
+5. Reassess the remaining order under that model. The current expected
    candidates begin with
    [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
    which should characterize, extract, and test the embedded documentation
    validator without changing accepted behavior.
-5. [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md)
+6. Once their genuine prerequisites are complete,
+   [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
+   may enforce the proven fragment contract using `CONCURRENCY-02`'s synthetic
+   exchange evidence,
+   [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+   may implement `UNREFINED` and `INTEGRATION_REVIEW`, and
+   [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md)
+   may then add orthogonal logical epic indexes. `CONCURRENCY-03` and
+   `TASK-LIFECYCLE-01` are independent after their own prerequisites; epic
+   indexing follows the lifecycle package.
+7. Only after `CONCURRENCY-02`, `PROGRAM-01`, `DOC-GATE-01`, `CONCURRENCY-03`,
+   and `TASK-LIFECYCLE-01` establish the applicable infrastructure may the
+   separately approved pilot-integration card generated by `PROGRAM-01` be
+   selected. The preserved researcher-path sidecar is the intended first
+   substantive integration candidate; `TASK-EPIC-01` is not a prerequisite
+   unless later evidence establishes a genuine dependency.
+8. [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md)
    should then migrate active dependency metadata and validator behavior to the
    approved true-technological-blocker model.
-6. [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+9. [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
    should lead the Phase `02` documentation family and produce a no-loss,
    bounded `AGENTS.md` slim-down card before broader consolidation packages.
 
@@ -148,16 +173,18 @@ report-html-v1a-report-table-approvals
                                                                                                 └── refactor-01-architecture-direction-docs
                                                                                                     └── codex/context-start-policy
                                                                                                         └── codex/concurrent-doc-sidecars
-                                                                                                            └── [required user strategy pause]
-                                                                                                                └── [conditional: PROGRAM-01 task-selected branch]
-                                                                                                                    └── [future descendants selected after reassessment]
-                                                                                                                        └── refactor-99-final-audit
+                                                                                                            └── codex/strategy-task-cards
+                                                                                                                └── [conditional: CONCURRENCY-02 task-selected branch]
+                                                                                                                    └── [conditional: PROGRAM-01 task-selected branch]
+                                                                                                                        └── [future descendants selected after reassessment]
+                                                                                                                            └── refactor-99-final-audit
 ```
 
 Bracketed entries are planning boundaries, not branch names or completed
-lineage. `TEST-01C` remains the first uncompleted characterization card in the
+lineage. The strategy discussion and card bootstrap do not select any future
+card. `TEST-01C` remains the first uncompleted characterization card in the
 inherited roadmap, but `PROGRAM-01` must confirm or revise its position before
-the next post-concurrency delivery card is selected.
+the next post-program delivery card is selected.
 
 Do not perform remote or cluster
 validation during this sequence.
