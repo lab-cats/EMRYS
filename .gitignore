@@ -1,5 +1,6 @@
 .venv/
 .tools/
+.coverage-work/
 data/raw/
 data/full/
 refs/*

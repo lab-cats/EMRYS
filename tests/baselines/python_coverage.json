@@ -1,0 +1,277 @@
+{
+  "files": [
+    {
+      "branch_rate": "0.625000",
+      "covered_branches": 100,
+      "covered_lines": 282,
+      "line_rate": "0.776860",
+      "num_branches": 160,
+      "num_statements": 363,
+      "path": "scripts/_run_summary_science.py"
+    },
+    {
+      "branch_rate": "0.707392",
+      "covered_branches": 689,
+      "covered_lines": 1619,
+      "line_rate": "0.797537",
+      "num_branches": 974,
+      "num_statements": 2030,
+      "path": "scripts/build_artifact_index.py"
+    },
+    {
+      "branch_rate": "0.741294",
+      "covered_branches": 298,
+      "covered_lines": 873,
+      "line_rate": "0.845111",
+      "num_branches": 402,
+      "num_statements": 1033,
+      "path": "scripts/build_run_summary.py"
+    },
+    {
+      "branch_rate": "0.785714",
+      "covered_branches": 44,
+      "covered_lines": 151,
+      "line_rate": "0.904192",
+      "num_branches": 56,
+      "num_statements": 167,
+      "path": "scripts/gtf_to_bed12.py"
+    },
+    {
+      "branch_rate": "0.684211",
+      "covered_branches": 104,
+      "covered_lines": 313,
+      "line_rate": "0.832447",
+      "num_branches": 152,
+      "num_statements": 376,
+      "path": "scripts/reference_provenance.py"
+    },
+    {
+      "branch_rate": "0.761364",
+      "covered_branches": 335,
+      "covered_lines": 1023,
+      "line_rate": "0.838525",
+      "num_branches": 440,
+      "num_statements": 1220,
+      "path": "scripts/render_run_report.py"
+    },
+    {
+      "branch_rate": "0.203704",
+      "covered_branches": 33,
+      "covered_lines": 185,
+      "line_rate": "0.379877",
+      "num_branches": 162,
+      "num_statements": 487,
+      "path": "scripts/render_run_report_bundle.py"
+    },
+    {
+      "branch_rate": "0.653846",
+      "covered_branches": 85,
+      "covered_lines": 312,
+      "line_rate": "0.696429",
+      "num_branches": 130,
+      "num_statements": 448,
+      "path": "scripts/restore_quarto.py"
+    },
+    {
+      "branch_rate": "0.714286",
+      "covered_branches": 100,
+      "covered_lines": 308,
+      "line_rate": "0.853186",
+      "num_branches": 140,
+      "num_statements": 361,
+      "path": "scripts/runtime_preflight.py"
+    },
+    {
+      "branch_rate": "0.711929",
+      "covered_branches": 561,
+      "covered_lines": 1261,
+      "line_rate": "0.822034",
+      "num_branches": 788,
+      "num_statements": 1534,
+      "path": "scripts/step_09c_scientific_validation.py"
+    },
+    {
+      "branch_rate": "0.641509",
+      "covered_branches": 68,
+      "covered_lines": 233,
+      "line_rate": "0.829181",
+      "num_branches": 106,
+      "num_statements": 281,
+      "path": "scripts/storage_inventory.py"
+    },
+    {
+      "branch_rate": "0.764831",
+      "covered_branches": 361,
+      "covered_lines": 658,
+      "line_rate": "0.846847",
+      "num_branches": 472,
+      "num_statements": 777,
+      "path": "scripts/validate_artifact_contracts.py"
+    },
+    {
+      "branch_rate": "0.769231",
+      "covered_branches": 40,
+      "covered_lines": 100,
+      "line_rate": "0.900901",
+      "num_branches": 52,
+      "num_statements": 111,
+      "path": "scripts/validate_manifest.py"
+    },
+    {
+      "branch_rate": "0.642857",
+      "covered_branches": 54,
+      "covered_lines": 214,
+      "line_rate": "0.842520",
+      "num_branches": 84,
+      "num_statements": 254,
+      "path": "scripts/validate_step_00a_star_index.py"
+    },
+    {
+      "branch_rate": "0.750000",
+      "covered_branches": 18,
+      "covered_lines": 92,
+      "line_rate": "0.901961",
+      "num_branches": 24,
+      "num_statements": 102,
+      "path": "scripts/validate_step_00b_bed12.py"
+    },
+    {
+      "branch_rate": "0.857143",
+      "covered_branches": 12,
+      "covered_lines": 55,
+      "line_rate": "0.948276",
+      "num_branches": 14,
+      "num_statements": 58,
+      "path": "scripts/validate_step_00c_reference_sidecars.py"
+    },
+    {
+      "branch_rate": "0.718750",
+      "covered_branches": 23,
+      "covered_lines": 90,
+      "line_rate": "0.882353",
+      "num_branches": 32,
+      "num_statements": 102,
+      "path": "scripts/validate_step_01_star_alignment.py"
+    },
+    {
+      "branch_rate": "0.687500",
+      "covered_branches": 11,
+      "covered_lines": 70,
+      "line_rate": "0.909091",
+      "num_branches": 16,
+      "num_statements": 77,
+      "path": "scripts/validate_step_02_canonical_bam.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 12,
+      "covered_lines": 67,
+      "line_rate": "0.930556",
+      "num_branches": 18,
+      "num_statements": 72,
+      "path": "scripts/validate_step_02b_bam_qc.py"
+    },
+    {
+      "branch_rate": "0.636364",
+      "covered_branches": 14,
+      "covered_lines": 65,
+      "line_rate": "0.844156",
+      "num_branches": 22,
+      "num_statements": 77,
+      "path": "scripts/validate_step_03_rseqc_orientation.py"
+    },
+    {
+      "branch_rate": "0.687500",
+      "covered_branches": 11,
+      "covered_lines": 70,
+      "line_rate": "0.921053",
+      "num_branches": 16,
+      "num_statements": 76,
+      "path": "scripts/validate_step_04_mark_duplicates.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 8,
+      "covered_lines": 63,
+      "line_rate": "0.900000",
+      "num_branches": 12,
+      "num_statements": 70,
+      "path": "scripts/validate_step_05_split_ncigar.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 12,
+      "covered_lines": 72,
+      "line_rate": "0.888889",
+      "num_branches": 18,
+      "num_statements": 81,
+      "path": "scripts/validate_step_06_orientation_outputs.py"
+    },
+    {
+      "branch_rate": "0.616667",
+      "covered_branches": 37,
+      "covered_lines": 132,
+      "line_rate": "0.825000",
+      "num_branches": 60,
+      "num_statements": 160,
+      "path": "scripts/validate_step_07_mpileup_outputs.py"
+    },
+    {
+      "branch_rate": "0.625000",
+      "covered_branches": 15,
+      "covered_lines": 87,
+      "line_rate": "0.956044",
+      "num_branches": 24,
+      "num_statements": 91,
+      "path": "scripts/validate_step_08_preprocessing_outputs.py"
+    },
+    {
+      "branch_rate": "0.821429",
+      "covered_branches": 23,
+      "covered_lines": 119,
+      "line_rate": "0.991667",
+      "num_branches": 28,
+      "num_statements": 120,
+      "path": "scripts/validate_step_09_cmh_outputs.py"
+    }
+  ],
+  "measurement": {
+    "branch": true,
+    "source": [
+      "scripts"
+    ],
+    "subprocess": true,
+    "test_command": [
+      ".venv/bin/python",
+      "-m",
+      "pytest"
+    ]
+  },
+  "policy": {
+    "global_non_regression": [
+      "line_rate",
+      "branch_rate"
+    ],
+    "new_shared_python_module_minimum": {
+      "branch_rate": "0.850000",
+      "line_rate": "0.900000"
+    },
+    "required_subprocess_coverage": [
+      "scripts/gtf_to_bed12.py",
+      "scripts/validate_manifest.py"
+    ]
+  },
+  "schema_version": "1.0.0",
+  "tool": {
+    "name": "coverage.py",
+    "version": "7.15.2"
+  },
+  "totals": {
+    "branch_rate": "0.696956",
+    "covered_branches": 3068,
+    "covered_lines": 8514,
+    "line_rate": "0.808701",
+    "num_branches": 4402,
+    "num_statements": 10528
+  }
+}

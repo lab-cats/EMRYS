@@ -1,0 +1,13 @@
+[run]
+branch = True
+source =
+    scripts
+relative_files = True
+patch =
+    subprocess
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+sort = Name

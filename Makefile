@@ -2,12 +2,18 @@ DEMO_SAMPLE ?= ABE_EV_2
 RSCRIPT_BIN ?= Rscript
 PYTHON_BIN ?= python3
 REPORT_PYTHON_BIN ?= $(CURDIR)/.venv/bin/python
+PYTHON_COVERAGE_VERSION := 7.15.2
+PYTHON_COVERAGE_ROOT ?= $(CURDIR)/.coverage-work
+PYTHON_COVERAGE_DATA ?= $(PYTHON_COVERAGE_ROOT)/.coverage
+PYTHON_COVERAGE_RAW ?= $(PYTHON_COVERAGE_ROOT)/coverage.json
+PYTHON_COVERAGE_CURRENT ?= $(PYTHON_COVERAGE_ROOT)/python_coverage.current.json
+PYTHON_COVERAGE_BASELINE ?= $(CURDIR)/tests/baselines/python_coverage.json
 QUARTO_VERSION := 1.9.38
 QUARTO_SHA256 := 47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
 QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
 QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
 
-.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test python-coverage-measure python-coverage-check python-coverage-baseline-update validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
@@ -88,6 +94,35 @@ report-test:
 		tests/test_report_exports_v1.py
 	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
 		bash tests/shell/test_render_run_report.sh
+
+python-coverage-measure:
+	test "$$("$(REPORT_PYTHON_BIN)" -c \
+		'import importlib.metadata; print(importlib.metadata.version("coverage"))')" \
+		= "$(PYTHON_COVERAGE_VERSION)"
+	mkdir -p "$(PYTHON_COVERAGE_ROOT)"
+	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage erase
+	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage run \
+		--rcfile="$(CURDIR)/.coveragerc" -m pytest
+	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
+		"$(PYTHON_COVERAGE_ROOT)"
+	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage json \
+		--rcfile="$(CURDIR)/.coveragerc" \
+		-o "$(PYTHON_COVERAGE_RAW)"
+	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py build \
+		--coverage-json "$(PYTHON_COVERAGE_RAW)" \
+		--output "$(PYTHON_COVERAGE_CURRENT)"
+
+python-coverage-check: python-coverage-measure
+	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
+		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
+		--current "$(PYTHON_COVERAGE_CURRENT)"
+
+python-coverage-baseline-update: python-coverage-measure
+	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
 
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
