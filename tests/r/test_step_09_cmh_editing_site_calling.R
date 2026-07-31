@@ -89,6 +89,17 @@ assert_near <- function(actual, expected, tolerance, message) {
     }
 }
 
+assert_number_near <- function(actual, expected, tolerance, message) {
+    if (is.infinite(expected)) {
+        assert_true(
+            length(actual) == 1L && identical(actual, expected),
+            paste0(message, "; expected ", expected, ", observed ", actual)
+        )
+    } else {
+        assert_near(actual, expected, tolerance, message)
+    }
+}
+
 write_tsv <- function(table, path) {
     write.table(
         table, path, sep = "\t", quote = FALSE, row.names = FALSE,
@@ -100,6 +111,139 @@ read_tsv <- function(path) {
     read.delim(
         path, sep = "\t", quote = "", comment.char = "",
         check.names = FALSE, stringsAsFactors = FALSE, na.strings = "NA"
+    )
+}
+
+parse_count_vector <- function(value) {
+    tokens <- strsplit(as.character(value), ",", fixed = TRUE)[[1L]]
+    result <- suppressWarnings(as.numeric(tokens))
+    result[tokens == "NA"] <- NA_real_
+    assert_true(
+        all(tokens == "NA" | grepl("^(0|[1-9][0-9]*)$", tokens)) &&
+            all(is.na(result) | is.finite(result)),
+        paste("Malformed count vector in independent CMH corpus:", value)
+    )
+    result
+}
+
+load_engine_run_cmh <- function() {
+    expressions <- as.list(parse(engine))
+    scope <- new.env(parent = baseenv())
+    evaluate_assignment <- function(name) {
+        matches <- vapply(expressions, function(expression) {
+            is.call(expression) &&
+                identical(expression[[1L]], as.name("<-")) &&
+                is.symbol(expression[[2L]]) &&
+                identical(as.character(expression[[2L]]), name)
+        }, logical(1))
+        assert_true(
+            sum(matches) == 1L,
+            paste("Expected one committed Step 09 assignment for", name)
+        )
+        eval(expressions[[which(matches)]], envir = scope)
+    }
+    evaluate_assignment("CMH_ALTERNATIVE")
+    evaluate_assignment("run_cmh")
+    assert_true(
+        is.function(scope$run_cmh),
+        "Committed Step 09 run_cmh assignment did not define a function."
+    )
+    scope$run_cmh
+}
+
+assert_independent_cmh_corpus <- function() {
+    corpus_path <- file.path(
+        repo_root, "tests", "fixtures", "step_09_cmh_oracle.tsv"
+    )
+    corpus <- read_tsv(corpus_path)
+    expected_header <- c(
+        "case_id", "requirement_tags", "bh_family", "min_sample_dp",
+        "control_dp", "control_ad", "treatment_dp", "treatment_ad",
+        "expected_status", "expected_statistic", "expected_p_value",
+        "expected_common_odds_ratio", "expected_bh"
+    )
+    assert_identical(
+        names(corpus), expected_header,
+        "Independent CMH corpus schema changed."
+    )
+    assert_true(
+        nrow(corpus) > 0L && !anyDuplicated(corpus$case_id),
+        "Independent CMH corpus must be nonempty with unique case IDs."
+    )
+    run_cmh <- load_engine_run_cmh()
+    observed_p <- rep(NA_real_, nrow(corpus))
+    for (row in seq_len(nrow(corpus))) {
+        control_dp <- parse_count_vector(corpus$control_dp[[row]])
+        control_ad <- parse_count_vector(corpus$control_ad[[row]])
+        treatment_dp <- parse_count_vector(corpus$treatment_dp[[row]])
+        treatment_ad <- parse_count_vector(corpus$treatment_ad[[row]])
+        lengths <- c(
+            length(control_dp), length(control_ad),
+            length(treatment_dp), length(treatment_ad)
+        )
+        assert_true(
+            length(unique(lengths)) == 1L && lengths[[1L]] >= 2L,
+            paste("Corpus count-vector length mismatch:", corpus$case_id[[row]])
+        )
+        all_dp <- c(control_dp, treatment_dp)
+        all_ad <- c(control_ad, treatment_ad)
+        if (anyNA(c(all_dp, all_ad))) {
+            observed_status <- "missing_counts"
+            fit <- NULL
+        } else if (any(all_dp < corpus$min_sample_dp[[row]])) {
+            observed_status <- "low_coverage"
+            fit <- NULL
+        } else {
+            fit <- run_cmh(
+                control_dp, control_ad, treatment_dp, treatment_ad,
+                paste0("r", seq_along(control_dp))
+            )
+            observed_status <- if (
+                is.null(fit)
+            ) "degenerate_table" else "tested"
+        }
+        assert_identical(
+            observed_status, corpus$expected_status[[row]],
+            paste("Committed Step 09 status differs for", corpus$case_id[[row]])
+        )
+        if (observed_status == "tested") {
+            assert_number_near(
+                fit$statistic, corpus$expected_statistic[[row]], 1e-12,
+                paste("CMH statistic differs for", corpus$case_id[[row]])
+            )
+            assert_number_near(
+                fit$p_value, corpus$expected_p_value[[row]], 1e-15,
+                paste("CMH p-value differs for", corpus$case_id[[row]])
+            )
+            assert_number_near(
+                fit$odds_ratio,
+                corpus$expected_common_odds_ratio[[row]], 1e-12,
+                paste("Common odds ratio differs for", corpus$case_id[[row]])
+            )
+            observed_p[[row]] <- fit$p_value
+        } else {
+            assert_true(
+                all(is.na(c(
+                    corpus$expected_statistic[[row]],
+                    corpus$expected_p_value[[row]],
+                    corpus$expected_common_odds_ratio[[row]]
+                ))),
+                paste(
+                    "Untested corpus row contains expected CMH values:",
+                    corpus$case_id[[row]]
+                )
+            )
+        }
+    }
+    family <- which(!is.na(corpus$bh_family) & corpus$bh_family == "primary")
+    assert_true(
+        length(family) > 1L && all(is.finite(observed_p[family])),
+        "Independent CMH corpus BH family is not fully tested."
+    )
+    adjusted <- stats::p.adjust(observed_p[family], method = "BH")
+    assert_true(
+        max(abs(adjusted - corpus$expected_bh[family])) <= 1e-15,
+        "Committed Step 09 global BH behavior differs from the corpus."
     )
 }
 
@@ -372,6 +516,8 @@ assert_pdf <- function(path) {
 }
 
 main <- function() {
+    assert_independent_cmh_corpus()
+
     temporary_root <- tempfile("step09-r-tests-")
     dir.create(temporary_root)
     on.exit(unlink(temporary_root, recursive = TRUE, force = TRUE), add = TRUE)

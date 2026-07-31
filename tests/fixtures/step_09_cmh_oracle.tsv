@@ -1,0 +1,13 @@
+case_id	requirement_tags	bh_family	min_sample_dp	control_dp	control_ad	treatment_dp	treatment_ad	expected_status	expected_statistic	expected_p_value	expected_common_odds_ratio	expected_bh
+valid_multi	valid;multi_stratum;global_bh;coordinated_corruption	primary	1	100,100,100	10,12,14	100,100,100	30,32,34	tested	33.692558365758757	0.0000000064547140475316331	3.459016393442623	0.000000025818856190126532
+mixed_zero_cell	zero_cell;multi_stratum;global_bh	primary	1	100,80,60	0,8,6	90,70,50	9,14,10	tested	11.138719017998543	0.00084544254999132328	3.1664856324676607	0.0016908850999826466
+null_equal	valid;null;global_bh	primary	1	100,100,100	10,12,14	100,100,100	10,12,14	tested	0	1	1	1
+rounding_unequal_strata	rounding;multi_stratum;global_bh	primary	1	97,113,89	7,13,3	101,107,83	19,17,11	tested	9.1781487057529443	0.0024492163777419091	2.3079984625494401	0.0032656218369892121
+infinite_odds	zero_cell;infinite_odds	NA	1	100,100,100	0,0,0	100,100,100	10,12,14	tested	36.06139053254438	0.0000000019119787154422989	Inf	NA
+zero_odds	zero_cell;zero_odds	NA	1	100,100,100	10,12,14	100,100,100	0,0,0	tested	36.06139053254438	0.0000000019119787154422989	0	NA
+all_zero_edited	all_zero;degenerate	NA	1	100,100,100	0,0,0	100,100,100	0,0,0	degenerate_table	NA	NA	NA	NA
+continuity_below_half	continuity_correction;below_boundary	NA	1	4,4	1,1	1,1	0,0	tested	0.50000000000000011	0.47950012218695343	0	NA
+continuity_at_half	continuity_correction;exact_boundary	NA	1	3,3	1,1	1,1	0,0	tested	0	1	0	NA
+continuity_above_half	continuity_correction;above_boundary	NA	1	9,9	3,3	1,1	0,0	tested	0.023809523809523798	0.87737055606414349	0	NA
+missing_counts	missing	NA	1	NA,100,100	NA,10,10	100,100,100	20,20,20	missing_counts	NA	NA	NA	NA
+low_coverage	low_coverage	NA	10	9,100,100	0,10,10	100,100,100	20,20,20	low_coverage	NA	NA	NA	NA
