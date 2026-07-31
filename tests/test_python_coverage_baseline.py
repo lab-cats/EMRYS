@@ -181,6 +181,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     config = configparser.ConfigParser()
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")
     assert config.getboolean("run", "branch")
+    assert config.getboolean("run", "parallel")
     assert config.getboolean("run", "relative_files")
     assert config.get("run", "source").split() == ["scripts"]
     assert config.get("run", "patch").split() == ["subprocess"]

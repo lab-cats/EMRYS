@@ -1581,6 +1581,7 @@ def test_fixed_input_fake_rerenders_are_byte_deterministic(
     assert outputs[0].read_bytes() == outputs[1].read_bytes()
 
 
+@pytest.mark.report_runtime
 def test_real_pinned_quarto_rerender_is_self_contained_and_deterministic(
     incomplete_summary: Path,
     tmp_path: Path,

@@ -8,10 +8,15 @@ PYTHON_COVERAGE_DATA ?= $(PYTHON_COVERAGE_ROOT)/.coverage
 PYTHON_COVERAGE_RAW ?= $(PYTHON_COVERAGE_ROOT)/coverage.json
 PYTHON_COVERAGE_CURRENT ?= $(PYTHON_COVERAGE_ROOT)/python_coverage.current.json
 PYTHON_COVERAGE_BASELINE ?= $(CURDIR)/tests/baselines/python_coverage.json
+PYTHON_COVERAGE_PYTEST_ARGS ?=
 QUARTO_VERSION := 1.9.38
 QUARTO_SHA256 := 47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
 QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
 QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
+VALIDATION_JOBS ?= 3
+VALIDATION_PYTHON_WORKERS ?= 2
+VALIDATION_ARGS ?=
+REPORT_TEST_RESULT ?=
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
 DEMO_REPORT_FORMATS ?= all
 DEMO_REPORT_RUN_ID := synthetic_full_run_demo
@@ -21,12 +26,12 @@ DEMO_REPORT_OUTPUT_ROOT := $(DEMO_REPORT_ROOT)/reports
 DEMO_REPORT_SCIENCE_SUMMARY := $(DEMO_REPORT_FIXTURE_ROOT)/science_fixture/step09c_fixture/output/review_fixture/review_fixture.step09c_review_summary.tsv
 DEMO_REPORT_TABLE_APPROVALS := $(DEMO_REPORT_FIXTURE_ROOT)/report_table_approvals.tsv
 
-.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
 
-shell-test:
+validation-shell-contracts:
 	bash tests/shell/test_step_00c_prepare_gatk_reference.sh
 	bash tests/shell/test_step_01_star_align.sh
 	bash tests/shell/test_step_02_sort_index_bam.sh
@@ -41,6 +46,8 @@ shell-test:
 	bash tests/shell/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
 	bash tests/shell/test_render_run_report.sh
+
+shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py
@@ -102,6 +109,24 @@ report-test:
 		tests/test_report_exports_v1.py
 	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
 		bash tests/shell/test_render_run_report.sh
+
+validation-report-runtime:
+	test -n "$(REPORT_TEST_RESULT)" || { \
+		printf 'ERROR: REPORT_TEST_RESULT is required\n' >&2; \
+		exit 1; \
+	}
+	test -x "$(QUARTO_BIN)" || { \
+		printf 'ERROR: pinned Quarto is unavailable: %s\nRun make quarto-restore first.\n' \
+			"$(QUARTO_BIN)" >&2; \
+			exit 1; \
+	}
+	"$(PYTHON_BIN)" scripts/restore_quarto.py \
+		--install-root "$(QUARTO_TOOLS_ROOT)"
+	NORAD_REQUIRE_QUARTO=1 QUARTO_BIN="$(QUARTO_BIN)" \
+		"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
+		-m report_runtime --junitxml="$(REPORT_TEST_RESULT)" \
+		tests/test_report_html_v1.py \
+		tests/test_report_exports_v1.py
 
 demo-report:
 	test -x "$(QUARTO_BIN)" || { \
@@ -185,7 +210,8 @@ python-coverage-measure:
 		"$(REPORT_PYTHON_BIN)" -m coverage erase
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage run \
-		--rcfile="$(CURDIR)/.coveragerc" -m pytest
+		--rcfile="$(CURDIR)/.coveragerc" -m pytest \
+		$(PYTHON_COVERAGE_PYTEST_ARGS)
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
 		"$(PYTHON_COVERAGE_ROOT)"
@@ -205,6 +231,21 @@ python-coverage-check: python-coverage-measure
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
 
+validation-python-coverage: python-coverage-check
+
+validation-guarded-r:
+	$(MAKE) -s r-check
+	$(MAKE) -s local-real-r-test
+
+validation-static:
+	git diff --check
+	bash -n scripts/*.sh
+	bash -n jobs/*.slurm
+	PYTHONDONTWRITEBYTECODE=1 \
+		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts tests
+	"$(REPORT_PYTHON_BIN)" scripts/validate_manifest.py \
+		--manifest samples.example.tsv
+
 validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
 
@@ -215,7 +256,13 @@ smoke:
 lint:
 	python -m compileall scripts tests
 
-all-checks: test shell-test real-r-test validate smoke lint report-test
+all-checks:
+	"$(REPORT_PYTHON_BIN)" tests/tools/run_validation.py \
+		--repo-root "$(CURDIR)" \
+		--python-bin "$(REPORT_PYTHON_BIN)" \
+		--rscript-bin "$(RSCRIPT_BIN)" \
+		--jobs "$(VALIDATION_JOBS)" \
+		--python-workers "$(VALIDATION_PYTHON_WORKERS)" $(VALIDATION_ARGS)
 
 demo-step03-dry-run:
 	mkdir -p logs

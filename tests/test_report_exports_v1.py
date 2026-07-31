@@ -299,6 +299,7 @@ def _real_quarto() -> Path:
     return path
 
 
+@pytest.mark.report_runtime
 @pytest.mark.skipif(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for real HTML/PDF export validation",
@@ -391,6 +392,7 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
     assert before == {name: path.read_bytes() for name, path in paths.items()}
 
 
+@pytest.mark.report_runtime
 @pytest.mark.skipif(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for validation-report propagation",
@@ -484,6 +486,7 @@ def test_failed_validation_reaches_summary_html_and_pdf(
     assert f"{step_id} {scope_label} failed" in " ".join(pdf_text.split())
 
 
+@pytest.mark.report_runtime
 @pytest.mark.skipif(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for real rollback validation",
@@ -551,6 +554,7 @@ def test_bundle_failure_restores_valid_html_only_predecessor(
     assert not list(context.html.output_dir.glob("*.previous"))
 
 
+@pytest.mark.report_runtime
 @pytest.mark.skipif(
     os.environ.get("NORAD_REQUIRE_QUARTO") != "1",
     reason="set NORAD_REQUIRE_QUARTO=1 for real exploratory PDF validation",
