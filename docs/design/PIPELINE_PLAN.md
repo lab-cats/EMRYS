@@ -54,9 +54,12 @@ a completed production review.
 | `post09-validation-report-07` | Structured VCF/receipt/selector/manifest/count validation and report propagation | implemented and locally fixture-tested; real-runtime and production report pending |
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
-| `post09-comprehensive-docpatch` | Repository-wide documentation consistency pass after the validator sequence | approved; pending |
-| `post09-refactor-roadmap` | Evidence-ranked refactor and future implementation roadmap | approved; pending |
-| `post09-test-coverage` | High-value test-coverage extensions and coverage roadmap | approved; pending |
+| `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete; the next descendant requires live clean, pushed, upstream-equal verification |
+| `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | approved; next |
+| `refactor-01a-*` through `refactor-01z-test-sufficiency-gate` | Evidence-determined characterization packages and final refactor-readiness decision | approved sequence; exact gap branches pending baseline evidence |
+| `refactor-02-high-level-plan` through `refactor-02d-review-usability` | High-level/detailed plan plus architecture, reliability, and usability reviews | approved sequence; pending |
+| `refactor-03a-*` | Small reviewed refactor packages, one architectural concern per branch | exact packages pending the three reviews |
+| `refactor-99-final-audit` | Final finding disposition, compatibility comparison, measured validation, and handoff | approved final local gate; pending |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
@@ -84,9 +87,19 @@ report-html-v1a-report-table-approvals
                                                             └── post09-validation-report-07
                                                                 └── post09-validation-report-08
                                                                     └── post09-validation-report-09
-                                                                        └── post09-comprehensive-docpatch
-                                                                            └── post09-refactor-roadmap
-                                                                                └── post09-test-coverage
+                                                                        └── refactor-00-comprehensive-audit
+                                                                            └── refactor-01-test-baseline
+                                                                                └── refactor-01a-<test-gap>
+                                                                                    └── ...evidence-determined test branches...
+                                                                                        └── refactor-01z-test-sufficiency-gate
+                                                                                            └── refactor-02-high-level-plan
+                                                                                                └── refactor-02a-detailed-plan
+                                                                                                    └── refactor-02b-review-architecture
+                                                                                                        └── refactor-02c-review-reliability
+                                                                                                            └── refactor-02d-review-usability
+                                                                                                                └── refactor-03a-<reviewed-phase>
+                                                                                                                    └── ...reviewed refactor branches...
+                                                                                                                        └── refactor-99-final-audit
 ```
 
 Do not perform remote or cluster
@@ -110,8 +123,28 @@ validation during this sequence.
 - standalone `.mmd` files are canonical and contain no transient status;
 - demos are explicitly presentation material or dated snapshots;
 - unique scientific and validation evidence is preserved;
-- no executable behavior changes;
+- no NORAD workflow, validator, schema, config, scientific-method, or
+  public-contract behavior changes; the separately committed one-time
+  dependency lock refresh is limited to resolving the guarded local gate;
 - complete applicable local and documentation gates pass.
+
+### Comprehensive refactor program
+
+- [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) owns the evidence-ranked findings,
+  test-first dispositions, and explicit retained/deferred boundaries;
+- Phase `01` records a measured global Python line/branch baseline and a
+  public-contract risk-to-test matrix before production refactoring;
+- critical/high-risk gaps receive cohesive characterization branches; exact
+  branch names come from evidence rather than placeholders;
+- `refactor-01z-test-sufficiency-gate` records the measured readiness decision;
+- Phase `02` produces high-level and detailed plans followed by separate
+  architecture, reliability, and usability reviews;
+- Phase `03` implements only reviewed, bounded architectural concerns while
+  preserving public contracts;
+- Step `07`–`09` scientific/statistical algorithms remain unchanged until
+  inspected remote baseline evidence and separate authorization exist;
+- `refactor-99-final-audit` classifies every finding and closes the local
+  program without beginning cluster work.
 
 ### Report exports
 
@@ -190,16 +223,19 @@ Checks cover:
 - `09`: four exact TSV headers; analysis-bound basenames; one shared native
   output parent; six distinct physical outputs; explicit analysis/cohort and
   provisional-policy identity; complete ordered Step `08` candidate universe;
-  independently recomputed target/test/call, depth, AF, enabled-background,
-  CMH, and global-BH semantics; exact significant subset; summary/provenance
-  reconciliation; canonical mutation spectrum; and PDF structure.
+  count-derived target/test/call, depth, AF, and enabled-background semantics;
+  type/range validation of reported CMH fields; global BH recomputation from
+  the reported p-values; exact significant subset; summary/provenance
+  reconciliation; canonical mutation spectrum; and PDF structure. Independent
+  CMH statistic, p-value, odds-ratio, and estimability recomputation from DP/AD
+  counts is a critical audited gap.
 
 ## Deferred remote lineage
 
 Only after new user direction and completion of the local sequence:
 
 ```text
-post09-test-coverage
+refactor-99-final-audit
 └── validate-step-07
     └── validate-step-08
         └── validate-step-09

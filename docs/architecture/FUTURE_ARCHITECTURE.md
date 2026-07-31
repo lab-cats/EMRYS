@@ -35,20 +35,21 @@ A future analysis configuration may separate:
 This separation must preserve current CLIs and output paths until evidence
 justifies migration. Filenames must not become identity.
 
-## Validation records
+## Validator evolution
 
-Each pipeline stage should have one explicit validator that emits a stable
-tabular record. Validators are read-only, dry-run-first, and stage-specific.
-They report failure and inconsistency rather than repairing outputs.
+Each current pipeline stage has one explicit validator that emits a stable
+tabular record. Future validator revisions remain read-only, dry-run-first,
+and stage-specific. They report failure and inconsistency rather than
+repairing outputs.
 
 A generic dispatcher or job array is not part of the target until individual
 validators are proven and a concrete operational need exists.
 
 ## Reporting layer
 
-Future stage-specific validators feed the existing canonical summary and
-report bundle through explicit adapters. They must not bypass the current
-explicit-input, table-authorization, deterministic publication, or
+Current stage-specific validators feed the canonical summary and report bundle
+through explicit adapters. Future validator revisions and projections must not
+bypass the explicit-input, table-authorization, deterministic publication, or
 receipt-last contracts described in
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

@@ -1119,7 +1119,6 @@ bash -n jobs/*.slurm
 .venv/bin/python -m compileall scripts tests
 .venv/bin/python -m pytest
 make shell-test
-make real-r-test
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
 RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
 make report-test
@@ -1127,13 +1126,18 @@ git status --short
 git diff --name-status
 ```
 
-`make real-r-test` runs the Step `08` and Step `09` semantic fixtures when
-`Rscript` is available. When the default `Rscript` is absent, each runner
-reports `SKIP`; those skips are not semantic R validation. An explicit bad
-override fails. A present runtime with missing Step `08` packages also fails;
-Step `09` uses base R only.
+The complete local gate uses `make local-real-r-test`, which opts into the
+repository-local R library through the guarded environment below. Bare
+`make real-r-test` is an ambient-runtime diagnostic: when `Rscript` is absent,
+each runner reports `SKIP`, and when ambient Step `08` packages are absent it
+fails. Neither a skip nor an ambient failure replaces the guarded semantic
+gate. An explicit bad override fails; Step `09` itself uses base R only.
 
-Commit implementation/tests first. Then reread the required project documents, perform the repository-wide documentation consistency pass, rerun this gate, and make the separate documentation-only commit. Require a clean worktree and inspect history before pushing or creating the next descendant stage branch.
+Commit implementation/tests first. Then reread the required project documents,
+perform the repository-wide documentation consistency pass, rerun this gate,
+and make the separate documentation-only commit. A documentation-only package
+runs the gate and uses one documentation commit. Require a clean worktree and
+inspect history before pushing or creating the next descendant stage branch.
 
 ### Guarded local R environment
 
@@ -1158,23 +1162,19 @@ sandbox. The latter avoids a reproduced high-CPU directory-creation loop on
 this macOS/R combination. Do not remove the guard or enable implicit package
 mutation without a separately reviewed change.
 
-Current local evidence:
+The guarded environment gate requires:
 
 ```text
 R 4.6.1 runtime and all required namespaces load
-BiocManager::valid() passes
+BiocManager::valid() passes against reachable current release metadata
 renv::status() reports synchronization
-empty cache-disabled binary restore passes
 headless PDF creation passes
 Step 08 and Step 09 real-R suites pass without SKIP
-Step 08 validates consumed FORMAT/DP, FORMAT/AD, and INFO/AD lexical values
-  before VariantAnnotation parsing, including wholly missing AD vectors;
-  its overlap-rejection fixture passes
-Step 09 validates the PDF EOF marker by scanning raw bytes
 ```
 
-These checks validate the guarded local environment and semantic fixtures.
-They do not validate production data, establish CSU batch visibility, or make
+The current result belongs in `HANDOFF.md`, not this command owner. Passing
+these checks validates the guarded local environment and semantic fixtures.
+It does not validate production data, establish CSU batch visibility, or make
 Steps `08` or `09` cluster-proven.
 
 ## Cluster Execution Pattern
@@ -1195,10 +1195,10 @@ git log --oneline -3
 git push
 ```
 
-Remote promotion is currently paused. After the approved documentation,
-roadmap, and coverage packages reach the clean, pushed, docpatched
-`post09-test-coverage` branch and remote work is explicitly resumed, open a
-cluster shell:
+Remote promotion is currently paused. After the complete local refactor
+program reaches clean, pushed, upstream-equal `refactor-99-final-audit` and
+remote work is explicitly resumed by new user direction, open a cluster
+shell:
 
 ```bash
 ssh csu-hpc
@@ -1240,7 +1240,7 @@ pushed:
 ```bash
 set -euo pipefail
 
-predecessor=post09-test-coverage
+predecessor=refactor-99-final-audit
 next_branch=validate-step-07
 
 git switch "$predecessor"
@@ -2818,7 +2818,7 @@ When it resumes, create validation branches only after the final local
 validator branch is clean, docpatched, and pushed:
 
 ```text
-post09-test-coverage
+refactor-99-final-audit
 └── validate-step-07
     └── validate-step-08
         └── validate-step-09
@@ -3157,10 +3157,13 @@ Dry-run snapshots every declared regular non-symlink input and prints seven
 checks without writing. It verifies four exact TSV headers; six
 analysis-bound basenames under one parent and six distinct physical files;
 safe analysis/cohort identity and `legacy_provisional_v1`; the complete
-ordered Step `08` candidate universe; target/test/call, depth, AF,
-enabled-background, CMH, and global-BH semantics recomputed from immutable
-counts; the exact significant subset; summary paths/hashes/pairings/counts;
-the canonical 12-SNV spectrum; and both PDF containers.
+ordered Step `08` candidate universe; target/test/call, depth, AF, and
+enabled-background semantics recomputed from immutable counts; type/range
+validation of the reported CMH fields; global BH recomputation from reported
+p-values; the exact significant subset; summary paths/hashes/pairings/counts;
+the canonical 12-SNV spectrum; and both PDF containers. It does not
+independently recompute the CMH statistic, p-value, common odds ratio, or
+count-table estimability from DP/AD counts.
 
 After inspecting every row, create the exact report parent and add
 `--execute`:

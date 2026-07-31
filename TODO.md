@@ -8,13 +8,25 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Create `post09-comprehensive-docpatch` from the clean, pushed
-   `post09-validation-report-09` branch and perform the approved repository-wide
-   documentation consistency pass.
-2. Create the descendant `post09-refactor-roadmap` documentation package and
-   record the evidence-ranked future implementation roadmap.
-3. Create `post09-test-coverage`, implement the reasonable high-value test
-   extensions identified by the coverage audit, and docpatch that package.
+1. Create `refactor-01-test-baseline` from the clean, pushed, upstream-equal
+   `refactor-00-comprehensive-audit` predecessor.
+2. Add an explicit developer-only Python
+   line/branch baseline and the public-contract risk-to-test matrix.
+3. Create one evidence-determined descendant per cohesive high-risk
+   characterization gap, then record the test-sufficiency decision on
+   `refactor-01z-test-sufficiency-gate`.
+4. Continue through the separately reviewed Phase `02` plan before changing
+   production structure.
+
+## Engineering gaps for the refactor gate
+
+- Characterize the Step `09` validator's missing independent recomputation of
+  the CMH statistic, p-value, odds ratio, and estimability from DP/AD counts
+  before any compatible correction.
+- Measure Python line/branch coverage and complete the public CLI, transaction,
+  schema, status, deterministic-output, and recovery traceability matrix.
+- Add high-risk characterization for shared validation publication/recheck
+  faults, exact check rosters, and uneven SLURM/dry-run behavior.
 
 ## Runtime and scientific blockers
 

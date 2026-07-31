@@ -12,8 +12,8 @@ Canonical diagrams:
 
 ## Compute pipeline
 
-The workflow is a linear reference-and-read preparation chain followed by
-cohort analysis:
+The workflow is a directed graph with a primary reference-and-read preparation
+chain, parallel QC/evidence branches, and downstream cohort analysis:
 
 ```text
 reference inputs
@@ -213,8 +213,11 @@ Step `09` validates the six explicit native CMH outputs as one analysis-bound
 transaction. It requires exact TSV headers and basenames, one shared parent,
 distinct physical files, explicit cohort/provisional-policy identity, and the
 complete ordered Step `08` candidate universe. It independently recomputes
-target/test/call, depth, AF, enabled-background, CMH, and global-BH semantics,
-then reconciles the significant subset, summary provenance/counts, mutation
-spectrum, and PDF containers. Its seven-row typed report enters the artifact,
-summary, and report graph without invoking R, changing native outputs, or
-promoting evidence state.
+target/test/call, depth, AF, and enabled-background semantics and recomputes
+global BH values from the reported p-values. It type/range-checks the reported
+CMH fields but does not independently derive the CMH statistic, p-value,
+common odds ratio, or table estimability from DP/AD counts. It then reconciles
+the significant subset, summary provenance/counts, mutation spectrum, and PDF
+containers. Its seven-row typed report enters the artifact, summary, and
+report graph without invoking R, changing native outputs, or promoting
+evidence state.
