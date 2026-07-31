@@ -1075,6 +1075,36 @@ content. Resolve ownership, recover either the complete prior transaction or
 a clean first-publication state, validate it, and record any operator action
 before retrying.
 
+## Quiet local validation reports a failure or appears silent
+
+### Symptom
+
+A failure-first local gate prints only a `PASS` line for each successful
+component, appears quiet while a long component is running, or prints `FAIL`
+with a retained temporary-log path and the failed output.
+
+### Cause
+
+Pytest captures test output by default, Make command echo is suppressed, and
+the local runbook helper redirects each shell, R, coverage, or report component
+to its own temporary log. This is intentional output control, not evidence
+that the component was skipped. The current serial gate can still spend most
+of its time in Python coverage and the pinned real-Quarto suite.
+
+### Fix
+
+Use the retained failed log and the complete output already printed by the
+helper. Re-run only the failed component without quiet capture when additional
+live detail is required. Do not rerun every successful component merely to
+obtain progress narration, and do not delete a failed log before diagnosing
+the result.
+
+The quiet and verbose invocations are owned by the local-validation section of
+the runbook. Parallel execution is not yet an established gate; use the serial
+fallback until the dedicated validation-efficiency package records exact
+serial/parallel equivalence, bounded concurrency, cleanup, and failure-output
+evidence.
+
 ## Python coverage baseline cannot run or reports a regression
 
 ### Symptom

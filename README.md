@@ -30,7 +30,8 @@ authoritative step/package matrix and descendant roadmap, read
 
 ## Minimal local start
 
-1. Read [`AGENTS.md`](AGENTS.md) and the handoff.
+1. Read [`AGENTS.md`](AGENTS.md) and the handoff, then follow their targeted
+   canonical-document reading rule.
 2. Use the commands in
    [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md).
 3. Start with synthetic fixtures and dry-run mode.

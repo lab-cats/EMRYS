@@ -67,7 +67,9 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 - guarded local R and explicit dependency restoration;
 - separation of computational proof, scientific review, and biological state;
 - structured artifact/reporting decoupling;
-- documentation ownership.
+- documentation ownership and task-bounded canonical reading;
+- one complete computational gate per executable state and failure-first local
+  validation output.
 
 Implementation status and remaining package order are intentionally not copied
 here; see [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).

@@ -1108,24 +1108,79 @@ ls -lh <output_dir>
 
 ## Local Validation Gate
 
-Run from the local repo root before each implementation or documentation commit:
+Use focused tests while executable work is changing. Pytest's default capture
+already withholds test stdout/stderr unless a test fails; add quiet progress
+and short tracebacks:
 
 ```bash
 cd /Users/elisteiger/dev/norad
+.venv/bin/python -m pytest -q --tb=short <focused-test-paths>
+```
 
+Run one complete computational gate against the final executable state before
+the implementation/test commit. The coverage target already runs the complete
+Python suite, so do not precede it with a duplicate uninstrumented full pytest
+run.
+
+For failure-first output, define this temporary Bash helper in the active
+shell. It removes successful logs, retains a failed log, and prints the full
+failed output:
+
+```bash
+run_quiet() {
+    local label="$1"
+    local log_path
+    local status
+    shift
+    log_path="$(mktemp "${TMPDIR:-/tmp}/norad-${label}.XXXXXX")" || return 1
+    if "$@" >"$log_path" 2>&1; then
+        printf 'PASS %s\n' "$label"
+        rm -f "$log_path"
+    else
+        status=$?
+        printf 'FAIL %s; full log retained at %s\n' \
+            "$label" "$log_path" >&2
+        cat "$log_path" >&2
+        return "$status"
+    fi
+}
+```
+
+Then run the serial complete gate:
+
+```bash
+cd /Users/elisteiger/dev/norad
 git diff --check
 bash -n scripts/*.sh
 bash -n jobs/*.slurm
-.venv/bin/python -m compileall scripts tests
-.venv/bin/python -m pytest
-make python-coverage-check
-make shell-test
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
-RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
-make report-test
+.venv/bin/python -m compileall -q scripts tests
+
+(
+    set -e
+    run_quiet python-coverage \
+        env PYTEST_ADDOPTS='-q --tb=short' \
+        make -s python-coverage-check
+    run_quiet shell \
+        env PYTEST_ADDOPTS='-q --tb=short' \
+        make -s shell-test
+    run_quiet r-environment \
+        env RSCRIPT_BIN=/usr/local/bin/Rscript \
+        make -s r-check
+    run_quiet real-r \
+        env RSCRIPT_BIN=/usr/local/bin/Rscript \
+        make -s local-real-r-test
+    run_quiet report-runtime \
+        env PYTEST_ADDOPTS='-q --tb=short' \
+        make -s report-test
+)
+
 git status --short
 git diff --name-status
 ```
+
+For an explicitly verbose run, invoke the relevant component without
+`run_quiet`, `make -s`, or `PYTEST_ADDOPTS`. Do not discard a retained failed
+log until the failure is understood.
 
 The complete local gate uses `make local-real-r-test`, which opts into the
 repository-local R library through the guarded environment below. Bare
@@ -1134,11 +1189,76 @@ each runner reports `SKIP`, and when ambient Step `08` packages are absent it
 fails. Neither a skip nor an ambient failure replaces the guarded semantic
 gate. An explicit bad override fails; Step `09` itself uses base R only.
 
-Commit implementation/tests first. Then reread the required project documents,
-perform the repository-wide documentation consistency pass, rerun this gate,
-and make the separate documentation-only commit. A documentation-only package
-runs the gate and uses one documentation commit. Require a clean worktree and
-inspect history before pushing or creating the next descendant stage branch.
+Commit implementation/tests first. Then read the changed documents and their
+canonical owners, perform the repository-wide targeted consistency and diagram
+pass, and make the separate documentation-only commit.
+
+When the documentation patch changes only Markdown or Mermaid files, reuse the
+complete computational result recorded for the implementation state and run
+this documentation gate:
+
+```bash
+cd /Users/elisteiger/dev/norad
+git diff --check
+
+.venv/bin/python - <<'PY'
+from pathlib import Path
+import re
+import subprocess
+
+root = Path.cwd().resolve()
+documents = [
+    root / path
+    for path in subprocess.check_output(
+        ["git", "ls-files", "*.md"], text=True
+    ).splitlines()
+]
+missing = []
+for document in documents:
+    text = document.read_text(encoding="utf-8")
+    for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
+        target = target.strip().strip("<>").split("#", 1)[0]
+        if not target or target.startswith(
+            ("http://", "https://", "mailto:", "data:")
+        ):
+            continue
+        path = (document.parent / target).resolve()
+        if not path.exists():
+            missing.append(f"{document.relative_to(root)} -> {target}")
+if missing:
+    raise SystemExit("Missing local Markdown links:\n" + "\n".join(missing))
+print(f"PASS local Markdown links ({len(documents)} documents)")
+PY
+
+git status --short
+git diff --name-status
+```
+
+Inspect `git diff --name-only <validated-implementation-commit>` and require
+every path after that commit to be documentation-only. Repeat the complete
+computational gate if the patch changes executable configuration,
+dependencies, Make targets, schemas, fixtures, or test selection/execution
+semantics, or if the implementation changes after its recorded gate. Quiet
+flags, shorter tracebacks, Make command-echo suppression, and output
+redirection do not change test selection or assertions; smoke-test those
+command forms through focused checks.
+
+A documentation-only package uses the documentation gate and one
+documentation commit. Before handing off or creating the next descendant,
+verify the takeover state:
+
+```bash
+git branch --show-current
+git rev-parse HEAD
+git status --porcelain=v1
+git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
+git rev-list --left-right --count HEAD...'@{upstream}'
+git log --oneline --decorate -5
+```
+
+The status output must be empty and the left/right counts must be `0 0`.
+`HANDOFF.md`, `PIPELINE_PLAN.md`, and `TODO.md` must agree on the active
+package, evidence boundary, and exact next descendant.
 
 ### Python coverage baseline
 

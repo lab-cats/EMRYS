@@ -55,8 +55,9 @@ a completed production review.
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
 | `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete |
-| `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete; the next descendant requires live clean, pushed, upstream-equal verification |
-| `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | approved; next |
+| `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete |
+| `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete locally; the next descendant requires live clean, pushed, upstream-equal verification |
+| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | approved; next after Phase `01a` reaches clean upstream equality |
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | approved; pending |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
 | `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |
@@ -96,20 +97,21 @@ report-html-v1a-report-table-approvals
                                                                         └── refactor-00-comprehensive-audit
                                                                             └── refactor-01-test-baseline
                                                                                 └── refactor-01a-step09-independent-cmh-oracle
-                                                                                    └── refactor-01b-validation-publication-faults
-                                                                                        └── refactor-01c-validation-check-rosters
-                                                                                            └── refactor-01d-public-cli-contracts
-                                                                                                └── refactor-01e-slurm-contracts
-                                                                                                    └── refactor-01f-independent-goldens
-                                                                                                        └── refactor-01z-test-sufficiency-gate
-                                                                                                            └── refactor-02-high-level-plan
-                                                                                                                └── refactor-02a-detailed-plan
-                                                                                                                    └── refactor-02b-review-architecture
-                                                                                                                        └── refactor-02c-review-reliability
-                                                                                                                            └── refactor-02d-review-usability
-                                                                                                                                └── refactor-03a-<reviewed-phase>
-                                                                                                                                    └── ...reviewed refactor branches...
-                                                                                                                                        └── refactor-99-final-audit
+                                                                                    └── refactor-01aa-validation-efficiency
+                                                                                        └── refactor-01b-validation-publication-faults
+                                                                                            └── refactor-01c-validation-check-rosters
+                                                                                                └── refactor-01d-public-cli-contracts
+                                                                                                    └── refactor-01e-slurm-contracts
+                                                                                                        └── refactor-01f-independent-goldens
+                                                                                                            └── refactor-01z-test-sufficiency-gate
+                                                                                                                └── refactor-02-high-level-plan
+                                                                                                                    └── refactor-02a-detailed-plan
+                                                                                                                        └── refactor-02b-review-architecture
+                                                                                                                            └── refactor-02c-review-reliability
+                                                                                                                                └── refactor-02d-review-usability
+                                                                                                                                    └── refactor-03a-<reviewed-phase>
+                                                                                                                                        └── ...reviewed refactor branches...
+                                                                                                                                            └── refactor-99-final-audit
 ```
 
 Do not perform remote or cluster
@@ -146,8 +148,20 @@ validation during this sequence.
   line/branch summary, public-contract risk-to-test matrix, fixture
   independence classification, and the evidence behind the exact Phase `01`
   characterization sequence;
-- critical/high-risk gaps receive the six cohesive characterization branches
-  named in the authoritative lineage above;
+- the independent Step `09` characterization oracle is complete without
+  changing the production validator or statistical method;
+- validation efficiency is measured and hardened before the five remaining
+  critical/high-risk characterization branches named above;
+- `refactor-01aa-validation-efficiency` preserves existing public Make targets,
+  separates non-overlapping Python-coverage, shell-contract, sequential
+  guarded-R, and pinned-report-runtime lanes, retains quiet failure logs and a
+  serial fallback, and leaves no stale child, lock, staging, or coverage
+  residue;
+- xdist becomes a default only with repeated exact serial/parallel pass, skip,
+  file, line, and branch equality plus at least a 15% Python-lane improvement;
+  parallel orchestration becomes a default only with at least a 25% complete
+  gate improvement, using the smallest stable concurrency within 5% of the
+  fastest result and no more than four top-level lanes;
 - `refactor-01z-test-sufficiency-gate` records the measured readiness decision;
 - Phase `02` produces high-level and detailed plans followed by separate
   architecture, reliability, and usability reviews;

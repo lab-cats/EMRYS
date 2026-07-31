@@ -7,26 +7,26 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01-test-baseline`
+  `refactor-01a-step09-independent-cmh-oracle`
 - Parent:
-  `refactor-00-comprehensive-audit`
+  `refactor-01-test-baseline`
 - Verified parent HEAD:
-  `02c1ae8138ed105621bb40cccee5498f9b7f5782`
+  `4fc32e08121e541f489ede32f25d59c2626a60e0`
 - Parent implementation:
-  `288dd93 refresh locked bitops dependency`
-- Parent documentation patch:
-  `02c1ae8 comprehensive refactor audit docpatch`
-- Current implementation:
   `b124e96 add Python coverage baseline gate`
-- Current package: developer-only measured Python coverage baseline,
-  public-contract risk-to-test matrix, and evidence-derived Phase `01`
-  characterization sequence
-- Package type: test-tool implementation plus separate documentation patch
+- Parent documentation patch:
+  `4fc32e0 add test baseline traceability docpatch`
+- Current implementation:
+  `bef0f97 test: characterize Step 09 CMH independently`
+- Current package: independent test-only Step `09` CMH, estimability, and
+  global-BH characterization from paired DP/AD counts
+- Package type: test/fixture implementation plus separate documentation patch
 - Remote and cluster work: paused
 
-The Phase `01` branch was created only after rereading the required corpus,
-running the complete parent gate, refreshing the remote, and verifying a
-clean, pushed, upstream-equal predecessor and absent target.
+The Phase `01a` branch was created only after inspecting the canonical
+takeover documents, running the applicable parent gate, refreshing the
+remote, and verifying a clean, pushed, upstream-equal predecessor and absent
+target.
 
 ## Completed boundary
 
@@ -73,6 +73,11 @@ The local descendant sequence has implemented:
 - a pinned developer-only Python line/branch baseline, deterministic
   non-regression check, subprocess tracing, self-tests, and exhaustive
   public-contract risk-to-test matrix.
+- a test-only Step `09` oracle that independently derives count-table
+  estimability, the two-sided continuity-corrected stratified CMH statistic,
+  p-value, common odds ratio, and one global BH family from paired DP/AD
+  counts, with valid, zero-cell, all-zero, missing, low-coverage,
+  infinite-odds, rounding, multi-stratum, and coordinated-corruption cases.
 
 ## Evidence boundary
 
@@ -113,6 +118,7 @@ The local descendant sequence has implemented:
 | Guarded local R dependency | `bitops` updated from locked `1.0-9` to `1.1-0` in the repository-local environment under a one-time explicit authorization; upstream consistency tests, exact boundary-output comparison, synchronization/current-release checks, and the complete local gate passed |
 | Comprehensive refactor audit | evidence inventory, ranked findings, test-first recommendations, and explicit do-not-abstract boundaries recorded; no NORAD workflow, schema, config, test, scientific method, or public-contract behavior changed |
 | Phase `01` test baseline | measured developer-only Python line/branch baseline and public-contract matrix recorded in [`../design/TEST_BASELINE.md`](../design/TEST_BASELINE.md); the implementation gate passed with 432 Python tests passing, 17 expected skips, every shell suite passing, guarded R environment/current-release validation, Step `08`/`09` local real-R fixtures, and 143 pinned report-runtime tests; no production behavior or evidence state changed |
+| Phase `01a` independent Step `09` oracle | 20 focused Python oracle tests and the committed real-R Step `09` corpus comparison passed; the complete implementation gate passed with 452 Python tests, 17 expected conditional skips, unchanged 80.8701% line/69.6956% branch coverage across 26 production Python modules, every shell suite, guarded R environment checks, guarded Step `08`/`09` real-R fixtures, and 143 pinned report-runtime tests; the production validator and Step `09` method were unchanged |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -189,9 +195,11 @@ approved policy defines and unlocks stricter exit criteria.
 - Storage quota, scratch capacity, and retention policy remain unresolved.
 - The exact Novogene annotation release remains partially unresolved.
 - No production scientific-evidence review has been completed.
-- The Step `09` structured validator does not independently recompute the CMH
-  statistic, p-value, common odds ratio, or table estimability from DP/AD
-  counts; the independent-oracle characterization package is next.
+- The Step `09` structured validator still does not independently recompute
+  the CMH statistic, p-value, common odds ratio, or table estimability from
+  DP/AD counts. Phase `01a` now supplies independent characterization evidence
+  for a later separately reviewed compatible correction; it did not change
+  production validation.
 - Shared validator publication faults, exact check rosters, complete public
   CLI/exit behavior, early and utility SLURM behavior, and independent
   serialized/state goldens remain the measured Phase `01` characterization
@@ -199,13 +207,25 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `refactor-01-test-baseline` implementation and documentation content are
-complete. The one-time Phase `00` dependency exception is exhausted and does
-not authorize future changes outside the normal development gate. After
-confirming this branch is clean, pushed, and upstream-equal, create the first
-Phase `01` characterization descendant named in the authoritative lineage. Do
-not change production structure before the final Phase `01` sufficiency gate
-and all three Phase `02` reviews.
+The `refactor-01a-step09-independent-cmh-oracle` implementation and
+documentation content are complete. Its complete computational gate applies
+to the executable state at `bef0f97`; the subsequent documentation-only patch
+requires the documentation gate rather than another unchanged computational
+run. After confirming this branch is clean, pushed, and upstream-equal, create
+`refactor-01aa-validation-efficiency`.
+
+That package must preserve existing public Make targets while separating
+non-overlapping validation lanes, adding quiet failure-first per-lane logs and
+a serial fallback, and measuring safe bounded parallelism. It may pin
+developer-only `pytest-xdist` only through the normal dependency gate. Exact
+serial/parallel pass, skip, and coverage evidence must agree before a parallel
+default is enabled.
+
+The one-time Phase `00` dependency exception is exhausted and does not
+authorize future changes outside the normal development gate. Do not change
+production structure before the final Phase `01` sufficiency gate and all
+three Phase `02` reviews. Do not begin production, cluster, scientific-policy,
+or biological-interpretation work.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).

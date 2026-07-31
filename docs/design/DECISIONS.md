@@ -32,6 +32,47 @@ documentation-only package uses one documentation commit.
 Reason: evidence, interfaces, and current state remain reviewable at every
 stage. The authoritative current lineage belongs in `PIPELINE_PLAN.md`.
 
+### Run one complete computational gate per executable state
+
+Decision: use focused tests during implementation, then run one de-duplicated
+complete computational gate against the final executable state before its
+implementation commit. A subsequent documentation-only patch runs the
+documentation gate and reuses that recorded computational evidence when Git
+inspection proves that executable configuration, dependencies, Make targets,
+schemas, fixtures, and test selection/execution semantics are unchanged.
+
+Reason: rerunning identical multi-runtime suites before both the implementation
+and documentation commits adds substantial latency without testing a new
+executable state. Any executable change after the recorded gate invalidates
+reuse and reopens the full implementation/docpatch sequence.
+
+### Prefer failure-first validation output
+
+Decision: local pytest uses quiet progress, short tracebacks, and its default
+captured-output behavior. Make command echo and routine successful shell, R,
+and report output are suppressed or captured; complete output is shown for a
+failure or an explicit verbose run.
+
+Reason: successful progress narration consumes operator attention and agent
+context without changing evidence. Failure logs must remain complete and
+diagnosable. Parallel execution is not enabled merely by adding `make -j`;
+the dedicated validation-efficiency package must prove independent lanes,
+exact serial/parallel result and coverage equality, bounded concurrency,
+failure reporting, cleanup, and a serial fallback first.
+
+### Read canonical documentation by task boundary
+
+Decision: every task starts with complete reads of the conduct and current
+handoff documents, the applicable roadmap sections, and task-relevant anchored
+sections of the other canonical owners. Complete reads of the nine-document
+corpus are reserved for phase boundaries, documentation-ownership changes,
+detected inconsistencies, and tasks that cannot otherwise be bounded safely.
+
+Reason: canonical ownership and targeted repository searches preserve the
+safety boundary without repeatedly loading thousands of unrelated operational
+lines. Commands, rationale, current state, and roadmap remain in their single
+owners so targeted reading does not depend on a duplicate summary.
+
 ### Keep active and future tests separate
 
 Decision: active runnable shell tests live under `tests/shell/`; future plans

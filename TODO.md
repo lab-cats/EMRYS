@@ -8,10 +8,11 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Complete and push the Phase `01` measured baseline and public-contract
-   matrix package.
-2. Add the six evidence-derived characterization packages in the exact
-   descendant order owned by
+1. Verify Phase `01a` is clean, pushed, and upstream-equal, then add the
+   validation-efficiency package with quiet failure-first output,
+   de-duplicated test lanes, and measured bounded parallel execution.
+2. Add the five remaining evidence-derived characterization packages in the
+   exact descendant order owned by
    [`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
 3. Record the measured test-sufficiency decision on the final Phase `01`
    gate.
@@ -20,9 +21,11 @@ checkout and evidence boundary are in
 
 ## Engineering gaps for the refactor gate
 
-- Add independent Step `09` validator recomputation of the CMH statistic,
-  p-value, odds ratio, and estimability from DP/AD counts before any compatible
-  correction.
+- Use the completed independent Step `09` CMH characterization oracle and
+  corruption corpus to design a separately reviewed compatible validator
+  correction; the production validator still does not recompute these fields.
+- Characterize safe Python and top-level test parallelism without weakening
+  coverage, failure evidence, cleanup, or serial fallback behavior.
 - Add high-risk characterization for shared validation publication/recheck
   faults and exact validation check rosters.
 - Complete public CLI/exit, SLURM-wrapper, and independent-golden

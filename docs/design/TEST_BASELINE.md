@@ -134,7 +134,7 @@ suites and is included in the cross-cutting matrix below.
 | `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
 | `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04`; real bcftools deferred |
 | `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py` | `D E M F N L T X R` | producer-coupled | partial: `TG-02`, `TG-03`, `TG-04`, and independent headers/goldens `TG-06` |
-| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py` | `D E M F N L T V X R` | mixed | gap: count-derived independent CMH oracle `TG-01`; also `TG-02`, `TG-03`, and `TG-04` |
+| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py` | `D E M F N L T V X R` | mixed | `TG-01` characterization complete; the production validator still requires a separately reviewed compatible correction; also `TG-02`, `TG-03`, and `TG-04` |
 
 The per-step validator rows intentionally distinguish malformed inputs, which
 exit nonzero and publish nothing, from readable but failed evidence, which may
@@ -156,7 +156,7 @@ characterization must preserve that distinction.
 | `step_06_split_bam_by_read_orientation.sh` | `tests/shell/test_step_06_split_bam_by_read_orientation.sh` | `H D E M F N L B I P T X W` | adequate |
 | `step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `H D E M F N L B I U P T X W` | adequate with mocked bcftools; real bcftools deferred |
 | `step_08_vcf_preprocessing.sh` | `tests/shell/test_step_08_vcf_preprocessing.sh`; guarded real-R suite | `H D E M F N L B S I U P T X W` | adequate local contract; production/cluster runtime deferred |
-| `step_09_cmh_editing_site_calling.sh` | `tests/shell/test_step_09_cmh_editing_site_calling.sh`; guarded real-R suite | `H D E M F N L B S I U P T V X W` | adequate producer contract; independent validator oracle remains `TG-01` |
+| `step_09_cmh_editing_site_calling.sh` | `tests/shell/test_step_09_cmh_editing_site_calling.sh`; guarded real-R suite; independent CMH corpus | `H D E M F N L B S I U P T V X W` | adequate producer contract; independent `TG-01` characterization complete |
 | `step_09c_scientific_validation.sh` | `tests/shell/test_step_09c_scientific_validation.sh` | `H D E M F N L B S I U P T V X W` | adequate local synthetic contract |
 
 Signal coverage is strongest for the later transactional workflows and report
@@ -170,7 +170,7 @@ because it has ordinary rollback coverage.
 | `check_r_environment.R` | `tests/shell/test_local_r_environment.sh`; guarded `make r-check` | `M F V X W` | adequate for the guarded local environment; CSU runtime deferred |
 | `restore_r_environment.R` | `tests/shell/test_local_r_environment.sh`; explicit `make r-restore` | `M F N X W` | adequate explicit setup behavior; installation is never automatic |
 | `step_08_vcf_preprocessing.R` | `tests/r/test_step_08_vcf_preprocessing.R`; wrapper suite | `E M F T X W` | adequate local real-R semantics; production scale and cluster runtime deferred |
-| `step_09_cmh_editing_site_calling.R` | `tests/r/test_step_09_cmh_editing_site_calling.R`; wrapper suite | `E M F T V X W` | adequate producer semantics; independent validator oracle remains `TG-01` |
+| `step_09_cmh_editing_site_calling.R` | `tests/r/test_step_09_cmh_editing_site_calling.R`; wrapper suite; `tests/fixtures/step_09_cmh_oracle.tsv` | `E M F T V X W` | adequate producer semantics; independent `TG-01` count-derived equivalence corpus complete |
 
 R source is not included in the Python coverage percentages. The guarded
 real-R suite is therefore a separate mandatory gate.
@@ -231,7 +231,7 @@ legacy exceptions before any structural change.
 | Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance suites | independent | preserve; fill shared validator publication paths in `TG-02` |
 | Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports | mixed | preserve; mutation-resistant vocabulary cases in `TG-06` |
 | Direct execution, arbitrary CWD, and SLURM delegation | strong for Steps `05`–`09`; uneven for early stages and utility jobs | independent | `TG-04` and `TG-05` |
-| Step `09` CMH statistic, p-value, odds ratio, and estimability | wrapper producer fixtures; validator checks type/range and BH from reported p-values | producer-coupled | critical gap `TG-01`: independently recompute from DP/AD and corrupt coordinated fields |
+| Step `09` CMH statistic, p-value, odds ratio, and estimability | independent Python oracle, fixed corpus, direct committed-R comparison, and coordinated-corruption rejection; production validator still checks type/range and BH from reported p-values | independent characterization plus producer-coupled validator | `TG-01` characterization complete; compatible production-validator correction remains separately reviewed |
 | `_run_summary_science.py` policy projection | artifact, summary, Step `09c`, and report suites | producer-coupled/mixed | independent state-transition goldens in `TG-06` |
 
 ## Golden-output and fixture independence
@@ -246,7 +246,7 @@ legacy exceptions before any structural change.
 | Step `00a`–`09` validation report fixtures | mostly independent | direct TSV/status assertions exist; exact roster independence is incomplete and belongs to `TG-03` |
 | Step `07` mocked VCF/receipt outputs | mixed | good transaction and manifest coverage; real bcftools output remains a deferred runtime gate |
 | Step `08` semantic outputs | mixed | guarded real-R fixtures are meaningful, but validator header expectations import Step `09c` production constants; independent headers and corruptions belong to `TG-06` |
-| Step `09` semantic outputs | producer-coupled for CMH fields | coordinated false CMH fields can pass; `TG-01` must derive the oracle directly from DP/AD |
+| Step `09` semantic outputs | mixed | `TG-01` now derives an independent oracle directly from DP/AD and proves coordinated corruption detectable; the production validator remains unchanged |
 | HTML/PDF/report receipts | mixed | real pinned renderer and independent structural readers are exercised; production reports remain absent |
 
 Independent duplication is intentional where it is the only way to detect a
@@ -255,8 +255,9 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The matrix yields six cohesive gaps. The authoritative branch mapping and
-order are in `PIPELINE_PLAN.md`.
+The baseline matrix yielded six cohesive gaps. `TG-01` is now characterized;
+the authoritative branch mapping and remaining order are in
+`PIPELINE_PLAN.md`.
 
 | Gap | Scope | Exit evidence |
 | --- | --- | --- |
@@ -266,6 +267,31 @@ order are in `PIPELINE_PLAN.md`.
 | `TG-04` | Public CLI and exit contracts | every Python, shell, and Make entry point has an explicit applicable-case decision for help, direct/arbitrary-CWD use, malformed input, side effects, unrelated files, and exit propagation |
 | `TG-05` | SLURM wrapper contracts | every job has a focused applicable-case decision for mode, modules, CWD, delegation, arguments, output validation, and exit propagation; legacy exceptions are characterized, not refactored |
 | `TG-06` | Independent goldens and mutation resistance | critical schemas, headers, serialized bytes, status transitions, evidence boundaries, and shared policy rules fail when production constants change without the independent expectation |
+
+### Completed `TG-01` characterization
+
+Implementation commit `bef0f97` completes the test-only `TG-01`
+characterization. `tests/tools/step_09_cmh_oracle.py` does not import
+production NORAD modules and derives missing/low-coverage/degenerate/tested
+status, the two-sided continuity-corrected stratified CMH statistic and
+p-value, common odds ratio, and global BH adjustment from paired DP/AD counts.
+The fixed corpus covers the required valid, zero-cell, all-zero, missing,
+low-coverage, infinite-odds, rounding, multi-stratum, global-BH, and
+coordinated-corruption boundaries.
+
+Twenty focused Python oracle tests passed. The guarded Step `09` real-R suite
+loads only the committed CMH function and constants needed for a direct corpus
+comparison. The complete local implementation gate passed with 452 Python
+tests, 17 expected conditional skips, unchanged 80.8701% line and 69.6956%
+branch coverage across 26 production Python modules, every shell suite,
+guarded R environment and Step `08`/`09` real-R checks, and 143 pinned
+report-runtime tests.
+
+This closes the characterization package, not the executable validator gap.
+`validate_step_09_cmh_outputs.py` still does not replace reported CMH fields
+with count-derived expectations. That compatible correction remains subject
+to the reviewed Phase `02`/`03` plan and must preserve check IDs, statuses,
+thresholds, output bytes, scientific language, and the Step `09` method.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any

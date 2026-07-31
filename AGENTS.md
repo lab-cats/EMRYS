@@ -13,20 +13,21 @@ roadmap and status matrix belong in
 ## Required task start
 
 Begin every task in plan/review mode. Before editing, branching, installing
-dependencies, or running mutating commands, read these documents completely:
+dependencies, or running mutating commands:
 
-- `AGENTS.md`
-- `README.md`
-- `TODO.md`
-- `docs/operations/HANDOFF.md`
-- `docs/design/PIPELINE_PLAN.md`
-- `docs/design/QUESTIONS.md`
-- `docs/operations/RUNBOOK.md`
-- `docs/design/DECISIONS.md`
-- `docs/operations/TROUBLESHOOTING.md`
+1. read `AGENTS.md` and `docs/operations/HANDOFF.md` completely;
+2. read the applicable status, lineage, and acceptance sections of
+   `docs/design/PIPELINE_PLAN.md`;
+3. read the task-relevant anchored sections of `README.md`, `TODO.md`,
+   `docs/design/QUESTIONS.md`, `docs/operations/RUNBOOK.md`,
+   `docs/design/DECISIONS.md`, and
+   `docs/operations/TROUBLESHOOTING.md`;
+4. inspect the worktree and relevant implementation before proposing changes.
 
-Inspect the worktree and relevant implementation before proposing changes.
-Do not edit until the user approves the plan.
+Read all nine documents completely at a phase boundary, when documentation
+ownership changes, when targeted inspection exposes an inconsistency, or when
+the task cannot be bounded safely from the canonical owners. Do not edit until
+the user approves the plan.
 
 ## Development gate
 
@@ -36,12 +37,16 @@ clean, docpatched predecessor:
 1. Verify the predecessor is clean, pushed, and upstream-equal.
 2. Create the package branch.
 3. Implement only that package and directly required contracts.
-4. Add focused tests and run the complete applicable local gate.
+4. Add focused tests and run one de-duplicated complete applicable local gate
+   against the final executable state.
 5. Commit implementation and tests.
-6. Reread the required documents.
+6. Reread the changed documents and their canonical owners.
 7. Perform a repository-wide documentation and diagram consistency pass.
 8. Commit the docpatch separately.
-9. Revalidate, require a clean worktree, inspect history, and push.
+9. Run the documentation gate. Repeat computational suites only if the
+   docpatch changed executable configuration, dependencies, Make targets,
+   schemas, fixtures, or test selection/execution semantics. Require a clean
+   worktree, inspect history, and push.
 10. Confirm upstream equality before creating another branch.
 
 If implementation changes after the docpatch, reopen the gate: retest, commit
@@ -49,6 +54,14 @@ the correction, and perform another separate docpatch.
 
 A documentation-only package uses one documentation commit. Do not fabricate
 an implementation commit when no executable behavior changed.
+
+During implementation, use focused tests repeatedly and reserve the complete
+computational gate for the final executable state. Pytest is quiet by default
+and retains captured output for failures; use the quiet Make and log-capture
+commands in `docs/operations/RUNBOOK.md`. Full output is for failures or an
+explicit verbose run. A recorded full-gate result may be reused after a
+documentation-only patch when Git inspection proves the executable state is
+unchanged.
 
 Runtime and cluster promotion are upstream-sequential even when an approved
 local-only sequence advances through descendant branches. Never runtime-

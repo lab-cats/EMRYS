@@ -172,8 +172,9 @@ not authorize implementation outside that plan.
   review; statistical-equivalence evidence
 - **Proposed phase:** Phase `01` characterization, then a separately reviewed
   Phase `03` package
-- **Status:** confirmed; prose overclaim corrected in Phase `00`; executable
-  gap remains
+- **Status:** Phase `01a` independent characterization complete at
+  `bef0f97`; prose overclaim corrected in Phase `00`; production validator
+  correction remains a separately reviewed executable gap
 
 ### RA-002 — Shared validation publication and recheck safety
 
@@ -772,8 +773,8 @@ not authorize implementation outside that plan.
   every Python, shell, R, SLURM, and Make entry point; maps protected
   transaction/schema/status/determinism/recovery/evidence boundaries; and
   classifies fixture independence.
-- **Status:** matrix resolved; six evidence-derived characterization gaps
-  remain queued in the authoritative lineage
+- **Status:** matrix resolved; the first evidence-derived characterization gap
+  is complete and five remain queued in the authoritative lineage
 
 ### RA-018 — Uneven SLURM behavior coverage
 
@@ -1119,10 +1120,12 @@ The findings and measured Phase `01` baseline support the authorized sequence:
 1. The developer-only Python coverage baseline and public-contract matrix are
    established in [`TEST_BASELINE.md`](TEST_BASELINE.md) before any production
    refactor.
-2. The six measured hardening gaps cover the independent Step `09` oracle,
-   shared validation-report publication faults, exact check rosters, public
-   CLI/exit behavior, every SLURM wrapper, and independent critical goldens.
-   Exact descendant names and order are owned by
+2. The independent Step `09` oracle characterization is complete. The five
+   remaining measured hardening gaps cover shared validation-report
+   publication faults, exact check rosters, public CLI/exit behavior, every
+   SLURM wrapper, and independent critical goldens. The intervening
+   validation-efficiency package reduces local gate cost without changing
+   production behavior. Exact descendant names and order are owned by
    [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
 3. Phase `02` should prefer small neutral seams over a repository-wide
    framework. The architecture review must reject reversed dependency
