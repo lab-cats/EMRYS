@@ -14,9 +14,12 @@ QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
 QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
 DEMO_REPORT_FORMATS ?= all
-DEMO_REPORT_FIXTURE_ROOT := $(DEMO_REPORT_ROOT)/fixture
-DEMO_REPORT_ARTIFACT_ROOT := $(DEMO_REPORT_FIXTURE_ROOT)/adapter_fixture/artifacts
+DEMO_REPORT_RUN_ID := synthetic_full_run_demo
+DEMO_REPORT_FIXTURE_ROOT := $(DEMO_REPORT_ROOT)/full-run-fixture
+DEMO_REPORT_ARTIFACT_ROOT := $(DEMO_REPORT_FIXTURE_ROOT)/artifacts
 DEMO_REPORT_OUTPUT_ROOT := $(DEMO_REPORT_ROOT)/reports
+DEMO_REPORT_SCIENCE_SUMMARY := $(DEMO_REPORT_FIXTURE_ROOT)/science_fixture/step09c_fixture/output/review_fixture/review_fixture.step09c_review_summary.tsv
+DEMO_REPORT_TABLE_APPROVALS := $(DEMO_REPORT_FIXTURE_ROOT)/report_table_approvals.tsv
 
 .PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validate smoke lint all-checks demo-step03-dry-run demo-step03
 
@@ -127,19 +130,22 @@ demo-report:
 	esac
 	"$(REPORT_PYTHON_BIN)" \
 		tests/fixtures/artifact_run_summary_v1/build_fixture.py \
-		--root "$(DEMO_REPORT_FIXTURE_ROOT)"
+		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
+		--full-science-demo
 	SOURCE_DATE_EPOCH=1700000000 \
 		"$(REPORT_PYTHON_BIN)" scripts/build_run_summary.py \
-		--run-id synthetic_run \
+		--run-id "$(DEMO_REPORT_RUN_ID)" \
 		--artifact-receipt \
-			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.artifact_receipt.tsv" \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).artifact_receipt.tsv" \
 		--output-root "$(DEMO_REPORT_ARTIFACT_ROOT)" \
+		--science-review-summary "$(DEMO_REPORT_SCIENCE_SUMMARY)" \
+		--report-table-approvals "$(DEMO_REPORT_TABLE_APPROVALS)" \
 		--execute
 	SOURCE_DATE_EPOCH=1700000000 \
 		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
 		scripts/render_run_report.sh \
 		--run-summary \
-			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.run_summary.json" \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
 		--quarto-bin "$(QUARTO_BIN)" \
 		--formats "$(DEMO_REPORT_FORMATS)"
@@ -147,28 +153,28 @@ demo-report:
 		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
 		scripts/render_run_report.sh \
 		--run-summary \
-			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.run_summary.json" \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
 		--quarto-bin "$(QUARTO_BIN)" \
 		--formats "$(DEMO_REPORT_FORMATS)" \
 		--execute
 	@printf 'Demo report bundle: %s\n' \
-		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run"
+		"$(DEMO_REPORT_OUTPUT_ROOT)/$(DEMO_REPORT_RUN_ID)"
 	@case "$(DEMO_REPORT_FORMATS)" in \
 		html|all) \
 			printf '  HTML: %s\n' \
-				"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_report.html" \
+				"$(DEMO_REPORT_OUTPUT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_report.html" \
 			;; \
 	esac
 	@case "$(DEMO_REPORT_FORMATS)" in \
 		pdf|all) \
 			printf '  PDF: %s\n' \
-				"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_report.pdf" \
+				"$(DEMO_REPORT_OUTPUT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_report.pdf" \
 			;; \
 	esac
 	@printf '  Summary: %s\n  Receipt: %s\n' \
-		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_summary.tsv" \
-		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.report_outputs.tsv"
+		"$(DEMO_REPORT_OUTPUT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.tsv" \
+		"$(DEMO_REPORT_OUTPUT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).report_outputs.tsv"
 
 python-coverage-measure:
 	test "$$("$(REPORT_PYTHON_BIN)" -c \

@@ -212,6 +212,24 @@ def test_pdf_source_has_exact_banner_order_and_no_analysis_code(
     assert "Rscript" not in source
 
 
+def test_pdf_source_compacts_wide_candidate_tables(
+    exploratory_approved_summary: Path,
+    tmp_path: Path,
+) -> None:
+    context = BUNDLE.prepare_context(
+        arguments(
+            exploratory_approved_summary,
+            tmp_path / "reports",
+            fake_quarto(tmp_path / "fake"),
+        )
+    )
+    source = BUNDLE._pdf_body(context).decode("utf-8")
+    assert "#### Candidate 1" in source
+    assert "- Candidate ID:" in source
+    assert "- CMH FDR, common OR, and delta:" in source
+    assert "| review_id | evidence_id |" not in source
+
+
 def test_partial_existing_bundle_is_rejected(
     incomplete_summary: Path,
     tmp_path: Path,

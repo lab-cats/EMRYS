@@ -308,6 +308,85 @@ def _markdown_escape(value: Any) -> str:
     return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
 
 
+def _pdf_hash(value: str) -> str:
+    """Keep long fixed-width hashes readable within a portrait PDF."""
+
+    midpoint = len(value) // 2
+    return f"`{value[:midpoint]}` `{value[midpoint:]}`"
+
+
+def _pdf_code(value: Any) -> str:
+    text = str(value).replace("`", "'").replace("\n", " ")
+    return f"`{text}`"
+
+
+def _pdf_candidate_summary(table: html_report.ApprovedTable) -> list[str]:
+    """Render approved candidate rows as compact records, not wide tables."""
+
+    lines = [
+        f"Table ID: `{_markdown_escape(table.table_id)}`  ",
+        f"Artifact ID: `{_markdown_escape(table.artifact_id)}`  ",
+        f"Source file: `{_markdown_escape(table.path.name)}`  ",
+        f"SHA-256: {_pdf_hash(table.sha256)}  ",
+        f"Rows: {table.row_count}; displayed: {table.displayed_row_count}",
+        "",
+    ]
+    if not table.header or not table.display_rows:
+        return lines
+
+    for index, values in enumerate(table.display_rows, start=1):
+        row = dict(zip(table.header, values))
+        lines.extend(
+            [
+                f"#### Candidate {index}",
+                "",
+                f"- Candidate ID: {_pdf_code(row['candidate_id'])}",
+                (
+                    "- Selection set: "
+                    f"`{_markdown_escape(row['selection_set'])}`"
+                ),
+            ]
+        )
+        if table.role == "candidate_selection":
+            lines.extend(
+                [
+                    (
+                        "- Rank and call: "
+                        f"`{_markdown_escape(row['rank'])}`; "
+                        f"`{_markdown_escape(row['source_call_status'])}`"
+                    ),
+                    (
+                        "- CMH FDR, common OR, and delta: "
+                        f"`{_markdown_escape(row['source_fdr'])}`; "
+                        f"`{_markdown_escape(row['source_common_or'])}`; "
+                        f"`{_markdown_escape(row['source_delta'])}`"
+                    ),
+                    (
+                        "- Selection reason: "
+                        f"{_markdown_escape(row['selection_reason'])}"
+                    ),
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    (
+                        "- Adjudication: "
+                        f"`{_markdown_escape(row['adjudication_status'])}`"
+                    ),
+                    (
+                        "- Annotation, matched DNA, orthogonal evidence: "
+                        f"`{_markdown_escape(row['annotation_status'])}`; "
+                        f"`{_markdown_escape(row['matched_dna_status'])}`; "
+                        f"`{_markdown_escape(row['orthogonal_evidence_status'])}`"
+                    ),
+                    f"- Reason: {_markdown_escape(row['reason'])}",
+                ]
+            )
+        lines.append("")
+    return lines
+
+
 def _pdf_body(context: BundleContext) -> bytes:
     summary = context.html.summary
     banner = html_report.SCIENCE_BANNERS[summary["science_status"]]
@@ -329,7 +408,10 @@ def _pdf_body(context: BundleContext) -> bytes:
         "|---|---|",
         f"| Run ID | `{_markdown_escape(summary['run_id'])}` |",
         f"| Run-summary schema | `{_markdown_escape(summary['schema_version'])}` |",
-        f"| Run-summary SHA-256 | `{context.html.run_summary_snapshot.sha256}` |",
+        (
+            "| Run-summary SHA-256 | "
+            f"{_pdf_hash(context.html.run_summary_snapshot.sha256)} |"
+        ),
         f"| Primary analysis | `{_markdown_escape(summary['run_contract']['primary_analysis_id'])}` |",
         "",
         f"## {PDF_SECTION_MARKERS[2]}",
@@ -388,18 +470,9 @@ def _pdf_body(context: BundleContext) -> bytes:
             [
                 f"### {_markdown_escape(table.title)}",
                 "",
-                f"Full table: `{_markdown_escape(table.path)}`  ",
-                f"SHA-256: `{table.sha256}`  ",
-                f"Rows: {table.row_count}; displayed: {table.displayed_row_count}",
-                "",
+                *_pdf_candidate_summary(table),
             ]
         )
-        if table.header and table.display_rows:
-            lines.append("| " + " | ".join(_markdown_escape(x) for x in table.header) + " |")
-            lines.append("| " + " | ".join("---" for _ in table.header) + " |")
-            for row in table.display_rows:
-                lines.append("| " + " | ".join(_markdown_escape(x) for x in row) + " |")
-            lines.append("")
     lines.extend(
         [
             f"## {PDF_SECTION_MARKERS[5]}",
@@ -410,26 +483,24 @@ def _pdf_body(context: BundleContext) -> bytes:
             "",
             "### Expected-scope matrix",
             "",
-            "| Step | Scope type | Scope ID | Aggregate | Runtime | Cluster proof |",
-            "|---|---|---|---|---|---|",
+            (
+                "Each expected scope is listed with its aggregate, runtime, "
+                "and cluster-proof status."
+            ),
+            "",
         ]
     )
     for item in summary["expected_scopes"]:
         scope = item["scope"]
         lines.append(
-            "| "
-            + " | ".join(
-                _markdown_escape(value)
-                for value in (
-                    scope["step_id"],
-                    scope["scope_type"],
-                    scope["scope_id"],
-                    item["aggregate_state"],
-                    item["runtime_validation_status"],
-                    item["cluster_proof_status"],
-                )
-            )
-            + " |"
+            "- Step "
+            f"{_markdown_escape(scope['step_id'])} - "
+            f"{_markdown_escape(scope['scope_type'])} / "
+            f"{_markdown_escape(scope['scope_id'])}: aggregate "
+            f"{_markdown_escape(item['aggregate_state'])}; runtime "
+            f"{_markdown_escape(item['runtime_validation_status'])}; "
+            "cluster proof "
+            f"{_markdown_escape(item['cluster_proof_status'])}."
         )
     template = context.pdf_template_snapshot.path.read_text(encoding="utf-8")
     if template.count(PDF_BODY_MARKER) != 1:

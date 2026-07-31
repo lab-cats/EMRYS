@@ -19,12 +19,14 @@ html {
 }
 
 body {
+  box-sizing: border-box;
   margin: 0 auto;
-  max-width: 1180px;
+  max-width: 920px;
   padding: 0 1.25rem 4rem;
 }
 
 main {
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -76,6 +78,42 @@ pre {
   padding: 0.8rem 1rem;
 }
 
+.report-category-tabs {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+
+.report-category {
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: clip;
+}
+
+.report-category > summary {
+  background: #e2e8f0;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 0.8rem 1rem;
+}
+
+.report-category[open] > summary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.report-category-body {
+  min-width: 0;
+  padding: 0 1rem 1rem;
+}
+
+.report-category-body > .report-section:first-child h2 {
+  margin-top: 1.25rem;
+}
+
 .panel-grid {
   display: grid;
   gap: 1rem;
@@ -104,13 +142,20 @@ pre {
 .norad-table-wrap {
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.norad-table-wrap-wide {
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
 }
 
 .norad-table {
   border-collapse: collapse;
   font-size: 0.9rem;
   margin: 1rem 0;
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
 }
 
 .norad-table caption {
@@ -123,6 +168,8 @@ pre {
 .norad-table th,
 .norad-table td {
   border: 1px solid var(--line);
+  max-width: 24rem;
+  overflow-wrap: anywhere;
   padding: 0.4rem 0.55rem;
   text-align: left;
   vertical-align: top;
@@ -130,6 +177,7 @@ pre {
 
 .norad-table th {
   background: #e2e8f0;
+  white-space: nowrap;
 }
 
 .artifact-overview {

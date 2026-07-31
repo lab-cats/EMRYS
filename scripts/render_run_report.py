@@ -590,6 +590,23 @@ def _section(section_id: str, title: str, body: str) -> str:
     )
 
 
+def _category(
+    category_id: str,
+    title: str,
+    body: str,
+    *,
+    open_by_default: bool = False,
+) -> str:
+    open_attribute = " open" if open_by_default else ""
+    return (
+        f'<details id="{category_id}" class="report-category" '
+        f'name="norad-report-categories"{open_attribute}>\n'
+        f"<summary>{_escape(title)}</summary>\n"
+        f'<div class="report-category-body">\n{body}\n</div>\n'
+        "</details>"
+    )
+
+
 def _table(
     *,
     table_id: str,
@@ -599,6 +616,15 @@ def _table(
     row_headers: bool = False,
 ) -> str:
     escaped_id = _escape(table_id)
+    escaped_caption = _escape(caption)
+    wide_class = (
+        " norad-table-wrap-wide" if len(header) > 6 else ""
+    )
+    wide_attributes = (
+        f' tabindex="0" role="region" aria-label="{escaped_caption}"'
+        if wide_class
+        else ""
+    )
     head = "".join(
         f'<th scope="col">{_escape(column)}</th>' for column in header
     )
@@ -620,9 +646,9 @@ def _table(
             f'<tr><td colspan="{len(header)}">No rows are available.</td></tr>'
         )
     return (
-        '<div class="norad-table-wrap">\n'
+        f'<div class="norad-table-wrap{wide_class}"{wide_attributes}>\n'
         f'<table class="norad-table" id="{escaped_id}">\n'
-        f"<caption>{_escape(caption)}</caption>\n"
+        f"<caption>{escaped_caption}</caption>\n"
         f"<thead><tr>{head}</tr></thead>\n"
         f"<tbody>{''.join(rendered_rows)}</tbody>\n"
         "</table>\n"
@@ -1484,6 +1510,160 @@ def build_report_body(
     for table in tables:
         tables_by_role[table.role].append(table)
 
+    overview = "\n".join(
+        (
+            _section(
+                "status-section",
+                "Computational and scientific status",
+                _render_status_panels(summary),
+            ),
+            _section(
+                "candidate-section",
+                f"{CANDIDATE_TERMINOLOGY} and adjudication summaries",
+                _tables_for_roles(
+                    tables_by_role,
+                    ("candidate_selection", "candidate_adjudication"),
+                    (
+                        "No candidate-selection or adjudication table was "
+                        "explicitly approved. No candidate row is displayed "
+                        "or inferred."
+                    ),
+                ),
+            ),
+            _section(
+                "limitations-section",
+                "Limitations and interpretation boundary",
+                _render_limitations(summary)
+                + "\n"
+                + _tables_for_roles(
+                    tables_by_role,
+                    ("limitations",),
+                    "No separate limitations table was explicitly approved.",
+                ),
+            ),
+        )
+    )
+    qc_and_orientation = _section(
+        "qc-orientation-section",
+        "QC, orientation, annotation, and Step 07 to Step 09 funnel",
+        _render_qc_metrics(summary)
+        + "\n"
+        + _render_evidence_categories(summary)
+        + "\n"
+        + _tables_for_roles(
+            tables_by_role,
+            (
+                "orientation_locus_audit",
+                "annotation_audit",
+                "qc_funnel",
+            ),
+            (
+                "No orientation-locus, annotation-audit, or QC-funnel table "
+                "was explicitly approved. Statuses remain visible above; row "
+                "content was not discovered."
+            ),
+        ),
+    )
+    replicates_and_sensitivity = _section(
+        "replicate-sensitivity-section",
+        "Replicate, sensitivity, and leave-one-pair-out summaries",
+        _tables_for_roles(
+            tables_by_role,
+            (
+                "replicate_effects",
+                "sensitivity_matrix",
+                "leave_one_pair_out",
+            ),
+            (
+                "No replicate-effect, sensitivity, or leave-one-pair-out table "
+                "was explicitly approved."
+            ),
+        ),
+    )
+    review_decisions = "\n".join(
+        (
+            _section(
+                "decisions-section",
+                (
+                    "Background, matched-DNA, orthogonal-evidence, and review "
+                    "decisions"
+                ),
+                _render_decisions(summary)
+                + "\n"
+                + _tables_for_roles(
+                    tables_by_role,
+                    ("decisions",),
+                    "No separate decision table was explicitly approved.",
+                ),
+            ),
+            _section(
+                "rerun-section",
+                "Rerun implications",
+                _render_rerun_implications(summary),
+            ),
+        )
+    )
+    evidence_and_provenance = "\n".join(
+        (
+            _section(
+                "run-identity-section",
+                "Run identity, inputs, hashes, and provenance",
+                _render_run_identity(summary),
+            ),
+            _section(
+                "scope-matrix-section",
+                "Expected-step and missing-evidence matrix",
+                _render_scope_matrix(summary),
+            ),
+            _section(
+                "evidence-methods-section",
+                "Evidence index and methods appendix",
+                _render_evidence_index(summary)
+                + "\n"
+                + _tables_for_roles(
+                    tables_by_role,
+                    ("evidence_index",),
+                    "No separate evidence-index table was explicitly approved.",
+                )
+                + "\n"
+                + _render_input_artifacts(summary)
+                + "\n"
+                + _render_science_methods(summary)
+                + "\n"
+                + _render_attempt_lineage(summary)
+                + "\n"
+                + _render_artifact_appendix(summary)
+                + "\n"
+                + _render_table_inventory(tables)
+                + "\n"
+                + _render_tools(summary)
+                + "\n"
+                + _render_issues(summary)
+                + "\n"
+                + _render_json_block(
+                    "Run-summary parameters", summary["parameters"]
+                )
+                + "\n"
+                + _render_json_block(
+                    "Run-summary provenance", summary["provenance"]
+                )
+                + "\n"
+                + _render_report_provenance(metadata),
+            ),
+        )
+    )
+    unknown_tables = [
+        table for table in tables if table.role not in KNOWN_REPORT_ROLES
+    ]
+    if unknown_tables:
+        evidence_and_provenance += "\n" + _section(
+            "other-approved-tables-section",
+            "Other explicitly approved report tables",
+            "\n".join(
+                _render_approved_table(table) for table in unknown_tables
+            ),
+        )
+
     parts = [
         (
             '<main id="norad-report" tabindex="-1" '
@@ -1507,149 +1687,43 @@ def build_report_body(
             "runtime, cluster, scientific, or biological validation. Candidate "
             f"rows are described only as {_escape(CANDIDATE_TERMINOLOGY)}.</p>"
         ),
-        _section(
-            "run-identity-section",
-            "Run identity, inputs, hashes, and provenance",
-            _render_run_identity(summary),
+        (
+            '<div class="report-category-tabs" role="group" '
+            'aria-label="Report categories">'
         ),
-        _section(
-            "status-section",
-            "Computational and scientific status",
-            _render_status_panels(summary),
+        _category(
+            "overview-category",
+            "Overview",
+            overview,
+            open_by_default=True,
         ),
-        _section(
-            "limitations-section",
-            "Limitations and interpretation boundary",
-            _render_limitations(summary)
-            + "\n"
-            + _tables_for_roles(
-                tables_by_role,
-                ("limitations",),
-                "No separate limitations table was explicitly approved.",
-            ),
+        _category(
+            "qc-category",
+            "QC and orientation",
+            qc_and_orientation,
         ),
-        _section(
-            "scope-matrix-section",
-            "Expected-step and missing-evidence matrix",
-            _render_scope_matrix(summary),
+        _category(
+            "replicate-category",
+            "Replicates and sensitivity",
+            replicates_and_sensitivity,
         ),
-        _section(
-            "qc-orientation-section",
-            "QC, orientation, annotation, and Step 07 to Step 09 funnel",
-            _render_qc_metrics(summary)
-            + "\n"
-            + _render_evidence_categories(summary)
-            + "\n"
-            + _tables_for_roles(
-                tables_by_role,
-                (
-                    "orientation_locus_audit",
-                    "annotation_audit",
-                    "qc_funnel",
-                ),
-                (
-                    "No orientation-locus, annotation-audit, or QC-funnel "
-                    "table was explicitly approved. Statuses remain visible "
-                    "above; row content was not discovered."
-                ),
-            ),
+        _category(
+            "review-category",
+            "Review decisions",
+            review_decisions,
         ),
-        _section(
-            "replicate-sensitivity-section",
-            "Replicate, sensitivity, and leave-one-pair-out summaries",
-            _tables_for_roles(
-                tables_by_role,
-                (
-                    "replicate_effects",
-                    "sensitivity_matrix",
-                    "leave_one_pair_out",
-                ),
-                (
-                    "No replicate-effect, sensitivity, or leave-one-pair-out "
-                    "table was explicitly approved."
-                ),
-            ),
+        _category(
+            "evidence-category",
+            "Evidence and provenance",
+            evidence_and_provenance,
         ),
-        _section(
-            "candidate-section",
-            f"{CANDIDATE_TERMINOLOGY} and adjudication summaries",
-            _tables_for_roles(
-                tables_by_role,
-                ("candidate_selection", "candidate_adjudication"),
-                (
-                    "No candidate-selection or adjudication table was "
-                    "explicitly approved. No candidate row is displayed or "
-                    "inferred."
-                ),
-            ),
-        ),
-        _section(
-            "decisions-section",
-            "Background, matched-DNA, orthogonal-evidence, and review decisions",
-            _render_decisions(summary)
-            + "\n"
-            + _tables_for_roles(
-                tables_by_role,
-                ("decisions",),
-                "No separate decision table was explicitly approved.",
-            ),
-        ),
-        _section(
-            "rerun-section",
-            "Rerun implications",
-            _render_rerun_implications(summary),
-        ),
-        _section(
-            "evidence-methods-section",
-            "Evidence index and methods appendix",
-            _render_evidence_index(summary)
-            + "\n"
-            + _tables_for_roles(
-                tables_by_role,
-                ("evidence_index",),
-                "No separate evidence-index table was explicitly approved.",
-            )
-            + "\n"
-            + _render_input_artifacts(summary)
-            + "\n"
-            + _render_science_methods(summary)
-            + "\n"
-            + _render_attempt_lineage(summary)
-            + "\n"
-            + _render_artifact_appendix(summary)
-            + "\n"
-            + _render_table_inventory(tables)
-            + "\n"
-            + _render_tools(summary)
-            + "\n"
-            + _render_issues(summary)
-            + "\n"
-            + _render_json_block("Run-summary parameters", summary["parameters"])
-            + "\n"
-            + _render_json_block("Run-summary provenance", summary["provenance"])
-            + "\n"
-            + _render_report_provenance(metadata),
-        ),
+        "</div>",
         (
             '<p class="report-disclaimer">End of report. '
             f"{_escape(banner)} Report generation did not change any recorded "
             "status.</p>\n</main>"
         ),
     ]
-    unknown_tables = [
-        table for table in tables if table.role not in KNOWN_REPORT_ROLES
-    ]
-    if unknown_tables:
-        parts.insert(
-            -1,
-            _section(
-                "other-approved-tables-section",
-                "Other explicitly approved report tables",
-                "\n".join(
-                    _render_approved_table(table) for table in unknown_tables
-                ),
-            ),
-        )
     return "\n\n".join(parts) + "\n"
 
 

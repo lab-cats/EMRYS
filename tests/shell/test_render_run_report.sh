@@ -233,6 +233,7 @@ grep -Fq 'report Python dependencies are unavailable' \
     fail "demo-report bad-Python failure created output storage"
 
 make_demo_root="$tmp/make-demo"
+make_demo_run_id="synthetic_full_run_demo"
 for attempt in 1 2; do
     make --no-print-directory demo-report \
         DEMO_REPORT_ROOT="$make_demo_root" \
@@ -240,21 +241,43 @@ for attempt in 1 2; do
         QUARTO_BIN="$fake_quarto" \
         REPORT_PYTHON_BIN="$python_bin" >"$tmp/make-demo-$attempt.out"
 
-    make_demo_output="$make_demo_root/reports/synthetic_run"
-    make_demo_html="$make_demo_output/synthetic_run.run_report.html"
-    make_demo_summary="$make_demo_output/synthetic_run.run_summary.tsv"
-    make_demo_receipt="$make_demo_output/synthetic_run.report_outputs.tsv"
+    make_demo_output="$make_demo_root/reports/$make_demo_run_id"
+    make_demo_html="$make_demo_output/$make_demo_run_id.run_report.html"
+    make_demo_summary="$make_demo_output/$make_demo_run_id.run_summary.tsv"
+    make_demo_receipt="$make_demo_output/$make_demo_run_id.report_outputs.tsv"
     [[ -s "$make_demo_html" ]] ||
         fail "demo-report attempt $attempt did not publish HTML"
     [[ -s "$make_demo_summary" ]] ||
         fail "demo-report attempt $attempt did not publish the summary TSV"
     [[ -s "$make_demo_receipt" ]] ||
         fail "demo-report attempt $attempt did not publish the receipt"
-    grep -Fq 'SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.' \
+    grep -Fq 'EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.' \
         "$make_demo_html" ||
         fail "demo-report attempt $attempt lacks the evidence banner"
     grep -Fq 'CMH-ranked candidates' "$make_demo_html" ||
         fail "demo-report attempt $attempt lacks required candidate terminology"
+    grep -Fq 'science_review_complete_exploratory' "$make_demo_html" ||
+        fail "demo-report attempt $attempt lacks the exploratory science record"
+    grep -Fq 'ABE_EV_2' "$make_demo_html" ||
+        fail "demo-report attempt $attempt lacks populated sample evidence"
+    grep -Fq 'analysis_sensitivity_dp' "$make_demo_html" ||
+        fail "demo-report attempt $attempt lacks populated sensitivity evidence"
+    for category in \
+        overview-category \
+        qc-category \
+        replicate-category \
+        review-category \
+        evidence-category
+    do
+        grep -Fq "id=\"$category\"" "$make_demo_html" ||
+            fail "demo-report attempt $attempt lacks category $category"
+    done
+    grep -Fq 'id="overview-category" class="report-category" name="norad-report-categories" open' \
+        "$make_demo_html" ||
+        fail "demo-report attempt $attempt does not open Overview by default"
+    if grep -Fqi '<script' "$make_demo_html"; then
+        fail "demo-report attempt $attempt is not script-free"
+    fi
     grep -Fq "Demo report bundle: $make_demo_output" \
         "$tmp/make-demo-$attempt.out" ||
         fail "demo-report attempt $attempt did not print its output path"

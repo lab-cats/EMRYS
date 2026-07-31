@@ -683,6 +683,18 @@ def test_approved_table_limits_paths_hashes_and_escaping(
         assert "Displayed 2 of 2 rows" not in qmd
 
 
+def test_wide_tables_are_scoped_to_a_keyboard_scroll_region() -> None:
+    rendered = RENDER._table(
+        table_id="wide-table",
+        caption="Wide approved evidence",
+        header=tuple(f"column_{index}" for index in range(7)),
+        rows=(tuple(f"value_{index}" for index in range(7)),),
+    )
+    assert 'class="norad-table-wrap norad-table-wrap-wide"' in rendered
+    assert 'tabindex="0" role="region"' in rendered
+    assert 'aria-label="Wide approved evidence"' in rendered
+
+
 def test_builder_approved_tables_render_end_to_end(
     tmp_path: Path,
 ) -> None:

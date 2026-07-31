@@ -44,6 +44,19 @@ REPORT_TABLE_APPROVALS_HEADER = (
     "approved_by",
     "approved_at",
 )
+FULL_SCIENCE_DEMO_ROLES = (
+    "orientation_locus_audit",
+    "annotation_audit",
+    "qc_funnel",
+    "replicate_effects",
+    "sensitivity_matrix",
+    "leave_one_pair_out",
+    "candidate_selection",
+    "candidate_adjudication",
+    "decisions",
+    "limitations",
+    "evidence_index",
+)
 
 
 def load_module(name: str, path: Path) -> ModuleType:
@@ -1049,6 +1062,7 @@ def build_approved_science_fixture(
     root: Path,
     *,
     science_status: str = "evidence_incomplete",
+    run_id: str | None = None,
     roles: Sequence[str] = (
         "candidate_selection",
         "candidate_adjudication",
@@ -1059,6 +1073,7 @@ def build_approved_science_fixture(
     fixture = build_explicit_science_fixture(
         root,
         science_status=science_status,
+        run_id=run_id,
         empty_candidate_selection=(
             "candidate_selection" in header_only_roles
         ),
@@ -1078,6 +1093,83 @@ def build_approved_science_fixture(
     )
 
 
+def build_full_science_demo_fixture(root: Path) -> RunSummaryFixture:
+    """Build all 81 pipeline artifacts with a complete exploratory review."""
+
+    root = root.resolve()
+    run_id = "synthetic_full_run_demo"
+    science_fixture = build_explicit_science_fixture(
+        root / "science_fixture",
+        science_status="science_review_complete_exploratory",
+        run_id=run_id,
+    )
+    if science_fixture.step09c_fixture is None:
+        raise RuntimeError("Full science demo lacks the Step 09c fixture")
+    base_fixture = ADAPTER_FIXTURE.build_fixture(
+        root / "base_fixture",
+        run_id=run_id,
+    )
+    early_rows = [
+        dict(row)
+        for row in base_fixture.inventory_rows
+        if row["step_id"] not in {"08", "09", "09c"}
+    ]
+    late_rows = [
+        dict(row) for row in science_fixture.adapter_fixture.inventory_rows
+    ]
+    inventory_rows = [*early_rows, *late_rows]
+    if len(inventory_rows) != 81:
+        raise RuntimeError(
+            "Full science demo must retain exactly 81 artifact rows; found "
+            f"{len(inventory_rows)}"
+        )
+
+    adapter_root = root / "adapter_fixture"
+    adapter_root.mkdir(parents=True, exist_ok=True)
+    inventory = adapter_root / "artifact_inventory.tsv"
+    run_contract = adapter_root / "run_contract.json"
+    write_tsv(inventory, ADAPTER.contracts.INVENTORY_HEADER, inventory_rows)
+    write_run_contract(
+        run_contract,
+        sample_manifest_sha256=sha256_file(
+            science_fixture.step09c_fixture.sample_manifest
+        ),
+        partition_manifest_sha256=sha256_file(
+            science_fixture.step09c_fixture.partition_manifest
+        ),
+        primary_analysis_id=STEP09C_FIXTURE.PRIMARY_ANALYSIS_ID,
+    )
+    output_root = root / "artifacts"
+    adapter_fixture = ADAPTER_FIXTURE.FixturePaths(
+        root=adapter_root,
+        run_id=run_id,
+        run_contract=run_contract,
+        inventory=inventory,
+        source_root=root,
+        output_root=output_root,
+        inventory_rows=tuple(inventory_rows),
+        source_paths={
+            row["artifact_id"]: Path(row["source_path"])
+            for row in inventory_rows
+        },
+    )
+    publish_adapter_fixture(adapter_fixture)
+    fixture = RunSummaryFixture(
+        root=root,
+        run_id=run_id,
+        artifact_receipt=adapter_fixture.receipt_path,
+        output_root=output_root,
+        adapter_fixture=adapter_fixture,
+        science_review_summary=science_fixture.science_review_summary,
+        step09c_fixture=science_fixture.step09c_fixture,
+    )
+    normalize_explicit_science_transaction(fixture)
+    return add_report_table_approvals(
+        fixture,
+        roles=FULL_SCIENCE_DEMO_ROLES,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build an artifact-run-summary synthetic fixture."
@@ -1088,8 +1180,22 @@ def main() -> int:
         choices=("none", *STEP09C_FIXTURE.SCIENCE_STATUSES),
         default="none",
     )
+    parser.add_argument(
+        "--full-science-demo",
+        action="store_true",
+        help=(
+            "Build the complete exploratory Step 09c fixture and approve every "
+            "supported scientific report table for a populated demo."
+        ),
+    )
     arguments = parser.parse_args()
-    if arguments.science_status == "none":
+    if arguments.full_science_demo and arguments.science_status != "none":
+        parser.error(
+            "--full-science-demo cannot be combined with --science-status"
+        )
+    if arguments.full_science_demo:
+        fixture = build_full_science_demo_fixture(arguments.root)
+    elif arguments.science_status == "none":
         fixture = build_fixture(arguments.root)
     else:
         fixture = build_explicit_science_fixture(
@@ -1100,6 +1206,8 @@ def main() -> int:
     print(f"Run-summary output root: {fixture.output_root}")
     if fixture.science_review_summary is not None:
         print(f"Science-review summary: {fixture.science_review_summary}")
+    if fixture.report_table_approvals is not None:
+        print(f"Report-table approvals: {fixture.report_table_approvals}")
     return 0
 
 
