@@ -366,6 +366,20 @@ structural, text-order, and every-page banner validation. Format-neutral
 content keeps the HTML and PDF projections aligned while allowing
 format-specific validation.
 
+The HTML projection groups broad report categories with native,
+script-free disclosure elements. Overview opens first so status, CMH-ranked
+candidates, adjudication, and limitations remain near the top. The page uses
+a bounded reading width, while wide approved tables scroll within their own
+keyboard-focusable regions instead of widening the document. The PDF remains
+linear and renders wide candidate tables as compact per-candidate records.
+Full approved rows and provenance remain available in the HTML and authorized
+source tables.
+
+Alternative deferred: a richer tab interaction model with additional
+keyboard, responsive, print, and browser behavior. It requires separate
+review and focused interaction coverage rather than adding script execution
+to the current static report implicitly.
+
 Rendering never discovers inputs, invokes analysis engines, installs
 dependencies, or promotes evidence state.
 

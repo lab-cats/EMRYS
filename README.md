@@ -37,6 +37,10 @@ authoritative step/package matrix and descendant roadmap, read
 3. Start with synthetic fixtures and dry-run mode.
 4. Never treat a local pass as cluster or scientific evidence.
 
+To preview a populated synthetic HTML/PDF bundle, use the
+[demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
+It exercises the report path without production inputs or evidence promotion.
+
 Dependency restoration is an explicit setup action. Workflow scripts,
 validators, renderers, and tests never install R, Quarto, system packages, or
 analysis dependencies.

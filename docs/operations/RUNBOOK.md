@@ -1065,6 +1065,68 @@ Run `make quarto-restore` first. The target requires the real pinned renderer
 and exercises deterministic rerendering. A passing target is local renderer
 and synthetic-fixture evidence only.
 
+### Generate The Populated Synthetic Demo Report
+
+Restore Quarto and install the pinned report Python dependencies through the
+normal explicit setup procedures before running the demo. The demo target
+checks those dependencies and fails with setup guidance; it never downloads,
+installs, or repairs them.
+
+Generate the default HTML/PDF/summary/receipt bundle:
+
+```bash
+make demo-report
+```
+
+The target creates deterministic synthetic evidence content for a complete
+81-artifact, 15-scope run, attaches all 11 supported approved scientific
+tables, builds the canonical run summary, runs the report renderer in dry-run
+mode, and only then executes it. Every invocation publishes through the normal
+replacement transaction and receives new adapter, summary, and report attempt
+identities.
+
+The default bundle is:
+
+```text
+results/demo-report/reports/synthetic_full_run_demo/
+├── synthetic_full_run_demo.run_report.html
+├── synthetic_full_run_demo.run_report.pdf
+├── synthetic_full_run_demo.run_summary.tsv
+└── synthetic_full_run_demo.report_outputs.tsv
+```
+
+Intermediate synthetic inputs and canonical artifacts remain beneath
+`results/demo-report/full-run-fixture/`. The complete `results/` tree is
+ignored and must not be committed.
+
+The HTML is self-contained and script-free. It opens Overview first, placing
+status, CMH-ranked candidates, adjudication, and limitations near the top.
+The remaining native disclosure categories group QC and orientation,
+replicate/sensitivity evidence, review decisions, and provenance. The page has
+a bounded reading width; wide tables scroll within keyboard-focusable regions.
+The PDF remains linear and renders candidate evidence as compact readable
+records.
+
+Select a single report projection when needed:
+
+```bash
+make demo-report DEMO_REPORT_FORMATS=html
+make demo-report DEMO_REPORT_FORMATS=pdf
+```
+
+Use a different ignored output root explicitly:
+
+```bash
+make demo-report DEMO_REPORT_ROOT=/explicit/ignored/demo-report
+```
+
+This is a synthetic exploratory demonstration. The banner remains
+`EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.` A complete
+transaction, populated scientific tables, or
+`science_review_complete_exploratory` fixture state does not establish
+production execution, local or cluster runtime validation, completed
+production scientific review, or biological readiness.
+
 ## Manual Job Checking
 
 Recent logs:

@@ -20,6 +20,19 @@ Use the current [`../operations/HANDOFF.md`](../operations/HANDOFF.md) and
 7. Static reports project that summary without running analysis or promoting
    state.
 
+## Populated synthetic report
+
+Before presenting, generate the local synthetic report through the
+[runbook procedure](../operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
+The fixture resembles a complete report transaction while remaining entirely
+synthetic and provisional.
+
+Start in the open Overview category: the evidence banner, status, CMH-ranked
+candidates, adjudication, and limitations appear first. Then expand QC and
+orientation, Replicates and sensitivity, Review decisions, and Evidence and
+provenance. Wide tables scroll within the report column. The PDF presents the
+same boundary in a linear, print-readable form.
+
 ## Suggested inspection order
 
 1. [`../../README.md`](../../README.md)

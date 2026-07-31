@@ -52,6 +52,11 @@ and unavailable evidence remains visible.
 Every report must carry the applicable scientific-state banner and disclose
 table truncation with the complete source path and hash.
 
+The local populated demo uses only synthetic artifacts and an exploratory
+review fixture. Its open Overview category deliberately brings status,
+CMH-ranked candidates, adjudication, and limitations forward; that
+presentation does not make the fixture production or biologically validated.
+
 ## Discussion prompts
 
 - Is the exact Novogene annotation release recoverable?

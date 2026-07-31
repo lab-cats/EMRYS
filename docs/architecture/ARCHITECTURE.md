@@ -101,6 +101,14 @@ EOF, extractable section order, page count, and exact banner on every page.
 A valid predecessor containing only the former HTML output may be upgraded
 without weakening identity or no-clobber checks.
 
+The HTML view uses a bounded reading column and broad native disclosure
+categories. Overview is initially open and places computational/scientific
+status, CMH-ranked candidates, adjudication, and limitations before detailed
+QC, sensitivity, review, and provenance material. Wide tables scroll inside
+their category rather than expanding the page. The PDF remains a linear
+projection and uses compact candidate records where a full-width table would
+be unreadable.
+
 ## Scientific boundary
 
 Mechanical `FWD_like` and `REV_like` labels are intentionally neutral.

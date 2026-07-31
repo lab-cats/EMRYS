@@ -7,26 +7,29 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01a-step09-independent-cmh-oracle`
+  `refactor-01a1-demo-report-command`
 - Parent:
-  `refactor-01-test-baseline`
+  `refactor-01a-step09-independent-cmh-oracle`
 - Verified parent HEAD:
-  `4fc32e08121e541f489ede32f25d59c2626a60e0`
+  `b83e468a448e79a2da409cce95bbddf3626accd4`
 - Parent implementation:
-  `b124e96 add Python coverage baseline gate`
-- Parent documentation patch:
-  `4fc32e0 add test baseline traceability docpatch`
-- Current implementation:
   `bef0f97 test: characterize Step 09 CMH independently`
-- Current package: independent test-only Step `09` CMH, estimability, and
-  global-BH characterization from paired DP/AD counts
-- Package type: test/fixture implementation plus separate documentation patch
+- Parent documentation patch:
+  `b83e468 docs: complete Phase 01a handoff and validation policy`
+- Current implementation commits:
+  - `79907fc feat: add synthetic demo report target`
+  - `0169c13 feat: populate and categorize demo report`
+- Current package: populated synthetic demo-report command, science-first
+  native HTML categories, bounded wide-table behavior, and readable PDF
+  candidate projection
+- Package type: implementation/tests plus separate documentation patch
 - Remote and cluster work: paused
 
-The Phase `01a` branch was created only after inspecting the canonical
-takeover documents, running the applicable parent gate, refreshing the
-remote, and verifying a clean, pushed, upstream-equal predecessor and absent
-target.
+The demo branch was created at the Phase `01a` implementation commit in a
+dedicated sibling worktree while the Phase `01a` documentation patch was
+pending. It remained unpushed, never modified the active Phase `01a`
+worktree, and rebased without conflict onto the final clean, pushed,
+upstream-equal Phase `01a` parent before its post-rebase validation.
 
 ## Completed boundary
 
@@ -38,6 +41,13 @@ The local descendant sequence has implemented:
 - explicit read-only artifact indexing;
 - canonical run-summary assembly and report-table approvals;
 - atomic, receipt-last HTML/PDF/summary-TSV reporting;
+- `make demo-report`, which builds a complete synthetic 81-artifact,
+  15-scope run with all 11 supported approved science-table roles, runs
+  report dry-run before execute, and publishes beneath ignored
+  `results/demo-report/`;
+- a bounded, script-free HTML view with an initially open science-first
+  Overview, broad native categories, and local scrolling for wide tables,
+  plus a linear PDF with compact readable candidate records;
 - explicit-profile, read-only runtime availability preflight;
 - explicit read-only reference artifact, provenance, hash, and contig reconciliation;
 - explicit read-only storage-root measurement and retention-policy recording;
@@ -99,6 +109,7 @@ The local descendant sequence has implemented:
 | `09c` scientific-evidence tooling | implemented and synthetic-fixture tested; no production review |
 | Artifact schemas/adapters/run summary | implemented and synthetic-fixture tested; no production transaction |
 | Static report bundle | HTML/PDF/summary TSV/report receipt implemented and tested with the pinned local Quarto/Typst renderer and PDF reader; no production report |
+| Populated demo report | full synthetic report transaction, native broad HTML categories, bounded wide-table layout, and compact PDF candidate projection implemented and locally tested; no production data or evidence |
 | Runtime preflight | explicit tool, R-namespace, SHA-256, and path-visibility probes implemented and locally fixture-tested; no CSU batch report |
 | Reference provenance | explicit FASTA/FAI/DICT/GTF/BED12/STAR inventory and reconciliation implemented and locally fixture-tested; no production reference report |
 | Storage inventory and retention | explicit root size/capacity measurement and retention-policy recording implemented and locally fixture-tested; no production storage report or approved production policy |
@@ -119,6 +130,7 @@ The local descendant sequence has implemented:
 | Comprehensive refactor audit | evidence inventory, ranked findings, test-first recommendations, and explicit do-not-abstract boundaries recorded; no NORAD workflow, schema, config, test, scientific method, or public-contract behavior changed |
 | Phase `01` test baseline | measured developer-only Python line/branch baseline and public-contract matrix recorded in [`../design/TEST_BASELINE.md`](../design/TEST_BASELINE.md); the implementation gate passed with 432 Python tests passing, 17 expected skips, every shell suite passing, guarded R environment/current-release validation, Step `08`/`09` local real-R fixtures, and 143 pinned report-runtime tests; no production behavior or evidence state changed |
 | Phase `01a` independent Step `09` oracle | 20 focused Python oracle tests and the committed real-R Step `09` corpus comparison passed; the complete implementation gate passed with 452 Python tests, 17 expected conditional skips, unchanged 80.8701% line/69.6956% branch coverage across 26 production Python modules, every shell suite, guarded R environment checks, guarded Step `08`/`09` real-R fixtures, and 143 pinned report-runtime tests; the production validator and Step `09` method were unchanged |
+| Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -207,9 +219,9 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `refactor-01a-step09-independent-cmh-oracle` implementation and
-documentation content are complete. Its complete computational gate applies
-to the executable state at `bef0f97`; the subsequent documentation-only patch
+The `refactor-01a1-demo-report-command` implementation and documentation
+content are complete. Its complete applicable report gate applies to the
+executable state at `0169c13`; the subsequent documentation-only patch
 requires the documentation gate rather than another unchanged computational
 run. After confirming this branch is clean, pushed, and upstream-equal, create
 `refactor-01aa-validation-efficiency`.

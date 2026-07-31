@@ -2351,6 +2351,33 @@ receipt/tree/version, and then exercises the real pinned executable. A fake
 Quarto fixture is useful for wrapper behavior but is not local renderer-runtime
 evidence.
 
+## `make demo-report` cannot find tools or the HTML still widens the page
+
+### Symptom
+
+The demo target reports that pinned Quarto, the selected Python executable, or
+report dependencies are unavailable. Alternatively, an opened demo appears to
+be an older layout, or a wide approved table seems to expand the full page.
+
+### Cause
+
+The demo deliberately does not restore Quarto or install Python packages.
+Its generated HTML is self-contained, so an already-open file does not receive
+new renderer or CSS changes automatically. In the current layout, the document
+column is bounded and tables with more than six columns scroll inside a
+keyboard-focusable table region; the complete table itself remains wider than
+that local viewport by design.
+
+### Fix
+
+Follow the explicit dependency setup and populated-demo procedure in
+[`RUNBOOK.md`](RUNBOOK.md#generate-the-populated-synthetic-demo-report).
+Regenerate the bundle and reopen the exact printed HTML path. Scroll within
+the table region, not the document. Do not edit the ignored generated HTML,
+install dependencies from the renderer, remove columns from an authorized
+source table, or treat the synthetic exploratory content as production
+evidence.
+
 ## Report bundle rendering rejects the run summary, approved table, or output
 
 ### Symptom

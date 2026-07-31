@@ -56,8 +56,9 @@ a completed production review.
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
 | `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete |
 | `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete |
-| `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete locally; the next descendant requires live clean, pushed, upstream-equal verification |
-| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | approved; next after Phase `01a` reaches clean upstream equality |
+| `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete, pushed, and upstream-equal |
+| `refactor-01a1-demo-report-command` | Populated synthetic demo command plus bounded, broadly categorized HTML and readable PDF projection | complete locally; the next descendant requires clean, pushed, upstream-equal verification |
+| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | approved; next after the demo-report package reaches clean upstream equality |
 | `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | approved; pending |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
 | `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |
@@ -97,21 +98,22 @@ report-html-v1a-report-table-approvals
                                                                         └── refactor-00-comprehensive-audit
                                                                             └── refactor-01-test-baseline
                                                                                 └── refactor-01a-step09-independent-cmh-oracle
-                                                                                    └── refactor-01aa-validation-efficiency
-                                                                                        └── refactor-01b-validation-publication-faults
-                                                                                            └── refactor-01c-validation-check-rosters
-                                                                                                └── refactor-01d-public-cli-contracts
-                                                                                                    └── refactor-01e-slurm-contracts
-                                                                                                        └── refactor-01f-independent-goldens
-                                                                                                            └── refactor-01z-test-sufficiency-gate
-                                                                                                                └── refactor-02-high-level-plan
-                                                                                                                    └── refactor-02a-detailed-plan
-                                                                                                                        └── refactor-02b-review-architecture
-                                                                                                                            └── refactor-02c-review-reliability
-                                                                                                                                └── refactor-02d-review-usability
-                                                                                                                                    └── refactor-03a-<reviewed-phase>
-                                                                                                                                        └── ...reviewed refactor branches...
-                                                                                                                                            └── refactor-99-final-audit
+                                                                                    └── refactor-01a1-demo-report-command
+                                                                                        └── refactor-01aa-validation-efficiency
+                                                                                            └── refactor-01b-validation-publication-faults
+                                                                                                └── refactor-01c-validation-check-rosters
+                                                                                                    └── refactor-01d-public-cli-contracts
+                                                                                                        └── refactor-01e-slurm-contracts
+                                                                                                            └── refactor-01f-independent-goldens
+                                                                                                                └── refactor-01z-test-sufficiency-gate
+                                                                                                                    └── refactor-02-high-level-plan
+                                                                                                                        └── refactor-02a-detailed-plan
+                                                                                                                            └── refactor-02b-review-architecture
+                                                                                                                                └── refactor-02c-review-reliability
+                                                                                                                                    └── refactor-02d-review-usability
+                                                                                                                                        └── refactor-03a-<reviewed-phase>
+                                                                                                                                            └── ...reviewed refactor branches...
+                                                                                                                                                └── refactor-99-final-audit
 ```
 
 Do not perform remote or cluster
@@ -193,6 +195,27 @@ Test incomplete, failed, missing, exploratory, empty-candidate, orientation,
 strand, truncation, limitation, reserved-state, mutation, determinism,
 accessibility, isolation, lock, signal, cleanup, and rollback cases without
 regressing HTML behavior.
+
+### Populated demo report
+
+Provide `make demo-report` as a local, repeatable demonstration that requires
+the already restored pinned Quarto and report Python environment and never
+installs dependencies. Build one complete synthetic run with 81 artifacts,
+15 expected scopes, an exploratory Step `09c` review, and all 11 supported
+approved report-table roles. Run the renderer dry-run before execute and
+publish HTML, PDF, summary TSV, and receipt under the ignored
+`results/demo-report/` root.
+
+Place scientific status, CMH-ranked candidates, adjudication, and limitations
+in the initially open Overview category. Group remaining HTML material into
+broad script-free native categories, bound the reading width, and keep wide
+tables in local keyboard-focusable scroll regions. Preserve the linear PDF
+projection and render candidate evidence in compact readable records. Retain
+the explicit exploratory banner and never describe the fixture as production,
+runtime, cluster, completed production review, or biological evidence.
+
+Richer tab semantics, responsive/print behavior, and expanded interaction
+coverage remain deferred until separately reviewed.
 
 ### Foundation packages
 

@@ -8,9 +8,10 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Verify Phase `01a` is clean, pushed, and upstream-equal, then add the
-   validation-efficiency package with quiet failure-first output,
-   de-duplicated test lanes, and measured bounded parallel execution.
+1. Verify `refactor-01a1-demo-report-command` is clean, pushed, and
+   upstream-equal, then add the validation-efficiency package with quiet
+   failure-first output, de-duplicated test lanes, and measured bounded
+   parallel execution.
 2. Add the five remaining evidence-derived characterization packages in the
    exact descendant order owned by
    [`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
@@ -55,6 +56,10 @@ checkout and evidence boundary are in
 - Analysis-configuration extraction, module wrapping, shared helper
   refactors, job arrays, dispatchers, public-data ingestion, publishing
   infrastructure, or automatic cleanup.
+- Richer report-category navigation, including a formal tab interaction
+  pattern, responsive/print behavior, and expanded keyboard/browser coverage;
+  retain the current script-free native disclosure behavior until that work is
+  separately reviewed.
 - Any policy that could unlock `biological_interpretation_ready`.
 
 Do not mark an item complete until its outputs and evidence have been
