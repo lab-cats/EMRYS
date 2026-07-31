@@ -12,8 +12,13 @@ QUARTO_VERSION := 1.9.38
 QUARTO_SHA256 := 47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a
 QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
 QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
+DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
+DEMO_REPORT_FORMATS ?= all
+DEMO_REPORT_FIXTURE_ROOT := $(DEMO_REPORT_ROOT)/fixture
+DEMO_REPORT_ARTIFACT_ROOT := $(DEMO_REPORT_FIXTURE_ROOT)/adapter_fixture/artifacts
+DEMO_REPORT_OUTPUT_ROOT := $(DEMO_REPORT_ROOT)/reports
 
-.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test python-coverage-measure python-coverage-check python-coverage-baseline-update validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test shell-test real-r-test r-restore r-check local-real-r-test quarto-restore report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
@@ -94,6 +99,76 @@ report-test:
 		tests/test_report_exports_v1.py
 	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
 		bash tests/shell/test_render_run_report.sh
+
+demo-report:
+	test -x "$(QUARTO_BIN)" || { \
+		printf 'ERROR: pinned Quarto is unavailable: %s\nRun make quarto-restore first.\n' \
+			"$(QUARTO_BIN)" >&2; \
+			exit 1; \
+	}
+	command -v "$(REPORT_PYTHON_BIN)" >/dev/null 2>&1 || { \
+		printf 'ERROR: report Python is unavailable: %s\n' \
+			"$(REPORT_PYTHON_BIN)" >&2; \
+		exit 1; \
+	}
+	"$(REPORT_PYTHON_BIN)" -c \
+		'import jsonschema, pypdf, yaml' || { \
+			printf 'ERROR: report Python dependencies are unavailable: %s\n' \
+				"$(REPORT_PYTHON_BIN)" >&2; \
+			exit 1; \
+		}
+	case "$(DEMO_REPORT_FORMATS)" in \
+		html|pdf|all) ;; \
+		*) \
+			printf 'ERROR: DEMO_REPORT_FORMATS must be html, pdf, or all; observed: %s\n' \
+				"$(DEMO_REPORT_FORMATS)" >&2; \
+			exit 1; \
+			;; \
+	esac
+	"$(REPORT_PYTHON_BIN)" \
+		tests/fixtures/artifact_run_summary_v1/build_fixture.py \
+		--root "$(DEMO_REPORT_FIXTURE_ROOT)"
+	SOURCE_DATE_EPOCH=1700000000 \
+		"$(REPORT_PYTHON_BIN)" scripts/build_run_summary.py \
+		--run-id synthetic_run \
+		--artifact-receipt \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.artifact_receipt.tsv" \
+		--output-root "$(DEMO_REPORT_ARTIFACT_ROOT)" \
+		--execute
+	SOURCE_DATE_EPOCH=1700000000 \
+		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
+		scripts/render_run_report.sh \
+		--run-summary \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.run_summary.json" \
+		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
+		--quarto-bin "$(QUARTO_BIN)" \
+		--formats "$(DEMO_REPORT_FORMATS)"
+	SOURCE_DATE_EPOCH=1700000000 \
+		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
+		scripts/render_run_report.sh \
+		--run-summary \
+			"$(DEMO_REPORT_ARTIFACT_ROOT)/synthetic_run/synthetic_run.run_summary.json" \
+		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
+		--quarto-bin "$(QUARTO_BIN)" \
+		--formats "$(DEMO_REPORT_FORMATS)" \
+		--execute
+	@printf 'Demo report bundle: %s\n' \
+		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run"
+	@case "$(DEMO_REPORT_FORMATS)" in \
+		html|all) \
+			printf '  HTML: %s\n' \
+				"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_report.html" \
+			;; \
+	esac
+	@case "$(DEMO_REPORT_FORMATS)" in \
+		pdf|all) \
+			printf '  PDF: %s\n' \
+				"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_report.pdf" \
+			;; \
+	esac
+	@printf '  Summary: %s\n  Receipt: %s\n' \
+		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.run_summary.tsv" \
+		"$(DEMO_REPORT_OUTPUT_ROOT)/synthetic_run/synthetic_run.report_outputs.tsv"
 
 python-coverage-measure:
 	test "$$("$(REPORT_PYTHON_BIN)" -c \

@@ -191,4 +191,78 @@ if rg -n 'restore_quarto|step_0[0-9]|bcftools|samtools|Rscript|mantelhaen' \
     fail "public renderer wrapper contains an install or analysis invocation"
 fi
 
+missing_demo_root="$tmp/make-demo-missing"
+if make --no-print-directory demo-report \
+    DEMO_REPORT_ROOT="$missing_demo_root" \
+    DEMO_REPORT_FORMATS=html \
+    QUARTO_BIN="$tmp/missing-quarto" \
+    REPORT_PYTHON_BIN="$python_bin" >"$tmp/make-demo-missing.out" 2>&1; then
+    fail "demo-report accepted a missing pinned Quarto executable"
+fi
+grep -Fq 'Run make quarto-restore first.' "$tmp/make-demo-missing.out" ||
+    fail "demo-report missing-Quarto failure omitted setup guidance"
+[[ ! -e "$missing_demo_root" ]] ||
+    fail "demo-report missing-Quarto failure created output storage"
+
+invalid_demo_root="$tmp/make-demo-invalid"
+if make --no-print-directory demo-report \
+    DEMO_REPORT_ROOT="$invalid_demo_root" \
+    DEMO_REPORT_FORMATS=docx \
+    QUARTO_BIN="$fake_quarto" \
+    REPORT_PYTHON_BIN="$python_bin" >"$tmp/make-demo-invalid.out" 2>&1; then
+    fail "demo-report accepted an unsupported report format"
+fi
+grep -Fq 'DEMO_REPORT_FORMATS must be html, pdf, or all' \
+    "$tmp/make-demo-invalid.out" ||
+    fail "demo-report unsupported-format failure was not specific"
+[[ ! -e "$invalid_demo_root" ]] ||
+    fail "demo-report unsupported-format failure created output storage"
+
+bad_python_demo_root="$tmp/make-demo-bad-python"
+if make --no-print-directory demo-report \
+    DEMO_REPORT_ROOT="$bad_python_demo_root" \
+    DEMO_REPORT_FORMATS=html \
+    QUARTO_BIN="$fake_quarto" \
+    REPORT_PYTHON_BIN="$bad_python" >"$tmp/make-demo-bad-python.out" 2>&1; then
+    fail "demo-report accepted Python without report dependencies"
+fi
+grep -Fq 'report Python dependencies are unavailable' \
+    "$tmp/make-demo-bad-python.out" ||
+    fail "demo-report bad-Python failure omitted dependency guidance"
+[[ ! -e "$bad_python_demo_root" ]] ||
+    fail "demo-report bad-Python failure created output storage"
+
+make_demo_root="$tmp/make-demo"
+for attempt in 1 2; do
+    make --no-print-directory demo-report \
+        DEMO_REPORT_ROOT="$make_demo_root" \
+        DEMO_REPORT_FORMATS=html \
+        QUARTO_BIN="$fake_quarto" \
+        REPORT_PYTHON_BIN="$python_bin" >"$tmp/make-demo-$attempt.out"
+
+    make_demo_output="$make_demo_root/reports/synthetic_run"
+    make_demo_html="$make_demo_output/synthetic_run.run_report.html"
+    make_demo_summary="$make_demo_output/synthetic_run.run_summary.tsv"
+    make_demo_receipt="$make_demo_output/synthetic_run.report_outputs.tsv"
+    [[ -s "$make_demo_html" ]] ||
+        fail "demo-report attempt $attempt did not publish HTML"
+    [[ -s "$make_demo_summary" ]] ||
+        fail "demo-report attempt $attempt did not publish the summary TSV"
+    [[ -s "$make_demo_receipt" ]] ||
+        fail "demo-report attempt $attempt did not publish the receipt"
+    grep -Fq 'SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.' \
+        "$make_demo_html" ||
+        fail "demo-report attempt $attempt lacks the evidence banner"
+    grep -Fq 'CMH-ranked candidates' "$make_demo_html" ||
+        fail "demo-report attempt $attempt lacks required candidate terminology"
+    grep -Fq "Demo report bundle: $make_demo_output" \
+        "$tmp/make-demo-$attempt.out" ||
+        fail "demo-report attempt $attempt did not print its output path"
+    if find "$make_demo_root" \
+        \( -name '*.lock' -o -name '*.tmp' -o -name '*.previous' \
+            -o -name '*_files' \) -print -quit | grep -q .; then
+        fail "demo-report attempt $attempt left transaction residue"
+    fi
+done
+
 printf 'PASS: static report wrapper contract\n'
