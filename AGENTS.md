@@ -29,6 +29,16 @@ ownership changes, when targeted inspection exposes an inconsistency, or when
 the task cannot be bounded safely from the canonical owners. Do not edit until
 the user approves the plan.
 
+Future work may also have a card in [`docs/tasks/`](docs/tasks/). A card
+preserves settled constraints, bounded scope, direct dependencies, and required
+acceptance evidence; it does not replace the reads and live inspection above,
+serve as an implementation plan, or authorize mutation. When the user
+explicitly selects a TODO card, move it with `git mv` to `IN_PROGRESS` and
+repair inbound links as the status-only start of read-only planning. Obtain
+separate approval for the task-specific plan before implementation.
+That status/link move is the only permitted repository mutation before the
+task-specific plan is approved.
+
 ## Development gate
 
 Every implementation package uses a linear descendant branch from the latest
@@ -136,6 +146,11 @@ reports/        report views and styles
 docs/           design, operations, architecture, and demo material
 ```
 
+This is the implemented current layout. The approved target and migration
+constraints live only in
+[`docs/architecture/FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md)
+until a separately planned migration changes current truth.
+
 Prefer workflow entry points shaped as:
 
 ```text
@@ -224,13 +239,14 @@ Each mutable fact has one canonical owner:
 | `README.md` | Concise entry point, purpose, minimal quick start, and repository map |
 | `TODO.md` | Short prioritized pending work and current blockers |
 | `HANDOFF.md` | Current takeover snapshot and evidence boundary |
-| `PIPELINE_PLAN.md` | Pipeline roadmap, status matrix, acceptance criteria, and branch lineage |
-| `QUESTIONS.md` | Open questions and a resolved-question index |
+| `PIPELINE_PLAN.md` | Pipeline/package/evidence roadmap, status matrix, acceptance criteria, and branch lineage |
+| `QUESTIONS.md` | Open operational/scientific questions, open design choices, and a resolved-question index |
 | `RUNBOOK.md` | Executable setup, validation, cluster, and recovery commands |
 | `DECISIONS.md` | Durable decisions, rationale, alternatives, and consequences |
 | `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
 | `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
 | `FUTURE_ARCHITECTURE.md` | Target architecture and future constraints |
+| `docs/tasks/` | Bounded task scope, task-workflow status by directory, direct dependencies, acceptance evidence, and historical completion records |
 | Demo documents | Presentation walkthroughs or explicitly dated snapshots |
 | Standalone `.mmd` files | Canonical diagram sources |
 
@@ -241,6 +257,9 @@ Do not maintain inline copies of standalone Mermaid sources.
 After each task, suggest relevant updates to these documents. When behavior
 changes, complete the repository-wide docpatch; update every affected status,
 interface, command, path, schema, limitation, diagram, and next-step claim.
+Update the selected task card and all inbound links as part of the same
+docpatch. Durable architectural truth remains in the canonical owners above,
+not in the card.
 
 ## Biological interpretation caution
 

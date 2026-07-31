@@ -7,27 +7,28 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01b-validation-publication-faults`
+  `refactor-01-architecture-direction-docs`
 - Parent:
-  `refactor-01aa-validation-efficiency`
+  `refactor-01b-validation-publication-faults`
 - Verified parent HEAD:
-  `11cd16a347a7dff41fcdab4c21324930625e7549`
+  `dcdb371c766c337e4f6c864810d5c7bd4da023f2`
 - Parent implementation commit:
-  `dd19f0f test: add measured parallel validation gate`
-- Parent documentation patch:
-  `11cd16a docs: record validation efficiency evidence`
-- Current implementation:
   `f7e00e4 test: characterize validation publication faults`
-- Current package: test-only adversarial characterization of the shared
-  thirteen-validator publisher and the distinct reference-provenance,
-  runtime-preflight, and storage-inventory publishers
-- Package type: implementation/tests plus separate documentation patch
+- Parent documentation patch:
+  `dcdb371 docs: record publication fault characterization`
+- Current documentation commit:
+  `docs: capture architecture direction and task registry` (branch HEAD)
+- Current package: documentation-only preparation for the remaining behavior
+  gate, architecture/design tasks, independent reviews, and later separately
+  planned refactor packages
+- Package type: one documentation commit; reuses the verified parent
+  computational evidence because no executable surface changed
 - Remote and cluster work: paused
 
-The validation-publication branch descends directly from the clean, pushed,
-upstream-equal validation-efficiency documentation commit. The parent branch
-and live remote both resolved to the verified parent HEAD before this branch
-was created.
+The architecture-direction documentation branch descends directly from the
+clean, pushed, upstream-equal validation-publication documentation commit. The
+parent branch and live remote both resolved to the verified parent HEAD before
+this branch was created.
 
 ## Completed boundary
 
@@ -94,6 +95,16 @@ The local descendant sequence has implemented:
   all 13 step validators plus the distinct provenance, preflight, and storage
   transactions, with protected success/rollback behavior and current unsafe
   recovery states clearly distinguished in test names and comments.
+- a file-backed task registry initially created with one completed bootstrap
+  record and 45 TODO cards, direct reciprocal dependencies, bounded acceptance
+  evidence, and an explicit planning-before-implementation lifecycle;
+- durable architecture decisions and target constraints for behavior-first
+  migration, vertical source/test ownership, semantic stages, YAML+TSV intake,
+  report profiles, two-sink logging, documentation/local context, future
+  analysis/public-data/package seams, and the documentation-health skill;
+- an open-choice ledger and updated future Mermaid sources. Current executable
+  topology, report behavior, logging behavior, numeric stage identifiers, and
+  runtime/scientific evidence remain unchanged.
 
 ## Evidence boundary
 
@@ -139,6 +150,7 @@ The local descendant sequence has implemented:
 | Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
+| Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-selection, scientific-method, runtime, cluster, or evidence-state change |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -260,16 +272,19 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-The `refactor-01b-validation-publication-faults` test implementation is
-complete at `f7e00e4`. Its final executable state passed the focused
-serial/parallel fault matrix, broader regression, retained coverage lane, and
-one de-duplicated complete gate. The subsequent documentation-only patch
-reuses that computational evidence after Git inspection proves that only
-documentation changed.
+The documentation-only architecture-direction package records decisions and
+future cards; it does not execute the active repository-spanning refactor. Its
+predecessor executable state remains the completed Phase `01b` implementation
+and its recorded computational evidence.
 
-After confirming this branch is clean, pushed, and upstream-equal, create
-`refactor-01c-validation-check-rosters`. Do not begin that package
-automatically.
+After confirming this documentation branch is clean, pushed, and upstream-
+equal, the next task is
+[`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md).
+Do not begin it automatically. Explicit selection moves the card to
+`IN_PROGRESS` for task-specific read-only planning; implementation still
+requires a separately approved plan. Its implementation branch remains
+`refactor-01c-validation-check-rosters` unless that live plan explicitly and
+lawfully changes the name.
 
 The one-time Phase `00` dependency exception is exhausted and does not
 authorize future changes outside the normal development gate. Do not change
@@ -278,4 +293,5 @@ three Phase `02` reviews. Do not begin production, cluster, scientific-policy,
 or biological-interpretation work.
 
 The authoritative continuation sequence is in
-[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).
+[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); detailed future
+scope and dependencies are in [`../tasks/`](../tasks/).

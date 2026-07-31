@@ -55,6 +55,7 @@ configs/        example manifests and explicit contracts
 schemas/        versioned public artifact/report JSON Schemas
 reports/        static report source and style
 docs/           architecture, design, operations, and demo material
+docs/tasks/     bounded future task cards organized by lifecycle status
 results/        ignored generated outputs
 logs/           ignored runtime logs
 ```
@@ -75,6 +76,7 @@ logs/           ignored runtime logs
 | [`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Symptom-to-fix guidance |
 | [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
 | [`FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md) | Target-state design and deferred constraints |
+| [`docs/tasks/`](docs/tasks/) | One bounded card per future task, with scope, dependencies, and acceptance evidence |
 | [`DEMO_WALKTHROUGH.md`](docs/demo/DEMO_WALKTHROUGH.md) | Presentation-oriented walkthrough |
 | [`PI_DEMO_REPORT.md`](docs/demo/PI_DEMO_REPORT.md) | Dated evidence snapshot for discussion |
 
@@ -99,6 +101,12 @@ validation, an implementation commit when executable behavior changes, a
 separate repository-wide documentation commit, and a clean pushed gate before
 another branch begins. Documentation-only packages use one documentation
 commit.
+
+Future work is selected from the
+[`task registry`](docs/tasks/README.md). Moving a card to `IN_PROGRESS` begins
+task-specific read-only planning; it does not authorize implementation. Every
+card still requires live repository inspection, an approved plan, bounded
+execution, and inspected acceptance evidence.
 
 Remote and cluster promotion remain upstream-sequential. See
 [`AGENTS.md`](AGENTS.md) for the durable gate and

@@ -1,7 +1,15 @@
 flowchart TD
-    samples["Sample manifest<br/>identity, condition, replicate, order"] --> run["Immutable run identity"]
-    reference["Reference contract<br/>FASTA, annotation, indexes, hashes"] --> run
-    partitions["Partition contract<br/>explicit selectors and order"] --> run
-    policy["Analysis policy<br/>contrast, thresholds, orientation, background"] --> run
-    run --> outputs["Native outputs and receipts"]
-    run --> evidence["Validation and scientific evidence"]
+    ready["Ready YAML request"] --> manifest["Referenced TSV sample manifest"]
+    ready --> claim["Atomic request claim"]
+    manifest --> claim
+    raw["Stationary FASTQ and registered reference inputs"] --> normalize["Resolve, validate, hash, and normalize"]
+    claim --> normalize
+    normalize --> identity{"Normalized contract identity"}
+    identity -->|"Same contract"| run["Existing immutable run"]
+    identity -->|"Changed input or policy"| newrun["New immutable run"]
+    run --> attempt["New inspectable attempt"]
+    newrun --> attempt
+    attempt --> execute["Required DAG, validators, evidence, and requested report"]
+    execute -->|"Failure"| resumable["Failed and resumable request state"]
+    execute -->|"Current success contract"| promote["Promote request and run metadata"]
+    raw -.->|Never moved automatically| promote

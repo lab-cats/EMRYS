@@ -1,11 +1,18 @@
 flowchart TD
-    native["Native step outputs"] --> adapters["Explicit read-only adapters"]
+    native["Native step and module outputs"] --> adapters["Explicit read-only adapters"]
     evidence["Validation and scientific evidence"] --> adapters
-    adapters --> summary["Canonical run summary"]
-    approvals["Exact table approvals"] --> summary
-    summary --> html["Self-contained HTML"]
-    summary --> pdf["Deterministic PDF"]
+    approvals["Exact table approvals"] --> summary["Canonical run summary"]
+    adapters --> summary
+    summary --> view["Versioned format-neutral view model"]
+    view --> science["Science profile<br/>future default"]
+    view --> comprehensive["Comprehensive profile<br/>explicit retained view"]
+    science --> sciencehtml["Accessible science HTML"]
+    science --> sciencepdf["Semantically equivalent science PDF"]
+    comprehensive --> fullhtml["Comprehensive HTML"]
+    comprehensive --> fullpdf["Comprehensive PDF"]
     summary --> tsv["Deterministic summary TSV"]
-    html --> receipt["Report receipt published last"]
-    pdf --> receipt
+    sciencehtml --> receipt["Profile-specific report receipt published last"]
+    sciencepdf --> receipt
+    fullhtml --> receipt
+    fullpdf --> receipt
     tsv --> receipt

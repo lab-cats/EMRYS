@@ -1,9 +1,11 @@
 # Decisions
 
 This file records durable choices, rationale, alternatives, and consequences.
-Current status belongs in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), current
-evidence in [`../operations/HANDOFF.md`](../operations/HANDOFF.md), and
-commands in [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md).
+Current pipeline/package status belongs in
+[`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), task-workflow status belongs to card
+directory placement under [`../tasks/`](../tasks/), current evidence belongs in
+[`../operations/HANDOFF.md`](../operations/HANDOFF.md), and commands belong in
+[`../operations/RUNBOOK.md`](../operations/RUNBOOK.md).
 
 ## Development and repository
 
@@ -14,7 +16,9 @@ tab-separated when a table is appropriate.
 
 Reason: TSV is easy to inspect and parse across shell, Python, and R without
 CSV quoting ambiguity. Consequence: headers and row order are public
-contracts and must validate exactly.
+contracts and must validate exactly. This does not require a future run request
+to be tabular: the approved intake direction uses one YAML request for run
+policy that references one TSV sample manifest.
 
 ### Develop locally and scale through SLURM
 
@@ -435,13 +439,16 @@ Decision: each information category has one canonical owner:
 - `README.md`: concise entry point;
 - `TODO.md`: prioritized pending work;
 - `HANDOFF.md`: current takeover snapshot;
-- `PIPELINE_PLAN.md`: status, acceptance criteria, and lineage;
+- `PIPELINE_PLAN.md`: pipeline/package/evidence status, acceptance criteria,
+  and lineage;
 - `QUESTIONS.md`: open questions and resolved index;
 - `RUNBOOK.md`: executable commands;
 - `DECISIONS.md`: durable choices and rationale;
 - `TROUBLESHOOTING.md`: symptom, cause, diagnosis, and fix;
 - `ARCHITECTURE.md`: current topology and contracts;
 - `FUTURE_ARCHITECTURE.md`: target-state constraints;
+- `docs/tasks/`: bounded task scope, directory-owned workflow status,
+  dependencies, acceptance evidence, and historical completion records;
 - demo documents: presentation material or dated snapshots;
 - standalone `.mmd` files: canonical diagrams.
 
@@ -449,12 +456,439 @@ Reason: mutable facts otherwise drift across independently maintained copies.
 Documents link to canonical owners instead of repeating branch names, commit
 IDs, test totals, commands, live status, or diagrams.
 
+## Approved architecture direction (2026-07-31)
+
+The decisions below were approved by the repository owner on 2026-07-31. They
+constrain future planning inside the already-active repository-spanning
+refactor, but do not authorize any TODO task or represent target behavior as
+implemented. Each task still requires live inspection, a task-specific plan,
+and approval.
+
+### Protect behavior before architectural mutation
+
+Context: the repository has substantial local coverage, but tests vary in
+independence and no percentage can prove that every behavior intended for
+preservation is protected.
+
+Decision: before production structure changes, classify every applicable
+behavior row as `preserved contract`, `characterized defect`,
+`undefined — decision required`, or `environment-deferred`. The Phase `01Z`
+exit is 100% protection of applicable `preserved contract` rows, not 100% line
+coverage. Independent goldens are small, reviewed known-good bytes or semantic
+oracles that do not derive the expected rule from the producer under test.
+Integrated fixtures remain valuable and are not replaced.
+
+If the sufficiency decision is negative, create bounded `TEST-01G-*` closure
+cards and a later `TEST-01Z-R*` decision card. Later migrations add focused
+pre-characterization and old/new parity where feasible. An approved path or
+interface change is an explicit contract migration, never a silent regression.
+
+Rationale: this preserves intentional behavior while allowing known defects
+and accidental paths to be handled honestly. The alternative—treating every
+current output as correct or treating high coverage as readiness—would freeze
+defects and leave shared producer/test mistakes undetected.
+
+Consequences: no architecture root is released by a negative `01Z` decision;
+defect corrections remain separate tasks. See
+[`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md)
+through
+[`TEST-01Z`](../tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md).
+
+### Govern future work through a file-backed task registry
+
+Context: a broad roadmap cannot carry enough settled constraints for dozens of
+small future agents, while putting Jira-like detail in every canonical owner
+would recreate responsibility leak.
+
+Decision: use one stable Markdown card per task under `docs/tasks/TODO`,
+`IN_PROGRESS`, or `COMPLETED`; directory location is the status. Cards own
+scope, dependencies, deliverables, acceptance, and completion history. Durable
+rationale, current state, commands, topology, and open choices remain in their
+canonical documents.
+
+Moving a card to `IN_PROGRESS` starts task-specific read-only planning. It does
+not authorize implementation. Hard blockers are direct, reciprocal, and
+acyclic. `Completion unblocks` distinguishes a sole remaining blocker from one
+of several blockers. Paused work may return to TODO with a reason; there is no
+`BLOCKED` directory. Completed cards are historical; follow-up work receives a
+new card.
+
+Rationale: a file-backed registry is inspectable, reviewable with code, and
+locally usable without introducing an external project system. The alternative
+of expanding the roadmap into task specifications would duplicate status and
+rationale across owners.
+
+Consequences: card moves use `git mv` and update inbound links in the same
+commit. The lifecycle and template are canonical in
+[`docs/tasks/README.md`](../tasks/README.md).
+
+### Target a vertical package with direct contract-preserving migrations
+
+Context: `scripts/` and `jobs/` now contain application domains, but packaging
+and public distribution are premature. There are no external consumers that
+justify indefinite preservation of accidental repository paths.
+
+Decision: the target is a vertical Python source tree:
+
+```text
+src/norad/
+├── stages/<semantic-stage>/
+├── cli/
+├── orchestration/
+├── scheduler/
+├── contracts/
+├── libraries/
+├── evidence/
+├── reporting/
+└── ingestion/
+```
+
+Each stage owns its implementation, validator, job template, README, and
+stage-only contracts. Cross-stage/public contracts are central. Stages are
+black boxes and never import another stage's implementation. Root `tests/`
+mirrors stages and neutral domains while retaining independent contract and
+integration suites. Do not create a generic `utils` owner.
+
+Move each concern directly to its final home. A hybrid layout is temporary
+migration scaffolding only: introduce a root wrapper where required, migrate
+callers/tests/docs, prove old/new parity, and remove the wrapper. Preserve
+behavior, scientific meaning, output/evidence/recovery contracts, dry-run, and
+publication guarantees—not paths for their own sake.
+
+Rationale: the final vertical home provides local ownership and supports a
+later installable package without forcing versioning now. A permanent hybrid
+would create dual ownership; a big-bang move would exceed the behavior and
+review boundary.
+
+Consequences: the exact inventory, semantic map, topology, and migration
+mechanics belong to
+[`ARCH-02A`](../tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md)
+through
+[`ARCH-02D`](../tasks/TODO/ARCH-02D-define-direct-migration-mechanics.md).
+Current flat-layout documentation remains current truth until migrations land.
+
+### Identify stages semantically and order them with a DAG
+
+Context: numeric names such as `00c`, `02b`, and `09c` convey historical order
+but not user meaning. Encoding order in a new filename would repeat the same
+problem and make future branches awkward.
+
+Decision: each future stage has a display title for people, a public semantic
+slug, and a stable versioned machine key. Numeric IDs remain historical
+provenance/aliases. Explicit DAG edges define order and branch points.
+
+Retain a minimal user overview with a conceptual sequence table and Mermaid
+diagram explaining purpose, ordering rationale, and input/output contracts.
+The current detailed technical pipeline remains separate. Exact names and DAG
+edges are deferred until the functional inventory is complete.
+
+Rationale: semantic identities improve comprehension while stable keys and a
+DAG decouple identity from mutable order. The alternative of deleting all
+historical identifiers would weaken provenance.
+
+Consequences: see
+[`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md) and
+[`DOC-PIPE-04`](../tasks/TODO/DOC-PIPE-04-create-user-pipeline-overview.md).
+
+### Promote shared libraries only from proven reuse
+
+Context: repeated code exists, but similar parsing, transaction, and scientific
+checks can have different semantics or be intentionally independent.
+
+Decision: keep the first use local. At the second use, compare full behavior,
+failure, recovery, determinism, and scientific meaning. Extract at two uses
+only when the code is safety-critical or sufficiently complex; otherwise the
+normal promotion point is a third equivalent use. Choose the narrowest neutral
+owner, prohibit shared-to-stage dependencies, require independent API and
+consumer tests, and do not force cross-language DRY.
+
+Rationale: this captures real reuse without converting lexical similarity into
+repository-wide coupling or a shared defect. The alternatives of never sharing
+or extracting on sight both impose avoidable maintenance risk.
+
+Consequences: intentional independent validation stays duplicated. Candidate
+decisions belong to
+[`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md).
+
+### Apply risk-based source-size thresholds
+
+Context: very large mixed-responsibility files defeat bounded review and local
+context, but raw line count is not a safe decomposition plan.
+
+Decision: a materially changed file above 600 lines receives advisory cohesion
+review, and new files normally remain below 600. A file above 1,000 lines needs
+a decomposition plan or explicit justification before architectural mutation.
+A file above 1,500 lines must be eliminated during the current repo-spanning
+refactor unless the owner approves an explicit exception. Split tests by
+scenario/comprehension, not arbitrary length.
+
+The 2026-07-31 snapshot found 15 files above 600, 10 above 1,000, and 6 above
+1,500. The six mandatory families were the artifact-index builder, scientific-
+validation tooling, report renderer, run-summary builder, Step `08` R module,
+and artifact-contract validator. Counts must be refreshed before execution.
+
+Rationale: thresholds force a cohesion decision without rewarding mechanical
+fragmentation. A single low limit would create a massive low-value rewrite; no
+limit would preserve the current cognitive bottlenecks.
+
+Consequences: report rendering is owned by `RPT-05B`; the remaining families
+are owned by `SIZE-07*`. Step `08` requires a proven non-algorithmic seam or an
+explicit time-bounded exception because scientific refactoring is not already
+authorized. See
+[`SIZE-07`](../tasks/TODO/SIZE-07-refresh-large-file-inventory.md).
+
+### Use YAML run requests with TSV sample manifests
+
+Context: a scientist-facing autonomous run needs structured policy and repeated
+sample rows. One YAML document containing every row would be awkward to inspect
+and transform across shell, Python, and R; TSV alone cannot express nested run
+policy clearly.
+
+Decision: one ready YAML request references one TSV manifest. YAML owns run
+policy and explicit paths; TSV owns repeated sample metadata. V1 accepts paired
+FASTQ/FASTQ.GZ and registered FASTA/GTF inputs. Claim a request atomically,
+resolve/validate/hash/normalize it into an immutable run contract, and represent
+execution retries as attempts.
+
+The same normalized request identifies the same run; a retry creates a new
+attempt; changed input or policy creates a new run. Failed requests remain
+resumable. Promote only request/run metadata after all currently required
+tasks, validators, evidence assembly, and requested report succeed. Raw data
+remains stationary. `data/raw` is storage, not the ingestion state machine.
+
+Rationale: YAML plus TSV gives each data shape a natural, inspectable owner.
+Atomic claim and immutable identity prevent duplicate runs and ambiguous
+resume. Moving raw data on success would couple compute state to storage and
+make recovery/destructive behavior harder to reason about.
+
+Consequences: exact fields and operational directory names remain open in
+[`INTAKE-02E`](../tasks/TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md).
+Future required/optional success and archival semantics are separate.
+
+### Prioritize local FASTQ and registered references before public acquisition
+
+Context: NCBI resources expose both reference records and sequencing reads,
+which are not interchangeable formats or lifecycle concerns.
+
+Decision: first stabilize local paired FASTQ plus explicit registered
+references. Next add NCBI reference acquisition/registration, then SRA read
+acquisition, then consider ENA, GEO, or BAM inputs. Reference FASTA/FNA and
+annotation GTF/GFF3/GBFF remain reference artifacts and are never converted to
+FASTQ. SRA read records may materialize FASTQ through a separate read adapter.
+
+Rationale: reference provenance/versioning and read download/conversion have
+different validation, identity, storage, and retry risks. A single “GenBank to
+FASTQ” adapter would make a category error.
+
+Consequences: public acquisition is future-only in
+[`FUT-DATA-02`](../tasks/TODO/FUT-DATA-02-public-reference-and-sra-acquisition.md)
+and does not expand current V1 intake.
+
+### Preserve an extension path for preprocessing profiles and analysis modules
+
+Context: the long-term scientific goal is a reusable preprocessing system with
+a library of analyses and a straightforward custom R boundary. Different DNA
+or RNA assays may require different upstream transformations.
+
+Decision: design toward typed preprocessing profiles and typed analysis-module
+inputs/outputs, including scientist-authored R analyses. Do not assume one
+universal preprocessing trunk. The current CMH workflow may become the first
+built-in module. Future trust can distinguish exploratory custom modules from
+registered modules, with explicit provenance and report/evidence limits.
+
+Rationale: this goal is feasible when modules consume typed artifacts and
+declare dependencies, outputs, failure, and evidence semantics. It becomes
+unsafe if “any R script” means untyped file discovery, hidden working
+directories, or automatic trust promotion.
+
+Consequences: current work may preserve clean branch points and contracts but
+must not build a generic loader, registry, universal schema, or alternate assay.
+See
+[`FUT-ANALYSIS-01`](../tasks/TODO/FUT-ANALYSIS-01-preprocessing-profiles-and-analysis-modules.md).
+
+### Keep an installable control plane as a later capability
+
+Context: a future `norad` package could provide one operational interface, but
+packaging/versioning now would freeze unstable internal paths and non-Python
+asset decisions.
+
+Decision: later build a thin Python control plane for contracts, DAG planning,
+scheduler submission, filesystem-inspectable run state, resume, and reporting.
+Illustrative commands are `validate`, `plan`, `run`, `status`, `resume`,
+`report`, and `stages`; they are not yet public commitments. The control plane
+does not reimplement scientific tools or install dependencies during compute.
+
+Packaged non-Python assets means explicitly including schemas, templates,
+styles, R/shell resources, or other runtime data in a distribution. Materialized
+jobs means writing an immutable, run-bound copy of a resolved scheduler script
+rather than submitting a mutable package resource directly. Both are later
+packaging concerns.
+
+Rationale: the vertical source target enables installation later without
+forcing premature distribution design. Filesystem state preserves recovery and
+inspection when the CLI is absent.
+
+Consequences: see
+[`FUT-CLI-03`](../tasks/TODO/FUT-CLI-03-installable-norad-control-plane.md).
+
+### Make science reporting the future default and retain comprehensive reporting
+
+Context: the current report provides valuable complete diagnostics but its
+density and wide local scroll regions overwhelm the default scientist journey.
+
+Decision: characterize and retain the current comprehensive report as an
+explicit profile. Define a smaller science profile that becomes the future
+default. Its starting field families are evidence state, CMH-ranked findings,
+QC/filter funnel, sensitivity/replicates, decisions/limitations, and concise
+methods. Every field receives a useful title and description.
+
+Use one versioned, format-neutral projection so HTML and PDF have semantic
+parity. The science view must not use horizontal scrolling inside panels;
+responsive records or format-appropriate layouts must preserve meaning. Profile
+outputs coexist and never overwrite existing immutable bundles. Exact public
+profile names/flags and the final field roster remain open until report
+characterization.
+
+Rationale: a projection-first split reduces cognitive load without deleting
+diagnostic evidence or entangling content with one renderer. Replacing the
+current report in one change would risk silent information loss.
+
+Consequences: report work is deliberately split across
+[`RPT-01`](../tasks/TODO/RPT-01-characterize-comprehensive-report.md) through
+[`RPT-06`](../tasks/TODO/RPT-06-make-science-report-the-default.md). The target
+implementation owner is `src/norad/reporting`; current report behavior remains
+unchanged until those cards complete.
+
+### Separate concise console output from durable detailed logs
+
+Context: current scripts often print more context than a normal user needs, but
+that detail remains valuable for debugging, audit, and recovery.
+
+Decision: target a relatively quiet default console, explicit verbose/debug
+levels, and complete durable run-scoped logs. Machine-readable output goes to
+stdout; human logs go to stderr. Log level may change presentation only: it
+must never change artifacts, hashes, receipts, evidence, validation, rollback,
+or exit behavior.
+
+Rationale: deleting diagnostic detail would harm maintainability; printing all
+detail by default harms usability and context efficiency. Two explicit sinks
+serve both audiences and protect automation.
+
+Consequences: exact level names/flags, durable layout/retention, and failure-tail
+behavior remain open in
+[`LOG-01`](../tasks/TODO/LOG-01-characterize-current-output.md) and
+[`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md). Foundation, local
+adoption, and default activation remain separate. Current print behavior stays
+documented until implemented.
+
+### Treat documentation and maintainer context as architecture
+
+Context: abbreviations, opaque directories/fixtures, overlapping documents,
+and undocumented module invariants make the repository expensive to inspect.
+Broad mandatory reads also consume context that local ownership could avoid.
+
+Decision: create `docs/reference/GLOSSARY.md` as the canonical abbreviation and
+term owner. Use `README.md` for eligible durable directories; parents stay
+shallow and children own detail. Explain TSV/JSON/schema/generated/lock/byte-
+sensitive artifacts adjacently rather than inserting comments into them.
+
+Inventory every code file as `sufficient`, `update`, `defer`, or `exclude`.
+Module/header documentation explains purpose, inputs/outputs, side effects,
+invariants, failure/publication, and scientific limits as applicable. Inline
+comments explain why, non-obvious invariants, recovery/safety, and scientific
+boundaries—not mechanics. Protect CLI help before changing any module docstring
+used as an `argparse` description.
+
+Documentation consolidation begins with an audience/navigation and source-to-
+destination ledger. Unique meaning must have a destination before relocation;
+intentional safety repetition may remain at the action point. Local stage/domain
+context should link purpose, contracts, direct neighbors, tests, and canonical
+owners so bounded work does not load the whole repository. Phase/cross-cutting
+work still requires broad reads; correctness outranks token reduction.
+
+Rationale: conventional local documentation makes the repository inspectable
+without creating more canonical owners. A blind cleanup or blanket commenting
+pass would either lose meaning or add noise.
+
+Consequences: see
+[`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+through
+[`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
+Concrete consolidation/comment rollout cards are created only after inventories.
+
+### Defer repository skills until the underlying practice is proven
+
+Context: recurring documentation review is a strong skill candidate, but
+creating several skills now would divert the refactor and encode unsettled rules.
+
+Decision: do not create `docs/skills` or `DOC_CLEANUP.md`. After glossary,
+README, code-documentation, consolidation, and review practices are proven,
+create a proper documentation-health skill with `SKILL.md`. It is read-only by
+default, combines deterministic checks with semantic responsibility-drift
+review, requires approval before mutation, and is forward-tested. Evaluate any
+other skill ideas in a later separate card.
+
+Rationale: a skill should automate stable repeated judgment, not become another
+unowned Markdown checklist. The documentation-health skill is high-value; a
+broader skill program is not yet justified.
+
+Consequences: see
+[`DOC-SKILL-10`](../tasks/TODO/DOC-SKILL-10-build-documentation-health-skill.md)
+and
+[`SKILL-11`](../tasks/TODO/SKILL-11-evaluate-repository-skill-opportunities.md).
+
+### Keep optional-analysis success and request archival future-only
+
+Context: current computational success can require all current requested tasks,
+validators, evidence assembly, and report. Multiple future analysis modules
+will need explicit required/optional semantics.
+
+Decision: preserve current success semantics during the active program. Later,
+define how required and optional module failures affect run state, retry,
+reporting, and request metadata archival. Raw inputs remain stationary and
+computational success never promotes scientific or biological state.
+
+Rationale: designing around a future branch point prevents a dead end, while
+implementing optional states now would invent contracts without real modules.
+
+Consequences: see
+[`FUT-SUCCESS-04`](../tasks/TODO/FUT-SUCCESS-04-optional-analysis-and-archival-semantics.md).
+
+### Decision-capture crosswalk
+
+| Discussion theme | Durable owner above | Task owner |
+| --- | --- | --- |
+| Behavior coverage before mutation and independent goldens | Protect behavior before architectural mutation | `TEST-01C`–`TEST-01Z` |
+| Card lifecycle, blockers, and separate approvals | File-backed task registry | `ARCH-DOC-00` and `docs/tasks/README.md` |
+| Vertical `src/norad`, black-box stages, mirrored tests, direct migration | Vertical package | `ARCH-02A`–`ARCH-02D` |
+| Semantic names, historical numbers, DAG, user overview | Semantic stages and DAG | `ARCH-02B`, `DOC-PIPE-04` |
+| Local/shared abstraction threshold and ownership | Shared-library promotion | `LIB-02F` |
+| 600/1,000/1,500 thresholds and mandatory large files | Source-size thresholds | `SIZE-07*`, `RPT-05B` |
+| YAML+TSV intake, atomic claim, attempts, promotion, stationary raw data | Run request and manifest | `INTAKE-02E` |
+| Reference formats versus SRA reads and acquisition priority | Public acquisition priority | `FUT-DATA-02` |
+| Preprocessing profiles, analysis library, custom R, trust boundary | Analysis extension path | `FUT-ANALYSIS-01` |
+| Installable `norad`, non-Python assets, materialized jobs | Later control plane | `FUT-CLI-03` |
+| Science default, comprehensive profile, projection, no nested scroll | Future reporting | `RPT-01`–`RPT-06` |
+| Quiet default, verbose/debug, durable logs, stdout/stderr | Two-sink logging | `LOG-01`–`LOG-05` plus generated `LOG-04-*` |
+| Glossary, READMEs, adjacent fixture docs, comments, consolidation, context | Documentation as architecture | `DOC-IA-01`–`CONTEXT-09` plus generated cleanup/comment cards |
+| Documentation-health skill and later skill review | Deferred skills | `DOC-SKILL-10`, `SKILL-11` |
+| Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |
+
+The integrated sequence and three independent reviews are owned by
+[`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
+`REVIEW-*`; final closure is owned by
+[`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md).
+
 ## Deferred engineering
 
-Decision: helper-library extraction, generic orchestration, job arrays,
-analysis configuration, module wrapping, public-data ingestion, publishing
-infrastructure, targeted reruns, and automatic cleanup remain deferred until
-stable evidence demonstrates a concrete need.
+Decision: generic orchestration, job arrays, publishing infrastructure,
+targeted reruns, automatic cleanup, biological-readiness policy, public-data
+acquisition, analysis-module execution, optional-analysis archival, and public
+package distribution remain deferred until their named evidence and task gates
+are complete.
 
-Future refactors must preserve proven CLIs, output paths, dry-run/execute
-semantics, and transaction contracts unless separately approved.
+Future refactors preserve proven behavior, scientific meaning, outputs,
+evidence, dry-run/execute semantics, and transaction/recovery contracts.
+Current CLIs and paths may change only through separately approved, explicitly
+tested migrations; they are not preserved indefinitely merely because they are
+current.

@@ -1,7 +1,8 @@
 # NORAD pipeline plan
 
-This is the authoritative pipeline/package roadmap, status matrix, acceptance
-criteria, and approved branch lineage. Current checkout details belong in
+This is the authoritative pipeline/package/evidence roadmap, status matrix,
+acceptance criteria, and approved branch lineage. Task-workflow status is the
+card's directory under [`../tasks/`](../tasks/). Current checkout details belong in
 [`../operations/HANDOFF.md`](../operations/HANDOFF.md); commands belong in
 [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md).
 
@@ -29,7 +30,7 @@ a completed production review.
 
 ## Evidence and reporting packages
 
-| Package | Responsibility | Status |
+| Package | Responsibility | Package/evidence status |
 | --- | --- | --- |
 | `artifact-schema-v1` | Public artifact, scientific-review, run-summary, and report-receipt contracts | implemented and fixture-tested |
 | `artifact-adapters-v1` | Explicit read-only artifact inventory adaptation | implemented and fixture-tested |
@@ -59,19 +60,28 @@ a completed production review.
 | `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete, pushed, and upstream-equal |
 | `refactor-01a1-demo-report-command` | Populated synthetic demo command plus bounded, broadly categorized HTML and readable PDF projection | complete; predecessor to the completed validation-efficiency package |
 | `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | complete; predecessor to the validation-publication characterization package |
-| `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; the next descendant requires clean, pushed, upstream-equal verification |
-| `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
-| `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |
-| `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode, module, delegation, argument, output, and exit contract | approved; pending |
-| `refactor-01f-independent-goldens` | Independent critical schema, header, serialization, status, and evidence-boundary goldens | approved; pending |
-| `refactor-01z-test-sufficiency-gate` | Re-measured baseline, closed traceability matrix, accepted/deferred risks, and explicit Phase `02` readiness decision | approved; pending |
-| `refactor-02-high-level-plan` through `refactor-02d-review-usability` | High-level/detailed plan plus architecture, reliability, and usability reviews | approved sequence; pending |
-| `refactor-03a-*` | Small reviewed refactor packages, one architectural concern per branch | exact packages pending the three reviews |
-| `refactor-99-final-audit` | Final finding disposition, compatibility comparison, measured validation, and handoff | approved final local gate; pending |
+| `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; verified clean, pushed, and upstream-equal before the documentation descendant |
+| `refactor-01-architecture-direction-docs` | Documentation-only task registry, durable architecture decisions, future constraints, open choices, and future diagrams | complete in this documentation package; no executable or evidence-state change |
+| `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/TODO/TEST-01D-characterize-public-cli-contracts.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01f-independent-goldens` | Independent critical serialized/state/evidence goldens; see [`TEST-01F`](../tasks/TODO/TEST-01F-create-independent-contract-goldens.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01z-test-sufficiency-gate` | Behavior-row classification and explicit readiness decision; see [`TEST-01Z`](../tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md) | future package definition; workflow status is the linked card's directory |
+| Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | future task set; workflow status is owned by each card's directory |
+| Phase `02` independent reviews | Architecture, reliability, and usability reviews in `REVIEW-ARCH-01` → `REVIEW-REL-02` → `REVIEW-UX-03` order | future review set; workflow status is owned by each card's directory |
+| Phase `03` bounded packages | Exact stage/domain migrations, logging adoption, code documentation, consolidation, corrections, and extractions generated by the reviewed plan | not yet named; cards must be evidence-derived and separately approved |
+| `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
 state.
+
+The former `refactor-02-high-level-plan` and `refactor-02a-detailed-plan`
+placeholders are superseded by the bounded Phase `02` design cards plus
+`PLAN-02Z`. The former `refactor-02b`/`02c`/`02d` review placeholders map to
+`REVIEW-ARCH-01`, `REVIEW-REL-02`, and `REVIEW-UX-03`. Cards are not branch
+names: each live task-specific plan selects its descendant branch only after
+inspection and approval.
 
 ## Approved local lineage
 
@@ -101,19 +111,14 @@ report-html-v1a-report-table-approvals
                                                                                     └── refactor-01a1-demo-report-command
                                                                                         └── refactor-01aa-validation-efficiency
                                                                                             └── refactor-01b-validation-publication-faults
-                                                                                                └── refactor-01c-validation-check-rosters
-                                                                                                    └── refactor-01d-public-cli-contracts
-                                                                                                        └── refactor-01e-slurm-contracts
-                                                                                                            └── refactor-01f-independent-goldens
-                                                                                                                └── refactor-01z-test-sufficiency-gate
-                                                                                                                    └── refactor-02-high-level-plan
-                                                                                                                        └── refactor-02a-detailed-plan
-                                                                                                                            └── refactor-02b-review-architecture
-                                                                                                                                └── refactor-02c-review-reliability
-                                                                                                                                    └── refactor-02d-review-usability
-                                                                                                                                        └── refactor-03a-<reviewed-phase>
-                                                                                                                                            └── ...reviewed refactor branches...
-                                                                                                                                                └── refactor-99-final-audit
+                                                                                                └── refactor-01-architecture-direction-docs
+                                                                                                    └── refactor-01c-validation-check-rosters
+                                                                                                        └── refactor-01d-public-cli-contracts
+                                                                                                            └── refactor-01e-slurm-contracts
+                                                                                                                └── refactor-01f-independent-goldens
+                                                                                                                    └── refactor-01z-test-sufficiency-gate
+                                                                                                                        └── ...task-specific descendant branches selected by approved cards...
+                                                                                                                            └── refactor-99-final-audit
 ```
 
 Do not perform remote or cluster
@@ -136,6 +141,16 @@ validation during this sequence.
   `FUTURE_ARCHITECTURE.md`;
 - standalone `.mmd` files are canonical and contain no transient status;
 - demos are explicitly presentation material or dated snapshots;
+- every task card has one stable ID and status directory, the required sections,
+  valid links, and no duplicate ID;
+- every hard dependency is direct, reciprocal, and acyclic; a `Fully` unblock
+  leaves no other card blocker, while `Partially` never authorizes a target;
+- cards link to canonical rationale/state/commands/topology instead of owning
+  those facts, and moving a card updates every inbound link in the same commit;
+- moving a card to `IN_PROGRESS` starts read-only planning only; each card
+  requires a separately approved task-specific plan before implementation;
+- the `ARCH-DOC-00` decision-capture crosswalk maps every approved or deferred
+  architecture discussion item to a durable owner and task card;
 - unique scientific and validation evidence is preserved;
 - no NORAD workflow, validator, schema, config, scientific-method, or
   public-contract behavior changes; the separately committed one-time
@@ -170,11 +185,19 @@ validation during this sequence.
   mutation, symlink, fsync, move, validation, cleanup, rollback, and
   interruption failures; known unsafe recovery states remain explicitly
   labeled rather than being normalized into passing behavior;
-- `refactor-01z-test-sufficiency-gate` records the measured readiness decision;
-- Phase `02` produces high-level and detailed plans followed by separate
-  architecture, reliability, and usability reviews;
-- Phase `03` implements only reviewed, bounded architectural concerns while
-  preserving public contracts;
+- `refactor-01z-test-sufficiency-gate` classifies every applicable behavior as
+  preserved, characterized defect, undefined/decision-required, or environment-
+  deferred and releases Phase `02` only when every applicable preserved row is
+  protected; a negative decision creates bounded closure and repeat-decision
+  cards;
+- the Phase `02` design-card set produces evidence-backed local decisions and
+  `PLAN-02Z` integrates them without executing the repo-spanning refactor;
+- separate architecture, reliability, and usability reviews correct the plan
+  before any Phase `03` executable architecture package;
+- Phase `03` implements only reviewed, bounded cards, each with its own live
+  plan and approval. It preserves behavior/science/output/evidence/recovery
+  contracts while allowing explicitly approved and parity-tested path/interface
+  migrations;
 - Step `07`–`09` scientific/statistical algorithms remain unchanged until
   inspected remote baseline evidence and separate authorization exist;
 - `refactor-99-final-audit` classifies every finding and closes the local

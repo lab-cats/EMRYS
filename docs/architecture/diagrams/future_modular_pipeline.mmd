@@ -1,11 +1,15 @@
 flowchart LR
-    samples["Sample manifest"] --> core["Stable preprocessing core"]
-    reference["Reference contract"] --> core
-    config["Analysis policy"] --> module["Assay-specific analysis module"]
-    core --> module
-    module --> native["Native outputs"]
-    native --> validators["Stage-specific validators"]
-    native --> adapters["Read-only adapters"]
+    request["Versioned run request"] --> profile["Selected preprocessing profile DAG"]
+    samples["Typed sample manifest"] --> profile
+    reference["Registered reference contract"] --> profile
+    profile --> artifacts["Typed branch artifacts"]
+    artifacts --> builtin["Registered analysis module"]
+    artifacts --> custom["Exploratory custom analysis module"]
+    builtin --> native["Native module outputs"]
+    custom --> native
+    native --> validators["Stage and module validators"]
+    native --> adapters["Explicit read-only adapters"]
     validators --> adapters
-    adapters --> summary["Canonical summary"]
-    summary --> reports["Deterministic reports"]
+    adapters --> summary["Canonical run summary"]
+    summary --> view["Versioned report view model"]
+    view --> reports["Science and comprehensive reports"]

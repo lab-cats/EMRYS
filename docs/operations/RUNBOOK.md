@@ -1280,34 +1280,267 @@ git diff --check
 from pathlib import Path
 import re
 import subprocess
+from urllib.parse import unquote
 
 root = Path.cwd().resolve()
 documents = [
     root / path
     for path in subprocess.check_output(
-        ["git", "ls-files", "*.md"], text=True
+        [
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "*.md",
+        ],
+        text=True,
     ).splitlines()
 ]
-missing = []
+
+def anchors(document):
+    counts = {}
+    result = set()
+    for line in document.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
+        if not match:
+            continue
+        heading = re.sub(r"<[^>]*>", "", match.group(1)).lower()
+        base = re.sub(r"[^\w\- ]", "", heading).replace(" ", "-")
+        number = counts.get(base, 0)
+        counts[base] = number + 1
+        result.add(base if number == 0 else f"{base}-{number}")
+    return result
+
+document_anchors = {document: anchors(document) for document in documents}
+problems = []
+inbound = {}
 for document in documents:
     text = document.read_text(encoding="utf-8")
-    for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
-        target = target.strip().strip("<>").split("#", 1)[0]
-        if not target or target.startswith(
+    for raw_target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
+        raw_target = raw_target.strip().strip("<>")
+        if raw_target.startswith(
             ("http://", "https://", "mailto:", "data:")
         ):
             continue
-        path = (document.parent / target).resolve()
+        path_text, separator, fragment = raw_target.partition("#")
+        path = document if not path_text else (
+            document.parent / unquote(path_text)
+        ).resolve()
         if not path.exists():
-            missing.append(f"{document.relative_to(root)} -> {target}")
-if missing:
-    raise SystemExit("Missing local Markdown links:\n" + "\n".join(missing))
-print(f"PASS local Markdown links ({len(documents)} documents)")
+            problems.append(
+                f"missing link: {document.relative_to(root)} -> {raw_target}"
+            )
+            continue
+        inbound.setdefault(path, set()).add(document)
+        if separator and path.suffix == ".md":
+            fragment = unquote(fragment).lower()
+            if fragment not in document_anchors.get(path, set()):
+                problems.append(
+                    f"missing anchor: {document.relative_to(root)} -> "
+                    f"{raw_target}"
+                )
+
+task_root = root / "docs" / "tasks"
+required_readmes = [
+    task_root / "README.md",
+    task_root / "TODO" / "README.md",
+    task_root / "IN_PROGRESS" / "README.md",
+    task_root / "COMPLETED" / "README.md",
+]
+for readme in required_readmes:
+    if not readme.is_file():
+        problems.append(f"missing task-registry README: {readme.relative_to(root)}")
+
+required_sections = [
+    "Objective",
+    "Why this exists",
+    "Fixed decisions",
+    "Blocked by",
+    "Completion unblocks",
+    "Prerequisites",
+    "Required context",
+    "Questions owned by this card",
+    "In scope",
+    "Out of scope",
+    "Deliverables",
+    "Acceptance evidence",
+    "Canonical documentation updates",
+    "Escalation conditions",
+    "Completion record",
+]
+cards = {}
+blocked = {}
+unblocks = {}
+structurally_valid_cards = set()
+statuses = {"TODO", "IN_PROGRESS", "COMPLETED"}
+for path in sorted(task_root.rglob("*.md")):
+    if path in required_readmes:
+        continue
+    if path.parent.name not in statuses or path.parent.parent != task_root:
+        problems.append(f"invalid card location: {path.relative_to(root)}")
+        continue
+    text = path.read_text(encoding="utf-8")
+    titles = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
+    title = re.match(
+        r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$", titles[0]
+    ) if len(titles) == 1 else None
+    if not title:
+        problems.append(f"invalid card H1: {path.relative_to(root)}")
+        continue
+    card_id = title.group(1)
+    if not path.name.startswith(f"{card_id}-"):
+        problems.append(f"card ID/filename mismatch: {path.relative_to(root)}")
+    if card_id in cards:
+        problems.append(f"duplicate card ID: {card_id}")
+    cards[card_id] = path
+    headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
+    if headings != required_sections:
+        problems.append(f"card heading order/count: {path.relative_to(root)}")
+    else:
+        structurally_valid_cards.add(card_id)
+
+for card_id, path in cards.items():
+    if card_id not in structurally_valid_cards:
+        blocked[card_id] = set()
+        unblocks[card_id] = {}
+        continue
+    text = path.read_text(encoding="utf-8")
+    blocked_text = text.split("## Blocked by\n", 1)[1].split(
+        "\n## Completion unblocks", 1
+    )[0]
+    unblocks_text = text.split("## Completion unblocks\n", 1)[1].split(
+        "\n## Prerequisites", 1
+    )[0]
+    blocked_lines = [line for line in blocked_text.splitlines() if line.strip()]
+    unblock_lines = [line for line in unblocks_text.splitlines() if line.strip()]
+    required_pattern = re.compile(
+        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$"
+    )
+    unblock_pattern = re.compile(
+        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — "
+        r"(Fully|Partially): .+$"
+    )
+    if blocked_lines != ["- None."] and not all(
+        required_pattern.fullmatch(line) for line in blocked_lines
+    ):
+        problems.append(f"invalid Blocked by syntax: {path.relative_to(root)}")
+    if unblock_lines != ["- None."] and not all(
+        unblock_pattern.fullmatch(line) for line in unblock_lines
+    ):
+        problems.append(
+            f"invalid Completion unblocks syntax: {path.relative_to(root)}"
+        )
+    blocked[card_id] = set(re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text))
+    unblocks[card_id] = {
+        target: mode
+        for target, mode in re.findall(
+            r"\[([A-Z0-9-]+)\]\([^)]+\) — (Fully|Partially):",
+            unblocks_text,
+        )
+    }
+    for label, target in re.findall(
+        r"\[([A-Z0-9-]+)\]\(([^)]+\.md)\)", text
+    ):
+        resolved = (path.parent / target).resolve()
+        if resolved.parent.parent == task_root and not resolved.name.startswith(
+            f"{label}-"
+        ):
+            problems.append(
+                f"card-link label/target mismatch: {path.relative_to(root)} "
+                f"{label} -> {target}"
+            )
+
+for target, sources in blocked.items():
+    for source in sources:
+        if source not in cards:
+            problems.append(f"unknown blocker: {target} <- {source}")
+        elif target not in unblocks[source]:
+            problems.append(f"missing reciprocal unblock: {source} -> {target}")
+        if source == target:
+            problems.append(f"self dependency: {target}")
+for source, targets in unblocks.items():
+    for target, mode in targets.items():
+        if target not in cards:
+            problems.append(f"unknown unblock target: {source} -> {target}")
+        elif mode == "Fully" and blocked[target] != {source}:
+            problems.append(f"invalid Fully relationship: {source} -> {target}")
+
+visiting = []
+visited = set()
+def visit(card_id):
+    if card_id in visiting:
+        problems.append("dependency cycle: " + " -> ".join(visiting + [card_id]))
+        return
+    if card_id in visited:
+        return
+    visiting.append(card_id)
+    for dependency in blocked.get(card_id, set()):
+        if dependency in cards:
+            visit(dependency)
+    visiting.pop()
+    visited.add(card_id)
+for card_id in cards:
+    visit(card_id)
+
+for card_id, path in cards.items():
+    if not (inbound.get(path, set()) - {path}):
+        problems.append(f"orphan task card: {path.relative_to(root)}")
+    if path.parent.name in {"IN_PROGRESS", "COMPLETED"}:
+        for dependency in blocked[card_id]:
+            if dependency not in cards:
+                continue
+            if cards[dependency].parent.name != "COMPLETED":
+                problems.append(
+                    f"active/completed card has incomplete blocker: "
+                    f"{card_id} <- {dependency}"
+                )
+
+diagrams = [
+    root / path
+    for path in subprocess.check_output(
+        [
+            "git",
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "*.mmd",
+        ],
+        text=True,
+    ).splitlines()
+]
+for diagram in diagrams:
+    text = diagram.read_text(encoding="utf-8")
+    meaningful = [line.strip() for line in text.splitlines() if line.strip()]
+    if not meaningful or not re.fullmatch(
+        r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]
+    ):
+        problems.append(f"invalid Mermaid declaration: {diagram.relative_to(root)}")
+    if "```" in text:
+        problems.append(f"Markdown fence in Mermaid source: {diagram.relative_to(root)}")
+    if not (inbound.get(diagram, set()) - {diagram}):
+        problems.append(f"orphan Mermaid source: {diagram.relative_to(root)}")
+
+if problems:
+    raise SystemExit("Documentation gate failures:\n" + "\n".join(problems))
+print(
+    f"PASS documentation structure ({len(documents)} Markdown documents, "
+    f"{len(cards)} task cards, {len(diagrams)} Mermaid sources)"
+)
 PY
 
 git status --short
 git diff --name-status
 ```
+
+The checker validates local paths and GitHub-style heading anchors, includes
+untracked new documents, enforces task-card IDs/locations/headings/direct
+dependencies, rejects hard-dependency cycles and orphan cards/diagrams, and
+checks basic Mermaid source structure. It does not replace manual semantic
+comparison of every changed diagram with its owning architecture document.
 
 Inspect `git diff --name-only <validated-implementation-commit>` and require
 every path after that commit to be documentation-only. Repeat the complete
