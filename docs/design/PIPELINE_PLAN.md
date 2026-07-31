@@ -58,8 +58,8 @@ a completed production review.
 | `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete |
 | `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | complete, pushed, and upstream-equal |
 | `refactor-01a1-demo-report-command` | Populated synthetic demo command plus bounded, broadly categorized HTML and readable PDF projection | complete; predecessor to the completed validation-efficiency package |
-| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | implementation and docpatch complete; the next descendant requires clean, pushed, upstream-equal verification |
-| `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | approved; pending |
+| `refactor-01aa-validation-efficiency` | Quiet failure-first output, de-duplicated validation lanes, and measured bounded parallel execution | complete; predecessor to the validation-publication characterization package |
+| `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | implementation and docpatch complete; the next descendant requires clean, pushed, upstream-equal verification |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
 | `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode, module, delegation, argument, output, and exit contract | approved; pending |
@@ -152,7 +152,7 @@ validation during this sequence.
   characterization sequence;
 - the independent Step `09` characterization oracle is complete without
   changing the production validator or statistical method;
-- validation efficiency is measured and hardened before the five remaining
+- validation efficiency is measured and hardened before the five
   critical/high-risk characterization branches named above;
 - `refactor-01aa-validation-efficiency` preserves existing public Make targets,
   separates non-overlapping Python-coverage, shell-contract, sequential
@@ -164,6 +164,12 @@ validation during this sequence.
   parallel orchestration becomes a default only with at least a 25% complete
   gate improvement, using the smallest stable concurrency within 5% of the
   fastest result and no more than four top-level lanes;
+- `refactor-01b-validation-publication-faults` characterizes the shared
+  thirteen-validator publisher plus the distinct reference-provenance,
+  runtime-preflight, and storage-inventory publishers with injected input
+  mutation, symlink, fsync, move, validation, cleanup, rollback, and
+  interruption failures; known unsafe recovery states remain explicitly
+  labeled rather than being normalized into passing behavior;
 - `refactor-01z-test-sufficiency-gate` records the measured readiness decision;
 - Phase `02` produces high-level and detailed plans followed by separate
   architecture, reliability, and usability reviews;

@@ -113,28 +113,28 @@ suites and is included in the cross-cutting matrix below.
 | `build_artifact_index.py` | `tests/test_artifact_adapters.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent contract mutation remains under `TG-06` |
 | `build_run_summary.py` | `tests/test_artifact_run_summary.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent serialized goldens remain under `TG-06` |
 | `gtf_to_bed12.py` | `tests/test_gtf_to_bed12.py` | `H E M F T X` | independent | partial: exact existing-output and arbitrary-CWD behavior under `TG-04` |
-| `reference_provenance.py` | `tests/test_reference_provenance.py` | `H D E M F N L P T V X` | independent | partial: injected publication/recheck failures under `TG-02` |
+| `reference_provenance.py` | `tests/test_reference_provenance.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CLI cases remain under `TG-04` |
 | `render_run_report.py` | `tests/test_report_html_v1.py`; `tests/test_report_exports_v1.py` | `H D E M F T V X` | mixed | partial: direct CLI/exit matrix under `TG-04` |
 | `render_run_report_bundle.py` | `tests/test_report_exports_v1.py`; `tests/shell/test_render_run_report.sh` | `H D E M F N L B S I U P T V X W` | mixed | partial: low measured internal coverage and direct CLI matrix under `TG-04`; scenario evidence must precede any implementation change |
 | `restore_quarto.py` | `tests/test_quarto_restore.py` | `H E M N L B I P T X` | independent | adequate for supported local restore; other platforms are not supported |
-| `runtime_preflight.py` | `tests/test_runtime_preflight.py` | `H D E M F N L B I P T V X` | independent | partial: shared publication/recheck fault matrix under `TG-02`; CSU execution deferred |
+| `runtime_preflight.py` | `tests/test_runtime_preflight.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; lock-fsync, lock-cleanup, and incomplete-rollback recovery remain labeled production gaps; CSU execution deferred |
 | `step_09c_scientific_validation.py` | `tests/test_step_09c_scientific_validation.py`; `tests/shell/test_step_09c_scientific_validation.sh` | `H D E M F N L B S I U P T V X W` | mixed | adequate for local synthetic contracts; production science review deferred |
-| `storage_inventory.py` | `tests/test_storage_inventory.py` | `H D E M F N L B I P T V X` | independent | partial: shared publication/recheck fault matrix under `TG-02`; CSU storage execution deferred |
+| `storage_inventory.py` | `tests/test_storage_inventory.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CSU storage execution deferred |
 | `validate_artifact_contracts.py` | `tests/test_artifact_schema_contracts.py` | `H M F U P T V X` | mixed | adequate; independent schema/golden mutation remains under `TG-06` |
 | `validate_manifest.py` | `tests/test_validate_manifest.py` | `H M F P T X` | independent | adequate |
-| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py` | `D E M F N L T X R` | independent | partial: shared publication faults `TG-02`; roster mutation `TG-03`; help/exit matrix `TG-04` |
-| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04` |
-| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py` | `D E M F N L T X R` | independent | partial: `TG-02`, `TG-03`, `TG-04`; real bcftools deferred |
-| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py` | `D E M F N L T X R` | producer-coupled | partial: `TG-02`, `TG-03`, `TG-04`, and independent headers/goldens `TG-06` |
-| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py` | `D E M F N L T V X R` | mixed | `TG-01` characterization complete; the production validator still requires a separately reviewed compatible correction; also `TG-02`, `TG-03`, and `TG-04` |
+| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` characterization complete with labeled production gaps; roster mutation `TG-03`; help/exit matrix `TG-04` |
+| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
+| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` and real bcftools remain |
+| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | producer-coupled/mixed | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04`, `TG-06` remain |
+| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` and `TG-02` characterization complete; compatible validator/recovery corrections remain separately reviewed; `TG-03`, `TG-04` remain |
 
 The per-step validator rows intentionally distinguish malformed inputs, which
 exit nonzero and publish nothing, from readable but failed evidence, which may
@@ -238,16 +238,16 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | Risk area | Current regression evidence | Independence | Disposition |
 | --- | --- | --- | --- |
 | Public help, dry-run, execute, malformed input, and exit behavior | focused Python/shell suites listed above | mostly independent | complete exact missing-case matrix in `TG-04` |
-| Native output transactions | Step `02`, `05`–`09`, Step `09c`, adapters, summaries, and report bundle rollback suites | mixed | preserve; fill shared validator publication faults in `TG-02` |
+| Native output transactions | Step `02`, `05`–`09`, Step `09c`, adapters, summaries, report bundle rollback suites, and Phase `01b` publisher fault injection | mixed | `TG-02` characterization complete; preserve labeled production gaps for reviewed correction |
 | Seven-column validation report schema | every `tests/test_validate_step_*` module plus adapter propagation fixtures | mixed | preserve |
 | Exact per-step check rosters | production `CHECK_IDS` plus uneven fixed-list assertions | producer-coupled/mixed | add mutation-resistant independent rosters in `TG-03` |
 | Public JSON Schemas and table headers | schema-contract suite, artifact/run-summary suites, Step `09c`, per-step validators | mixed | freeze independent representative goldens in `TG-06` |
 | Status vocabularies and state transitions | schema, adapter, Step `09c`, summary, and report negative cases | mixed | add production-constant mutation cases in `TG-06` |
 | Deterministic JSON/TSV/QC/report bytes and ordering | retry/fixed-time tests, explicit ordered inventories, renderer comparisons | mixed | preserve; add small independent serialized goldens in `TG-06` |
-| Locks, signals, rollback, cleanup, and recovery evidence | later shell workflows, artifact/summary/report transactions, Step `09c` | mixed | shared validation publication matrix `TG-02`; do not universalize action-local mechanisms |
-| Stable hashes and input mutation | Step `07`–`09`, Step `09c`, artifact/summary/report, provenance/preflight/storage suites | mixed | preserve; fault-inject shared validator rechecks in `TG-02` |
+| Locks, signals, rollback, cleanup, and recovery evidence | later shell workflows, artifact/summary/report transactions, Step `09c`, and shared/ancillary publisher fault injection | mixed | `TG-02` characterization complete; do not universalize action-local mechanisms or mistake a characterized gap for a safe contract |
+| Stable hashes and input mutation | Step `07`–`09`, Step `09c`, artifact/summary/report, provenance/preflight/storage, and shared-validator snapshot suites | mixed | `TG-02` characterization complete; digest-backed shared snapshots remain a reviewed production correction |
 | Unrelated-file immunity | Step `07`–`09`, Step `09c`, adapter/summary/report suites | independent/mixed | fill explicit CLI omissions in `TG-04` |
-| Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance suites | independent | preserve; fill shared validator publication paths in `TG-02` |
+| Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance, and shared-validator publication suites | independent | `TG-02` characterization complete; preserve |
 | Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports | mixed | preserve; mutation-resistant vocabulary cases in `TG-06` |
 | Direct execution, arbitrary CWD, and SLURM delegation | strong for Steps `05`–`09`; uneven for early stages and utility jobs | independent | `TG-04` and `TG-05` |
 | Step `09` CMH statistic, p-value, odds ratio, and estimability | independent Python oracle, fixed corpus, direct committed-R comparison, and coordinated-corruption rejection; production validator still checks type/range and BH from reported p-values | independent characterization plus producer-coupled validator | `TG-01` characterization complete; compatible production-validator correction remains separately reviewed |
@@ -274,8 +274,8 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The baseline matrix yielded six cohesive gaps. `TG-01` is now characterized;
-the authoritative branch mapping and remaining order are in
+The baseline matrix yielded six cohesive gaps. `TG-01` and `TG-02` are now
+characterized; the authoritative branch mapping and remaining order are in
 `PIPELINE_PLAN.md`.
 
 | Gap | Scope | Exit evidence |
@@ -311,6 +311,44 @@ This closes the characterization package, not the executable validator gap.
 with count-derived expectations. That compatible correction remains subject
 to the reviewed Phase `02`/`03` plan and must preserve check IDs, statuses,
 thresholds, output bytes, scientific language, and the Step `09` method.
+
+### Completed `TG-02` characterization
+
+Implementation commit `f7e00e4` adds 28 test-only fault cases: 18 exercise
+the single publisher imported by all 13 step validators, and 10 exercise the
+distinct reference-provenance, runtime-preflight, and storage-inventory
+publishers. The shared suite freezes the exact validator inventory and covers
+same-size/restored-mtime mutation, inode and symlink substitution, first and
+replacement publication, staged and prior validation, fsync and move faults,
+post-publication validation, rollback, cleanup, a late foreign final, and
+`KeyboardInterrupt`. The ancillary cases cover input rechecks, multi-file
+rollback, lock/stage fsync, lock cleanup, and incomplete restoration.
+
+The tests deliberately label rather than normalize current unsafe behavior.
+The shared metadata snapshot cannot detect changed bytes when size and mtime
+are restored; a late foreign final can be deleted; and incomplete rollback can
+lose its lock without a recovery marker. Reference and storage multi-file
+restoration can likewise leave backups without lock/marker protection.
+Runtime preflight can retain a lock and descriptor after lock fsync failure,
+leave an unprotected backup after failed restoration, or report success while
+an owned lock remains after cleanup failure. These are characterized Phase
+`03` correction candidates, not accepted recovery contracts.
+
+The 56 directly affected tests passed five serial repetitions and one
+two-worker xdist run. Separate covered serial and xdist executions had
+identical per-file coverage (1,367/10,551 lines and 325/4,404 branches). The
+broader 132-test validator/provenance/preflight/storage regression passed. The
+canonical complete gate passed in 153.161 seconds with 491 Python passes, 17
+expected skips, all shell contracts,
+guarded R checks and real-R fixtures, and 17 pinned report-runtime passes. A
+retained Python-lane measurement recorded 8,566/10,551 lines and 3,103/4,404
+branches across the same 26 modules, with snapshot digest
+`a59ee1897b4b8a0d02881c3c5070f12f47f0a6b1067cd883624db88ad8056137`.
+The reviewed non-regression baseline was not rewritten merely because this
+test-only package increased coverage.
+
+This closes `TG-02` characterization only. It changes no publisher,
+validator, report, workflow, scientific, runtime, or cluster behavior.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any

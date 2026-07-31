@@ -8,10 +8,10 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Verify `refactor-01aa-validation-efficiency` is clean, pushed, and
-   upstream-equal, then add the shared validation-publication fault
+1. Verify `refactor-01b-validation-publication-faults` is clean, pushed, and
+   upstream-equal, then add the independent exact validation check-roster
    characterization package.
-2. Add the five remaining evidence-derived characterization packages in the
+2. Add the four remaining evidence-derived characterization packages in the
    exact descendant order owned by
    [`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
 3. Record the measured test-sufficiency decision on the final Phase `01`
@@ -24,8 +24,10 @@ checkout and evidence boundary are in
 - Use the completed independent Step `09` CMH characterization oracle and
   corruption corpus to design a separately reviewed compatible validator
   correction; the production validator still does not recompute these fields.
-- Add high-risk characterization for shared validation publication/recheck
-  faults and exact validation check rosters.
+- Add high-risk characterization for exact validation check rosters; shared
+  validation publication/recheck fault characterization is complete, while
+  the production recovery gaps it exposes remain deferred to reviewed Phase
+  `03` work.
 - Complete public CLI/exit, SLURM-wrapper, and independent-golden
   characterization without changing production contracts.
 

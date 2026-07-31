@@ -533,6 +533,47 @@ paths. Do not delete a foreign lock or manufacture a passing TSV. Establish
 ownership, recover the validated predecessor or clean first-publication state,
 record the operator action, and rerun dry-run before execute mode.
 
+An absent lock does not by itself prove a clean state: Phase `01b` fault
+injection confirmed that an incomplete restoration can leave `.previous`
+bytes after the shared publisher has removed its lock.
+
+## Validation publication leaves ambiguous recovery state
+
+### Symptom
+
+After an injected or real publication exception, a run-token `.previous` or
+`.tmp` survives without its expected lock or recovery marker; a late-created
+foreign final is missing; or runtime preflight returns success while its owned
+lock remains. A lock-fsync failure may also leave a preflight lock and open
+descriptor until the process exits.
+
+### Cause
+
+Phase `01b` characterization confirms that the current publishers do not all
+have the same exception boundary. The shared step-validator publisher can
+remove lock protection after failed restoration and can unlink a final that
+appears during its publication move. Reference and storage multi-file
+publishers can leave backups without a lock/marker after incomplete rollback.
+Runtime preflight can fail before descriptor ownership enters its cleanup
+block or swallow lock-unlink failure after publishing successfully.
+
+### Diagnose
+
+Stop retries and inspect the exact final, run-token `.tmp`/`.previous`, lock,
+process, filesystem identity, and command log together. Treat surviving bytes
+as recovery evidence even when no lock or marker remains. Establish whether a
+late final belongs to another process; do not infer ownership from its name
+alone.
+
+### Fix
+
+There is no automatic recovery fix in Phase `01b`. Preserve the affected
+directory and logs, establish ownership, and choose an explicit operator
+recovery or a new output path. Do not delete a lock, backup, stage, or foreign
+final merely because a characterization test reproduces the state. Production
+corrections require the later reliability review and a bounded Phase `03`
+package.
+
 ## Step 00b structured validation reports BED12 or GTF disagreement
 
 ### Symptom

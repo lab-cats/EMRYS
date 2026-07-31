@@ -7,27 +7,27 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-01aa-validation-efficiency`
+  `refactor-01b-validation-publication-faults`
 - Parent:
-  `refactor-01a1-demo-report-command`
+  `refactor-01aa-validation-efficiency`
 - Verified parent HEAD:
-  `f9aef17f4d6a2aa6e88feb41f85c1364af194889`
-- Parent implementation commits:
-  - `79907fc feat: add synthetic demo report target`
-  - `0169c13 feat: populate and categorize demo report`
-- Parent documentation patch:
-  `f9aef17 docs: add demo report workflow`
-- Current implementation:
+  `11cd16a347a7dff41fcdab4c21324930625e7549`
+- Parent implementation commit:
   `dd19f0f test: add measured parallel validation gate`
-- Current package: de-duplicated Python-coverage, shell-contract, sequential
-  guarded-R, and pinned-report-runtime validation lanes with measured bounded
-  orchestration
+- Parent documentation patch:
+  `11cd16a docs: record validation efficiency evidence`
+- Current implementation:
+  `f7e00e4 test: characterize validation publication faults`
+- Current package: test-only adversarial characterization of the shared
+  thirteen-validator publisher and the distinct reference-provenance,
+  runtime-preflight, and storage-inventory publishers
 - Package type: implementation/tests plus separate documentation patch
 - Remote and cluster work: paused
 
-The validation-efficiency branch descends directly from the clean, pushed,
-upstream-equal demo-report documentation commit. The parent branch and remote
-both resolved to the verified parent HEAD before this branch was created.
+The validation-publication branch descends directly from the clean, pushed,
+upstream-equal validation-efficiency documentation commit. The parent branch
+and live remote both resolved to the verified parent HEAD before this branch
+was created.
 
 ## Completed boundary
 
@@ -90,6 +90,10 @@ The local descendant sequence has implemented:
   lanes, quiet failure-first logs, explicit verbose and serial modes, bounded
   process-group cleanup, timing/result summaries, and exact coverage
   comparison.
+- a test-only publication-fault matrix covering the one publisher shared by
+  all 13 step validators plus the distinct provenance, preflight, and storage
+  transactions, with protected success/rollback behavior and current unsafe
+  recovery states clearly distinguished in test names and comments.
 
 ## Evidence boundary
 
@@ -134,6 +138,7 @@ The local descendant sequence has implemented:
 | Phase `01a` independent Step `09` oracle | 20 focused Python oracle tests and the committed real-R Step `09` corpus comparison passed; the complete implementation gate passed with 452 Python tests, 17 expected conditional skips, unchanged 80.8701% line/69.6956% branch coverage across 26 production Python modules, every shell suite, guarded R environment checks, guarded Step `08`/`09` real-R fixtures, and 143 pinned report-runtime tests; the production validator and Step `09` method were unchanged |
 | Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
+| Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -145,6 +150,26 @@ the Python lane by 45%. Top-level medians for one through four lane slots were
 selected as the smallest candidate within 5% of the fastest. The final
 three-run default median was 168.979423 seconds, 61.667% faster than the final
 serial fallback.
+
+Phase `01b` preserved the Phase `01aa` defaults of three top-level lane slots
+and two Python workers. Its successful gate lane timings were 0.110 seconds
+for static preflight, 39.724 for shell contracts, 131.618 for Python coverage,
+144.052 for guarded R, and 113.317 for pinned report runtime. A retained
+Python-lane measurement finished in 107.22 seconds with coverage digest
+`a59ee1897b4b8a0d02881c3c5070f12f47f0a6b1067cd883624db88ad8056137`.
+The tracked non-regression baseline was not rewritten. An initial restricted-
+network gate attempt reached guarded R and failed only because release
+metadata DNS was unavailable; the identical gate passed when network access
+was available.
+
+The fault suite confirms protected first/replacement publication, validation,
+rollback, symlink rejection, input mutation, fsync/move failure, and
+interruption paths. It also freezes known unsafe states for later correction:
+metadata-only snapshots miss same-size rewrites with restored mtime; a late
+foreign final can be deleted; incomplete restoration can leave backups without
+lock/marker protection; and runtime preflight has lock-fsync/descriptor and
+lock-cleanup gaps. Passing these tests characterizes those states; it does not
+approve them as safe recovery behavior.
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -226,21 +251,24 @@ approved policy defines and unlocks stricter exit criteria.
   DP/AD counts. Phase `01a` now supplies independent characterization evidence
   for a later separately reviewed compatible correction; it did not change
   production validation.
-- Shared validator publication faults, exact check rosters, complete public
-  CLI/exit behavior, early and utility SLURM behavior, and independent
-  serialized/state goldens remain the measured Phase `01` characterization
-  gaps.
+- Exact check rosters, complete public CLI/exit behavior, early and utility
+  SLURM behavior, and independent serialized/state goldens remain the measured
+  Phase `01` characterization gaps.
+- Phase `01b` now characterizes shared and ancillary publication faults, but
+  it intentionally does not correct the confirmed same-size rewrite,
+  late-foreign-final, incomplete-rollback, descriptor, or stale-lock behavior.
 
 ## Immediate resume point
 
-The `refactor-01aa-validation-efficiency` implementation is complete at
-`dd19f0f`. Its final executable state passed the serial fallback and three
-consecutive default parallel gates with exact result and coverage equality.
-The subsequent documentation-only patch reuses that computational evidence
-after Git inspection proves that only documentation changed.
+The `refactor-01b-validation-publication-faults` test implementation is
+complete at `f7e00e4`. Its final executable state passed the focused
+serial/parallel fault matrix, broader regression, retained coverage lane, and
+one de-duplicated complete gate. The subsequent documentation-only patch
+reuses that computational evidence after Git inspection proves that only
+documentation changed.
 
 After confirming this branch is clean, pushed, and upstream-equal, create
-`refactor-01b-validation-publication-faults`. Do not begin that package
+`refactor-01c-validation-check-rosters`. Do not begin that package
 automatically.
 
 The one-time Phase `00` dependency exception is exhausted and does not

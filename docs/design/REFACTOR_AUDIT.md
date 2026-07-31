@@ -207,12 +207,20 @@ not authorize implementation outside that plan.
   mtime, inode replacement, symlink substitution, late foreign final, move
   failure, restoration failure, stage cleanup failure, lock cleanup failure,
   signal, and valid-predecessor retry.
+- **Characterization evidence:** implementation commit `f7e00e4` covers the
+  full thirteen-validator shared-publisher inventory and the listed fault
+  boundaries. It confirms the metadata-only rewrite blind spot, late-foreign-
+  final deletion, and unprotected incomplete-rollback states without changing
+  production behavior. Ancillary reference, runtime-preflight, and storage
+  publishers are characterized separately because their transactions are not
+  the same implementation.
 - **Priority:** high
 - **Estimated effort:** large
 - **Dependencies:** Phase `01` fault-injection harness and exact public
   transaction inventory
 - **Proposed phase:** Phase `01` tests, then reviewed Phase `03`
-- **Status:** confirmed; unresolved
+- **Status:** Phase `01b` characterization complete; executable correction
+  remains a reviewed Phase `03` candidate
 
 ### RA-003 — Adapter does not enforce exact validator check rosters
 
@@ -1120,12 +1128,12 @@ The findings and measured Phase `01` baseline support the authorized sequence:
 1. The developer-only Python coverage baseline and public-contract matrix are
    established in [`TEST_BASELINE.md`](TEST_BASELINE.md) before any production
    refactor.
-2. The independent Step `09` oracle characterization is complete. The five
-   remaining measured hardening gaps cover shared validation-report
-   publication faults, exact check rosters, public CLI/exit behavior, every
-   SLURM wrapper, and independent critical goldens. The intervening
-   validation-efficiency package reduces local gate cost without changing
-   production behavior. Exact descendant names and order are owned by
+2. The independent Step `09` oracle and shared validation-publication fault
+   characterizations are complete. The four remaining measured hardening gaps
+   cover exact check rosters, public CLI/exit behavior, every SLURM wrapper,
+   and independent critical goldens. The intervening validation-efficiency
+   package reduces local gate cost without changing production behavior.
+   Exact descendant names and order are owned by
    [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
 3. Phase `02` should prefer small neutral seams over a repository-wide
    framework. The architecture review must reject reversed dependency

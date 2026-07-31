@@ -121,6 +121,21 @@ ownership, rollback, or cleanup cannot be proved.
 Alternative rejected: optimistic cleanup that can destroy the only evidence
 needed for safe recovery.
 
+### Characterize unsafe publication states before correcting them
+
+Decision: adversarial tests freeze both protected behavior and explicitly
+labeled unsafe states for the shared step-validator publisher and each
+distinct ancillary publisher before any implementation is changed. A known-
+gap assertion records the observed failure boundary; it does not approve that
+behavior, weaken the recovery decision above, or make unlike transaction
+implementations interchangeable.
+
+Reason: publication, rollback, signal, descriptor, and cleanup paths are easy
+to change in ways that improve one exception while silently deleting foreign
+or recovery evidence in another. Test-only characterization gives the later
+reliability review concrete states to preserve or deliberately correct without
+prematurely extracting a generic publication framework.
+
 ## Reference and BAM pipeline
 
 ### Use the Novogene-provided reference
