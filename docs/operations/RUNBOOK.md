@@ -1118,6 +1118,7 @@ bash -n scripts/*.sh
 bash -n jobs/*.slurm
 .venv/bin/python -m compileall scripts tests
 .venv/bin/python -m pytest
+make python-coverage-check
 make shell-test
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
 RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
@@ -1138,6 +1139,44 @@ perform the repository-wide documentation consistency pass, rerun this gate,
 and make the separate documentation-only commit. A documentation-only package
 runs the gate and uses one documentation commit. Require a clean worktree and
 inspect history before pushing or creating the next descendant stage branch.
+
+### Python coverage baseline
+
+Synchronizing the pinned Python dependencies is an explicit developer setup
+action:
+
+```bash
+cd /Users/elisteiger/dev/norad
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Tests, workflow scripts, validators, jobs, and report renderers do not run that
+installation command.
+
+Measure the complete Python suite, trace configured Python subprocesses, and
+compare the result with the reviewed baseline:
+
+```bash
+make python-coverage-check
+```
+
+Measurement writes only beneath the ignored `.coverage-work/` directory. The
+machine-readable snapshot and policy are in
+`tests/baselines/python_coverage.json`; the interpretation and public-contract
+matrix are in `docs/design/TEST_BASELINE.md`.
+
+Do not update the baseline merely to silence a regression. After inspecting
+and approving a deliberate test/source change, regenerate the candidate,
+review the exact JSON diff, and rerun the check:
+
+```bash
+make python-coverage-baseline-update
+git diff -- tests/baselines/python_coverage.json
+make python-coverage-check
+```
+
+The numerical baseline does not replace shell, guarded real-R, report-runtime,
+transaction, recovery, or independent-oracle tests.
 
 ### Guarded local R environment
 

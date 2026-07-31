@@ -328,6 +328,24 @@ format-specific validation.
 Rendering never discovers inputs, invokes analysis engines, installs
 dependencies, or promotes evidence state.
 
+## Measure Python coverage without replacing scenario gates
+
+Decision: pin Python coverage as a developer-only dependency, measure line and
+branch execution across the complete Python suite and configured Python
+subprocesses, and compare a deterministic tracked snapshot by exact ratios.
+Ordinary checks reject a global line/branch regression or a removed baseline
+module. New shared Python modules start with a 90% line and 85% branch
+threshold.
+
+Baseline regeneration is an explicit reviewed action. Tests and runtime entry
+points never install the tool or rewrite the snapshot automatically.
+
+Reason: a measured floor makes later refactors comparable, while percentage
+coverage alone cannot establish assertion independence, public-contract
+completeness, transaction safety, real-R behavior, cluster execution, or
+scientific correctness. The public-contract matrix and independent scenario
+tests remain separate gates.
+
 ## Documentation ownership
 
 Decision: each information category has one canonical owner:

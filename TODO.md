@@ -8,25 +8,25 @@ checkout and evidence boundary are in
 
 ## Immediate
 
-1. Create `refactor-01-test-baseline` from the clean, pushed, upstream-equal
-   `refactor-00-comprehensive-audit` predecessor.
-2. Add an explicit developer-only Python
-   line/branch baseline and the public-contract risk-to-test matrix.
-3. Create one evidence-determined descendant per cohesive high-risk
-   characterization gap, then record the test-sufficiency decision on
-   `refactor-01z-test-sufficiency-gate`.
+1. Complete and push the Phase `01` measured baseline and public-contract
+   matrix package.
+2. Add the six evidence-derived characterization packages in the exact
+   descendant order owned by
+   [`docs/design/PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
+3. Record the measured test-sufficiency decision on the final Phase `01`
+   gate.
 4. Continue through the separately reviewed Phase `02` plan before changing
    production structure.
 
 ## Engineering gaps for the refactor gate
 
-- Characterize the Step `09` validator's missing independent recomputation of
-  the CMH statistic, p-value, odds ratio, and estimability from DP/AD counts
-  before any compatible correction.
-- Measure Python line/branch coverage and complete the public CLI, transaction,
-  schema, status, deterministic-output, and recovery traceability matrix.
+- Add independent Step `09` validator recomputation of the CMH statistic,
+  p-value, odds ratio, and estimability from DP/AD counts before any compatible
+  correction.
 - Add high-risk characterization for shared validation publication/recheck
-  faults, exact check rosters, and uneven SLURM/dry-run behavior.
+  faults and exact validation check rosters.
+- Complete public CLI/exit, SLURM-wrapper, and independent-golden
+  characterization without changing production contracts.
 
 ## Runtime and scientific blockers
 

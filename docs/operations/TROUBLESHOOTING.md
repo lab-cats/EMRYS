@@ -1075,6 +1075,35 @@ content. Resolve ownership, recover either the complete prior transaction or
 a clean first-publication state, validate it, and record any operator action
 before retrying.
 
+## Python coverage baseline cannot run or reports a regression
+
+### Symptom
+
+The coverage target reports a missing or wrong `coverage.py` version, missing
+subprocess data, a disappeared source module, a lower global line or branch
+rate, or a new shared module below the declared threshold.
+
+### Cause
+
+The selected project virtual environment may not be synchronized with the
+tracked requirements, a subprocess may no longer start under coverage, source
+or test behavior may have changed, or a new shared module may lack sufficient
+characterization. A rounded percentage can also look unchanged while the
+exact covered/total ratio has decreased.
+
+### Fix
+
+Use the explicit dependency synchronization and coverage commands in the
+runbook. Inspect the current and baseline JSON, the named module, the complete
+test output, and any subprocess warning. Correct the source or test gap and
+rerun the full gate.
+
+Do not update the baseline merely to make the command pass. A deliberate
+baseline change requires review of the exact JSON diff and the
+public-contract matrix. Numerical coverage is local developer evidence; it
+does not replace shell, real-R, report-runtime, transaction, independent
+oracle, or cluster tests.
+
 ## Step 08 or Step 09 cannot find `Rscript`
 
 ### Symptom

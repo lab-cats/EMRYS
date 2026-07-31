@@ -54,9 +54,15 @@ a completed production review.
 | `post09-validation-report-07` | Structured VCF/receipt/selector/manifest/count validation and report propagation | implemented and locally fixture-tested; real-runtime and production report pending |
 | `post09-validation-report-08` | Structured three-output preprocessing transaction validation and report propagation | implemented and locally fixture-tested; production report pending |
 | `post09-validation-report-09` | Structured six-output CMH transaction and semantic validation with report propagation | implemented and locally fixture-tested; production report pending |
-| `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete; the next descendant requires live clean, pushed, upstream-equal verification |
-| `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | approved; next |
-| `refactor-01a-*` through `refactor-01z-test-sufficiency-gate` | Evidence-determined characterization packages and final refactor-readiness decision | approved sequence; exact gap branches pending baseline evidence |
+| `refactor-00-comprehensive-audit` | Final evidence-ranked audit, one-time locked dependency refresh, do-not-abstract boundaries, and documentation consistency correction | complete |
+| `refactor-01-test-baseline` | Measured Python line/branch baseline and public-contract risk-to-test matrix | complete; the next descendant requires live clean, pushed, upstream-equal verification |
+| `refactor-01a-step09-independent-cmh-oracle` | Independent Step `09` DP/AD-derived CMH and estimability characterization | approved; next |
+| `refactor-01b-validation-publication-faults` | Shared validation-report publication, recheck, rollback, cleanup, and recovery fault characterization | approved; pending |
+| `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization for every step validator | approved; pending |
+| `refactor-01d-public-cli-contracts` | Complete applicable public CLI, direct-execution, arbitrary-CWD, and exit-behavior characterization | approved; pending |
+| `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode, module, delegation, argument, output, and exit contract | approved; pending |
+| `refactor-01f-independent-goldens` | Independent critical schema, header, serialization, status, and evidence-boundary goldens | approved; pending |
+| `refactor-01z-test-sufficiency-gate` | Re-measured baseline, closed traceability matrix, accepted/deferred risks, and explicit Phase `02` readiness decision | approved; pending |
 | `refactor-02-high-level-plan` through `refactor-02d-review-usability` | High-level/detailed plan plus architecture, reliability, and usability reviews | approved sequence; pending |
 | `refactor-03a-*` | Small reviewed refactor packages, one architectural concern per branch | exact packages pending the three reviews |
 | `refactor-99-final-audit` | Final finding disposition, compatibility comparison, measured validation, and handoff | approved final local gate; pending |
@@ -89,17 +95,21 @@ report-html-v1a-report-table-approvals
                                                                     └── post09-validation-report-09
                                                                         └── refactor-00-comprehensive-audit
                                                                             └── refactor-01-test-baseline
-                                                                                └── refactor-01a-<test-gap>
-                                                                                    └── ...evidence-determined test branches...
-                                                                                        └── refactor-01z-test-sufficiency-gate
-                                                                                            └── refactor-02-high-level-plan
-                                                                                                └── refactor-02a-detailed-plan
-                                                                                                    └── refactor-02b-review-architecture
-                                                                                                        └── refactor-02c-review-reliability
-                                                                                                            └── refactor-02d-review-usability
-                                                                                                                └── refactor-03a-<reviewed-phase>
-                                                                                                                    └── ...reviewed refactor branches...
-                                                                                                                        └── refactor-99-final-audit
+                                                                                └── refactor-01a-step09-independent-cmh-oracle
+                                                                                    └── refactor-01b-validation-publication-faults
+                                                                                        └── refactor-01c-validation-check-rosters
+                                                                                            └── refactor-01d-public-cli-contracts
+                                                                                                └── refactor-01e-slurm-contracts
+                                                                                                    └── refactor-01f-independent-goldens
+                                                                                                        └── refactor-01z-test-sufficiency-gate
+                                                                                                            └── refactor-02-high-level-plan
+                                                                                                                └── refactor-02a-detailed-plan
+                                                                                                                    └── refactor-02b-review-architecture
+                                                                                                                        └── refactor-02c-review-reliability
+                                                                                                                            └── refactor-02d-review-usability
+                                                                                                                                └── refactor-03a-<reviewed-phase>
+                                                                                                                                    └── ...reviewed refactor branches...
+                                                                                                                                        └── refactor-99-final-audit
 ```
 
 Do not perform remote or cluster
@@ -132,10 +142,12 @@ validation during this sequence.
 
 - [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) owns the evidence-ranked findings,
   test-first dispositions, and explicit retained/deferred boundaries;
-- Phase `01` records a measured global Python line/branch baseline and a
-  public-contract risk-to-test matrix before production refactoring;
-- critical/high-risk gaps receive cohesive characterization branches; exact
-  branch names come from evidence rather than placeholders;
+- [`TEST_BASELINE.md`](TEST_BASELINE.md) owns the measured global Python
+  line/branch summary, public-contract risk-to-test matrix, fixture
+  independence classification, and the evidence behind the exact Phase `01`
+  characterization sequence;
+- critical/high-risk gaps receive the six cohesive characterization branches
+  named in the authoritative lineage above;
 - `refactor-01z-test-sufficiency-gate` records the measured readiness decision;
 - Phase `02` produces high-level and detailed plans followed by separate
   architecture, reliability, and usability reviews;

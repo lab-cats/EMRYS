@@ -99,8 +99,8 @@ not authorize implementation outside that plan.
 | 2 | `RA-002` shared validation publication/recheck safety | high | very high | large | `01` characterization, then reviewed `03` |
 | 3 | `RA-003` adapter does not enforce exact check rosters | high | high | medium | `01` characterization, then reviewed `03` |
 | 4 | `RA-029` mutable repository freshness conflicts with the locked R gate | high | high | medium | resolved by one-time Phase `00` dependency refresh |
-| 5 | `RA-016` no measured line/branch baseline | high | low | medium | `01` |
-| 6 | `RA-017` incomplete public-contract traceability | high | high | large | `01` |
+| 5 | `RA-016` no measured line/branch baseline | high | low | medium | resolved in `01` baseline |
+| 6 | `RA-017` incomplete public-contract traceability | high | high | large | matrix resolved in `01`; named gaps remain |
 | 7 | `RA-018` uneven SLURM behavior coverage | high | high | large | `01` |
 | 8 | `RA-019` production/test shared-defect exposure | high | high | medium | `01` |
 | 9 | `RA-004` legacy early-stage execution/publication behavior | high | very high | large | characterize in `01`; mostly defer |
@@ -734,7 +734,12 @@ not authorize implementation outside that plan.
 - **Dependencies:** explicit dependency installation approval within Phase
   `01`
 - **Proposed phase:** `refactor-01-test-baseline`
-- **Status:** confirmed; queued
+- **Resolution evidence:** the Phase `01` package pins developer-only
+  line/branch measurement, traces Python subprocesses, records deterministic
+  global and per-module data, rejects exact global regression and missing
+  modules, and self-tests the measurement/check interfaces. See
+  [`TEST_BASELINE.md`](TEST_BASELINE.md).
+- **Status:** resolved; the measured baseline is now a continuing gate
 
 ### RA-017 — Incomplete public-contract traceability
 
@@ -763,7 +768,12 @@ not authorize implementation outside that plan.
 - **Estimated effort:** large
 - **Dependencies:** `RA-016`
 - **Proposed phase:** Phase `01`
-- **Status:** confirmed; queued
+- **Resolution evidence:** [`TEST_BASELINE.md`](TEST_BASELINE.md) now names
+  every Python, shell, R, SLURM, and Make entry point; maps protected
+  transaction/schema/status/determinism/recovery/evidence boundaries; and
+  classifies fixture independence.
+- **Status:** matrix resolved; six evidence-derived characterization gaps
+  remain queued in the authoritative lineage
 
 ### RA-018 — Uneven SLURM behavior coverage
 
@@ -1104,13 +1114,16 @@ not authorize implementation outside that plan.
 
 ## Phase recommendations
 
-The findings support the authorized sequence:
+The findings and measured Phase `01` baseline support the authorized sequence:
 
-1. Phase `01` must measure coverage and create the risk-to-test matrix before
-   any production refactor.
-2. The first hardening packages should address independent Step `09` oracle
-   cases, shared validation-report publication faults, exact check rosters,
-   public CLI/exit behavior, and early SLURM/dry-run characterization.
+1. The developer-only Python coverage baseline and public-contract matrix are
+   established in [`TEST_BASELINE.md`](TEST_BASELINE.md) before any production
+   refactor.
+2. The six measured hardening gaps cover the independent Step `09` oracle,
+   shared validation-report publication faults, exact check rosters, public
+   CLI/exit behavior, every SLURM wrapper, and independent critical goldens.
+   Exact descendant names and order are owned by
+   [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
 3. Phase `02` should prefer small neutral seams over a repository-wide
    framework. The architecture review must reject reversed dependency
    direction; the reliability review must preserve every transaction state;

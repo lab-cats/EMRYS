@@ -63,6 +63,7 @@ logs/           ignored runtime logs
 | [`HANDOFF.md`](docs/operations/HANDOFF.md) | Current branch, evidence boundary, blockers, and resume point |
 | [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md) | Authoritative roadmap, status matrix, and acceptance criteria |
 | [`REFACTOR_AUDIT.md`](docs/design/REFACTOR_AUDIT.md) | Evidence-ranked refactor findings, risks, and retained boundaries |
+| [`TEST_BASELINE.md`](docs/design/TEST_BASELINE.md) | Measured Python baseline and public-contract risk-to-test traceability |
 | [`QUESTIONS.md`](docs/design/QUESTIONS.md) | Open questions and resolved-question links |
 | [`RUNBOOK.md`](docs/operations/RUNBOOK.md) | Setup, validation, cluster, inspection, and recovery commands |
 | [`DECISIONS.md`](docs/design/DECISIONS.md) | Durable decisions and rationale |

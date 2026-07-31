@@ -7,26 +7,26 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `refactor-00-comprehensive-audit`
+  `refactor-01-test-baseline`
 - Parent:
-  `post09-validation-report-09`
+  `refactor-00-comprehensive-audit`
 - Verified parent HEAD:
-  `5bdf53664d72f047d88f4a59d38ff2d8c80dc503`
+  `02c1ae8138ed105621bb40cccee5498f9b7f5782`
 - Parent implementation:
-  `d6458ea implement step 09 validation report`
-- Parent documentation patch:
-  `5bdf536 step 09 validation report docpatch`
-- Current dependency implementation:
   `288dd93 refresh locked bitops dependency`
-- Current package: comprehensive refactor audit, one-time locked dependency
-  refresh, and documentation consistency correction
-- Package type: dependency implementation plus separate documentation patch
+- Parent documentation patch:
+  `02c1ae8 comprehensive refactor audit docpatch`
+- Current implementation:
+  `b124e96 add Python coverage baseline gate`
+- Current package: developer-only measured Python coverage baseline,
+  public-contract risk-to-test matrix, and evidence-derived Phase `01`
+  characterization sequence
+- Package type: test-tool implementation plus separate documentation patch
 - Remote and cluster work: paused
 
-The Phase `00` branch was created only after rereading the required corpus,
-reconciling the final Step `08`/`09` implementation, running the complete
-parent gate, refreshing the remote, and verifying a clean, upstream-equal
-parent and absent target.
+The Phase `01` branch was created only after rereading the required corpus,
+running the complete parent gate, refreshing the remote, and verifying a
+clean, pushed, upstream-equal predecessor and absent target.
 
 ## Completed boundary
 
@@ -70,6 +70,9 @@ The local descendant sequence has implemented:
 - a Step `09` seven-check transaction/identity/semantics/subset/summary/
   spectrum/PDF validation report, typed artifact adapter, and summary/HTML/PDF
   propagation fixture.
+- a pinned developer-only Python line/branch baseline, deterministic
+  non-regression check, subprocess tracing, self-tests, and exhaustive
+  public-contract risk-to-test matrix.
 
 ## Evidence boundary
 
@@ -109,6 +112,7 @@ The local descendant sequence has implemented:
 | Step `09` structured validation | six native outputs, exact headers/basenames/shared parent/distinct files, explicit cohort and provisional policy, complete Step `08` candidate order, count-derived target/test/call/depth/AF/background plus BH-from-reported-p semantics, subset, summary, mutation spectrum, and PDFs implemented and locally fixture/report tested; CMH statistic/p-value/odds ratio and count-table estimability are not independently recomputed; no production execution |
 | Guarded local R dependency | `bitops` updated from locked `1.0-9` to `1.1-0` in the repository-local environment under a one-time explicit authorization; upstream consistency tests, exact boundary-output comparison, synchronization/current-release checks, and the complete local gate passed |
 | Comprehensive refactor audit | evidence inventory, ranked findings, test-first recommendations, and explicit do-not-abstract boundaries recorded; no NORAD workflow, schema, config, test, scientific method, or public-contract behavior changed |
+| Phase `01` test baseline | measured developer-only Python line/branch baseline and public-contract matrix recorded in [`../design/TEST_BASELINE.md`](../design/TEST_BASELINE.md); the implementation gate passed with 432 Python tests passing, 17 expected skips, every shell suite passing, guarded R environment/current-release validation, Step `08`/`09` local real-R fixtures, and 143 pinned report-runtime tests; no production behavior or evidence state changed |
 
 Transaction completion means only that the declared transaction reconciled. It
 does not establish that every source exists or passed, nor does it promote
@@ -187,19 +191,21 @@ approved policy defines and unlocks stricter exit criteria.
 - No production scientific-evidence review has been completed.
 - The Step `09` structured validator does not independently recompute the CMH
   statistic, p-value, common odds ratio, or table estimability from DP/AD
-  counts; its report wording remains an executable-contract issue for a later
-  characterized package.
-- No measured Python line/branch baseline or complete public-contract
-  traceability matrix exists yet.
+  counts; the independent-oracle characterization package is next.
+- Shared validator publication faults, exact check rosters, complete public
+  CLI/exit behavior, early and utility SLURM behavior, and independent
+  serialized/state goldens remain the measured Phase `01` characterization
+  gaps.
 
 ## Immediate resume point
 
-The `refactor-00-comprehensive-audit` implementation and documentation content
-are complete. The one-time dependency exception is exhausted and does not
-authorize future changes outside the normal development gate. After confirming
-this branch is clean, pushed, and upstream-equal, create
-`refactor-01-test-baseline`. Do not change production structure before the
-Phase `01` gate and all three Phase `02` reviews.
+The `refactor-01-test-baseline` implementation and documentation content are
+complete. The one-time Phase `00` dependency exception is exhausted and does
+not authorize future changes outside the normal development gate. After
+confirming this branch is clean, pushed, and upstream-equal, create the first
+Phase `01` characterization descendant named in the authoritative lineage. Do
+not change production structure before the final Phase `01` sufficiency gate
+and all three Phase `02` reviews.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md).
