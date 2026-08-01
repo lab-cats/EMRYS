@@ -28,7 +28,7 @@ over every applicable contract row before production structure changes.
 
 ## Completion unblocks
 
-- [ARCH-02A](../TODO/ARCH-02A-inventory-functional-stages-and-contracts.md) — Fully: only an affirmative recorded decision releases this target.
+- [ARCH-02A](ARCH-02A-inventory-functional-stages-and-contracts.md) — Fully: only an affirmative recorded decision releases this target.
 - [RPT-01](../TODO/RPT-01-characterize-comprehensive-report.md) — Fully: only an affirmative recorded decision releases this target.
 - [LOG-01](../COMPLETED/LOG-01-characterize-current-output.md) — Fully: only an affirmative recorded decision releases this target.
 - [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Fully: only an affirmative recorded decision releases this target.

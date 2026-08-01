@@ -23,7 +23,7 @@ test defects.
 
 ## Blocked by
 
-- [ARCH-02A](../TODO/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: observed reuse and ownership must be inventoried.
+- [ARCH-02A](../COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: observed reuse and ownership must be inventoried.
 - [ARCH-02C](../TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: the neutral ownership domains and dependency direction must be settled.
 
 ## Completion unblocks

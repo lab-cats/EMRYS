@@ -7,48 +7,34 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/concurrency-02-fragment-protocol-reconciliation`
-- Parent:
-  `codex/log-02-define-logging-contract-reconciliation`
-- Verified parent HEAD:
-  `8ba7a5cb39a7c87bc60e833eb0d061aaf758ad7c`
-- Parent documentation commit:
-  `8ba7a5c docs: reconcile logging contract`
-- Current implementation commit:
-  `590ba1e feat: extract Git orchestration safeguards`; this is bounded
-  developer tooling and does not alter pipeline computation
-- Current documentation commit:
-  `docs: define manual integration fragment protocol` (the final protocol
-  commit containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: Phase `0` is corrected, adversarially reviewed,
-  published, and upstream-equal; LOG-01 is published and upstream-equal; LOG-02
-  is complete; CONCURRENCY-02 is complete after a durable coordination
-  checkpoint and one consumed, remotely preserved synthetic exchange
-- Current package: manual integration-fragment authority, schema, lifecycle,
-  disposition, durability, recovery, and a bounded synthetic exchange
-- Package type: documentation coordination checkpoint followed by one focused
-  helper/test implementation commit and one separately validated protocol
-  docpatch
-- Remote publication and upstream equality: resolve from live Git; cluster work
-  remains paused
+  `codex/arch-02a-slice-7-infer-paired-read-orientation-contract`
+- ARCH-02A package base:
+  `ed518c0 docs(program): establish critical runway slice`
+- Current documentation tip: the commit containing this handoff; resolve its
+  exact SHA from live Git.
+- Recorded package state: the first `PROGRAM-01` runway slice is complete
+  without completing that card; `ARCH-02A` is complete across 14 approved JIT
+  slices and one exact public-surface coverage audit.
+- Current package: implementation-backed contracts for historical owners
+  `00a` through `09c`, cross-cutting ownership classification, and final
+  canonical-document reconciliation.
+- Package type: documentation-only; no executable, configuration, schema,
+  fixture, report-template, dependency, or test-harness behavior changed.
+- Remote publication and upstream equality: resolve from live Git before
+  selecting the successor; remote and cluster work remain paused.
 
-This branch descends directly from the clean, pushed, upstream-equal LOG-02 tip
-`8ba7a5c`. Coordination checkpoint `a47ce4c` published the exact packet for one
-non-substantive synthetic sidecar. The frozen source commit `7385668` was
-published on its recorded remote ref, independently verified, dispositioned,
-and removed from the final tree while its raw history remained recoverable.
-The package adds operator-invoked, dry-run-first Git safeguards, focused tests,
-and static/public-command inventory coverage. It does not change any production
-pipeline job, scientific command, schema, dependency, report, runtime, cluster,
-scientific, or biological behavior.
+The ARCH-02A lineage descends from the critical-runway slice at `ed518c0`.
+Its 14 colocated contracts and exact 88-surface inventory preserve current
+behavior, dependency direction, evidence boundaries, direct protection, and
+known ownership leaks without moving code or choosing target semantic names.
 
 ## Active concurrent lanes
 
-This checkout is the serialized canonical lane for the completed
-CONCURRENCY-02 reconciliation. Its synthetic lane is closed and recorded under
-the completed exchange below, not in this active-lane registry. This package
-did not inspect, modify, or integrate unrelated candidate worktrees, paused
-concurrency attempts, or the researcher pilot.
+This checkout is the canonical ARCH-02A documentation lane. No concurrent lane
+contributed to the inventory or its completion reconciliation. The completed
+CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
+candidate worktrees, paused concurrency attempts, and the researcher pilot
+remain preserved but frozen.
 The user explicitly authorized that pilot before the fragment checkpoint was
 defined; preserve that historical fact without claiming retroactive protocol
 compliance.
@@ -411,54 +397,28 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-Phase `0` is corrected, adversarially reviewed, published, and upstream-equal
-at `b2af738`. Its affirmative behavior-sufficiency decision remains bounded to
-local architecture planning and does not promote runtime, cluster, scientific,
-or biological evidence.
+[`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
+is complete. The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+assigns all 88 current public workflow and repository-development surfaces
+exactly once, while 14 colocated contracts make inputs, outputs, dependencies,
+consumers, validator boundaries, direct protection, and unresolved ownership
+leaks traceable without filename inference.
 
-LOG-01 is published and upstream-equal at `ead6ff4`. Its
-[`current output and log inventory`](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory)
-maps every current command and validation surface to normalized stream,
-audience, stability, consumer/test, durability, recovery, and exposure
-semantics. External consumers remain uninspected.
+The current architecture overview and Mermaid source now show Step `02b` and
+Step `03` as evidence branches rather than computational prerequisites, and
+distinguish reference preparation dependencies. Redundant per-validator prose
+was consolidated into the contracts without deleting unique behavior or
+failure knowledge.
 
-LOG-02 is complete as a documentation-only target contract. The
-[`version-1 logging target`](../architecture/FUTURE_ARCHITECTURE.md#logging-target)
-defines `normal|verbose|debug`, direct-command and Make/SLURM environment
-controls, dry-run command visibility, machine stdout and human stderr,
-single-writer operation-attempt JSONL, identity and safe-root boundaries,
-lossless classified child diagnostics, receipt-safe log ordering, bounded
-failure summaries, catchable/uncatchable interruption limits, protected
-operator-owned retention, scheduler separation, explicit evidence-role
-authorization, and normalized cross-level equivalence.
+This package changes documentation only. It creates no new runtime, cluster,
+scientific-review, or biological-readiness evidence, and computational
+validation is not applicable. No dependency was installed, restored, or
+updated. The sibling worktree's pre-existing ignored R cache remains untouched.
 
-Candidate `dad6b79` remains unchanged as evidence. It was not merged, rebased,
-or cherry-picked because it descends from rejected LOG-01 proposal `4d01152`.
-This reconciliation preserves its useful two-sink structure while correcting
-attempt identity, dry-run, cross-language ownership, receipt ordering,
-credential/evidence, and environment-deferred claims.
-
-The complete diff is non-consuming Markdown only, so computational validation
-is not applicable. `git diff --check` passed, and the documentation gate passed
-with 78 Markdown documents, 55 task cards, and 6 Mermaid sources.
-
-The sibling worktree retains pre-existing ignored R cache material from an
-earlier failed activation. Do not delete or repair it without separate operator
-direction. No dependency was installed, restored, or updated for LOG-02 or
-CONCURRENCY-02.
-
-CONCURRENCY-02 is complete as a manual fragment protocol with bounded,
-dry-run-first Git orchestration helpers. At implementation `590ba1e`, 207
-focused closure tests passed; the complete Python/coverage lane passed with
-938 tests and 17 skips, shell contracts passed, report runtime passed with 17
-tests and 60 deselections, and static validation passed. The guarded-R lane is
-environment-deferred because eight lockfile packages are absent; no dependency
-was installed or restored. Before publication, require the final documentation
-gate and exact-tip adversarial code/authority/recovery review, then use the
-exact-SHA lease-guarded publication helper, prove clean upstream equality and
-immutable source-ref reachability, and stop at this phase boundary. `PROGRAM-01`
-is the recommended next separately planned
-package, but no later card is selected. Do not begin
-`PROGRAM-01`, `ARCH-02A`, `RPT-01`, `DOC-IA-01`, executable logging,
-remote/cluster work, scientific-policy work, or biological interpretation as
-part of this package.
+The next eligible critical-runway package is
+[`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md). It must be
+selected and planned just in time before mutation; its eligibility does not
+authorize it automatically. `ARCH-02C` and `ARCH-02D` follow in dependency
+order. All other work, including the unsliced `PROGRAM-01` remainder, remains
+preserved but currently dead/out of scope until the first physical migration
+and explicit user reassessment.

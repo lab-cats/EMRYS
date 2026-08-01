@@ -17,25 +17,28 @@ chain, parallel QC/evidence branches, and downstream cohort analysis:
 
 ```text
 reference inputs
--> STAR index, BED12, FASTA sidecars
+|-> 00a STAR index
+|-> 00b BED12
+`-> 00c FASTA sidecars
 
-paired FASTQ + sample manifest
+paired FASTQ + sample manifest + STAR index
 -> STAR alignment
 -> canonical sorted/read-group BAM
--> BAM QC and library-orientation inference
--> duplicate marking
--> SplitNCigarReads
--> mechanical FWD_like / REV_like BAMs
--> manifest-partitioned cohort mpileup
--> deterministic VCF preprocessing and annotation
--> paired CMH candidate ranking
--> explicit scientific-evidence review
+   |-> 02b BAM-QC evidence
+   |-> 03 paired-orientation evidence (+ BED12)
+   `-> 04 duplicate marking
+       -> 05 SplitNCigarReads (+ FASTA sidecars)
+       -> 06 mechanical FWD_like / REV_like BAMs
+       -> 07 manifest-partitioned cohort mpileup
+       -> 08 deterministic VCF preprocessing and annotation
+       -> 09 paired CMH candidate ranking
+       -> 09c explicit scientific-evidence review (+ declared evidence)
 ```
 
 SLURM wrappers remain thin. Analysis and validation logic lives in
 parameterized scripts. The login node is not a compute engine.
 
-### Incremental functional-owner contract index
+### Functional-owner contract index
 
 The exact public-entrypoint and cross-cutting-domain coverage roster is
 [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md).
@@ -81,15 +84,18 @@ globs.
 
 ## Native artifact transactions
 
-Multi-file stages publish a validated set with a receipt or summary last.
-Owned locks, run-token staging, stable input hashes, validation before
-publication, rollback, cleanup, and retained recovery evidence protect stable
-outputs.
+Current multi-file owners use several publication patterns. Many attempt
+validation before publication, marker-last completion, owned locks or staging,
+no-clobber checks, rollback, and retained recovery evidence, but those
+properties are not uniform. Some markers become visible before final
+post-publication checks, so marker presence alone does not always prove that
+the producer returned success. Each functional-owner contract records its
+exact guarantees and characterized defects.
 
 A transaction may be structurally complete while its evidence records still
 say missing, failed, incomplete, unavailable, blocked, or not run.
 
-## Artifact and summary layer
+## Artifact contracts and indexing
 
 Versioned schemas under `schemas/artifacts/v1/` define:
 
@@ -102,6 +108,8 @@ Versioned schemas under `schemas/artifacts/v1/` define:
 An explicit artifact inventory drives read-only adapters. Adapters inspect
 declared native outputs and publish records, an ordered index, and a receipt
 last. They do not alter native outputs or execute analysis.
+
+## Canonical run-summary assembly
 
 The run-summary builder consumes one exact committed adapter receipt and
 optional exact scientific-review and report-table approval inputs. It
@@ -157,7 +165,7 @@ and adjudication, decisions, and limitations.
 `biological_interpretation_ready` is reserved until a separate policy defines
 and unlocks its exits.
 
-## Runtime boundaries
+## Runtime and dependency boundaries
 
 Local runtime restoration is explicit and opt-in. R activation is guarded;
 Quarto restoration is separate from rendering. Compute and validation entry
@@ -176,12 +184,16 @@ It installs and repairs nothing, and its report is not connected to the
 artifact/run-summary evidence graph. Availability evidence remains distinct
 from workflow runtime validation and cluster proof.
 
+## Reference provenance evidence
+
 Reference provenance similarly consumes one explicit inventory and base
 directory. It hashes regular FASTA, FAI, DICT, GTF, BED12, and named STAR index
 members; records annotation source/release declarations; compares
 FASTA/FAI/DICT/STAR ordered names and lengths; and verifies that GTF/BED12
 contigs belong to the FASTA universe. It publishes artifact and contig TSVs
 with a summary last, reports inconsistencies, and never repairs references.
+
+## Storage evidence
 
 Storage inventory consumes one exact root contract and one exact retention
 policy. It measures only the named absolute directory trees without following
@@ -190,76 +202,21 @@ inventory and normalized policy with a summary last. Approval state is
 evidence, not an executable instruction: this boundary never deletes, moves,
 archives, compresses, or cleans data.
 
-Step-specific validators sit beside native outputs and never mutate them. The
-first implemented validator reads the explicit Step `00a` STAR index and its
-FASTA/GTF sources, then publishes the common seven-column validation TSV. Its
-typed adapter keeps passing and failing check evidence in the artifact graph;
-the canonical summary and both report formats project the resulting expected-
-scope state without promoting runtime or cluster evidence.
+## Validation evidence protocol
 
-Step `00b` applies the same boundary to the explicit BED12 and source GTF. It
-separately reports structural, ordering, block, uniqueness, and deterministic
-normalization agreement, then uses its own typed adapter rather than a generic
-dispatcher.
+Numbered validators observe explicitly declared native artifacts and never
+repair them or rerun their producers. The functional-owner
+[`CONTRACT.md`](#functional-owner-contract-index) files own each
+operation's exact check roster, evidence strength, consumers, and known gaps;
+the [ownership inventory](FUNCTIONAL_OWNER_INVENTORY.md) maps every public
+validator to one owner.
 
-Step `00c` reads the explicit FASTA, FAI, and DICT and reports their individual
-structure plus exact ordered contig-name/length agreement. Its typed adapter
-uses the same evidence-only path; it never creates or repairs reference
-sidecars.
+The common snapshot, seven-column report, lock, rollback, and publication
+implementation currently lives in the Step `00a` validator and is imported by
+later validators. That reverse dependency is a recorded ownership leak, not a
+target-architecture decision, and current shared publication does not enforce
+report-row order.
 
-Step `01` validates the five explicit STAR outputs for one sample, including
-the BAM container, final-log mapping percentages, and splice-junction table.
-The per-sample typed adapter exposes those checks to the same summary and
-report path without rerunning alignment.
-
-Step `02` uses an explicit samtools executable to validate one canonical
-BAM/BAI pair, coordinate sort order, the matching read-group header, and RG
-coverage across all alignments. It observes the pair without sorting,
-indexing, or changing tags.
-
-Step `02b` separately validates the persisted quickcheck marker and flagstat
-counts. It does not invoke samtools; its typed adapter exposes the recorded QC
-evidence and count reconciliation.
-
-Step `03` validates the three required RSeQC fractions and their sum while
-retaining RSeQC's mechanical paired-orientation labels. Its adapter never
-translates those labels into biological strand claims.
-
-Step `04` validates one marked BAM/BAI pair, its preserved sample read group,
-and one bounded Picard duplication-metrics row. It observes duplicate-marking
-evidence without marking or removing reads.
-
-Step `05` validates one split-N-cigar BAM/BAI pair against explicit
-FASTA/FAI/DICT prerequisites. It never invokes GATK or repairs shared
-reference sidecars.
-
-Step `06` validates the two explicit mechanical-orientation BAM/BAI pairs and
-the exact one-row orientation counts contract. It reconciles the flag-group,
-assigned/unassigned, and fraction arithmetic without invoking samtools,
-changing outputs, or inferring biological strand.
-
-Step `07` validates one explicit cohort-partition receipt and its two VCFs
-against the declared sample manifest, partition manifest, and FAI. It
-reconciles selector membership, immutable hashes, sample order, paths, and
-record counts without invoking bcftools. Failed expected scopes are projected
-as a compact named list in both report formats so late matrix rows remain
-visible in PDF text.
-
-Step `08` validates the explicit sites, input-receipt, and summary TSV
-transaction against the declared manifests and annotation. It reuses the
-native semantic contracts for ordered inputs, candidate uniqueness, sample
-fields, AF arithmetic, provenance hashes, and aggregate counts without
-invoking R or rediscovering upstream artifacts.
-
-Step `09` validates the six explicit native CMH outputs as one analysis-bound
-transaction. It requires exact TSV headers and basenames, one shared parent,
-distinct physical files, explicit cohort/provisional-policy identity, and the
-complete ordered Step `08` candidate universe. It independently recomputes
-target/test/call, depth, AF, and enabled-background semantics and recomputes
-global BH values from the reported p-values. It type/range-checks the reported
-CMH fields but does not independently derive the CMH statistic, p-value,
-common odds ratio, or table estimability from DP/AD counts. It then reconciles
-the significant subset, summary provenance/counts, mutation spectrum, and PDF
-containers. Its seven-row typed report enters the artifact, summary, and
-report graph without invoking R, changing native outputs, or promoting
-evidence state.
+Typed adapters, artifact indexing, canonical-summary assembly, and reporting
+project both passing and failing validation evidence without promoting
+runtime, cluster, scientific-review, or biological-readiness state.

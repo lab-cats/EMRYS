@@ -20,10 +20,14 @@ migration is complete and the user explicitly reassesses it. It narrows work
 selection and routine context loading; it does not weaken the safety,
 freshness, evidence, ownership, or mandatory-expansion rules below.
 
-- The active runway is the current slice of
-  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
-  followed by `ARCH-02A`, `ARCH-02B`, `ARCH-02C`, and `ARCH-02D` in dependency
-  order.
+- The first
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+  runway slice and
+  [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
+  are complete. The next eligible runway package is `ARCH-02B`, followed by
+  `ARCH-02C` and `ARCH-02D` in dependency order. Each remains unselected until
+  its own JIT plan is approved; the unsliced `PROGRAM-01` remainder is
+  preserved but out of scope pending user reassessment.
 - Plan each architecture card just in time. Divide its execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one. Do not pre-plan the four cards comprehensively.

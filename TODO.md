@@ -23,24 +23,27 @@ checkout and exact resume point belong in
    [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
    Its synthetic exchange is protocol evidence only; the researcher pilot
    remains substantively unreviewed and unintegrated.
-4. TEST-01Z also releases
-   [`ARCH-02A`](docs/tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md),
-   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md),
-   [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md).
-   None is selected merely by being eligible.
-5. TEST-01Z's side of `CODEDOC-05` and `SIZE-07` is satisfied, but those cards
-   retain their other direct blockers and are not released by this decision
-   alone.
+4. Preserve the completed implementation-backed functional inventory in
+   [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md).
+   The next eligible critical-runway package is `ARCH-02B`, followed by
+   `ARCH-02C` and `ARCH-02D` in dependency order; none is selected merely by
+   being eligible.
+5. TEST-01Z's side of `CODEDOC-05` is satisfied, but that card retains its
+   `DOC-IA-01` blocker. Both recorded prerequisites for `SIZE-07` are now
+   complete; its technical eligibility does not override the active runway
+   freeze.
 
-Pause at the completed CONCURRENCY-02 boundary for reassessment. `PROGRAM-01`
-is the recommended next separately planned package, but no later card is
-selected. Roadmap order is not blocker metadata.
+The temporary critical runway in
+[`TASK_START.md`](docs/operations/TASK_START.md#temporary-critical-runway)
+freezes all other work until the first physical source migration and explicit
+reassessment. `PROGRAM-01` remains in progress with only its first runway slice
+complete. Roadmap order is not blocker metadata.
 
-## Recommended maintenance order
+## Frozen pre-runway maintenance context
 
-The following is roadmap order, not card-blocker metadata. None of these cards
-technologically blocks `TEST-01C` or authorizes work without its own approved
-plan:
+The following earlier sequence is preserved for later reassessment but is
+currently dead/out of scope. It is roadmap context, not card-blocker metadata,
+and authorizes no work without a separately approved plan:
 
 1. Preserve the completed isolated multi-sidecar/serialized-integration policy
    in
@@ -51,8 +54,10 @@ plan:
    cards remain subject to separate selection and planning.
 3. Preserve the completed manual fragment contract and synthetic exchange in
    [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
-4. Next, separately plan rolling-wave planning and coordination cohorts through
-   [`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+4. Preserve the first completed critical-runway slice of
+   [`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md);
+   its unsliced remainder remains in progress and frozen during the current
+   architecture runway.
 5. Reassess rather than freezing the remaining order now. The current expected
    candidates begin with extracting and behavior-locking the documentation
    validator through
@@ -79,8 +84,10 @@ plan:
 ## Current-program task families
 
 - Architecture, semantic stages, direct migration, intake, and shared-library
-  design: [`ARCH-02A`](docs/tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md)
-  through [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md).
+  design: [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
+  is complete; the remaining family runs from
+  [`ARCH-02B`](docs/tasks/TODO/ARCH-02B-define-semantic-stage-map.md) through
+  [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md).
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
   completed [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md)

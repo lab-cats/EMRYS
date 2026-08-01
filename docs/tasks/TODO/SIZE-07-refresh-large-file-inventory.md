@@ -24,7 +24,7 @@ combine size, cohesion, contract sensitivity, and scientific constraints.
 ## Blocked by
 
 - [TEST-01Z](../COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest sufficiency decision is affirmative.
-- [ARCH-02A](../TODO/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: size must be interpreted through functional ownership.
+- [ARCH-02A](../COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: size must be interpreted through functional ownership.
 
 ## Completion unblocks
 

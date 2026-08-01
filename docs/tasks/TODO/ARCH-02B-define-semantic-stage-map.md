@@ -20,7 +20,7 @@ explicit ordering model would create a different ambiguity.
 
 ## Blocked by
 
-- [ARCH-02A](../TODO/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: names and order must derive from the functional inventory.
+- [ARCH-02A](../COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md) — Required: names and order must derive from the functional inventory.
 
 ## Completion unblocks
 

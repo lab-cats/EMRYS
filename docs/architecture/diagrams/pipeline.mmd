@@ -2,22 +2,27 @@ flowchart LR
     runtime_profile["Explicit runtime profile"] --> runtime_preflight["Read-only runtime availability TSV"]
     reference_inventory["Explicit reference inventory"] --> reference_provenance["Read-only reference provenance TSVs"]
     storage_contracts["Explicit storage roots + retention policy"] --> storage_inventory["Read-only storage evidence TSVs"]
-    reference["Reference inputs"] --> prep["00a STAR index<br/>00b BED12<br/>00c FASTA sidecars"]
-    prep --> validate00a["00a read-only validation TSV"]
-    prep --> validate00b["00b read-only validation TSV"]
-    prep --> validate00c["00c read-only validation TSV"]
+    reference["Reference inputs"] --> star_index["00a STAR index"]
+    reference --> bed12["00b BED12"]
+    reference --> fasta_sidecars["00c FASTA sidecars"]
+    star_index --> validate00a["00a read-only validation TSV"]
+    bed12 --> validate00b["00b read-only validation TSV"]
+    fasta_sidecars --> validate00c["00c read-only validation TSV"]
     manifest["Explicit sample manifest"] --> align["01 STAR alignment"]
-    prep --> align
+    reads["Explicit paired FASTQ"] --> align
+    star_index --> align
     align --> validate01["01 read-only validation TSV"]
     align --> bam["02 canonical BAM"]
     bam --> validate02["02 read-only validation TSV"]
-    bam --> qc["02b BAM QC"]
+    bam --> qc["02b BAM-QC evidence"]
     qc --> validate02b["02b read-only validation TSV"]
-    bam --> orientation["03 library orientation"]
+    bam --> orientation["03 paired-orientation evidence"]
+    bed12 --> orientation
     orientation --> validate03["03 read-only validation TSV"]
     bam --> markdup["04 MarkDuplicates"]
     markdup --> validate04["04 read-only validation TSV"]
     markdup --> splitn["05 SplitNCigarReads"]
+    fasta_sidecars --> splitn
     splitn --> validate05["05 read-only validation TSV"]
     splitn --> splitread["06 mechanical orientation split"]
     splitread --> validate06["06 read-only validation TSV"]
@@ -25,10 +30,13 @@ flowchart LR
     splitread --> mpileup
     mpileup --> validate07["07 read-only validation TSV"]
     mpileup --> preprocess["08 VCF preprocessing"]
+    preprocessing_inputs["Explicit manifests + annotation"] --> preprocess
     preprocess --> validate08["08 read-only validation TSV"]
     preprocess --> cmh["09 paired CMH ranking"]
+    analysis_policy["Explicit pairing + analysis policy"] --> cmh
     cmh --> validate09["09 read-only validation TSV"]
     cmh --> science["09c scientific evidence review"]
+    declared_evidence["Declared scientific evidence"] --> science
     cmh --> adapters["Read-only artifact adapters"]
     science --> adapters
     validate00a --> adapters

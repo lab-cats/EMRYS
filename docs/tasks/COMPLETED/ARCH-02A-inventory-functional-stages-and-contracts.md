@@ -98,7 +98,7 @@ designed safely from filenames alone.
 
 ## Blocked by
 
-- [TEST-01Z](../COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest sufficiency decision is affirmative.
+- [TEST-01Z](TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest sufficiency decision is affirmative.
 
 ## Completion unblocks
 
@@ -159,5 +159,18 @@ designed safely from filenames alone.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed as a documentation-only inventory across 14 approved JIT slices.
+Every historical owner from `00a` through `09c` now has a colocated contract,
+and the [functional-owner inventory](../../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+maps all 88 current public workflow, validation, scheduler, Make, and
+repository-orchestration surfaces exactly once. Each roster row links its
+implementation and direct protection; private helpers, cross-cutting domains,
+and unresolved reverse-dependency or responsibility leaks are classified
+separately.
+
+The final reconciliation aligned the current architecture and pipeline diagram
+with the inspected DAG and replaced redundant validator prose with contract
+links. No executable, runtime, cluster, scientific-review, or biological-
+readiness behavior changed. Computational validation was therefore not
+applicable; completion evidence and the exact resume boundary are owned by
+`PIPELINE_PLAN.md` and `HANDOFF.md`.

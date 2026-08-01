@@ -66,7 +66,8 @@ a completed production review.
 | `codex/concurrent-doc-sidecars` | Isolated concurrent documentation/card sidecars with serialized integration; see [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md) | documentation-only policy package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable/evidence-state change |
 | `codex/strategy-task-cards` | Capture the completed concurrency/program strategy as four bounded future cards ready for task-specific planning plus canonical references | documentation-only card-bootstrap package; no future card is selected, no pilot content is reviewed or integrated, and live Git remains authoritative for publication/upstream equality |
 | `codex/concurrency-02-fragment-protocol-reconciliation` | Manual integration-fragment protocol plus bounded, dry-run-first Git safeguards; see [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md) | protocol and tested operator tooling complete after a durable coordination checkpoint and one consumed, remotely preserved synthetic exchange; no pipeline/scientific behavior or pilot-content review/integration |
-| Conditional `PROGRAM-01` descendant | Rolling-wave planning, current-tranche contract, refactor-plan reconciliation, and lifecycle/epic semantics; see [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | follows `CONCURRENCY-02` by roadmap choice, not blocker metadata; branch selected only through its separately approved task plan |
+| `codex/program-01-slice-1-critical-runway` | First rolling-wave slice establishing the temporary critical runway; see [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | first documentation-only slice complete; the card remains in progress, and its unsliced remainder is frozen pending reassessment |
+| `codex/arch-02a-slice-7-infer-paired-read-orientation-contract` | Implementation-backed functional-owner contracts and exact public-surface inventory; see completed [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md) | documentation-only inventory complete across 14 JIT slices; all 88 public surfaces map once, unresolved ownership leaks remain explicit, and no executable or evidence state changed |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current registry remains three-state, while the validator is executable but still lacks the card's independent invalid-state fixture coverage and any separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -75,7 +76,7 @@ a completed production review.
 | `refactor-01z-test-sufficiency-gate` | Behavior-row classification, explicit readiness decision, and bounded Phase `0` evidence correction; see [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) | affirmative 88/88-row decision plus test-only corrections `0c64d1a`, `44d3255`, and `fd98244` complete, adversarially reviewed, pushed, and upstream-equal at `b2af738`; no closure cards or production behavior changes |
 | `codex/log-01-characterize-current-output-reconciliation` | Current stdout, stderr, scheduler, Make, test, operational-check, durable-copy, and evidence-log inventory; see [`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md) | documentation-only characterization complete; every current surface has a normalized output profile and trace, candidate overclaims are corrected, and runtime output remains unchanged |
 | `codex/log-02-define-logging-contract-reconciliation` | Public controls, streams, one-writer operation record, publication ordering, failure, security, retention, scheduler, evidence-role, scenario, and adoption contract; see [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | documentation-only target contract complete; the rejected-ancestry candidate was evidence only, current output/defaults remain unchanged, and no rollout card was created |
-| Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | `LOG-01` and `LOG-02` are complete; `ARCH-02A`, `RPT-01`, and `DOC-IA-01` remain eligible but unselected; all other workflow status remains owned by each card's directory |
+| Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | `LOG-01`, `LOG-02`, and `ARCH-02A` are complete; `ARCH-02B` is the next eligible JIT runway candidate, while all other workflow status remains owned by each card's directory |
 | Phase `02` independent reviews | Architecture, reliability, and usability reviews in `REVIEW-ARCH-01` → `REVIEW-REL-02` → `REVIEW-UX-03` order | future review set; workflow status is owned by each card's directory |
 | Phase `03` bounded packages | Exact stage/domain migrations, logging adoption, code documentation, consolidation, corrections, and extractions generated by the reviewed plan | not yet named; cards must be evidence-derived and separately approved |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
@@ -91,11 +92,19 @@ placeholders are superseded by the bounded Phase `02` design cards plus
 names: each live task-specific plan selects its descendant branch only after
 inspection and approval.
 
-## Recommended maintenance sequence
+## Active critical runway
 
-Maintenance order is intentionally distinct from technical blocking. These
-cards do not block the Phase `01` characterization sequence and do not acquire
-dependency edges merely because one is preferred first:
+`ARCH-02A` is complete. The next eligible package is `ARCH-02B`, followed by
+`ARCH-02C` and `ARCH-02D` in dependency order, each selected and planned just
+in time. After `ARCH-02D`, recast `PLAN-02Z` and select its independent review
+immediately before planning the first physical migration. Every other package
+is preserved but currently dead/out of scope under the temporary boundary in
+[`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
+
+## Frozen pre-runway maintenance context
+
+The earlier sequence below is retained for later reassessment, not as active
+work. Maintenance order remains distinct from technical blocking:
 
 1. [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
    established isolated candidate worktrees, multiple documentation/card
@@ -107,10 +116,10 @@ dependency edges merely because one is preferred first:
    [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md)
    manual protocol and synthetic exchange without reviewing or integrating the
    preserved pilot.
-4. Next, separately plan and implement
+4. Preserve the completed first critical-runway slice of
    [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
-   which will reconcile the existing refactor plan and define the current-
-   tranche and lifecycle/epic semantics without executing downstream work.
+   while its unsliced remainder stays in progress and frozen during the
+   architecture runway.
 5. Reassess the remaining order under that model. The current expected
    candidates begin with
    [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
@@ -183,9 +192,10 @@ report-html-v1a-report-table-approvals
                                                                                                                                     └── codex/log-01-characterize-current-output-reconciliation
                                                                                                                                         └── codex/log-02-define-logging-contract-reconciliation
                                                                                                                                             └── codex/concurrency-02-fragment-protocol-reconciliation
-                                                                                                                                                └── [conditional: PROGRAM-01 task-selected branch]
-                                                                                                                                                    └── [future descendants selected after reassessment]
-                                                                                                                                                        └── refactor-99-final-audit
+                                                                                                                                                └── codex/program-01-slice-1-critical-runway
+                                                                                                                                                    └── codex/arch-02a-slice-7-infer-paired-read-orientation-contract
+                                                                                                                                                        └── [future descendants selected after reassessment]
+                                                                                                                                                            └── refactor-99-final-audit
 ```
 
 Bracketed entries are planning boundaries, not branch names or completed
@@ -205,10 +215,12 @@ output characterization and was published at `ead6ff4`. Its next descendant
 completes LOG-02 as a documentation-only target contract. The preserved
 `dad6b79` proposal was not merged, rebased, or cherry-picked because it descends
 from the rejected pre-correction LOG-01 candidate; only reviewed design material
-was re-authored against current state. `ARCH-02A`, `RPT-01`, and `DOC-IA-01`
-remain eligible and unselected. `CONCURRENCY-02` is complete; `PROGRAM-01` and
-other candidate work remain unselected and are not blocker metadata for this
-lineage.
+was re-authored against current state. `CONCURRENCY-02` is complete, the first
+`PROGRAM-01` critical-runway slice is complete without completing that card,
+and `ARCH-02A` is complete as a 14-slice documentation-only inventory.
+`ARCH-02B` is the next eligible JIT candidate; no successor is selected merely
+by this lineage, and other candidate work remains frozen rather than becoming
+blocker metadata.
 
 Do not perform remote or cluster
 validation during this sequence.
