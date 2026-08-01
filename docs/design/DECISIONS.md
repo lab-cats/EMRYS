@@ -36,6 +36,24 @@ documentation-only package uses one documentation commit.
 Reason: evidence, interfaces, and current state remain reviewable at every
 stage. The authoritative current lineage belongs in `PIPELINE_PLAN.md`.
 
+### Keep executable programs out of Markdown
+
+Decision: Markdown may contain short example commands and invocations, but not
+extended shell, Python, or other executable programs. Substantive operational
+logic belongs in parameterized files under `scripts/`, with focused tests and
+normal implementation gates; the owning documentation links to those files and
+explains sequence, authority, inputs, outputs, and interpretation.
+
+Reason: embedded programs are difficult to test, inventory, reuse, review, and
+keep synchronized. Separating logic from explanation keeps canonical documents
+readable while making operational safeguards inspectable as code. The first
+application is the fragment workflow under `scripts/git_orchestration/`.
+
+Consequence: extracting an embedded program is an executable change, not a
+documentation-only cleanup. Short snippets must not grow into shadow scripts;
+move them once they encode branching, repeated validation, mutation, recovery,
+or publication behavior.
+
 ### Permit isolated concurrent authoring with serialized integration
 
 Context: the linear package gate protects evidence but currently serializes
@@ -80,15 +98,56 @@ that exception does not make its content canonical, reviewed, accepted, or
 retroactively compliant with a protocol that had not yet been defined. Live
 lane identity and disposition remain owned by `HANDOFF.md`.
 
-The next policy increment is a manual, reviewable integration-fragment
-protocol owned by
-[`CONCURRENCY-02`](../tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md).
-Only after real use establishes a stable contract and `DOC-GATE-01` provides a
-tested validator owner may
+The manual, reviewable integration-fragment protocol is owned by
+[`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
+Its synthetic exchange establishes the inspected manual contract without
+reviewing or integrating the preserved pilot. Its operator-invoked Git helpers
+mechanize only supplied identities, paths, and terminal records. Only after
+`DOC-GATE-01` provides a tested validator owner may
 [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
-add structural enforcement. Fragments remain transient proposals; they never
-become a second canonical documentation system or acquire authority to publish
-status, evidence, decisions, or card transitions.
+add automatic repository-wide structural enforcement. Fragments remain
+transient proposals; they never become a second canonical documentation system
+or acquire authority to publish status, evidence, decisions, or card
+transitions.
+
+### Use transient integration fragments for cross-owner proposals
+
+Context: a sidecar may produce valid deliverables while also discovering facts
+that belong in canonical owners it cannot edit. Direct sidecar edits would
+violate single-writer authority; ad hoc notes can be lost; retaining every note
+canonically would create a shadow documentation system.
+
+Decision: a lane may reserve exact candidate deliverables plus at most one
+`docs/fragments/<fragment-id>.md`. Candidate write reservations are exclusive.
+Canonical target declarations are nonexclusive requests and grant no target-
+owner authority. The candidate publishes and freezes its exact source ref;
+the integration owner independently validates the handoff and current targets,
+assigns every request and partial residual a terminal disposition, routes
+accepted or authorized deferred material, and removes the fragment before
+canonical publication.
+
+Rationale: this preserves cross-owner proposals and raw provenance without
+transferring canonical authority. Structured terminal records prevent silent
+loss, while removal from the final tree prevents proposal state from becoming
+durable truth. Ordinary descendant advancement remains compatible; only an
+invalid handoff or material request-local drift stops the applicable work.
+
+Consequences: [`docs/fragments/README.md`](../fragments/README.md) owns only
+filename and candidate-field syntax,
+[`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md#integration-fragment-authority-and-lifecycle)
+owns authority and lifecycle, and
+[`RUNBOOK.md`](../operations/RUNBOOK.md#manual-integration-fragment-exchange)
+owns commands. Raw source remains reachable from its recorded remote ref by
+default. Canonical publication uses an exact reviewed SHA plus an expected-
+remote compare-and-swap lease. Git omits an already-equal source ref from that
+push transaction, so source immutability is checked immediately before and
+after publication rather than falsely described as atomic. A concurrent
+source-ref violation is a publication-recovery incident even when the
+canonical ref has already advanced; it cannot close the lane. A separate per-
+integration preservation-ref namespace was rejected for this package because
+it would add an archive and lifecycle that the protocol deliberately avoids.
+Automation, queues, archives, new task statuses, and substantive pilot
+integration remain separate work.
 
 ### Run one complete computational gate per executable state
 

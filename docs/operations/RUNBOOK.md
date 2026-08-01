@@ -1382,6 +1382,174 @@ each recorded role explicitly; never cherry-pick only the tip of an unreviewed
 range. Any movement after handoff invalidates the packet and freezes no write
 authority.
 
+### Manual Integration Fragment Exchange
+
+The fragment schema is in [`docs/fragments/README.md`](../fragments/README.md),
+and authority, validity, staleness, dispositions, and recovery are in
+[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#integration-fragment-authority-and-lifecycle).
+The standalone entry points and their complete interfaces are indexed in
+[Git orchestration helpers](../../scripts/git_orchestration/README.md). They
+mechanize checks and bounded Git operations; they do not select work, authorize
+targets or publication, choose dispositions, compose canonical prose, or clean
+recovery state.
+
+These commands supplement the ordinary candidate workflow for exactly one
+non-merge documentation-sidecar commit containing reserved deliverables plus
+one fragment. An implementation candidate still uses the ordered
+implementation/docpatch path below. Replace every placeholder from the
+published packet and immutable handoff. The Python validators are read-only.
+The shell entry points are dry-run by default: without `--execute` they
+validate preconditions and print the proposed mutation without changing Git or
+remote state. Inspect that result before repeating the identical invocation
+with `--execute` under explicit authorization. Run any entry point with
+`--help` for its complete interface.
+
+First use
+[`validate_fragment_candidate.py`](../../scripts/git_orchestration/validate_fragment_candidate.py)
+to bind the candidate worktree, branch, one-commit ancestry, exact frozen diff,
+all packet reservations, fragment shape, cleanliness, and immutable remote
+source ref:
+
+```bash
+python3 scripts/git_orchestration/validate_fragment_candidate.py \
+  --repo /absolute/candidate-worktree --branch codex/<candidate-branch> \
+  --base <full-base-sha> --candidate <full-candidate-sha> \
+  --fragment docs/fragments/<FRAGMENT-ID>.md \
+  --expected-change A <reserved-deliverable-1> \
+  --expected-change A docs/fragments/<FRAGMENT-ID>.md \
+  --allowed-path <reserved-deliverable-1> \
+  --allowed-path <unused-but-reserved-deliverable-2> \
+  --allowed-path docs/fragments/<FRAGMENT-ID>.md
+```
+
+Repeat `--expected-change STATUS PATH` for every literal row in the frozen
+handoff and `--allowed-path PATH` for every packet reservation, including
+unused paths. Canonical target declarations are not candidate reservations.
+A candidate without a fragment uses the ordinary handoff path. Any validation
+failure invalidates the entire handoff: do not apply it or assign request
+dispositions. Keep the old source immutable and obtain a replacement packet,
+worktree, branch, frozen SHA, and handoff.
+
+For each request, run
+[`validate_fragment_target.py`](../../scripts/git_orchestration/validate_fragment_target.py)
+against the latest clean, remotely equal canonical parent:
+
+```bash
+python3 scripts/git_orchestration/validate_fragment_target.py \
+  --repo /absolute/canonical-worktree --branch codex/<canonical-branch> \
+  --base <full-candidate-base-sha> --parent <full-canonical-parent-sha> \
+  --owner <repository-relative-owner.md> \
+  --mode 'existing anchor' --heading '## Literal heading' \
+  --anchor <declared-github-anchor>
+```
+
+Use the request's declared mode: `existing anchor`,
+`authorized-new anchor`, or `authorized-new owner`. Independently inspect
+the printed target diff, current authorization, provenance, coupling, and
+assumptions. Normal descendant advancement or an unrelated target edit is not
+automatically stale; material drift is request-local, and unaffected separable
+requests may continue.
+
+Only the integration owner assigns terminal outcomes. Before finalization,
+account for every request and every partial residual as required by
+[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#terminal-disposition-records).
+A `defer` must name an implemented, authorized destination, and package
+`no-op` is not a request disposition. Prepare a regular, non-symlink commit-
+message file outside the tracked write set. Keep its required `Fragment-*`
+trailers contiguous at the end, with one disposition trailer per request and
+the required accepted/residual subset trailers for every `partial`.
+
+When the valid candidate must enter the canonical tree, first run
+[`apply_fragment_candidate.sh`](../../scripts/git_orchestration/apply_fragment_candidate.sh)
+without `--execute`, inspect its proposed cherry-pick, and then repeat it with
+`--execute`:
+
+```bash
+scripts/git_orchestration/apply_fragment_candidate.sh \
+  --candidate-repo /absolute/candidate-worktree \
+  --candidate-branch codex/<candidate-branch> \
+  --candidate <full-candidate-sha> --base <full-candidate-base-sha> \
+  --fragment docs/fragments/<FRAGMENT-ID>.md \
+  --expected-change A <reserved-deliverable-1> \
+  --expected-change A docs/fragments/<FRAGMENT-ID>.md \
+  --allowed-path <reserved-deliverable-1> \
+  --allowed-path docs/fragments/<FRAGMENT-ID>.md \
+  --canonical-repo /absolute/canonical-worktree \
+  --canonical-branch codex/<canonical-branch> --parent <full-parent-sha>
+```
+
+Repeat both list options as above. The helper revalidates the frozen candidate
+and both lane identities immediately before application. It aborts only a
+normal cherry-pick conflict and proves restoration of the exact clean parent;
+any other failure leaves recovery state for inspection.
+
+After the integration owner routes accepted content into its canonical owners,
+use
+[`finalize_fragment_integration.sh`](../../scripts/git_orchestration/finalize_fragment_integration.sh)
+to stage only the declared final paths, remove the fragment, and amend the
+application commit from the reviewed message file. That file must declare
+`Fragment-Package-Outcome: applied`:
+
+```bash
+scripts/git_orchestration/finalize_fragment_integration.sh \
+  --repo /absolute/canonical-worktree --branch codex/<canonical-branch> \
+  --parent <full-parent-sha> --applied <full-applied-sha> \
+  --fragment docs/fragments/<FRAGMENT-ID>.md \
+  --final-path <exact-final-path-1> --final-path <exact-final-path-2> \
+  --message-file /absolute/path/<integration-id>.message \
+  --integration-id <integration-id> \
+  --source-repo /absolute/candidate-worktree \
+  --source-sha <full-candidate-sha> \
+  --source-ref refs/heads/codex/<candidate-branch> \
+  --base <full-candidate-base-sha> --request-id <REQUEST-ID>
+```
+
+Repeat `--final-path` for the exact parent-to-result path set and
+`--request-id` for every fragment request. Run dry-run first, then repeat with
+`--execute`. The final tree must contain no candidate fragment; deletion
+alone never substitutes for terminal disposition records.
+
+If no accepted deliverable or routed canonical update changes the tree, do not
+cherry-pick. Use
+[`record_fragment_noop.sh`](../../scripts/git_orchestration/record_fragment_noop.sh)
+to create the required empty integration commit from the exact parent:
+
+```bash
+scripts/git_orchestration/record_fragment_noop.sh \
+  --candidate-repo /absolute/candidate-worktree \
+  --candidate-branch codex/<candidate-branch> \
+  --candidate <full-candidate-sha> --base <full-candidate-base-sha> \
+  --fragment docs/fragments/<FRAGMENT-ID>.md \
+  --expected-change A <reserved-deliverable-1> \
+  --expected-change A docs/fragments/<FRAGMENT-ID>.md \
+  --allowed-path <reserved-deliverable-1> \
+  --allowed-path docs/fragments/<FRAGMENT-ID>.md \
+  --canonical-repo /absolute/canonical-worktree \
+  --canonical-branch codex/<canonical-branch> --parent <full-parent-sha> \
+  --message-file /absolute/path/<integration-id>.message \
+  --integration-id <integration-id> --request-id <REQUEST-ID>
+```
+
+Repeat the expected-change, allowed-path, and request-ID options for the frozen
+handoff. Run dry-run first, then repeat with `--execute`. The message file
+must declare `Fragment-Package-Outcome: no-op` and the same source, parent,
+base, integration, and per-request provenance required for an applied package.
+
+After either path, run the complete documentation gate and independent review
+against the exact final commit. If either changes the commit, amend and repeat
+both against the new tip. Then publish with
+[`publish_exact_ref.sh`](../../scripts/git_orchestration/publish_exact_ref.sh)
+using the invocation under
+[Publish And Preserve Candidate State](#publish-and-preserve-candidate-state).
+That helper rechecks the immutable source ref immediately before and after
+canonical publication; source durability is part of closure.
+
+If failure occurs after a successful cherry-pick, do not reset, clean, stash,
+amend, delete, or overwrite recovery state. Record the pre-application parent,
+branch, current `HEAD`, status, staged and unstaged diffs, and untracked paths;
+preserve or lock the worktree; and restart only on a newly authorized branch
+and worktree from that parent. The frozen remote source never moves.
+
 ### Integrate One Candidate At A Time
 
 First repeat the canonical-lane verification and inspect the candidate diff.
@@ -1420,8 +1588,8 @@ git switch -c codex/<integration-package-branch> <verified-parent-sha>
 Apply one frozen, single-commit documentation candidate with source-SHA
 provenance. A pending-link card sidecar and a coupled draft use the same local
 path: nothing is published until the integration owner adds central links and
-state, runs the complete documentation gate, and amends the still-unpushed
-commit into the one canonical documentation package.
+state, amends the still-unpushed commit into the one canonical documentation
+package, and runs the complete documentation gate on that exact commit.
 
 ```bash
 set -euo pipefail
@@ -1431,8 +1599,8 @@ git cherry-pick -x <documentation-candidate-sha>
 git add <exact-integration-owner-paths>
 git diff --check
 git diff --cached --check
-# Run the complete documentation-only gate below.
 git commit --amend --no-edit
+# Run the complete documentation-only gate below against the amended HEAD.
 ```
 
 A self-contained independent sidecar must already contain a legitimate
@@ -1506,8 +1674,8 @@ git cherry-pick -x <coupled-documentation-draft-sha>
 git add <exact-integration-owner-documentation-paths>
 git diff --check
 git diff --cached --check
-# Run the complete documentation-only gate below.
 git commit --amend --no-edit
+# Run the complete documentation-only gate below against the amended HEAD.
 ```
 
 If no draft commit exists, the integration owner authors and commits the
@@ -1517,32 +1685,44 @@ combined tree.
 ### Publish And Preserve Candidate State
 
 Only the integration owner publishes the accepted canonical branch, with
-explicit authorization for the exact remote and payload:
+explicit authorization for the exact remote and payload. Use
+[`publish_exact_ref.sh`](../../scripts/git_orchestration/publish_exact_ref.sh)
+to bind the clean branch, single parent, reviewed final SHA, expected current
+remote state, and frozen source ref before an exact-SHA canonical push guarded
+by an exact expected-remote lease:
 
 ```bash
-set -euo pipefail
-norad_publication_status=$(git status --porcelain=v1)
-test -z "$norad_publication_status"
-git diff --check
-git push -u origin <canonical-integration-branch>
-git fetch origin \
-  refs/heads/<canonical-integration-branch>:refs/remotes/origin/<canonical-integration-branch>
-norad_publication_upstream_ref=$(
-  git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
-)
-test "$norad_publication_upstream_ref" = \
-  'origin/<canonical-integration-branch>'
-norad_publication_head=$(git rev-parse HEAD)
-norad_publication_upstream=$(git rev-parse '@{upstream}')
-test "$norad_publication_head" = "$norad_publication_upstream"
-norad_publication_counts=$(
-  git rev-list --left-right --count HEAD...'@{upstream}'
-)
-test "$norad_publication_counts" = $'0\t0'
+scripts/git_orchestration/publish_exact_ref.sh \
+  --repo /absolute/canonical-worktree \
+  --branch codex/<canonical-integration-branch> \
+  --parent <full-final-commit-parent-sha> --final <full-reviewed-final-sha> \
+  --expected-remote <full-current-remote-sha-or-ABSENT> \
+  --source-repo /absolute/candidate-worktree \
+  --source-ref refs/heads/codex/<candidate-branch> \
+  --source-sha <full-frozen-candidate-sha> \
+  --fragment docs/fragments/<FRAGMENT-ID>.md \
+  --integration-id <integration-id> --base <full-candidate-base-sha> \
+  --outcome <applied-or-no-op> --request-id <REQUEST-ID>
 ```
 
-Status must be empty, the SHAs must match, and ahead/behind must be `0 0` before
-closing a lane or card.
+Without `--execute`, the helper validates all preconditions and prints the
+push without changing remote state. Inspect that dry-run, then repeat the
+identical invocation with `--execute` under explicit publication authority.
+Repeat `--request-id` for every fragment request. For `applied`, also repeat
+`--final-path` for the exact parent-to-final path set; `no-op` accepts none.
+The helper binds those IDs,
+the integration ID, source, base, parent, and package outcome to parseable
+trailers on the reviewed final commit. The remote canonical ref must still be
+absent or equal its recorded SHA, and the frozen source ref must still equal
+its recorded SHA. A successful execute must prove local, upstream, and remote
+equality, zero ahead/behind, a clean worktree, and unchanged source
+reachability before any lane or card closes. Preserve the immutable candidate
+source ref by default. Git does not include an already-equal source ref in the
+canonical push transaction, so a concurrent violation can be detected only by
+the immediate post-push check. In that case the helper fails after canonical
+publication: preserve both worktrees and refs, record the observed remote
+state, and treat the package as a publication-recovery incident until an
+operator restores durable source reachability and reruns the closure checks.
 
 Candidate worktrees and branches remain locked by default. Optional worktree
 retirement requires explicit operator authorization after accepted publication
@@ -1696,263 +1876,7 @@ records computational validation as not applicable and runs this gate only:
 ```bash
 cd /Users/elisteiger/dev/norad
 git diff --check
-
-.venv/bin/python - <<'PY'
-from pathlib import Path
-import re
-import subprocess
-from urllib.parse import unquote
-
-root = Path.cwd().resolve()
-documents = [
-    root / path
-    for path in subprocess.check_output(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "--",
-            "*.md",
-        ],
-        text=True,
-    ).splitlines()
-]
-
-def anchors(document):
-    counts = {}
-    result = set()
-    for line in document.read_text(encoding="utf-8").splitlines():
-        match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
-        if not match:
-            continue
-        heading = re.sub(r"<[^>]*>", "", match.group(1)).lower()
-        base = re.sub(r"[^\w\- ]", "", heading).replace(" ", "-")
-        number = counts.get(base, 0)
-        counts[base] = number + 1
-        result.add(base if number == 0 else f"{base}-{number}")
-    return result
-
-document_anchors = {document: anchors(document) for document in documents}
-problems = []
-inbound = {}
-for document in documents:
-    text = document.read_text(encoding="utf-8")
-    for raw_target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
-        raw_target = raw_target.strip().strip("<>")
-        if raw_target.startswith(
-            ("http://", "https://", "mailto:", "data:")
-        ):
-            continue
-        path_text, separator, fragment = raw_target.partition("#")
-        path = document if not path_text else (
-            document.parent / unquote(path_text)
-        ).resolve()
-        if not path.exists():
-            problems.append(
-                f"missing link: {document.relative_to(root)} -> {raw_target}"
-            )
-            continue
-        inbound.setdefault(path, set()).add(document)
-        if separator and path.suffix == ".md":
-            fragment = unquote(fragment).lower()
-            if fragment not in document_anchors.get(path, set()):
-                problems.append(
-                    f"missing anchor: {document.relative_to(root)} -> "
-                    f"{raw_target}"
-                )
-
-task_root = root / "docs" / "tasks"
-required_readmes = [
-    task_root / "README.md",
-    task_root / "TODO" / "README.md",
-    task_root / "IN_PROGRESS" / "README.md",
-    task_root / "COMPLETED" / "README.md",
-]
-for readme in required_readmes:
-    if not readme.is_file():
-        problems.append(f"missing task-registry README: {readme.relative_to(root)}")
-
-required_sections = [
-    "Objective",
-    "Why this exists",
-    "Fixed decisions",
-    "Blocked by",
-    "Completion unblocks",
-    "Prerequisites",
-    "Required context",
-    "Questions owned by this card",
-    "In scope",
-    "Out of scope",
-    "Deliverables",
-    "Acceptance evidence",
-    "Canonical documentation updates",
-    "Escalation conditions",
-    "Completion record",
-]
-cards = {}
-blocked = {}
-unblocks = {}
-structurally_valid_cards = set()
-statuses = {"TODO", "IN_PROGRESS", "COMPLETED"}
-for path in sorted(task_root.rglob("*.md")):
-    if path in required_readmes:
-        continue
-    if path.parent.name not in statuses or path.parent.parent != task_root:
-        problems.append(f"invalid card location: {path.relative_to(root)}")
-        continue
-    text = path.read_text(encoding="utf-8")
-    titles = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
-    title = re.match(
-        r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$", titles[0]
-    ) if len(titles) == 1 else None
-    if not title:
-        problems.append(f"invalid card H1: {path.relative_to(root)}")
-        continue
-    card_id = title.group(1)
-    if not path.name.startswith(f"{card_id}-"):
-        problems.append(f"card ID/filename mismatch: {path.relative_to(root)}")
-    if card_id in cards:
-        problems.append(f"duplicate card ID: {card_id}")
-    cards[card_id] = path
-    headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-    if headings != required_sections:
-        problems.append(f"card heading order/count: {path.relative_to(root)}")
-    else:
-        structurally_valid_cards.add(card_id)
-
-for card_id, path in cards.items():
-    if card_id not in structurally_valid_cards:
-        blocked[card_id] = set()
-        unblocks[card_id] = {}
-        continue
-    text = path.read_text(encoding="utf-8")
-    blocked_text = text.split("## Blocked by\n", 1)[1].split(
-        "\n## Completion unblocks", 1
-    )[0]
-    unblocks_text = text.split("## Completion unblocks\n", 1)[1].split(
-        "\n## Prerequisites", 1
-    )[0]
-    blocked_lines = [line for line in blocked_text.splitlines() if line.strip()]
-    unblock_lines = [line for line in unblocks_text.splitlines() if line.strip()]
-    required_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$"
-    )
-    unblock_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — "
-        r"(Fully|Partially): .+$"
-    )
-    if blocked_lines != ["- None."] and not all(
-        required_pattern.fullmatch(line) for line in blocked_lines
-    ):
-        problems.append(f"invalid Blocked by syntax: {path.relative_to(root)}")
-    if unblock_lines != ["- None."] and not all(
-        unblock_pattern.fullmatch(line) for line in unblock_lines
-    ):
-        problems.append(
-            f"invalid Completion unblocks syntax: {path.relative_to(root)}"
-        )
-    blocked[card_id] = set(re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text))
-    unblocks[card_id] = {
-        target: mode
-        for target, mode in re.findall(
-            r"\[([A-Z0-9-]+)\]\([^)]+\) — (Fully|Partially):",
-            unblocks_text,
-        )
-    }
-    for label, target in re.findall(
-        r"\[([A-Z0-9-]+)\]\(([^)]+\.md)\)", text
-    ):
-        resolved = (path.parent / target).resolve()
-        if resolved.parent.parent == task_root and not resolved.name.startswith(
-            f"{label}-"
-        ):
-            problems.append(
-                f"card-link label/target mismatch: {path.relative_to(root)} "
-                f"{label} -> {target}"
-            )
-
-for target, sources in blocked.items():
-    for source in sources:
-        if source not in cards:
-            problems.append(f"unknown blocker: {target} <- {source}")
-        elif target not in unblocks[source]:
-            problems.append(f"missing reciprocal unblock: {source} -> {target}")
-        if source == target:
-            problems.append(f"self dependency: {target}")
-for source, targets in unblocks.items():
-    for target, mode in targets.items():
-        if target not in cards:
-            problems.append(f"unknown unblock target: {source} -> {target}")
-        elif mode == "Fully" and blocked[target] != {source}:
-            problems.append(f"invalid Fully relationship: {source} -> {target}")
-
-visiting = []
-visited = set()
-def visit(card_id):
-    if card_id in visiting:
-        problems.append("dependency cycle: " + " -> ".join(visiting + [card_id]))
-        return
-    if card_id in visited:
-        return
-    visiting.append(card_id)
-    for dependency in blocked.get(card_id, set()):
-        if dependency in cards:
-            visit(dependency)
-    visiting.pop()
-    visited.add(card_id)
-for card_id in cards:
-    visit(card_id)
-
-for card_id, path in cards.items():
-    if not (inbound.get(path, set()) - {path}):
-        problems.append(f"orphan task card: {path.relative_to(root)}")
-    if path.parent.name in {"IN_PROGRESS", "COMPLETED"}:
-        for dependency in blocked[card_id]:
-            if dependency not in cards:
-                continue
-            if cards[dependency].parent.name != "COMPLETED":
-                problems.append(
-                    f"active/completed card has incomplete blocker: "
-                    f"{card_id} <- {dependency}"
-                )
-
-diagrams = [
-    root / path
-    for path in subprocess.check_output(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "--",
-            "*.mmd",
-        ],
-        text=True,
-    ).splitlines()
-]
-for diagram in diagrams:
-    text = diagram.read_text(encoding="utf-8")
-    meaningful = [line.strip() for line in text.splitlines() if line.strip()]
-    if not meaningful or not re.fullmatch(
-        r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]
-    ):
-        problems.append(f"invalid Mermaid declaration: {diagram.relative_to(root)}")
-    if "```" in text:
-        problems.append(f"Markdown fence in Mermaid source: {diagram.relative_to(root)}")
-    if not (inbound.get(diagram, set()) - {diagram}):
-        problems.append(f"orphan Mermaid source: {diagram.relative_to(root)}")
-
-if problems:
-    raise SystemExit("Documentation gate failures:\n" + "\n".join(problems))
-print(
-    f"PASS documentation structure ({len(documents)} Markdown documents, "
-    f"{len(cards)} task cards, {len(diagrams)} Mermaid sources)"
-)
-PY
-
+./scripts/git_orchestration/validate_documentation.py --repo "$PWD"
 git status --short
 git diff --name-status
 ```

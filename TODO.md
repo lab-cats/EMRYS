@@ -19,18 +19,22 @@ checkout and exact resume point belong in
    characterizes current behavior, and
    [`LOG-02`](docs/tasks/COMPLETED/LOG-02-define-logging-contract.md) defines the
    target contract. Neither changes current output or activates logging.
-3. TEST-01Z also releases
+3. Preserve the completed manual fragment protocol in
+   [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
+   Its synthetic exchange is protocol evidence only; the researcher pilot
+   remains substantively unreviewed and unintegrated.
+4. TEST-01Z also releases
    [`ARCH-02A`](docs/tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md),
    [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md),
    [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md).
    None is selected merely by being eligible.
-4. TEST-01Z's side of `CODEDOC-05` and `SIZE-07` is satisfied, but those cards
+5. TEST-01Z's side of `CODEDOC-05` and `SIZE-07` is satisfied, but those cards
    retain their other direct blockers and are not released by this decision
    alone.
 
-The LOG-02 boundary reassessment is complete. `CONCURRENCY-02` is the only
-selected package and is in progress under its approved reconciliation plan.
-No other eligible card is selected. Roadmap order is not blocker metadata.
+Pause at the completed CONCURRENCY-02 boundary for reassessment. `PROGRAM-01`
+is the recommended next separately planned package, but no later card is
+selected. Roadmap order is not blocker metadata.
 
 ## Recommended maintenance order
 
@@ -45,10 +49,9 @@ plan:
    card-bootstrap package.
 2. Preserve the completed `codex/strategy-task-cards` bootstrap; its future
    cards remain subject to separate selection and planning.
-3. Complete the selected manual fragment contract through
-   [`CONCURRENCY-02`](docs/tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md)
-   in its approved reconciliation package.
-4. Then establish rolling-wave planning and coordination cohorts through
+3. Preserve the completed manual fragment contract and synthetic exchange in
+   [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
+4. Next, separately plan rolling-wave planning and coordination cohorts through
    [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 5. Reassess rather than freezing the remaining order now. The current expected
    candidates begin with extracting and behavior-locking the documentation
@@ -85,7 +88,9 @@ plan:
   [`LOG-02`](docs/tasks/COMPLETED/LOG-02-define-logging-contract.md).
 - Operating model and coordination:
   [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-  through
+  and completed
+  [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md),
+  followed by
   [`CONCURRENCY-03`](docs/tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md),
   [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
   [`TASK-LIFECYCLE-01`](docs/tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),

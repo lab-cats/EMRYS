@@ -39,6 +39,9 @@ and completion history. They link rather than duplicate durable truth:
   [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md);
 - concurrent lane roles and authority belong in
   [`../operations/CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md);
+- integration-fragment filenames and candidate fields belong in
+  [`../fragments/README.md`](../fragments/README.md), while authority,
+  dispositions, and lifecycle remain in `CONCURRENT_WORK.md`;
 - task-start freshness, routing, and expansion rules belong in
   [`../operations/TASK_START.md`](../operations/TASK_START.md);
 - roadmap order belongs in
@@ -75,6 +78,12 @@ Multiple cards may be `IN_PROGRESS` only when
 non-overlapping lanes. Candidate-directory placement is proposal state until
 the integration owner accepts it; sidecars never move canonical card status.
 
+An integration fragment is not a card or lifecycle location. It cannot select,
+block, authorize, complete, or supply a canonical inbound reference for a
+card. Accepted facts enter their proper owners. Deferred task work must name an
+existing or simultaneously authorized destination; naming a future question,
+card, `UNREFINED` item, or lifecycle state does not create it.
+
 ## Concurrent card creation
 
 The integration owner reserves each sidecar's card IDs and paths before
@@ -84,6 +93,14 @@ integration owner serializes landing, adds central inbound references, repairs
 status links, and runs the combined documentation gate. A card-only sidecar
 with a deliberately pending central inbound reference is handoff-ready, not
 complete or independently gate-passing.
+
+A sidecar may instead reserve exact deliverables plus at most one
+[`integration fragment`](../fragments/README.md). Its candidate write
+reservations stay exclusive, while its canonical target declarations are
+nonexclusive requests. The integration owner validates and dispositions every
+request, writes accepted registry changes, and removes the fragment before
+canonical publication. Fragment links are ignored when determining canonical
+task-registry connectivity.
 
 Concurrency preparation and preferred landing order never create `Blocked by`
 or `Completion unblocks` metadata.

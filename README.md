@@ -50,6 +50,7 @@ analysis dependencies.
 
 ```text
 scripts/        workflow, validation, artifact, and report entry points
+  git_orchestration/  tested operator safeguards for exact Git integration
 jobs/           SLURM wrappers
 tests/          active Python, shell, R, and fixture tests
 configs/        example manifests and explicit contracts

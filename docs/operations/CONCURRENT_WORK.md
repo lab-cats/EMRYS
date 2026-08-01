@@ -5,6 +5,9 @@ defines roles, authority, coupling, handoff, and integration. Live lanes belong
 only in [`HANDOFF.md`](HANDOFF.md#active-concurrent-lanes), and exact commands
 belong only in
 [`RUNBOOK.md`](RUNBOOK.md#concurrent-worktrees-and-serialized-integration).
+Candidate integration-fragment filenames and fields are defined in
+[`docs/fragments/README.md`](../fragments/README.md); that schema owns no lane
+authority, disposition, lifecycle, or publication state.
 
 Concurrency improves throughput; it does not relax task planning, evidence,
 safety, review, or publication gates. A lane packet coordinates approved work
@@ -60,15 +63,21 @@ Before any concurrent mutation, the integration owner records each lane under
 | Base | Exact canonical commit from which the lane starts |
 | Integration target | Canonical branch and intended landing boundary |
 | Task/card | Selected task, or bounded objective if no card exists |
-| Reservations | Exact new card IDs, new paths, and existing paths the lane may edit |
+| Candidate write reservations | Exact new card IDs and paths the candidate may edit, including exact deliverables plus zero or one fragment path |
+| Declared canonical targets | For a fragment, each target owner, heading or anchor, mode, and authorization the integration owner must recheck |
 | Prohibited overlap | Active cards, paths, contracts, and owners the lane must not change |
 | Coupling | Independent, coupled draft, implementation candidate, or immutable execution |
 | Validation | Candidate checks and final combined gate required |
 | Execution identity | For execution only: commit, command/job identity, inputs, configuration, and output/log locations |
 
-Reservations use exact paths or narrow rooted patterns, never an unbounded
-`docs/**` or repository-wide claim. The integration owner resolves duplicate
-card IDs and path overlaps before provisioning a sidecar.
+Candidate write reservations use exact paths or narrow rooted patterns, never
+an unbounded `docs/**` or repository-wide claim. They are exclusive: the
+integration owner resolves duplicate card IDs and write overlaps before
+provisioning a sidecar. Fragment target declarations are nonexclusive requests,
+not reservations or delegated authority. Several lanes may name one canonical
+target; the integration owner serializes them and rechecks the target after
+every landing. A target declaration that overlaps another lane's write
+reservation creates coupling and integration order, not shared write access.
 
 When another authoring or execution lane will rely on the packet, publish it as
 a canonical coordination checkpoint before that lane starts. This is a narrow exception to
@@ -95,7 +104,9 @@ A sidecar may author new TODO cards and explicitly reserved documentation. A
 new card remains in `TODO`; it cannot select, approve, or complete itself. A
 sidecar may draft an integration-owner path only when the packet labels it
 coupled. The integration owner then decides whether and how it enters the
-canonical package.
+canonical package. A sidecar may also author its exact reserved deliverables
+plus at most one integration fragment. The fragment never grants candidate
+write authority over its declared canonical targets.
 
 Two concurrently mutable lanes must never edit the same path, card ID, current-
 state claim, or contract boundary. At handoff the candidate freezes at its
@@ -132,10 +143,12 @@ docpatch.
 2. Each mutating candidate is created from its packet's exact base in its own
    sibling worktree. The lane verifies path, branch, and `HEAD` before editing.
 3. A sidecar edits only its reserved write set. New child or follow-up cards
-   stay TODO and use reserved IDs.
+   stay TODO and use reserved IDs. An optional fragment is one reserved path;
+   its target declarations do not expand that set.
 4. A documentation sidecar hands off exactly one clean review-ready commit
-   after its base, the complete diff, validation result, remaining coupling,
-   and any unpublished-branch limitation. An implementation candidate hands
+   after its base, the complete diff, validation result, and remaining
+   coupling. Before canonical application, its frozen SHA must be reachable
+   from the exact recorded remote source ref. An implementation candidate hands
    off exactly one tested implementation/test commit followed by at most one
    coupled documentation-draft commit. Candidate publication requires normal
    user authority.
@@ -156,6 +169,118 @@ docpatch.
 Exact creation, inspection, integration, verification, and optional cleanup
 commands are in the runbook. Merge, rebase, and automatic conflict resolution
 are not part of this workflow.
+
+## Integration-fragment authority and lifecycle
+
+An integration fragment is optional. Use one when an otherwise valid candidate
+needs the integration owner to distribute bounded requests across canonical
+owners. The candidate may contain its exact reserved deliverables plus at most
+one fragment; it remains governed by its ordinary candidate contract. Only the
+integration owner writes declared canonical targets, assigns dispositions,
+publishes current state or evidence, and closes lanes.
+
+The external frozen handoff in `HANDOFF.md`, not the fragment, records:
+
+- handoff and lane IDs;
+- candidate base, full frozen SHA, and immutable published source ref;
+- expected commit shape and exact candidate diff;
+- candidate validation, cleanliness, and remaining coupling; and
+- handoff state.
+
+A handoff is valid only when the SHA and recorded ref still agree, its
+base/ancestry and commit shape match the packet, the base is an ancestor of the
+current canonical parent, its complete diff is within the candidate write
+reservations, and any fragment satisfies the candidate-side schema. A moved
+ref, mismatched identity, invalid ancestry, unexpected path, or malformed
+fragment invalidates the entire handoff. Do not apply it or assign request
+dispositions; record the handback and require a replacement packet, worktree,
+branch, frozen SHA, and handoff identity. The invalid source stays immutable.
+
+Ordinary canonical advancement through descendants of the candidate base is
+valid and is not itself staleness. After handoff validation, recheck each
+request independently against the latest canonical tree. A request is `stale`
+only when its owner, heading or anchor, target authorization, provenance,
+coupling, or material assumption has drifted enough that it cannot be evaluated
+or applied as written. An unrelated commit, target edit, or duplicate target
+declaration is not automatically stale. One stale request does not invalidate
+separable unaffected requests. Revising a stale request requires a new frozen
+candidate; never amend the old source.
+
+The manual lifecycle is:
+
+1. **Reserve.** Publish the lane packet with exclusive candidate write
+   reservations and nonexclusive canonical target declarations.
+2. **Author.** The candidate writes only its deliverables and optional one
+   fragment. Every fragment request remains `pending`.
+3. **Publish and freeze.** Push the exact candidate ref, record its immutable
+   handoff, and stop candidate mutation.
+4. **Validate the handoff.** Recheck identity, remote ref, ancestry, commit
+   shape, write set, cleanliness, fragment syntax, and coupling.
+5. **Recheck requests.** Inspect each current target, authorization,
+   assumption, provenance, and overlap without treating normal descendant
+   advancement as stale.
+6. **Assign dispositions.** Give every request and every partial residual its
+   required terminal outcome before removing a fragment.
+7. **Apply when needed.** Apply only a valid frozen candidate. An all-reject,
+   all-defer, or all-stale package does not need its fragment applied.
+8. **Route accepted content.** The integration owner writes accepted material
+   and any authorized deferral destination in its proper canonical owner.
+9. **Remove the fragment.** No candidate fragment survives the final tree;
+   absence alone does not establish disposition.
+10. **Record terminal outcomes.** Put structured source and per-request
+    trailers in the canonical integration commit.
+11. **Validate the final tip.** Amend first, then run the complete applicable
+    gate and independent review against that exact commit.
+12. **Publish canonically.** Push the exact reviewed SHA with an exact expected-
+    remote lease, prove the intended remote ref and upstream equality, and
+    preserve evidence boundaries. Recheck the immutable source ref afterward;
+    a concurrent source-ref violation leaves publication in recovery, not
+    closed.
+13. **Close the lane.** Keep the immutable source ref remotely reachable by
+    default. Later cleanup requires explicit operator authority and proof of
+    equivalent durable recovery.
+
+## Terminal disposition records
+
+Only the integration owner assigns these outcomes:
+
+| Disposition | Required terminal record |
+| --- | --- |
+| `accept` | The whole request is incorporated or already satisfied; record the exact destination and effect |
+| `partial` | Record every accepted subset and destination, then give every residual subset its own `reject`, `defer`, or `stale` record; nested `partial` is prohibited |
+| `reject` | Make no requested change and record the terminal reason |
+| `defer` | Make no current incorporation and name an exact existing or simultaneously authorized canonical destination |
+| `stale` | Make no requested change and record the exact request-local drift |
+
+`Defer` does not authorize a new question, card, directory, lifecycle state, or
+`UNREFINED` item. If no implemented destination is already in the approved
+write set, stop or choose another valid disposition; expanding the package
+requires renewed planning.
+
+Every canonical integration commit records:
+
+- `Fragment-Integration-ID`;
+- `Fragment-Source-SHA` and `Fragment-Source-Ref`;
+- `Fragment-Base-SHA` and `Integration-Parent-SHA`;
+- `Fragment-Package-Outcome`, exactly `applied` or `no-op`;
+- one `Fragment-Request-Disposition` for every request; and
+- for `partial`, one `Fragment-Accepted-Subset` and one
+  `Fragment-Residual-Disposition` for every labeled subset.
+
+Package `no-op` is not a request disposition. If no accepted candidate
+deliverable or routed canonical update changes the tree, create an explicit
+empty canonical integration commit with the same provenance and terminal
+trailers. Fragment deletion, source preservation, or validation success never
+substitutes for those records. Longer rationale belongs in an existing
+canonical owner only when it remains useful beyond the exchange.
+
+If a normal cherry-pick conflicts, inspect it, abort, and prove exact parent
+restoration and cleanliness. If failure occurs after a successful application,
+do not reset, clean, stash, amend, delete, or overwrite recovery state. Record
+the pre-application parent, current branch and `HEAD`, staged and unstaged
+diffs, untracked paths, and failure; preserve or lock that worktree; and restart
+only on a newly authorized branch/worktree from the recorded parent. The
+published candidate remains immutable throughout handback and recovery.
 
 ## Implementation after independent documentation lands
 
@@ -199,8 +324,8 @@ The integration owner validates after every landing sufficiently to catch a
 bad boundary early and runs one final combined gate before publication. Only
 the canonical result can close a package or support evidence claims.
 
-On a conflict, stale assumption, unexpected write, dirty shared worktree, or
-failed validation:
+On a handoff-identity failure, application conflict, unexpected candidate
+write, dirty shared worktree, or failed validation:
 
 1. stop integration and further mutation on the affected paths;
 2. preserve candidate commits, worktrees, logs, and execution attribution;
@@ -210,8 +335,12 @@ failed validation:
 5. revise the lane packet or return the governing task to planning before
    continuing.
 
+Request-local staleness inside an otherwise valid fragment follows the
+per-request rules above; it does not automatically return unaffected requests.
+
 Do not force integration, move unique files manually between worktrees, or
-delete a candidate to make status look clean. Worktree cleanup is optional,
-explicitly authorized, and allowed only after accepted publication and proof
-that the candidate contains no unique work. Candidate branches are preserved
-by default.
+delete a candidate to make status look clean. Worktree cleanup is optional and
+explicitly authorized. A checkout may be retired only after proving it has no
+unique uncommitted filesystem state; committed raw-fragment history is
+intentionally unique and remains reachable from the preserved remote source
+ref. Candidate branches are preserved by default.

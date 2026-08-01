@@ -2,16 +2,16 @@
 
 ## Objective
 
-Replace the inline documentation-validator program in `RUNBOOK.md` with a
-tested executable while preserving its observable validation behavior.
+Complete independent behavior characterization and supported command exposure
+for the documentation validator extracted during `CONCURRENCY-02`.
 
 ## Why this exists
 
-The documentation gate began as a copy-paste command and has grown into a
-roughly 255-line Python program embedded in a shell heredoc. It now owns link,
-anchor, task-card, dependency-graph, orphan, and Mermaid validation. Keeping
-that implementation in an operational runbook makes the behavior difficult to
-test, review, reuse, or change safely.
+The implementation now lives at
+`scripts/git_orchestration/validate_documentation.py`, and `RUNBOOK.md` contains
+only its invocation. That urgent extraction removed the embedded program but
+did not supply independent invalid-state fixtures for every inherited rule or
+decide whether a Make target should become the stable public entry point.
 
 ## Fixed decisions
 
@@ -19,9 +19,8 @@ test, review, reuse, or change safely.
   summary, not the validator implementation.
 - Characterize current success, failure, output, and exit behavior before
   extraction; this package is behavior-preserving.
-- Prefer `scripts/validate_documentation.py` plus focused tests under `tests/`
-  unless task-specific inspection proves that an existing executable owner is
-  more appropriate.
+- Preserve the current executable as the starting implementation; any move is
+  a separately justified source-layout decision, not incidental cleanup.
 - A concise Make target may wrap the executable, but it must not duplicate the
   validation logic.
 - Dependency-semantic changes belong to `TASK-REG-01`, not this extraction.
@@ -32,8 +31,8 @@ test, review, reuse, or change safely.
 
 ## Completion unblocks
 
-- [CONCURRENCY-03](CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Partially: Provides the extracted, testable validator required to enforce the integration-fragment lifecycle; `CONCURRENCY-02` must still define and pilot the protocol.
-- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Provides the extracted, testable validator required to enforce the new lifecycle states; `PROGRAM-01` and `CONCURRENCY-02` remain required.
+- [CONCURRENCY-03](CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Fully: Provides the remaining extracted, testable validator required to enforce the fragment lifecycle; completed `CONCURRENCY-02` supplies the manual protocol and synthetic exchange.
+- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Provides the extracted, testable validator required to enforce the new lifecycle states; completed `CONCURRENCY-02` is satisfied and `PROGRAM-01` remains required.
 
 ## Prerequisites
 

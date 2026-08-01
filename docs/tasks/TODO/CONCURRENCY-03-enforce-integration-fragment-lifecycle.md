@@ -19,6 +19,9 @@ speculative rules or automate integration decisions.
 - Extend the standalone, tested documentation validator produced by
   [`DOC-GATE-01`](DOC-GATE-01-extract-documentation-validator.md); do not add
   another embedded runbook program.
+- Reuse stable parsing or checks from `scripts/git_orchestration/` when that
+  avoids duplication, but do not turn the operator helpers into a central
+  dispatcher or semantic integration engine.
 - Characterize accepted fragment examples and observed failures before fixing
   the validation contract.
 - Candidate and final-canonical validation use an explicit declared mode or
@@ -33,7 +36,6 @@ speculative rules or automate integration decisions.
 
 ## Blocked by
 
-- [CONCURRENCY-02](../IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md) — Required: enforcement needs the stable manual fragment schema and lifecycle.
 - [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: fragment rules need the extracted, behavior-locked validator and focused test harness.
 
 ## Completion unblocks
@@ -42,7 +44,8 @@ speculative rules or automate integration decisions.
 
 ## Prerequisites
 
-- Inspect the synthetic manual fragment exchange completed by `CONCURRENCY-02`
+- Inspect the synthetic manual fragment exchange completed by
+  [`CONCURRENCY-02`](../COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md)
   plus any retained malformed or stale examples before approving exact
   validation behavior. The preserved pilot is not required evidence for this
   card and remains substantively unreviewed.
@@ -54,7 +57,8 @@ speculative rules or automate integration decisions.
 - The completed fragment protocol, its first inspected handoff evidence,
   [`DOC-GATE-01`](DOC-GATE-01-extract-documentation-validator.md), the current
   documentation-validator implementation and tests, and the fragment-related
-  commands in [`RUNBOOK.md`](../../operations/RUNBOOK.md).
+  operator procedure and linked helpers in
+  [`RUNBOOK.md`](../../operations/RUNBOOK.md).
 - Card inbound-link and orphan rules in [`../README.md`](../README.md), because
   a fragment backlink must not make an otherwise disconnected card appear
   properly integrated.

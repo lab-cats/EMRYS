@@ -130,13 +130,23 @@ Test independence is classified as:
 It is exercised through the artifact, run-summary, Step `09c`, and report
 suites and is included in the cross-cutting matrix below.
 
-`tests/test_public_cli_contracts.py` independently inventories all 25 public
-Python entry points and the one private module. For every public entry point it
-protects interpreter-invoked help, unknown-option failure, arbitrary-CWD use,
-and no working-directory artifacts. It separately freezes the current eight
-executable and 17 interpreter-only file modes. Direct help for the executable
-set is tested with a prepared `python3` path because their env shebang
-deliberately delegates dependency selection to the caller's environment.
+`tests/test_public_cli_contracts.py` independently inventories all 25
+top-level workflow Python entry points and the one top-level private module.
+For every public entry point it protects interpreter-invoked help,
+unknown-option failure, arbitrary-CWD use, and no working-directory artifacts.
+It separately freezes the current eight executable and 17 interpreter-only
+file modes. Direct help for the executable set is tested with a prepared
+`python3` path because their env shebang deliberately delegates dependency
+selection to the caller's environment.
+
+Developer-facing integration-fragment commands are a separate operator
+surface under [`scripts/git_orchestration/`](../../scripts/git_orchestration/).
+Their explicit inventory and arbitrary-CWD help behavior are protected here;
+focused temporary-repository tests additionally cover exact Git identity,
+dry-run side-effect freedom, fragment and target validation, conflict recovery,
+finalization, no-op recording, exact-SHA canonical publication, and detection
+of concurrent source-ref violations. These safeguards do
+not make semantic integration decisions or establish pipeline evidence.
 
 | Public entry point | Direct regression owner | Covered cases | Independence | Status / remaining gap |
 | --- | --- | --- | --- | --- |

@@ -28,7 +28,9 @@ Before proposing a task-specific plan:
    explicitly and decide whether a card is required before mutation.
 3. Follow the card's `Required context` links, named anchors, and named local
    surfaces; inspect the directly affected implementation, contracts,
-   consumers, tests, and fixtures.
+   consumers, tests, and fixtures. For an integration-fragment handoff, also
+   read the candidate-side schema and inspect the exact blob at the frozen
+   published source SHA; do not substitute a moving worktree copy.
 4. Read only the applicable current-state, roadmap, command, decision,
    question, troubleshooting, and architecture sections identified below.
 5. Expand immediately when an escalation trigger applies.
@@ -64,6 +66,7 @@ relevant source when the retained summary lacks necessary wording or evidence.
 | Package status, lineage, order, or acceptance | Applicable sections of [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
 | Exact setup, validation, cluster, or recovery command | Applicable heading in [`RUNBOOK.md`](RUNBOOK.md) |
 | Concurrent lane roles, authority, coupling, handoff, or integration | [`CONCURRENT_WORK.md`](CONCURRENT_WORK.md) plus live lanes in `HANDOFF.md` |
+| Integration-fragment filename or candidate fields | [`docs/fragments/README.md`](../fragments/README.md); authority, lifecycle, and dispositions remain in `CONCURRENT_WORK.md` |
 | Durable rationale or settled constraint | Applicable decision in [`DECISIONS.md`](../design/DECISIONS.md) |
 | Open operational, scientific, or design choice | Applicable entry in [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Symptom, cause, diagnosis, or fix | Applicable heading in [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
@@ -88,6 +91,8 @@ coverage may be repository-wide without loading every matching file in full.
 | Documentation patch | Complete final diff, affected sections and owners, inbound references, and affected diagrams |
 | Starting a candidate lane | Assigned lane packet, absolute worktree, candidate branch or detached execution state, base, write set, prohibited overlaps, and coupling assumptions |
 | Integrating a candidate | Latest canonical state, immutable candidate handoff, complete base-to-candidate diff, overlap/coupling recheck, and combined validation obligation |
+| Authoring a fragment | Published packet, exclusive candidate write reservations, optional fragment path, nonexclusive target declarations, schema, base, coupling, and prohibited authority |
+| Consuming a fragment | Frozen published source SHA/ref, exact fragment blob, current targets and authorizations, every request and residual disposition, routed destinations, source provenance, and final fragment removal |
 | Cross-cutting or high-risk uncertainty | Every relevant canonical owner and direct consumer; broaden until the risk is resolved |
 | Ownership migration, contradiction, or broad audit | Broader full-file or corpus reading as the evidence requires |
 
@@ -133,6 +138,14 @@ Candidate-only validation is provisional. When concurrent work exists, impact
 classification and closure use the final combined canonical diff after
 serialized integration; no candidate branch alone can publish package status,
 completion, or evidence.
+
+For a fragment package, first validate the handoff independently from request
+staleness. Then compare the frozen candidate with its recorded base and the
+latest canonical targets, and inspect the final parent-to-result diff
+separately. Confirm that every request and partial residual has a structured
+terminal record, accepted content has one canonical owner, deferral uses an
+implemented authorized destination, and no candidate fragment survives.
+Fragment backlinks do not establish canonical task-registry connectivity.
 
 Keep the automated repository-wide documentation gate. Its global link,
 anchor, card, dependency, and Mermaid checks provide broad structural coverage

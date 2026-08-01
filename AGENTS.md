@@ -302,6 +302,9 @@ Each mutable fact has one canonical owner:
 Do not duplicate live branch names, commit IDs, test totals, tool versions,
 roadmaps, or next-step narratives outside their canonical owner. Link instead.
 Do not maintain inline copies of standalone Mermaid sources.
+Do not embed extended executable programs in Markdown. Keep short invocations
+there and place substantive logic in tested, parameterized files under
+`scripts/`.
 
 After each task, suggest relevant updates to these documents. When behavior
 changes, complete the impact-directed docpatch and repository-wide impact
