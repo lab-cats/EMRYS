@@ -120,5 +120,148 @@
       "evidence_incomplete",
       "science_review_complete_exploratory"
     ]
+  },
+  "shared_policy": {
+    "computational_status_cases": [
+      {
+        "evidence_id": "evidence-local",
+        "plan": {
+          "cluster_dry_run_status": "not_run",
+          "cluster_proof_status": "not_run",
+          "local_test_status": "passed",
+          "runtime_validation_status": "not_run"
+        },
+        "validation_scope": "local_fixture_tests",
+        "validation_status": "passed"
+      },
+      {
+        "evidence_id": "evidence-runtime",
+        "plan": {
+          "cluster_dry_run_status": "not_run",
+          "cluster_proof_status": "not_run",
+          "local_test_status": "passed",
+          "runtime_validation_status": "blocked"
+        },
+        "validation_scope": "runtime_validation",
+        "validation_status": "blocked"
+      },
+      {
+        "evidence_id": "evidence-cluster",
+        "plan": {
+          "cluster_dry_run_status": "passed",
+          "cluster_proof_status": "proven",
+          "local_test_status": "passed",
+          "runtime_validation_status": "passed"
+        },
+        "validation_scope": "cluster_proof",
+        "validation_status": "proven"
+      }
+    ],
+    "decision_expected": {
+      "annotation": {
+        "decision_date": null,
+        "decision_id": "decision-annotation",
+        "detail": "Annotation policy remains open.",
+        "evidence_ids": [],
+        "evidence_status": "incomplete",
+        "policy_version": "annotation-policy-v1",
+        "rerun_required": false,
+        "rerun_scope": "none",
+        "reviewer": "reviewer-b",
+        "source_evidence_id": "evidence-annotation",
+        "status": "pending",
+        "value": null
+      },
+      "orientation": {
+        "decision_date": "2026-01-03",
+        "decision_id": "decision-orientation",
+        "detail": "Keep mechanical orientation labels provisional.",
+        "evidence_ids": [
+          "evidence-a",
+          "evidence-b"
+        ],
+        "evidence_status": "complete",
+        "policy_version": "orientation-policy-v1",
+        "rerun_required": true,
+        "rerun_scope": "step09",
+        "reviewer": "reviewer-a",
+        "source_evidence_id": "evidence-orientation",
+        "status": "recorded",
+        "value": "provisional"
+      },
+      "thresholds": {
+        "decision_date": null,
+        "decision_id": null,
+        "detail": null,
+        "evidence_ids": [],
+        "evidence_status": null,
+        "policy_version": null,
+        "rerun_required": null,
+        "rerun_scope": "none",
+        "reviewer": null,
+        "source_evidence_id": null,
+        "status": "pending",
+        "value": null
+      }
+    },
+    "decision_rows": [
+      {
+        "decision_date": "2026-01-03",
+        "decision_dimension": "orientation",
+        "decision_id": "decision-orientation",
+        "decision_owner": "reviewer-a",
+        "decision_status": "recorded",
+        "decision_value": "provisional",
+        "evidence_id": "evidence-orientation",
+        "evidence_status": "complete",
+        "policy_version": "orientation-policy-v1",
+        "rationale": "Keep mechanical orientation labels provisional.",
+        "rerun_required": "TRUE",
+        "rerun_scope": "step09",
+        "supporting_evidence_ids": "evidence-a,evidence-b"
+      },
+      {
+        "decision_date": "NA",
+        "decision_dimension": "annotation",
+        "decision_id": "decision-annotation",
+        "decision_owner": "reviewer-b",
+        "decision_status": "pending",
+        "decision_value": "NA",
+        "evidence_id": "evidence-annotation",
+        "evidence_status": "incomplete",
+        "policy_version": "annotation-policy-v1",
+        "rationale": "Annotation policy remains open.",
+        "rerun_required": "FALSE",
+        "rerun_scope": "none",
+        "supporting_evidence_ids": "NA"
+      }
+    ],
+    "limitation_expected": {
+      "category": "evidence",
+      "description": "Synthetic evidence is incomplete.",
+      "evidence_ids": [
+        "evidence-a",
+        "evidence-b"
+      ],
+      "impact": "No biological interpretation.",
+      "limitation_id": "limitation-01",
+      "mitigation": "Collect reviewed evidence.",
+      "owner": "reviewer-c",
+      "review_date": "2026-01-04",
+      "severity": "high",
+      "status": "open"
+    },
+    "limitation_row": {
+      "description": "Synthetic evidence is incomplete.",
+      "impact": "No biological interpretation.",
+      "limitation_category": "evidence",
+      "limitation_id": "limitation-01",
+      "limitation_status": "active",
+      "mitigation": "Collect reviewed evidence.",
+      "owner": "reviewer-c",
+      "related_evidence_ids": "evidence-a,evidence-b",
+      "review_date": "2026-01-04",
+      "severity": "high"
+    }
   }
 }

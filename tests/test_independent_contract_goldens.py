@@ -8,7 +8,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, Callable, Mapping
 
 import pytest
@@ -26,6 +26,7 @@ ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 SCIENTIFIC_REVIEW = importlib.import_module("step_09c_scientific_validation")
+SHARED_SCIENCE = RUN_SUMMARY.science
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX,
@@ -120,6 +121,31 @@ def assert_report_receipt(
     expected = (GOLDENS / "report_receipt.tsv").read_bytes()
     assert serializer(document) == expected
     assert serializer(document) == serializer(copy.deepcopy(document))
+
+
+def assert_shared_science_policy() -> None:
+    policy = load_json(GOLDENS / "scientific_state_contracts.json")[
+        "shared_policy"
+    ]
+    context = SimpleNamespace(
+        category_rows={
+            "decisions": copy.deepcopy(policy["decision_rows"]),
+            "limitations": [copy.deepcopy(policy["limitation_row"])],
+        }
+    )
+    decisions = SHARED_SCIENCE._normalize_decisions(context)
+    for dimension, expected in policy["decision_expected"].items():
+        assert decisions[dimension] == expected, dimension
+    assert SHARED_SCIENCE._normalize_limitations(context) == [
+        policy["limitation_expected"]
+    ]
+    for case in policy["computational_status_cases"]:
+        SHARED_SCIENCE._validate_computational_payload_status(
+            evidence_id=case["evidence_id"],
+            validation_scope=case["validation_scope"],
+            validation_status=case["validation_status"],
+            plan=case["plan"],
+        )
 
 
 def test_representative_public_schema_contracts_match_literal_oracles() -> None:
@@ -246,3 +272,34 @@ def test_evidence_status_aggregation_matches_literal_transition_cases() -> None:
             case["rows"], case["category"]
         )
         assert actual == case["expected"], case["name"]
+
+
+def test_shared_science_policy_matches_independent_transition_oracle() -> None:
+    assert_shared_science_policy()
+
+
+def test_mutated_shared_decision_dimension_constant_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = SCIENTIFIC_REVIEW.DECISION_DIMENSIONS
+    monkeypatch.setattr(
+        SCIENTIFIC_REVIEW,
+        "DECISION_DIMENSIONS",
+        ("mutated_dimension", *original[1:]),
+    )
+    with pytest.raises((AssertionError, KeyError)):
+        assert_shared_science_policy()
+
+
+def test_mutated_computational_scope_policy_constant_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mutated = dict(SCIENTIFIC_REVIEW.COMPUTATIONAL_SCOPE_PLAN_FIELDS)
+    mutated["local_fixture_tests"] = "cluster_proof_status"
+    monkeypatch.setattr(
+        SCIENTIFIC_REVIEW,
+        "COMPUTATIONAL_SCOPE_PLAN_FIELDS",
+        mutated,
+    )
+    with pytest.raises(SHARED_SCIENCE.RunSummaryScienceError):
+        assert_shared_science_policy()
