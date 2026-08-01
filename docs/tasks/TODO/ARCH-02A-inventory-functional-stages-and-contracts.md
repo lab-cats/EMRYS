@@ -60,6 +60,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md),
   preserving manifest-ordered cohort pileups, selector and transaction
   boundaries, the Step `08` handoff, and incomplete-provenance limitations.
+- Slice 12 records historical Step `08` as
+  `preprocess_and_annotate_cohort_candidates` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md),
+  preserving the complete Step `07` barrier, provisional orientation policy,
+  three-table transaction, and Step `09` analysis handoff.
 
 ## Objective
 
