@@ -39,7 +39,7 @@ proposals or unintegrated work as approved or complete.
 
 ## Blocked by
 
-- [CONCURRENCY-02](CONCURRENCY-02-define-integration-fragment-protocol.md) — Required: frozen handoff and integration-owner acceptance require a stable fragment protocol.
+- [CONCURRENCY-02](../IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md) — Required: frozen handoff and integration-owner acceptance require a stable fragment protocol.
 - [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
 - [PROGRAM-01](PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) — Required: the rolling tranche model must settle when an asynchronous handoff enters the durable review queue.
 

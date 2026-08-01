@@ -77,7 +77,7 @@ and unnecessary context for bounded work.
   reinspect every active card and the then-current roadmap after the required
   post-concurrency strategy discussion is recorded complete in `HANDOFF.md`.
 - Complete and publish the manual fragment protocol in
-  [`CONCURRENCY-02`](CONCURRENCY-02-define-integration-fragment-protocol.md)
+  [`CONCURRENCY-02`](../IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md)
   before selecting this card; this is approved program order rather than a
   blocker edge.
 - Preserve the approved behavior-first and evidence-language gates while

@@ -28,10 +28,9 @@ checkout and exact resume point belong in
    retain their other direct blockers and are not released by this decision
    alone.
 
-Pause at the LOG-02 phase boundary for reassessment. Selecting any later card
-starts task-specific read-only planning under the
-[`task-start router`](docs/operations/TASK_START.md) and requires its own
-approved plan. Roadmap order is not blocker metadata.
+The LOG-02 boundary reassessment is complete. `CONCURRENCY-02` is the only
+selected package and is in progress under its approved reconciliation plan.
+No other eligible card is selected. Roadmap order is not blocker metadata.
 
 ## Recommended maintenance order
 
@@ -46,9 +45,9 @@ plan:
    card-bootstrap package.
 2. Preserve the completed `codex/strategy-task-cards` bootstrap; its future
    cards remain subject to separate selection and planning.
-3. Establish the manual fragment contract through
-   [`CONCURRENCY-02`](docs/tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md)
-   in its own separately planned and approved package.
+3. Complete the selected manual fragment contract through
+   [`CONCURRENCY-02`](docs/tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md)
+   in its approved reconciliation package.
 4. Then establish rolling-wave planning and coordination cohorts through
    [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 5. Reassess rather than freezing the remaining order now. The current expected

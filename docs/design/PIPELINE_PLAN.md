@@ -65,7 +65,7 @@ a completed production review.
 | `codex/context-start-policy` | Version-aware task-start routing, selective phase-boundary inspection, impact-directed documentation review, and explicit documentation-only validation; see [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md) | documentation-only package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable or evidence-state change |
 | `codex/concurrent-doc-sidecars` | Isolated concurrent documentation/card sidecars with serialized integration; see [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md) | documentation-only policy package complete, pushed, and upstream-equal at the verified predecessor boundary; no executable/evidence-state change |
 | `codex/strategy-task-cards` | Capture the completed concurrency/program strategy as four bounded future cards ready for task-specific planning plus canonical references | documentation-only card-bootstrap package; no future card is selected, no pilot content is reviewed or integrated, and live Git remains authoritative for publication/upstream equality |
-| Conditional `CONCURRENCY-02` descendant | Manual integration-fragment protocol; see [`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md) | next recommended separately planned package after the card bootstrap; policy only, with no pilot-content integration |
+| `codex/concurrency-02-fragment-protocol-reconciliation` | Manual integration-fragment protocol; see [`CONCURRENCY-02`](../tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md) | selected documentation-only reconciliation package; its coordination checkpoint authorizes one non-substantive synthetic fragment exchange, not pilot-content integration or protocol completion |
 | Conditional `PROGRAM-01` descendant | Rolling-wave planning, current-tranche contract, refactor-plan reconciliation, and lifecycle/epic semantics; see [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | follows `CONCURRENCY-02` by roadmap choice, not blocker metadata; branch selected only through its separately approved task plan |
 | Conditional fragment/lifecycle infrastructure | Extract the validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current three-state flat registry and embedded validator remain unchanged |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
@@ -103,9 +103,8 @@ dependency edges merely because one is preferred first:
    required first-use strategy discussion was completed on 2026-07-31.
 2. Complete and publish the `codex/strategy-task-cards` documentation package.
    It records the resulting cards and decisions but selects none of them.
-3. Separately plan and, only after approval, implement the manual fragment
-   protocol in
-   [`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
+3. Complete the selected, approved manual fragment protocol in
+   [`CONCURRENCY-02`](../tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md).
    Its synthetic, non-substantive manual exchange supplies observed protocol
    evidence without reviewing or integrating the preserved pilot.
 4. Then separately plan and implement
@@ -183,7 +182,7 @@ report-html-v1a-report-table-approvals
                                                                                                                 │               └── codex/refactor-01z-test-sufficiency-gate
                                                                                                                 │                   └── codex/log-01-characterize-current-output-reconciliation
                                                                                                                 │                       └── codex/log-02-define-logging-contract-reconciliation
-                                                                                                                └── [conditional: CONCURRENCY-02 task-selected branch]
+                                                                                                                └── codex/concurrency-02-fragment-protocol-reconciliation
                                                                                                                     └── [conditional: PROGRAM-01 task-selected branch]
                                                                                                                         └── [future descendants selected after reassessment]
                                                                                                                             └── refactor-99-final-audit
@@ -207,8 +206,9 @@ completes LOG-02 as a documentation-only target contract. The preserved
 `dad6b79` proposal was not merged, rebased, or cherry-picked because it descends
 from the rejected pre-correction LOG-01 candidate; only reviewed design material
 was re-authored against current state. `ARCH-02A`, `RPT-01`, and `DOC-IA-01`
-remain eligible and unselected. `CONCURRENCY-02`, `PROGRAM-01`, and other
-candidate work are not blocker metadata for this lineage.
+remain eligible and unselected. `CONCURRENCY-02` is the only selected package;
+`PROGRAM-01` and other candidate work remain unselected and are not blocker
+metadata for this lineage.
 
 Do not perform remote or cluster
 validation during this sequence.

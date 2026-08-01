@@ -33,7 +33,7 @@ speculative rules or automate integration decisions.
 
 ## Blocked by
 
-- [CONCURRENCY-02](CONCURRENCY-02-define-integration-fragment-protocol.md) — Required: enforcement needs the stable manual fragment schema and lifecycle.
+- [CONCURRENCY-02](../IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md) — Required: enforcement needs the stable manual fragment schema and lifecycle.
 - [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: fragment rules need the extracted, behavior-locked validator and focused test harness.
 
 ## Completion unblocks

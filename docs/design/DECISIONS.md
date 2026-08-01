@@ -82,7 +82,7 @@ lane identity and disposition remain owned by `HANDOFF.md`.
 
 The next policy increment is a manual, reviewable integration-fragment
 protocol owned by
-[`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
+[`CONCURRENCY-02`](../tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md).
 Only after real use establishes a stable contract and `DOC-GATE-01` provides a
 tested validator owner may
 [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)

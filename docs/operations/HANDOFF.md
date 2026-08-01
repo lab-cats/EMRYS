@@ -7,49 +7,79 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/log-02-define-logging-contract-reconciliation`
+  `codex/concurrency-02-fragment-protocol-reconciliation`
 - Parent:
-  `codex/log-01-characterize-current-output-reconciliation`
+  `codex/log-02-define-logging-contract-reconciliation`
 - Verified parent HEAD:
-  `ead6ff48ac0f72365306152ac83715c35e7d6bc4`
+  `8ba7a5cb39a7c87bc60e833eb0d061aaf758ad7c`
 - Parent documentation commit:
-  `ead6ff4 docs: reconcile current output and log inventory`
+  `8ba7a5c docs: reconcile logging contract`
 - Current implementation commit:
-  not applicable; LOG-02 changes non-consuming Markdown only and inherits the
+  not applicable; CONCURRENCY-02 changes non-consuming Markdown only and inherits the
   corrected Phase `0` executable state ending at `fd98244`
 - Current documentation commit:
-  `docs: reconcile logging contract` (the branch commit
+  `docs: start CONCURRENCY-02 synthetic exchange` (the coordination checkpoint
   containing this handoff; resolve its exact SHA from Git)
 - Recorded package state: Phase `0` is corrected, adversarially reviewed,
   published, and upstream-equal; LOG-01 is published and upstream-equal; LOG-02
-  is complete as a documentation-only target contract
-- Current package: public logging controls, stream and one-writer ownership,
-  durable operation identity, receipt/failure/security/retention semantics,
-  scheduler/evidence boundaries, and scenario/adoption inputs
-- Package type: one standalone documentation commit
+  is complete; CONCURRENCY-02 is selected and this checkpoint records its
+  synthetic-sidecar packet without claiming protocol completion
+- Current package: manual integration-fragment authority, schema, lifecycle,
+  disposition, durability, recovery, and a bounded synthetic exchange
+- Package type: documentation-only coordination checkpoint followed by one
+  separately reviewed protocol commit
 - Remote publication and upstream equality: resolve from live Git; cluster work
   remains paused
 
-This branch descends directly from the clean, pushed, upstream-equal LOG-01 tip
-`ead6ff4`. It manually reconciles useful design structure from preserved
-candidate `dad6b79` without merging, rebasing, or cherry-picking it because that
-candidate descends from rejected pre-correction LOG-01 proposal `4d01152`. The
-package changes documentation only; it does not change any production job,
-CLI, workflow, Makefile, schema, dependency, resource, test, runtime, cluster,
-scientific, or biological behavior.
+This branch descends directly from the clean, pushed, upstream-equal LOG-02 tip
+`8ba7a5c`. This coordination checkpoint records the exact packet needed by one
+non-substantive synthetic sidecar. It is planning and reservation state only:
+it does not establish fragment-protocol behavior, accept a candidate, or
+complete CONCURRENCY-02. The package changes documentation only; it does not
+change any production job, CLI, workflow, Makefile, executable schema,
+dependency, resource, test, runtime, cluster, scientific, or biological
+behavior.
 
 ## Active concurrent lanes
 
-This checkout is the serialized canonical lane for LOG-02 reconciliation.
-This package does not inspect, modify, or integrate unrelated candidate
-worktrees, paused concurrency attempts, or the researcher pilot.
+This checkout is the serialized canonical lane for CONCURRENCY-02
+reconciliation. The synthetic lane below is the only lane provisioned by this
+checkpoint. This package does not inspect, modify, or integrate unrelated
+candidate worktrees, paused concurrency attempts, or the researcher pilot.
 The user explicitly authorized that pilot before the fragment checkpoint was
 defined; preserve that historical fact without claiming retroactive protocol
 compliance.
 
 | Lane ID | Role and owner | Worktree and branch/detached state | Base and target | Reservations and coupling | Validation or execution identity |
 | --- | --- | --- | --- | --- | --- |
+| `c02-synthetic-v2` | Coupled documentation draft; synthetic sidecar agent, with the canonical integrator retaining all publication and disposition authority | `/Users/elisteiger/dev/norad-worktrees/concurrency-02-synthetic-exchange-reconciliation`; `codex/concurrency-02-synthetic-exchange-reconciliation`; provision only after this checkpoint is pushed and upstream-equal | Base `8ba7a5cb39a7c87bc60e833eb0d061aaf758ad7c`; integration target `codex/concurrency-02-fragment-protocol-reconciliation` after this checkpoint | Exclusive write reservation `docs/fragments/CONCURRENCY-02-SYNTHETIC-V2.md`; coupled proposal; canonical targets are declarations only and remain integration-owner-only | Exactly one fragment commit; exact-path and one-commit checks, `git diff --check`, frozen source push/equality, then final combined canonical documentation gate; execution identity not applicable |
 | `researcher-path-cards` | Frozen documentation/card sidecar; user-directed pre-checkpoint pilot | `/Users/elisteiger/dev/norad-worktrees/researcher-path-cards`; `codex/researcher-path-cards`; clean at inspection | Base `32ee4e8f2527bc0b34e69752ab96d69391e3e74c`; future integration target must be selected after protocol/infrastructure review | Exact paths listed below; substantive coupling intentionally unreviewed | Candidate `9f1dcf170549eb7960b8fa76b06040188ab0f8be`; no integration or acceptance validation |
+
+The `c02-synthetic-v2` lane packet additionally fixes:
+
+- task: the non-substantive synthetic exchange required by selected
+  [`CONCURRENCY-02`](../tasks/IN_PROGRESS/CONCURRENCY-02-define-integration-fragment-protocol.md);
+- candidate write authority: only
+  `docs/fragments/CONCURRENCY-02-SYNTHETIC-V2.md`;
+- nonexclusive target declarations: `docs/fragments/README.md`,
+  `CONCURRENT_WORK.md`, `RUNBOOK.md`, `TASK_START.md`, and
+  [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md);
+- prohibited overlap: every other repository path, all current-state and card-
+  lifecycle owners, executable or test artifacts, evidence claims, and the
+  researcher-pilot paths and content;
+- handoff rule: the candidate freezes after its one commit, publishes that
+  exact source ref, and reports its branch and SHA to the canonical integrator;
+  it never edits this packet or any target owner; and
+- final gate: the integrator independently verifies identity, ancestry,
+  publication, write set, destinations, and every request disposition before
+  removing the fragment and validating the combined canonical tree.
+
+For this coordination checkpoint, `git diff --check` and the complete
+documentation gate passed with 78 Markdown documents, 55 task cards, and 6
+Mermaid sources. The complete predecessor-to-checkpoint diff is non-consuming
+Markdown only, so computational validation is not applicable. Remote
+publication and upstream equality remain live Git conditions that must pass
+before the synthetic lane is provisioned.
 
 The pilot reserves only these candidate paths:
 
@@ -389,10 +419,13 @@ The sibling worktree retains pre-existing ignored R cache material from an
 earlier failed activation. Do not delete or repair it without separate operator
 direction. No dependency was installed, restored, or updated for LOG-02.
 
-After the documentation gate, exact-tip adversarial review, non-force push,
-and upstream-equality proof, stop for reassessment. No later card is selected;
-`CONCURRENCY-02`, `ARCH-02A`, `RPT-01`, and `DOC-IA-01` remain subject to their
-own task starts. `LOG-03` still waits for its other recorded prerequisites and
-independent reviews. Do not begin executable logging, another task card,
-remote/cluster work, scientific-policy work, or biological interpretation as
-part of this phase.
+`CONCURRENCY-02` is selected and in progress under its approved reconciliation
+plan. After this coordination checkpoint passes the documentation gate, is
+pushed non-force, and is proved upstream-equal, provision only the recorded
+`c02-synthetic-v2` lane. Freeze and publish its exact one-fragment candidate,
+then resume the canonical lane to disposition that candidate and complete the
+manual protocol. Do not select `PROGRAM-01`, `ARCH-02A`, `RPT-01`,
+`DOC-IA-01`, executable logging, remote/cluster work, scientific-policy work,
+or biological interpretation. Stop at the completed CONCURRENCY-02 boundary
+after final validation, exact-tip adversarial review, non-force push, and
+upstream-equality proof.
