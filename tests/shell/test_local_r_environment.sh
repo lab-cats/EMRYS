@@ -78,6 +78,44 @@ for r_entrypoint in \
         fail "$r_entrypoint no longer rejects every positional argument"
 done
 
+rscript_bin="${RSCRIPT_BIN:-Rscript}"
+if resolved_rscript="$(command -v "$rscript_bin" 2>/dev/null)"; then
+    r_cli_cwd="$tmp/r-cli-cwd"
+    mkdir -p "$r_cli_cwd"
+    for r_entrypoint in \
+        scripts/check_r_environment.R scripts/restore_r_environment.R; do
+        entrypoint_name="$(basename "$r_entrypoint")"
+        for argument in --help unexpected-positional-argument; do
+            stdout_path="$tmp/${entrypoint_name}.${argument#--}.stdout"
+            stderr_path="$tmp/${entrypoint_name}.${argument#--}.stderr"
+            before_snapshot="$(find "$r_cli_cwd" -mindepth 1 -print | sort)"
+            if (
+                cd "$r_cli_cwd"
+                R_PROFILE_USER="$tmp/no-r-profile" \
+                    R_ENVIRON_USER="$tmp/no-r-environ" \
+                    NORAD_USE_RENV=0 \
+                    "$resolved_rscript" "$repo_root/$r_entrypoint" "$argument"
+            ) >"$stdout_path" 2>"$stderr_path"; then
+                fail "$r_entrypoint accepted unsupported argument $argument"
+            fi
+            test ! -s "$stdout_path" ||
+                fail "$r_entrypoint wrote stdout for rejected argument $argument"
+            grep -Fq \
+                "$entrypoint_name does not accept positional arguments." \
+                "$stderr_path" ||
+                fail "$r_entrypoint did not report its argument contract"
+            if grep -Fqi 'usage' "$stderr_path"; then
+                fail "$r_entrypoint unexpectedly implemented help"
+            fi
+            after_snapshot="$(find "$r_cli_cwd" -mindepth 1 -print | sort)"
+            [[ "$after_snapshot" == "$before_snapshot" ]] ||
+                fail "$r_entrypoint changed the arbitrary working directory"
+        done
+    done
+else
+    printf 'SKIP: Rscript unavailable for direct environment-CLI checks\n'
+fi
+
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-restore >/dev/null
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-check >/dev/null
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" local-real-r-test \

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -13,6 +15,13 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
+MAKE_EXPANSION_GOLDEN = (
+    REPO_ROOT
+    / "tests"
+    / "fixtures"
+    / "public_cli_contracts"
+    / "make_target_expansions.json"
+)
 
 PYTHON_ENTRYPOINTS = frozenset(
     {
@@ -122,6 +131,29 @@ MAKE_TARGET_DECISIONS = {
     "demo-step03-dry-run": "cluster_deferred",
     "demo-step03": "cluster_deferred",
 }
+MAKE_CONTEXT_VARIABLES = frozenset(
+    {
+        "DEMO_REPORT_FORMATS",
+        "DEMO_REPORT_ROOT",
+        "DEMO_SAMPLE",
+        "PYTHON_BIN",
+        "PYTHON_COVERAGE_BASELINE",
+        "PYTHON_COVERAGE_CURRENT",
+        "PYTHON_COVERAGE_DATA",
+        "PYTHON_COVERAGE_PYTEST_ARGS",
+        "PYTHON_COVERAGE_RAW",
+        "PYTHON_COVERAGE_ROOT",
+        "QUARTO_BIN",
+        "QUARTO_TOOLS_ROOT",
+        "REPORT_PYTHON_BIN",
+        "REPORT_TEST_RESULT",
+        "RSCRIPT_BIN",
+        "VALIDATION_ARGS",
+        "VALIDATION_JOBS",
+        "VALIDATION_PYTHON_WORKERS",
+    }
+)
+MAKE_RECURSION_VARIABLES = frozenset({"MAKEFLAGS", "MAKELEVEL", "MFLAGS"})
 
 
 def mode_is_executable(path: Path) -> bool:
@@ -146,6 +178,37 @@ def run_command(
         capture_output=True,
         check=False,
     )
+
+
+def normalized_make_expansion(output: str) -> tuple[str, ...]:
+    """Normalize checkout and recursive-Make executable identities."""
+
+    normalized = output.replace(str(REPO_ROOT), "<REPO_ROOT>")
+    normalized = re.sub(
+        r"(?m)^([ \t]*)/\S*/make(?=\s)",
+        r"\1<MAKE>",
+        normalized,
+    )
+    return tuple(normalized.splitlines())
+
+
+def expected_make_expansions() -> dict[str, tuple[str, ...]]:
+    """Load the independently reviewed literal Make expansion oracle."""
+
+    document = json.loads(MAKE_EXPANSION_GOLDEN.read_text(encoding="utf-8"))
+    return {
+        target: tuple(lines)
+        for target, lines in document.items()
+    }
+
+
+def canonical_make_environment() -> dict[str, str]:
+    """Remove caller overrides so the golden describes declared defaults."""
+
+    environment = os.environ.copy()
+    for variable in MAKE_CONTEXT_VARIABLES | MAKE_RECURSION_VARIABLES:
+        environment.pop(variable, None)
+    return environment
 
 
 def test_inventory_classifies_every_live_public_script() -> None:
@@ -274,14 +337,23 @@ def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
 
 
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:
+    makefile_lines = (REPO_ROOT / "Makefile").read_text(
+        encoding="utf-8"
+    ).splitlines()
     phony_line = next(
         line
-        for line in (REPO_ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
+        for line in makefile_lines
         if line.startswith(".PHONY:")
     )
     live_targets = set(phony_line.partition(":")[2].split())
+    configurable_variables = {
+        match.group(1)
+        for line in makefile_lines
+        if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
+    }
 
     assert live_targets == set(MAKE_TARGET_DECISIONS)
+    assert configurable_variables == MAKE_CONTEXT_VARIABLES
     assert set(MAKE_TARGET_DECISIONS.values()) == {
         "cluster_deferred",
         "explicit_output",
@@ -289,6 +361,7 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
         "local_gate",
         "operator_mutation",
     }
+    assert set(expected_make_expansions()) == set(MAKE_TARGET_DECISIONS)
 
 
 @pytest.mark.parametrize("target", sorted(MAKE_TARGET_DECISIONS))
@@ -301,7 +374,46 @@ def test_make_targets_have_side_effect_free_command_expansion(
     result = run_command(
         ["make", "-n", "--no-print-directory", "-C", str(REPO_ROOT), target],
         cwd=tmp_path,
+        env=canonical_make_environment(),
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert normalized_make_expansion(result.stdout) == (
+        expected_make_expansions()[target]
+    )
     assert relative_snapshot(tmp_path) == before
+
+
+def test_make_expansion_oracle_rejects_recipe_mutation(
+    tmp_path: Path,
+) -> None:
+    source = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    original = "test:\n\tpython -m pytest\n"
+    mutated = "test:\n\tpython -m pytest -q\n"
+    assert original in source
+    mutated_makefile = tmp_path / "Makefile"
+    mutated_makefile.write_text(
+        source.replace(original, mutated, 1),
+        encoding="utf-8",
+    )
+
+    result = run_command(
+        [
+            "make",
+            "-n",
+            "--no-print-directory",
+            "-C",
+            str(REPO_ROOT),
+            "-f",
+            str(mutated_makefile),
+            "test",
+        ],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert normalized_make_expansion(result.stdout) != (
+        expected_make_expansions()["test"]
+    )
