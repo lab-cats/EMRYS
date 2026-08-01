@@ -7,8 +7,9 @@ side-effect-free dry expansion of every public Make target:
 make -n --no-print-directory -C <repository> <target>
 ```
 
-Only the absolute checkout path and the resolved recursive-Make executable are
-normalized, to `<REPO_ROOT>` and `<MAKE>` respectively. Commands, arguments,
+Only the absolute checkout path and recursive-Make executable identity are
+normalized, to `<REPO_ROOT>` and `<MAKE>` respectively. The latter has literal
+tests for bare and absolute `make` and `gmake` forms. Commands, arguments,
 ordering, quoting, versions, and nested target expansion remain literal. The
 test reads this committed fixture; it does not derive expected commands from
 the Makefile under test.

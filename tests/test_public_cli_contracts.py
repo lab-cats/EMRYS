@@ -153,7 +153,9 @@ MAKE_CONTEXT_VARIABLES = frozenset(
         "VALIDATION_PYTHON_WORKERS",
     }
 )
-MAKE_RECURSION_VARIABLES = frozenset({"MAKEFLAGS", "MAKELEVEL", "MFLAGS"})
+MAKE_RECURSION_VARIABLES = frozenset(
+    {"MAKE", "MAKEFLAGS", "MAKELEVEL", "MFLAGS"}
+)
 
 
 def mode_is_executable(path: Path) -> bool:
@@ -185,7 +187,7 @@ def normalized_make_expansion(output: str) -> tuple[str, ...]:
 
     normalized = output.replace(str(REPO_ROOT), "<REPO_ROOT>")
     normalized = re.sub(
-        r"(?m)^([ \t]*)/\S*/make(?=\s)",
+        r"(?m)^([ \t]*)(?:\S*/)?g?make(?=\s)",
         r"\1<MAKE>",
         normalized,
     )
@@ -209,6 +211,28 @@ def canonical_make_environment() -> dict[str, str]:
     for variable in MAKE_CONTEXT_VARIABLES | MAKE_RECURSION_VARIABLES:
         environment.pop(variable, None)
     return environment
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ("make real-r-test\n", ("<MAKE> real-r-test",)),
+        ("gmake -s r-check\n", ("<MAKE> -s r-check",)),
+        (
+            "\t\t/usr/bin/make real-r-test\n",
+            ("\t\t<MAKE> real-r-test",),
+        ),
+        (
+            "\t\t/opt/homebrew/bin/gmake real-r-test\n",
+            ("\t\t<MAKE> real-r-test",),
+        ),
+    ],
+)
+def test_make_normalization_accepts_portable_recursive_identities(
+    output: str,
+    expected: tuple[str, ...],
+) -> None:
+    assert normalized_make_expansion(output) == expected
 
 
 def test_inventory_classifies_every_live_public_script() -> None:
