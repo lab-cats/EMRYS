@@ -1,0 +1,124 @@
+{
+  "aggregations": [
+    {
+      "category": "candidate_selection",
+      "expected": "missing",
+      "name": "no category rows",
+      "rows": []
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "missing",
+      "name": "all missing",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "missing"
+        },
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "missing"
+        }
+      ]
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "incomplete",
+      "name": "missing and complete",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "missing"
+        },
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "complete"
+        }
+      ]
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "incomplete",
+      "name": "incomplete and complete",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "incomplete"
+        },
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "complete"
+        }
+      ]
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "not_applicable",
+      "name": "all not applicable",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "not_applicable"
+        },
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "not_applicable"
+        }
+      ]
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "complete",
+      "name": "complete and not applicable",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "complete"
+        },
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "not_applicable"
+        }
+      ]
+    },
+    {
+      "category": "candidate_selection",
+      "expected": "complete",
+      "name": "unrelated rows ignored",
+      "rows": [
+        {
+          "evidence_category": "candidate_selection",
+          "evidence_status": "complete"
+        },
+        {
+          "evidence_category": "limitations",
+          "evidence_status": "missing"
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "CLUSTER_PROOF_STATUSES": [
+      "not_run",
+      "proven",
+      "failed"
+    ],
+    "EVIDENCE_STATUSES": [
+      "missing",
+      "incomplete",
+      "complete",
+      "not_applicable"
+    ],
+    "RESERVED_SCIENCE_STATUS": "biological_interpretation_ready",
+    "RUNTIME_VALIDATION_STATUSES": [
+      "not_run",
+      "blocked",
+      "passed",
+      "failed"
+    ],
+    "SCIENCE_STATUSES": [
+      "evidence_incomplete",
+      "science_review_complete_exploratory"
+    ]
+  }
+}

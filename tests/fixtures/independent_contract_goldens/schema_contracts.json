@@ -1,0 +1,163 @@
+{
+  "artifact_record.schema.json": [
+    {
+      "expected": "urn:norad:schema:artifacts:artifact-record:v1",
+      "pointer": "/$id"
+    },
+    {
+      "expected": "norad.artifact_record",
+      "pointer": "/properties/schema_name/const"
+    },
+    {
+      "expected": "1.0.0",
+      "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": [
+        "present",
+        "missing",
+        "externally_unavailable",
+        "unknown"
+      ],
+      "pointer": "/properties/availability_status/enum"
+    },
+    {
+      "expected": [
+        "not_run",
+        "blocked",
+        "passed",
+        "failed"
+      ],
+      "pointer": "/$defs/runtime_validation_status/properties/status/enum"
+    },
+    {
+      "expected": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ],
+      "pointer": "/$defs/scientific_state/properties/overall_status/enum"
+    }
+  ],
+  "common.schema.json": [
+    {
+      "expected": "urn:norad:schema:artifacts:common:v1",
+      "pointer": "/$id"
+    },
+    {
+      "expected": [
+        "planned",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "blocked"
+      ],
+      "pointer": "/$defs/attempt/properties/state/enum"
+    },
+    {
+      "expected": [
+        "pass",
+        "flag",
+        "fail",
+        "not_assessed"
+      ],
+      "pointer": "/$defs/metric/properties/status/enum"
+    }
+  ],
+  "report_receipt.schema.json": [
+    {
+      "expected": "norad.report_receipt",
+      "pointer": "/properties/schema_name/const"
+    },
+    {
+      "expected": "1.1.0",
+      "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ],
+      "pointer": "/properties/science_status/enum"
+    },
+    {
+      "expected": false,
+      "pointer": "/properties/analysis_execution_performed/const"
+    },
+    {
+      "expected": false,
+      "pointer": "/properties/validation_claimed/const"
+    },
+    {
+      "expected": "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.",
+      "pointer": "/allOf/0/then/properties/state_banner/const"
+    },
+    {
+      "expected": "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.",
+      "pointer": "/allOf/1/then/properties/state_banner/const"
+    }
+  ],
+  "run_summary.schema.json": [
+    {
+      "expected": "norad.run_summary",
+      "pointer": "/properties/schema_name/const"
+    },
+    {
+      "expected": "1.1.0",
+      "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": [
+        "complete",
+        "incomplete",
+        "failed"
+      ],
+      "pointer": "/properties/summary_state/enum"
+    },
+    {
+      "expected": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ],
+      "pointer": "/properties/science_status/enum"
+    },
+    {
+      "expected": "CMH-ranked candidates",
+      "pointer": "/properties/candidate_terminology/const"
+    }
+  ],
+  "scientific_review_record.schema.json": [
+    {
+      "expected": "norad.scientific_review_record",
+      "pointer": "/properties/schema_name/const"
+    },
+    {
+      "expected": "1.1.0",
+      "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ],
+      "pointer": "/properties/scientific_state/properties/overall_status/enum"
+    },
+    {
+      "expected": [
+        "missing",
+        "incomplete",
+        "complete",
+        "not_applicable"
+      ],
+      "pointer": "/$defs/evidence_category/properties/status/enum"
+    },
+    {
+      "expected": [
+        "not_run",
+        "proven",
+        "failed"
+      ],
+      "pointer": "/properties/computational_status/properties/cluster_proof_status/enum"
+    }
+  ]
+}

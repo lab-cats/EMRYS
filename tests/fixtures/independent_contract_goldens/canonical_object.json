@@ -1,0 +1,12 @@
+{
+  "alpha": [
+    2,
+    "café"
+  ],
+  "flag": true,
+  "nested": {
+    "a": null,
+    "b": "line"
+  },
+  "zeta": 1
+}
