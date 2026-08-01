@@ -385,8 +385,8 @@ for reassessment. The affirmative decision releases `ARCH-02A`, `RPT-01`,
 `LOG-01`, and `DOC-IA-01` only for later, separately approved task starts.
 TEST-01Z's partial dependencies for `CODEDOC-05` and `SIZE-07` are satisfied,
 but their other blockers remain. No Phase `02` card has been selected or
-started. Publication and upstream equality remain deferred for the entire
-tranche.
+started. Resolve publication and upstream equality from live Git before
+beginning the next phase.
 
 Do not inspect or execute `CONCURRENCY-02`, `PROGRAM-01`, paused concurrency
 attempts, the researcher pilot, any `TEST-01G`–`TEST-01Y` work, or Phase `02`.
