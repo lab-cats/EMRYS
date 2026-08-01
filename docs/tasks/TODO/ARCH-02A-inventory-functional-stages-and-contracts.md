@@ -34,6 +34,27 @@
   [`CONTRACT.md`](../../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md).
   It preserves the native evidence and failure semantics without treating QC
   text as a computational prerequisite or a peer transformation stage.
+- Slice 7 classifies historical Step `03` as the scientific-evidence operation
+  `collect_RSeQC_paired_orientation_evidence` in its colocated
+  [`CONTRACT.md`](../../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md).
+  It traces the converging BAM/BED12 prerequisites while keeping mechanical
+  orientation evidence separate from biological strand, manifest policy, and
+  the computational DAG.
+- Slice 8 records historical Step `04` as `mark_BAM_duplicates_with_Picard` in
+  its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md),
+  including its Step `02` input, Step `05` handoff, final-path publication, and
+  producer/validator ownership gaps.
+- Slice 9 records historical Step `05` as `split_N_cigar_reads_with_GATK` in
+  its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md),
+  including the Step `04`/`00c` convergence, Step `06` handoff, protected pair
+  publication, and rollback-failure boundary.
+- Slice 10 records historical Step `06` as
+  `partition_BAM_by_mechanical_read_orientation` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md),
+  preserving exact flag groups, the Step `07` cohort gate, five-output
+  transaction, and biological-strand prohibition.
 
 ## Objective
 

@@ -49,6 +49,14 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md)
 - Historical Step `02b`, evidence operation `collect_canonical_BAM_QC_evidence`:
   [`CONTRACT.md`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md)
+- Historical Step `03`, evidence operation `collect_RSeQC_paired_orientation_evidence`:
+  [`CONTRACT.md`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md)
+- Historical Step `04`, working name `mark_BAM_duplicates_with_Picard`:
+  [`CONTRACT.md`](../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md)
+- Historical Step `05`, working name `split_N_cigar_reads_with_GATK`:
+  [`CONTRACT.md`](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md)
+- Historical Step `06`, working name `partition_BAM_by_mechanical_read_orientation`:
+  [`CONTRACT.md`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 
