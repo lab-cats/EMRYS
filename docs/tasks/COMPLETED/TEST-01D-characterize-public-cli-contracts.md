@@ -85,9 +85,20 @@ Completed locally on 2026-07-31 on
 - Implementation commit `a003065` adds an exact test-only inventory of all 25
   public Python entry points, 13 shell workflows, four R entry points, and 23
   callable Make targets, while keeping the one private Python module excluded.
-- The central matrix protects help or current no-help behavior, parse/missing
-  failures, arbitrary-CWD invocation, working-directory side-effect freedom,
-  file modes, and exact Make-target applicability and command expansion.
+- A later Phase `0` adversarial review found that the original suite dry-ran
+  all Make targets without comparing their expansion to a literal oracle and
+  inspected the two environment-management R files without executing their
+  argument-rejection paths. The earlier completion wording therefore
+  overstated those two protections.
+- Correction commit `0c64d1a` adds a reviewed literal dry-expansion fixture
+  for all 23 targets, canonicalizes only checkout and recursive-Make
+  identities, rejects a deliberate recipe mutation, and executes both real R
+  utilities with `--help` and an arbitrary positional argument from an empty
+  working directory without ever invoking no-argument restore behavior.
+- The corrected central matrix protects help or current no-help behavior,
+  parse/missing failures, arbitrary-CWD invocation, working-directory
+  side-effect freedom, file modes, and exact Make-target applicability and
+  command expansion.
   Existing focused suites remain authoritative for command-specific dry-run,
   execute, malformed-input, output, rollback, and child-exit behavior.
 - Characterized exceptions remain unchanged: 17 Python files are
@@ -98,6 +109,9 @@ Completed locally on 2026-07-31 on
 - The focused 116-test Python set, guarded local-R shell contract, and Step
   `08`/`09` real-R fixtures passed. The complete local gate passed every lane
   in 164.719 seconds.
+- After `0c64d1a`, the 106-case corrected public-contract file and guarded
+  local-R shell contract passed. The complete static, shell, checked Python,
+  guarded-R, and pinned report-runtime gate then passed in 227.142 seconds.
 - No production, schema, workflow, Makefile, dependency, scientific, runtime,
-  cluster, or biological behavior changed. The next approved local descendant
-  is `TEST-01E`.
+  cluster, or biological behavior changed. The correction changes tests and
+  literal test fixtures only.

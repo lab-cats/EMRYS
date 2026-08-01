@@ -444,6 +444,18 @@ non-regression, guarded R, and pinned report runtime in 164.719 seconds. No
 production, schema, workflow, Makefile, dependency, scientific, runtime, or
 cluster behavior changed.
 
+A later Phase `0` adversarial review found two gaps behind that completion
+claim: Make targets were dry-expanded but not compared with a literal oracle,
+and the environment-management R entry points were source-inspected but not
+executed on their rejection paths. Test-only correction `0c64d1a` adds one
+committed 23-target dry-expansion fixture, rejects a deliberate recipe
+mutation, and directly executes `check_r_environment.R` and
+`restore_r_environment.R` with both `--help` and an arbitrary positional
+argument from an empty working directory. It never invokes no-argument restore
+behavior. The corrected 106-case public-contract file and guarded local-R
+contract passed, followed by the complete local gate in 227.142 seconds. No
+production or public behavior changed.
+
 ### Completed `TG-05` characterization
 
 Implementation commit `9a4fb09` adds one exact test-only matrix for all 16
@@ -517,8 +529,9 @@ required`, and `environment-deferred`.
 Independent evidence keys used below are:
 
 - **CLI** — literal entry-point, file-mode, help/failure, arbitrary-CWD, and
-  Make-target expectations in `tests/test_public_cli_contracts.py` plus the
-  row's named direct regression owner;
+  Make-target expectations in `tests/test_public_cli_contracts.py`, the
+  committed `tests/fixtures/public_cli_contracts/` oracle, plus the row's
+  named direct regression owner;
 - **FAULT** — independent mutation/fault injection in
   `tests/test_validation_publication_faults.py` and the named provenance,
   preflight, storage, transaction, and rollback suites;
@@ -592,8 +605,8 @@ Independent evidence keys used below are:
 
 | Source row | TEST-01Z outcome | Independent regression or explicit disposition |
 | --- | --- | --- |
-| `check_r_environment.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI and guarded environment checks protect argument rejection and dependency validation; absence of help remains a defect and CSU availability remains ENV. |
-| `restore_r_environment.R` | `preserved contract`; `characterized defect` | CLI and the explicit restore contract protect operator-only mutation; absence of help remains a defect. |
+| `check_r_environment.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI executes real `--help` and arbitrary-argument rejection from an empty CWD, while guarded environment checks protect dependency validation; absence of help remains a defect and CSU availability remains ENV. |
+| `restore_r_environment.R` | `preserved contract`; `characterized defect` | CLI executes real rejection paths without invoking no-argument restore, and the explicit restore contract protects operator-only mutation; absence of help remains a defect. |
 | `step_08_vcf_preprocessing.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + REAL-R protect local semantics; Rscript-only file mode remains a defect and production-scale/cluster execution remains ENV. |
 | `step_09_cmh_editing_site_calling.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + REAL-R + CMH protect local semantics; Rscript-only file mode remains a defect and production-scale/cluster execution remains ENV. |
 
@@ -622,11 +635,11 @@ Independent evidence keys used below are:
 
 | Source row | TEST-01Z outcome | Independent regression or explicit disposition |
 | --- | --- | --- |
-| complete local-gate targets | `preserved contract` | CLI + GATE and orchestrator tests protect exact expansion, lane ownership, and exit behavior. |
-| explicit restore/baseline-update targets | `preserved contract` | CLI and direct restore/baseline tests protect explicit operator mutation and prohibit implicit installation. |
-| explicit output/runtime targets | `preserved contract` | CLI + REPORT and direct owners protect declared output/evidence boundaries. |
-| internal validation-lane targets | `preserved contract` | CLI + GATE and orchestrator tests protect exact internal-lane semantics. |
-| `demo-step03-dry-run`, `demo-step03` | `preserved contract`; `environment-deferred` | CLI protects exact local command expansion; actual scheduler submission remains ENV. |
+| complete local-gate targets | `preserved contract` | CLI's committed golden + GATE and orchestrator tests protect exact default-context expansion, lane ownership, and exit behavior. |
+| explicit restore/baseline-update targets | `preserved contract` | CLI's committed golden and direct restore/baseline tests protect explicit operator mutation and prohibit implicit installation. |
+| explicit output/runtime targets | `preserved contract` | CLI's committed golden + REPORT and direct owners protect declared output/evidence boundaries. |
+| internal validation-lane targets | `preserved contract` | CLI's committed golden + GATE and orchestrator tests protect exact internal-lane semantics. |
+| `demo-step03-dry-run`, `demo-step03` | `preserved contract`; `environment-deferred` | CLI's committed golden protects exact local command expansion; actual scheduler submission remains ENV. |
 
 ### Cross-cutting rows (15)
 
@@ -676,9 +689,13 @@ Independent evidence keys used below are:
   boundary, RA-025, and the current handoff. These deferrals continue to block
   runtime, cluster, scientific, and biological claims, but they do not require
   inventing local evidence before architecture-planning inventory begins.
-- The independent post-TEST-01F reviewer found no false acceptance claim or
-  producer-coupled oracle requiring repair. The checked coverage refresh has
-  no line or branch regression.
+- The initial post-TEST-01F reviewer found no repair. A later Phase `0`
+  adversarial review identified two false protection claims and stopped
+  publication. Correction `0c64d1a` closes both with a literal Make oracle and
+  direct real-R rejection-path execution; its focused tests and complete local
+  gate pass. Final Phase `0` publication remains contingent on adversarial
+  acceptance of the corrected tip. The checked coverage refresh has no line or
+  branch regression.
 
 The TEST-01Z decision is **affirmative for the named Phase `02` planning roots
 only**. It releases `ARCH-02A`, `RPT-01`, `LOG-01`, and `DOC-IA-01` for their

@@ -96,11 +96,18 @@ Completed locally on 2026-07-31 on
 - The checked Python refresh passed with 843 tests and 17 expected skips,
   measuring 8,585/10,551 lines (81.3667%) and 3,111/4,404 branches (70.6403%)
   across 26 production modules. The tracked baseline was not rewritten.
-- The one authorized independent reviewer passed combined TEST-01C–TEST-01F
-  semantic accuracy, expectation independence, and longevity without a repair.
+- The initial combined TEST-01C–TEST-01F reviewer did not request a repair. A
+  later Phase `0` adversarial review found that the claimed Make-expansion and
+  R-argument protections were not independently exercised, so the branch was
+  held from publication rather than treating that first verdict as final.
+- Test-only correction `0c64d1a` adds the missing literal Make oracle and real
+  R rejection-path execution. Its focused tests and the complete local gate
+  pass; the affirmative decision is unchanged, but final Phase `0`
+  reconciliation still requires adversarial acceptance of the corrected tip.
 - The decision is affirmative only for separate task selection of `ARCH-02A`,
   `RPT-01`, `LOG-01`, and `DOC-IA-01`. TEST-01Z's partial dependency is
   satisfied for `CODEDOC-05` and `SIZE-07`, whose other blockers remain.
-- No closure card was created. No Phase `02` work began. No executable,
-  dependency, schema, fixture, test-harness, production, runtime, cluster,
-  scientific-policy, evidence-state, or biological behavior changed.
+- No closure card was created. No Phase `02` work began. Reconciliation changed
+  only tests, literal test fixtures, and their documentation; no production,
+  dependency, schema, runtime, cluster, scientific-policy, evidence-state, or
+  biological behavior changed.
