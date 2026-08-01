@@ -35,6 +35,11 @@ paired FASTQ + sample manifest
 SLURM wrappers remain thin. Analysis and validation logic lives in
 parameterized scripts. The login node is not a compute engine.
 
+### Incremental stage-contract index
+
+- Historical Step `00a`, working name `construct_STAR_index`:
+  [`CONTRACT.md`](../../src/norad/stages/construct_STAR_index/CONTRACT.md)
+
 ## Identity and explicit-input boundaries
 
 The sample manifest is the source of sample identity, order, condition, and

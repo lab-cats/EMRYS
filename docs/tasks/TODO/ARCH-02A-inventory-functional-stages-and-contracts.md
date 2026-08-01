@@ -1,5 +1,14 @@
 # ARCH-02A — Inventory functional stages and contracts
 
+**JIT slice record**
+
+- Slice 1 records historical Step `00a` under the working name
+  `construct_STAR_index` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/construct_STAR_index/CONTRACT.md).
+  The slice inventories current behavior and the shared-validator ownership
+  leak without moving code or settling later naming, topology, extraction, or
+  migration decisions.
+
 ## Objective
 
 Produce an implementation-backed inventory of functional stages, shared
