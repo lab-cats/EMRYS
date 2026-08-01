@@ -79,5 +79,25 @@ change behavior without a complete observable contract.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed locally on 2026-07-31 on
+`codex/refactor-01d-public-cli-contracts`.
+
+- Implementation commit `a003065` adds an exact test-only inventory of all 25
+  public Python entry points, 13 shell workflows, four R entry points, and 23
+  callable Make targets, while keeping the one private Python module excluded.
+- The central matrix protects help or current no-help behavior, parse/missing
+  failures, arbitrary-CWD invocation, working-directory side-effect freedom,
+  file modes, and exact Make-target applicability and command expansion.
+  Existing focused suites remain authoritative for command-specific dry-run,
+  execute, malformed-input, output, rollback, and child-exit behavior.
+- Characterized exceptions remain unchanged: 17 Python files are
+  interpreter-only; direct Python shebang execution selects the caller's
+  environment; Steps `03`, `04`, and `05` shell files require explicit `bash`;
+  two R environment utilities have no help mode; two analysis R files are
+  Rscript-only; and `gtf_to_bed12.py` silently overwrites its declared output.
+- The focused 116-test Python set, guarded local-R shell contract, and Step
+  `08`/`09` real-R fixtures passed. The complete local gate passed every lane
+  in 164.719 seconds.
+- No production, schema, workflow, Makefile, dependency, scientific, runtime,
+  cluster, or biological behavior changed. The next approved local descendant
+  is `TEST-01E`.

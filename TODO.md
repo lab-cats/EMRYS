@@ -11,10 +11,11 @@ checkout and exact resume point belong in
 
 1. Continue the explicitly approved local-only Phase `01` characterization
    tranche. [`TEST-01C`](docs/tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
-   is complete locally; select
-   [`TEST-01D`](docs/tasks/TODO/TEST-01D-characterize-public-cli-contracts.md)
+   and [`TEST-01D`](docs/tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md)
+   are complete locally; select
+   [`TEST-01E`](docs/tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md)
    next from its clean committed descendant.
-2. Promote only through `TEST-01D` → `TEST-01E` → `TEST-01F` → `TEST-01Z`
+2. Promote only through `TEST-01E` → `TEST-01F` → `TEST-01Z`
    when each card's acceptance, focused and complete local gates,
    documentation consistency, clean state, and adversarial review pass.
 3. Stop after `TEST-01Z`. A negative decision may create only its bounded

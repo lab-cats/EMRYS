@@ -21,7 +21,7 @@ utility wrappers. These boundaries become fragile during source migration.
 
 ## Blocked by
 
-- [TEST-01D](../TODO/TEST-01D-characterize-public-cli-contracts.md) — Required: delegated public interfaces and exit behavior must be characterized first.
+- [TEST-01D](../COMPLETED/TEST-01D-characterize-public-cli-contracts.md) — Required: delegated public interfaces and exit behavior are characterized and protected.
 
 ## Completion unblocks
 

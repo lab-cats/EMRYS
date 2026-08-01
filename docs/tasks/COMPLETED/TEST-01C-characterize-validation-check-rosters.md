@@ -24,7 +24,7 @@ regression.
 
 ## Completion unblocks
 
-- [TEST-01D](../TODO/TEST-01D-characterize-public-cli-contracts.md) — Fully: the next approved Phase 01 characterization package may begin planning.
+- [TEST-01D](TEST-01D-characterize-public-cli-contracts.md) — Fully: completed locally as the next approved Phase 01 characterization package.
 
 ## Prerequisites
 

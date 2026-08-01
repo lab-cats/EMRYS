@@ -2829,7 +2829,7 @@ This is a cluster environment/PATH inconsistency, not a BAM/QC failure.
 Script:
 
 ```bash
-scripts/step_03_infer_strandedness_and_orientation.sh
+bash scripts/step_03_infer_strandedness_and_orientation.sh
 ```
 
 Job:
@@ -2921,7 +2921,7 @@ Salmon paired-end convention ISR
 Script:
 
 ```bash
-scripts/step_04_mark_duplicates.sh
+bash scripts/step_04_mark_duplicates.sh
 ```
 
 Job:
@@ -3178,7 +3178,7 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
 Direct script dry-run with explicit cluster tools:
 
 ```bash
-scripts/step_05_split_n_cigar_reads.sh \
+bash scripts/step_05_split_n_cigar_reads.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -3190,7 +3190,7 @@ scripts/step_05_split_n_cigar_reads.sh \
 Direct script execute with explicit cluster tools:
 
 ```bash
-scripts/step_05_split_n_cigar_reads.sh \
+bash scripts/step_05_split_n_cigar_reads.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --reference-fasta refs/novogene_ref/genome.fa \

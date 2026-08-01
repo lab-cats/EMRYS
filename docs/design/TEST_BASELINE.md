@@ -108,33 +108,41 @@ Test independence is classified as:
 It is exercised through the artifact, run-summary, Step `09c`, and report
 suites and is included in the cross-cutting matrix below.
 
+`tests/test_public_cli_contracts.py` independently inventories all 25 public
+Python entry points and the one private module. For every public entry point it
+protects interpreter-invoked help, unknown-option failure, arbitrary-CWD use,
+and no working-directory artifacts. It separately freezes the current eight
+executable and 17 interpreter-only file modes. Direct help for the executable
+set is tested with a prepared `python3` path because their env shebang
+deliberately delegates dependency selection to the caller's environment.
+
 | Public entry point | Direct regression owner | Covered cases | Independence | Status / remaining gap |
 | --- | --- | --- | --- | --- |
 | `build_artifact_index.py` | `tests/test_artifact_adapters.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent contract mutation remains under `TG-06` |
 | `build_run_summary.py` | `tests/test_artifact_run_summary.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent serialized goldens remain under `TG-06` |
-| `gtf_to_bed12.py` | `tests/test_gtf_to_bed12.py` | `H E M F T X` | independent | partial: exact existing-output and arbitrary-CWD behavior under `TG-04` |
-| `reference_provenance.py` | `tests/test_reference_provenance.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CLI cases remain under `TG-04` |
-| `render_run_report.py` | `tests/test_report_html_v1.py`; `tests/test_report_exports_v1.py` | `H D E M F T V X` | mixed | partial: direct CLI/exit matrix under `TG-04` |
-| `render_run_report_bundle.py` | `tests/test_report_exports_v1.py`; `tests/shell/test_render_run_report.sh` | `H D E M F N L B S I U P T V X W` | mixed | partial: low measured internal coverage and direct CLI matrix under `TG-04`; scenario evidence must precede any implementation change |
+| `gtf_to_bed12.py` | `tests/test_gtf_to_bed12.py` | `H E M F N U T X W` | independent | `TG-04` complete; arbitrary-CWD output is exact and the existing output is silently replaced as a characterized defect |
+| `reference_provenance.py` | `tests/test_reference_provenance.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` and `TG-04` characterization complete; incomplete-rollback recovery remains a labeled production gap |
+| `render_run_report.py` | `tests/test_report_html_v1.py`; `tests/test_report_exports_v1.py` | `H D E M F T V X` | mixed | `TG-04` complete; existing renderer cases remain the output contract |
+| `render_run_report_bundle.py` | `tests/test_report_exports_v1.py`; `tests/shell/test_render_run_report.sh` | `H D E M F N L B S I U P T V X W` | mixed | `TG-04` complete; low measured internal coverage remains and scenario evidence must precede any implementation change |
 | `restore_quarto.py` | `tests/test_quarto_restore.py` | `H E M N L B I P T X` | independent | adequate for supported local restore; other platforms are not supported |
 | `runtime_preflight.py` | `tests/test_runtime_preflight.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; lock-fsync, lock-cleanup, and incomplete-rollback recovery remain labeled production gaps; CSU execution deferred |
 | `step_09c_scientific_validation.py` | `tests/test_step_09c_scientific_validation.py`; `tests/shell/test_step_09c_scientific_validation.sh` | `H D E M F N L B S I U P T V X W` | mixed | adequate for local synthetic contracts; production science review deferred |
 | `storage_inventory.py` | `tests/test_storage_inventory.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CSU storage execution deferred |
 | `validate_artifact_contracts.py` | `tests/test_artifact_schema_contracts.py` | `H M F U P T V X` | mixed | adequate; independent schema/golden mutation remains under `TG-06` |
 | `validate_manifest.py` | `tests/test_validate_manifest.py` | `H M F P T X` | independent | adequate |
-| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` characterization complete with labeled production gaps; help/exit matrix `TG-04` remains |
-| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
-| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` and real bcftools remain |
-| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | mixed | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` and `TG-06` remain |
-| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` through `TG-03` complete; compatible validator/recovery corrections remain separately reviewed; `TG-04` remains |
+| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
+| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps; real bcftools remains deferred |
+| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | mixed | `TG-02` through `TG-04` complete with labeled production gaps; `TG-06` remains |
+| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` through `TG-04` complete; compatible validator/recovery corrections remain separately reviewed |
 
 The per-step validator rows intentionally distinguish malformed inputs, which
 exit nonzero and publish nothing, from readable but failed evidence, which may
@@ -150,14 +158,20 @@ characterization must preserve that distinction.
 | `step_01_star_align.sh` | `tests/shell/test_step_01_star_align.sh` | `H D E M F N L B I P T X` | adequate script coverage; SLURM matrix remains `TG-05` |
 | `step_02_sort_index_bam.sh` | `tests/shell/test_step_02_sort_index_bam.sh` | `H D E M F N L B I P T X` | adequate script coverage; SLURM matrix remains `TG-05` |
 | `step_02b_bam_qc.sh` | `tests/shell/test_step_02b_bam_qc.sh` | `H D E M F N L B I P T X` | adequate script coverage; SLURM matrix remains `TG-05` |
-| `step_03_infer_strandedness_and_orientation.sh` | `tests/shell/test_step_03_infer_strandedness_and_orientation.sh` | `H D E M F N L B I P T X` | adequate script coverage; SLURM matrix remains `TG-05` |
-| `step_04_mark_duplicates.sh` | `tests/shell/test_step_04_mark_duplicates.sh` | `H D E M F N L B I P T X` | adequate script coverage; SLURM matrix remains `TG-05` |
-| `step_05_split_n_cigar_reads.sh` | `tests/shell/test_step_05_split_n_cigar_reads.sh` | `H D E M F N L B I P T X W` | adequate |
+| `step_03_infer_strandedness_and_orientation.sh` | `tests/shell/test_step_03_infer_strandedness_and_orientation.sh` | `H D E M F N L B I P T X W` | adequate script coverage; non-executable mode requires explicit `bash`; SLURM matrix remains `TG-05` |
+| `step_04_mark_duplicates.sh` | `tests/shell/test_step_04_mark_duplicates.sh` | `H D E M F N L B I P T X W` | adequate script coverage; non-executable mode requires explicit `bash`; SLURM matrix remains `TG-05` |
+| `step_05_split_n_cigar_reads.sh` | `tests/shell/test_step_05_split_n_cigar_reads.sh` | `H D E M F N L B I P T X W` | adequate script coverage; non-executable mode requires explicit `bash` |
 | `step_06_split_bam_by_read_orientation.sh` | `tests/shell/test_step_06_split_bam_by_read_orientation.sh` | `H D E M F N L B I P T X W` | adequate |
 | `step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `H D E M F N L B I U P T X W` | adequate with mocked bcftools; real bcftools deferred |
 | `step_08_vcf_preprocessing.sh` | `tests/shell/test_step_08_vcf_preprocessing.sh`; guarded real-R suite | `H D E M F N L B S I U P T X W` | adequate local contract; production/cluster runtime deferred |
 | `step_09_cmh_editing_site_calling.sh` | `tests/shell/test_step_09_cmh_editing_site_calling.sh`; guarded real-R suite; independent CMH corpus | `H D E M F N L B S I U P T V X W` | adequate producer contract; independent `TG-01` characterization complete |
 | `step_09c_scientific_validation.sh` | `tests/shell/test_step_09c_scientific_validation.sh` | `H D E M F N L B S I U P T V X W` | adequate local synthetic contract |
+
+`tests/test_public_cli_contracts.py` additionally inventories all 13 shell
+entry points and protects Bash-invoked help, missing-argument failure,
+arbitrary-CWD use, and side-effect freedom. It protects direct help for the ten
+executable scripts and freezes the three non-executable Step `03`, `04`, and
+`05` file modes as characterized defects requiring explicit `bash` invocation.
 
 Signal coverage is strongest for the later transactional workflows and report
 bundle. The matrix does not infer signal safety for an earlier workflow merely
@@ -167,13 +181,14 @@ because it has ordinary rollback coverage.
 
 | Public entry point | Regression owner | Covered cases | Status / remaining gap |
 | --- | --- | --- | --- |
-| `check_r_environment.R` | `tests/shell/test_local_r_environment.sh`; guarded `make r-check` | `M F V X W` | adequate for the guarded local environment; CSU runtime deferred |
-| `restore_r_environment.R` | `tests/shell/test_local_r_environment.sh`; explicit `make r-restore` | `M F N X W` | adequate explicit setup behavior; installation is never automatic |
-| `step_08_vcf_preprocessing.R` | `tests/r/test_step_08_vcf_preprocessing.R`; wrapper suite | `E M F T X W` | adequate local real-R semantics; production scale and cluster runtime deferred |
-| `step_09_cmh_editing_site_calling.R` | `tests/r/test_step_09_cmh_editing_site_calling.R`; wrapper suite; `tests/fixtures/step_09_cmh_oracle.tsv` | `E M F T V X W` | adequate producer semantics; independent `TG-01` count-derived equivalence corpus complete |
+| `check_r_environment.R` | `tests/shell/test_local_r_environment.sh`; guarded `make r-check` | `M F V X W` | characterized legacy exception: directly executable but any positional argument, including `--help`, is rejected; CSU runtime deferred |
+| `restore_r_environment.R` | `tests/shell/test_local_r_environment.sh`; explicit `make r-restore` | `M F N X W` | characterized legacy exception: directly executable but has no help mode; installation remains explicit and never automatic |
+| `step_08_vcf_preprocessing.R` | `tests/r/run_step_08_vcf_preprocessing_tests.sh`; `tests/r/test_step_08_vcf_preprocessing.R`; wrapper suite | `H E M F T X W` | adequate local real-R semantics; file mode is Rscript-only; production scale and cluster runtime deferred |
+| `step_09_cmh_editing_site_calling.R` | `tests/r/run_step_09_cmh_tests.sh`; `tests/r/test_step_09_cmh_editing_site_calling.R`; wrapper suite; `tests/fixtures/step_09_cmh_oracle.tsv` | `H E M F T V X W` | adequate producer semantics; file mode is Rscript-only; independent `TG-01` count-derived equivalence corpus complete |
 
-R source is not included in the Python coverage percentages. The guarded
-real-R suite is therefore a separate mandatory gate.
+`tests/test_public_cli_contracts.py` freezes the two direct and two
+Rscript-only file-mode sets. R source is not included in the Python coverage
+percentages. The guarded real-R suite is therefore a separate mandatory gate.
 
 ## SLURM entry points
 
@@ -208,12 +223,11 @@ legacy exceptions before any structural change.
 
 | Public target(s) | Regression evidence | Status |
 | --- | --- | --- |
-| `test`, `shell-test`, `real-r-test`, `local-real-r-test`, `report-test` | run as explicit local gates | adequate; each retains its own evidence boundary |
-| `r-restore`, `r-check`, `quarto-restore` | focused environment/restore tests plus explicit operator invocation | adequate; dependency mutation remains operator-only |
-| `python-coverage-measure`, `python-coverage-check`, `python-coverage-baseline-update` | `tests/test_python_coverage_baseline.py` and successful repository measurement | adequate; baseline update remains deliberate |
-| `all-checks` | orchestrator unit/process-tree tests plus exact serial/parallel result and coverage comparison | adequate for validation scheduling, failure propagation, interruption cleanup, and serial fallback; underlying public-contract completeness remains in `TG-04` |
-| `validate`, `smoke`, `lint` | target inspection plus component gates | partial: exact target/exit characterization under `TG-04` |
-| `demo-step03-dry-run`, `demo-step03` | command inspection only | partial: submission behavior remains deferred with cluster work |
+| `test`, `shell-test`, `validation-shell-contracts`, `real-r-test`, `r-check`, `local-real-r-test`, `report-test`, `python-coverage-check`, `validate`, `smoke`, `lint`, `all-checks` | exact inventory and command expansion in `tests/test_public_cli_contracts.py`; focused component and orchestrator suites; complete gate | adequate local-gate category with existing failure/exit ownership preserved |
+| `r-restore`, `quarto-restore`, `python-coverage-baseline-update` | exact inventory/expansion plus focused restore and baseline tests | adequate explicit operator-mutation category; never an implicit test action |
+| `validation-report-runtime`, `demo-report`, `python-coverage-measure` | exact inventory/expansion plus focused output/runtime suites | adequate explicit-output category; commands retain their declared output and evidence boundaries |
+| `validation-python-coverage`, `validation-guarded-r`, `validation-static` | exact inventory/expansion plus `all-checks` orchestration tests | adequate internal-lane category; not standalone user workflow claims |
+| `demo-step03-dry-run`, `demo-step03` | exact inventory and local command expansion only | environment-deferred: scheduler submission remains future cluster evidence |
 
 ### Validation-efficiency characterization
 
@@ -237,7 +251,7 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 
 | Risk area | Current regression evidence | Independence | Disposition |
 | --- | --- | --- | --- |
-| Public help, dry-run, execute, malformed input, and exit behavior | focused Python/shell suites listed above | mostly independent | complete exact missing-case matrix in `TG-04` |
+| Public help, dry-run, execute, malformed input, and exit behavior | focused entry-point suites plus the exact Python/shell/R/Make inventory in `tests/test_public_cli_contracts.py` | mostly independent | `TG-04` complete; preserve explicit legacy mode/help/overwrite exceptions rather than normalizing them |
 | Native output transactions | Step `02`, `05`–`09`, Step `09c`, adapters, summaries, report bundle rollback suites, and Phase `01b` publisher fault injection | mixed | `TG-02` characterization complete; preserve labeled production gaps for reviewed correction |
 | Seven-column validation report schema | every `tests/test_validate_step_*` module plus adapter propagation fixtures | mixed | preserve |
 | Exact per-step check rosters | test-only literal ordered rosters, all 13 live producer-output suites, shared report-consumer mutations, and artifact-adapter mutations | independent characterization | `TG-03` complete; preserve the characterized order-insensitive shared validator and wrong-unique/reordering adapter defects for separate correction review |
@@ -246,10 +260,10 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | Deterministic JSON/TSV/QC/report bytes and ordering | retry/fixed-time tests, explicit ordered inventories, renderer comparisons | mixed | preserve; add small independent serialized goldens in `TG-06` |
 | Locks, signals, rollback, cleanup, and recovery evidence | later shell workflows, artifact/summary/report transactions, Step `09c`, and shared/ancillary publisher fault injection | mixed | `TG-02` characterization complete; do not universalize action-local mechanisms or mistake a characterized gap for a safe contract |
 | Stable hashes and input mutation | Step `07`–`09`, Step `09c`, artifact/summary/report, provenance/preflight/storage, and shared-validator snapshot suites | mixed | `TG-02` characterization complete; digest-backed shared snapshots remain a reviewed production correction |
-| Unrelated-file immunity | Step `07`–`09`, Step `09c`, adapter/summary/report suites | independent/mixed | fill explicit CLI omissions in `TG-04` |
+| Unrelated-file immunity | central public-CLI help/failure matrix, `gtf_to_bed12.py`, Step `07`–`09`, Step `09c`, adapter/summary/report suites | independent/mixed | `TG-04` applicable CLI omissions complete; preserve deeper transaction suites |
 | Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance, and shared-validator publication suites | independent | `TG-02` characterization complete; preserve |
 | Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports | mixed | preserve; mutation-resistant vocabulary cases in `TG-06` |
-| Direct execution, arbitrary CWD, and SLURM delegation | strong for Steps `05`–`09`; uneven for early stages and utility jobs | independent | `TG-04` and `TG-05` |
+| Direct execution, arbitrary CWD, and SLURM delegation | exact public script modes and arbitrary-CWD CLI matrix; existing workflow suites; partial SLURM suites | independent | `TG-04` complete with characterized file-mode/environment exceptions; `TG-05` remains |
 | Step `09` CMH statistic, p-value, odds ratio, and estimability | independent Python oracle, fixed corpus, direct committed-R comparison, and coordinated-corruption rejection; production validator still checks type/range and BH from reported p-values | independent characterization plus producer-coupled validator | `TG-01` characterization complete; compatible production-validator correction remains separately reviewed |
 | `_run_summary_science.py` policy projection | artifact, summary, Step `09c`, and report suites | producer-coupled/mixed | independent state-transition goldens in `TG-06` |
 
@@ -274,7 +288,7 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-03` are now
+The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-04` are now
 characterized; the authoritative branch mapping and remaining order are in
 `PIPELINE_PLAN.md`.
 
@@ -372,6 +386,33 @@ checked Python line/branch non-regression baseline, the guarded R environment
 and Step `08`/`09` real-R fixtures, and the pinned report runtime in 164.635
 seconds. No production, schema, workflow, scientific, runtime, or cluster
 behavior changed.
+
+### Completed `TG-04` characterization
+
+Implementation commit `a003065` adds a test-only exact inventory of 25 public
+Python entry points, 13 shell workflows, four R entry points, and 23 callable
+Make targets. It protects Python help and unknown-option failure, shell help
+and missing-argument failure, arbitrary working directories, working-directory
+side-effect freedom, executable versus interpreter-only file modes, and exact
+Make-target applicability categories plus side-effect-free command expansion.
+Existing focused suites remain the owners of entry-point-specific dry-run,
+execute, malformed-input, publication, and child-exit behavior.
+
+The tests preserve rather than normalize current exceptions. Seventeen Python
+entry points are interpreter-only, while direct execution of the eight
+executable Python files depends on the caller's shebang-selected environment.
+Steps `03`, `04`, and `05` shell workflows are non-executable and require
+explicit `bash`. The two environment-management R entry points reject every
+positional argument and have no help mode; the two analysis R files are
+Rscript-only. `gtf_to_bed12.py` silently replaces its declared existing output
+while leaving an unrelated file unchanged.
+
+The 116-test focused Python CLI/converter set, guarded local-R shell contract,
+and Step `08` and `09` real-R fixtures passed. The de-duplicated complete local
+gate then passed static preflight, shell contracts, checked Python line/branch
+non-regression, guarded R, and pinned report runtime in 164.719 seconds. No
+production, schema, workflow, Makefile, dependency, scientific, runtime, or
+cluster behavior changed.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any

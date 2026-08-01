@@ -7,32 +7,33 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/refactor-01c-validation-check-rosters`
+  `codex/refactor-01d-public-cli-contracts`
 - Parent:
-  `codex/strategy-task-cards`
+  `codex/refactor-01c-validation-check-rosters`
 - Verified parent HEAD:
-  `d517ff82fa942b90167b18d72fd752c916ac3388`
+  `5544a6b8c16e01b6975dc32cf35eca2603fe8f40`
 - Parent documentation commit:
-  `d517ff8 docs: create strategy follow-up cards`
+  `5544a6b docs: complete TEST-01C characterization`
 - Current implementation commit:
-  `8d58fc6 test: characterize validation check rosters`
+  `a003065 test: characterize public CLI contracts`
 - Current documentation commit:
-  `docs: complete TEST-01C characterization` (the branch commit
+  `docs: complete TEST-01D characterization` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: `TEST-01C` is locally complete in the approved
-  five-card Phase `01` characterization tranche; `TEST-01D` is the next
+- Recorded package state: `TEST-01C` and `TEST-01D` are locally complete in the
+  approved five-card Phase `01` characterization tranche; `TEST-01E` is the next
   authorized local descendant
-- Current package: independent exact ordered validator rosters plus preserved
-  characterization of order-insensitive shared and artifact-adapter consumers
+- Current package: exact public Python/shell/R/Make inventory plus protected
+  help, failure, file-mode, arbitrary-CWD, side-effect, and target-category
+  behavior
 - Package type: one test-only implementation commit plus a separate
   documentation/card completion commit
 - Remote and cluster work: paused; this branch is intentionally unpushed
 
-This branch descends directly from the clean pinned strategy-card commit. The
-parent branch and its local upstream-tracking reference both resolved to the
-verified parent HEAD before this dedicated sibling worktree was created. The
-package changes tests and documentation only; it does not change validator,
-workflow, schema, runtime, cluster, scientific, or biological behavior.
+This branch descends linearly from the clean, committed local `TEST-01C`
+predecessor under the explicitly approved local-only tranche exception.
+Publication and upstream equality are deferred. The package changes tests and
+documentation only; it does not change production CLI, workflow, Makefile,
+schema, dependency, runtime, cluster, scientific, or biological behavior.
 
 ## Active concurrent lanes
 
@@ -325,23 +326,28 @@ approved policy defines and unlocks stricter exit criteria.
   DP/AD counts. Phase `01a` now supplies independent characterization evidence
   for a later separately reviewed compatible correction; it did not change
   production validation.
-- Exact check rosters are independently characterized; the shared consumer's
-  order-insensitivity and the artifact adapter's wrong-unique/reorder
-  acceptance remain labeled defects. Complete public CLI/exit behavior, early
-  and utility SLURM behavior, and independent serialized/state goldens remain
-  the measured Phase `01` characterization gaps.
+- Exact check rosters and all public Python/shell/R/Make command surfaces are
+  characterized. Shared validation roster consumer defects, interpreter-only
+  and environment-selected execution modes, three non-executable shell files,
+  two no-help R utilities, and the BED12 converter's silent overwrite remain
+  labeled behavior. Early and utility SLURM behavior and independent
+  serialized/state goldens remain the measured Phase `01` characterization
+  gaps.
 - Phase `01b` now characterizes shared and ancillary publication faults, but
   it intentionally does not correct the confirmed same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, or stale-lock behavior.
 
 ## Immediate resume point
 
-`TEST-01C` is complete locally. Its 250-test focused validator/adapter set
-passed, followed by one complete local gate: static preflight, shell contracts,
-Python line/branch non-regression, guarded R plus Step `08`/`09` real-R
-fixtures, and pinned report runtime all passed in 164.635 seconds. The complete
-gate reused the existing primary checkout's restored Python, Quarto, and R
-libraries by explicit path; no tracked dependency or lockfile changed.
+`TEST-01D` is complete locally at implementation commit `a003065`. Its focused
+116-test Python CLI/converter set, guarded local-R shell contract, and Step
+`08`/`09` real-R fixtures passed. One complete local gate then passed static
+preflight in 0.107 seconds, shell contracts in 40.639 seconds, Python
+line/branch non-regression in 148.662 seconds, guarded R in 157.478 seconds,
+and pinned report runtime in 123.965 seconds; the de-duplicated parallel gate
+completed in 164.719 seconds. It reused the primary checkout's restored Python,
+Quarto, and R libraries by explicit path; no tracked dependency or lockfile
+changed.
 
 An initial sibling-local `renv` activation attempted its automatic bootstrap
 before failing on missing packages. Preserve the resulting ignored local cache
@@ -350,8 +356,8 @@ gate used `RENV_PATHS_LIBRARY` to reference the already-restored primary
 project library and did not restore or update packages.
 
 After this documentation commit and a clean-state/adversarial review, create
-`codex/refactor-01d-public-cli-contracts` directly from this local HEAD in the
-same dedicated worktree. Perform only TEST-01D's just-in-time targeted
+`codex/refactor-01e-slurm-contracts` directly from this local HEAD in the same
+dedicated worktree. Perform only TEST-01E's just-in-time targeted
 inspection, implementation, focused tests, complete local gate, and separate
 docpatch. Publication and upstream equality remain deferred for the entire
 tranche.
