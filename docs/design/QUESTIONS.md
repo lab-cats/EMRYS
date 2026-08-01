@@ -153,6 +153,14 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Recommendation:** prefer a small semantic enum such as `normal`, `verbose`,
   and `debug`, define `normal` as the concise default, and add a separate
   `quiet` level only if characterization identifies a real user/automation need.
+- **Current evidence:** the
+  [`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
+  found no tracked non-test runtime or production consumer that requires an
+  empty console. Current machine consumers use explicit files or result
+  documents; tests protect selected console behavior, and the 13 validator
+  stdout streams contain a classified machine/human conflict. External
+  consumers were not inspected. This evidence does not resolve the level,
+  control, or precedence contract owned by `LOG-02`.
 
 ### CHOICE-LOG-02 — Durable log layout, retention, and failure tail
 
@@ -166,6 +174,18 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Recommendation:** use run/attempt-scoped paths under configured state,
   always retain complete durable logs, print a concise actionable failure tail
   to stderr, and leave deletion to explicit operator retention policy.
+- **Current evidence:** the
+  [`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
+  found conditional complete console capture only at the SLURM job boundary;
+  the submit-CWD and pre-created-log-directory contract must succeed first.
+  Direct local runs retain artifacts rather than full console logs. In default
+  or serial quiet `all-checks`, successful lane logs are deleted while each
+  failed lane observed before cancellation and each running lane on
+  interruption may be retained. Verbose mode streams merged output live and
+  creates no per-lane temporary log. Exact commands, hashes, locks, attempt
+  IDs, rollback/cleanup errors, and evidence boundaries must not be lost when
+  `LOG-02` defines the target policy. Existing `runtime_log` and `cluster_log`
+  evidence roles are not interchangeable with a future application log.
 
 ### CHOICE-DOC-01 — Documentation consolidation, overview, and history locations
 

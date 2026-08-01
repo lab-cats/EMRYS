@@ -77,5 +77,27 @@ machine-readable streams.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed as a documentation-only characterization on a fresh descendant of
+the published Phase `0` tip. The
+[`LOG-01` inventory](../../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory)
+uses normalized profiles plus a per-surface crosswalk to classify every current
+public Python, shell, R, SLURM, and Make surface; the validation orchestrator,
+documentation gate, operational data checks, and durable-copy/evidence roles
+are included explicitly.
+
+The inventory preserves machine and recovery-critical content, characterizes
+the validators' mixed stdout, conditional scheduler capture, local validation
+retention cardinality in quiet mode, verbose streaming without retained lane
+logs, the Step `05` operational check's unsafe duplicate-tee publication,
+exposure boundaries, repeated low-value narration, and missing application
+logs. External consumers remain uninspected, and future logging semantics
+remain owned by `LOG-02`.
+
+The earlier `4d01152` candidate supplied useful inventory structure but was
+not merged, rebased, cherry-picked, or treated as completed state because it
+predated the corrected and published Phase `0` tip. No runtime output,
+executable, test, artifact, receipt, evidence state, validation, rollback,
+transaction, or exit behavior changed. Computational validation was therefore
+not applicable; the documentation gate and exact publication evidence are
+recorded in [`HANDOFF.md`](../../operations/HANDOFF.md#immediate-resume-point).
+Completion fully unblocks `LOG-02` for separate selection and planning.

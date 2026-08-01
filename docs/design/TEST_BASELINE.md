@@ -259,6 +259,245 @@ wrapper behavior remain unchanged pending later structural review.
 | `validation-python-coverage`, `validation-guarded-r`, `validation-static` | exact inventory/expansion plus `all-checks` orchestration tests | adequate internal-lane category; not standalone user workflow claims |
 | `demo-step03-dry-run`, `demo-step03` | exact inventory and local command expansion only | environment-deferred: scheduler submission remains future cluster evidence |
 
+## LOG-01 current output and log inventory
+
+This inventory characterizes current behavior; it does not prescribe the
+future logging interface or authorize output changes. It covers all 25 public
+Python, 13 public shell, 4 R, and 16 SLURM entry points enumerated above, all
+23 Make targets, the opted-in R startup hook, the validation orchestrator and
+its lanes, the inline documentation gate, two executable operational checks
+under `tests/data_checks`, and the durable console-copy surfaces found by
+targeted repository searches. The private `_run_summary_science.py` module has
+no independent command surface or console output and is explicitly excluded.
+
+The inventory uses these terms:
+
+- **human** means prose intended for an operator, even when it uses regular
+  label/value lines;
+- **machine** means a declared structured stream or file safe for a program to
+  consume;
+- **protected** means the named regression owner fixes the stated content,
+  channel, ordering, command, or exit relationship, not that the entire
+  console byte stream is a golden;
+- **artifact only** means durable receipts, reports, QC, or scientific outputs
+  exist but are not a complete console copy;
+- **conditional scheduler copy** means SLURM owns job-level stdout/stderr files
+  only when submission-CWD and pre-created `logs/` requirements succeed. The
+  repository cannot establish actual scheduler capture locally.
+
+Severity is semantic rather than a current logger enum: resolved context,
+plans, progress, pass, and success are informational; explicit warnings remain
+warnings; `ERROR`, `FAIL`, `INTERRUPTED`, R `stop`, and delegated nonzero
+diagnostics are errors. Arbitrary tool/renderer/test output has owner-defined
+severity. Stability follows each crosswalk `Trace`: the named assertions are
+protected, while unasserted prose and delegated output are observational. No
+row claims that a complete console stream is golden.
+
+All public Python entry points have protected help on stdout and unknown-option
+failure on stderr. All public shell entry points have protected help on stdout
+plus missing-argument nonzero and side-effect-free behavior; their common CLI
+test does not assert a universal missing-argument stderr contract. The four R
+entry points retain the distinct help and file-mode cases recorded above.
+
+Targeted searches at `b2af738` found no tracked non-test runtime or production
+component parsing a workflow or validator console stream. Tests do capture and
+inspect those streams as regression consumers, and SLURM is configured to
+capture them as job evidence, while durable TSV, JSON, receipt, and report
+files remain separate contracts. External operator, cluster, and downstream
+consumers were not inspected, so this is not a claim about compatibility
+outside the repository.
+
+Static inspection found no credential-specific CLI option or committed
+credential literal in these surfaces. Runtime argument values, paths,
+environment or tool diagnostics, URLs, renderer output, and arbitrary child
+output may nevertheless contain sensitive material. LOG-02 must define
+avoidance or redaction before detailed commands become an application-log
+contract.
+
+### Output profiles
+
+The crosswalk below maps every surface to one of these normalized profiles.
+Per-surface exceptions remain in the crosswalk rather than weakening a
+profile's meaning.
+
+| Profile | Current streams, audience, and stability | Durable and recovery value | Principal exposure |
+| --- | --- | --- | --- |
+| `PY-TXN` | Human mode, identity, path, count, evidence-boundary, and publication prose on stdout; actionable `ERROR` on stderr; not a machine stream | Declared reports/receipts are durable, but direct console is not; attempt IDs, hashes, locks, publication order, rollback, and cleanup are recovery-critical | Resolved paths, run/review/attempt IDs, hashes, artifact/sample IDs, statuses, and counts |
+| `PY-REPORT` | Human NORAD plan plus exact renderer command and delegated renderer output on stdout; renderer/error diagnostics on stderr; mixed prose | Report bundle is durable but console is not; commands, hashes, receipt-last publication, rollback, and cleanup are recovery-critical | Paths, table/run IDs, hashes, tool versions, and renderer diagnostics |
+| `PY-CONVERT` | Human success on stdout; warnings and errors on stderr; not machine-readable | BED output is durable; console contains little recovery state and has no complete copy | Input/output paths and transcript diagnostics |
+| `PY-RESTORE` | Human download, validation, and installation progress on stdout; errors on stderr | Installed tool tree is durable operator mutation; console is not retained | URL, install path, pinned version/hash, and archive diagnostics |
+| `PY-CHECK` | Human pass/summary prose on stdout and validation errors on stderr; not a machine stream | Inputs remain unchanged and no validation receipt or console log is produced | Schema/document/manifest paths, counts, and manifest labels |
+| `PY-STEPVAL` | Seven-column validation-report TSV bytes and human context/status share stdout. Semantic validation failures are `status=fail` rows and may still exit zero; malformed or unsafe operational exceptions use stderr and exit 2. Stdout is therefore not safe as standalone TSV; the explicit report file is the machine contract | Execute mode persists the report; dry-run and surrounding console are ephemeral. Check, failed-evidence, lock, publication, rollback, and cleanup detail is recovery-critical | Paths, scope IDs, check details, hashes, statuses, and tool observations |
+| `SH-LAUNCH` | Script-owned launcher context and shell-escaped child command use stdout; launcher errors use stderr. Delegated children retain their own channels except explicit captures or merges | Child artifacts are durable but direct console is not; exact delegation and child transaction failures are recovery-critical | Interpreter and input/output/tool paths, IDs, arguments, and child diagnostics |
+| `SH-STAGE` | Script-owned resolved context, exact commands, validation/publication plans, and success use stdout; script-owned errors, warnings, mismatches, and rollback detail use stderr. Delegated tools retain owner-defined channels except explicit captures or merges | Native outputs/QC are durable; direct console is not. Run-token, lock, staging, backup, command, and rollback detail can be recovery-critical | Sample IDs, paths, command arguments, tool versions, headers, and metadata |
+| `SH-COHORT` | Script-owned cohort/analysis context, manifests/hashes, exact pipeline or R command, validation/publication plans, and results use stdout; script-owned failures and recovery detail use stderr. Delegated R/tool output retains owner-defined channels except explicit captures or merges | Artifacts and receipts are durable, not the console; input-set identity, hashes, locks, mutation checks, publication, and rollback are recovery-critical | Cohort/analysis/sample IDs, paths, hashes, filters, thresholds, commands, and policy/status values |
+| `R-ENV` | R `message` progress and `stop` failures use stderr; dependency-owned diagnostics may use either stream; no declared stdout result | Restore mutates the guarded library; neither command retains a console log | Project/library/lockfile paths, package and R/Bioconductor versions, and repository URLs |
+| `R-ANALYSIS` | Help on stdout; completion messages and computation/validation errors on stderr; structured results only in explicit files | Scientific outputs are durable; direct R console is not | Paths, IDs, columns, thresholds, and candidate state in diagnostics |
+| `SLURM-EMBED` | Human job/module/command context and embedded tool output split between configured `.out` and `.err`; not machine-readable | Conditional scheduler copy of bytes reaching job streams; no separate application receipt for console | Job/node/CWD/TMPDIR, references, outputs, commands, module/tool details, and previews |
+| `SLURM-DELEGATE` | Human job/module/command context and delegated child stdout in `.out`; wrapper/child stderr in `.err`, with some diagnostic stderr intentionally merged to `.out` | Conditional scheduler copy contains delegated command and child recovery detail; no second application console log | Job context, environment paths, IDs, hashes, thresholds, module/tool versions, and arguments |
+| `SLURM-PROBE` | Human environment, module, tool, or manifest-validation output split according to each wrapper; not machine-readable | Conditional scheduler copy is the principal diagnostic evidence | Host/CWD/TMPDIR, module set, tool paths/versions, manifest labels, and errors |
+| `MAKE-LOCAL` | Make may echo non-`@` recipe commands unless `-s`; children emit human test/check progress, summaries, and failure captures | Direct use has no complete log; child frameworks may retain declared results or failure captures | Test names, temporary paths, assertions, and child diagnostics |
+| `MAKE-MUTATE` | Make may echo recipes, followed by human restore/baseline-update progress and failures | Restored tools/libraries or coverage baseline are durable explicit operator mutations; no console log | Repository/library/install paths, versions, URLs, hashes, and diagnostics |
+| `MAKE-OUTPUT` | Make may echo recipes; children emit human producer/renderer progress, while declared JSON, XML, coverage, fixture, or report files are separate machine outputs | Explicit output is durable but not a complete console log | Interpreter, repository, output, test, tool, report, and fixture paths plus diagnostics |
+| `MAKE-INTERNAL` | Make may echo recipes plus human internal-lane output; no standalone user machine stream | Durability follows the orchestrator profile when selected by `all-checks` | Commands, test/tool paths, and dependency diagnostics |
+| `MAKE-SUBMIT` | Make may echo recipes; `sbatch` result uses stdout and local submission failures use stderr | NORAD writes no submission receipt, so the job ID is ephemeral unless the operator captures it. Later scheduler files and accounting are conditional and environment-deferred | Export values, sample ID, job ID, and submission errors |
+| `VALIDATION` | Default/serial quiet stdout has elapsed `PASS` lines and `SUMMARY`; stderr has `FAIL`/`INTERRUPTED`, retained-log paths, and failed-lane replay. Verbose mode merges child stderr into live child stdout | In quiet mode, successful lane logs are deleted, every interrupted running lane is retained but not replayed, and every nonzero lane observed in one completion poll is retained and replayed before remaining lanes are terminated. Verbose mode creates no per-lane temporary log to retain. Optional result JSON is a separate machine contract | Exact lane commands, tool/test/temp paths, dependency diagnostics, and arbitrary captured child output |
+| `DOC-GATE` | Human/machine-like pass count and Git inspection on stdout; aggregated actionable failures on stderr; no declared machine stream | No durable log or receipt; exact link, anchor, dependency, and diagram failures are repair evidence | Repository-relative paths, card IDs, links, and cycles |
+| `OP-FASTQ` | Human sample/read context and `PASS` on stdout; mismatch failures on stderr | No durable copy; normalized read-ID mismatch detail is operationally useful but ephemeral | FASTQ paths, sample ID, read counts, and normalized read IDs |
+| `OP-STEP05` | TSV-shaped stdout and human summary/errors on stderr; intended output copy is unsafe because two identical truncating `tee` process substitutions concurrently target the same path | Best-effort output only, not a transactional durable contract. Existing writable output is silently replaced; no direct automated regression owns this behavior | Sample/job IDs and states, BAM/BAI paths and sizes, `SAMTOOLS` path, scheduler state, and output path |
+
+### Per-surface crosswalk
+
+`Trace` names the direct regression or consumer evidence. The detailed public
+entry-point tables above remain the canonical case/independence roster; this
+crosswalk adds output/log semantics without copying those matrices.
+
+#### Python surfaces
+
+| Surface | Profile | Trace | Exception or durable output |
+| --- | --- | --- | --- |
+| `build_artifact_index.py` | `PY-TXN` | CLI inventory; artifact-adapter and independent-golden suites | Artifact index, receipt, and declared evidence files |
+| `build_run_summary.py` | `PY-TXN` | CLI inventory; run-summary and independent-golden suites | Run summary, projections, and receipt |
+| `gtf_to_bed12.py` | `PY-CONVERT` | CLI inventory; `test_gtf_to_bed12.py` | Existing output replacement is a characterized defect |
+| `reference_provenance.py` | `PY-TXN` | CLI inventory; provenance and publication-fault suites | Provenance report; incomplete-recovery defects remain characterized |
+| `render_run_report.py` | `PY-REPORT` | CLI inventory; HTML and export suites | Renderer output and report assets |
+| `render_run_report_bundle.py` | `PY-REPORT` | CLI inventory; export and shell-wrapper suites | Atomic report bundle and receipt |
+| `restore_quarto.py` | `PY-RESTORE` | CLI inventory; Quarto-restore suite | Explicit tool restoration only |
+| `runtime_preflight.py` | `PY-TXN` | CLI inventory; preflight and publication-fault suites | Preflight report; recovery defects remain characterized |
+| `step_09c_scientific_validation.py` | `PY-TXN` | CLI inventory; Python and shell Step 09c suites | Scientific-review artifacts without evidence promotion |
+| `storage_inventory.py` | `PY-TXN` | CLI inventory; storage and publication-fault suites | Inventory report; never performs retention action |
+| `validate_artifact_contracts.py` | `PY-CHECK` | CLI inventory; schema and independent-golden suites | No validation receipt |
+| `validate_manifest.py` | `PY-CHECK` | CLI inventory; manifest suite | No validation receipt |
+| `validate_step_00a_star_index.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `00a` report file |
+| `validate_step_00b_bed12.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `00b` report file; additional human context precedes TSV |
+| `validate_step_00c_reference_sidecars.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `00c` report file |
+| `validate_step_01_star_alignment.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `01` report file |
+| `validate_step_02_canonical_bam.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `02` report file |
+| `validate_step_02b_bam_qc.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `02b` report file |
+| `validate_step_03_rseqc_orientation.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `03` report file |
+| `validate_step_04_mark_duplicates.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `04` report file |
+| `validate_step_05_split_ncigar.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `05` report file |
+| `validate_step_06_orientation_outputs.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `06` report file |
+| `validate_step_07_mpileup_outputs.py` | `PY-STEPVAL` | direct validator, roster, and publication-fault suites | Step `07` report file; real bcftools remains deferred |
+| `validate_step_08_preprocessing_outputs.py` | `PY-STEPVAL` | direct validator, roster, publication-fault, and golden suites | Step `08` report file |
+| `validate_step_09_cmh_outputs.py` | `PY-STEPVAL` | direct validator, CMH-oracle, roster, and publication-fault suites | Step `09` report file; statistic recomputation gap remains characterized |
+
+#### Shell and R surfaces
+
+| Surface | Profile | Trace | Exception or durable output |
+| --- | --- | --- | --- |
+| `render_run_report.sh` | `SH-LAUNCH` | CLI inventory; report shell and export suites | Report bundle; conditional scheduler copy only when job-wrapped |
+| `step_09c_scientific_validation.sh` | `SH-LAUNCH` | CLI inventory; Step 09c shell/Python suites | Scientific-review artifacts; conditional scheduler copy when job-wrapped |
+| `step_00c_prepare_gatk_reference.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | Reference sidecars |
+| `step_01_star_align.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | BAM plus STAR-native diagnostic logs |
+| `step_02_sort_index_bam.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | BAM/BAI |
+| `step_02b_bam_qc.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | QC output |
+| `step_03_infer_strandedness_and_orientation.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | RSeQC output; non-executable file-mode defect |
+| `step_04_mark_duplicates.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | BAM/BAI/metrics; non-executable file-mode defect |
+| `step_05_split_n_cigar_reads.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | BAM/BAI; non-executable file-mode defect |
+| `step_06_split_bam_by_read_orientation.sh` | `SH-STAGE` | CLI inventory; same-named shell suite | BAM/BAI pairs and count table |
+| `step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `SH-COHORT` | CLI inventory; same-named shell suite | VCFs and receipt; real bcftools deferred |
+| `step_08_vcf_preprocessing.sh` | `SH-COHORT` | CLI inventory; shell and guarded real-R suites | Three-output transaction |
+| `step_09_cmh_editing_site_calling.sh` | `SH-COHORT` | CLI inventory; shell, guarded real-R, and CMH-oracle suites | Six-output transaction |
+| `check_r_environment.R` | `R-ENV` | local-R shell suite and guarded `r-check` | Any positional argument, including `--help`, is rejected |
+| `restore_r_environment.R` | `R-ENV` | local-R shell suite and explicit `r-restore` | No help mode; no-argument execution is operator mutation |
+| `step_08_vcf_preprocessing.R` | `R-ANALYSIS` | real-R runner/fixtures and shell owner | Rscript-only file mode |
+| `step_09_cmh_editing_site_calling.R` | `R-ANALYSIS` | real-R runner/fixtures, shell owner, and CMH oracle | Rscript-only file mode |
+| `.Rprofile` opted-in activation | `R-ENV` | local-R shell suite and guarded Make lanes | Indirect startup hook, not a public command; invalid controls stop, and delegated `renv` activation may emit dependency-owned output |
+
+#### Scheduler surfaces
+
+All 16 wrappers configure `logs/%x-%j.out` and `logs/%x-%j.err`, and the
+central SLURM suite protects those directives. These paths are relative to the
+submission context, and `logs/` must exist before SLURM opens them; an in-job
+`mkdir -p logs` is too late to satisfy that precondition. The files are
+therefore conditional scheduler copies, not an unconditional application
+run/attempt logging contract.
+
+| Surface | Profile | Trace | Exception or durable output |
+| --- | --- | --- | --- |
+| `step_00a_build_novogene_star_index.slurm` | `SLURM-EMBED` | central SLURM suite | Embedded compute; caller-CWD and cluster runtime deferred |
+| `step_00b_gtf_to_bed12.slurm` | `SLURM-EMBED` | central SLURM suite | Embedded conversion/sort and BED preview; submit-CWD required |
+| `step_00c_prepare_gatk_reference.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Bash 3.2 dry-run defect characterized |
+| `step_01_star_align.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Default dry-run placeholder side effects characterized |
+| `step_02_sort_index_bam.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Dry-run directory and Bash 3.2 defects characterized |
+| `step_02b_bam_qc.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Submit-CWD, dry-run directory, and Bash 3.2 defects characterized |
+| `step_03_infer_strandedness_and_orientation.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Fallback submit-CWD and Bash 3.2 defect characterized |
+| `step_04_mark_duplicates.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Bash 3.2 defect characterized |
+| `step_05_split_n_cigar_reads.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Bash 3.2 defect; comments preserve pre-submit `logs/` requirement |
+| `step_06_split_bam_by_read_orientation.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Bash 3.2 defect characterized |
+| `step_07_bcftools_mpileup_by_chrom_and_strand.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Real cluster/runtime deferred |
+| `step_08_vcf_preprocessing.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Real cluster/runtime deferred |
+| `step_09_cmh_editing_site_calling.slurm` | `SLURM-DELEGATE` | central SLURM and delegated shell suites | Real cluster/runtime deferred |
+| `template.slurm` | `SLURM-PROBE` | central SLURM suite | Mode-less probe; module-list stderr differs from delegated wrappers |
+| `tool_check.slurm` | `SLURM-PROBE` | central SLURM suite | Required and optional probes have distinct failure policies |
+| `validate_manifest.slurm` | `SLURM-PROBE` | central SLURM and manifest suites | Validation has no separate receipt |
+
+#### Make, validation, and operational surfaces
+
+| Surface | Profile | Trace | Exception or durable output |
+| --- | --- | --- | --- |
+| `test` | `MAKE-LOCAL` | literal Make golden; complete Python suite | Pytest capture is failure-visible, not a durable log |
+| `validation-shell-contracts` | `MAKE-INTERNAL` | literal Make golden; selected shell/Python owners | Under `all-checks`, follows `VALIDATION` retention |
+| `shell-test` | `MAKE-LOCAL` | literal Make golden; selected shell/Python owners | No direct durable log |
+| `real-r-test` | `MAKE-LOCAL` | literal Make golden; real-R runners | Ambient-runtime diagnostic, not guarded evidence |
+| `r-restore` | `MAKE-MUTATE` | literal Make golden; local-R shell suite | Explicit guarded library mutation |
+| `r-check` | `MAKE-LOCAL` | literal Make golden; local-R shell suite | No direct durable log |
+| `local-real-r-test` | `MAKE-LOCAL` | literal Make golden; guarded real-R runners | No direct durable log |
+| `quarto-restore` | `MAKE-MUTATE` | literal Make golden; Quarto-restore suite | Explicit tool restoration |
+| `report-test` | `MAKE-LOCAL` | literal Make golden; report suites | No direct durable log |
+| `validation-report-runtime` | `MAKE-OUTPUT` | literal Make golden; pinned runtime suites | Explicit JUnit XML, not complete console |
+| `demo-report` | `MAKE-OUTPUT` | literal Make golden; fixture/report/wrapper suites | Ignored synthetic bundle, not production evidence |
+| `python-coverage-measure` | `MAKE-OUTPUT` | literal Make golden; coverage tests | Coverage JSON/current snapshot |
+| `python-coverage-check` | `MAKE-LOCAL` | literal Make golden; coverage tests | Coverage work files persist until operator cleanup |
+| `python-coverage-baseline-update` | `MAKE-MUTATE` | literal Make golden; coverage tests | Explicit tracked baseline mutation |
+| `validation-python-coverage` | `MAKE-INTERNAL` | literal Make golden; coverage and orchestrator tests | Under `all-checks`, follows `VALIDATION` retention |
+| `validation-guarded-r` | `MAKE-INTERNAL` | literal Make golden; local-R and orchestrator tests | Under `all-checks`, follows `VALIDATION` retention |
+| `validation-static` | `MAKE-INTERNAL` | literal Make golden; manifest and orchestrator tests | Under `all-checks`, follows `VALIDATION` retention |
+| `validate` | `MAKE-LOCAL` | literal Make golden; manifest suite | No durable validation receipt |
+| `smoke` | `MAKE-LOCAL` | literal Make golden | Syntax output only on failure |
+| `lint` | `MAKE-LOCAL` | literal Make golden | Compile artifacts suppressed/ignored by policy |
+| `all-checks` | `VALIDATION` | literal Make golden; validation-orchestrator suite | Optional result JSON; per-lane failure/interruption retention described above |
+| `demo-step03-dry-run` | `MAKE-SUBMIT` | literal Make golden | Scheduler submission remains environment-deferred |
+| `demo-step03` | `MAKE-SUBMIT` | literal Make golden | Scheduler submission remains environment-deferred |
+| `tests/tools/run_validation.py` | `VALIDATION` | validation-orchestrator suite; `all-checks` consumer | Internal executable selected by Make, not a separate public workflow claim |
+| Inline documentation gate in `RUNBOOK.md` | `DOC-GATE` | repository documentation gate; no focused extracted owner | Embedded implementation remains pending `DOC-GATE-01` |
+| Direct shell/R test runners selected by Make | `MAKE-LOCAL` | their own assertions and Make target selection | Temporary child captures normally removed |
+| `tests/data_checks/check_fastq_pairs.sh` | `OP-FASTQ` | no direct automated regression or current runbook consumer found | Supported status requires later review if retained |
+| `tests/data_checks/validate_step05_outputs.sh` | `OP-STEP05` | recorded runbook inspection; no direct automated regression | Duplicate-`tee` and silent-replacement defects characterized |
+
+### Durable-copy and evidence-role boundary
+
+| Current durable surface | Completeness and role | Retention behavior |
+| --- | --- | --- |
+| `logs/%x-%j.out` and `logs/%x-%j.err` | Conditional scheduler-level copy of bytes reaching each wrapper's job streams; job-scoped, not application-attempt-scoped; actual capture is environment-deferred | Ignored by Git; repository defines no automatic deletion or retention policy |
+| STAR `Log.out`, `Log.progress.out`, and `Log.final.out` | Tool-native alignment diagnostics, not a wrapper/script console copy | Workflow output ownership; no automatic NORAD deletion |
+| Validation reports, QC, receipts, manifests, summaries, metrics, scientific-evidence records, and report bundles | Durable machine/evidence artifacts preserving declared facts and transaction markers, not complete diagnostic logs | Producer-specific no-clobber/publication/rollback rules; not governed as application logs |
+| Artifact roles `runtime_log` and `cluster_log` | Exact role, path, hash, and relationship fields are required evidence components for specific runtime/cluster claims; they are not synonymous with a future application log | Source preservation remains the operator or evidence owner's responsibility, with no automatic retention; merely creating an application log cannot satisfy or promote these roles |
+| System temporary-directory `norad-validation-<lane>-*.log` (the exact printed retained-log path is authoritative) | In default/serial quiet mode, complete merged output is retained per failed lane observed before cancellation and per running lane on interruption; failure replays content, interruption does not. Verbose mode creates no per-lane temporary log | Successful quiet-mode logs are deleted; retained logs require explicit operator preservation before platform cleanup or expiry |
+| Optional result JSON, JUnit XML, coverage JSON/snapshots, and Step 05 inspection TSV | Machine-readable result summaries, not complete console logs; Step 05 TSV is best-effort because of the duplicate-`tee` defect | Produced only at explicit paths; operator-owned retention, with no transactional guarantee for the Step 05 TSV |
+
+The following are candidates for LOG-02 and later implementation, not approved
+changes:
+
+- reduce repeated resolved paths, modes, commands, module lists, tool versions,
+  and publication plans across nested Make, SLURM, shell, Python, and R layers;
+- keep exact commands, run/attempt IDs, locks, hashes, input sets, publication
+  order, rollback/cleanup failures, failed evidence, and evidence-boundary text
+  in complete durable logs even if normal console output becomes concise;
+- provide run/attempt-scoped durable application logs for direct local
+  executable runs instead of relying on scheduler capture, output artifacts,
+  or failure-only validation logs;
+- separate the 13 validators' report TSV from human status text and keep child
+  stderr distinct during verbose validation without changing artifacts,
+  validation, exits, or transaction behavior;
+- define redaction and avoidance rules before exact commands or arbitrary child
+  output become durable application logs;
+- replace complete quiet-mode failed-lane replay with a concise actionable tail
+  only after the complete retained-log and recovery-path contract is defined;
+- add direct characterization for the two operational checks and extract a
+  focused documentation-gate owner if those surfaces remain supported.
+
 ### Validation-efficiency characterization
 
 Phase `01aa` left the reviewed baseline file and its non-regression policy

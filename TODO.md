@@ -9,28 +9,29 @@ checkout and exact resume point belong in
 
 ## Immediate
 
-1. Preserve the completed local-only Phase `01` characterization tranche.
+1. Preserve the completed and published Phase `01` characterization tranche.
    [`TEST-01C`](docs/tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
    through [`TEST-01Z`](docs/tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md)
-   are complete locally, and the row-by-row TEST-01Z decision is affirmative.
-   No `TEST-01G-*` or `TEST-01Z-R*` closure card was required.
-2. For a future separately approved task start, TEST-01Z fully releases
+   are complete, the row-by-row TEST-01Z decision is affirmative, and the
+   corrected tip passed adversarial review before publication.
+2. Preserve completed
+   [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md) as the
+   current-output characterization. It changes documentation only and fully
+   releases [`LOG-02`](docs/tasks/TODO/LOG-02-define-logging-contract.md) for a
+   separate task start; LOG-02 is not selected by LOG-01 completion.
+3. TEST-01Z also releases
    [`ARCH-02A`](docs/tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md),
    [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md),
-   [`LOG-01`](docs/tasks/TODO/LOG-01-characterize-current-output.md), and
    [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md).
-   This completed tranche does not select or begin any of them.
-3. TEST-01Z's side of `CODEDOC-05` and `SIZE-07` is satisfied, but those cards
+   None is selected merely by being eligible.
+4. TEST-01Z's side of `CODEDOC-05` and `SIZE-07` is satisfied, but those cards
    retain their other direct blockers and are not released by this decision
    alone.
 
-This tranche is local and unpushed. `CONCURRENCY-02`, `PROGRAM-01`, the paused
-concurrency attempts, the preserved researcher pilot, and Phase `02` remain
-untouched and are not sequencing blockers for these five selected cards.
-
-The five-card approval is exhausted at TEST-01Z. Selecting any later card starts
-read-only planning under the [`task-start router`](docs/operations/TASK_START.md)
-and requires a separate approved plan before implementation.
+Pause at the LOG-01 phase boundary for reassessment. Selecting any later card
+starts task-specific read-only planning under the
+[`task-start router`](docs/operations/TASK_START.md) and requires its own
+approved plan. Roadmap order is not blocker metadata.
 
 ## Recommended maintenance order
 
@@ -43,16 +44,18 @@ plan:
    [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
    and the completed 2026-07-31 strategy discussion as the basis for this
    card-bootstrap package.
-2. Establish the manual fragment contract through
+2. Preserve the completed `codex/strategy-task-cards` bootstrap; its future
+   cards remain subject to separate selection and planning.
+3. Establish the manual fragment contract through
    [`CONCURRENCY-02`](docs/tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md)
    in its own separately planned and approved package.
-3. Then establish rolling-wave planning and coordination cohorts through
+4. Then establish rolling-wave planning and coordination cohorts through
    [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
-4. Reassess rather than freezing the remaining order now. The current expected
+5. Reassess rather than freezing the remaining order now. The current expected
    candidates begin with extracting and behavior-locking the documentation
    validator through
    [`DOC-GATE-01`](docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md).
-5. After their recorded prerequisites are complete, add structural fragment
+6. After their recorded prerequisites are complete, add structural fragment
    enforcement through
    [`CONCURRENCY-03`](docs/tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md),
    implement proposal/review lifecycle states through
@@ -61,13 +64,13 @@ plan:
    [`TASK-EPIC-01`](docs/tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
    `CONCURRENCY-03` uses the synthetic `CONCURRENCY-02` exchange rather than
    requiring early pilot integration.
-6. Select the `PROGRAM-01`-generated pilot-integration card only after
+7. Select the `PROGRAM-01`-generated pilot-integration card only after
    `CONCURRENCY-02`, `PROGRAM-01`, `DOC-GATE-01`, `CONCURRENCY-03`, and
    `TASK-LIFECYCLE-01` are complete. `TASK-EPIC-01` is not a prerequisite
    unless later evidence establishes a genuine dependency.
-7. Correct live task-dependency semantics and validator enforcement through
+8. Correct live task-dependency semantics and validator enforcement through
    [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
-8. Put [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+9. Put [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
    first within the Phase `02` documentation family so it can produce the
    no-loss `AGENTS.md` slim-down and later consolidation cards.
 
@@ -78,7 +81,8 @@ plan:
   through [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md).
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
-  [`LOG-01`](docs/tasks/TODO/LOG-01-characterize-current-output.md) onward.
+  completed [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md)
+  followed by [`LOG-02`](docs/tasks/TODO/LOG-02-define-logging-contract.md).
 - Operating model and coordination:
   [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
   through

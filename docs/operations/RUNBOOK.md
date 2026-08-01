@@ -1626,10 +1626,17 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks
 ```
 
 The gate prints elapsed `PASS` lines and a final timing summary. Successful
-temporary logs are deleted. On the first failure it cancels and reaps the
-other lane process groups, retains and prints the failed lane's complete log,
-and returns that lane's status. `SIGINT` returns `130`, terminates descendants,
-and removes successful owned logs.
+temporary logs are deleted. If one polling batch observes one or more nonzero
+lanes, each failed lane in that completed batch receives a retained log and,
+in quiet mode, has its complete log replayed to stderr. The gate returns the
+first such lane's status, then cancels and reaps still-running lane process
+groups and removes their temporary logs. `SIGINT` returns `130`, terminates
+descendants, and retains every running lane's log with its path printed to
+stderr; interrupted logs are not replayed automatically.
+
+Those retention rules apply to default or serial quiet mode. `--verbose`
+streams each child's merged stdout/stderr live and creates no per-lane
+temporary log to retain on failure or interruption.
 
 Use the deterministic serial fallback to diagnose concurrency-specific
 behavior:
@@ -1661,8 +1668,8 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
 `VALIDATION_JOBS` and `VALIDATION_PYTHON_WORKERS` may override the measured
 defaults for an explicit characterization run. Each value must be between one
 and four. Use `--serial` for the supported fallback rather than maintaining a
-second command sequence. Do not discard a retained failed log until the
-failure is understood.
+second command sequence. Do not discard a retained failed or interrupted log
+until the applicable failure or interruption is understood.
 
 The guarded-R lane uses `make local-real-r-test`, which opts into the
 repository-local R library through the guarded environment below after

@@ -7,42 +7,40 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/refactor-01z-test-sufficiency-gate`
+  `codex/log-01-characterize-current-output-reconciliation`
 - Parent:
-  `codex/refactor-01f-independent-goldens`
+  `codex/refactor-01z-test-sufficiency-gate`
 - Verified parent HEAD:
-  `d02717b9e577a53edf53c147924e2aca467d9ed7`
+  `b2af7388efe426f413471f9f076d1b51a5a6428a`
 - Parent documentation commit:
-  `d02717b docs: complete TEST-01F characterization`
+  `b2af738 docs: make Phase 0 publication state durable`
 - Current implementation commit:
-  `fd98244 test: isolate Make oracle environment`, following corrections
-  `0c64d1a` and `44d3255`
+  not applicable; LOG-01 changes non-consuming Markdown only and inherits the
+  corrected Phase `0` executable state ending at `fd98244`
 - Current documentation commit:
-  `docs: close Phase 0 adversarial review` (the branch commit
+  `docs: reconcile current output and log inventory` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: the exact `TEST-01C`, `TEST-01D`, `TEST-01E`,
-  `TEST-01F`, and `TEST-01Z` local-only tranche is implemented; TEST-01Z is
-  affirmative with 88/88 rows closed, and the bounded Phase `0` correction
-  closes two later adversarial-review gaps and passed final independent review
-- Current package: literal Make-expansion and real-R argument-path contract
-  correction plus reconciled Phase `01` evidence
-- Package type: bounded test-only correction sequence with separate docpatches
+- Recorded package state: Phase `0` is corrected, adversarially reviewed,
+  published, and upstream-equal; LOG-01 is complete as a documentation-only
+  current-output characterization
+- Current package: normalized output/log profiles, per-surface traceability,
+  durable/evidence-log boundaries, and corrected failure-retention facts
+- Package type: one standalone documentation commit
 - Remote publication and upstream equality: resolve from live Git; cluster work
   remains paused
 
-This branch descends linearly from the clean, committed local `TEST-01F`
-predecessor under the explicitly approved local-only tranche exception.
-Final independent review returned `PUBLISHABLE` at exact corrected tip
-`fb21c9d`; live Git remains authoritative for publication and upstream
-equality. The package changes tests, literal test fixtures, and documentation
-only; it does not change any production job, CLI, workflow, Makefile, schema,
-dependency, resource, runtime, cluster, scientific, or biological behavior.
+This branch descends directly from the clean, pushed, upstream-equal Phase `0`
+tip `b2af738`. It manually reconciles useful inventory structure from the
+preserved, review-failed `4d01152` proposal without merging, rebasing, or
+cherry-picking that branch. The package changes documentation only; it does not
+change any production job, CLI, workflow, Makefile, schema, dependency,
+resource, test, runtime, cluster, scientific, or biological behavior.
 
 ## Active concurrent lanes
 
-This checkout is the sole local lane for the five-card characterization
-tranche. All paused concurrency attempts and the researcher pilot remain
-uninspected, unmodified, and unintegrated.
+This checkout is the serialized canonical lane for LOG-01 reconciliation.
+This package does not inspect, modify, or integrate unrelated candidate
+worktrees, paused concurrency attempts, or the researcher pilot.
 The user explicitly authorized that pilot before the fragment checkpoint was
 defined; preserve that historical fact without claiming retroactive protocol
 compliance.
@@ -165,6 +163,10 @@ The local descendant sequence has implemented:
 - explicit standalone documentation-package semantics: computational
   validation is not applicable when the complete diff has no executable or
   test-affecting consumer;
+- a normalized current-output inventory covering every public Python, shell,
+  R, SLURM, and Make surface plus validation, documentation-gate, operational-
+  check, durable-copy, and evidence-log roles; mixed streams and unsafe or
+  conditional durability remain labeled behavior rather than approved design;
 - an open-choice ledger and updated future Mermaid sources. Current executable
   topology, report behavior, logging behavior, numeric stage identifiers, and
   runtime/scientific evidence remain unchanged.
@@ -215,6 +217,7 @@ The local descendant sequence has implemented:
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
 | Phase `01f` independent contract goldens | implementation `dcb5dd4` plus targeted correction `1986898` add a compact producer-independent fixture family and 22 focused tests for five public schemas, six ordered headers, canonical UTF-8 JSON/TSV and report-receipt bytes, status/evidence transitions, and shared science-policy projection; deliberate schema, header, status, serializer, decision-dimension, and computational-scope mutations fail; the final complete local gate passed every static, shell, checked Python coverage, guarded-R, and pinned report-runtime lane in 180.219 seconds; production behavior and evidence state were unchanged |
 | Phase `01z` behavior sufficiency | 88/88 public-entry-point, cross-cutting, and fixture rows have explicit preserved-contract, characterized-defect, or environment-deferred dispositions with zero undefined rows; the checked Python refresh passed with 843 tests, 17 expected skips, 8,585/10,551 lines (81.3667%), and 3,111/4,404 branches (70.6403%); a later Phase `0` adversarial review found unprotected Make-expansion and R-argument claims, `0c64d1a` closed both, `44d3255` closed bare-Make portability, and `fd98244` closed ambient Make-state contamination; the final focused and complete gates plus exact-tip independent review pass, while the affirmative result still releases only four named Phase `02` planning roots and changes no production or evidence state |
+| Phase `02` LOG-01 current-output characterization | every current public/runtime and validation surface maps to an explicit output profile and regression/consumer trace in [`TEST_BASELINE.md`](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory); validator mixed stdout, conditional SLURM capture, per-lane validation retention, Step `05` duplicate-tee publication, exposure limits, and application/evidence-log separation are characterized without changing executable behavior or evidence state |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
@@ -344,61 +347,32 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-`TEST-01Z` remains an affirmative local decision with all 88 source rows closed
-and zero `undefined — decision required` outcomes. A later Phase `0`
-adversarial review invalidated two protection claims that the first review had
-not caught, so publication stopped for a bounded correction rather than
-treating the earlier verdict as final. No closure card was created.
+Phase `0` is corrected, adversarially reviewed, published, and upstream-equal
+at `b2af738`. Its affirmative behavior-sufficiency decision remains bounded to
+local architecture planning and does not promote runtime, cluster, scientific,
+or biological evidence.
 
-The TEST-01Z checked Python refresh passed with 843 tests and 17 expected
-conditional skips, measuring 26 production modules at 8,585/10,551 lines
-(81.3667%) and 3,111/4,404 branches (70.6403%). It did not rewrite the tracked
-baseline. TEST-01F's unchanged final executable state already passed the full
-static, shell, Python, guarded-R, and pinned report-runtime gate in 180.219
-seconds, so TEST-01Z did not duplicate those computational lanes.
+LOG-01 is complete as a documentation-only characterization. The
+[`current output and log inventory`](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory)
+maps every current command and validation surface to normalized stream,
+audience, stability, consumer/test, durability, recovery, and exposure
+semantics. It records mixed validator stdout, conditional scheduler capture,
+per-lane quiet-validation retention, verbose streaming without retained lane
+logs, the Step `05` operational check's duplicate-
+`tee` defect, and the distinction between future application logs and current
+runtime/cluster evidence roles. External consumers remain uninspected.
 
-Correction `0c64d1a` adds a committed literal default-context dry-expansion
-oracle for every public Make target, proves that a recipe mutation fails, and
-executes both environment-management R utilities on their real `--help` and
-arbitrary-argument rejection paths without invoking no-argument restore. The
-first final review blocked on a reproducible bare-`make` identity; follow-up
-`44d3255` removes caller recursion state and explicitly protects bare and
-absolute `make` and `gmake` forms. A second review exposed ambient `MAKEFILES`
-contamination; `fd98244` bounds the expansion process environment and adds a
-hostile-state regression. The corrected public-contract file passed 111 cases,
-the guarded local-R contract passed, and the reopened complete gate passed
-every lane in 207.451 seconds.
+The complete diff is non-consuming Markdown only, so computational validation
+is not applicable. `git diff --check` passed, and the documentation gate passed
+with 78 Markdown documents, 55 task cards, and 6 Mermaid sources.
 
-The first correction gate stopped because the sibling's ignored R library was
-incomplete. A later run exposed and corrected inherited Make-variable
-contamination in the new oracle. The passing gates used a temporary ignored
-`.venv` symlink and explicit `RENV_PATHS_LIBRARY` reference to the established
-primary environments; the symlink was removed, and no package was installed,
-restored, or updated. Preserve the sibling's pre-existing ignored R cache
-material unless an operator separately directs cleanup.
+The sibling worktree retains pre-existing ignored R cache material from an
+earlier failed activation. Do not delete or repair it without separate operator
+direction. No dependency was installed, restored, or updated for LOG-01.
 
-Final independent review at `fb21c9d` reproduced both prior Make blockers,
-passed the 30-case Make-focused slice and guarded real-R contract, and returned
-`PUBLISHABLE` with a clean unchanged worktree. Live Git must prove non-force
-publication and exact upstream equality before the next phase begins; then stop
-for reassessment. The affirmative decision releases `ARCH-02A`, `RPT-01`,
-`LOG-01`, and `DOC-IA-01` only for later, separately approved task starts.
-TEST-01Z's partial dependencies for `CODEDOC-05` and `SIZE-07` are satisfied,
-but their other blockers remain. No Phase `02` card has been selected or
-started. Resolve publication and upstream equality from live Git before
-beginning the next phase.
-
-Do not inspect or execute `CONCURRENCY-02`, `PROGRAM-01`, paused concurrency
-attempts, the researcher pilot, any `TEST-01G`–`TEST-01Y` work, or Phase `02`.
-Their roadmap positions are not technological blockers for the explicitly
-approved five-card tranche.
-
-The one-time Phase `00` dependency exception and this five-card authorization
-are exhausted. They do not authorize future changes outside the normal
-development gate. Do not change production structure before all three Phase
-`02` reviews and an approved migration package. Do not begin production,
-cluster, scientific-policy, or biological-interpretation work.
-
-The authoritative continuation sequence is in
-[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); detailed future
-scope and dependencies are in [`../tasks/`](../tasks/).
+After the documentation gate, exact-tip adversarial review, non-force push,
+and upstream-equality proof, stop for reassessment. LOG-02 is technologically
+unblocked but unselected; ARCH-02A, RPT-01, and DOC-IA-01 also remain eligible
+and unselected. Do not begin executable logging changes, another task card,
+remote/cluster work, scientific-policy work, or biological interpretation as
+part of this phase.

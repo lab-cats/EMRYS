@@ -21,7 +21,7 @@ print suppression.
 
 ## Blocked by
 
-- [LOG-01](../TODO/LOG-01-characterize-current-output.md) — Required: current output and consumers must be fully mapped.
+- [LOG-01](../COMPLETED/LOG-01-characterize-current-output.md) — Required: current output and consumers must be fully mapped.
 
 ## Completion unblocks
 

@@ -1121,26 +1121,32 @@ before retrying.
 ### Symptom
 
 A failure-first local gate prints only a `PASS` line for each successful
-component, appears quiet while a long component is running, or prints `FAIL`
-with a retained temporary-log path and the failed output.
+component, appears quiet while a long component is running, prints one or more
+`FAIL` records with retained temporary-log paths and failed output, or prints
+`INTERRUPTED` records with retained-log paths but no automatic replay.
 
 ### Cause
 
-Pytest captures test output by default, Make command echo is suppressed, and
-the validation orchestrator redirects each shell, R, coverage, or report lane
-to its own temporary log. This is intentional output control, not evidence
-that the lane was skipped. The gate prints elapsed `PASS` lines and a final
-timing summary when lanes finish.
+Pytest captures test output by default, Make command echo is suppressed, and,
+in default or serial quiet mode, the validation orchestrator redirects each
+shell, R, coverage, or report lane to its own temporary log. This is
+intentional output control, not evidence that the lane was skipped. The gate
+prints elapsed `PASS` lines and a final timing summary when lanes finish.
 
 ### Fix
 
-Use the retained failed log and the complete output already printed by the
-orchestrator. Re-run the gate with `--verbose` or use the serial fallback when
-additional live detail is required. The first failure cancels and reaps other
-lane process groups; an interruption returns `130` and performs the same
-descendant cleanup. Do not rerun every successful component merely to obtain
-progress narration, and do not delete a failed log before diagnosing the
-result.
+For a failure, use every retained failed-lane log and the complete output
+already replayed by the orchestrator. Multiple lanes completed in the same
+polling batch can fail and be retained before the first failure triggers
+cancellation of still-running lanes. For an interruption, inspect each
+retained running-lane log at its printed path; those logs are retained but not
+replayed. Re-run the gate with `--verbose` or use the serial fallback when
+additional live detail is required. Verbose mode streams merged child output
+and does not create per-lane temporary logs to retain. The gate returns the
+first observed failure status, while an interruption returns `130`; both paths
+terminate and reap remaining descendants. Do not rerun every successful
+component merely to obtain progress narration, and do not delete retained
+evidence before the failure or interruption is understood.
 
 The quiet and verbose invocations are owned by the local-validation section of
 the runbook. The measured bounded default and serial fallback exercise the same

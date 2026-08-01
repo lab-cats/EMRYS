@@ -928,12 +928,14 @@ Rationale: deleting diagnostic detail would harm maintainability; printing all
 detail by default harms usability and context efficiency. Two explicit sinks
 serve both audiences and protect automation.
 
-Consequences: exact level names/flags, durable layout/retention, and failure-tail
-behavior remain open in
-[`LOG-01`](../tasks/TODO/LOG-01-characterize-current-output.md) and
-[`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md). Foundation, local
-adoption, and default activation remain separate. Current print behavior stays
-documented until implemented.
+Consequences: current output, consumer, durability, recovery, and exposure
+behavior is characterized by completed
+[`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md). Exact level
+names and controls, durable layout and retention, and failure-tail behavior
+remain open in [`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md).
+Foundation, local adoption, and default activation remain separate. Current
+print behavior stays unchanged until those later packages are approved and
+implemented.
 
 ### Treat documentation and maintainer context as architecture
 
