@@ -63,6 +63,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
 - Historical Step `09`, analysis operation `rank_cohort_candidates_with_paired_CMH`:
   [`CONTRACT.md`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md)
+- Historical Step `09c`, evidence operation `assemble_scientific_review_evidence_package`:
+  [`CONTRACT.md`](../../src/norad/evidence/assemble_scientific_review_evidence_package/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 

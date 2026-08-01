@@ -70,6 +70,11 @@
   [`CONTRACT.md`](../../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md),
   preserving explicit replicate pairing, paired CMH/BH policy, the six-output
   transaction, and the boundary between ranked candidates and review.
+- Slice 14 records historical Step `09c` as evidence operation
+  `assemble_scientific_review_evidence_package` in its colocated
+  [`CONTRACT.md`](../../../src/norad/evidence/assemble_scientific_review_evidence_package/CONTRACT.md),
+  preserving explicit review evidence, lawful provisional state transitions,
+  the 13-table transaction, and the reporting handoff.
 
 ## Objective
 
