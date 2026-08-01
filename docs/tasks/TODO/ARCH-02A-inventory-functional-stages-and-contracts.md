@@ -29,6 +29,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/construct_canonical_BAM/CONTRACT.md).
   It records the canonical pair's fan-out and rollback contract while exposing
   producer/validator asymmetry and shared BAM-helper ownership.
+- Slice 6 classifies historical Step `02b` as the evidence operation
+  `collect_canonical_BAM_QC_evidence` in its colocated
+  [`CONTRACT.md`](../../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md).
+  It preserves the native evidence and failure semantics without treating QC
+  text as a computational prerequisite or a peer transformation stage.
 
 ## Objective
 

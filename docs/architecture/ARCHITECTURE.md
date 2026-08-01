@@ -35,7 +35,7 @@ paired FASTQ + sample manifest
 SLURM wrappers remain thin. Analysis and validation logic lives in
 parameterized scripts. The login node is not a compute engine.
 
-### Incremental stage-contract index
+### Incremental functional-owner contract index
 
 - Historical Step `00a`, working name `construct_STAR_index`:
   [`CONTRACT.md`](../../src/norad/stages/construct_STAR_index/CONTRACT.md)
@@ -47,6 +47,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md)
 - Historical Step `02`, working name `construct_canonical_BAM`:
   [`CONTRACT.md`](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md)
+- Historical Step `02b`, evidence operation `collect_canonical_BAM_QC_evidence`:
+  [`CONTRACT.md`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 
