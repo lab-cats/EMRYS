@@ -147,7 +147,8 @@
     "\t\t--output \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
-    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\""
+    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" \\",
+    "\t\t--new-shared-module scripts/git_orchestration/_common.py"
   ],
   "python-coverage-measure": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",
@@ -241,6 +242,7 @@
   ],
   "smoke": [
     "bash -n scripts/*.sh",
+    "bash -n scripts/git_orchestration/*.sh",
     "bash -n jobs/*.slurm"
   ],
   "test": [
@@ -287,7 +289,8 @@
     "\t\t--output \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
-    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\""
+    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" \\",
+    "\t\t--new-shared-module scripts/git_orchestration/_common.py"
   ],
   "validation-report-runtime": [
     "test -n \"\" || { \\",
@@ -326,6 +329,7 @@
   "validation-static": [
     "git diff --check",
     "bash -n scripts/*.sh",
+    "bash -n scripts/git_orchestration/*.sh",
     "bash -n jobs/*.slurm",
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts tests",

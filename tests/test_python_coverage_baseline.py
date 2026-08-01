@@ -173,6 +173,25 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
     with pytest.raises(TOOL.SnapshotError, match="below 90%"):
         TOOL.compare_snapshots(baseline, current, ["scripts/shared.py"])
 
+    current["files"][shared_index] = TOOL.measured_file(
+        "scripts/shared.py", summary((95, 100), (16, 20))
+    )
+    aggregate = {
+        field: sum(item[field] for item in current["files"])
+        for field in TOOL.COUNT_FIELDS
+    }
+    current["totals"] = {
+        **aggregate,
+        "line_rate": TOOL.rate_text(
+            aggregate["covered_lines"], aggregate["num_statements"]
+        ),
+        "branch_rate": TOOL.rate_text(
+            aggregate["covered_branches"], aggregate["num_branches"]
+        ),
+    }
+    with pytest.raises(TOOL.SnapshotError, match="below 85%"):
+        TOOL.compare_snapshots(baseline, current, ["scripts/shared.py"])
+
 
 def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
@@ -190,6 +209,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert "python-coverage-measure:" in makefile
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile
+    assert "--new-shared-module scripts/git_orchestration/_common.py" in makefile
 
 
 def test_cli_help_build_and_check_interfaces(tmp_path: Path) -> None:

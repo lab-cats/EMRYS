@@ -226,7 +226,8 @@ python-coverage-measure:
 python-coverage-check: python-coverage-measure
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
-		--current "$(PYTHON_COVERAGE_CURRENT)"
+		--current "$(PYTHON_COVERAGE_CURRENT)" \
+		--new-shared-module scripts/git_orchestration/_common.py
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
@@ -240,6 +241,7 @@ validation-guarded-r:
 validation-static:
 	git diff --check
 	bash -n scripts/*.sh
+	bash -n scripts/git_orchestration/*.sh
 	bash -n jobs/*.slurm
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts tests
@@ -251,6 +253,7 @@ validate:
 
 smoke:
 	bash -n scripts/*.sh
+	bash -n scripts/git_orchestration/*.sh
 	bash -n jobs/*.slurm
 
 lint:
