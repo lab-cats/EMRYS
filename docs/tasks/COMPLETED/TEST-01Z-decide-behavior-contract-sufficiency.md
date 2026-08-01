@@ -101,9 +101,12 @@ Completed locally on 2026-07-31 on
   R-argument protections were not independently exercised, so the branch was
   held from publication rather than treating that first verdict as final.
 - Test-only correction `0c64d1a` adds the missing literal Make oracle and real
-  R rejection-path execution. Its focused tests and the complete local gate
-  pass; the affirmative decision is unchanged, but final Phase `0`
-  reconciliation still requires adversarial acceptance of the corrected tip.
+  R rejection-path execution. The first final review then blocked on bare
+  recursive-Make portability; follow-up `44d3255` explicitly protects bare
+  and absolute `make` and `gmake` identities. The focused tests and reopened
+  complete local gate pass; the affirmative decision is unchanged, but final
+  Phase `0` reconciliation still requires adversarial acceptance of the exact
+  corrected tip.
 - The decision is affirmative only for separate task selection of `ARCH-02A`,
   `RPT-01`, `LOG-01`, and `DOC-IA-01`. TEST-01Z's partial dependency is
   satisfied for `CODEDOC-05` and `SIZE-07`, whose other blockers remain.

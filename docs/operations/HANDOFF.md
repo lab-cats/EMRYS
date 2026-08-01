@@ -15,9 +15,10 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Parent documentation commit:
   `d02717b docs: complete TEST-01F characterization`
 - Current implementation commit:
+  `44d3255 test: make Make oracle identity-portable`, following
   `0c64d1a test: close Phase 01 public contract gaps`
 - Current documentation commit:
-  `docs: reconcile corrected Phase 01 evidence` (the branch commit
+  `docs: record portable Phase 01 correction` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
 - Recorded package state: the exact `TEST-01C`, `TEST-01D`, `TEST-01E`,
   `TEST-01F`, and `TEST-01Z` local-only tranche is implemented; TEST-01Z is
@@ -212,7 +213,7 @@ The local descendant sequence has implemented:
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
 | Phase `01f` independent contract goldens | implementation `dcb5dd4` plus targeted correction `1986898` add a compact producer-independent fixture family and 22 focused tests for five public schemas, six ordered headers, canonical UTF-8 JSON/TSV and report-receipt bytes, status/evidence transitions, and shared science-policy projection; deliberate schema, header, status, serializer, decision-dimension, and computational-scope mutations fail; the final complete local gate passed every static, shell, checked Python coverage, guarded-R, and pinned report-runtime lane in 180.219 seconds; production behavior and evidence state were unchanged |
-| Phase `01z` behavior sufficiency | 88/88 public-entry-point, cross-cutting, and fixture rows have explicit preserved-contract, characterized-defect, or environment-deferred dispositions with zero undefined rows; the checked Python refresh passed with 843 tests, 17 expected skips, 8,585/10,551 lines (81.3667%), and 3,111/4,404 branches (70.6403%); a later Phase `0` adversarial review found unprotected Make-expansion and R-argument claims, and test-only correction `0c64d1a` closes both with focused and complete-gate passes; the affirmative result still releases only four named Phase `02` planning roots, creates no closure card, and changes no production or evidence state |
+| Phase `01z` behavior sufficiency | 88/88 public-entry-point, cross-cutting, and fixture rows have explicit preserved-contract, characterized-defect, or environment-deferred dispositions with zero undefined rows; the checked Python refresh passed with 843 tests, 17 expected skips, 8,585/10,551 lines (81.3667%), and 3,111/4,404 branches (70.6403%); a later Phase `0` adversarial review found unprotected Make-expansion and R-argument claims, correction `0c64d1a` closed both, and follow-up `44d3255` closed the first final review's bare-Make portability blocker; the final focused and complete gates pass, while the affirmative result still releases only four named Phase `02` planning roots and changes no production or evidence state |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
@@ -359,12 +360,15 @@ Correction `0c64d1a` adds a committed literal default-context dry-expansion
 oracle for every public Make target, proves that a recipe mutation fails, and
 executes both environment-management R utilities on their real `--help` and
 arbitrary-argument rejection paths without invoking no-argument restore. The
-corrected public-contract file passed 106 cases, the guarded local-R contract
-passed, and the final complete gate passed every lane in 227.142 seconds.
+first final review blocked on a reproducible bare-`make` identity; follow-up
+`44d3255` removes caller recursion state and explicitly protects bare and
+absolute `make` and `gmake` forms. The corrected public-contract file passed
+110 cases, the guarded local-R contract passed, and the reopened complete gate
+passed every lane in 165.119 seconds.
 
 The first correction gate stopped because the sibling's ignored R library was
-incomplete. A later run exposed and then corrected inherited Make-variable
-contamination in the new oracle. The passing gate used a temporary ignored
+incomplete. A later run exposed and corrected inherited Make-variable
+contamination in the new oracle. The passing gates used a temporary ignored
 `.venv` symlink and explicit `RENV_PATHS_LIBRARY` reference to the established
 primary environments; the symlink was removed, and no package was installed,
 restored, or updated. Preserve the sibling's pre-existing ignored R cache

@@ -452,9 +452,12 @@ committed 23-target dry-expansion fixture, rejects a deliberate recipe
 mutation, and directly executes `check_r_environment.R` and
 `restore_r_environment.R` with both `--help` and an arbitrary positional
 argument from an empty working directory. It never invokes no-argument restore
-behavior. The corrected 106-case public-contract file and guarded local-R
-contract passed, followed by the complete local gate in 227.142 seconds. No
-production or public behavior changed.
+behavior. The first final review reproduced a bare-`make` portability gap;
+follow-up `44d3255` removes caller recursion state and adds literal bare and
+absolute `make` and `gmake` normalization cases. The corrected 110-case
+public-contract file and guarded local-R contract passed, followed by the
+reopened complete local gate in 165.119 seconds. No production or public
+behavior changed.
 
 ### Completed `TG-05` characterization
 
@@ -692,10 +695,12 @@ Independent evidence keys used below are:
 - The initial post-TEST-01F reviewer found no repair. A later Phase `0`
   adversarial review identified two false protection claims and stopped
   publication. Correction `0c64d1a` closes both with a literal Make oracle and
-  direct real-R rejection-path execution; its focused tests and complete local
-  gate pass. Final Phase `0` publication remains contingent on adversarial
-  acceptance of the corrected tip. The checked coverage refresh has no line or
-  branch regression.
+  direct real-R rejection-path execution; after the first final review exposed
+  a bare-`make` portability defect, `44d3255` added explicit portable recursive
+  identities. The focused tests and reopened complete local gate pass. Final
+  Phase `0` publication remains contingent on adversarial acceptance of the
+  exact corrected tip. The checked coverage refresh has no line or branch
+  regression.
 
 The TEST-01Z decision is **affirmative for the named Phase `02` planning roots
 only**. It releases `ARCH-02A`, `RPT-01`, `LOG-01`, and `DOC-IA-01` for their
