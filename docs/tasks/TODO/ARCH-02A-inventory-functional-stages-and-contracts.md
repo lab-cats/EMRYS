@@ -135,7 +135,9 @@ designed safely from filenames alone.
 
 ## Deliverables
 
-- A source-backed stage/domain inventory with unresolved ambiguities called out.
+- A source-backed
+  [stage/domain inventory](../../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+  with unresolved ambiguities called out.
 - Direct links from each row to implementation and protected tests.
 
 ## Acceptance evidence

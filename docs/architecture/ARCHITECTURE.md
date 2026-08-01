@@ -37,6 +37,9 @@ parameterized scripts. The login node is not a compute engine.
 
 ### Incremental functional-owner contract index
 
+The exact public-entrypoint and cross-cutting-domain coverage roster is
+[`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md).
+
 - Historical Step `00a`, working name `construct_STAR_index`:
   [`CONTRACT.md`](../../src/norad/stages/construct_STAR_index/CONTRACT.md)
 - Historical Step `00b`, working name `convert_GTF_to_BED12`:
