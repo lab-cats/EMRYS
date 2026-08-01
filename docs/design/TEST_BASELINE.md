@@ -701,9 +701,9 @@ Independent evidence keys used below are:
   identities. A second review exposed ambient `MAKEFILES` contamination;
   `fd98244` isolates the default-context expansion and adds a hostile-state
   regression. The focused tests and reopened complete local gate pass. Final
-  Phase `0` publication remains contingent on adversarial acceptance of the
-  exact corrected tip. The checked coverage refresh has no line or branch
-  regression.
+  independent review at `fb21c9d` reproduced both prior blockers, passed the
+  30-case Make-focused slice and guarded real-R contract, and returned
+  `PUBLISHABLE`. The checked coverage refresh has no line or branch regression.
 
 The TEST-01Z decision is **affirmative for the named Phase `02` planning roots
 only**. It releases `ARCH-02A`, `RPT-01`, `LOG-01`, and `DOC-IA-01` for their

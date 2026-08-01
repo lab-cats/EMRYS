@@ -116,9 +116,13 @@ Completed locally on 2026-07-31 on
 - The focused 116-test Python set, guarded local-R shell contract, and Step
   `08`/`09` real-R fixtures passed. The complete local gate passed every lane
   in 164.719 seconds.
-- After the complete correction sequence, the 111-case public-contract file and guarded
-  local-R shell contract passed. The complete static, shell, checked Python,
-  guarded-R, and pinned report-runtime gate then passed in 207.451 seconds.
+- After the complete correction sequence, the 111-case public-contract file
+  and guarded local-R shell contract passed. The complete static, shell,
+  checked Python, guarded-R, and pinned report-runtime gate then passed in
+  207.451 seconds.
+- Final independent review at `fb21c9d` reproduced both prior Make blockers,
+  passed the 30-case Make-focused slice and guarded real-R contract, and
+  returned `PUBLISHABLE` with a clean unchanged worktree.
 - No production, schema, workflow, Makefile, dependency, scientific, runtime,
   cluster, or biological behavior changed. The correction changes tests and
   literal test fixtures only.
