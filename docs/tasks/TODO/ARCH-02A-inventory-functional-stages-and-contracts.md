@@ -8,6 +8,12 @@
   The slice inventories current behavior and the shared-validator ownership
   leak without moving code or settling later naming, topology, extraction, or
   migration decisions.
+- Slice 2 records historical Step `00b` under the working name
+  `convert_GTF_to_BED12` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md)
+  and makes hard, operational, downstream, and parallel execution edges
+  explicit in both recorded stage contracts. It does not convert historical
+  numbering into orchestration or settle the future DAG.
 
 ## Objective
 

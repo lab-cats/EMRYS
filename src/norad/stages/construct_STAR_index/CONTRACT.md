@@ -18,6 +18,23 @@ The current job also decompresses the delivered FASTA and GTF into a shared
 working-reference directory. Whether reference materialization belongs inside
 this stage or a separate reference-preparation owner is unresolved.
 
+## Execution dependencies
+
+The hard data prerequisites are the delivered compressed FASTA and GTF. This
+stage does not consume BED12, FASTA sidecars, reads, or outputs from another
+computational stage.
+
+Under the current default paths, this job also materializes the uncompressed
+FASTA and GTF subsequently consumed by historical Steps `00b` and `00c`.
+Those two stages may run in parallel after materialization. STAR alignment may
+run after the STAR index is complete and receives the index through its
+explicit input.
+
+If reference materialization becomes a separate owner, STAR-index, BED12, and
+FASTA-sidecar construction can branch from that shared prerequisite. Historical
+numeric order records provenance; the data dependencies above define required
+execution.
+
 ## Inputs
 
 The functional inputs are:
