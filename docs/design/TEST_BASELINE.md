@@ -118,8 +118,8 @@ deliberately delegates dependency selection to the caller's environment.
 
 | Public entry point | Direct regression owner | Covered cases | Independence | Status / remaining gap |
 | --- | --- | --- | --- | --- |
-| `build_artifact_index.py` | `tests/test_artifact_adapters.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent contract mutation remains under `TG-06` |
-| `build_run_summary.py` | `tests/test_artifact_run_summary.py` | `H D E M F N L B S I U P T V X` | mixed | adequate; independent serialized goldens remain under `TG-06` |
+| `build_artifact_index.py` | `tests/test_artifact_adapters.py`; `tests/test_independent_contract_goldens.py` | `H D E M F N L B S I U P T V X` | mixed plus independent characterization | adequate; `TG-06` adds independent ordered headers, canonical JSON bytes, and named mutations |
+| `build_run_summary.py` | `tests/test_artifact_run_summary.py`; `tests/test_independent_contract_goldens.py` | `H D E M F N L B S I U P T V X` | mixed plus independent characterization | adequate; `TG-06` adds independent ordered headers, serialized bytes, and shared-policy transitions |
 | `gtf_to_bed12.py` | `tests/test_gtf_to_bed12.py` | `H E M F N U T X W` | independent | `TG-04` complete; arbitrary-CWD output is exact and the existing output is silently replaced as a characterized defect |
 | `reference_provenance.py` | `tests/test_reference_provenance.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` and `TG-04` characterization complete; incomplete-rollback recovery remains a labeled production gap |
 | `render_run_report.py` | `tests/test_report_html_v1.py`; `tests/test_report_exports_v1.py` | `H D E M F T V X` | mixed | `TG-04` complete; existing renderer cases remain the output contract |
@@ -128,7 +128,7 @@ deliberately delegates dependency selection to the caller's environment.
 | `runtime_preflight.py` | `tests/test_runtime_preflight.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; lock-fsync, lock-cleanup, and incomplete-rollback recovery remain labeled production gaps; CSU execution deferred |
 | `step_09c_scientific_validation.py` | `tests/test_step_09c_scientific_validation.py`; `tests/shell/test_step_09c_scientific_validation.sh` | `H D E M F N L B S I U P T V X W` | mixed | adequate for local synthetic contracts; production science review deferred |
 | `storage_inventory.py` | `tests/test_storage_inventory.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CSU storage execution deferred |
-| `validate_artifact_contracts.py` | `tests/test_artifact_schema_contracts.py` | `H M F U P T V X` | mixed | adequate; independent schema/golden mutation remains under `TG-06` |
+| `validate_artifact_contracts.py` | `tests/test_artifact_schema_contracts.py`; `tests/test_independent_contract_goldens.py` | `H M F U P T V X` | mixed plus independent characterization | adequate; `TG-06` adds representative literal schema-path and mutation oracles |
 | `validate_manifest.py` | `tests/test_validate_manifest.py` | `H M F P T X` | independent | adequate |
 | `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
 | `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
@@ -141,7 +141,7 @@ deliberately delegates dependency selection to the caller's environment.
 | `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
 | `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps |
 | `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` through `TG-04` complete with labeled production gaps; real bcftools remains deferred |
-| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | mixed | `TG-02` through `TG-04` complete with labeled production gaps; `TG-06` remains |
+| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py`; `tests/test_independent_contract_goldens.py` | `D E M F N L B S I P T X R` | mixed plus independent characterization | `TG-02` through `TG-04` and representative `TG-06` contracts complete with labeled production gaps |
 | `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` through `TG-04` complete; compatible validator/recovery corrections remain separately reviewed |
 
 The per-step validator rows intentionally distinguish malformed inputs, which
@@ -263,30 +263,30 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | Native output transactions | Step `02`, `05`–`09`, Step `09c`, adapters, summaries, report bundle rollback suites, and Phase `01b` publisher fault injection | mixed | `TG-02` characterization complete; preserve labeled production gaps for reviewed correction |
 | Seven-column validation report schema | every `tests/test_validate_step_*` module plus adapter propagation fixtures | mixed | preserve |
 | Exact per-step check rosters | test-only literal ordered rosters, all 13 live producer-output suites, shared report-consumer mutations, and artifact-adapter mutations | independent characterization | `TG-03` complete; preserve the characterized order-insensitive shared validator and wrong-unique/reordering adapter defects for separate correction review |
-| Public JSON Schemas and table headers | schema-contract suite, artifact/run-summary suites, Step `09c`, per-step validators | mixed | freeze independent representative goldens in `TG-06` |
-| Status vocabularies and state transitions | schema, adapter, Step `09c`, summary, and report negative cases | mixed | add production-constant mutation cases in `TG-06` |
-| Deterministic JSON/TSV/QC/report bytes and ordering | retry/fixed-time tests, explicit ordered inventories, renderer comparisons | mixed | preserve; add small independent serialized goldens in `TG-06` |
+| Public JSON Schemas and table headers | schema-contract suite, artifact/run-summary suites, Step `09c`, per-step validators, and literal path/header oracles in `tests/fixtures/independent_contract_goldens/` | independent characterization plus integrated coverage | `TG-06` complete for representative critical schemas and exact ordered headers; preserve the broader integrated suites |
+| Status vocabularies and state transitions | schema, adapter, Step `09c`, summary, report negative cases, and independent named-constant/transition mutations | independent characterization plus integrated coverage | `TG-06` complete for critical public states, Step `09c` aggregation, and shared science-policy projection |
+| Deterministic JSON/TSV/QC/report bytes and ordering | retry/fixed-time tests, explicit ordered inventories, renderer comparisons, and exact independent canonical JSON, UTF-8 TSV, and report-receipt bytes | independent characterization plus integrated coverage | `TG-06` complete for bounded critical bytes; retain broad producer-integrated transaction fixtures |
 | Locks, signals, rollback, cleanup, and recovery evidence | later shell workflows, artifact/summary/report transactions, Step `09c`, and shared/ancillary publisher fault injection | mixed | `TG-02` characterization complete; do not universalize action-local mechanisms or mistake a characterized gap for a safe contract |
 | Stable hashes and input mutation | Step `07`–`09`, Step `09c`, artifact/summary/report, provenance/preflight/storage, and shared-validator snapshot suites | mixed | `TG-02` characterization complete; digest-backed shared snapshots remain a reviewed production correction |
 | Unrelated-file immunity | central public-CLI help/failure matrix, `gtf_to_bed12.py`, Step `07`–`09`, Step `09c`, adapter/summary/report suites | independent/mixed | `TG-04` applicable CLI omissions complete; preserve deeper transaction suites |
 | Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance, and shared-validator publication suites | independent | `TG-02` characterization complete; preserve |
-| Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports | mixed | preserve; mutation-resistant vocabulary cases in `TG-06` |
+| Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports, literal banner/status oracles, and shared computational-scope mappings | independent characterization plus integrated coverage | `TG-06` complete; reserved readiness remains excluded and no evidence state is promoted |
 | Direct execution, arbitrary CWD, and SLURM delegation | exact public script/job modes, arbitrary-CWD CLI matrix, exact mocked submit-CWD/delegation matrix, and existing workflow suites | independent | `TG-04` and local `TG-05` characterization complete; real scheduler/module/runtime evidence remains environment-deferred |
 | Step `09` CMH statistic, p-value, odds ratio, and estimability | independent Python oracle, fixed corpus, direct committed-R comparison, and coordinated-corruption rejection; production validator still checks type/range and BH from reported p-values | independent characterization plus producer-coupled validator | `TG-01` characterization complete; compatible production-validator correction remains separately reviewed |
-| `_run_summary_science.py` policy projection | artifact, summary, Step `09c`, and report suites | producer-coupled/mixed | independent state-transition goldens in `TG-06` |
+| `_run_summary_science.py` policy projection | artifact, summary, Step `09c`, report suites, and independent recorded/pending/absent decision, limitation, and computational-status transitions | independent characterization plus integrated coverage | `TG-06` complete; preserve exact provisional evidence language |
 
 ## Golden-output and fixture independence
 
 | Fixture/output family | Classification | Evidence and required action |
 | --- | --- | --- |
-| `tests/fixtures/artifact_schema_v1/valid/*.json` | mixed | fixed documents provide useful independent bytes, but validation uses the production schemas; add mutation tests for critical enums, required fields, and state transitions in `TG-06` |
-| `tests/fixtures/artifact_adapters_v1/build_fixture.py` | producer-coupled | imports production adapter code and builds broad integrated transactions; retain end-to-end coverage and add small independent records/index/receipt goldens in `TG-06` |
-| `tests/fixtures/artifact_run_summary_v1/build_fixture.py` | mixed | fixed expected projections coexist with production-shaped builders; add independent canonical JSON/TSV/QC/receipt bytes in `TG-06` |
-| `tests/fixtures/step09c/build_fixture.py` | mixed | explicit tables are useful, but the builder shares vocabulary and shapes with the producer; add independent status/evidence transition cases in `TG-06` |
-| `tests/fixtures/report_html_v1/run_html_core.py` and report fixtures | producer-coupled | the helper loads production report modules; retain real-renderer end-to-end tests and add only a small independent content/banner golden where it detects a named risk |
-| Step `00a`–`09` validation report fixtures | mostly independent | direct TSV/status assertions plus test-only literal ordered rosters now complete `TG-03`; broader serialized fixture independence remains under `TG-06` |
+| `tests/fixtures/artifact_schema_v1/valid/*.json` | mixed | fixed documents remain useful integrated examples; `TG-06` now adds independently spelled critical schema paths, enums, versions, and evidence-boundary constants plus a direct mutation case |
+| `tests/fixtures/artifact_adapters_v1/build_fixture.py` | producer-coupled | retain its broad end-to-end transactions; `TG-06` supplements it with literal artifact-index/validation headers and exact canonical JSON bytes rather than duplicating the large builder |
+| `tests/fixtures/artifact_run_summary_v1/build_fixture.py` | mixed | retain its broad projections; `TG-06` supplements it with an exact run-summary header and independent canonical JSON/TSV/receipt byte oracles |
+| `tests/fixtures/step09c/build_fixture.py` | mixed | retain the integrated package; `TG-06` adds literal review/evidence headers, status constants, seven aggregation cases, and shared policy-transition oracles |
+| `tests/fixtures/report_html_v1/run_html_core.py` and report fixtures | producer-coupled | retain real-renderer end-to-end tests; `TG-06` adds exact independent report-receipt projection bytes and schema banner boundaries without duplicating rendered reports |
+| Step `00a`–`09` validation report fixtures | mostly independent | direct TSV/status assertions plus test-only literal ordered rosters complete `TG-03`; bounded canonical JSON/TSV and validation-header independence now complete `TG-06` without duplicating every fixture |
 | Step `07` mocked VCF/receipt outputs | mixed | good transaction and manifest coverage; real bcftools output remains a deferred runtime gate |
-| Step `08` semantic outputs | mixed | guarded real-R fixtures are meaningful, but validator header expectations import Step `09c` production constants; independent headers and corruptions belong to `TG-06` |
+| Step `08` semantic outputs | mixed plus independent header characterization | guarded real-R fixtures remain the semantic evidence; `TG-06` independently spells the critical shared Step `09c` review/evidence headers and rejects header mutations |
 | Step `09` semantic outputs | mixed | `TG-01` now derives an independent oracle directly from DP/AD and proves coordinated corruption detectable; the production validator remains unchanged |
 | HTML/PDF/report receipts | mixed | real pinned renderer and independent structural readers are exercised; production reports remain absent |
 
@@ -296,9 +296,9 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-05` are now
-characterized; the authoritative branch mapping and remaining order are in
-`PIPELINE_PLAN.md`.
+The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-06` are now
+characterized; the final row-by-row sufficiency decision remains owned by
+`TEST-01Z` and must not infer readiness from these completions alone.
 
 | Gap | Scope | Exit evidence |
 | --- | --- | --- |
@@ -307,7 +307,7 @@ characterized; the authoritative branch mapping and remaining order are in
 | `TG-03` | Exact validation check rosters | every step has a fixed independent ordered roster; missing, duplicate, extra, and reordered checks fail at the correct boundary |
 | `TG-04` | Public CLI and exit contracts | every Python, shell, and Make entry point has an explicit applicable-case decision for help, direct/arbitrary-CWD use, malformed input, side effects, unrelated files, and exit propagation |
 | `TG-05` | SLURM wrapper contracts | every job has a focused applicable-case decision for mode, modules, CWD, delegation, arguments, output validation, and exit propagation; legacy exceptions are characterized, not refactored |
-| `TG-06` | Independent goldens and mutation resistance | critical schemas, headers, serialized bytes, status transitions, evidence boundaries, and shared policy rules fail when production constants change without the independent expectation |
+| `TG-06` | Independent goldens and mutation resistance | complete: critical schema paths, ordered headers, serialized bytes, status transitions, evidence boundaries, and shared policy rules fail when named production values change without the independent expectation |
 
 ### Completed `TG-01` characterization
 
@@ -455,6 +455,33 @@ non-regression, guarded R, and pinned report runtime in 168.770 seconds. No
 production job, script, Makefile, schema, dependency, resource, scientific,
 runtime, cluster, or biological behavior changed. All cluster/runtime rows
 remain environment-deferred rather than cluster-proven.
+
+### Completed `TG-06` characterization
+
+Implementation commit `dcb5dd4` and targeted shared-policy correction
+`1986898` add one compact literal fixture family and 22 focused tests. The
+fixtures do not import production constants or use a producer-backed builder.
+They independently spell representative paths and values across all five
+public artifact schemas; exact artifact-index, validation-report, run-summary,
+report-receipt, review-plan, and evidence-manifest headers; canonical UTF-8
+JSON and TSV bytes; one exact report-receipt projection; critical scientific
+status vocabularies; and seven evidence-aggregation transitions.
+
+The shared-science oracle independently locks recorded, pending, and absent
+decision projections, active-to-open limitation projection, and local,
+runtime, and cluster computational-evidence status mappings. Deliberate
+mutations of one public schema boundary, four named headers, five named status
+constants, canonical JSON and receipt serialization, the decision-dimension
+set, and the computational-scope policy are rejected while unmodified outputs
+pass. Opaque fixture provenance and evidence limits are recorded beside the
+fixtures; the TSV files contain no embedded commentary.
+
+The final de-duplicated complete local gate passed static preflight in 0.110
+seconds, shell contracts in 44.963 seconds, checked Python line/branch
+non-regression in 177.681 seconds, guarded R in 170.644 seconds, and pinned
+report runtime in 135.134 seconds; total elapsed time was 180.219 seconds. No
+production module, schema, workflow, dependency, scientific policy, runtime,
+cluster, or biological behavior changed.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any

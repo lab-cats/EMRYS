@@ -25,7 +25,7 @@ utility wrappers. These boundaries become fragile during source migration.
 
 ## Completion unblocks
 
-- [TEST-01F](../TODO/TEST-01F-create-independent-contract-goldens.md) — Fully: the final independent-golden package can close cross-language boundaries.
+- [TEST-01F](TEST-01F-create-independent-contract-goldens.md) — Fully: the final independent-golden package closes the selected cross-language boundaries.
 
 ## Prerequisites
 
@@ -96,5 +96,5 @@ Completed locally on 2026-07-31 on
   168.770 seconds.
 - No production job, script, Makefile, schema, dependency, resource,
   scientific, runtime, cluster, or biological behavior changed. All real
-  scheduler/module/runtime evidence remains environment-deferred. The next
-  approved local descendant is `TEST-01F`.
+  scheduler/module/runtime evidence remains environment-deferred. The approved
+  local `TEST-01F` descendant is now complete.

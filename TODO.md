@@ -9,15 +9,15 @@ checkout and exact resume point belong in
 
 ## Immediate
 
-1. Continue the explicitly approved local-only Phase `01` characterization
-   tranche. [`TEST-01C`](docs/tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
-   through [`TEST-01E`](docs/tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md)
-   are complete locally; select
-   [`TEST-01F`](docs/tasks/TODO/TEST-01F-create-independent-contract-goldens.md)
-   next from its clean committed descendant.
-2. Promote only through `TEST-01F` → `TEST-01Z`
-   when each card's acceptance, focused and complete local gates,
-   documentation consistency, clean state, and adversarial review pass.
+1. Complete the required independent read-only review of the combined
+   [`TEST-01C`](docs/tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
+   through [`TEST-01F`](docs/tasks/COMPLETED/TEST-01F-create-independent-contract-goldens.md)
+   characterization evidence. All four implementation packages are complete
+   locally in the approved tranche.
+2. If that review confirms every predecessor's acceptance, select
+   [`TEST-01Z`](docs/tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md)
+   from the clean committed `TEST-01F` descendant. Stop at the exact failing
+   boundary if the reviewer disproves any predecessor acceptance claim.
 3. Stop after `TEST-01Z`. A negative decision may create only its bounded
    `TEST-01G-*` closure cards and later `TEST-01Z-R*` reassessment card; do not
    execute them in this tranche. A positive decision names released Phase `02`
@@ -27,9 +27,11 @@ This tranche is local and unpushed. `CONCURRENCY-02`, `PROGRAM-01`, the paused
 concurrency attempts, the preserved researcher pilot, and Phase `02` remain
 untouched and are not sequencing blockers for these five selected cards.
 
-Selecting a card starts read-only planning under the
-[`task-start router`](docs/operations/TASK_START.md) and requires a separate
-approved plan before implementation.
+Outside this already approved five-card tranche, selecting a card starts
+read-only planning under the [`task-start router`](docs/operations/TASK_START.md)
+and requires a separate approved plan before implementation. The current
+approval already covers the bounded just-in-time `TEST-01Z` inspection after
+the required reviewer passes.
 
 ## Recommended maintenance order
 

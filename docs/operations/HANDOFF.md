@@ -7,29 +7,29 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/refactor-01e-slurm-contracts`
+  `codex/refactor-01f-independent-goldens`
 - Parent:
-  `codex/refactor-01d-public-cli-contracts`
+  `codex/refactor-01e-slurm-contracts`
 - Verified parent HEAD:
-  `0cbb9d2dc000d9bfca96006fcdddd30d91b52241`
+  `7555b9e3655e0b5ad4b462999c1f1260124e3b18`
 - Parent documentation commit:
-  `0cbb9d2 docs: complete TEST-01D characterization`
-- Current implementation commit:
-  `9a4fb09 test: characterize SLURM wrapper contracts`
+  `7555b9e docs: complete TEST-01E characterization`
+- Current implementation commits:
+  `dcb5dd4 test: add independent contract goldens` and
+  `1986898 test: cover shared science policy goldens`
 - Current documentation commit:
-  `docs: complete TEST-01E characterization` (the branch commit
+  `docs: complete TEST-01F characterization` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: `TEST-01C` through `TEST-01E` are locally complete in
-  the approved five-card Phase `01` characterization tranche; `TEST-01F` is
-  the next authorized local descendant
-- Current package: exact local-only characterization of all 16 SLURM and
-  utility jobs across resources, modes, modules, submit CWD, delegation,
-  arguments, output validation, and exit propagation
-- Package type: one test-only implementation commit plus a separate
-  documentation/card completion commit
+- Recorded package state: `TEST-01C` through `TEST-01F` are locally complete in
+  the approved five-card Phase `01` characterization tranche; the required
+  combined read-only review is next, before `TEST-01Z`
+- Current package: small independent critical schema/header/byte/status/
+  evidence/shared-policy goldens and mutation-resistant oracles
+- Package type: one test-only implementation commit, one targeted test-only
+  acceptance correction, and a separate documentation/card completion commit
 - Remote and cluster work: paused; this branch is intentionally unpushed
 
-This branch descends linearly from the clean, committed local `TEST-01D`
+This branch descends linearly from the clean, committed local `TEST-01E`
 predecessor under the explicitly approved local-only tranche exception.
 Publication and upstream equality are deferred. The package changes tests and
 documentation only; it does not change any production job, CLI, workflow,
@@ -211,6 +211,7 @@ The local descendant sequence has implemented:
 | Phase `01a1` populated demo report | post-rebase report gate passed with 145 pinned real-Quarto/Typst tests, the isolated wrapper contract passed, repeat publication and cleanup passed, and `make demo-report` published the ignored 81-artifact/15-scope/11-table synthetic bundle; this is local synthetic-fixture and renderer-runtime evidence only |
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
+| Phase `01f` independent contract goldens | implementation `dcb5dd4` plus targeted correction `1986898` add a compact producer-independent fixture family and 22 focused tests for five public schemas, six ordered headers, canonical UTF-8 JSON/TSV and report-receipt bytes, status/evidence transitions, and shared science-policy projection; deliberate schema, header, status, serializer, decision-dimension, and computational-scope mutations fail; the final complete local gate passed every static, shell, checked Python coverage, guarded-R, and pinned report-runtime lane in 180.219 seconds; production behavior and evidence state were unchanged |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
@@ -332,23 +333,29 @@ approved policy defines and unlocks stricter exit criteria.
   public CLI exceptions, embedded/mode-less jobs, the Bash 3.2 empty-array
   dry-run defect, default dry-run side effects, and non-uniform submit-CWD,
   module, file-mode, and output-validation policies remain labeled behavior.
-  Independent serialized/state goldens remain the measured Phase `01`
-  characterization gap.
+  Independent critical serialized/state/evidence goldens now complete
+  `TG-06`; broader integrated fixtures deliberately remain producer-coupled.
 - Phase `01b` now characterizes shared and ancillary publication faults, but
   it intentionally does not correct the confirmed same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, or stale-lock behavior.
 
 ## Immediate resume point
 
-`TEST-01E` is complete locally at implementation commit `9a4fb09`. All 113
-focused mocked-wrapper tests passed without invoking a scheduler, CSU module
-system, or real workflow binary. One complete local gate then passed static
-preflight in 0.162 seconds, shell contracts in 43.525 seconds, Python
-line/branch non-regression in 163.734 seconds, guarded R in 160.272 seconds,
-and pinned report runtime in 125.070 seconds; the de-duplicated parallel gate
-completed in 168.770 seconds. It reused the primary checkout's restored Python,
-Quarto, and R libraries by explicit path; no tracked dependency or lockfile
-changed.
+`TEST-01F` is complete locally at implementation commit `dcb5dd4` and targeted
+acceptance correction `1986898`. All 22 focused independent-golden tests pass.
+The final complete local gate passed static preflight in 0.110 seconds, shell
+contracts in 44.963 seconds, Python line/branch non-regression in 177.681
+seconds, guarded R in 170.644 seconds, and pinned report runtime in 135.134
+seconds; the de-duplicated parallel gate completed in 180.219 seconds.
+
+The first direct focused invocation selected Homebrew Python 3.14 without
+pytest and stopped without installing anything. A later complete-gate
+invocation reached the report-wrapper contract and stopped because the sibling
+worktree lacked its documented `.venv` default path. The successful gates used
+a temporary worktree `.venv` symlink to the already-restored primary Python
+environment and `RENV_PATHS_LIBRARY` for the already-restored primary R
+library. The symlink was removed after each successful gate; no tracked
+dependency or lockfile changed.
 
 An initial sibling-local `renv` activation attempted its automatic bootstrap
 before failing on missing packages. Preserve the resulting ignored local cache
@@ -356,12 +363,14 @@ material; do not delete or repair it without operator review. The successful
 gate used `RENV_PATHS_LIBRARY` to reference the already-restored primary
 project library and did not restore or update packages.
 
-After this documentation commit and a clean-state/adversarial review, create
-`codex/refactor-01f-independent-goldens` directly from this local HEAD in the
-same dedicated worktree. Perform only TEST-01F's just-in-time targeted
-inspection, implementation, focused tests, complete local gate, and separate
-docpatch. Publication and upstream equality remain deferred for the entire
-tranche.
+After this documentation commit and a clean-state/adversarial review, use the
+single authorized independent read-only reviewer to assess combined
+`TEST-01C`–`TEST-01F` evidence for semantic accuracy, expectation
+independence, and longevity. If and only if that review leaves every
+predecessor acceptance claim valid, create
+`codex/refactor-01z-test-sufficiency-gate` directly from this local HEAD in the
+same dedicated worktree and perform only `TEST-01Z`. Publication and upstream
+equality remain deferred for the entire tranche.
 
 Do not inspect or execute `CONCURRENCY-02`, `PROGRAM-01`, paused concurrency
 attempts, the researcher pilot, any `TEST-01G`–`TEST-01Y` work, or Phase `02`.

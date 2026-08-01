@@ -24,7 +24,7 @@ over every applicable contract row before production structure changes.
 
 ## Blocked by
 
-- [TEST-01F](../TODO/TEST-01F-create-independent-contract-goldens.md) — Required: all approved Phase 01 characterization evidence must be complete.
+- [TEST-01F](../COMPLETED/TEST-01F-create-independent-contract-goldens.md) — Required: all approved Phase 01 characterization evidence must be complete.
 
 ## Completion unblocks
 

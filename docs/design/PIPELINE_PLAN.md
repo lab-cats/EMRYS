@@ -70,8 +70,8 @@ a completed production review.
 | Conditional fragment/lifecycle infrastructure | Extract the validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current three-state flat registry and embedded validator remain unchanged |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
-| `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md) | implementation `9a4fb09` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01F` descendant |
-| `refactor-01f-independent-goldens` | Independent critical serialized/state/evidence goldens; see [`TEST-01F`](../tasks/TODO/TEST-01F-create-independent-contract-goldens.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md) | implementation `9a4fb09` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01F` |
+| `refactor-01f-independent-goldens` | Independent critical serialized/state/evidence goldens; see [`TEST-01F`](../tasks/COMPLETED/TEST-01F-create-independent-contract-goldens.md) | implementation `dcb5dd4`, targeted shared-policy correction `1986898`, and separate docpatch complete locally; unpushed predecessor to the required combined read-only review and then `TEST-01Z` |
 | `refactor-01z-test-sufficiency-gate` | Behavior-row classification and explicit readiness decision; see [`TEST-01Z`](../tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md) | future package definition; workflow status is the linked card's directory |
 | Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | future task set; workflow status is owned by each card's directory |
 | Phase `02` independent reviews | Architecture, reliability, and usability reviews in `REVIEW-ARCH-01` → `REVIEW-REL-02` → `REVIEW-UX-03` order | future review set; workflow status is owned by each card's directory |
@@ -177,7 +177,8 @@ report-html-v1a-report-table-approvals
                                                                                                                 ├── codex/refactor-01c-validation-check-rosters
                                                                                                                 │   └── codex/refactor-01d-public-cli-contracts
                                                                                                                 │       └── codex/refactor-01e-slurm-contracts
-                                                                                                                │           └── [approved local TEST-01F → TEST-01Z descendants]
+                                                                                                                │           └── codex/refactor-01f-independent-goldens
+                                                                                                                │               └── [review-gated local TEST-01Z descendant]
                                                                                                                 └── [conditional: CONCURRENCY-02 task-selected branch]
                                                                                                                     └── [conditional: PROGRAM-01 task-selected branch]
                                                                                                                         └── [future descendants selected after reassessment]
@@ -187,8 +188,9 @@ report-html-v1a-report-table-approvals
 Bracketed entries are planning boundaries, not branch names or completed
 lineage. The explicitly approved local-only characterization tranche selected
 `TEST-01C`, `TEST-01D`, `TEST-01E`, `TEST-01F`, and `TEST-01Z` from the pinned
-strategy-card base. `TEST-01C` through `TEST-01E` are complete locally;
-`TEST-01F` is the next authorized descendant. `CONCURRENCY-02`, `PROGRAM-01`,
+strategy-card base. `TEST-01C` through `TEST-01F` are complete locally. The
+required combined read-only review must validate those predecessors before
+the authorized `TEST-01Z` descendant begins. `CONCURRENCY-02`, `PROGRAM-01`,
 the preserved pilot, and Phase `02` remain paused and unselected and are not
 blocker metadata for this bounded tranche.
 
