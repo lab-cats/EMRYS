@@ -30,7 +30,7 @@ roadmap language for implementation approval.
 
 ## Completion unblocks
 
-- [TEST-01C](../TODO/TEST-01C-characterize-validation-check-rosters.md) — Fully: the next existing refactor package has a canonical card and resume path.
+- [TEST-01C](../COMPLETED/TEST-01C-characterize-validation-check-rosters.md) — Fully: the next existing refactor package has a canonical card and resume path.
 
 ## Prerequisites
 

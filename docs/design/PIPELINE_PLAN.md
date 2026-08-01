@@ -68,7 +68,7 @@ a completed production review.
 | Conditional `CONCURRENCY-02` descendant | Manual integration-fragment protocol; see [`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md) | next recommended separately planned package after the card bootstrap; policy only, with no pilot-content integration |
 | Conditional `PROGRAM-01` descendant | Rolling-wave planning, current-tranche contract, refactor-plan reconciliation, and lifecycle/epic semantics; see [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | follows `CONCURRENCY-02` by roadmap choice, not blocker metadata; branch selected only through its separately approved task plan |
 | Conditional fragment/lifecycle infrastructure | Extract the validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current three-state flat registry and embedded validator remain unchanged |
-| `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/TODO/TEST-01C-characterize-validation-check-rosters.md) | future package definition; workflow status is the linked card's directory |
+| `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01D` descendant |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/TODO/TEST-01D-characterize-public-cli-contracts.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) | future package definition; workflow status is the linked card's directory |
 | `refactor-01f-independent-goldens` | Independent critical serialized/state/evidence goldens; see [`TEST-01F`](../tasks/TODO/TEST-01F-create-independent-contract-goldens.md) | future package definition; workflow status is the linked card's directory |
@@ -174,6 +174,8 @@ report-html-v1a-report-table-approvals
                                                                                                     └── codex/context-start-policy
                                                                                                         └── codex/concurrent-doc-sidecars
                                                                                                             └── codex/strategy-task-cards
+                                                                                                                ├── codex/refactor-01c-validation-check-rosters
+                                                                                                                │   └── [approved local TEST-01D → TEST-01E → TEST-01F → TEST-01Z descendants]
                                                                                                                 └── [conditional: CONCURRENCY-02 task-selected branch]
                                                                                                                     └── [conditional: PROGRAM-01 task-selected branch]
                                                                                                                         └── [future descendants selected after reassessment]
@@ -181,10 +183,12 @@ report-html-v1a-report-table-approvals
 ```
 
 Bracketed entries are planning boundaries, not branch names or completed
-lineage. The strategy discussion and card bootstrap do not select any future
-card. `TEST-01C` remains the first uncompleted characterization card in the
-inherited roadmap, but `PROGRAM-01` must confirm or revise its position before
-the next post-program delivery card is selected.
+lineage. The explicitly approved local-only characterization tranche selected
+`TEST-01C`, `TEST-01D`, `TEST-01E`, `TEST-01F`, and `TEST-01Z` from the pinned
+strategy-card base. `TEST-01C` is complete locally; `TEST-01D` is its next
+authorized descendant. `CONCURRENCY-02`, `PROGRAM-01`, the preserved pilot,
+and Phase `02` remain paused and unselected and are not blocker metadata for
+this bounded tranche.
 
 Do not perform remote or cluster
 validation during this sequence.

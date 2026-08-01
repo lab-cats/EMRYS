@@ -80,5 +80,22 @@ regression.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed locally on 2026-07-31 on
+`codex/refactor-01c-validation-check-rosters`.
+
+- Implementation commit `8d58fc6` adds one independently authored test-only
+  ordered roster for each of the 13 live validators and binds every producer's
+  successful output test to that expectation.
+- `tests/test_validation_check_rosters.py` proves the literal inventory is
+  exact and that missing, extra, duplicate, and reordered mutations fail the
+  independent oracle.
+- Shared report-consumer tests preserve the characterized defect that an
+  exact-ID reorder is accepted; artifact-adapter tests preserve acceptance of
+  reordered and wrong-but-unique IDs while proving row-count and duplicate-ID
+  mutations are rejected.
+- The focused validator/adapter set passed all 250 tests.
+- The de-duplicated complete local gate passed static preflight, shell
+  contracts, Python line/branch non-regression, guarded R and Step `08`/`09`
+  real-R fixtures, and pinned report runtime in 164.635 seconds.
+- No production, schema, workflow, scientific, runtime, cluster, or biological
+  behavior changed. The next approved local descendant is `TEST-01D`.

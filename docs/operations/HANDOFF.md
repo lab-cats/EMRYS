@@ -7,42 +7,38 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/strategy-task-cards`
+  `codex/refactor-01c-validation-check-rosters`
 - Parent:
-  `codex/concurrent-doc-sidecars`
+  `codex/strategy-task-cards`
 - Verified parent HEAD:
-  `32ee4e8f2527bc0b34e69752ab96d69391e3e74c`
+  `d517ff82fa942b90167b18d72fd752c916ac3388`
 - Parent documentation commit:
-  `32ee4e8 docs: define isolated concurrent documentation lanes`
+  `d517ff8 docs: create strategy follow-up cards`
+- Current implementation commit:
+  `8d58fc6 test: characterize validation check rosters`
 - Current documentation commit:
-  `docs: create strategy follow-up cards` (the branch commit
+  `docs: complete TEST-01C characterization` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: the 2026-07-31 first-use strategy discussion is
-  complete and this documentation-only package records four unselected future
-  cards plus bounded canonical references; verify live commit, cleanliness,
-  push state, and upstream equality before takeover
-- Current package: integration-fragment protocol and enforcement cards,
-  proposal/review lifecycle and logical-epic cards, and rolling-program
-  coordination clarifications; no card execution or pilot integration
-- Package type: one documentation commit; computational validation is not
-  applicable because the predecessor-to-final diff changes no executable or
-  test-affecting surface
-- Remote and cluster work: paused
+- Recorded package state: `TEST-01C` is locally complete in the approved
+  five-card Phase `01` characterization tranche; `TEST-01D` is the next
+  authorized local descendant
+- Current package: independent exact ordered validator rosters plus preserved
+  characterization of order-insensitive shared and artifact-adapter consumers
+- Package type: one test-only implementation commit plus a separate
+  documentation/card completion commit
+- Remote and cluster work: paused; this branch is intentionally unpushed
 
-This branch descends directly from the clean, pushed, upstream-equal
-concurrency-policy documentation commit. The parent branch and its upstream
-both resolved to the verified parent HEAD before this branch was created. This
-package records decisions and creates future task cards only; it does not
-implement their policies, directories, validator behavior, tranche document,
-or epic indexes and does not change NORAD workflow, test, runtime, cluster, or
-scientific behavior.
+This branch descends directly from the clean pinned strategy-card commit. The
+parent branch and its local upstream-tracking reference both resolved to the
+verified parent HEAD before this dedicated sibling worktree was created. The
+package changes tests and documentation only; it does not change validator,
+workflow, schema, runtime, cluster, scientific, or biological behavior.
 
 ## Active concurrent lanes
 
-This checkout is the sole integration/control lane for the card-bootstrap
-package. One frozen documentation/card sidecar pilot exists on the verified
-concurrency-policy base. Its files and commit identity are recorded for future
-recovery, but its substance has not been reviewed, accepted, or integrated.
+This checkout is the sole local lane for the five-card characterization
+tranche. All paused concurrency attempts and the researcher pilot remain
+uninspected, unmodified, and unintegrated.
 The user explicitly authorized that pilot before the fragment checkpoint was
 defined; preserve that historical fact without claiming retroactive protocol
 compliance.
@@ -329,37 +325,41 @@ approved policy defines and unlocks stricter exit criteria.
   DP/AD counts. Phase `01a` now supplies independent characterization evidence
   for a later separately reviewed compatible correction; it did not change
   production validation.
-- Exact check rosters, complete public CLI/exit behavior, early and utility
-  SLURM behavior, and independent serialized/state goldens remain the measured
-  Phase `01` characterization gaps.
+- Exact check rosters are independently characterized; the shared consumer's
+  order-insensitivity and the artifact adapter's wrong-unique/reorder
+  acceptance remain labeled defects. Complete public CLI/exit behavior, early
+  and utility SLURM behavior, and independent serialized/state goldens remain
+  the measured Phase `01` characterization gaps.
 - Phase `01b` now characterizes shared and ancillary publication faults, but
   it intentionally does not correct the confirmed same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, or stale-lock behavior.
 
 ## Immediate resume point
 
-The documentation-only card-bootstrap package records the completed strategy;
-it does not execute the active repository-spanning refactor. Its predecessor
-executable state remains the completed Phase `01b` implementation and its
-recorded computational evidence.
+`TEST-01C` is complete locally. Its 250-test focused validator/adapter set
+passed, followed by one complete local gate: static preflight, shell contracts,
+Python line/branch non-regression, guarded R plus Step `08`/`09` real-R
+fixtures, and pinned report runtime all passed in 164.635 seconds. The complete
+gate reused the existing primary checkout's restored Python, Quarto, and R
+libraries by explicit path; no tracked dependency or lockfile changed.
 
-After confirming this package is clean, pushed, and upstream-equal, separately
-plan
-[`CONCURRENCY-02`](../tasks/TODO/CONCURRENCY-02-define-integration-fragment-protocol.md).
-Only after its task-specific plan is approved may the manual fragment protocol
-and synthetic non-substantive exchange be implemented; the preserved pilot is
-not that exchange. Then separately plan
-[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
-That program must create the unselected pilot-integration card from recorded
-lane metadata. Do not review or integrate the pilot candidate until
-`CONCURRENCY-02`, `PROGRAM-01`, `DOC-GATE-01`, `CONCURRENCY-03`, and
-`TASK-LIFECYCLE-01` establish the applicable infrastructure and the integration
-card receives its own approved plan. Do not create future lifecycle/epic
-directories merely because their cards now exist.
+An initial sibling-local `renv` activation attempted its automatic bootstrap
+before failing on missing packages. Preserve the resulting ignored local cache
+material; do not delete or repair it without operator review. The successful
+gate used `RENV_PATHS_LIBRARY` to reference the already-restored primary
+project library and did not restore or update packages.
 
-`TEST-01C` remains the first uncompleted Phase `01` characterization card.
-Maintenance and program order are roadmap guidance rather than technological
-blockers; every selected card still requires its bounded planning and approval.
+After this documentation commit and a clean-state/adversarial review, create
+`codex/refactor-01d-public-cli-contracts` directly from this local HEAD in the
+same dedicated worktree. Perform only TEST-01D's just-in-time targeted
+inspection, implementation, focused tests, complete local gate, and separate
+docpatch. Publication and upstream equality remain deferred for the entire
+tranche.
+
+Do not inspect or execute `CONCURRENCY-02`, `PROGRAM-01`, paused concurrency
+attempts, the researcher pilot, any `TEST-01G`–`TEST-01Y` work, or Phase `02`.
+Their roadmap positions are not technological blockers for the explicitly
+approved five-card tranche.
 
 The one-time Phase `00` dependency exception is exhausted and does not
 authorize future changes outside the normal development gate. Do not change

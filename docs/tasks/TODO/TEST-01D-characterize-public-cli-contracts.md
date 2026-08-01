@@ -22,7 +22,7 @@ change behavior without a complete observable contract.
 
 ## Blocked by
 
-- [TEST-01C](../TODO/TEST-01C-characterize-validation-check-rosters.md) — Required: exact validation outputs must be independently fixed first.
+- [TEST-01C](../COMPLETED/TEST-01C-characterize-validation-check-rosters.md) — Required: exact validation outputs must be independently fixed first.
 
 ## Completion unblocks
 

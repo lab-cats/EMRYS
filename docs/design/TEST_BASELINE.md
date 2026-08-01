@@ -122,19 +122,19 @@ suites and is included in the cross-cutting matrix below.
 | `storage_inventory.py` | `tests/test_storage_inventory.py` | `H D E M F N L B S I P T V X` | independent | `TG-02` characterization complete; incomplete-rollback recovery remains a labeled production gap; CSU storage execution deferred |
 | `validate_artifact_contracts.py` | `tests/test_artifact_schema_contracts.py` | `H M F U P T V X` | mixed | adequate; independent schema/golden mutation remains under `TG-06` |
 | `validate_manifest.py` | `tests/test_validate_manifest.py` | `H M F P T X` | independent | adequate |
-| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` characterization complete with labeled production gaps; roster mutation `TG-03`; help/exit matrix `TG-04` |
-| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` remain |
-| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04` and real bcftools remain |
-| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | producer-coupled/mixed | `TG-02` complete with labeled production gaps; `TG-03`, `TG-04`, `TG-06` remain |
-| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` and `TG-02` characterization complete; compatible validator/recovery corrections remain separately reviewed; `TG-03`, `TG-04` remain |
+| `validate_step_00a_star_index.py` | `tests/test_validate_step_00a_star_index.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` characterization complete with labeled production gaps; help/exit matrix `TG-04` remains |
+| `validate_step_00b_bed12.py` | `tests/test_validate_step_00b_bed12.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_00c_reference_sidecars.py` | `tests/test_validate_step_00c_reference_sidecars.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_01_star_alignment.py` | `tests/test_validate_step_01_star_alignment.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_02_canonical_bam.py` | `tests/test_validate_step_02_canonical_bam.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_02b_bam_qc.py` | `tests/test_validate_step_02b_bam_qc.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_03_rseqc_orientation.py` | `tests/test_validate_step_03_rseqc_orientation.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_04_mark_duplicates.py` | `tests/test_validate_step_04_mark_duplicates.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_05_split_ncigar.py` | `tests/test_validate_step_05_split_ncigar.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_06_orientation_outputs.py` | `tests/test_validate_step_06_orientation_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` remains |
+| `validate_step_07_mpileup_outputs.py` | `tests/test_validate_step_07_mpileup_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | independent | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` and real bcftools remain |
+| `validate_step_08_preprocessing_outputs.py` | `tests/test_validate_step_08_preprocessing_outputs.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T X R` | mixed | `TG-02` and `TG-03` complete with labeled production gaps; `TG-04` and `TG-06` remain |
+| `validate_step_09_cmh_outputs.py` | `tests/test_validate_step_09_cmh_outputs.py`; `tests/test_step_09_cmh_oracle.py`; `tests/test_validation_check_rosters.py`; `tests/test_validation_publication_faults.py` | `D E M F N L B S I P T V X R` | mixed | `TG-01` through `TG-03` complete; compatible validator/recovery corrections remain separately reviewed; `TG-04` remains |
 
 The per-step validator rows intentionally distinguish malformed inputs, which
 exit nonzero and publish nothing, from readable but failed evidence, which may
@@ -240,7 +240,7 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | Public help, dry-run, execute, malformed input, and exit behavior | focused Python/shell suites listed above | mostly independent | complete exact missing-case matrix in `TG-04` |
 | Native output transactions | Step `02`, `05`–`09`, Step `09c`, adapters, summaries, report bundle rollback suites, and Phase `01b` publisher fault injection | mixed | `TG-02` characterization complete; preserve labeled production gaps for reviewed correction |
 | Seven-column validation report schema | every `tests/test_validate_step_*` module plus adapter propagation fixtures | mixed | preserve |
-| Exact per-step check rosters | production `CHECK_IDS` plus uneven fixed-list assertions | producer-coupled/mixed | add mutation-resistant independent rosters in `TG-03` |
+| Exact per-step check rosters | test-only literal ordered rosters, all 13 live producer-output suites, shared report-consumer mutations, and artifact-adapter mutations | independent characterization | `TG-03` complete; preserve the characterized order-insensitive shared validator and wrong-unique/reordering adapter defects for separate correction review |
 | Public JSON Schemas and table headers | schema-contract suite, artifact/run-summary suites, Step `09c`, per-step validators | mixed | freeze independent representative goldens in `TG-06` |
 | Status vocabularies and state transitions | schema, adapter, Step `09c`, summary, and report negative cases | mixed | add production-constant mutation cases in `TG-06` |
 | Deterministic JSON/TSV/QC/report bytes and ordering | retry/fixed-time tests, explicit ordered inventories, renderer comparisons | mixed | preserve; add small independent serialized goldens in `TG-06` |
@@ -262,7 +262,7 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | `tests/fixtures/artifact_run_summary_v1/build_fixture.py` | mixed | fixed expected projections coexist with production-shaped builders; add independent canonical JSON/TSV/QC/receipt bytes in `TG-06` |
 | `tests/fixtures/step09c/build_fixture.py` | mixed | explicit tables are useful, but the builder shares vocabulary and shapes with the producer; add independent status/evidence transition cases in `TG-06` |
 | `tests/fixtures/report_html_v1/run_html_core.py` and report fixtures | producer-coupled | the helper loads production report modules; retain real-renderer end-to-end tests and add only a small independent content/banner golden where it detects a named risk |
-| Step `00a`–`09` validation report fixtures | mostly independent | direct TSV/status assertions exist; exact roster independence is incomplete and belongs to `TG-03` |
+| Step `00a`–`09` validation report fixtures | mostly independent | direct TSV/status assertions plus test-only literal ordered rosters now complete `TG-03`; broader serialized fixture independence remains under `TG-06` |
 | Step `07` mocked VCF/receipt outputs | mixed | good transaction and manifest coverage; real bcftools output remains a deferred runtime gate |
 | Step `08` semantic outputs | mixed | guarded real-R fixtures are meaningful, but validator header expectations import Step `09c` production constants; independent headers and corruptions belong to `TG-06` |
 | Step `09` semantic outputs | mixed | `TG-01` now derives an independent oracle directly from DP/AD and proves coordinated corruption detectable; the production validator remains unchanged |
@@ -274,7 +274,7 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The baseline matrix yielded six cohesive gaps. `TG-01` and `TG-02` are now
+The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-03` are now
 characterized; the authoritative branch mapping and remaining order are in
 `PIPELINE_PLAN.md`.
 
@@ -349,6 +349,29 @@ test-only package increased coverage.
 
 This closes `TG-02` characterization only. It changes no publisher,
 validator, report, workflow, scientific, runtime, or cluster behavior.
+
+### Completed `TG-03` characterization
+
+Implementation commit `8d58fc6` adds a test-only literal ordered roster for
+all 13 live `validate_step_*` entry points. Every successful producer test now
+compares emitted `check_id` values and order with that independent expectation.
+The separate roster suite proves that missing, extra, duplicate, and reordered
+mutations fail the test oracle and that the literal script inventory neither
+omits nor invents a live validator.
+
+The tests preserve two production defects rather than correcting them. The
+shared validation-report consumer rejects missing, extra, and duplicate IDs
+but accepts an exact-ID reorder because it compares sets. The artifact adapter
+also rejects row-count and duplicate-ID mutations, but accepts reordered rows
+and a wrong-but-unique safe check ID. Those behaviors are characterized defects,
+not approved contracts or evidence of a valid validation roster.
+
+The 250-test focused validator/adapter regression passed. The de-duplicated
+complete local gate then passed static preflight, all shell contracts, the
+checked Python line/branch non-regression baseline, the guarded R environment
+and Step `08`/`09` real-R fixtures, and the pinned report runtime in 164.635
+seconds. No production, schema, workflow, scientific, runtime, or cluster
+behavior changed.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any
