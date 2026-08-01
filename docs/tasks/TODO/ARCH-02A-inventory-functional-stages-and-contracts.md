@@ -24,6 +24,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md).
   It traces the paired-read/index inputs and Step `02` handoff while preserving
   current dry-run, publication, and validation boundaries.
+- Slice 5 records historical Step `02` under the working name
+  `construct_canonical_BAM` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/construct_canonical_BAM/CONTRACT.md).
+  It records the canonical pair's fan-out and rollback contract while exposing
+  producer/validator asymmetry and shared BAM-helper ownership.
 
 ## Objective
 
