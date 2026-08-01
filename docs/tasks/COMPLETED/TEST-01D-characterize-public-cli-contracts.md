@@ -26,7 +26,7 @@ change behavior without a complete observable contract.
 
 ## Completion unblocks
 
-- [TEST-01E](../TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) — Fully: wrapper characterization can rely on protected delegated CLI behavior.
+- [TEST-01E](TEST-01E-characterize-slurm-wrapper-contracts.md) — Fully: completed locally with protected delegated CLI behavior.
 
 ## Prerequisites
 

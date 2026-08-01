@@ -7,33 +7,34 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/refactor-01d-public-cli-contracts`
+  `codex/refactor-01e-slurm-contracts`
 - Parent:
-  `codex/refactor-01c-validation-check-rosters`
+  `codex/refactor-01d-public-cli-contracts`
 - Verified parent HEAD:
-  `5544a6b8c16e01b6975dc32cf35eca2603fe8f40`
+  `0cbb9d2dc000d9bfca96006fcdddd30d91b52241`
 - Parent documentation commit:
-  `5544a6b docs: complete TEST-01C characterization`
+  `0cbb9d2 docs: complete TEST-01D characterization`
 - Current implementation commit:
-  `a003065 test: characterize public CLI contracts`
+  `9a4fb09 test: characterize SLURM wrapper contracts`
 - Current documentation commit:
-  `docs: complete TEST-01D characterization` (the branch commit
+  `docs: complete TEST-01E characterization` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: `TEST-01C` and `TEST-01D` are locally complete in the
-  approved five-card Phase `01` characterization tranche; `TEST-01E` is the next
-  authorized local descendant
-- Current package: exact public Python/shell/R/Make inventory plus protected
-  help, failure, file-mode, arbitrary-CWD, side-effect, and target-category
-  behavior
+- Recorded package state: `TEST-01C` through `TEST-01E` are locally complete in
+  the approved five-card Phase `01` characterization tranche; `TEST-01F` is
+  the next authorized local descendant
+- Current package: exact local-only characterization of all 16 SLURM and
+  utility jobs across resources, modes, modules, submit CWD, delegation,
+  arguments, output validation, and exit propagation
 - Package type: one test-only implementation commit plus a separate
   documentation/card completion commit
 - Remote and cluster work: paused; this branch is intentionally unpushed
 
-This branch descends linearly from the clean, committed local `TEST-01C`
+This branch descends linearly from the clean, committed local `TEST-01D`
 predecessor under the explicitly approved local-only tranche exception.
 Publication and upstream equality are deferred. The package changes tests and
-documentation only; it does not change production CLI, workflow, Makefile,
-schema, dependency, runtime, cluster, scientific, or biological behavior.
+documentation only; it does not change any production job, CLI, workflow,
+Makefile, schema, dependency, resource, runtime, cluster, scientific, or
+biological behavior.
 
 ## Active concurrent lanes
 
@@ -326,26 +327,26 @@ approved policy defines and unlocks stricter exit criteria.
   DP/AD counts. Phase `01a` now supplies independent characterization evidence
   for a later separately reviewed compatible correction; it did not change
   production validation.
-- Exact check rosters and all public Python/shell/R/Make command surfaces are
-  characterized. Shared validation roster consumer defects, interpreter-only
-  and environment-selected execution modes, three non-executable shell files,
-  two no-help R utilities, and the BED12 converter's silent overwrite remain
-  labeled behavior. Early and utility SLURM behavior and independent
-  serialized/state goldens remain the measured Phase `01` characterization
-  gaps.
+- Exact check rosters, all public Python/shell/R/Make command surfaces, and all
+  16 SLURM/utility jobs are characterized. Shared roster-consumer defects,
+  public CLI exceptions, embedded/mode-less jobs, the Bash 3.2 empty-array
+  dry-run defect, default dry-run side effects, and non-uniform submit-CWD,
+  module, file-mode, and output-validation policies remain labeled behavior.
+  Independent serialized/state goldens remain the measured Phase `01`
+  characterization gap.
 - Phase `01b` now characterizes shared and ancillary publication faults, but
   it intentionally does not correct the confirmed same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, or stale-lock behavior.
 
 ## Immediate resume point
 
-`TEST-01D` is complete locally at implementation commit `a003065`. Its focused
-116-test Python CLI/converter set, guarded local-R shell contract, and Step
-`08`/`09` real-R fixtures passed. One complete local gate then passed static
-preflight in 0.107 seconds, shell contracts in 40.639 seconds, Python
-line/branch non-regression in 148.662 seconds, guarded R in 157.478 seconds,
-and pinned report runtime in 123.965 seconds; the de-duplicated parallel gate
-completed in 164.719 seconds. It reused the primary checkout's restored Python,
+`TEST-01E` is complete locally at implementation commit `9a4fb09`. All 113
+focused mocked-wrapper tests passed without invoking a scheduler, CSU module
+system, or real workflow binary. One complete local gate then passed static
+preflight in 0.162 seconds, shell contracts in 43.525 seconds, Python
+line/branch non-regression in 163.734 seconds, guarded R in 160.272 seconds,
+and pinned report runtime in 125.070 seconds; the de-duplicated parallel gate
+completed in 168.770 seconds. It reused the primary checkout's restored Python,
 Quarto, and R libraries by explicit path; no tracked dependency or lockfile
 changed.
 
@@ -356,8 +357,8 @@ gate used `RENV_PATHS_LIBRARY` to reference the already-restored primary
 project library and did not restore or update packages.
 
 After this documentation commit and a clean-state/adversarial review, create
-`codex/refactor-01e-slurm-contracts` directly from this local HEAD in the same
-dedicated worktree. Perform only TEST-01E's just-in-time targeted
+`codex/refactor-01f-independent-goldens` directly from this local HEAD in the
+same dedicated worktree. Perform only TEST-01F's just-in-time targeted
 inspection, implementation, focused tests, complete local gate, and separate
 docpatch. Publication and upstream equality remain deferred for the entire
 tranche.

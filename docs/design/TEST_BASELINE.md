@@ -195,29 +195,37 @@ percentages. The guarded real-R suite is therefore a separate mandatory gate.
 Static `bash -n` coverage applies to all wrappers but is not behavioral
 coverage.
 
+`tests/test_slurm_wrapper_contracts.py` independently inventories all 16
+tracked jobs and freezes exact SBATCH directives, shebangs, strict mode, file
+modes, execution-mode applicability, module calls and failure policy,
+submit-directory behavior, delegation and arguments, output-validation
+ownership, and child-exit propagation. Every dynamic case uses generated child
+stubs, fake modules, fake tools, and tiny temporary inputs; it never invokes a
+scheduler or real workflow executable.
+
 | Public wrapper | Dynamic regression owner | Covered cases | Status / remaining gap |
 | --- | --- | --- | --- |
-| `step_00a_build_novogene_star_index.slurm` | no focused dynamic wrapper suite | static only | gap: `TG-05`; wrapper embeds compute |
-| `step_00b_gtf_to_bed12.slurm` | no focused dynamic wrapper suite | static only | gap: `TG-05`; wrapper embeds compute |
-| `step_00c_prepare_gatk_reference.slurm` | Step `00c` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_01_star_align.slurm` | Step `01` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_02_sort_index_bam.slurm` | Step `02` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_02b_bam_qc.slurm` | Step `02b` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_03_infer_strandedness_and_orientation.slurm` | Step `03` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_04_mark_duplicates.slurm` | Step `04` shell suite | partial `D E M X W` | partial: `TG-05` |
-| `step_05_split_n_cigar_reads.slurm` | Step `05` shell suite | `D E M F X W` | adequate local wrapper characterization |
-| `step_06_split_bam_by_read_orientation.slurm` | Step `06` shell suite | `D E M F X W` | adequate local wrapper characterization |
-| `step_07_bcftools_mpileup_by_chrom_and_strand.slurm` | Step `07` shell suite | `D E M F X W` | adequate with mocked runtime; cluster runtime deferred |
-| `step_08_vcf_preprocessing.slurm` | Step `08` shell suite | `D E M F X W` | adequate local wrapper contract; cluster runtime deferred |
-| `step_09_cmh_editing_site_calling.slurm` | Step `09` shell suite | `D E M F X W` | adequate local wrapper contract; cluster runtime deferred |
-| `template.slurm` | no focused dynamic suite | static only | gap: characterize or explicitly retain as example under `TG-05` |
-| `tool_check.slurm` | no focused dynamic suite | static only | gap: `TG-05` |
-| `validate_manifest.slurm` | no focused dynamic suite | static only | gap: `TG-05` |
+| `step_00a_build_novogene_star_index.slurm` | central mocked wrapper suite | `E X W` | characterized legacy exception: caller-CWD embedded STAR compute, implicit execution, and no wrapper output check; cluster runtime deferred |
+| `step_00b_gtf_to_bed12.slurm` | central mocked wrapper suite | `E M F T X W` | characterized legacy exception: required submit CWD and implicit embedded conversion/sort; exact BED12 shape check protected; cluster runtime deferred |
+| `step_00c_prepare_gatk_reference.slurm` | central mocked wrapper suite; Step `00c` shell suite | `D E M F X W` | adequate mocked delegation/output contract; Bash 3.2 empty-array dry-run defect characterized; cluster runtime deferred |
+| `step_01_star_align.slurm` | central mocked wrapper suite; Step `01` shell suite | `D E M X W` | caller-CWD and default dry-run placeholder side effects protected; output validation remains delegated; cluster runtime deferred |
+| `step_02_sort_index_bam.slurm` | central mocked wrapper suite; Step `02` shell suite | `D E M F X W` | caller-CWD and dry-run output-directory side effect protected; Bash 3.2 empty-array defect characterized; cluster runtime deferred |
+| `step_02b_bam_qc.slurm` | central mocked wrapper suite; Step `02b` shell suite | `D E M F X W` | required submit CWD and dry-run output-directory side effect protected; Bash 3.2 defect characterized; cluster runtime deferred |
+| `step_03_infer_strandedness_and_orientation.slurm` | central mocked wrapper suite; Step `03` shell suite | `D E M F X W` | fallback submit CWD, exact delegation, and output check protected; Bash 3.2 defect characterized; cluster runtime deferred |
+| `step_04_mark_duplicates.slurm` | central mocked wrapper suite; Step `04` shell suite | `D E M F X W` | exact modules/tools/delegation and three-output check protected; Bash 3.2 defect characterized; cluster runtime deferred |
+| `step_05_split_n_cigar_reads.slurm` | central mocked wrapper suite; Step `05` shell suite | `D E M F X W` | exact delegation and two-output check protected; Bash 3.2 defect characterized; cluster runtime deferred |
+| `step_06_split_bam_by_read_orientation.slurm` | central mocked wrapper suite; Step `06` shell suite | `D E M F X W` | exact delegation and five-output check protected; Bash 3.2 defect characterized; cluster runtime deferred |
+| `step_07_bcftools_mpileup_by_chrom_and_strand.slurm` | central mocked wrapper suite; Step `07` shell suite | `D E M F X W` | adequate local wrapper contract with mocked runtime; cluster runtime deferred |
+| `step_08_vcf_preprocessing.slurm` | central mocked wrapper suite; Step `08` shell suite | `D E M F X W` | adequate local wrapper contract without guessed R modules; cluster runtime deferred |
+| `step_09_cmh_editing_site_calling.slurm` | central mocked wrapper suite; Step `09` shell suite | `D E M F X W` | adequate local wrapper contract without dependency installation; cluster runtime deferred |
+| `template.slurm` | central mocked wrapper suite | `M X W` | characterized caller-CWD, mode-less lightweight template probe; strict module loads and tolerant unredirected module lists preserved |
+| `tool_check.slurm` | central mocked wrapper suite | `M X W` | characterized caller-CWD, mode-less tool probe; required probes propagate failure while optional Picard version failure is tolerated |
+| `validate_manifest.slurm` | central mocked wrapper suite | `M X W` | characterized caller-CWD, mode-less lightweight validation with strict Python module/child exit; no module-list call |
 
-`TG-05` must test default/execute/invalid `EXECUTE`, module listing/loading,
-submit working directory, exact delegation and arguments, output validation,
-and child exit propagation. It must document the intentional Step `00a`/`00b`
-legacy exceptions before any structural change.
+`TG-05` is complete as local characterization. Cluster execution, actual CSU
+module behavior, and production-scale runtime remain environment-deferred.
+The Step `00a`/`00b` embedded-compute exceptions and every other differing
+wrapper behavior remain unchanged pending later structural review.
 
 ## Make targets
 
@@ -263,7 +271,7 @@ in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
 | Unrelated-file immunity | central public-CLI help/failure matrix, `gtf_to_bed12.py`, Step `07`–`09`, Step `09c`, adapter/summary/report suites | independent/mixed | `TG-04` applicable CLI omissions complete; preserve deeper transaction suites |
 | Symlink, hardlink, and directory-identity substitution | adapter, summary, report, restore, preflight/storage/provenance, and shared-validator publication suites | independent | `TG-02` characterization complete; preserve |
 | Computational/scientific evidence-state boundaries | schemas, Step `09c`, adapters, summary, reports | mixed | preserve; mutation-resistant vocabulary cases in `TG-06` |
-| Direct execution, arbitrary CWD, and SLURM delegation | exact public script modes and arbitrary-CWD CLI matrix; existing workflow suites; partial SLURM suites | independent | `TG-04` complete with characterized file-mode/environment exceptions; `TG-05` remains |
+| Direct execution, arbitrary CWD, and SLURM delegation | exact public script/job modes, arbitrary-CWD CLI matrix, exact mocked submit-CWD/delegation matrix, and existing workflow suites | independent | `TG-04` and local `TG-05` characterization complete; real scheduler/module/runtime evidence remains environment-deferred |
 | Step `09` CMH statistic, p-value, odds ratio, and estimability | independent Python oracle, fixed corpus, direct committed-R comparison, and coordinated-corruption rejection; production validator still checks type/range and BH from reported p-values | independent characterization plus producer-coupled validator | `TG-01` characterization complete; compatible production-validator correction remains separately reviewed |
 | `_run_summary_science.py` policy projection | artifact, summary, Step `09c`, and report suites | producer-coupled/mixed | independent state-transition goldens in `TG-06` |
 
@@ -288,7 +296,7 @@ the integrated fixtures.
 
 ## Evidence-derived characterization gaps
 
-The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-04` are now
+The baseline matrix yielded six cohesive gaps. `TG-01` through `TG-05` are now
 characterized; the authoritative branch mapping and remaining order are in
 `PIPELINE_PLAN.md`.
 
@@ -413,6 +421,40 @@ gate then passed static preflight, shell contracts, checked Python line/branch
 non-regression, guarded R, and pinned report runtime in 164.719 seconds. No
 production, schema, workflow, Makefile, dependency, scientific, runtime, or
 cluster behavior changed.
+
+### Completed `TG-05` characterization
+
+Implementation commit `9a4fb09` adds one exact test-only matrix for all 16
+tracked SLURM and utility jobs. Eleven wrappers have explicit dry-run, execute,
+and invalid-mode decisions; Steps `00a` and `00b` retain implicit embedded
+compute; `template.slurm`, `tool_check.slurm`, and `validate_manifest.slurm`
+retain their mode-less probe or validation roles. Four jobs are executable
+files and 12 remain interpreter/submission-only. The tests freeze exact SBATCH
+directives without changing resource policy.
+
+Every dynamic case replaces modules, delegated scripts, Rscript, Java, STAR,
+samtools, GATK, bcftools, Python, and bedtools with local stubs. The matrix
+proves exact module calls and failure policy, caller/required/fallback submit
+CWD behavior, exact delegated arguments, output-validation ownership, and
+child-exit propagation. No `sbatch`, scheduler, CSU module system, real
+workflow binary, dependency restore, or production input is used.
+
+The package preserves several differences rather than normalizing them. Steps
+`00c`, `02`, `02b`, `03`, `04`, `05`, and `06` abort before their default
+dry-run child under Bash 3.2 because an empty `execute_args` array is expanded
+under `set -u`; execute mode is still reachable and newer Bash behavior is
+version-conditioned. Step `01` default dry-run creates placeholder input files
+and an index directory. Steps `02` and `02b` create their output directory in
+dry-run. Six jobs use caller CWD, two require `SLURM_SUBMIT_DIR`, and eight use
+its fallback form. Module failure tolerance and wrapper-level output checks
+also remain deliberately non-uniform.
+
+All 113 focused mocked-wrapper tests passed. The de-duplicated complete local
+gate passed static preflight, shell contracts, checked Python line/branch
+non-regression, guarded R, and pinned report runtime in 168.770 seconds. No
+production job, script, Makefile, schema, dependency, resource, scientific,
+runtime, cluster, or biological behavior changed. All cluster/runtime rows
+remain environment-deferred rather than cluster-proven.
 
 The final Phase `01` sufficiency gate must rerun the measured baseline, update
 this matrix with the completed characterization evidence, identify any

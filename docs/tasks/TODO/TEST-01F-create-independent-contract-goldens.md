@@ -21,7 +21,7 @@ producer/test shared defects before structural migration.
 
 ## Blocked by
 
-- [TEST-01E](../TODO/TEST-01E-characterize-slurm-wrapper-contracts.md) — Required: all public and scheduler boundaries must be inventoried first.
+- [TEST-01E](../COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md) — Required: all public and scheduler boundaries are inventoried and protected.
 
 ## Completion unblocks
 

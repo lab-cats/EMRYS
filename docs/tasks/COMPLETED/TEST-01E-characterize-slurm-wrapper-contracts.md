@@ -77,5 +77,24 @@ utility wrappers. These boundaries become fragile during source migration.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed locally on 2026-07-31 on
+`codex/refactor-01e-slurm-contracts`.
+
+- Implementation commit `9a4fb09` adds an exact, independent test-only matrix
+  for all 16 tracked SLURM and utility jobs, including literal SBATCH
+  directives, file modes, mode applicability, module policy, submit CWD,
+  delegation, arguments, output validation, and exit propagation.
+- All dynamic cases use only generated child stubs, mocked modules and tools,
+  and tiny temporary fixtures. No scheduler, CSU module system, real workflow
+  executable, production input, dependency restore, or cluster work ran.
+- Characterized exceptions remain unchanged: Steps `00a`/`00b` embed implicit
+  compute; three utility jobs have no execution mode; seven wrappers have a
+  Bash 3.2 empty-array dry-run defect; Step `01` creates default placeholders;
+  Steps `02`/`02b` create dry-run output directories; submit-CWD, module, file
+  mode, and output-validation policies are non-uniform.
+- All 113 focused tests passed. The complete local gate passed every lane in
+  168.770 seconds.
+- No production job, script, Makefile, schema, dependency, resource,
+  scientific, runtime, cluster, or biological behavior changed. All real
+  scheduler/module/runtime evidence remains environment-deferred. The next
+  approved local descendant is `TEST-01F`.
