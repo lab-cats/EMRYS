@@ -19,6 +19,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md).
   It distinguishes materialization, parallel, and downstream prerequisites and
   preserves current publication and wrapper defects without changing behavior.
+- Slice 4 records historical Step `01` under the working name
+  `align_RNA_reads_with_STAR` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md).
+  It traces the paired-read/index inputs and Step `02` handoff while preserving
+  current dry-run, publication, and validation boundaries.
 
 ## Objective
 

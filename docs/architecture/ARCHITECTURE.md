@@ -43,6 +43,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md)
 - Historical Step `00c`, working name `construct_FASTA_sidecars`:
   [`CONTRACT.md`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md)
+- Historical Step `01`, working name `align_RNA_reads_with_STAR`:
+  [`CONTRACT.md`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 
