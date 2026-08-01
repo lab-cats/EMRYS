@@ -250,7 +250,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Why it matters:** excessive grouping recreates the waterfall program,
   while premature standalone work can settle cross-cutting contracts twice.
 - **Owning card:**
-  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 - **Decision deadline:** before `PROGRAM-01` initializes
   `docs/operations/TRANCHE.md` or selects a post-program delivery card.
 - **Recommendation:** group only expensive-to-reverse shared invariants; choose
@@ -266,7 +266,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
   noisy, while an undefined optional transition can hide a durable review
   queue.
 - **Owning card:**
-  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 - **Decision deadline:** before `TASK-LIFECYCLE-01` task-specific planning.
 - **Recommendation:** reserve the durable state for asynchronous review that
   survives beyond one unpublished integration package; keep immediate frozen
@@ -279,7 +279,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Why it matters:** too many epics duplicate card state and context, while a
   rigid single hierarchy makes cross-cutting work difficult to find.
 - **Owning card:**
-  [`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 - **Decision deadline:** before `TASK-EPIC-01` task-specific planning.
 - **Recommendation:** derive a small stable taxonomy from durable ownership,
   use one primary membership when it is honest, and permit additional

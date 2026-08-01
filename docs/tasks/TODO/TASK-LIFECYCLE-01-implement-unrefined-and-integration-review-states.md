@@ -31,7 +31,7 @@ proposals or unintegrated work as approved or complete.
   and upstream equality.
 - Exact candidate SHA, worktree, checks, and fragment identity remain live
   state in `HANDOFF.md`, not duplicated in the task card.
-- [`PROGRAM-01`](PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+- [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
   decides the objective trigger for persisting `INTEGRATION_REVIEW`; routine
   immediate integration must not create meaningless status churn.
 - Lifecycle directories remain flat. Logical epic navigation is implemented
@@ -40,7 +40,7 @@ proposals or unintegrated work as approved or complete.
 ## Blocked by
 
 - [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
-- [PROGRAM-01](PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) — Required: the rolling tranche model must settle when an asynchronous handoff enters the durable review queue.
+- [PROGRAM-01](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) — Required: the rolling tranche model must settle when an asynchronous handoff enters the durable review queue.
 
 ## Completion unblocks
 

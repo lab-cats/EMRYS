@@ -52,7 +52,7 @@ plan:
 3. Preserve the completed manual fragment contract and synthetic exchange in
    [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
 4. Next, separately plan rolling-wave planning and coordination cohorts through
-   [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+   [`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
 5. Reassess rather than freezing the remaining order now. The current expected
    candidates begin with extracting and behavior-locking the documentation
    validator through
@@ -92,7 +92,7 @@ plan:
   [`CONCURRENCY-02`](docs/tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md),
   followed by
   [`CONCURRENCY-03`](docs/tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md),
-  [`PROGRAM-01`](docs/tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
+  [`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
   [`TASK-LIFECYCLE-01`](docs/tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
   and
   [`TASK-EPIC-01`](docs/tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).

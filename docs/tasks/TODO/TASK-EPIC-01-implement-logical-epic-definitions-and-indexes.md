@@ -26,7 +26,7 @@ one physical hierarchy.
   delivery tranche.
 - Epic indexes link to card-owned scope and status rather than copying mutable
   priority, branch, evidence, blocker, or completion claims.
-- [`PROGRAM-01`](PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+- [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
   settles the initial taxonomy, membership cardinality, and distinction among
   category, epic, cohort, and tranche. This card implements that reviewed
   model without reopening it.

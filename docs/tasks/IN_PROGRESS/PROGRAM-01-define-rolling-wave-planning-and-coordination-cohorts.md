@@ -1,5 +1,50 @@
 # PROGRAM-01 — Define rolling-wave planning and coordination cohorts
 
+**Current execution boundary — Slice 1**
+
+Only this slice is active. It establishes the temporary execution boundary
+needed to reach the first physical source migration without activating the
+rest of the program.
+
+**Active objective**
+
+- Record the temporary freeze, active architecture runway, just-in-time
+  decision boundary, and quiet-validation rule in
+  [`TASK_START.md`](../../operations/TASK_START.md).
+- Keep this card in progress for later separately planned slices.
+
+**Active scope**
+
+- Select `ARCH-02A` through `ARCH-02D`, in dependency order, as the only active
+  runway after this slice.
+- Freeze every other task, candidate, integration, and program family until
+  the first migration is complete and the user reassesses the program.
+- Require each architecture card to be planned just in time and executed in
+  smaller internal phases rather than as one comprehensive pass.
+- Use quiet validation immediately; retain complete output for failures or an
+  explicitly requested verbose run.
+
+**Active acceptance evidence**
+
+- `TASK_START.md` states the temporary boundary, its exception rule, and its
+  explicit sunset condition without weakening mandatory safety or context-
+  expansion triggers.
+- No downstream design, review, correction, migration, integration, or
+  implementation decision is made by this slice.
+- Existing program information below remains present and unchanged in meaning.
+- Mandatory card-move links resolve, Git checks pass, and the quiet
+  documentation gate passes. Computational validation is not applicable.
+
+**Currently dead / out of scope**
+
+Every remaining section below is preserved as a program-design record but is
+currently dead and out of scope. Its content is not an active dependency,
+acceptance criterion, required-context route, or authorization for this slice.
+Do not execute, expand, reconcile, or routinely maintain it while the temporary
+freeze is active. A later slice may reactivate only the information needed for
+the then-current decision, with explicit user approval and just-in-time
+inspection.
+
 ## Objective
 
 Replace the waterfall-shaped whole-program design sequence with a reviewed
@@ -69,7 +114,7 @@ and unnecessary context for bounded work.
 
 ## Completion unblocks
 
-- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Defines the rolling-wave, current-tranche, and refactor-plan reconciliation semantics required by the lifecycle implementation; completed `CONCURRENCY-02` is satisfied and `DOC-GATE-01` remains required.
+- [TASK-LIFECYCLE-01](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Defines the rolling-wave, current-tranche, and refactor-plan reconciliation semantics required by the lifecycle implementation; completed `CONCURRENCY-02` is satisfied and `DOC-GATE-01` remains required.
 
 ## Prerequisites
 
@@ -91,8 +136,8 @@ and unnecessary context for bounded work.
   completed concurrency policy.
 - The completed fragment protocol plus the planned lifecycle and epic
   implementation boundaries in
-  [`TASK-LIFECYCLE-01`](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-  and [`TASK-EPIC-01`](TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
+  [`TASK-LIFECYCLE-01`](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  and [`TASK-EPIC-01`](../TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
 - The settled architecture direction and future-only extension constraints;
   these are guardrails, not prewritten implementation plans.
 

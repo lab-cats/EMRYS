@@ -13,6 +13,38 @@ a new context-routing decision even if it arrives in the same conversation.
 tooling may supply it automatically. If the active context does not contain its
 exact current version, read it before planning.
 
+## Temporary critical runway
+
+This temporary boundary remains active until the first physical source
+migration is complete and the user explicitly reassesses it. It narrows work
+selection and routine context loading; it does not weaken the safety,
+freshness, evidence, ownership, or mandatory-expansion rules below.
+
+- The active runway is the current slice of
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
+  followed by `ARCH-02A`, `ARCH-02B`, `ARCH-02C`, and `ARCH-02D` in dependency
+  order.
+- Plan each architecture card just in time. Divide its execution into small,
+  internally reviewed phases and complete only the active phase before loading
+  detail for the next one. Do not pre-plan the four cards comprehensively.
+- Every other task, candidate, integration, branch package, and program family
+  is frozen and currently dead/out of scope. Preserve it, but do not select,
+  inspect routinely, integrate, execute, or maintain it while this boundary is
+  active.
+- Frozen material may be inspected or corrected only when a concrete technical
+  contradiction, safety issue, direct interface dependency, or mandatory
+  expansion trigger below makes that work necessary for the active runway.
+  Preferred ordering, general consistency, or potential future usefulness is
+  not an exception.
+- Recasting `PLAN-02Z`, selecting a migration, defining its independent review,
+  and deciding any required corrections are deferred until just after
+  `ARCH-02D`, immediately before the first migration is planned.
+- Validation is quiet by default. Documentation-only slices run Git and the
+  quiet documentation gate without computational suites. Executable slices use
+  focused quiet tests during development and one de-duplicated applicable quiet
+  final gate. Replay or stream complete output only for a failure or an
+  explicitly requested verbose run.
+
 ## Minimum start
 
 Before proposing a task-specific plan:

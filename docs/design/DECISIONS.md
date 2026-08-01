@@ -725,7 +725,7 @@ slice. The hybrid keeps necessary architecture without front-loading the whole
 refactor.
 
 Consequences: after the required post-concurrency strategy discussion,
-[`PROGRAM-01`](../tasks/TODO/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 will classify active cards, define cohorts, revise `PLAN-02Z` and review
 boundaries, reconcile the existing refactor plan, define and initialize the
 `TRANCHE.md` contract, and select the first tranche. It will not execute
