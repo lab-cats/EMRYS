@@ -61,6 +61,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md)
 - Historical Step `08`, working name `preprocess_and_annotate_cohort_candidates`:
   [`CONTRACT.md`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+- Historical Step `09`, analysis operation `rank_cohort_candidates_with_paired_CMH`:
+  [`CONTRACT.md`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 

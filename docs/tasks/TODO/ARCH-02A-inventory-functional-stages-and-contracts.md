@@ -65,6 +65,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md),
   preserving the complete Step `07` barrier, provisional orientation policy,
   three-table transaction, and Step `09` analysis handoff.
+- Slice 13 records historical Step `09` as analysis operation
+  `rank_cohort_candidates_with_paired_CMH` in its colocated
+  [`CONTRACT.md`](../../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md),
+  preserving explicit replicate pairing, paired CMH/BH policy, the six-output
+  transaction, and the boundary between ranked candidates and review.
 
 ## Objective
 
