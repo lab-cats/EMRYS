@@ -25,6 +25,14 @@ printf 'NORAD_USE_RENV=%s\tRENV_SANDBOX=%s\tRENV_AUTO_SNAPSHOT=%s\tRENV_PROJECT=
     "${R_PROFILE_USER:-<unset>}" >>"${FAKE_R_LOG:?}"
 printf '%q ' "$@" >>"$FAKE_R_LOG"
 printf '\n' >>"$FAKE_R_LOG"
+case "$*" in
+    *step_08_vcf_preprocessing.R*--help*)
+        printf 'Usage: step_08_vcf_preprocessing.R --cohort-id ID\n'
+        ;;
+    *step_09_cmh_editing_site_calling.R*--help*)
+        printf 'Usage: step_09_cmh_editing_site_calling.R --analysis-id ID\n'
+        ;;
+esac
 EOF
 chmod +x "$fake_rscript"
 
@@ -62,14 +70,22 @@ grep -Fq 'https://bioc-release.r-universe.dev' renv.lock ||
 grep -Fq '"BiocVersion":' renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
 
+for r_entrypoint in \
+    scripts/check_r_environment.R scripts/restore_r_environment.R; do
+    grep -Fq 'commandArgs(trailingOnly = TRUE)' "$r_entrypoint" ||
+        fail "$r_entrypoint does not inspect positional arguments"
+    grep -Fq 'does not accept positional arguments.' "$r_entrypoint" ||
+        fail "$r_entrypoint no longer rejects every positional argument"
+done
+
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-restore >/dev/null
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-check >/dev/null
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" local-real-r-test \
     >/dev/null
 
 line_count="$(wc -l <"$fake_log" | tr -d ' ')"
-[[ "$line_count" -eq 5 ]] ||
-    fail "expected five guarded fake-R invocations, found $line_count"
+[[ "$line_count" -eq 7 ]] ||
+    fail "expected seven guarded fake-R invocations, found $line_count"
 
 while IFS= read -r line; do
     [[ "$line" == NORAD_USE_RENV=1$'\t'* ]] ||

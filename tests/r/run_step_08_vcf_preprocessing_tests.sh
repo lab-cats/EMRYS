@@ -51,4 +51,14 @@ if (length(missing) > 0L) {
     exit 1
 fi
 
+step08_help="$("$rscript_bin" scripts/step_08_vcf_preprocessing.R --help)"
+[[ "$step08_help" == *"Usage:"* ]] || {
+    printf 'ERROR: Step 08 --help output is missing its usage line.\n' >&2
+    exit 1
+}
+[[ "$step08_help" == *"--cohort-id"* ]] || {
+    printf 'ERROR: Step 08 --help output is missing --cohort-id.\n' >&2
+    exit 1
+}
+
 "$rscript_bin" tests/r/test_step_08_vcf_preprocessing.R "$rscript_bin"

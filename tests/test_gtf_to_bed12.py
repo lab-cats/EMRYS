@@ -8,10 +8,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "gtf_to_bed12.py"
 
 
-def run_converter(*args: str) -> subprocess.CompletedProcess[str]:
+def run_converter(
+    *args: str,
+    cwd: Path = REPO_ROOT,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
-        cwd=REPO_ROOT,
+        cwd=cwd,
         text=True,
         capture_output=True,
         check=False,
@@ -240,3 +243,45 @@ def test_output_is_sorted_by_chrom_start_end_and_name(tmp_path: Path) -> None:
         "txB|geneB",
         "tx2|gene2",
     ]
+
+
+def test_arbitrary_cwd_silently_replaces_only_the_declared_output(
+    tmp_path: Path,
+) -> None:
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    gtf = write_gtf(
+        inputs / "input.gtf",
+        [
+            gtf_row(
+                "chr1",
+                "exon",
+                1,
+                5,
+                "+",
+                'gene_id "gene1"; transcript_id "tx1";',
+            )
+        ],
+    )
+    output = tmp_path / "outputs" / "models.bed"
+    output.parent.mkdir()
+    output.write_text("previous output\n")
+    unrelated = tmp_path / "unrelated.tsv"
+    unrelated.write_text("must\tremain\nunchanged\ttrue\n")
+    unrelated_before = unrelated.read_bytes()
+    invocation_cwd = tmp_path / "elsewhere"
+    invocation_cwd.mkdir()
+
+    result = run_converter(
+        "--gtf",
+        str(gtf),
+        "--bed",
+        str(output),
+        cwd=invocation_cwd,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    assert "Wrote 1 transcript BED12 record" in result.stdout
+    assert output.read_text() == "chr1\t0\t5\ttx1|gene1\t0\t+\t0\t5\t0\t1\t5,\t0,\n"
+    assert unrelated.read_bytes() == unrelated_before
