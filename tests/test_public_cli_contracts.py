@@ -153,8 +153,8 @@ MAKE_CONTEXT_VARIABLES = frozenset(
         "VALIDATION_PYTHON_WORKERS",
     }
 )
-MAKE_RECURSION_VARIABLES = frozenset(
-    {"MAKE", "MAKEFLAGS", "MAKELEVEL", "MFLAGS"}
+MAKE_ENVIRONMENT_PASSTHROUGH = frozenset(
+    {"COMSPEC", "PATH", "PATHEXT", "SYSTEMROOT", "TEMP", "TMP", "TMPDIR"}
 )
 
 
@@ -205,11 +205,14 @@ def expected_make_expansions() -> dict[str, tuple[str, ...]]:
 
 
 def canonical_make_environment() -> dict[str, str]:
-    """Remove caller overrides so the golden describes declared defaults."""
+    """Build a bounded environment so the golden describes declared defaults."""
 
-    environment = os.environ.copy()
-    for variable in MAKE_CONTEXT_VARIABLES | MAKE_RECURSION_VARIABLES:
-        environment.pop(variable, None)
+    environment = {
+        variable: os.environ[variable]
+        for variable in MAKE_ENVIRONMENT_PASSTHROUGH
+        if variable in os.environ
+    }
+    environment["LC_ALL"] = "C"
     return environment
 
 
@@ -233,6 +236,43 @@ def test_make_normalization_accepts_portable_recursive_identities(
     expected: tuple[str, ...],
 ) -> None:
     assert normalized_make_expansion(output) == expected
+
+
+def test_make_expansion_ignores_ambient_make_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ambient_makefile = tmp_path / "ambient.mk"
+    ambient_makefile.write_text(
+        "test:\n\t@printf 'contaminated\\n'\n",
+        encoding="utf-8",
+    )
+    ambient_make_state = {
+        "GNUMAKEFLAGS": "--warn-undefined-variables",
+        "MAKE": "make",
+        "MAKEFILES": str(ambient_makefile),
+        "MAKEFLAGS": "--warn-undefined-variables",
+        "MAKELEVEL": "9",
+        "MAKEOVERRIDES": "RSCRIPT_BIN",
+        "MFLAGS": "-s",
+    }
+    for variable, value in ambient_make_state.items():
+        monkeypatch.setenv(variable, value)
+
+    environment = canonical_make_environment()
+    assert set(environment).isdisjoint(ambient_make_state)
+
+    result = run_command(
+        ["make", "-n", "--no-print-directory", "-C", str(REPO_ROOT), "test"],
+        cwd=tmp_path,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert normalized_make_expansion(result.stdout) == (
+        expected_make_expansions()["test"]
+    )
 
 
 def test_inventory_classifies_every_live_public_script() -> None:

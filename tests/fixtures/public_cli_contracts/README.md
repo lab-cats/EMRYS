@@ -14,10 +14,13 @@ ordering, quoting, versions, and nested target expansion remain literal. The
 test reads this committed fixture; it does not derive expected commands from
 the Makefile under test.
 
-Expansion runs with the Makefile's declared `?=` defaults: the test removes
-caller-supplied values for those variables and inherited recursive-Make state.
-It also inventories the declared configurable variables, so adding a new one
-requires explicit review of this fixture contract.
+Expansion runs with the Makefile's declared `?=` defaults in a bounded process
+environment. It preserves only executable lookup, temporary-directory, and
+platform process-launch variables, fixes `LC_ALL=C`, and excludes ambient Make
+state such as `MAKEFILES`, `MAKEFLAGS`, `GNUMAKEFLAGS`, and `MAKEOVERRIDES`.
+A direct contamination regression protects that isolation. The test also
+inventories declared configurable variables, so adding one requires explicit
+review of this fixture contract.
 
 This fixture characterizes local command expansion. It does not execute
 recipes, authorize dependency restoration or output publication, or establish
