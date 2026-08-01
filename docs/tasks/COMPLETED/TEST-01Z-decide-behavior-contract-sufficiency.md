@@ -103,10 +103,12 @@ Completed locally on 2026-07-31 on
 - Test-only correction `0c64d1a` adds the missing literal Make oracle and real
   R rejection-path execution. The first final review then blocked on bare
   recursive-Make portability; follow-up `44d3255` explicitly protects bare
-  and absolute `make` and `gmake` identities. The focused tests and reopened
-  complete local gate pass; the affirmative decision is unchanged, but final
-  Phase `0` reconciliation still requires adversarial acceptance of the exact
-  corrected tip.
+  and absolute `make` and `gmake` identities. The second review exposed ambient
+  `MAKEFILES` contamination; `fd98244` isolates default expansion in a bounded
+  process environment and adds a direct regression. The focused tests and
+  reopened complete local gate pass; the affirmative decision is unchanged,
+  but final Phase `0` reconciliation still requires adversarial acceptance of
+  the exact corrected tip.
 - The decision is affirmative only for separate task selection of `ARCH-02A`,
   `RPT-01`, `LOG-01`, and `DOC-IA-01`. TEST-01Z's partial dependency is
   satisfied for `CODEDOC-05` and `SIZE-07`, whose other blockers remain.

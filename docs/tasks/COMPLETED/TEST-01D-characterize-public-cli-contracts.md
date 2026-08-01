@@ -98,6 +98,10 @@ Completed locally on 2026-07-31 on
 - The first correction review then reproduced a bare-`make` portability gap.
   Follow-up `44d3255` removes caller recursion state and explicitly protects
   bare and absolute `make` and `gmake` identities.
+- The second review found that ambient `MAKEFILES` and related GNU Make state
+  could still contaminate the default context. Follow-up `fd98244` runs the
+  expansion in a bounded process environment and adds a direct contamination
+  regression.
 - The corrected central matrix protects help or current no-help behavior,
   parse/missing failures, arbitrary-CWD invocation, working-directory
   side-effect freedom, file modes, and exact Make-target applicability and
@@ -112,9 +116,9 @@ Completed locally on 2026-07-31 on
 - The focused 116-test Python set, guarded local-R shell contract, and Step
   `08`/`09` real-R fixtures passed. The complete local gate passed every lane
   in 164.719 seconds.
-- After both corrections, the 110-case public-contract file and guarded
+- After the complete correction sequence, the 111-case public-contract file and guarded
   local-R shell contract passed. The complete static, shell, checked Python,
-  guarded-R, and pinned report-runtime gate then passed in 165.119 seconds.
+  guarded-R, and pinned report-runtime gate then passed in 207.451 seconds.
 - No production, schema, workflow, Makefile, dependency, scientific, runtime,
   cluster, or biological behavior changed. The correction changes tests and
   literal test fixtures only.

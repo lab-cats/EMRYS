@@ -454,10 +454,11 @@ mutation, and directly executes `check_r_environment.R` and
 argument from an empty working directory. It never invokes no-argument restore
 behavior. The first final review reproduced a bare-`make` portability gap;
 follow-up `44d3255` removes caller recursion state and adds literal bare and
-absolute `make` and `gmake` normalization cases. The corrected 110-case
-public-contract file and guarded local-R contract passed, followed by the
-reopened complete local gate in 165.119 seconds. No production or public
-behavior changed.
+absolute `make` and `gmake` normalization cases. The second review reproduced
+ambient `MAKEFILES` contamination; `fd98244` bounds the expansion environment
+and directly tests hostile Make state. The corrected 111-case public-contract
+file and guarded local-R contract passed, followed by the reopened complete
+local gate in 207.451 seconds. No production or public behavior changed.
 
 ### Completed `TG-05` characterization
 
@@ -697,7 +698,9 @@ Independent evidence keys used below are:
   publication. Correction `0c64d1a` closes both with a literal Make oracle and
   direct real-R rejection-path execution; after the first final review exposed
   a bare-`make` portability defect, `44d3255` added explicit portable recursive
-  identities. The focused tests and reopened complete local gate pass. Final
+  identities. A second review exposed ambient `MAKEFILES` contamination;
+  `fd98244` isolates the default-context expansion and adds a hostile-state
+  regression. The focused tests and reopened complete local gate pass. Final
   Phase `0` publication remains contingent on adversarial acceptance of the
   exact corrected tip. The checked coverage refresh has no line or branch
   regression.
