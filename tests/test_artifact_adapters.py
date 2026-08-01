@@ -17,6 +17,8 @@ from typing import Any, Mapping, Sequence
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from validation_roster_expectations import assert_exact_check_roster
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "build_artifact_index.py"
@@ -28,6 +30,21 @@ FIXTURE_BUILDER = (
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
+VALIDATION_ARTIFACT_STEPS = {
+    "ref.star_index.validation": "00a",
+    "ref.bed12.validation": "00b",
+    "ref.sidecars.validation": "00c",
+    "sample.SYNTH_A.star_validation": "01",
+    "sample.SYNTH_A.canonical_validation": "02",
+    "sample.SYNTH_A.bam_qc_validation": "02b",
+    "sample.SYNTH_A.strand_validation": "03",
+    "sample.SYNTH_A.markdup_validation": "04",
+    "sample.SYNTH_A.split_validation": "05",
+    "sample.SYNTH_A.orientation_validation": "06",
+    "cohort.synthetic.p1.validation": "07",
+    "cohort.synthetic.step08_validation": "08",
+    "analysis.synthetic.cmh_validation": "09",
+}
 
 
 def load_fixture_module() -> ModuleType:
@@ -385,6 +402,64 @@ def test_validation_adapter_preserves_failed_check_status(
     assert [entry["code"] for entry in record["errors"]] == [
         "validation_checks_failed"
     ]
+
+
+def test_validation_adapter_fixture_uses_exact_independent_rosters(
+    artifact_fixture: Any,
+) -> None:
+    for artifact_id, step_id in VALIDATION_ARTIFACT_STEPS.items():
+        assert_exact_check_roster(
+            read_tsv(artifact_fixture.source_for(artifact_id)),
+            step_id,
+        )
+
+
+@pytest.mark.parametrize("mutation", ("missing", "extra", "duplicate"))
+def test_validation_adapter_rejects_roster_shape_mutations(
+    artifact_fixture: Any,
+    mutation: str,
+) -> None:
+    artifact_id = "ref.star_index.validation"
+    report = artifact_fixture.source_for(artifact_id)
+    rows = read_tsv(report)
+    if mutation == "missing":
+        rows = rows[:-1]
+    elif mutation == "extra":
+        rows.append({**rows[-1], "check_id": "unexpected_check"})
+    else:
+        rows[-1]["check_id"] = rows[0]["check_id"]
+    FIXTURE.write_tsv(report, tuple(rows[0]), rows)
+
+    result = run_cli(artifact_fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    record = record_for(artifact_fixture, artifact_id)
+    assert record["completion_status"] == "failed"
+    assert [entry["code"] for entry in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+
+
+@pytest.mark.parametrize("mutation", ("reordered", "wrong_unique_id"))
+def test_validation_adapter_accepts_roster_identity_defects_as_characterized(
+    artifact_fixture: Any,
+    mutation: str,
+) -> None:
+    artifact_id = "ref.star_index.validation"
+    report = artifact_fixture.source_for(artifact_id)
+    rows = read_tsv(report)
+    if mutation == "reordered":
+        rows.reverse()
+    else:
+        rows[0]["check_id"] = "unexpected_check"
+    FIXTURE.write_tsv(report, tuple(rows[0]), rows)
+
+    result = run_cli(artifact_fixture, execute=True)
+
+    assert result.returncode == 0, result.stderr
+    record = record_for(artifact_fixture, artifact_id)
+    assert record["completion_status"] == "complete"
+    assert record["errors"] == []
 
 
 def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(

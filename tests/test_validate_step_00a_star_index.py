@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from validation_roster_expectations import assert_exact_check_roster
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_step_00a_star_index.py"
@@ -76,11 +78,7 @@ def test_execute_publishes_five_passing_checks(tmp_path):
     result = run(index, fasta, gtf, output, "--execute")
     assert result.returncode == 0, result.stderr
     rows = report_rows(output)
-    assert len(rows) == 5
-    assert [row["check_id"] for row in rows] == [
-        "index_members", "fasta_identity", "gtf_identity",
-        "contig_names_lengths", "sjdb_overhang",
-    ]
+    assert_exact_check_roster(rows, "00a")
     assert {row["status"] for row in rows} == {"pass"}
     first = output.read_bytes()
     assert run(index, fasta, gtf, output, "--execute").returncode == 0

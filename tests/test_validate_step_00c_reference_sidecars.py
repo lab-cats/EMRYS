@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from validation_roster_expectations import assert_exact_check_roster
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_step_00c_reference_sidecars.py"
 
@@ -42,7 +44,7 @@ def test_execute_publishes_five_passes(tmp_path):
     values = fixture(tmp_path)
     result = run(values, "--execute")
     assert result.returncode == 0, result.stderr
-    assert len(rows(values[3])) == 5
+    assert_exact_check_roster(rows(values[3]), "00c")
     assert {item["status"] for item in rows(values[3])} == {"pass"}
 
 

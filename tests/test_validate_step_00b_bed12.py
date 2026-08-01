@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from validation_roster_expectations import assert_exact_check_roster
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_step_00b_bed12.py"
@@ -59,7 +61,7 @@ def test_execute_publishes_passing_report(tmp_path):
     bed, gtf, output = fixture(tmp_path)
     result = run(bed, gtf, output, "--execute")
     assert result.returncode == 0, result.stderr
-    assert len(rows(output)) == 5
+    assert_exact_check_roster(rows(output), "00b")
     assert {row["step_id"] for row in rows(output)} == {"00b"}
     assert {row["status"] for row in rows(output)} == {"pass"}
 

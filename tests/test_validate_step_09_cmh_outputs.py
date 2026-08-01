@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from validation_roster_expectations import assert_exact_check_roster
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/validate_step_09_cmh_outputs.py"
 FIXTURE_PATH = ROOT / "tests/fixtures/step09c/build_fixture.py"
@@ -68,7 +70,7 @@ def test_execute_publishes_seven_passes(tmp_path):
     values = fixture(tmp_path)
     result = run(values, "--execute")
     assert result.returncode == 0, result.stderr
-    assert len(rows(values[-1])) == 7
+    assert_exact_check_roster(rows(values[-1]), "09")
     assert {row["status"] for row in rows(values[-1])} == {"pass"}
 
 
