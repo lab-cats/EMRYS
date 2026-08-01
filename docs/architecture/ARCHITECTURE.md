@@ -41,6 +41,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/construct_STAR_index/CONTRACT.md)
 - Historical Step `00b`, working name `convert_GTF_to_BED12`:
   [`CONTRACT.md`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md)
+- Historical Step `00c`, working name `construct_FASTA_sidecars`:
+  [`CONTRACT.md`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 

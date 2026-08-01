@@ -14,6 +14,11 @@
   and makes hard, operational, downstream, and parallel execution edges
   explicit in both recorded stage contracts. It does not convert historical
   numbering into orchestration or settle the future DAG.
+- Slice 3 records historical Step `00c` under the working name
+  `construct_FASTA_sidecars` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md).
+  It distinguishes materialization, parallel, and downstream prerequisites and
+  preserves current publication and wrapper defects without changing behavior.
 
 ## Objective
 
