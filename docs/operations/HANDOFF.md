@@ -7,38 +7,40 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/log-01-characterize-current-output-reconciliation`
+  `codex/log-02-define-logging-contract-reconciliation`
 - Parent:
-  `codex/refactor-01z-test-sufficiency-gate`
+  `codex/log-01-characterize-current-output-reconciliation`
 - Verified parent HEAD:
-  `b2af7388efe426f413471f9f076d1b51a5a6428a`
+  `ead6ff48ac0f72365306152ac83715c35e7d6bc4`
 - Parent documentation commit:
-  `b2af738 docs: make Phase 0 publication state durable`
+  `ead6ff4 docs: reconcile current output and log inventory`
 - Current implementation commit:
-  not applicable; LOG-01 changes non-consuming Markdown only and inherits the
+  not applicable; LOG-02 changes non-consuming Markdown only and inherits the
   corrected Phase `0` executable state ending at `fd98244`
 - Current documentation commit:
-  `docs: reconcile current output and log inventory` (the branch commit
+  `docs: reconcile logging contract` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
 - Recorded package state: Phase `0` is corrected, adversarially reviewed,
-  published, and upstream-equal; LOG-01 is complete as a documentation-only
-  current-output characterization
-- Current package: normalized output/log profiles, per-surface traceability,
-  durable/evidence-log boundaries, and corrected failure-retention facts
+  published, and upstream-equal; LOG-01 is published and upstream-equal; LOG-02
+  is complete as a documentation-only target contract
+- Current package: public logging controls, stream and one-writer ownership,
+  durable operation identity, receipt/failure/security/retention semantics,
+  scheduler/evidence boundaries, and scenario/adoption inputs
 - Package type: one standalone documentation commit
 - Remote publication and upstream equality: resolve from live Git; cluster work
   remains paused
 
-This branch descends directly from the clean, pushed, upstream-equal Phase `0`
-tip `b2af738`. It manually reconciles useful inventory structure from the
-preserved, review-failed `4d01152` proposal without merging, rebasing, or
-cherry-picking that branch. The package changes documentation only; it does not
-change any production job, CLI, workflow, Makefile, schema, dependency,
-resource, test, runtime, cluster, scientific, or biological behavior.
+This branch descends directly from the clean, pushed, upstream-equal LOG-01 tip
+`ead6ff4`. It manually reconciles useful design structure from preserved
+candidate `dad6b79` without merging, rebasing, or cherry-picking it because that
+candidate descends from rejected pre-correction LOG-01 proposal `4d01152`. The
+package changes documentation only; it does not change any production job,
+CLI, workflow, Makefile, schema, dependency, resource, test, runtime, cluster,
+scientific, or biological behavior.
 
 ## Active concurrent lanes
 
-This checkout is the serialized canonical lane for LOG-01 reconciliation.
+This checkout is the serialized canonical lane for LOG-02 reconciliation.
 This package does not inspect, modify, or integrate unrelated candidate
 worktrees, paused concurrency attempts, or the researcher pilot.
 The user explicitly authorized that pilot before the fragment checkpoint was
@@ -167,6 +169,10 @@ The local descendant sequence has implemented:
   R, SLURM, and Make surface plus validation, documentation-gate, operational-
   check, durable-copy, and evidence-log roles; mixed streams and unsafe or
   conditional durability remain labeled behavior rather than approved design;
+- a version-1 target logging contract covering direct/environment controls,
+  machine/human streams, dry-run command visibility, one-writer operation
+  identity, durable JSONL, receipt-safe ordering, bounded failure summaries,
+  protected retention, scheduler/evidence separation, and adoption inputs;
 - an open-choice ledger and updated future Mermaid sources. Current executable
   topology, report behavior, logging behavior, numeric stage identifiers, and
   runtime/scientific evidence remain unchanged.
@@ -218,6 +224,7 @@ The local descendant sequence has implemented:
 | Phase `01f` independent contract goldens | implementation `dcb5dd4` plus targeted correction `1986898` add a compact producer-independent fixture family and 22 focused tests for five public schemas, six ordered headers, canonical UTF-8 JSON/TSV and report-receipt bytes, status/evidence transitions, and shared science-policy projection; deliberate schema, header, status, serializer, decision-dimension, and computational-scope mutations fail; the final complete local gate passed every static, shell, checked Python coverage, guarded-R, and pinned report-runtime lane in 180.219 seconds; production behavior and evidence state were unchanged |
 | Phase `01z` behavior sufficiency | 88/88 public-entry-point, cross-cutting, and fixture rows have explicit preserved-contract, characterized-defect, or environment-deferred dispositions with zero undefined rows; the checked Python refresh passed with 843 tests, 17 expected skips, 8,585/10,551 lines (81.3667%), and 3,111/4,404 branches (70.6403%); a later Phase `0` adversarial review found unprotected Make-expansion and R-argument claims, `0c64d1a` closed both, `44d3255` closed bare-Make portability, and `fd98244` closed ambient Make-state contamination; the final focused and complete gates plus exact-tip independent review pass, while the affirmative result still releases only four named Phase `02` planning roots and changes no production or evidence state |
 | Phase `02` LOG-01 current-output characterization | every current public/runtime and validation surface maps to an explicit output profile and regression/consumer trace in [`TEST_BASELINE.md`](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory); validator mixed stdout, conditional SLURM capture, per-lane validation retention, Step `05` duplicate-tee publication, exposure limits, and application/evidence-log separation are characterized without changing executable behavior or evidence state |
+| Phase `02` LOG-02 logging contract | the [version-1 target](../architecture/FUTURE_ARCHITECTURE.md#logging-target) defines `normal|verbose|debug`, direct/environment controls, dry-run command visibility, machine stdout and human stderr, one-writer operation-attempt JSONL, receipt-safe required writes, bounded failure tails, protected operator retention, conditional scheduler separation, explicit evidence authorization, and normalized cross-level equivalence without changing current executable behavior or evidence state |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
@@ -352,15 +359,27 @@ at `b2af738`. Its affirmative behavior-sufficiency decision remains bounded to
 local architecture planning and does not promote runtime, cluster, scientific,
 or biological evidence.
 
-LOG-01 is complete as a documentation-only characterization. The
+LOG-01 is published and upstream-equal at `ead6ff4`. Its
 [`current output and log inventory`](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory)
 maps every current command and validation surface to normalized stream,
 audience, stability, consumer/test, durability, recovery, and exposure
-semantics. It records mixed validator stdout, conditional scheduler capture,
-per-lane quiet-validation retention, verbose streaming without retained lane
-logs, the Step `05` operational check's duplicate-
-`tee` defect, and the distinction between future application logs and current
-runtime/cluster evidence roles. External consumers remain uninspected.
+semantics. External consumers remain uninspected.
+
+LOG-02 is complete as a documentation-only target contract. The
+[`version-1 logging target`](../architecture/FUTURE_ARCHITECTURE.md#logging-target)
+defines `normal|verbose|debug`, direct-command and Make/SLURM environment
+controls, dry-run command visibility, machine stdout and human stderr,
+single-writer operation-attempt JSONL, identity and safe-root boundaries,
+lossless classified child diagnostics, receipt-safe log ordering, bounded
+failure summaries, catchable/uncatchable interruption limits, protected
+operator-owned retention, scheduler separation, explicit evidence-role
+authorization, and normalized cross-level equivalence.
+
+Candidate `dad6b79` remains unchanged as evidence. It was not merged, rebased,
+or cherry-picked because it descends from rejected LOG-01 proposal `4d01152`.
+This reconciliation preserves its useful two-sink structure while correcting
+attempt identity, dry-run, cross-language ownership, receipt ordering,
+credential/evidence, and environment-deferred claims.
 
 The complete diff is non-consuming Markdown only, so computational validation
 is not applicable. `git diff --check` passed, and the documentation gate passed
@@ -368,11 +387,12 @@ with 78 Markdown documents, 55 task cards, and 6 Mermaid sources.
 
 The sibling worktree retains pre-existing ignored R cache material from an
 earlier failed activation. Do not delete or repair it without separate operator
-direction. No dependency was installed, restored, or updated for LOG-01.
+direction. No dependency was installed, restored, or updated for LOG-02.
 
 After the documentation gate, exact-tip adversarial review, non-force push,
-and upstream-equality proof, stop for reassessment. LOG-02 is technologically
-unblocked but unselected; ARCH-02A, RPT-01, and DOC-IA-01 also remain eligible
-and unselected. Do not begin executable logging changes, another task card,
+and upstream-equality proof, stop for reassessment. No later card is selected;
+`CONCURRENCY-02`, `ARCH-02A`, `RPT-01`, and `DOC-IA-01` remain subject to their
+own task starts. `LOG-03` still waits for its other recorded prerequisites and
+independent reviews. Do not begin executable logging, another task card,
 remote/cluster work, scientific-policy work, or biological interpretation as
 part of this phase.

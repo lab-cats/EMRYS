@@ -141,52 +141,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   summary by exact hash, and define an all-or-none parent transaction only when
   one request explicitly requires both profiles.
 
-### CHOICE-LOG-01 — Exact public log levels and flags
-
-- **Question:** What level enum, CLI/environment controls, precedence, and
-  invalid-value behavior should every entry point expose?
-- **Why it matters:** inconsistent level names would recreate per-script output
-  behavior and complicate automation.
-- **Owning card:**
-  [`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md).
-- **Decision deadline:** before `LOG-03` planning begins.
-- **Recommendation:** prefer a small semantic enum such as `normal`, `verbose`,
-  and `debug`, define `normal` as the concise default, and add a separate
-  `quiet` level only if characterization identifies a real user/automation need.
-- **Current evidence:** the
-  [`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
-  found no tracked non-test runtime or production consumer that requires an
-  empty console. Current machine consumers use explicit files or result
-  documents; tests protect selected console behavior, and the 13 validator
-  stdout streams contain a classified machine/human conflict. External
-  consumers were not inspected. This evidence does not resolve the level,
-  control, or precedence contract owned by `LOG-02`.
-
-### CHOICE-LOG-02 — Durable log layout, retention, and failure tail
-
-- **Question:** Where do run/attempt logs live, what files/metadata are required,
-  who owns retention, and what bounded failure summary reaches the console?
-- **Why it matters:** complete diagnostics and recovery must survive quiet
-  output without authorizing unbounded storage or automatic deletion.
-- **Owning card:**
-  [`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md).
-- **Decision deadline:** before foundation implementation.
-- **Recommendation:** use run/attempt-scoped paths under configured state,
-  always retain complete durable logs, print a concise actionable failure tail
-  to stderr, and leave deletion to explicit operator retention policy.
-- **Current evidence:** the
-  [`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
-  found conditional complete console capture only at the SLURM job boundary;
-  the submit-CWD and pre-created-log-directory contract must succeed first.
-  Direct local runs retain artifacts rather than full console logs. In default
-  or serial quiet `all-checks`, successful lane logs are deleted while each
-  failed lane observed before cancellation and each running lane on
-  interruption may be retained. Verbose mode streams merged output live and
-  creates no per-lane temporary log. Exact commands, hashes, locks, attempt
-  IDs, rollback/cleanup errors, and evidence boundaries must not be lost when
-  `LOG-02` defines the target policy. Existing `runtime_log` and `cluster_log`
-  evidence roles are not interchangeable with a future application log.
-
 ### CHOICE-DOC-01 — Documentation consolidation, overview, and history locations
 
 - **Question:** Which current sections move, remain, link, or become dated
@@ -359,7 +313,14 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 - one complete computational gate per executable state and failure-first local
   validation output;
 - de-duplicated validation lanes with measured bounded parallel defaults,
-  exact serial parity, and explicit failure/interruption cleanup.
+  exact serial parity, and explicit failure/interruption cleanup;
+- `CHOICE-LOG-01` and `CHOICE-LOG-02`: `normal|verbose|debug`, direct-command
+  flags plus Make/SLURM environment controls, machine stdout and human stderr,
+  one-writer operation-attempt JSONL, dry-run command visibility, receipt-safe
+  logging, bounded failure tails, protected operator-owned retention, distinct
+  scheduler capture, and explicit evidence-role authorization; see the
+  [logging decision](DECISIONS.md#separate-concise-console-output-from-durable-detailed-logs)
+  and [target contract](../architecture/FUTURE_ARCHITECTURE.md#logging-target);
 - behavior-contract sufficiency rather than 100% line coverage before
   architectural mutation;
 - a vertical `src/norad` target with semantic black-box stages, mirrored tests,

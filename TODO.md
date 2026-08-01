@@ -14,11 +14,11 @@ checkout and exact resume point belong in
    through [`TEST-01Z`](docs/tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md)
    are complete, the row-by-row TEST-01Z decision is affirmative, and the
    corrected tip passed adversarial review before publication.
-2. Preserve completed
-   [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md) as the
-   current-output characterization. It changes documentation only and fully
-   releases [`LOG-02`](docs/tasks/TODO/LOG-02-define-logging-contract.md) for a
-   separate task start; LOG-02 is not selected by LOG-01 completion.
+2. Preserve the completed documentation-only logging-design lineage:
+   [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md)
+   characterizes current behavior, and
+   [`LOG-02`](docs/tasks/COMPLETED/LOG-02-define-logging-contract.md) defines the
+   target contract. Neither changes current output or activates logging.
 3. TEST-01Z also releases
    [`ARCH-02A`](docs/tasks/TODO/ARCH-02A-inventory-functional-stages-and-contracts.md),
    [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md),
@@ -28,7 +28,7 @@ checkout and exact resume point belong in
    retain their other direct blockers and are not released by this decision
    alone.
 
-Pause at the LOG-01 phase boundary for reassessment. Selecting any later card
+Pause at the LOG-02 phase boundary for reassessment. Selecting any later card
 starts task-specific read-only planning under the
 [`task-start router`](docs/operations/TASK_START.md) and requires its own
 approved plan. Roadmap order is not blocker metadata.
@@ -82,7 +82,8 @@ plan:
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
   completed [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md)
-  followed by [`LOG-02`](docs/tasks/TODO/LOG-02-define-logging-contract.md).
+  followed by completed
+  [`LOG-02`](docs/tasks/COMPLETED/LOG-02-define-logging-contract.md).
 - Operating model and coordination:
   [`CONCURRENCY-01`](docs/tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
   through

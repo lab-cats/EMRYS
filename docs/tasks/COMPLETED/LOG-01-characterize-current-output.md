@@ -26,7 +26,7 @@ machine-readable streams.
 
 ## Completion unblocks
 
-- [LOG-02](../TODO/LOG-02-define-logging-contract.md) — Fully: target logging semantics can be based on a complete current inventory.
+- [LOG-02](LOG-02-define-logging-contract.md) — Fully: target logging semantics can be based on a complete current inventory.
 
 ## Prerequisites
 

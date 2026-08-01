@@ -915,27 +915,53 @@ unchanged until those cards complete.
 
 ### Separate concise console output from durable detailed logs
 
-Context: current scripts often print more context than a normal user needs, but
-that detail remains valuable for debugging, audit, and recovery.
+Context: the
+[`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
+found valuable recovery detail mixed with repetitive human output, thirteen
+validators mixing machine TSV rows with human stdout, only conditional
+scheduler-level complete capture, and no general local application log.
 
-Decision: target a relatively quiet default console, explicit verbose/debug
-levels, and complete durable run-scoped logs. Machine-readable output goes to
-stdout; human logs go to stderr. Log level may change presentation only: it
-must never change artifacts, hashes, receipts, evidence, validation, rollback,
-or exit behavior.
+Decision: use the version-1 two-sink contract in
+[`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md#logging-target).
+Public levels are `normal`, `verbose`, and `debug`; direct commands use
+`--log-level`/`--log-root`, Make and SLURM use the corresponding `NORAD_*`
+environment controls, and the outermost operation resolves them once. There is
+no `quiet` level. The existing validation `--verbose` control remains unchanged
+until a separately approved adoption may migrate it as a deprecated
+debug-level alias.
+
+Declared machine responses use stdout and human events use stderr. Dry-runs
+remain log-free but show their exact command at `normal`. Adopted substantive
+operations create one exclusively owned, no-clobber JSONL application log with
+an execution-attempt identity distinct from run, transaction, process, and
+scheduler identities. A single writer captures or adapts delegated diagnostics;
+children never append concurrently.
+
+Required log state is synced before receipt publication; the receipt remains
+the authoritative transaction marker, and any closing observation afterward is
+best-effort. Failures receive a bounded 20-event/8-KiB console summary while
+the protected partial log is retained; sensitive `durable_only` diagnostics are
+replaced there by a sanitized count and log pointer. Level changes projection
+only and never enables extra work or changes commands, artifacts, hashes,
+receipts, evidence, validation, rollback, cleanup, or exit behavior.
+
+Application logs are protected operational data. NORAD does not automatically
+rotate, upload, truncate, or delete them. Creation alone never promotes
+evidence; only a separately authorized immutable copy with the required path,
+hash, relationship, and role may satisfy existing runtime/cluster evidence
+policy.
 
 Rationale: deleting diagnostic detail would harm maintainability; printing all
-detail by default harms usability and context efficiency. Two explicit sinks
-serve both audiences and protect automation.
+detail by default harms usability and context efficiency. Stable stream,
+identity, and publication ownership protects automation and recovery without
+confusing scheduler capture, application state, or scientific evidence.
 
-Consequences: current output, consumer, durability, recovery, and exposure
-behavior is characterized by completed
-[`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md). Exact level
-names and controls, durable layout and retention, and failure-tail behavior
-remain open in [`LOG-02`](../tasks/TODO/LOG-02-define-logging-contract.md).
-Foundation, local adoption, and default activation remain separate. Current
-print behavior stays unchanged until those later packages are approved and
-implemented.
+Consequences: completed
+[`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) resolves its two
+owned choices. `LOG-03` owns a neutral foundation and representative opt-in
+adoption; `PLAN-02Z` later creates bounded rollout cards. Current output and
+defaults remain unchanged until separately reviewed implementation/adoption
+packages and `LOG-05` activation complete.
 
 ### Treat documentation and maintainer context as architecture
 

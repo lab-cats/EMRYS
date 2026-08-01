@@ -3,7 +3,7 @@
 ## Objective
 
 Implement the neutral logging foundation that separates concise console output
-from complete run-scoped durable logs.
+from complete operation-attempt durable logs.
 
 ## Why this exists
 
@@ -15,14 +15,15 @@ and avoid becoming a hidden orchestration framework.
 
 - Follow the approved level, stream, durable-log, and invariance contract.
 - Machine output stays on stdout; human output stays on stderr.
-- Durable detail is always retained for executable runs; console level affects
-  presentation only.
+- Durable detail is retained for every adopted application operation attempt;
+  established help, parser/control-failure, and valid dry-run invocations
+  remain log-free. Console level affects presentation only.
 - Foundation code lives in the narrowest neutral target owner and never imports
   stages.
 
 ## Blocked by
 
-- [LOG-02](../TODO/LOG-02-define-logging-contract.md) — Required: exact public logging semantics must be approved.
+- [LOG-02](../COMPLETED/LOG-02-define-logging-contract.md) — Required: exact public logging semantics must be approved.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent plan reviews must be incorporated.
 
 ## Completion unblocks
@@ -60,10 +61,13 @@ and avoid becoming a hidden orchestration framework.
 
 ## Acceptance evidence
 
-- Equivalent runs at every level have identical non-log artifacts, hashes,
-  receipts, states, rollback, and exits.
-- Stream separation, complete durable detail, interruption/failure flushing,
-  and invalid-level behavior pass focused tests.
+- Equivalent runs at every level preserve exact stable non-log artifacts,
+  hashes, states, rollback, ordering, and exits. Contract-declared volatile
+  receipt/output fields match under controlled or normalized comparison.
+- Stream separation, severity/detail mapping, lossless diagnostic-byte
+  encoding, sensitive `durable_only` child handling, sanitized failure tails,
+  complete durable detail, interruption/failure flushing, and invalid-level
+  behavior pass focused tests.
 
 ## Canonical documentation updates
 

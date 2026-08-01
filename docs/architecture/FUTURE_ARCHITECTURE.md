@@ -251,21 +251,285 @@ runs analysis, discovers inputs, or promotes evidence.
 
 ## Logging target
 
-The future logging contract separates two audiences:
+The target has two explicit sinks with different jobs:
 
-- console: concise, directly relevant default progress/result/failure output,
-  with explicit verbose and debug modes;
-- durable log: complete run/attempt-scoped resolved context, commands, tool/job
-  information, diagnostics, and failure/recovery detail.
+- console: concise progress, results, warnings, and failures for the current
+  operator;
+- application log: complete operation-attempt diagnostic detail for audit,
+  debugging, and recovery.
 
-Machine-readable output uses stdout. Human-oriented logs use stderr. Scheduler
-capture files and NORAD application logs have explicit distinct roles. A log
-level changes presentation only; it cannot change artifacts, hashes, receipts,
-evidence, validation, publication, rollback, cleanup, or exit behavior.
+The complete current-behavior evidence is in the
+[`LOG-01` inventory](../design/TEST_BASELINE.md#log-01-current-output-and-log-inventory).
+This section is the version-1 target contract. It does not change current
+output or activate a new default by itself.
 
-Exact public level names/flags, durable path layout, retention ownership, and
-failure-tail policy remain open until current output is characterized. No log
-retention rule authorizes automatic deletion.
+### Public controls and resolution
+
+Adopted direct Python, shell, and R commands accept these long options without
+short aliases:
+
+```text
+--log-level normal|verbose|debug
+--log-root PATH
+```
+
+The corresponding environment controls are `NORAD_LOG_LEVEL` and
+`NORAD_LOG_ROOT`. Direct commands resolve CLI, then environment, then the
+default; only the effective source is validated. Make and SLURM surfaces use
+the environment controls rather than pretending to accept command-line flags.
+The outermost adopted NORAD operation resolves both values once and propagates
+the resolved values explicitly. Delegated components do not reinterpret a
+different ambient value.
+
+The default level is `normal`; there is no `quiet` level. An explicitly empty
+or unknown effective level, or an empty/invalid effective root, fails before
+log, output, lock, scratch, or compute side effects. Each entry point preserves
+its established parse-error exit mapping. The current
+`tests/tools/run_validation.py --verbose` continues unchanged until that
+orchestrator's separately approved adoption. Because it streams complete merged
+child diagnostics, adoption may migrate it only as a deprecated alias for
+`--log-level debug`, not `verbose`; conflicting explicit controls fail. This is
+an intentional, parity-tested migration rather than a repository-wide alias or
+a claim that current and target streams are identical.
+
+The current-tree default root is `<repository-root>/logs/application`, resolved
+from repository/package identity rather than caller CWD. A future control
+plane passes its configured state-root location explicitly. An explicit root
+must be absolute; relative roots are invalid rather than CWD-dependent.
+`--help` remains
+side-effect-free on stdout where an entry point already owns that interface;
+LOG-02 does not add help to the R environment utilities that currently reject
+arguments. Existing parser/error output and exit mappings remain per-entry-
+point contracts. Help and parser diagnostics are command responses, not log
+events.
+
+### Streams, severity, and detail
+
+stdout is reserved for a command's declared primary machine response. Human
+progress, warnings, errors, commands, paths, and recovery guidance use stderr.
+A command with no declared stdout response leaves stdout empty apart from
+`--help`. Explicit machine files retain their bytes, paths, hashes, ordering,
+and transaction semantics.
+
+A valid dry-run creates no application log. Because its purpose is inspection,
+`normal` still prints the exact resolved non-secret command and essential plan
+to stderr; verbose/debug add context without changing the command. A declared
+machine preview may use stdout. The thirteen validators eventually emit pure
+seven-column report bytes on stdout and move human context to stderr, while
+preserving the existing distinction between semantic `status=fail` rows and
+operational command errors, including established exit behavior.
+
+Severity and console detail are independent:
+
+| Public level | Human stderr content | Durable application log |
+| --- | --- | --- |
+| `normal` | operation/log identity, meaningful phases, primary results, evidence boundary, warnings, errors, and bounded failure summary | every event observed by the unchanged operation |
+| `verbose` | `normal` plus resolved inputs/outputs, safe commands, declared hashes, tool/module versions, and publication plan | the same event set, apart from selected-level metadata |
+| `debug` | `verbose` plus classified child diagnostics, internal-check results, allowed environment context, timings, lock/run-token/stage/backup identities, and cleanup detail | the same event set, apart from selected-level metadata |
+
+Console-eligible NORAD warning/error projections reach stderr at every level;
+raw sensitive or untrusted child events follow the `durable_only` rule below.
+A level never enables extra probes, checks, child flags, computation, or
+publication branches. It changes only the console projection; commands,
+artifacts, schemas, hashes, receipts, evidence, validation, locking,
+publication, rollback, cleanup, and exits remain unchanged.
+
+Primary machine payloads, binary streams, FASTQ/BAM/VCF content, large tables,
+and report bytes are not duplicated into JSONL. Their path, role, hash, byte or
+row count when available, and producer/consumer event are recorded instead.
+Diagnostic streams are handled as bytes: valid UTF-8 becomes text. An invalid
+chunk uses event `child_diagnostic_bytes` with `encoding="base64"`, RFC 4648
+`data_base64` without line breaks, `byte_count`, `sha256`, and stream/component
+identity; large chunks may be split into sequenced events. No byte is silently
+replaced. Declared machine stdout bypasses diagnostic capture.
+
+### Operation identity and durable record
+
+An adopted execute, substantive validation/check, mutating maintenance, or
+validation-gate invocation owns one application operation attempt. Help,
+parser/control failures, and valid dry-runs do not. The attempt starts after
+minimal safe log-control and scope identity validation but before semantic
+input validation, expensive work, workflow output directories, workflow locks,
+or publication state. Execute-mode input/preflight failures are therefore
+recorded without authorizing other workflow side effects.
+
+The owning operation assigns:
+
+- `scope_kind`: initially `run`, `sample`, `cohort`, `reference`, `review`,
+  `validation`, or `maintenance`;
+- `scope_id`: the existing explicit scope ID or a fixed action identity;
+- `execution_attempt_id`: a new filesystem-safe unique operation identity;
+- `entrypoint`: the single public operation owner.
+
+`execution_attempt_id` is not a logical run ID, orchestration run-attempt ID,
+artifact/report transaction attempt ID, run token, PID, or SLURM job ID. Those
+identities remain distinct typed correlation fields when applicable. The path
+is:
+
+```text
+<log-root>/<scope_kind>-<scope_id>/<execution_attempt_id>/<entrypoint>.jsonl
+```
+
+The local default creates managed directories/files with modes `0700` and
+`0600`, subject to a more restrictive umask. Shared-cluster permissions require
+an explicit future state-root policy and may never become world-accessible by
+accident. An explicitly configured root is resolved and pinned once; managed
+descendants reject symlinks, non-directories, ownership changes, unsafe IDs,
+and existing attempts/files. The writer uses exclusive creation and never
+truncates, appends to, or adopts prior state.
+
+Every line is one versioned UTF-8 JSON event containing at least:
+
+```text
+schema_version, timestamp_utc, monotonic_seconds, sequence,
+severity, console_detail, entrypoint, component, scope_kind, scope_id,
+execution_attempt_id, mode, phase, event, message, fields
+```
+
+Version 1 begins at `1.0.0`. `timestamp_utc` is RFC 3339 UTC, `sequence` is
+strictly increasing within the file, and `fields` is typed context rather than
+an encoded prose dump. Optional correlation fields include logical run and run-
+attempt identities, transaction identities, and scheduler metadata. The
+opening event records the selected console level and its resolution source.
+
+`severity` is exactly `debug`, `info`, `warning`, or `error`.
+`console_detail` is exactly `normal`, `verbose`, `debug`, or `durable_only` and
+names the minimum console projection; `durable_only` never reaches the console.
+Progress/results are `info`, internal diagnostic observations are `debug`, and
+NORAD-authored attention/failure events are `warning`/`error` with at least
+`normal` detail. Raw or untrusted child diagnostics retain their classified
+severity but may be `durable_only` when they are not safe for console display;
+the owner emits a separate sanitized `normal` warning/error with the operation
+context and log path. A validator `status=fail` row records an `error` event,
+but severity does not determine process exit: the validator's established
+possible exit zero and the row's semantic failure remain separate typed facts.
+
+Timestamps, generated identity, duration, and scheduler context make bytes
+intentionally nondeterministic. Cross-level tests compare a documented
+normalized semantic projection rather than literal log equality. Paired runs
+use isolated equivalent roots plus injected clock/identity/scheduler context
+where supported. For an existing producer without injection, its contract must
+name the exact volatile non-log fields—such as generated IDs, timestamps,
+elapsed values, or temporary paths—that normalization excludes. Stable payload
+bytes, scientific/data fields, declared hashes, states, ordering, and exits
+remain exact; no field may be normalized merely because levels disagree.
+
+### Ownership, publication, and faults
+
+One operation file has one writer. Delegated components never append to it.
+The owner captures classified child diagnostics or accepts structured events
+through an explicit private adapter/channel; exact transport belongs to
+`LOG-03`. Cross-language or nested wrappers must not create duplicate attempts
+or permit concurrent append. Child machine stdout continues to its declared
+consumer unchanged.
+
+Events are line-buffered and flushed after each record. The owner additionally
+syncs at phase, failure, and recovery boundaries and before an existing
+receipt-last transaction marker. The final required pre-receipt event records
+`publication_ready`, not success. The receipt remains the authoritative
+transaction-completion marker. A post-receipt closing observation is
+best-effort only: its failure cannot undo a completed transaction, change the
+exit, or trigger rollback. Non-transactional operations sync a terminal event
+before returning success.
+
+A required initialization/write/sync failure before transaction completion
+enters the operation's established failure/rollback path without deleting or
+normalizing locks, markers, backups, staging, or other recovery evidence. A
+failed or interrupted owned attempt preserves its partial log. Catchable
+signals receive best-effort event/flush/descendant cleanup while preserving
+the established signal exit. `SIGKILL`, node loss, and storage loss remain
+environment-deferred and may leave an explicitly partial final event or file.
+
+### Failure summary, security, retention, and evidence
+
+After an attempted operation fails, stderr ends with:
+
+1. an actionable line naming entry point, phase, and status;
+2. scope/execution-attempt identity and the application-log path;
+3. owned lock/stage/backup/recovery paths requiring inspection;
+4. the latest console-eligible, sanitized warning/error/recovery events, bounded
+   jointly to 20 events and 8 KiB with an explicit truncation marker; and
+5. one established next action or runbook link when available.
+
+The complete log is not replayed by default. Verbose/debug may already have
+projected more context, but the terminal block remains bounded. If log
+initialization failed, stderr states that no durable log exists and names only
+the requested/resolved root that is safe to disclose.
+Failure-tail selection honors sensitivity metadata and `console_detail`; raw
+`durable_only` content is never replayed. When relevant diagnostics are
+excluded, the tail substitutes a sanitized count and durable-log pointer.
+
+Structured fields and rendered commands use explicit sensitivity metadata.
+The logger never dumps the environment; known secret values become
+`<redacted>` everywhere. Exact commands are logged only after their arguments
+are classified. No credential-specific option or committed credential literal
+was identified by LOG-01's bounded static inspection, but runtime arguments,
+paths, URLs, renderer output, and arbitrary third-party diagnostics may still
+contain sensitive material. Application logs are therefore protected
+operational data, not assumed sanitized public records.
+
+NORAD does not automatically rotate, truncate, compress, upload, or delete
+application logs. Retention and reviewed cleanup are explicit operator actions.
+Creating a log never promotes runtime, cluster, scientific, or biological
+evidence. A separately authorized, preserved, immutable copy may satisfy an
+existing `runtime_log` or `cluster_log` role only with its required exact path,
+hash, relationship, and evidence policy; application logging alone never does.
+
+### Scheduler relationship
+
+SLURM `logs/%x-%j.out` and `logs/%x-%j.err` remain conditional scheduler-owned
+capture for compatibility and cluster diagnosis. They are not application logs
+and do not satisfy the operation-attempt contract. Actual scheduler capture,
+accounting, and retention remain environment-deferred. Current relative capture
+requires the submit-CWD/pre-created `logs/` contract to succeed; an in-job
+directory creation is too late for scheduler stream opening.
+
+An adopted SLURM operation receives resolved controls through its exported
+environment, records job identity as correlation metadata, and emits the
+application attempt/path once to scheduler stderr. Declared machine stdout
+reaches scheduler `.out`; human projection reaches `.err`. A transport wrapper
+does not create a second application log when its delegated semantic operation
+already owns the attempt.
+
+### Scenario matrix
+
+| Scenario | stdout | stderr | Application log | Required invariant |
+| --- | --- | --- | --- | --- |
+| established `--help` | usage | empty unless help fails | none | zero exit; no filesystem side effects; no new help mode implied |
+| parse/control error | empty | usage plus actionable error | none | established parse exit; no work/log/output side effects |
+| valid dry-run | declared machine preview, if any | exact command/plan plus selected detail | none | validation, probes, and inspection remain; no execution, publication, application log, or expensive scientific computation |
+| execute at `normal` | declared machine result only | concise phases/result/warnings/errors | complete JSONL | non-log behavior equals other levels |
+| execute at `verbose`/`debug` | same machine bytes | richer projection | same normalized event semantics | no extra probes or branches |
+| execute input/preflight failure | no success claim | bounded actionable failure | retained partial JSONL | no workflow side effect beyond owned log/recovery |
+| validator semantic failure | pure `status=fail` report rows | human failure context | complete operation log | existing validator status/exit semantics preserved |
+| child with data stdout | unchanged declared data flow | parent human projection | metadata plus classified diagnostics | no data duplication or pipeline-exit change |
+| transactional failure | no partial success claim | bounded recovery block | retained partial JSONL | established rollback/lock/exit behavior preserved |
+| receipt publication | declared result only | concise result | required `publication_ready`; optional close | receipt remains authoritative completion marker |
+| catchable signal | no success claim | bounded interruption block | flushed partial JSONL when possible | descendants/recovery follow existing contract |
+| uncatchable loss | no success claim | not guaranteed | explicitly possibly partial | never overclaim complete capture |
+| SLURM operation | declared machine output in `.out` | human output/path in `.err` | separate JSONL | scheduler/application roles remain distinct |
+| validation multi-failure | optional result document only | plural failures plus bounded tail | one complete operation log | first propagated status and lane cleanup remain stable |
+| log fault/path collision | no success claim | actionable storage/no-clobber error | none or preserved partial | prior files untouched; pre-receipt failure is fail-closed |
+| evidence use | unchanged | no promotion claim | ordinary operational log | explicit copy/hash/role policy required separately |
+
+### Foundation and adoption inputs
+
+`LOG-03` owns the neutral foundation and one representative, initially opt-in
+adoption. It must independently test control precedence, transitional
+validation `--verbose` preservation/migration, stdout purity, severity/detail
+mapping, normalized level-independent event semantics, deterministic
+clock/identity injection, identity/schema/ordering, permissions, safe-root/no-
+clobber behavior, single-writer child capture, base64 non-UTF-8 handling,
+redaction, sensitive `durable_only` child handling, sanitized failure-tail
+bounds, receipt ordering, catchable-signal and log-I/O faults, and exact stable
+plus explicitly normalized volatile non-log equivalence across levels.
+
+Later adoption planning uses LOG-01 to cover Python transaction/report and
+validator producers; shell workflows and delegated R engines; SLURM, Make, and
+the validation orchestrator; and restore/maintenance/operational checks. LOG-02
+does not create `LOG-04-*` cards, implement a logger, migrate an entry point, or
+authorize cleanup. Current defaults remain unchanged until reviewed foundation,
+adoption, and `LOG-05` activation packages complete.
 
 ## Analysis extension boundary
 
