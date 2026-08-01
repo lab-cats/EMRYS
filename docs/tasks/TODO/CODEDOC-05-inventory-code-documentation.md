@@ -26,7 +26,7 @@ noise and invite accidental behavior changes.
 
 ## Blocked by
 
-- [TEST-01Z](../TODO/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest sufficiency decision must be affirmative.
+- [TEST-01Z](../COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest sufficiency decision is affirmative.
 - [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: code-adjacent documentation ownership must be settled.
 
 ## Completion unblocks

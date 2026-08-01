@@ -22,7 +22,7 @@ silently lose evidence or weaken the existing bundle.
 
 ## Blocked by
 
-- [TEST-01Z](../TODO/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest behavior-sufficiency decision must be affirmative.
+- [TEST-01Z](../COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) — Required: the latest behavior-sufficiency decision is affirmative.
 
 ## Completion unblocks
 

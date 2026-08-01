@@ -7,34 +7,32 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/refactor-01f-independent-goldens`
+  `codex/refactor-01z-test-sufficiency-gate`
 - Parent:
-  `codex/refactor-01e-slurm-contracts`
+  `codex/refactor-01f-independent-goldens`
 - Verified parent HEAD:
-  `7555b9e3655e0b5ad4b462999c1f1260124e3b18`
+  `d02717b9e577a53edf53c147924e2aca467d9ed7`
 - Parent documentation commit:
-  `7555b9e docs: complete TEST-01E characterization`
-- Current implementation commits:
-  `dcb5dd4 test: add independent contract goldens` and
-  `1986898 test: cover shared science policy goldens`
+  `d02717b docs: complete TEST-01F characterization`
+- Current implementation commit:
+  not applicable; TEST-01Z changes only non-consuming documentation/card state
 - Current documentation commit:
-  `docs: complete TEST-01F characterization` (the branch commit
+  `docs: record affirmative TEST-01Z decision` (the branch commit
   containing this handoff; resolve its exact SHA from Git)
-- Recorded package state: `TEST-01C` through `TEST-01F` are locally complete in
-  the approved five-card Phase `01` characterization tranche; the required
-  combined read-only review is next, before `TEST-01Z`
-- Current package: small independent critical schema/header/byte/status/
-  evidence/shared-policy goldens and mutation-resistant oracles
-- Package type: one test-only implementation commit, one targeted test-only
-  acceptance correction, and a separate documentation/card completion commit
+- Recorded package state: the exact `TEST-01C`, `TEST-01D`, `TEST-01E`,
+  `TEST-01F`, and `TEST-01Z` local-only tranche is complete; TEST-01Z is
+  affirmative with 88/88 rows closed and no closure card
+- Current package: row-by-row behavior sufficiency, coverage refresh, explicit
+  defect/environment dispositions, and named Phase `02` planning releases
+- Package type: one standalone documentation/card decision commit
 - Remote and cluster work: paused; this branch is intentionally unpushed
 
-This branch descends linearly from the clean, committed local `TEST-01E`
+This branch descends linearly from the clean, committed local `TEST-01F`
 predecessor under the explicitly approved local-only tranche exception.
 Publication and upstream equality are deferred. The package changes tests and
-documentation only; it does not change any production job, CLI, workflow,
-Makefile, schema, dependency, resource, runtime, cluster, scientific, or
-biological behavior.
+documentation only in its ancestors and changes documentation only itself; it
+does not change any production job, CLI, workflow, Makefile, schema,
+dependency, resource, runtime, cluster, scientific, or biological behavior.
 
 ## Active concurrent lanes
 
@@ -212,6 +210,7 @@ The local descendant sequence has implemented:
 | Phase `01aa` validation efficiency | implementation commit `dd19f0f` passed the final serial fallback in 440.821246 seconds and three consecutive default parallel gates in 152.335875, 169.928159, and 168.979423 seconds; every run reported 463 Python passes, 17 Python skips, 17 pinned report-runtime passes, all shell and guarded-R checks passing, and exact equality across 26 coverage files, 8,542/10,551 lines, 3,074/4,404 branches, and coverage digest `a6a5f1d9c5d33de3c1fbae82bd540342298f35089df55c3a76b17d08db1abd7f`; controlled exit-7 failure and SIGINT-130 tests proved retained failure output, propagation, descendant cleanup, handler restoration, and no stale owned logs; this is developer-validation infrastructure evidence only |
 | Phase `01b` validation-publication faults | implementation commit `f7e00e4` added 28 test-only fault cases: 18 for the publisher shared by all 13 step validators and 10 for provenance, preflight, and storage publishers; 56 directly affected tests passed five serial repetitions and one two-worker run, covered serial/parallel execution was exactly equal, the broader 132-test regression passed, and the canonical complete gate passed in 153.161 seconds with all Python, shell, guarded-R, and 17 pinned report-runtime checks passing; a separately retained identical Python lane recorded 491 passes, 17 skips, and 26 coverage files at 8,566/10,551 lines and 3,103/4,404 branches; production behavior and evidence state were unchanged |
 | Phase `01f` independent contract goldens | implementation `dcb5dd4` plus targeted correction `1986898` add a compact producer-independent fixture family and 22 focused tests for five public schemas, six ordered headers, canonical UTF-8 JSON/TSV and report-receipt bytes, status/evidence transitions, and shared science-policy projection; deliberate schema, header, status, serializer, decision-dimension, and computational-scope mutations fail; the final complete local gate passed every static, shell, checked Python coverage, guarded-R, and pinned report-runtime lane in 180.219 seconds; production behavior and evidence state were unchanged |
+| Phase `01z` behavior sufficiency | the required independent reviewer passed TEST-01C–TEST-01F without a false acceptance claim; 88/88 public-entry-point, cross-cutting, and fixture rows have explicit preserved-contract, characterized-defect, or environment-deferred dispositions with zero undefined rows; the checked Python refresh passed with 843 tests, 17 expected skips, 8,585/10,551 lines (81.3667%), and 3,111/4,404 branches (70.6403%); the affirmative result releases only four named Phase `02` planning roots for separate approval, creates no closure card, and changes no executable or evidence state |
 | Architecture-direction documentation | task registry, decisions, open choices, target architecture, roadmap, handoff, and four future diagrams updated; documentation-only validation passed; no executable, dependency, schema, config, fixture, test-harness, scientific-method, runtime, cluster, or evidence-state change |
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
@@ -341,12 +340,18 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-`TEST-01F` is complete locally at implementation commit `dcb5dd4` and targeted
-acceptance correction `1986898`. All 22 focused independent-golden tests pass.
-The final complete local gate passed static preflight in 0.110 seconds, shell
-contracts in 44.963 seconds, Python line/branch non-regression in 177.681
-seconds, guarded R in 170.644 seconds, and pinned report runtime in 135.134
-seconds; the de-duplicated parallel gate completed in 180.219 seconds.
+`TEST-01Z` is complete locally as a documentation-only decision. Its matrix
+closes all 88 source rows with zero `undefined — decision required` outcomes.
+The one authorized independent reviewer passed combined TEST-01C–TEST-01F
+semantic accuracy, expectation independence, and longevity without requiring
+repair. No closure card was created.
+
+The TEST-01Z checked Python refresh passed with 843 tests and 17 expected
+conditional skips, measuring 26 production modules at 8,585/10,551 lines
+(81.3667%) and 3,111/4,404 branches (70.6403%). It did not rewrite the tracked
+baseline. TEST-01F's unchanged final executable state already passed the full
+static, shell, Python, guarded-R, and pinned report-runtime gate in 180.219
+seconds, so TEST-01Z did not duplicate those computational lanes.
 
 The first direct focused invocation selected Homebrew Python 3.14 without
 pytest and stopped without installing anything. A later complete-gate
@@ -363,25 +368,24 @@ material; do not delete or repair it without operator review. The successful
 gate used `RENV_PATHS_LIBRARY` to reference the already-restored primary
 project library and did not restore or update packages.
 
-After this documentation commit and a clean-state/adversarial review, use the
-single authorized independent read-only reviewer to assess combined
-`TEST-01C`–`TEST-01F` evidence for semantic accuracy, expectation
-independence, and longevity. If and only if that review leaves every
-predecessor acceptance claim valid, create
-`codex/refactor-01z-test-sufficiency-gate` directly from this local HEAD in the
-same dedicated worktree and perform only `TEST-01Z`. Publication and upstream
-equality remain deferred for the entire tranche.
+After this documentation commit and a clean-state/adversarial review, stop the
+approved tranche. The affirmative decision releases `ARCH-02A`, `RPT-01`,
+`LOG-01`, and `DOC-IA-01` only for later, separately approved task starts.
+TEST-01Z's partial dependencies for `CODEDOC-05` and `SIZE-07` are satisfied,
+but their other blockers remain. No Phase `02` card has been selected or
+started. Publication and upstream equality remain deferred for the entire
+tranche.
 
 Do not inspect or execute `CONCURRENCY-02`, `PROGRAM-01`, paused concurrency
 attempts, the researcher pilot, any `TEST-01G`–`TEST-01Y` work, or Phase `02`.
 Their roadmap positions are not technological blockers for the explicitly
 approved five-card tranche.
 
-The one-time Phase `00` dependency exception is exhausted and does not
-authorize future changes outside the normal development gate. Do not change
-production structure before the final Phase `01` sufficiency gate and all
-three Phase `02` reviews. Do not begin production, cluster, scientific-policy,
-or biological-interpretation work.
+The one-time Phase `00` dependency exception and this five-card authorization
+are exhausted. They do not authorize future changes outside the normal
+development gate. Do not change production structure before all three Phase
+`02` reviews and an approved migration package. Do not begin production,
+cluster, scientific-policy, or biological-interpretation work.
 
 The authoritative continuation sequence is in
 [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); detailed future

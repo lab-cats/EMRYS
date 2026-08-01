@@ -573,7 +573,7 @@ Consequences: no architecture root is released by a negative `01Z` decision;
 defect corrections remain separate tasks. See
 [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
 through
-[`TEST-01Z`](../tasks/TODO/TEST-01Z-decide-behavior-contract-sufficiency.md).
+[`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md).
 
 ### Govern future work through a file-backed task registry
 

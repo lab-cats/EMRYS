@@ -57,6 +57,28 @@ result is a review signal, not proof of an uncovered user-visible defect.
 Later characterization must name a missing scenario before changing that
 module.
 
+### TEST-01Z coverage refresh
+
+The checked Python lane was refreshed on 2026-07-31 against executable/test
+commit `1986898` and documentation-only descendant `d02717b`. It collected
+860 tests: 843 passed and 17 expected conditional report-runtime tests were
+skipped in this lane. The retained temporary snapshot records:
+
+| Measure | TEST-01Z refresh | Tracked baseline | Result |
+| --- | ---: | ---: | --- |
+| Python source modules | 26 | 26 | unchanged |
+| covered statements | 8,585 | 8,514 | no regression |
+| total statements | 10,551 | 10,528 | measured current source |
+| line rate | 81.3667% | 80.8701% | pass |
+| covered branches | 3,111 | 3,068 | no regression |
+| total branches | 4,404 | 4,402 | measured current source |
+| branch rate | 70.6403% | 69.6956% | pass |
+
+The current snapshot digest is
+`ca7ad24dbdbeb848ef867739e78c51b43bab4131b0f1365ed2fdbb7800c95db1`.
+The tracked baseline was checked, not rewritten. Coverage remains supporting
+evidence only; the row dispositions below are the readiness gate.
+
 ## Matrix notation
 
 The contract-case codes used below are:
@@ -483,7 +505,185 @@ report runtime in 135.134 seconds; total elapsed time was 180.219 seconds. No
 production module, schema, workflow, dependency, scientific policy, runtime,
 cluster, or biological behavior changed.
 
-The final Phase `01` sufficiency gate must rerun the measured baseline, update
-this matrix with the completed characterization evidence, identify any
-remaining accepted/deferred risks, and explicitly decide whether Phase `02`
-planning may begin. It must not begin production refactoring.
+## TEST-01Z closed behavior-contract matrix
+
+TEST-01Z closes all 88 rows in the public-entry-point, cross-cutting-risk, and
+fixture-independence tables above. A row can contain more than one atomic
+behavior, so mixed rows preserve each applicable label rather than allowing a
+local contract to hide a defect or environmental deferral. The only labels
+used are `preserved contract`, `characterized defect`, `undefined — decision
+required`, and `environment-deferred`.
+
+Independent evidence keys used below are:
+
+- **CLI** — literal entry-point, file-mode, help/failure, arbitrary-CWD, and
+  Make-target expectations in `tests/test_public_cli_contracts.py` plus the
+  row's named direct regression owner;
+- **FAULT** — independent mutation/fault injection in
+  `tests/test_validation_publication_faults.py` and the named provenance,
+  preflight, storage, transaction, and rollback suites;
+- **ROSTER** — literal live-validator inventory and ordered expectations in
+  `tests/validation_roster_expectations.py` and
+  `tests/test_validation_check_rosters.py`;
+- **GOLD** — literal schema, ordered-header, canonical-byte, status, evidence,
+  and shared-policy oracles in `tests/test_independent_contract_goldens.py`;
+- **CMH** — count-derived independent Step `09` oracle and fixed R comparison
+  in `tests/test_step_09_cmh_oracle.py` and its committed corpus;
+- **SLURM** — literal 16-job matrix and generated local fakes in
+  `tests/test_slurm_wrapper_contracts.py`;
+- **REAL-R** — guarded fixed Step `08`/`09` R fixtures and their direct shell
+  owners;
+- **REPORT** — independent HTML/PDF structural readers, fixed evidence banners,
+  exact receipt golden, and pinned real-renderer regression owners;
+- **GATE** — checked Python coverage, shell contracts, guarded R, and pinned
+  report runtime from the final TEST-01F gate and the TEST-01Z coverage refresh;
+- **ENV** — the reviewed evidence boundary in this document, RA-025, and
+  `HANDOFF.md`; it is a disposition, not local or cluster proof.
+
+### Python rows (25)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| `build_artifact_index.py` | `preserved contract`; `characterized defect` | CLI + GOLD + FAULT + ROSTER protect public transactions and bytes; the reordered/wrong-unique roster acceptance remains a labeled adapter defect. |
+| `build_run_summary.py` | `preserved contract` | CLI + GOLD + FAULT + REPORT protect publication, canonical projections, shared science policy, and evidence boundaries. |
+| `gtf_to_bed12.py` | `preserved contract`; `characterized defect` | CLI and the direct converter suite protect exact bytes/CWD behavior; silent replacement of the declared existing output remains a defect. |
+| `reference_provenance.py` | `preserved contract`; `characterized defect` | CLI + FAULT protect its normal transaction and independently freeze incomplete-rollback recovery gaps. |
+| `render_run_report.py` | `preserved contract` | CLI + REPORT protect local render inputs, outputs, banners, and failure behavior. |
+| `render_run_report_bundle.py` | `preserved contract` | CLI + REPORT + GOLD + FAULT protect bundle publication and exact receipt behavior; low internal line coverage alone is not an undefined behavior row. |
+| `restore_quarto.py` | `preserved contract` | CLI and the direct restore suite protect the supported pinned local restore; unsupported platforms are outside the declared contract. |
+| `runtime_preflight.py` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + FAULT protect normal publication and named lock/rollback defects; CSU runtime remains ENV. |
+| `step_09c_scientific_validation.py` | `preserved contract`; `environment-deferred` | CLI + GOLD + FAULT protect local synthetic review transactions and reserved evidence states; production science review remains ENV. |
+| `storage_inventory.py` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + FAULT protect normal inventory publication and incomplete-restoration defects; CSU storage/quota execution remains ENV. |
+| `validate_artifact_contracts.py` | `preserved contract` | CLI + GOLD and the direct schema suite protect critical public schemas, headers, status, and evidence boundaries. |
+| `validate_manifest.py` | `preserved contract` | CLI and the direct manifest suite protect exact parsing, diagnostics, and exit behavior. |
+| `validate_step_00a_star_index.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_00b_bed12.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_00c_reference_sidecars.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_01_star_alignment.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_02_canonical_bam.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_02b_bam_qc.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_03_rseqc_orientation.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_04_mark_duplicates.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_05_split_ncigar.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_06_orientation_outputs.py` | `preserved contract`; `characterized defect` | ROSTER + FAULT and its direct suite protect exact checks and independently freeze shared publisher defects. |
+| `validate_step_07_mpileup_outputs.py` | `preserved contract`; `characterized defect`; `environment-deferred` | ROSTER + FAULT protect the local validator and publisher defects; real bcftools/cluster evidence remains ENV. |
+| `validate_step_08_preprocessing_outputs.py` | `preserved contract`; `characterized defect`; `environment-deferred` | ROSTER + FAULT + GOLD + REAL-R protect local validation and shared publisher defects; production/cluster execution remains ENV. |
+| `validate_step_09_cmh_outputs.py` | `preserved contract`; `characterized defect`; `environment-deferred` | ROSTER + FAULT + CMH + REAL-R protect local semantics; non-recomputation of reported CMH fields remains a validator defect and production/cluster scientific changes remain ENV. |
+
+### Shell rows (13)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| `render_run_report.sh` | `preserved contract` | CLI + REPORT + FAULT protect delegation, CWD, transaction, bytes, and exits. |
+| `step_00c_prepare_gatk_reference.sh` | `preserved contract` | CLI and its direct shell suite protect dry-run, execute, validation, rollback, and exits. |
+| `step_01_star_align.sh` | `preserved contract` | CLI and its direct shell suite protect dry-run, execute, inputs, and exits. |
+| `step_02_sort_index_bam.sh` | `preserved contract` | CLI + FAULT and its direct shell suite protect paired publication and rollback. |
+| `step_02b_bam_qc.sh` | `preserved contract` | CLI and its direct shell suite protect exact input/index/output behavior. |
+| `step_03_infer_strandedness_and_orientation.sh` | `preserved contract`; `characterized defect` | CLI and its direct suite protect invocation/delegation; its non-executable file mode requiring explicit `bash` remains a defect. |
+| `step_04_mark_duplicates.sh` | `preserved contract`; `characterized defect` | CLI and its direct suite protect invocation/delegation; its non-executable file mode requiring explicit `bash` remains a defect. |
+| `step_05_split_n_cigar_reads.sh` | `preserved contract`; `characterized defect` | CLI + FAULT and its direct suite protect transactions; its non-executable file mode requiring explicit `bash` remains a defect. |
+| `step_06_split_bam_by_read_orientation.sh` | `preserved contract` | CLI + FAULT and its direct suite protect exact multi-output publication and rollback. |
+| `step_07_bcftools_mpileup_by_chrom_and_strand.sh` | `preserved contract`; `environment-deferred` | CLI and its mocked-bcftools transaction suite protect local behavior; real bcftools/cluster evidence remains ENV. |
+| `step_08_vcf_preprocessing.sh` | `preserved contract`; `environment-deferred` | CLI + REAL-R + FAULT protect local transactions and semantics; production/cluster execution remains ENV. |
+| `step_09_cmh_editing_site_calling.sh` | `preserved contract`; `environment-deferred` | CLI + REAL-R + CMH + FAULT protect local transactions and semantics; production/cluster scientific execution remains ENV. |
+| `step_09c_scientific_validation.sh` | `preserved contract`; `environment-deferred` | CLI + GOLD + FAULT protect local review publication; production science review remains ENV. |
+
+### R rows (4)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| `check_r_environment.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI and guarded environment checks protect argument rejection and dependency validation; absence of help remains a defect and CSU availability remains ENV. |
+| `restore_r_environment.R` | `preserved contract`; `characterized defect` | CLI and the explicit restore contract protect operator-only mutation; absence of help remains a defect. |
+| `step_08_vcf_preprocessing.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + REAL-R protect local semantics; Rscript-only file mode remains a defect and production-scale/cluster execution remains ENV. |
+| `step_09_cmh_editing_site_calling.R` | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + REAL-R + CMH protect local semantics; Rscript-only file mode remains a defect and production-scale/cluster execution remains ENV. |
+
+### SLURM rows (16)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| `step_00a_build_novogene_star_index.slurm` | `characterized defect`; `environment-deferred` | SLURM freezes implicit embedded compute, caller CWD, no wrapper output check, and exit behavior; actual modules/scheduler/runtime remain ENV. |
+| `step_00b_gtf_to_bed12.slurm` | `characterized defect`; `environment-deferred` | SLURM freezes implicit embedded conversion, required submit CWD, shape check, and exit behavior; actual modules/scheduler/runtime remain ENV. |
+| `step_00c_prepare_gatk_reference.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects delegation/output/exit mechanics; the Bash 3.2 default dry-run abort remains a defect and cluster behavior remains ENV. |
+| `step_01_star_align.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects caller-CWD delegation and exits; default placeholder side effects remain a defect and cluster behavior remains ENV. |
+| `step_02_sort_index_bam.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects execute/delegation/output behavior; Bash 3.2 abort and dry-run directory creation remain defects and cluster behavior remains ENV. |
+| `step_02b_bam_qc.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects execute/delegation/output behavior; Bash 3.2 abort and dry-run directory creation remain defects and cluster behavior remains ENV. |
+| `step_03_infer_strandedness_and_orientation.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects CWD/delegation/output behavior; the Bash 3.2 default dry-run abort remains a defect and cluster behavior remains ENV. |
+| `step_04_mark_duplicates.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects modules/delegation/three-output checks; the Bash 3.2 default dry-run abort remains a defect and cluster behavior remains ENV. |
+| `step_05_split_n_cigar_reads.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects delegation/two-output checks; the Bash 3.2 default dry-run abort remains a defect and cluster behavior remains ENV. |
+| `step_06_split_bam_by_read_orientation.slurm` | `preserved contract`; `characterized defect`; `environment-deferred` | SLURM protects delegation/five-output checks; the Bash 3.2 default dry-run abort remains a defect and cluster behavior remains ENV. |
+| `step_07_bcftools_mpileup_by_chrom_and_strand.slurm` | `preserved contract`; `environment-deferred` | SLURM protects mocked local mode/modules/delegation/output/exits; actual CSU modules, scheduler, and runtime remain ENV. |
+| `step_08_vcf_preprocessing.slurm` | `preserved contract`; `environment-deferred` | SLURM protects mocked local mode/delegation/output/exits without inventing modules; actual CSU scheduler/runtime remain ENV. |
+| `step_09_cmh_editing_site_calling.slurm` | `preserved contract`; `environment-deferred` | SLURM protects mocked local mode/delegation/output/exits without installing dependencies; actual CSU scheduler/runtime remain ENV. |
+| `template.slurm` | `preserved contract`; `environment-deferred` | SLURM protects its mode-less lightweight probe and module-list policy; actual CSU module resolution remains ENV. |
+| `tool_check.slurm` | `preserved contract`; `environment-deferred` | SLURM protects required/optional probe exit policy; actual CSU tools/modules remain ENV. |
+| `validate_manifest.slurm` | `preserved contract`; `environment-deferred` | SLURM protects mode-less validation and strict Python child exit; actual CSU module resolution remains ENV. |
+
+### Make rows (5)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| complete local-gate targets | `preserved contract` | CLI + GATE and orchestrator tests protect exact expansion, lane ownership, and exit behavior. |
+| explicit restore/baseline-update targets | `preserved contract` | CLI and direct restore/baseline tests protect explicit operator mutation and prohibit implicit installation. |
+| explicit output/runtime targets | `preserved contract` | CLI + REPORT and direct owners protect declared output/evidence boundaries. |
+| internal validation-lane targets | `preserved contract` | CLI + GATE and orchestrator tests protect exact internal-lane semantics. |
+| `demo-step03-dry-run`, `demo-step03` | `preserved contract`; `environment-deferred` | CLI protects exact local command expansion; actual scheduler submission remains ENV. |
+
+### Cross-cutting rows (15)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| public help/dry-run/execute/malformed-input/exit behavior | `preserved contract`; `characterized defect` | CLI plus direct owners protect applicable cases; legacy mode/help/overwrite exceptions remain defects. |
+| native output transactions | `preserved contract`; `characterized defect` | FAULT plus direct transaction owners protect normal publication and independently freeze named recovery gaps. |
+| seven-column validation-report schema | `preserved contract` | ROSTER + GOLD and every direct validator owner protect the literal schema. |
+| exact per-step check rosters | `preserved contract`; `characterized defect` | ROSTER protects every producer roster; shared consumer and adapter reorder/wrong-unique acceptance remain defects. |
+| public JSON schemas and table headers | `preserved contract` | GOLD plus schema/direct owners protect representative critical paths and exact ordered headers. |
+| status vocabularies and state transitions | `preserved contract` | GOLD plus direct owners protect named constants, aggregation, and shared-policy transitions. |
+| deterministic JSON/TSV/QC/report bytes and ordering | `preserved contract` | GOLD + REPORT plus fixed-time/direct owners protect canonical critical bytes and broad transaction outputs. |
+| locks, signals, rollback, cleanup, and recovery evidence | `preserved contract`; `characterized defect` | FAULT plus direct owners protect normal cases and independently preserve every named unsafe recovery state. |
+| stable hashes and input mutation | `preserved contract`; `characterized defect` | FAULT plus direct owners protect rechecks; same-size/restored-mtime and related snapshot gaps remain defects. |
+| unrelated-file immunity | `preserved contract` | CLI plus direct owners protect declared-output boundaries. |
+| symlink, hardlink, and directory-identity substitution | `preserved contract` | FAULT plus direct owners independently exercise identity substitutions. |
+| computational/scientific evidence-state boundaries | `preserved contract`; `environment-deferred` | GOLD + REPORT + REAL-R protect local state boundaries; production scientific review and biological readiness remain ENV and unreleased. |
+| direct execution, arbitrary CWD, and SLURM delegation | `preserved contract`; `characterized defect`; `environment-deferred` | CLI + SLURM protect exact local mechanics; legacy file/mode/CWD defects remain labeled and actual cluster behavior remains ENV. |
+| Step `09` CMH statistic, p-value, odds ratio, and estimability | `preserved contract`; `characterized defect`; `environment-deferred` | CMH + REAL-R protect count-derived local semantics; validator non-recomputation remains a defect and production/cluster algorithm changes remain ENV. |
+| `_run_summary_science.py` policy projection | `preserved contract` | GOLD plus artifact/summary/report direct owners protect recorded, pending, absent, limitation, and computational-status transitions. |
+
+### Fixture/evidence rows (10)
+
+| Source row | TEST-01Z outcome | Independent regression or explicit disposition |
+| --- | --- | --- |
+| artifact-schema valid JSON fixtures | `preserved contract` | GOLD supplements integrated schema validation with literal critical paths, states, and a direct mutation. |
+| artifact-adapter fixture builder | `preserved contract` | GOLD + ROSTER + FAULT supplement the coupled builder for critical index/header/byte/roster behavior. |
+| artifact-run-summary fixture builder | `preserved contract` | GOLD + REPORT + FAULT supplement broad integrated projections with independent headers, bytes, receipt, and policy transitions. |
+| Step `09c` fixture builder | `preserved contract` | GOLD supplements integrated tables with literal headers, status constants, aggregation, and policy transitions. |
+| report HTML/PDF fixture helpers | `preserved contract`; `environment-deferred` | REPORT + GOLD protect local structure, banners, and receipt bytes; production report evidence remains ENV. |
+| Step `00a`–`09` validation-report fixtures | `preserved contract` | ROSTER + GOLD + FAULT protect exact reports without duplicating every integrated fixture. |
+| Step `07` mocked VCF/receipt outputs | `preserved contract`; `environment-deferred` | Direct transaction owners protect mocked local publication; real bcftools/cluster output remains ENV. |
+| Step `08` semantic outputs | `preserved contract`; `environment-deferred` | REAL-R + GOLD protect local semantics and shared headers; production/cluster output remains ENV. |
+| Step `09` semantic outputs | `preserved contract`; `environment-deferred` | REAL-R + CMH protect local semantics independently; production/cluster output remains ENV. |
+| HTML/PDF/report receipts | `preserved contract`; `environment-deferred` | REPORT + GOLD protect pinned local renders and exact critical receipt behavior; production reports remain ENV. |
+
+### TEST-01Z result
+
+- All 88 source rows have an explicit disposition; no row is classified
+  `undefined — decision required`.
+- Every `preserved contract` component names independent regression evidence.
+  Producer-coupled integrated fixtures remain only as additional end-to-end
+  evidence and are not the sole oracle for a preserved critical rule.
+- `characterized defect` components remain defects. This decision does not
+  normalize, approve, or silently migrate them.
+- Every `environment-deferred` component is already reviewed in the evidence
+  boundary, RA-025, and the current handoff. These deferrals continue to block
+  runtime, cluster, scientific, and biological claims, but they do not require
+  inventing local evidence before architecture-planning inventory begins.
+- The independent post-TEST-01F reviewer found no false acceptance claim or
+  producer-coupled oracle requiring repair. The checked coverage refresh has
+  no line or branch regression.
+
+The TEST-01Z decision is **affirmative for the named Phase `02` planning roots
+only**. It releases `ARCH-02A`, `RPT-01`, `LOG-01`, and `DOC-IA-01` for their
+own separately approved task starts. The TEST-01Z side of `CODEDOC-05` and
+`SIZE-07` is satisfied, but those cards retain their other direct blockers.
+This decision does not begin Phase `02`, release production mutation, approve
+any characterized defect, establish runtime or cluster evidence, validate a
+scientific algorithm, or authorize biological interpretation.

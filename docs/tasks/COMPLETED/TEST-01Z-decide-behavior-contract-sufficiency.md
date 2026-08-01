@@ -83,5 +83,24 @@ over every applicable contract row before production structure changes.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed locally on 2026-07-31 on
+`codex/refactor-01z-test-sufficiency-gate`.
+
+- `TEST_BASELINE.md` closes all 88 public-entry-point, cross-cutting-risk, and
+  fixture/evidence rows with only the four authorized dispositions. Zero rows
+  are `undefined — decision required`.
+- Every preserved-contract component names independent regression evidence.
+  Characterized defects remain defects, and every environment-deferred
+  component remains bounded by the reviewed runtime, cluster, scientific, and
+  biological evidence limits.
+- The checked Python refresh passed with 843 tests and 17 expected skips,
+  measuring 8,585/10,551 lines (81.3667%) and 3,111/4,404 branches (70.6403%)
+  across 26 production modules. The tracked baseline was not rewritten.
+- The one authorized independent reviewer passed combined TEST-01C–TEST-01F
+  semantic accuracy, expectation independence, and longevity without a repair.
+- The decision is affirmative only for separate task selection of `ARCH-02A`,
+  `RPT-01`, `LOG-01`, and `DOC-IA-01`. TEST-01Z's partial dependency is
+  satisfied for `CODEDOC-05` and `SIZE-07`, whose other blockers remain.
+- No closure card was created. No Phase `02` work began. No executable,
+  dependency, schema, fixture, test-harness, production, runtime, cluster,
+  scientific-policy, evidence-state, or biological behavior changed.

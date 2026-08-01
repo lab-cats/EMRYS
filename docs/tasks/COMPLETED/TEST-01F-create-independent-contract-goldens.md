@@ -25,7 +25,7 @@ producer/test shared defects before structural migration.
 
 ## Completion unblocks
 
-- [TEST-01Z](../TODO/TEST-01Z-decide-behavior-contract-sufficiency.md) — Fully: the measured behavior-sufficiency decision can be made.
+- [TEST-01Z](TEST-01Z-decide-behavior-contract-sufficiency.md) — Fully: the measured behavior-sufficiency decision is affirmative.
 
 ## Prerequisites
 
