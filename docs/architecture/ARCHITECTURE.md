@@ -57,6 +57,8 @@ parameterized scripts. The login node is not a compute engine.
   [`CONTRACT.md`](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md)
 - Historical Step `06`, working name `partition_BAM_by_mechanical_read_orientation`:
   [`CONTRACT.md`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md)
+- Historical Step `07`, working name `generate_partitioned_cohort_mpileup_VCFs`:
+  [`CONTRACT.md`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md)
 
 ## Identity and explicit-input boundaries
 

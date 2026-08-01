@@ -55,6 +55,11 @@
   [`CONTRACT.md`](../../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md),
   preserving exact flag groups, the Step `07` cohort gate, five-output
   transaction, and biological-strand prohibition.
+- Slice 11 records historical Step `07` as
+  `generate_partitioned_cohort_mpileup_VCFs` in its colocated
+  [`CONTRACT.md`](../../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md),
+  preserving manifest-ordered cohort pileups, selector and transaction
+  boundaries, the Step `08` handoff, and incomplete-provenance limitations.
 
 ## Objective
 
