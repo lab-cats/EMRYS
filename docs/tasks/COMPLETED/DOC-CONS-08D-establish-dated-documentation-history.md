@@ -29,8 +29,8 @@ does not make that evidence discoverable or explain its status.
 
 ## Completion unblocks
 
-- [DOC-CONS-08E](DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the root history route and date/provenance rules then exist for an operational child owned by that card.
-- [DOC-CONS-08G](DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
+- [DOC-CONS-08E](../TODO/DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the root history route and date/provenance rules then exist for an operational child owned by that card.
+- [DOC-CONS-08G](../TODO/DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
 
 ## Prerequisites
 
@@ -86,5 +86,33 @@ does not make that evidence discoverable or explain its status.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed 2026-08-02 as a separately approved local-only documentation
+exception. A shallow [`docs/history/`](../../history/) route now defines
+immutable dated-record rules and indexes audit and testing topics. The complete
+comprehensive audit moved to the 2026-07-30 audit record with its initial
+commit, audited target, 2026-07-31 frozen source snapshot, source blob, and four
+declared relocation-only link repairs. `REFACTOR_AUDIT.md` is reduced from
+1,160 to 66 lines and now owns only the finding index and six live recheck
+triggers.
+
+The complete baseline, public-contract matrices, LOG-01 inventory, Phase `01`
+characterization evidence, and TEST-01Z decision moved to the 2026-08-01
+testing record. Its provenance distinguishes the 2026-07-31 initial baseline
+and affirmative decision from the exact 2026-08-01 final source snapshot and
+declares five relocation-only link repairs. `TEST_BASELINE.md` is reduced from
+963 to 155 lines while retaining the active coverage thresholds, evidence
+vocabulary, regression routes, LOG-01 current boundaries, all 15 cross-cutting
+risk categories, fixture-independence rule, six characterization routes, and
+the TEST-01Z authorization limit.
+
+Independent provenance, current-owner, anchor/link, and sentence-level no-loss
+reviews passed for both moves. The complete package diff changes only Markdown
+documentation; `git diff --check` and the final repository documentation gate
+pass. Computational Python, shell, R, report-runtime, full-suite, and cluster
+validation are not applicable. No executable, configuration, generation,
+schema, fixture, report-template, dependency, source-layout, public-interface,
+scientific-policy, or test-harness behavior changed, and no runtime, cluster,
+scientific-review, or biological-readiness evidence was created. The branch
+remains intentionally local-only and must not be pushed by this package.
+`DOC-CONS-08E` through `DOC-CONS-08H` remain unselected; this completion does
+not change ordinary runway order.

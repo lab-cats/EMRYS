@@ -7,18 +7,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/doc-cons-08c-compress-operational-guidance`
+  `codex/doc-cons-08d-establish-dated-documentation-history`
 - Package base:
-  `5aae79ad93a4daaaf7cc8e59d0c6eb8c76f48c9b`
+  `1e2d38c3f0daf10be3cee33c0f66337c353f1e17`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
   without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
   `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01`,
-  `DOC-CONS-08A`, `DOC-CONS-08B`, and `DOC-CONS-08C` are complete.
-- Current package: indexed operational owners separating exact runbook commands,
-  symptom-driven troubleshooting, and stage-local contract semantics while
-  preserving recovery, safety, and scientific-review meaning.
+  `DOC-CONS-08A` through `DOC-CONS-08D` are complete.
+- Current package: shallow dated audit/testing history with explicit immutable
+  provenance and concise current audit and test-baseline routes.
 - Package type: documentation-only; no executable, configuration, generation,
   schema, fixture, report-template, dependency, source-layout, public-interface,
   scientific-policy, or test-harness behavior changed.
@@ -26,14 +25,14 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   branch is local-only, has no configured upstream, and must not be pushed by
   this package. Cluster work remains paused.
 
-This package descends from the completed local `DOC-CONS-08B` tip. It changes
+This package descends from the completed local `DOC-CONS-08C` tip. It changes
 only Markdown documentation artifacts and adds no descriptor, schema, runtime,
 or report-template file; current executable paths remain under the flat layout
 until a separately planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical local DOC-CONS-08C documentation lane.
+This checkout is the canonical local DOC-CONS-08D documentation lane.
 No concurrent sidecar content was inspected, integrated, or used by its final
 ownership work. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
@@ -288,6 +287,7 @@ The local descendant sequence has implemented:
 | Root agent-router compression | Root `AGENTS.md` reduced from 319 to 195 lines while retaining automatic approval, authority, safety, evidence, scientific, and destructive-action guards; neutral engineering conventions and the full package-delivery procedure now have dedicated owners; independent no-loss and owner-boundary reviews plus `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
 | Root entry and priority compression | Root `README.md` retains product identity, evidence limits, minimal start, repository map, and action-point cautions while routing detail to dedicated owners; root `TODO.md` now contains only the ordinary runway priority and canonical state/blocker/task/question routes; the no-loss ledger and independent review found no orphaned fact or duplicate owner; `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
 | Operational guidance compression | `RUNBOOK.md` now indexes exact commands, contract routes, shared validator semantics, and retained inline-program dispositions; `TROUBLESHOOTING.md` indexes diagnostics and links duplicated commands while preserving owner-specific limits and distinct transaction recovery; Step `08` parsing semantics and shared publisher recovery remain under canonical owners; independent anchor, ownership, diagnostic, and no-loss reviews plus `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
+| Dated documentation history | `docs/history/` now indexes immutable audit and testing records with explicit event/source provenance; the 1,160-line audit and 963-line baseline snapshots remain complete while current `REFACTOR_AUDIT.md` and `TEST_BASELINE.md` are concise recheck/policy/risk routes; independent provenance, owner, anchor, and no-loss reviews plus `git diff --check` and the 120-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -422,11 +422,15 @@ and
 [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
 and
 [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
-are complete. Their root and operational compression, neutral
+and
+[`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md)
+are complete. Their root and operational compression and dated-history split,
+neutral
 [`engineering-conventions owner`](ENGINEERING_CONVENTIONS.md), and expanded
 [`task-delivery procedure`](TASK_DELIVERY.md#package-delivery), concise newcomer
-entry, short current-priority route, indexed runbook, and diagnostic split do
-not select the remaining `DOC-CONS-08D`–`DOC-CONS-08H` cards or change ordinary
+entry, short current-priority route, indexed runbook, diagnostic split, and
+concise current audit/baseline routes do not select the remaining
+`DOC-CONS-08E`–`DOC-CONS-08H` cards or change ordinary
 runway order; each still
 requires separate selection, task-specific planning, and approval. Existing
 `DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`, `CODEDOC-05`,

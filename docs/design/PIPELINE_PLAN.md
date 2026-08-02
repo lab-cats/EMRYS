@@ -74,6 +74,7 @@ a completed production review.
 | `codex/doc-cons-08a-slim-root-agent-router` | Root-router compression, neutral engineering-conventions owner, and package-delivery procedure; see completed [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md) | separately approved documentation-only exception complete locally and intentionally unpushed; root automatic guards remain intact, detailed conventions and procedure have one dedicated owner each, and no executable, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/doc-cons-08b-compress-root-entry-and-priority-views` | Concise newcomer and current-priority root views with canonical routes and no-loss dispositions; see completed [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md) | separately approved local-only documentation exception complete and intentionally unpushed; completed history, roadmap, live state, blockers, task scope, and questions retain one canonical owner, later consolidation remains separately planned, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/doc-cons-08c-compress-operational-guidance` | Indexed exact-command and diagnostic owners, contract crosswalk, and no-loss inline-program dispositions; see completed [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md) | separately approved local-only documentation exception complete and intentionally unpushed; duplicated commands and stage semantics now route to one owner while recovery and scientific-review meaning remain intact, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
+| `codex/doc-cons-08d-establish-dated-documentation-history` | Shallow immutable audit/testing history plus concise current audit and baseline routes; see completed [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md) | separately approved local-only documentation exception complete and intentionally unpushed; exact dated evidence and source provenance now have indexed owners while active recheck, coverage-policy, evidence-vocabulary, and risk routes remain current, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current registry remains three-state, while the validator is executable but still lacks the card's independent invalid-state fixture coverage and any separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -82,7 +83,7 @@ a completed production review.
 | `refactor-01z-test-sufficiency-gate` | Behavior-row classification, explicit readiness decision, and bounded Phase `0` evidence correction; see [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) | affirmative 88/88-row decision plus test-only corrections `0c64d1a`, `44d3255`, and `fd98244` complete, adversarially reviewed, pushed, and upstream-equal at `b2af738`; no closure cards or production behavior changes |
 | `codex/log-01-characterize-current-output-reconciliation` | Current stdout, stderr, scheduler, Make, test, operational-check, durable-copy, and evidence-log inventory; see [`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md) | documentation-only characterization complete; every current surface has a normalized output profile and trace, candidate overclaims are corrected, and runtime output remains unchanged |
 | `codex/log-02-define-logging-contract-reconciliation` | Public controls, streams, one-writer operation record, publication ordering, failure, security, retention, scheduler, evidence-role, scenario, and adoption contract; see [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | documentation-only target contract complete; the rejected-ancestry candidate was evidence only, current output/defaults remain unchanged, and no rollout card was created |
-| Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | `LOG-01`, `LOG-02`, `ARCH-02A` through `ARCH-02D`, interposed `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01` and `DOC-CONS-08A` through `DOC-CONS-08C` are complete; recasting `PLAN-02Z` and selecting its independent review remain the next eligible ordinary runway actions, while all other workflow status remains owned by each card's directory |
+| Phase `02` design cards | Functional inventory, semantic map, target topology, migration, intake, library, report, logging, documentation, code-doc, size, and local-context designs ending in [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | `LOG-01`, `LOG-02`, `ARCH-02A` through `ARCH-02D`, interposed `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01` and `DOC-CONS-08A` through `DOC-CONS-08D` are complete; recasting `PLAN-02Z` and selecting its independent review remain the next eligible ordinary runway actions, while all other workflow status remains owned by each card's directory |
 | Phase `02` independent reviews | Architecture, reliability, and usability reviews in `REVIEW-ARCH-01` → `REVIEW-REL-02` → `REVIEW-UX-03` order | future review set; workflow status is owned by each card's directory |
 | Phase `03` bounded packages | Exact stage/domain migrations, logging adoption, code documentation, consolidation, corrections, and extractions generated by the reviewed plan | not yet named; cards must be evidence-derived and separately approved |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
@@ -102,8 +103,8 @@ inspection and approval.
 
 `ARCH-02A` through `ARCH-02D` and the interposed `JIT-01` workflow bootstrap
 are complete. The user separately selected and completed `DOC-IA-01` and
-`DOC-CONS-08A` through `DOC-CONS-08C` as local-only documentation exceptions;
-those completions do not select `DOC-CONS-08D` through `DOC-CONS-08H` or
+`DOC-CONS-08A` through `DOC-CONS-08D` as local-only documentation exceptions;
+those completions do not select `DOC-CONS-08E` through `DOC-CONS-08H` or
 change ordinary runway order. The next
 eligible ordinary runway action is still to recast `PLAN-02Z` and select its
 independent review just in time before planning the first physical migration;
@@ -163,8 +164,10 @@ work. Maintenance order remains distinct from technical blocking:
    [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
    and
    [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
-   completed the root router, entry/priority, and operational-guidance
-   compression; `DOC-CONS-08D` through `DOC-CONS-08H` remain unselected and
+   and
+   [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md)
+   completed the root router, entry/priority, operational-guidance, and dated
+   audit/testing-history compression; `DOC-CONS-08E` through `DOC-CONS-08H` remain unselected and
    require separate selection,
    task-specific planning, and approval.
 
@@ -243,7 +246,7 @@ contains only noncritical input-dependent decisions, and
 [`DOC-SITEMAP-01`](../tasks/TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md)
 owns later temporary-routing migration. `ARCH-02B` through `ARCH-02D` are
 complete on one local-only branch. `DOC-IA-01` and its separately selected
-`DOC-CONS-08A` through `DOC-CONS-08C` children are complete on successive
+`DOC-CONS-08A` through `DOC-CONS-08D` children are complete on successive
 local-only descendants as explicit documentation exceptions; the remaining
 consolidation cards are not selected. Recasting `PLAN-02Z` and selecting its
 independent review are next eligible but not selected; other candidate work

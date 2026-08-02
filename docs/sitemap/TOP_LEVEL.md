@@ -8,6 +8,7 @@
 - [Task registry](../tasks/README.md) — bounded task scope and lifecycle.
 - [Integration fragments](../fragments/README.md) — candidate-fragment format.
 - [Demonstrations](../demo/) — presentation and walkthrough material.
+- [History](../history/) — indexed immutable audit and testing evidence views.
 - [Audience and ownership map](DOCUMENTATION_OWNERSHIP.md) — short reader
   routes, canonical responsibility boundaries, and no-loss dispositions.
 
@@ -42,7 +43,9 @@ freshness, evidence, ownership, or
   [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
   and
   [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
-  are complete; `DOC-CONS-08D` through `DOC-CONS-08H` remain unselected and
+  and
+  [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md)
+  are complete; `DOC-CONS-08E` through `DOC-CONS-08H` remain unselected and
   require separate selection, task-specific planning, and approval. These
   exceptions do not change ordinary runway order. The
   next eligible ordinary runway action is to recast

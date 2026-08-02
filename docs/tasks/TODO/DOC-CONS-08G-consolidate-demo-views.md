@@ -24,7 +24,7 @@ described elsewhere as dated.
 
 ## Blocked by
 
-- [DOC-CONS-08D](../IN_PROGRESS/DOC-CONS-08D-establish-dated-documentation-history.md) — Required: a dated demo snapshot needs an indexed history destination.
+- [DOC-CONS-08D](../COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md) — Required: a dated demo snapshot needs an indexed history destination.
 
 ## Completion unblocks
 
