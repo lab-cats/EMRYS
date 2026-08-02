@@ -92,3 +92,31 @@ have passed the applicable parity obligations, runbook and documentation links
 use the final path, and the rollback checkpoint can restore the wrapper. The
 removal commit deletes the wrapper and its wrapper-only tests together; it does
 not retain a forwarding module in the target package.
+
+## Caller-migration order
+
+Cutover follows the refreshed direct-consumer graph from the moved owner
+outward. A wrapper-backed migration uses this order; a wrapper-free migration
+applies the same order within one atomic executable commit.
+
+1. Introduce the final-owner implementation and make its owner-local relative
+   resources, imports, and native-asset references resolve there.
+2. Move same-owner launchers and validators to the final implementation while
+   preserving their public interfaces and independent checks.
+3. Update stage-local SLURM entry points and any neutral scheduler adapter that
+   invokes the owner.
+4. Update direct workflow/orchestration callers and literal Make expansions;
+   do not replace explicit paths with discovery or numeric-order inference.
+5. Update artifact adapters, report consumers, configuration, and schema
+   references only when they name the source path; artifact identities and
+   data contracts otherwise remain unchanged.
+6. Move owner-local tests and fixtures with the owner, update independent
+   contract/integration suites as consumers, and retain old/new parity coverage
+   until wrapper removal.
+7. After executable and test state is final, update runbook commands, current-
+   topology documentation, diagrams, links, and the migration card.
+
+Each committed checkpoint must leave every supported caller executable through
+either the final path or the single declared wrapper. A migration never edits
+an output schema, scientific policy, or evidence vocabulary merely to make a
+source path cutover easier.
