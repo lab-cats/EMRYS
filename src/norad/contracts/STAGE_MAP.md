@@ -41,6 +41,7 @@ archival behavior.
 | stage | Generate Partitioned Cohort Mpileup VCFs | `generate_partitioned_cohort_mpileup_VCFs` | `norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1` | `07` |
 | stage | Preprocess and Annotate Cohort Candidates | `preprocess_and_annotate_cohort_candidates` | `norad.stage.preprocess_and_annotate_cohort_candidates.v1` | `08` |
 | analysis | Rank Cohort Candidates with Paired CMH | `rank_cohort_candidates_with_paired_CMH` | `norad.analysis.rank_cohort_candidates_with_paired_CMH.v1` | `09` |
+| evidence | Assemble Scientific Review Evidence Package | `assemble_scientific_review_evidence_package` | `norad.evidence.assemble_scientific_review_evidence_package.v1` | `09c` |
 
 ## Edge semantics
 
@@ -71,8 +72,10 @@ not create edges.
 | `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars`, `split_N_cigar_reads_with_GATK`, `generate_partitioned_cohort_mpileup_VCFs` |
 | `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12`, `preprocess_and_annotate_cohort_candidates` |
 | `paired_rna_fastq` | One externally supplied read-1/read-2 RNA-seq FASTQ pair for a declared sample. | `align_RNA_reads_with_STAR` |
-| `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
-| `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
+| `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH`, `assemble_scientific_review_evidence_package` |
+| `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH`, `assemble_scientific_review_evidence_package` |
+| `scientific_review_plan` | One explicitly supplied review plan, including the primary analysis and requested provisional state. | `assemble_scientific_review_evidence_package` |
+| `declared_scientific_evidence` | Evidence manifest plus every separately declared, source-backed evidence payload. | `assemble_scientific_review_evidence_package` |
 
 Runtime tools and scalar parameters are stage-local contract inputs, not DAG
 nodes.
@@ -97,6 +100,8 @@ artifact have been frozen from their functional contracts.
 | `construct_FASTA_sidecars` | `generate_partitioned_cohort_mpileup_VCFs` | reference FAI paired with the external reference FASTA | required artifact; fan-in |
 | `generate_partitioned_cohort_mpileup_VCFs` | `preprocess_and_annotate_cohort_candidates` | receipt and both orientation VCFs for every declared partition | required artifact; declared-partition-and-orientation barrier |
 | `preprocess_and_annotate_cohort_candidates` | `rank_cohort_candidates_with_paired_CMH` | sites table and Step 08 input receipt | required artifact |
+| `preprocess_and_annotate_cohort_candidates` | `assemble_scientific_review_evidence_package` | complete three-output Step 08 transaction | required artifact; fan-in; direct review lineage |
+| `rank_cohort_candidates_with_paired_CMH` | `assemble_scientific_review_evidence_package` | complete six-output Step 09 transaction | required artifact; fan-in; direct review lineage |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -127,6 +132,7 @@ flowchart LR
     generate_partitioned_cohort_mpileup_VCFs["Generate Partitioned Cohort Mpileup VCFs"]
     preprocess_and_annotate_cohort_candidates["Preprocess and Annotate Cohort Candidates"]
     rank_cohort_candidates_with_paired_CMH["Rank Cohort Candidates with Paired CMH"]
+    assemble_scientific_review_evidence_package["Assemble Scientific Review Evidence Package"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
@@ -141,4 +147,6 @@ flowchart LR
     construct_FASTA_sidecars -->|FAI; FASTA is external| generate_partitioned_cohort_mpileup_VCFs
     generate_partitioned_cohort_mpileup_VCFs -->|all partitions and orientations| preprocess_and_annotate_cohort_candidates
     preprocess_and_annotate_cohort_candidates -->|sites and input receipt| rank_cohort_candidates_with_paired_CMH
+    preprocess_and_annotate_cohort_candidates -.->|all three outputs; review lineage| assemble_scientific_review_evidence_package
+    rank_cohort_candidates_with_paired_CMH -.->|all six outputs; review lineage| assemble_scientific_review_evidence_package
 ```
