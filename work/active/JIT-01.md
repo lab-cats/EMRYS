@@ -1,7 +1,7 @@
 ## Current slice
 
-Outcome: Neutral capture and delayed discovery are durable procedure.
+Outcome: The three-line slice contract and minimal close boundary are durable.
 Touches: `docs/operations/TASK_DELIVERY.md` and `work/active/JIT-01.md`.
-Stop: The procedure owns the queue rules without defining cleanup classifications, the complete slice lifecycle, or the final gate.
+Stop: The procedure adds no planning fields, matrices, mandatory reports, or ordinary reconciliation work.
 
 ## Cleanup queue
