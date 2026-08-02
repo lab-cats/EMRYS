@@ -26,3 +26,19 @@ the cleanup queue, and the result is committed. Focused validation is optional
 feedback unless continuing would be unsafe or a later slice directly depends
 on the unverified behavior. Ordinary slice close performs no canonical
 reconciliation or lifecycle maintenance.
+
+## Card close
+
+After feature or procedure work freezes, close the card in this order:
+
+1. **Review** — semantically assess the final change and its affected owners.
+2. **Validation** — run the applicable automated structural or behavioral
+   checks.
+3. **Verification** — prove the acceptance, lifecycle, Git, and publication
+   conditions.
+
+Exact commands remain in the
+[`RUNBOOK.md` local validation gate](RUNBOOK.md#local-validation-gate). This
+procedure neither copies those commands nor introduces another validation
+framework. Change the existing validator only if its tooling makes the
+procedure impossible.
