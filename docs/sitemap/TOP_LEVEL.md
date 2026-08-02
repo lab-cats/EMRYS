@@ -20,10 +20,10 @@ for every task.
 
 ### Temporary critical runway
 
-This temporary boundary remains active until the first physical source
-migration is complete and the user explicitly reassesses it. It narrows work
-selection and routine context loading; it does not weaken the safety,
-freshness, evidence, ownership, or
+The user reassessed this boundary after the first physical source migration and
+kept it active as the one-unit-at-a-time physical-migration campaign boundary.
+It narrows work selection and routine context loading; it does not weaken the
+safety, freshness, evidence, ownership, or
 [mandatory-expansion rules](../operations/TASK_START.md#mandatory-expansion-triggers).
 
 - The first
@@ -57,13 +57,13 @@ freshness, evidence, ownership, or
   and
   [`usability review`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
   are complete.
-  [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md)
-  is selected for task-specific read-only planning only. The unsliced
-  `PROGRAM-01` remainder remains
-  preserved and out of scope pending user reassessment.
-- Plan each runway package just in time. Divide execution into small,
-  internally reviewed phases and complete only the active phase before loading
-  detail for the next one.
+  [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)
+  is now complete. The authorized physical-migration campaign selects and
+  reviews only one next dependency-valid migration unit at a time; the unsliced
+  `PROGRAM-01` remainder remains preserved and out of scope.
+- Plan each migration package just in time. Complete its dedicated architecture,
+  reliability, and usability reviews, execution, documentation close, and
+  publication before loading detail for the next unit.
 - Every other pending task, candidate, integration, branch package, and program
   family is frozen and currently dead/out of scope. Preserve it, but do not
   select, inspect routinely, integrate, execute, or maintain it while this
@@ -74,9 +74,8 @@ freshness, evidence, ownership, or
   makes that work necessary for the active runway.
   Preferred ordering, general consistency, or potential future usefulness is
   not an exception.
-- The tranche-specific architecture, reliability, and usability reviews are
-  complete. `MIG-03A` is selected only for task-specific read-only planning;
-  source mutation remains outside this pre-migration boundary.
+- The first tranche-specific reviews and `MIG-03A` are complete. Their closure
+  does not preselect a later migration or activate unrelated roadmap work.
 - Validation is quiet by default. Ordinary slice close follows the
   [`TASK_DELIVERY.md` boundary](../operations/TASK_DELIVERY.md#slice-start-and-close),
   and final reconciliation uses the applicable

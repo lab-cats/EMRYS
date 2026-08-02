@@ -12,30 +12,36 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: the exact package base above is the clean, published,
-  upstream-equal planning tip. `PLAN-02Z`, all three dedicated reviews, and the
-  `MIG-03A` task-specific plan are complete; this dedicated execution branch
-  was created from that exact parent with no overlap in another mutable lane.
-- Current package: `MIG-03A` execution baseline. The supported Step `00a`
-  tiny-fixture dry run passed (`1 passed`), and the thirteen-validator,
-  publication-fault, roster, independent-golden, public-CLI, and coverage-
-  wiring baseline passed (`347 passed`) before source mutation.
-- Package type at this checkpoint: documentation-only execution baseline; no
-  executable, configuration, generation, schema, fixture, report-template,
-  dependency, source-layout, public-interface, scientific-policy, or test-
-  harness behavior has changed yet. The next commit is the reviewed atomic
-  executable/test cutover.
-- Remote publication and upstream equality: established for the planning base.
-  Resolve this branch's baseline commit and publication state from live Git;
-  source mutation may begin only after local `HEAD`, configured upstream, and
-  the live remote ref are equal. Cluster work remains paused.
+- Recorded package state: executable/test checkpoint
+  `9d93694e87858e0d2db71703cfabeecd2980ef69` is clean, published, and equal to
+  the configured upstream and live remote ref. It atomically establishes the
+  final validation-report owner, all thirteen caller-local loaders, the moved
+  direct/fault owner, and exact coverage/static wiring from the frozen parent.
+- Current package: `MIG-03A` documentation and lifecycle close. The supported
+  pre-cutover Step `00a` tiny-fixture dry run passed (`1 passed`), the focused
+  characterization passed (`347 passed`), final focused library tests passed
+  (`137 passed`), and the deterministic final coverage lane passed (`1056
+  passed, 17 skipped, 1 deselected`) at `0.812011` line and `0.698382` branch
+  coverage; the migrated module measured `1.000000` line and `0.972222` branch.
+- Package type at this checkpoint: executable/test physical migration followed
+  by an impact-directed documentation close. No validator public path, report
+  schema/bytes, check roster, dependency, scientific policy, or characterized
+  publication behavior changed, and no runtime or cluster evidence was created.
+- Remote publication and upstream equality: established for the executable
+  checkpoint. The documentation-close commit must be published and proved
+  local/upstream/live-remote equal before the next JIT migration unit begins.
 
-This package descends directly from the verified planning tip
+This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
-integrated canonical tip. This baseline checkpoint changes only Markdown and
-adds no descriptor, schema, runtime, report template, test-harness change, or
-integration fragment. Current executable paths remain under the flat layout
-until the atomic cutover commit.
+integrated canonical tip. The first physical owner now lives at
+`src/norad/libraries/validation_report.py`; public validators remain at their
+legacy paths and load that exact file without package identity, a wrapper, or
+`sys.path` mutation. The canonical `make all-checks` attempt passed guarded-R,
+shell, report-runtime, and static lanes but its aggregate Python lane remained
+nonpassing because the documentation test rejects nine inherited, authorized
+`UNREFINED` locations. Migration-caused stale links are repaired in this close;
+the inherited findings are an expected-only evidence ceiling, not a passing
+gate and not authority to change task-lifecycle behavior in this package.
 
 ## Active concurrent lanes
 
@@ -487,14 +493,17 @@ or updated.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) is
 complete. It proposes
-[`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) and a
+[`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. All three
-reviews and the `MIG-03A` task-specific plan are complete. The pre-migration
-base is published and upstream-equal. The dedicated execution branch now
-exists at that exact parent; parent/no-overlap/mode evidence was refreshed, the
-supported tiny-fixture dry run passed (`1 passed`), and the pre-cutover focused
-baseline passed (`347 passed`). No source/test mutation or physical migration
-has yet begun. Publish and prove this execution-baseline checkpoint equal
-before the atomic cutover. All other work, including
-the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
-of scope until the first physical migration and explicit user reassessment.
+reviews and the `MIG-03A` task-specific plan are complete. The physical
+migration is complete at atomic executable/test checkpoint `9d93694`, and this
+impact-directed documentation/lifecycle close records the exact local evidence
+and inherited gate ceiling. Publish this close and prove clean equality before
+selecting the next dependency-valid physical migration unit.
+
+The user has authorized one continuous physical-migration campaign on this
+branch: select, review, plan, execute, validate, document, commit, and publish
+exactly one JIT unit at a time, then repeat. Do not pre-create later cards or
+activate unrelated work. The next action after `MIG-03A` closure is therefore
+read-only inspection to choose and charter only the next unit; the unsliced
+`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

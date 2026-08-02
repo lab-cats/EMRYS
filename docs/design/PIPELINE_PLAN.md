@@ -76,8 +76,8 @@ a completed production review.
 | `codex/doc-cons-08c-compress-operational-guidance` | Indexed exact-command and diagnostic owners, contract crosswalk, and no-loss inline-program dispositions; see completed [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md) | separately approved local-only documentation exception complete and intentionally unpushed; duplicated commands and stage semantics now route to one owner while recovery and scientific-review meaning remain intact, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/doc-cons-08d-establish-dated-documentation-history` | Shallow immutable audit/testing history plus concise current audit and baseline routes; see completed [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md) | separately approved local-only documentation exception complete and intentionally unpushed; exact dated evidence and source provenance now have indexed owners while active recheck, coverage-policy, evidence-vocabulary, and risk routes remain current, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/reconciliation-consolidated-01-integration` | Direct canonical recovery of reviewed proposal material from consolidated source `5a35a057cd9ca259f83ee1dde3116fee63928d72` onto parent `0fd6348e6cfe54457fef5f65f3468bea106e61f9` | documentation-only integration package; eight TODO cards and eight nonselectable UNREFINED proposals are preserved without selection, priority, implementation, or evidence promotion; all 80 fragment requests receive terminal commit-trailer dispositions, the fragment is absent from the final tree, and publication/upstream equality must be resolved from live Git |
-| `codex/plan-02z-first-migration-readiness` | Rolling [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) checkpoint, tranche-specific reviews, and first migration-card readiness rooted at the verified integrated canonical tip | plan checkpoint `c45e748`, all three dedicated [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) reviews, and the [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) task-specific plan are complete as documentation-only evidence; the branch is published/upstream-equal and the nine unsupported-`UNREFINED` findings remain the non-broadening ceiling |
-| `codex/mig-03a-extract-validation-report-library` | Atomic extraction of the shared validation-report/publication protocol to its neutral final owner through [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) | dedicated execution branch created from exact published planning tip `1966d03`; supported dry run passed (`1 passed`) and focused pre-cutover characterization passed (`347 passed`); this documentation-only execution baseline must be published/upstream-equal before the one executable/test cutover |
+| `codex/plan-02z-first-migration-readiness` | Rolling [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) checkpoint, tranche-specific reviews, and first migration-card readiness rooted at the verified integrated canonical tip | plan checkpoint `c45e748`, all three dedicated [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) reviews, and the completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) task-specific plan remain the documentation-only readiness record; the branch is published/upstream-equal |
+| `codex/mig-03a-extract-validation-report-library` | Physical migration campaign beginning with atomic extraction of the shared validation-report/publication protocol through [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) | first neutral owner complete in executable checkpoint `9d93694`; all thirteen validator callers, mirrored direct tests, and exact coverage/static wiring use the final owner without a wrapper or package identity. The campaign may select only the next dependency-valid migration unit just in time after clean publication/equality closure. |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; actionable-card workflow remains directory-owned, authorized UNREFINED preservation is nonselectable, and the validator still rejects its nine current Markdown locations and lacks the card's independent invalid-state fixture coverage and separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -88,7 +88,7 @@ a completed production review.
 | `codex/log-02-define-logging-contract-reconciliation` | Public controls, streams, one-writer operation record, publication ordering, failure, security, retention, scheduler, evidence-role, scenario, and adoption contract; see [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | documentation-only target contract complete; the rejected-ancestry candidate was evidence only, current output/defaults remain unchanged, and no rollout card was created |
 | Phase `02` rolling checkpoint | Minimum shared architecture and one evidence-supported tranche in [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) | complete as documentation-only planning; later intake, report, logging, documentation, size, and broad-library inputs remain frozen rather than becoming false blockers |
 | First-tranche reviews | [`REVIEW-ARCH-03A`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md) → [`REVIEW-REL-03A`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md) → [`REVIEW-UX-03A`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) | all three dedicated read-only passes complete; no broad `REVIEW-*` completion is claimed |
-| Phase `03` first bounded package | Extract the neutral validation-report protocol through [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) | reviews, task-specific plan, and published upstream-equal parent complete; dedicated branch and local pre-cutover baseline established, with source/test mutation and the atomic cutover not yet begun |
+| Phase `03` first bounded package | Extract the neutral validation-report protocol through [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) | complete locally with atomic executable/test checkpoint `9d93694` published/upstream-equal; documentation/lifecycle closure is the following commit on the same campaign branch |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -128,11 +128,12 @@ integration preserves recovered cards, proposals, decisions, and deferred
 decision points without selecting them. `PLAN-02Z` is complete and defines
 only `MIG-03A` and its tranche-specific review chain. That checkpoint selected
 no review or migration; all three dedicated reviews later completed, and
-`MIG-03A` is now separately authorized and active on its dedicated execution
-branch; the supported dry run and pre-cutover characterization are complete,
-but source/test mutation has not yet begun. Every other
-package is preserved but currently dead/out of scope under the temporary
-boundary in
+`MIG-03A` is complete on the one physical-migration campaign branch. The user
+has separately authorized that branch to continue autonomously through only
+one dependency-valid, evidence-supported migration unit at a time: create the
+next card and its three reviews just in time, close and publish it, and only
+then inspect the following unit. Unrelated packages remain preserved but
+dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 
 ## Frozen pre-runway maintenance context
@@ -311,11 +312,14 @@ complete on one local-only branch. `DOC-IA-01` and its separately selected
 local-only descendants as explicit documentation exceptions; the remaining
 consolidation cards are not selected. `PLAN-02Z` completed on the verified
 integration descendant only for the first `MIG-03A` tranche and its dedicated
-review chain; other candidate work remains frozen rather than becoming blocker
+review chain. After that unit, the user separately authorized the one-branch
+physical-migration campaign to select and complete only one next unit at a
+time; other candidate work remains frozen rather than becoming blocker
 metadata.
 
-Do not perform remote or cluster
-validation during this sequence.
+Do not perform remote-runtime or cluster validation during this sequence. Git
+publication and local/upstream/live-ref equality remain required campaign
+checkpoints.
 
 ## Package acceptance criteria
 

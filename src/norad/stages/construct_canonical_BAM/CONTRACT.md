@@ -181,7 +181,7 @@ current validator-helper imports above are an observed violation to resolve.
   directory creation, the Bash 3.2 defect, and exit propagation with mocks.
 - [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
-- [`test_validation_publication_faults.py`](../../../../tests/test_validation_publication_faults.py)
+- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes the imported shared validation-report publication behavior.
 - [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)

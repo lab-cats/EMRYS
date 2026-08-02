@@ -1780,7 +1780,7 @@ Run the complete Phase `01b` publication-fault characterization set with:
 ```bash
 cd /Users/elisteiger/dev/norad
 .venv/bin/python -m pytest -q --tb=short \
-  tests/test_validation_publication_faults.py \
+  tests/libraries/test_validation_report.py \
   tests/test_reference_provenance.py \
   tests/test_runtime_preflight.py \
   tests/test_storage_inventory.py

@@ -877,7 +877,7 @@ shared implementation. That bounded seam qualifies for neutral ownership in
 `src/norad/libraries/`; it does not prove that BAM helpers, scientific checks,
 parsing/hashing, fixture builders, or other transaction mechanisms are
 equivalent. The exact reviewed migration boundary belongs to
-[`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md).
+[`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md).
 Neutral source ownership here does not establish a public Python import name,
 package marker, build metadata, or installable distribution; those remain
 deferred.

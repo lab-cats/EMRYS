@@ -146,7 +146,7 @@ No downstream stage should depend on this stage's implementation module.
   predecessors.
 - [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
-- [`test_validation_publication_faults.py`](../../../../tests/test_validation_publication_faults.py)
+- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes shared publication, rollback, cleanup, and recovery behavior.
 - [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
   protects the public validator CLI, and

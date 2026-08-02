@@ -160,7 +160,7 @@ own scientifically approved contract and evidence gate.
   protects wrapper execution control, virtual-environment/tool selection,
   CWD/delegation behavior, the Bash 3.2 defect, and child failure propagation.
 - [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py),
-  [`test_validation_publication_faults.py`](../../../../tests/test_validation_publication_faults.py),
+  [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
   [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the validator roster, shared publication, public surfaces, and

@@ -28,16 +28,18 @@ The active comparison policy:
 
 - rejects any decrease in the global line or branch rate;
 - rejects a tracked baseline module that disappears;
-- requires a new shared Python module to meet at least 90% line and 85% branch
-  coverage;
+- requires each explicitly named new shared Python module to meet at least 90%
+  line and 85% branch coverage, including after its reviewed promotion into
+  the tracked baseline;
 - compares exact covered/total ratios rather than rounded display values; and
 - requires an explicit, reviewed baseline update rather than updating during
   ordinary tests.
 
-Coverage uses branch and subprocess measurement and must include
-`scripts/gtf_to_bed12.py` and `scripts/validate_manifest.py`. Low numerical
-coverage is a review signal; it is not by itself proof of a user-visible
-defect or authority to change behavior.
+Coverage uses branch and subprocess measurement over exactly `scripts` and
+`src/norad/libraries`, and must include `scripts/gtf_to_bed12.py` and
+`scripts/validate_manifest.py`. Low numerical coverage is a review signal; it
+is not by itself proof of a user-visible defect or authority to change
+behavior.
 
 ## Current evidence vocabulary
 
@@ -69,7 +71,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point |
 | SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
-| Validation publication and recovery faults | `tests/test_validation_publication_faults.py` plus producer-specific transaction suites |
+| Validation publication and recovery faults | `tests/libraries/test_validation_report.py` plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/test_step_09_cmh_oracle.py`, its fixed corpus, and guarded real-R comparison |
 | Python non-regression measurement | the tracked coverage snapshot and coverage tests |

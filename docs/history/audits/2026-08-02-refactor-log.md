@@ -330,3 +330,70 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   documentation validator reproduced exactly the nine inherited unsupported-
   `UNREFINED` location findings and no other finding; this remains expected-
   only nonpassing evidence, not a passing documentation gate.
+
+## 2026-08-02T18:49:45-0400 — MIG-03A physical cutover and campaign authority
+
+- **Expanded authority:** the user's attached campaign directive supersedes the
+  earlier `PLAN-02Z` limitation that activated only `MIG-03A`. Continue on one
+  physical-migration campaign branch, creating exactly one dependency-valid
+  migration card and architecture/reliability/usability review chain just in
+  time. Each unit must close, commit, publish, and prove equality before the
+  next is selected; later cards and unrelated roadmap work remain unactivated.
+- **Atomic cutover:** published commit
+  `9d93694e87858e0d2db71703cfabeecd2980ef69` adds the one final owner at
+  `src/norad/libraries/validation_report.py`, moves the direct publication-
+  fault owner to `tests/libraries/test_validation_report.py`, and cuts all
+  thirteen legacy validators through the same exact caller-local loader. All
+  callers remain mode `0644`; there is no wrapper, package marker, public
+  import identity, installation step, or `sys.path` mutation. Local `HEAD`,
+  configured upstream, and live remote ref were equal at that checkpoint.
+- **Preserved behavior decision:** remove only the Step `00a` embedded shared
+  implementation and retain stage parsing, rosters, public paths, streams,
+  exits, report bytes, and every characterized publication defect. Loader tests
+  prove exact-file/module identity, arbitrary-CWD use, wrong-cache rejection,
+  owned partial-cache cleanup, foreign-cache preservation, and control-flow
+  propagation. This is relocation evidence, not defect correction.
+- **Coverage decision:** once the final module entered the reviewed baseline,
+  the shared-module threshold tool could no longer require it to be absent from
+  that baseline. Keep the explicit 90% line/85% branch threshold enforced both
+  before and after baseline promotion, and measure exactly the `scripts` and
+  `src/norad/libraries` roots. This prevents the migrated safety-critical code
+  from disappearing behind a baseline update. The final deterministic serial
+  lane passed (`1056 passed, 17 skipped, 1 deselected`); global exact line and
+  branch rates rose from `0.808701`/`0.696956` to
+  `0.812011`/`0.698382`, and the final module measured
+  `1.000000`/`0.972222`. The one-line `_common.py` helper remained `1/1`.
+- **Focused evidence:** final library tests passed (`137 passed`), all thirteen
+  direct validator/golden suites passed (`98 passed`), and
+  `make validation-static` passed. These follow the pre-cutover supported dry
+  run (`1 passed`) and focused characterization (`347 passed`). An earlier
+  broad Python attempt before the final expanded loader matrix reported `946
+  passed, 17 skipped, 1 failed`; its only failure was the documentation-
+  validator repository test described below.
+- **Canonical gate risk:** the first guarded-R run could not retrieve
+  Bioconductor metadata through the restricted network. The authorized network
+  retry passed; no dependency was installed, restored, or changed. Guarded-R,
+  shell, report-runtime, and validation-static lanes passed. The aggregate
+  Python lane cannot receive the coverage-only deselection because
+  `run_validation.py` owns its pytest arguments, and it reported `1056 passed,
+  17 skipped, 1 failed`: the one failing documentation test saw eight stale
+  links caused by the test-owner move plus the nine inherited unsupported
+  `UNREFINED` locations. The documentation close repairs all eight migration-
+  caused links; the nine inherited findings remain expected-only nonpassing
+  evidence rather than a successful `make all-checks` claim.
+- **Parallel-run decision:** a direct xdist coverage attempt completed its
+  tests but emitted a coverage-combine no-data warning and produced a lower
+  `0.796715` line rate that is not comparable to the tracked deterministic
+  baseline. Record the clean serial coverage lane above and do not promote the
+  parallel measurement.
+- **Documentation impact:** update the implemented topology, functional-owner
+  inventory, coverage roots, ownership map, task/roadmap/handoff state, and the
+  supported runbook fault-test path. Repair destination-relative contract links
+  to the moved test in the same close. No pipeline diagram changes because DAG
+  edges and public entry points are unchanged.
+- **Evidence and rollback boundary:** all evidence is local fixture/static
+  evidence. No real-runtime, cluster, scientific-review, or biological-
+  readiness state is created. Roll back the documentation/lifecycle close
+  first, then atomic commit `9d93694`; published planning tip `1966d03` remains
+  the earlier independent recovery point. Do not delete runtime, production,
+  lock, backup, or recovery artifacts during rollback.

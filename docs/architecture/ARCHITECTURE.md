@@ -12,9 +12,11 @@ Canonical diagrams:
 
 ## Compute pipeline
 
-Current executable workflow entry points remain under `scripts/` and `jobs/`.
-The colocated documents under `src/norad/` describe functional ownership; they
-do not claim that executable source has migrated.
+Current public workflow entry points remain under `scripts/` and `jobs/`.
+`src/norad/libraries/validation_report.py` is the first physically migrated
+neutral implementation owner; the colocated functional-owner documents under
+`src/norad/` remain contracts rather than claims that their stage, analysis,
+or evidence implementations have migrated.
 
 The supported workflow is a directed graph of shared reference inputs,
 per-sample alignment and BAM transformations, non-gating QC/orientation
@@ -37,6 +39,20 @@ Target source/test ownership and future direct-migration mechanics live in
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and
 [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md),
 not in this implemented-current-topology document.
+
+### Neutral validation-report library
+
+[`validation_report.py`](../../src/norad/libraries/validation_report.py) owns
+the shared snapshot, seven-column rendering/validation, and transactional
+publication protocol used by all thirteen legacy validator entry points. The
+validators resolve that exact file through private caller-local loaders; no
+package marker, public Python import identity, install step, compatibility
+wrapper, or `sys.path` mutation is part of the current interface. Stage-
+specific parsing and check rosters remain in their legacy validator owners.
+
+This relocation preserved the characterized snapshot, ordering, collision,
+rollback, cleanup, descriptor, and lock defects. It did not correct them or
+promote runtime, cluster, scientific-review, or biological evidence.
 
 ## Identity and explicit-input boundaries
 

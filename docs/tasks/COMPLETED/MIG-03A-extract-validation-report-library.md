@@ -209,9 +209,12 @@ coverage, making it the smallest evidence-supported migration unit.
   collision, failed restoration, previous/staged/lock cleanup, and descriptor
   retention. Independent golden and roster expectations remain independent of
   production rules.
-- Every affected direct validator test passes, the complete Python suite and
-  coverage gate pass, the new shared module satisfies at least 90% line and 85%
-  branch coverage, and Git/documentation validation passes at the final tree.
+- Every affected direct validator test and the deterministic coverage gate
+  pass, the new shared module satisfies at least 90% line and 85% branch
+  coverage, and the complete applicable repository gate either passes or
+  isolates only findings proved inherited from the frozen parent. An inherited
+  expected-only finding remains nonpassing evidence and must not be reported as
+  a successful gate.
 - Coverage metadata names exactly `scripts` and `src/norad/libraries` as source
   roots, static/lint recipes compile the final module, the literal Make oracle
   contains both shared-module checks, and the tracked Step `00a` coverage is
@@ -250,44 +253,51 @@ Stop: After one atomic executable/test cutover commit, one documentation-close
 commit, the complete applicable local gate, and clean upstream equality—or
 immediately on any escalation condition above.
 
-- Current execution classification: `behavior or architecture planning` with
-  `executable/test-affecting` validation impact. The frozen baseline commit is
-  documentation-only/non-consuming; the next atomic cutover is executable.
-- Exact planning worktree is `/Users/elisteiger/dev/norad`; planning branch is
-  `codex/plan-02z-first-migration-readiness`; proposed execution branch is
-  `codex/mig-03a-extract-validation-report-library`. The executable parent is
-  the final clean, pushed, upstream-equal planning tip resolved from live Git,
-  not an input sidecar or an earlier review checkpoint.
-- Execution authorization is active. The exact parent and no-overlap roster
-  were reverified, the dedicated branch was created, and the existing Step
-  `00a` tiny-fixture dry run passed before mutation. No dependency was installed
-  or restored, and no production or cluster data was used.
-- Implement the final owner, all thirteen caller-local loaders, direct/fault/
-  import/public-boundary tests, and exact coverage/static/Make wiring as one
-  atomic executable/test commit. There is no supported hybrid caller state,
-  compatibility re-export, wrapper, or intermediate package commit.
-- Run focused library, thirteen-validator, fault, roster, independent-golden,
-  public-CLI, and coverage-wiring tests during the slice. Once executable state
-  is final, run the complete applicable local gate once and update the tracked
-  coverage snapshot only through its reviewed command. Local results cannot
-  establish runtime, cluster, scientific-review, or biological evidence.
-- Semantically review the final diff, update only the canonical owners listed
-  above in a separate documentation commit, rerun Git/documentation validation,
-  then publish and prove upstream equality. Rollback reverts documentation
-  first and the atomic executable commit second; it never removes runtime,
-  production, lock, backup, or recovery artifacts.
-- Execution was not authorized by the planning handoff itself. The user
-  separately authorized continuation after the pre-migration base closes; the
-  next action therefore begins with the live parent/no-overlap/dry-run checks
-  above.
+- Classification: completed `executable/test-affecting` physical migration
+  with a separate impact-directed documentation close. Exact worktree is
+  `/Users/elisteiger/dev/norad`; campaign branch is
+  `codex/mig-03a-extract-validation-report-library`; frozen executable parent
+  is `1966d03a9906f1fe8afbe21d8373d877569182ad`, stable pre-mutation baseline is
+  `fe425d2`, and the atomic executable/test cutover is
+  `9d93694e87858e0d2db71703cfabeecd2980ef69`.
+- The final tree has one owner at
+  `src/norad/libraries/validation_report.py`, thirteen mode-`0644` public
+  validators with byte-identical caller-local loaders, and the moved direct
+  fault owner at `tests/libraries/test_validation_report.py`. Exact searches
+  found no Step `00a` shared-helper importer, compatibility re-export, package
+  marker, wrapper, installation dependency, or `sys.path` mutation.
+- Pre-move evidence passed the supported Step `00a` tiny-fixture dry run (`1
+  passed`) and focused characterization (`347 passed`). Final focused library
+  evidence passed (`137 passed`), and the deterministic serial coverage lane
+  passed (`1056 passed, 17 skipped, 1 deselected`) with global line/branch rates
+  increasing from `0.808701`/`0.696956` to `0.812011`/`0.698382`. The migrated
+  module measured `1.000000` line and `0.972222` branch coverage; both source
+  roots and the shared-module thresholds remain enforced after baseline
+  promotion.
+- The canonical all-checks attempt began every applicable runner. Guarded-R
+  initially could not reach Bioconductor metadata in the restricted network;
+  its authorized network retry passed without installing or restoring any
+  dependency. Guarded-R, shell, report-runtime, and validation-static lanes
+  passed. The aggregate Python lane remained nonpassing only at
+  `test_documentation_validator_accepts_repository_from_arbitrary_cwd`: the
+  migration's stale links are repaired by this close, while nine unsupported
+  `UNREFINED` locations inherited unchanged from the frozen parent remain an
+  expected-only failure. A parallel coverage merge also produced a no-data
+  warning and a noncomparable lower rate, so the deterministic serial result is
+  the recorded coverage evidence. Neither condition is reported as a passing
+  repository-wide gate.
+- No dependency version, public CLI, validator roster, report schema/bytes,
+  characterized defect, runtime artifact, cluster state, scientific-review
+  state, or biological-readiness state changed. Validation is local fixture
+  evidence only. Diagrams do not change because the pipeline DAG and public
+  entry points are unchanged.
+- Rollback is reverse-ordered: revert the documentation/lifecycle close first,
+  then revert atomic cutover `9d93694`; planning branch tip `1966d03` remains
+  the independent published recovery base. The next campaign unit is not
+  preselected here and must be created and reviewed just in time.
 
 Selected for task-specific planning from clean review checkpoint `b714f61` at
-status checkpoint `40d6907`. The exact clean, published, upstream-equal
-execution parent is `1966d03a9906f1fe8afbe21d8373d877569182ad`; the dedicated
-branch is `codex/mig-03a-extract-validation-report-library`. Live refresh
-confirms twelve direct importers plus Step `00a`, nine shared APIs and internal
-`HEADER`, mode `0644` for all thirteen validators/direct tests, and no
-executable change from the parent. The supported Step `00a` dry run passed
-(`1 passed`), and the thirteen-validator, publication-fault, roster,
-independent-golden, public-CLI, and coverage-wiring characterization passed
-(`347 passed`). No source/test mutation or physical migration has yet begun.
+status checkpoint `40d6907`; completed after published baseline `fe425d2` and
+published atomic executable/test cutover `9d93694`. The following documentation
+commit owns lifecycle closure, canonical link repair, and the exact evidence
+ceiling; its live SHA is resolved from Git rather than copied into this card.

@@ -17,4 +17,7 @@ restored-mtime snapshot blindness, unordered-report acceptance, late-foreign
 final deletion, incomplete rollback without a retained recovery marker,
 previous/staged/lock cleanup residue, open descriptor and lock retention, and
 post-publication lock cleanup behavior. See the direct library fault tests and
-the dated refactor audit for the exact evidence boundary.
+the dated refactor audit for the exact evidence boundary:
+
+- [`tests/libraries/test_validation_report.py`](../../../tests/libraries/test_validation_report.py)
+- [`2026-08-02 refactor log`](../../../docs/history/audits/2026-08-02-refactor-log.md)
