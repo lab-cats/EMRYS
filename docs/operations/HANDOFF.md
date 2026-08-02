@@ -507,6 +507,7 @@ exactly one JIT unit at a time, then repeat. Do not pre-create later cards or
 activate unrelated work. The only proposed next unit is
 [`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md); after this
 planning checkpoint is clean and published, select and perform
-[`REVIEW-ARCH-03B`](../tasks/TODO/REVIEW-ARCH-03B-review-construct-star-index-migration.md),
-then its dedicated reliability and usability successors. The unsliced
+[`REVIEW-ARCH-03B`](../tasks/IN_PROGRESS/REVIEW-ARCH-03B-review-construct-star-index-migration.md),
+which is now selected for read-only review, then its dedicated reliability and
+usability successors. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

@@ -22,7 +22,7 @@ Relocation must not normalize, hide, or accidentally correct those states.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03B](REVIEW-ARCH-03B-review-construct-star-index-migration.md) — Required: reliability review needs the corrected owner, caller, and rollback boundary.
+- [REVIEW-ARCH-03B](../IN_PROGRESS/REVIEW-ARCH-03B-review-construct-star-index-migration.md) — Required: reliability review needs the corrected owner, caller, and rollback boundary.
 
 ## Completion unblocks
 

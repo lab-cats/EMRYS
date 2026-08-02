@@ -29,7 +29,7 @@ permanent compatibility surface.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03B](REVIEW-REL-03B-review-construct-star-index-migration.md) — Fully: reliability review needs an architecture-corrected owner, consumer, and rollback boundary.
+- [REVIEW-REL-03B](../TODO/REVIEW-REL-03B-review-construct-star-index-migration.md) — Fully: reliability review needs an architecture-corrected owner, consumer, and rollback boundary.
 
 ## Prerequisites
 

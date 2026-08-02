@@ -447,3 +447,14 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Evidence boundary:** this checkpoint is planning documentation only. It
   creates no local runtime, cluster, production, scientific-review, or
   biological-readiness evidence and does not preselect any later migration.
+
+## 2026-08-02T19:12:16-0400 — REVIEW-ARCH-03B selected
+
+- **Selection:** move only `REVIEW-ARCH-03B` to `IN_PROGRESS` and repair its
+  exact inbound and outbound lifecycle links. `REVIEW-REL-03B`,
+  `REVIEW-UX-03B`, and `MIG-03B` remain unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time adversarial
+  architecture pass against published planning checkpoint `5ac7723`. The same
+  campaign agent authored or reconciled the plan, so independent authorship is
+  not claimed. No executable/test file changes and no computational test is
+  authorized by this review.
