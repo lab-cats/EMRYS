@@ -36,6 +36,7 @@ archival behavior.
 | evidence | Collect Canonical BAM QC Evidence | `collect_canonical_BAM_QC_evidence` | `norad.evidence.collect_canonical_BAM_QC_evidence.v1` | `02b` |
 | evidence | Collect RSeQC Paired Orientation Evidence | `collect_RSeQC_paired_orientation_evidence` | `norad.evidence.collect_RSeQC_paired_orientation_evidence.v1` | `03` |
 | stage | Mark BAM Duplicates with Picard | `mark_BAM_duplicates_with_Picard` | `norad.stage.mark_BAM_duplicates_with_Picard.v1` | `04` |
+| stage | Split N-Cigar Reads with GATK | `split_N_cigar_reads_with_GATK` | `norad.stage.split_N_cigar_reads_with_GATK.v1` | `05` |
 
 ## Edge semantics
 
@@ -63,7 +64,7 @@ not create edges.
 
 | Input type | Meaning | Current semantic consumers |
 | --- | --- | --- |
-| `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars` |
+| `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars`, `split_N_cigar_reads_with_GATK` |
 | `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12` |
 | `paired_rna_fastq` | One externally supplied read-1/read-2 RNA-seq FASTQ pair for a declared sample. | `align_RNA_reads_with_STAR` |
 
@@ -83,6 +84,8 @@ artifact have been frozen from their functional contracts.
 | `construct_canonical_BAM` | `collect_RSeQC_paired_orientation_evidence` | canonical BAM/BAI pair | required artifact; fan-in; non-gating evidence branch |
 | `convert_GTF_to_BED12` | `collect_RSeQC_paired_orientation_evidence` | BED12 annotation | required artifact; fan-in; non-gating evidence branch |
 | `construct_canonical_BAM` | `mark_BAM_duplicates_with_Picard` | canonical BAM/BAI pair | required artifact |
+| `mark_BAM_duplicates_with_Picard` | `split_N_cigar_reads_with_GATK` | duplicate-marked BAM/BAI pair | required artifact; fan-in |
+| `construct_FASTA_sidecars` | `split_N_cigar_reads_with_GATK` | reference FAI and sequence dictionary | required artifact; fan-in |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -108,6 +111,7 @@ flowchart LR
     collect_canonical_BAM_QC_evidence["Collect Canonical BAM QC Evidence"]
     collect_RSeQC_paired_orientation_evidence["Collect RSeQC Paired Orientation Evidence"]
     mark_BAM_duplicates_with_Picard["Mark BAM Duplicates with Picard"]
+    split_N_cigar_reads_with_GATK["Split N-Cigar Reads with GATK"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
@@ -115,4 +119,6 @@ flowchart LR
     construct_canonical_BAM -.->|BAM/BAI; fan-in| collect_RSeQC_paired_orientation_evidence
     convert_GTF_to_BED12 -.->|BED12; fan-in| collect_RSeQC_paired_orientation_evidence
     construct_canonical_BAM -->|canonical BAM/BAI| mark_BAM_duplicates_with_Picard
+    mark_BAM_duplicates_with_Picard -->|marked BAM/BAI; fan-in| split_N_cigar_reads_with_GATK
+    construct_FASTA_sidecars -->|FAI/DICT; fan-in| split_N_cigar_reads_with_GATK
 ```
