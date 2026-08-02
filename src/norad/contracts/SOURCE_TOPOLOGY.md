@@ -140,6 +140,17 @@ through explicit contracts. They do not import stage or analysis
 implementations, and their presence in the DAG does not by itself make them a
 computational gate.
 
+## Functional-owner target homes
+
+The identity map remains canonical in [`STAGE_MAP.md`](STAGE_MAP.md). This
+roster assigns each identity one target home without copying titles, keys,
+aliases, interfaces, or DAG edges. Native-asset classes describe functional
+ownership only; no listed file is moved by this topology contract.
+
+| Public slug | Target source home | Descriptor | Owned native assets | Mirrored test home |
+| --- | --- | --- | --- | --- |
+| `construct_STAR_index` | `src/norad/stages/construct_STAR_index/` | `stage.v1.yaml` | SLURM producer; Python validator | `tests/stages/construct_STAR_index/` |
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
