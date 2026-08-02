@@ -27,7 +27,7 @@ compatibility layer.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03A](REVIEW-REL-03A-review-validation-publication-migration.md) — Fully: reliability review can inspect an architecture-corrected unit.
+- [REVIEW-REL-03A](../TODO/REVIEW-REL-03A-review-validation-publication-migration.md) — Fully: reliability review can inspect an architecture-corrected unit.
 
 ## Prerequisites
 

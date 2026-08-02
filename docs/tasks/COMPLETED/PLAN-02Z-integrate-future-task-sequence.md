@@ -36,7 +36,7 @@ validation-report protocol from the Step `00a` validator.
 
 ## Completion unblocks
 
-- [REVIEW-ARCH-03A](../TODO/REVIEW-ARCH-03A-review-validation-publication-migration.md) — Fully: the bounded migration candidate and its exact ownership proposal are available for architecture review.
+- [REVIEW-ARCH-03A](../IN_PROGRESS/REVIEW-ARCH-03A-review-validation-publication-migration.md) — Fully: the bounded migration candidate and its exact ownership proposal are available for architecture review.
 - [REVIEW-ARCH-01](../TODO/REVIEW-ARCH-01-review-architecture-plan.md) — Partially: this rolling checkpoint supplies one reviewed tranche, not the future cross-program review corpus.
 
 ## Prerequisites
@@ -86,7 +86,7 @@ validation-report protocol from the Step `00a` validator.
 
 - [MIG-03A](../TODO/MIG-03A-extract-validation-report-library.md), a single
   neutral-concern migration card.
-- [REVIEW-ARCH-03A](../TODO/REVIEW-ARCH-03A-review-validation-publication-migration.md),
+- [REVIEW-ARCH-03A](../IN_PROGRESS/REVIEW-ARCH-03A-review-validation-publication-migration.md),
   [REVIEW-REL-03A](../TODO/REVIEW-REL-03A-review-validation-publication-migration.md),
   and
   [REVIEW-UX-03A](../TODO/REVIEW-UX-03A-review-validation-publication-migration.md)

@@ -21,7 +21,7 @@ and rollback behavior even when normal validator output is unchanged.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03A](REVIEW-ARCH-03A-review-validation-publication-migration.md) — Required: reliability review needs the corrected owner/API/cutover boundary.
+- [REVIEW-ARCH-03A](../IN_PROGRESS/REVIEW-ARCH-03A-review-validation-publication-migration.md) — Required: reliability review needs the corrected owner/API/cutover boundary.
 
 ## Completion unblocks
 

@@ -482,7 +482,7 @@ or updated.
 complete. It proposes
 [`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. The next
-action is to select `REVIEW-ARCH-03A`, then continue those reviews in order. No
-physical migration has begun. All other work, including
+action is the selected read-only `REVIEW-ARCH-03A` pass, followed by the later
+reviews in order. No physical migration has begun. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

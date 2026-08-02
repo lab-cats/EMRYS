@@ -91,3 +91,15 @@ that sequence closes; current checkout and roadmap truth remain in
 - **Validation boundary:** the committed planning tree adds no validator
   finding beyond the inherited nine unsupported-`UNREFINED` locations. No
   source, test, configuration, dependency, runtime, or cluster action occurred.
+
+## 2026-08-02T13:33:26-0400 — Architecture review selected
+
+- **Boundary:** `REVIEW-ARCH-03A` reviews committed plan tip `ed4f42d` and may
+  revise planning/card documentation only; it cannot touch executable source.
+- **Risk:** the current autonomous sequence has no separately commissioned
+  reviewer, so this pass is independent in time, evidence read, and commit
+  boundary but not in authorship.
+- **Decision:** perform a clean-tree adversarial pass, disclose the authorship
+  limitation in its completion record, and place any correction after the
+  immutable plan checkpoints. A later requirement for a different reviewer
+  reopens this review before execution rather than being silently claimed now.

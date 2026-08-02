@@ -51,7 +51,8 @@ freshness, evidence, ownership, or
   completed ordinary runway action is
   [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md),
   bounded to one proposed validation-report migration. Its dedicated
-  architecture review is next. The unsliced `PROGRAM-01` remainder remains
+  [`architecture review`](../tasks/IN_PROGRESS/REVIEW-ARCH-03A-review-validation-publication-migration.md)
+  is selected for review only. The unsliced `PROGRAM-01` remainder remains
   preserved and out of scope pending user reassessment.
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
