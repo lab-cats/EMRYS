@@ -37,6 +37,7 @@ archival behavior.
 | evidence | Collect RSeQC Paired Orientation Evidence | `collect_RSeQC_paired_orientation_evidence` | `norad.evidence.collect_RSeQC_paired_orientation_evidence.v1` | `03` |
 | stage | Mark BAM Duplicates with Picard | `mark_BAM_duplicates_with_Picard` | `norad.stage.mark_BAM_duplicates_with_Picard.v1` | `04` |
 | stage | Split N-Cigar Reads with GATK | `split_N_cigar_reads_with_GATK` | `norad.stage.split_N_cigar_reads_with_GATK.v1` | `05` |
+| stage | Partition BAM by Mechanical Read Orientation | `partition_BAM_by_mechanical_read_orientation` | `norad.stage.partition_BAM_by_mechanical_read_orientation.v1` | `06` |
 
 ## Edge semantics
 
@@ -86,6 +87,7 @@ artifact have been frozen from their functional contracts.
 | `construct_canonical_BAM` | `mark_BAM_duplicates_with_Picard` | canonical BAM/BAI pair | required artifact |
 | `mark_BAM_duplicates_with_Picard` | `split_N_cigar_reads_with_GATK` | duplicate-marked BAM/BAI pair | required artifact; fan-in |
 | `construct_FASTA_sidecars` | `split_N_cigar_reads_with_GATK` | reference FAI and sequence dictionary | required artifact; fan-in |
+| `split_N_cigar_reads_with_GATK` | `partition_BAM_by_mechanical_read_orientation` | split-N-cigar BAM/BAI pair | required artifact |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -112,6 +114,7 @@ flowchart LR
     collect_RSeQC_paired_orientation_evidence["Collect RSeQC Paired Orientation Evidence"]
     mark_BAM_duplicates_with_Picard["Mark BAM Duplicates with Picard"]
     split_N_cigar_reads_with_GATK["Split N-Cigar Reads with GATK"]
+    partition_BAM_by_mechanical_read_orientation["Partition BAM by Mechanical Read Orientation"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
@@ -121,4 +124,5 @@ flowchart LR
     construct_canonical_BAM -->|canonical BAM/BAI| mark_BAM_duplicates_with_Picard
     mark_BAM_duplicates_with_Picard -->|marked BAM/BAI; fan-in| split_N_cigar_reads_with_GATK
     construct_FASTA_sidecars -->|FAI/DICT; fan-in| split_N_cigar_reads_with_GATK
+    split_N_cigar_reads_with_GATK -->|split BAM/BAI| partition_BAM_by_mechanical_read_orientation
 ```
