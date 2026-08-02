@@ -82,8 +82,8 @@ nodes.
 
 ## Direct DAG edges
 
-Edges are added only after both endpoint identities and the exact required
-artifact have been frozen from their functional contracts.
+This table is the complete set of direct artifact edges for the currently
+supported default workflow.
 
 | Producer | Consumer | Artifact | Semantics |
 | --- | --- | --- | --- |
@@ -114,8 +114,7 @@ reference-preparation stage.
 
 ## Concise DAG
 
-The graph is expanded as endpoint identities and direct artifact edges are
-frozen. Node labels use public slugs; machine keys remain in the identity map.
+Node labels use public slugs; machine keys remain in the identity map.
 
 ```mermaid
 flowchart LR

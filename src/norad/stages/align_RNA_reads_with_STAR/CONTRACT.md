@@ -1,9 +1,10 @@
 # `align_RNA_reads_with_STAR` stage contract
 
-This document records the observed current contract of historical Step `01`
-for the incremental `ARCH-02A` inventory. `align_RNA_reads_with_STAR` is a
-working stage and directory name. It is not yet a stable public slug, machine
-key, Python package, or implemented source location.
+This document records the observed current contract of historical Step `01`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Only this contract is colocated here. The current executable files remain in
 `jobs/` and `scripts/` until a separately approved migration.
@@ -188,7 +189,6 @@ changing behavior.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - How the future run request and manifest bind sample/mate identity to this
   stage without filename inference.
 - Whether STAR output publication requires an atomic receipt or staging layer.

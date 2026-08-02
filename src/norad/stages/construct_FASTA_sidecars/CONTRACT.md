@@ -1,9 +1,10 @@
 # `construct_FASTA_sidecars` stage contract
 
-This document records the observed current contract of historical Step `00c`
-for the incremental `ARCH-02A` inventory. `construct_FASTA_sidecars` is a
-working stage and directory name. It is not yet a stable public slug, machine
-key, Python package, or implemented source location.
+This document records the observed current contract of historical Step `00c`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Only this contract is colocated here. The current executable files remain in
 `jobs/` and `scripts/` until a separately approved migration.
@@ -171,7 +172,6 @@ transaction redesign, or target owner.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - Final owner of reference materialization.
 - Whether the two sidecars require one atomic publication receipt.
 - Final ownership of shared reference parsers and validation-publication code.

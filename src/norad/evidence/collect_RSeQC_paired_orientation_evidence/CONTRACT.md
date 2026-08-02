@@ -1,10 +1,10 @@
 # `collect_RSeQC_paired_orientation_evidence` operation contract
 
-This document records the observed current contract of historical Step `03`
-for the incremental `ARCH-02A` inventory.
-`collect_RSeQC_paired_orientation_evidence` is a working operation and
-directory name. It is not yet a stable public slug, machine key, Python
-package, or implemented source location.
+This document records the observed current contract of historical Step `03`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Step `03` is classified as an independently runnable scientific-evidence
 operation, not as a primary-data transformation or an implemented control-
@@ -194,7 +194,6 @@ biological interpretation policy or changing behavior.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - Scientifically approved mapping, if any, from RSeQC orientation groups to
   declared library strandedness.
 - Whether the configurable `0.1` maximum sum tolerance is appropriate for the

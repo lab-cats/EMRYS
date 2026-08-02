@@ -1,10 +1,10 @@
 # `collect_canonical_BAM_QC_evidence` operation contract
 
-This document records the observed current contract of historical Step `02b`
-for the incremental `ARCH-02A` inventory.
-`collect_canonical_BAM_QC_evidence` is a working operation and directory name.
-It is not yet a stable public slug, machine key, Python package, or implemented
-source location.
+This document records the observed current contract of historical Step `02b`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Historical Step `02b` is classified as an independently runnable evidence
 operation associated with the canonical-BAM stage, not as a peer scientific
@@ -195,7 +195,6 @@ settling its final submodule shape or changing behavior.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - Whether the unused BAI admission requirement remains part of the operation.
 - One authoritative quickcheck-success serialization.
 - Binding of native evidence to BAM/BAI identity, manifest sample, tool

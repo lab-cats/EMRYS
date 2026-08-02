@@ -1,9 +1,10 @@
 # `convert_GTF_to_BED12` stage contract
 
-This document records the observed current contract of historical Step `00b`
-for the incremental `ARCH-02A` inventory. `convert_GTF_to_BED12` is a working
-stage and directory name. It is not yet a stable public slug, machine key,
-Python package, or implemented source location.
+This document records the observed current contract of historical Step `00b`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Only this contract is colocated here. The current executable files remain in
 `jobs/` and `scripts/` until a separately approved migration.
@@ -174,7 +175,6 @@ deduplication, or target owner.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - Final owner of reference materialization.
 - Whether the target contract retains one or both sorting operations.
 - Whether GTF-agreement validation requires a producer-independent oracle.

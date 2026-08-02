@@ -1,9 +1,10 @@
 # `construct_STAR_index` stage contract
 
-This document records the observed current contract of historical Step `00a`
-for the incremental `ARCH-02A` inventory. `construct_STAR_index` is a working
-stage and directory name. It is not yet a stable public slug, machine key,
-Python package, or implemented source location.
+This document records the observed current contract of historical Step `00a`.
+The exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet a Python package or implemented source
+location.
 
 Only this contract is colocated here. The current executable files remain in
 `jobs/` and `scripts/` until a separately approved migration.
@@ -170,7 +171,6 @@ just-in-time work after the target ownership rules are settled.
 
 ## Deferred decisions
 
-- Stable display title, public slug, and versioned machine key.
 - Whether reference decompression is part of this stage.
 - Final ownership of scheduler templates and non-Python assets.
 - Final serialization and placement of machine-readable stage contracts.
