@@ -114,6 +114,32 @@ An analysis consumes declared stage artifacts through those contracts. It does
 not import a stage implementation or become a child of the final preprocessing
 stage that happens to precede it in the current DAG.
 
+## Evidence-operation contract
+
+Evidence collection and scientific-review packaging use their own functional
+owner rather than becoming computational stages:
+
+```text
+src/norad/evidence/<public-slug>/
+├── README.md
+├── CONTRACT.md
+├── evidence.v1.yaml
+├── contracts/
+│   └── <evidence-local-interface>.v1.schema.json
+└── <owned implementation, validation, and scheduler assets>
+```
+
+`evidence.v1.yaml` uses the shared envelope fields with
+`$schema: ../../contracts/schemas/evidence_descriptor.v1.schema.json`,
+`kind: evidence`, and the frozen `norad.evidence.<public-slug>.v1` key.
+Evidence-local schemas remain with the owner; public review packages and
+cross-owner evidence interfaces reference neutral versioned schemas.
+
+Evidence owners consume declared artifacts or separately supplied evidence
+through explicit contracts. They do not import stage or analysis
+implementations, and their presence in the DAG does not by itself make them a
+computational gate.
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
