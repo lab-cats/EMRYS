@@ -25,7 +25,7 @@ and rollback behavior even when normal validator output is unchanged.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03A](REVIEW-UX-03A-review-validation-publication-migration.md) — Fully: user-facing continuity can be reviewed after safety obligations are fixed.
+- [REVIEW-UX-03A](../TODO/REVIEW-UX-03A-review-validation-publication-migration.md) — Fully: user-facing continuity can be reviewed after safety obligations are fixed.
 
 ## Prerequisites
 

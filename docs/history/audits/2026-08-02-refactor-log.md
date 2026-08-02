@@ -127,3 +127,15 @@ that sequence closes; current checkout and roadmap truth remain in
 - **Evidence boundary:** documentation only; no import was changed and no
   Python, runtime, cluster, scientific-review, or biological evidence was
   produced.
+
+## 2026-08-02T13:39:54-0400 — Reliability review selected
+
+- **Boundary:** `REVIEW-REL-03A` starts from architecture-corrected checkpoint
+  `74d9380` and may revise only planning/card documentation.
+- **Risk:** moving the implementation owner can make existing fault tests pass
+  against the wrong module, or can convert a characterized unsafe outcome into
+  an accepted contract through imprecise wording.
+- **Decision:** trace every publication-fault case and independent roster/
+  golden owner to the exact final file, require old/new state equivalence, and
+  keep every known unsafe state explicitly characterized. The previously
+  disclosed same-author limitation continues to apply.

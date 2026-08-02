@@ -52,8 +52,10 @@ freshness, evidence, ownership, or
   [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md),
   bounded to one proposed validation-report migration. Its dedicated
   [`architecture review`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
-  is complete, and reliability review is next. The unsliced `PROGRAM-01`
-  remainder remains preserved and out of scope pending user reassessment.
+  is complete, and
+  [`reliability review`](../tasks/IN_PROGRESS/REVIEW-REL-03A-review-validation-publication-migration.md)
+  is selected for review only. The unsliced `PROGRAM-01` remainder remains
+  preserved and out of scope pending user reassessment.
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one.

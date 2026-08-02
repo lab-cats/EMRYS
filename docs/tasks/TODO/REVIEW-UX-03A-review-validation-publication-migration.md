@@ -21,7 +21,7 @@ the shared owner and its known limitations.
 
 ## Blocked by
 
-- [REVIEW-REL-03A](REVIEW-REL-03A-review-validation-publication-migration.md) — Required: usability review needs the corrected architecture and reliability boundary.
+- [REVIEW-REL-03A](../IN_PROGRESS/REVIEW-REL-03A-review-validation-publication-migration.md) — Required: usability review needs the corrected architecture and reliability boundary.
 
 ## Completion unblocks
 
