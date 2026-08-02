@@ -24,7 +24,7 @@ ownership model must be explicit before direct migrations begin.
 
 ## Blocked by
 
-- [ARCH-02B](../TODO/ARCH-02B-define-semantic-stage-map.md) — Required: target paths need stable semantic identities.
+- [ARCH-02B](../IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) — Required: target paths need stable semantic identities.
 
 ## Completion unblocks
 

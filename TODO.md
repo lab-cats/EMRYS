@@ -88,7 +88,7 @@ and authorizes no work without a separately approved plan:
 - Architecture, semantic stages, direct migration, intake, and shared-library
   design: [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
   is complete; the remaining family runs from
-  [`ARCH-02B`](docs/tasks/TODO/ARCH-02B-define-semantic-stage-map.md) through
+  [`ARCH-02B`](docs/tasks/IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) through
   [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md).
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
