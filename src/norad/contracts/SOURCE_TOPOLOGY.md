@@ -158,6 +158,7 @@ ownership only; no listed file is moved by this topology contract.
 | `collect_RSeQC_paired_orientation_evidence` | `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_RSeQC_paired_orientation_evidence/` |
 | `mark_BAM_duplicates_with_Picard` | `src/norad/stages/mark_BAM_duplicates_with_Picard/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/mark_BAM_duplicates_with_Picard/` |
 | `split_N_cigar_reads_with_GATK` | `src/norad/stages/split_N_cigar_reads_with_GATK/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/split_N_cigar_reads_with_GATK/` |
+| `partition_BAM_by_mechanical_read_orientation` | `src/norad/stages/partition_BAM_by_mechanical_read_orientation/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/partition_BAM_by_mechanical_read_orientation/` |
 
 ## Neutral contract boundary
 
