@@ -42,6 +42,52 @@ Shell, R, SLURM, schemas, styles, templates, and other non-Python assets retain
 their native form under the functional owner that defines their behavior.
 Their future distribution is not settled here.
 
+## Mature stage-local contract
+
+Every mature preprocessing or transformation stage has this predictable
+target shape:
+
+```text
+src/norad/stages/<public-slug>/
+├── README.md
+├── CONTRACT.md
+├── stage.v1.yaml
+├── contracts/
+│   └── <stage-local-interface>.v1.schema.json
+└── <owned implementation, validation, and scheduler assets>
+```
+
+`README.md` is the human entry point and links to the detailed `CONTRACT.md`
+when the two documents remain distinct. `stage.v1.yaml` is the only machine
+descriptor for that stage version; executables, validators, languages, and job
+templates do not receive competing descriptors.
+
+The descriptor uses this fixed envelope:
+
+```yaml
+$schema: ../../contracts/schemas/stage_descriptor.v1.schema.json
+descriptor_version: v1
+kind: stage
+machine_key: norad.stage.<public-slug>.v1
+slug: <public-slug>
+display_title: <display-title>
+historical_aliases: [<historical-alias>]
+documentation: README.md
+interfaces:
+  - role: <input-or-output-role>
+    schema: <relative-path-to-versioned-json-schema>
+```
+
+The envelope schema is neutral because every stage shares it. An interface
+used only within one stage references that stage's
+`contracts/<name>.v1.schema.json`; a public or cross-stage interface references
+a versioned JSON Schema under `src/norad/contracts/schemas/`. The descriptor
+references schemas and never copies their field definitions.
+
+The descriptor version governs this YAML envelope. It does not alter the
+frozen identity key, implement descriptor loading, or establish a packaging or
+distribution version.
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
