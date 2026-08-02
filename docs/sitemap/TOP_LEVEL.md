@@ -40,7 +40,9 @@ freshness, evidence, ownership, or
   [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
   and
   [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
-  are complete; `DOC-CONS-08C` through `DOC-CONS-08H` remain unselected and
+  and
+  [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
+  are complete; `DOC-CONS-08D` through `DOC-CONS-08H` remain unselected and
   require separate selection, task-specific planning, and approval. These
   exceptions do not change ordinary runway order. The
   next eligible ordinary runway action is to recast

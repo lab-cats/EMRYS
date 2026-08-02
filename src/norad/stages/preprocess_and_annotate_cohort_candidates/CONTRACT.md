@@ -43,6 +43,15 @@ overlaps, source QUAL/FILTER/INFO alternate depth, and per-sample DP, AD, and
 derived AF fields. An exact-header sites table with no candidate rows is valid
 when all input and summary counts reconcile.
 
+Before `VariantAnnotation` parsing, the R implementation streams raw VCF
+records in bounded chunks and validates the lexical values and expected widths
+of every consumed `FORMAT/DP`, `FORMAT/AD`, and present `INFO/AD` field. An AD
+value may be one `.` only when the whole vector is missing; otherwise its width
+must equal REF plus every ALT. Semantic parsing then rejects missing required
+FORMAT/INFO definitions, malformed or negative counts, one-sided missing
+DP/AD, AD greater than DP, and sample/count inconsistencies. Header-only VCFs
+remain valid only when their receipts and zero record counts reconcile.
+
 ## Outputs and transaction marker
 
 The three outputs are:

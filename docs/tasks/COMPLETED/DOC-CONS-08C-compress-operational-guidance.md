@@ -96,5 +96,30 @@ instructions that cannot be deleted safely.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed 2026-08-02 as a separately approved local-only documentation
+exception. `RUNBOOK.md` now has a durable command index, a workflow-contract
+crosswalk for Steps `00a` through `09c`, one shared structured-validator
+convention, and an explicit disposition for substantive inline programs. Exact
+setup, validation, execution, inspection, recovery, and scientific-review
+commands remain reachable; transaction recovery and action-point cautions stay
+in place. Repeated stage semantics now link colocated contracts, including the
+Step `08` DP/AD parsing rules added to its canonical contract before their
+runbook copy was removed. The runbook is reduced from 4,559 to 4,327 lines.
+
+`TROUBLESHOOTING.md` now has a durable issue index, retains symptom, cause,
+diagnosis, fix, owner-specific limitations, and distinct transaction recovery,
+and links exact duplicated commands to the runbook. Common structured-validator
+response guidance is stated once with each owner's material differences kept
+locally. The troubleshooting owner is reduced from 2,705 to 2,651 lines.
+
+Independent anchor/ownership, diagnostic-owner, and sentence-level no-loss
+reviews passed. The complete package diff changes only Markdown documentation;
+`git diff --check` and the final repository documentation gate pass.
+Computational Python, shell, R, report-runtime, full-suite, and cluster
+validation are not applicable. No executable, configuration, generation,
+schema, fixture, report-template, dependency, source-layout, public-interface,
+scientific-policy, or test-harness behavior changed, and no runtime, cluster,
+scientific-review, or biological-readiness evidence was created. The branch
+remains intentionally local-only and must not be pushed by this package.
+`DOC-CONS-08D` through `DOC-CONS-08H` remain unselected; this completion does
+not change ordinary runway order.

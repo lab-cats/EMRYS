@@ -2,7 +2,20 @@
 
 Troubleshooting notes for the NORAD / Novogene Remora RNA-seq pipeline.
 
-Use this file when something fails or behaves weirdly. For normal operation, see `docs/operations/RUNBOOK.md`.
+Use this file when something fails or behaves unexpectedly. Exact supported
+commands remain in [`RUNBOOK.md`](RUNBOOK.md); each fix links there when the
+runbook already owns the identical invocation.
+
+## Issue index
+
+- [Cluster environment, tools, submission, and early-stage symptoms](#tmpdir-localtmp-is-not-writeable)
+- [Structured stage-validation and recovery symptoms](#structured-validation-response)
+- [Preflight, provenance, storage, local validation, and R symptoms](#runtime-preflight-profile-or-output-contract-is-rejected)
+- [Step `08`, Step `09`, and scientific-evidence symptoms](#step-08-structured-validation-reports-transaction-disagreement)
+- [Artifact, run-summary, dependency-restore, and report symptoms](#artifact-contract-validation-cannot-import-jsonschema)
+- [Logs, Picard read groups, and concurrent-lane symptoms](#wrong-log-interpretation-empty-err-file)
+- [Future taxonomy](#future-troubleshooting-taxonomy) and
+  [general success checklist](#general-success-checklist)
 
 ## `TMPDIR [/local/tmp] is not writeable`
 
@@ -21,11 +34,7 @@ The cluster default temporary directory may point to `/local/tmp`, which is not 
 
 ### Fix
 
-Submit execute jobs with:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
-```
+Use the exact [runbook `TMPDIR` submission pattern](RUNBOOK.md#tmpdir).
 
 SLURM wrappers should include:
 
@@ -148,12 +157,8 @@ Step `04` resolves Java in this order:
 The wrapper then fails before Picard starts if the selected runtime is below
 Java 17.
 
-If CSU HPC provides a supported Java 17 executable, pass it explicitly:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
-  jobs/step_04_mark_duplicates.slurm
-```
+If CSU HPC provides a supported Java 17 executable, use the exact
+[Step `04` override command](RUNBOOK.md#step-04-markduplicates).
 
 Temporary workaround:
 
@@ -207,20 +212,13 @@ SLURM job fails or logs are missing because the `logs/` directory does not exist
 
 ### Cause
 
-SLURM does not create parent directories for:
-
-```bash
-#SBATCH --output=logs/%x-%j.out
-#SBATCH --error=logs/%x-%j.err
-```
+SLURM does not create the parent directory for the output and error paths
+shown in the [runbook logging contract](RUNBOOK.md#logs).
 
 ### Fix
 
-Before submitting jobs:
-
-```bash
-mkdir -p logs
-```
+Create the log directory with the exact [runbook command](RUNBOOK.md#logs)
+before submitting jobs.
 
 ## Tailing the wrong log file
 
@@ -244,25 +242,17 @@ Step 03:  norad-infer-strandedness-<JOBID>.out
 
 ### Fix
 
-Find the actual log name first:
-
-```bash
-ls -ltr logs | tail
-```
-
-Then tail the matching files:
+Find the actual log name with the
+[manual job-checking command](RUNBOOK.md#manual-job-checking), then tail the
+matching files:
 
 ```bash
 tail -120 logs/<actual-prefix>-<JOBID>.out
 tail -120 logs/<actual-prefix>-<JOBID>.err
 ```
 
-If the cluster shell helpers are installed:
-
-```bash
-sjcheck <JOBID>
-sjtail <JOBID>
-```
+If the cluster shell helpers are installed, use the exact
+[helper sequence](RUNBOOK.md#optional-cluster-shell-helpers).
 
 ## STAR BAM flagstat counts look larger than input reads
 
@@ -335,23 +325,8 @@ RSeQC is not currently known as a global module; it is available through the pro
 
 ### Fix
 
-Use the project executable:
-
-```bash
-.venv/bin/infer_experiment.py
-```
-
-Step 03 should prefer:
-
-```text
-.venv/bin/infer_experiment.py
-```
-
-if present, otherwise fall back to:
-
-```text
-infer_experiment.py
-```
+Use the project executable and fallback described in the
+[Python and RSeQC runbook section](RUNBOOK.md#python-and-rseqc).
 
 The SLURM wrapper should source `.venv/bin/activate` if available.
 
@@ -490,6 +465,22 @@ After failure, cleanup should remove only owned temp BAM/BAI files, alternate GA
 
 The later Step `05` revalidation is cluster-proven across all six samples; keep this entry as the record of why GATK temp files must stay on project storage.
 
+## Structured validation response
+
+For every step-validation TSV, command/publication success is distinct from
+the check rows: a successfully published `status=fail` row is valid evidence,
+not a passing check. Unsafe input, tool, CLI, or publication state remains a
+process failure.
+
+For any failed row, inspect the exact declared artifacts, producing job and
+logs, explicit tool path/version when applicable, and the linked
+[functional contract](RUNBOOK.md#workflow-contract-and-validation-convention).
+Regenerate only through the separately authorized functional owner. Never edit
+a report or native artifact into agreement, substitute a sibling or globbed
+path, run repair/analysis inside the validator, or promote local validation to
+runtime, cluster, scientific-review, or biological evidence. Owner-specific
+differences follow; transaction recovery remains in its separate entries.
+
 ## Step 00a structured validation reports failed checks
 
 ### Symptom
@@ -499,19 +490,14 @@ or GTF identity, ordered contig names/lengths, or `sjdbOverhang`.
 
 ### Cause
 
-The explicit index may be incomplete, `genomeParameters.txt` may point to a
-different source, the declared parameter path base may be wrong, FASTA and
-STAR contigs may differ, or the configured overhang may not equal the approved
-value. A zero validator exit is possible because command/publication success
-is distinct from check results.
+The explicit index may be incomplete or disagree with the declared FASTA, GTF,
+ordered contigs, parameter-path base, or approved overhang.
 
 ### Fix
 
-Inspect every report row and the exact declared inputs. Confirm relative
-`genomeParameters.txt` paths against `--parameter-path-base`; do not reinterpret
-them relative to the index automatically. Regenerate or repair source
-artifacts only through their formal upstream stage after review. Never make
-the validator rewrite index members, parameters, references, or statuses.
+Follow the [common response](#structured-validation-response). Resolve relative
+`genomeParameters.txt` paths only against `--parameter-path-base`; never
+reinterpret them automatically relative to the index.
 
 ## Step 00a validation report lock or predecessor blocks publication
 
@@ -589,10 +575,9 @@ the explicit GTF exon models.
 
 ### Fix
 
-Inspect the failed row and both exact inputs. Regenerate the BED only through
-`gtf_to_bed12.py` after confirming the intended GTF and conversion contract.
-Do not reorder, repair, deduplicate, or rewrite either input inside the
-validator, and do not hand-edit a failed report into a pass.
+Follow the [common response](#structured-validation-response), comparing the
+BED with deterministic exon normalization of the exact GTF. Regenerate only
+through `gtf_to_bed12.py` after confirming that conversion contract.
 
 ## Step 00c FAI/DICT validation fails
 
@@ -625,11 +610,10 @@ or repair shared reference inputs.
 
 ### Fix
 
-Inspect the failed row and all three exact input paths. Resolve provenance
-before using the formal Step `00c` preparation workflow to create a missing
-sidecar. Do not rewrite reference files inside the validator and do not
-hand-edit a failed report into a pass. A published failure is valid evidence
-and does not revoke or replace historical cluster status.
+Follow the [common response](#structured-validation-response) and resolve the
+FASTA/FAI/DICT provenance before using formal Step `00c` preparation for a
+missing sidecar. Failed current validation does not rewrite historical cluster
+evidence.
 
 ## Step 01 structured validation reports STAR output disagreement
 
@@ -647,11 +631,10 @@ contract.
 
 ### Fix
 
-Inspect the failed row and the exact BAM, three log files, and SJ table. Use
-scheduler and native STAR logs to decide whether a separately authorized
-alignment rerun is required. Do not rerun STAR from the validator, substitute
-paths by glob, or edit a failed report into a pass. Publishing local validation
-evidence does not replace historical cluster evidence.
+Follow the [common response](#structured-validation-response). Inspect the
+exact BAM, three STAR logs, SJ table, scheduler evidence, and native logs before
+deciding whether a separately authorized alignment rerun is required. Local
+validation does not replace historical cluster evidence.
 
 ## Step 02 structured validation reports canonical BAM disagreement
 
@@ -669,10 +652,10 @@ file in the current runtime context.
 
 ### Fix
 
-Inspect the failed row, exact BAM/BAI, samtools path/version, header, and count
-commands. Regenerate only through a separately authorized Step `02` workflow
-when evidence requires it. Do not sort, index, retag, or repair the pair from
-the validator, substitute a sibling path, or edit the validation TSV.
+Follow the [common response](#structured-validation-response). Inspect the
+exact BAM/BAI, samtools path/version, header, and count evidence; any sorting,
+indexing, or read-group regeneration belongs to separately authorized Step
+`02` execution.
 
 ## Step 02b structured validation reports BAM-QC disagreement
 
@@ -690,9 +673,9 @@ than rerunning samtools.
 
 ### Fix
 
-Inspect the exact quickcheck and flagstat files and their producing job/log.
-Use the Step `02b` workflow for any separately authorized regeneration. Do not
-invoke repair from the validator or edit counts/markers into a pass.
+Follow the [common response](#structured-validation-response). Inspect the
+persisted quickcheck and flagstat files plus their producing job/log. This
+validator reads persisted evidence and does not rerun samtools.
 
 ## Step 03 structured validation reports RSeQC fraction disagreement
 
@@ -709,10 +692,9 @@ from an unexpected report version.
 
 ### Fix
 
-Inspect the exact report and producing job/log. Regenerate only through a
-separately authorized Step `03` workflow when required. Do not rename the
-paired-orientation groups as biological strands, normalize values inside the
-validator, or edit a failed report into a pass.
+Follow the [common response](#structured-validation-response). Inspect the
+exact RSeQC report and producing job/log. Preserve the paired-orientation
+groups as mechanical labels; do not rename them as biological strands.
 
 ## Step 04 structured validation reports BAM or duplication-metrics disagreement
 
@@ -729,10 +711,9 @@ the required single data row or contain inconsistent counts/fraction.
 
 ### Fix
 
-Inspect the exact triplet, samtools path/version, producing job, and logs. Use
-a separately authorized Step `04` workflow for regeneration. Do not modify
-duplicate flags, remove reads, repair the pair, or edit metrics/report values
-inside the validator.
+Follow the [common response](#structured-validation-response). Inspect the
+exact BAM/BAI/metrics triplet, samtools path/version, producing job, and logs.
+Duplicate marking or BAM repair belongs to separately authorized Step `04`.
 
 ## Step 05 structured validation reports output or reference disagreement
 
@@ -748,10 +729,10 @@ reference sidecar may not match the explicit FASTA.
 
 ### Fix
 
-Inspect the exact outputs, reference triplet, samtools path/version, and
-producing job/log. Use separately authorized Step `00c` or Step `05` workflows
-as appropriate. Do not invoke GATK, create/repair sidecars, or modify outputs
-from the validator.
+Follow the [common response](#structured-validation-response). Inspect the
+exact output pair, reference triplet, samtools path/version, and producing
+job/log. Reference repair belongs to Step `00c`; split-output regeneration
+belongs to Step `05`.
 
 ## Step 06 structured validation reports output or count disagreement
 
@@ -770,11 +751,9 @@ values may not reconcile.
 
 ### Fix
 
-Inspect the exact five output paths, counts row, producing job, and logs.
-Confirm that all files came from one completed Step `06` transaction. Use the
-separately authorized Step `06` workflow to regenerate an invalid set. Do not
-merge reads, create indexes, rewrite counts, or reinterpret `FWD_like` and
-`REV_like` as biological strand labels inside the validator.
+Follow the [common response](#structured-validation-response). Confirm that
+the two BAM/BAI pairs and counts row came from one Step `06` transaction.
+Preserve `FWD_like` and `REV_like` as mechanical, not biological, labels.
 
 ## Step 07 structured validation reports transaction disagreement
 
@@ -792,10 +771,9 @@ header-only VCF has zero records and is not itself a failure.
 
 ### Fix
 
-Inspect the exact receipt, two VCFs, manifests, FAI, producing job, and logs.
-Use the separately authorized Step `07` workflow to regenerate an invalid set.
-Do not edit hashes, counts, sample columns, selectors, or receipt paths inside
-the validator.
+Follow the [common response](#structured-validation-response). Inspect the
+exact receipt, two VCFs, manifests, FAI, producing job, and logs. A header-only
+VCF remains valid when its declared zero record count reconciles.
 
 ## Step 07 selector does not match the FASTA index
 
@@ -1243,14 +1221,8 @@ evidence that the Step `08` Bioconductor package set is also required by Step
 
 ### Fix
 
-For local development, use the explicit guarded targets:
-
-```bash
-cd /Users/elisteiger/dev/norad
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
-RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
-```
+For local development, use the exact
+[guarded local-R sequence](RUNBOOK.md#guarded-local-r-environment).
 
 `make r-restore` is the only package-installing action in that sequence.
 Analysis scripts, SLURM wrappers, validators, and renderers must never call it
@@ -1269,11 +1241,8 @@ For a future validated SLURM environment, export its batch-visible path:
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript
 ```
 
-Confirm the package set in that same environment, then run:
-
-```bash
-RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
-```
+Confirm the package set in that same environment with the exact
+[Step `08` real-R gate](RUNBOOK.md#step-08-vcf-preprocessing).
 
 Run this probe in the same supported batch-visible environment intended for
 Steps `08` and `09`, and confirm `sha256sum` or `shasum` there.
@@ -1302,11 +1271,9 @@ an analysis loop.
 
 ### Fix
 
-Use the repository Make targets, which set the reviewed guard:
-
-```bash
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
-```
+Use the repository Make target in the
+[guarded local-R sequence](RUNBOOK.md#guarded-local-r-environment), which sets
+the reviewed guard.
 
 For a direct diagnostic command, preserve the same setting:
 
@@ -1338,12 +1305,8 @@ does not show package drift.
 
 ### Fix
 
-Run the explicit restore and check:
-
-```bash
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
-```
+Run the explicit restore and check from the
+[guarded local-R sequence](RUNBOOK.md#guarded-local-r-environment).
 
 Run `r-check` in a network-capable developer environment when
 `BiocManager::valid()` needs current release metadata. Require a successful
@@ -1369,10 +1332,9 @@ may be incomplete; or candidate/sample/count fields may not reconcile.
 
 ### Fix
 
-Inspect the exact three outputs and declared manifests/annotation. Use the
-separately authorized Step `08` workflow to regenerate an invalid transaction.
-Do not edit hashes, rows, counts, policy values, or native outputs inside the
-validator.
+Follow the [common response](#structured-validation-response). Inspect the
+exact three-output set, complete partition/orientation universe, manifests,
+and annotation; regeneration belongs to separately authorized Step `08`.
 
 ## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
 
@@ -1550,13 +1512,9 @@ ABE_EV4  / ABE_PUM1_4 -> replicate 4
 ### Fix
 
 Add the approved `replicate` values to the full sample manifest before Step
-`07`, validate it with:
-
-```bash
-python scripts/validate_manifest.py --manifest samples.tsv
-```
-
-and regenerate any Step `07`/Step `08` artifacts made with the old manifest.
+`07`, then use the exact
+[manifest-validation command](RUNBOOK.md#step-07-bcftools-mpileup) and
+regenerate any Step `07`/Step `08` artifacts made with the old manifest.
 `configs/step_09_pairs.NORAD_EV_PUM1.tsv` is a reference mapping only; do not
 pass or merge it as a runtime overlay and do not relax pairing validation.
 
@@ -1669,13 +1627,11 @@ mutation spectrum, and both PDF structures.
 
 ### Fix
 
-Inspect the first failed row and every explicit manifest, Step `08`, and Step
-`09` path passed to `validate_step_09_cmh_outputs.py`. Compare the six native
-outputs as one completed Step `09` transaction and inspect its producing job
-and logs. Regenerate an invalid set only through the separately authorized
-Step `09` workflow. Do not move one member into place, hardlink outputs, edit
-candidate order, counts, hashes, FDR values, status labels, policy, or PDF
-markers, and do not rewrite a failed validation row into a pass.
+Follow the [common response](#structured-validation-response). Inspect every
+explicit manifest, Step `08`, and Step `09` path, treating the six native
+outputs as one transaction. Preserve the seven reported statuses and the
+nonregular-input/process-failure distinction; regeneration belongs to
+separately authorized Step `09`.
 
 The structured validator is read-only and locally fixture-tested. Its report
 does not establish production execution, cluster proof, scientific review, or
@@ -1984,11 +1940,8 @@ identical-contract retry requires a distinct attempt ID. An inventory-only
 revision is adapter-attempt metadata and does not by itself change run
 identity.
 
-The focused regression command is:
-
-```bash
-.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
-```
+Use the focused regression command under
+[`artifact-schema-v1` validation](RUNBOOK.md#validate-artifact-schema-v1).
 
 A passing focused suite is schema/fixture evidence, not production artifact
 validation.
@@ -2373,12 +2326,8 @@ Owned or recovery paths may include:
 
 ### Fix
 
-For a normal first restore, run:
-
-```bash
-make quarto-restore
-make report-test
-```
+For a normal first restore, use the exact
+[Quarto restore and report commands](RUNBOOK.md#restore-quarto-and-render-the-static-report-bundle).
 
 An already-downloaded official archive may be supplied explicitly while
 retaining the same checksum gate:
@@ -2576,11 +2525,8 @@ For many successful jobs, stderr is empty. This is fine.
 
 ### Fix
 
-Use `sacct` and output validation to decide success:
-
-```bash
-sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
-```
+Use the exact [`sacct` command](RUNBOOK.md#manual-job-checking) and output
+validation to decide success.
 
 Success means:
 

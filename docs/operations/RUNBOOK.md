@@ -2,22 +2,42 @@
 
 Operational guide for the NORAD / Novogene Remora RNA-seq pipeline.
 
-This project is developed locally and executed at full scale on the CSU SLURM cluster.
+This file owns exact supported commands and their immediate operator context.
+Package delivery order and validation applicability belong to
+[`TASK_DELIVERY.md`](TASK_DELIVERY.md#package-delivery).
 
-Core workflow rule:
+Cluster promotion remains upstream-sequential: use only an approved current
+job, dry-run, inspect, execute, inspect scheduler/log/output evidence, and
+docpatch that evidence before promoting the next step. Do not run scaffolded
+future jobs.
 
-```text
-create stage branch from latest clean docpatched predecessor
--> implement only that stage
--> focused and complete local validation
--> implementation commit
--> impact-directed documentation review and repository-wide impact check
--> documentation-only commit
--> clean status/history and push
--> create the next descendant stage branch
-```
+## Command index
 
-Cluster promotion is a later upstream-sequential gate: pull the completed branch, dry-run, execute the approved scope, inspect scheduler/log/output evidence, and docpatch that evidence before promoting the next step. Do not skip gates. Do not run scaffolded future jobs. Keep the pipeline boring.
+- Orientation: [project locations](#project-locations),
+  [demo and inspection](#demo--inspection-checklist),
+  [cluster tools](#confirmed-cluster-tools--modules), and
+  [cluster facts](#cluster-facts-and-quirks).
+- Shared operations: [optional shell helpers](#optional-cluster-shell-helpers),
+  [artifact and future helpers](#artifact-and-future-operational-helpers),
+  [manual job checking](#manual-job-checking), and
+  [cluster execution](#cluster-execution-pattern).
+- Delivery: [concurrent worktrees](#concurrent-worktrees-and-serialized-integration),
+  [manual fragment exchange](#manual-integration-fragment-exchange), and the
+  [local validation gate](#local-validation-gate).
+- Workflow: [contract and validation convention](#workflow-contract-and-validation-convention),
+  [reference preparation](#reference-prep), [Step `01`](#step-01-star-alignment),
+  [Step `02`](#step-02-canonical-sort-read-group-tagging-and-bam-indexing),
+  [Step `02b`](#step-02b-bam-qc),
+  [Step `03`](#step-03-rseqc-strandedness--orientation-inference),
+  [Step `04`](#step-04-markduplicates),
+  [Step `05`](#step-05-splitncigarreads),
+  [Step `06`](#step-06-split-bam-by-read-orientation),
+  [Step `07`](#step-07-bcftools-mpileup),
+  [Step `08`](#step-08-vcf-preprocessing),
+  [Step `09`](#step-09-cmh-editing-site-calling), and the
+  [scientific validation gate](#post-step-09-scientific-validation-gate).
+- Retained exceptions: [temporary Java workaround](#temporary-java-workaround)
+  and [reference workflow alignment](#reference-workflow-alignment).
 
 ## Project Locations
 
@@ -128,8 +148,6 @@ grep -n "SplitNCigarReads\|No space left on device\|tmp-dir\|java.io.tmpdir" \
   logs/norad-split-n-cigar-*.out logs/norad-split-n-cigar-*.err 2>/dev/null | tail -40
 ```
 
-Step `05` is cluster-proven across all six samples after final split-N-cigar BAM/BAI validation.
-
 6. Show the dry-run/execute gate:
 
 ```bash
@@ -138,28 +156,12 @@ grep -n "EXECUTE\|--execute\|dry-run" \
   scripts/step_05_split_n_cigar_reads.sh | head -60
 ```
 
-Step `07` source and mocked local-test evidence may be inspected during the
-demo, but do not claim or demonstrate real Step `07` VCFs because no cluster
-run has been validated. Step `08` and Step `09` source and fake-R wrapper tests
-may also be inspected. Their real-R suites now execute locally without `SKIP`,
-and pass with synthetic fixtures. Neither step has production or cluster
-output evidence. Step `09c` source, dry-run output, example contracts, and
-synthetic Python/shell fixtures may also be inspected. Do not present its
-fixture transaction as a production scientific review or demonstrate Step
-`09` as a biological result. The implemented `artifact-schema-v1` schemas,
-explicit synthetic inventory, read-only validator, and focused tests may also
-be shown. The implemented `artifact-adapters-v1` help text, dry-run, and
-synthetic focused tests may also be shown, but not as a production artifact
-index. The implemented `artifact-run-summary` help text, side-effect-free
-dry-run, and synthetic four-file fixture transaction may also be shown. The
-implemented report-bundle help text, side-effect-free dry-run, pinned Quarto
-restore receipt, synthetic HTML/PDF/summary-TSV/receipt transaction, and exact
-report-table approval producer contract may be shown, but not as a production
-report or scientific approval. The runtime-preflight help text, tracked
-example profile, local dry-run, and focused tests may also be shown, but not as
-a CSU batch report or runtime proof. No production run summary, approval
-manifest, report, or batch preflight exists, and none of these packages is
-production-output, cluster, or scientific evidence.
+Use the current [`HANDOFF.md` evidence boundary](HANDOFF.md#evidence-boundary)
+when selecting and narrating demo surfaces. Tool availability, help text,
+dry-runs, mocks, local fixtures, synthetic transactions, and rendered synthetic
+reports must not be presented as production, cluster, scientific-review, or
+biological evidence. Never demonstrate an artifact that the handoff does not
+record as existing.
 
 ## Confirmed Cluster Tools / Modules
 
@@ -236,6 +238,12 @@ RSeQC is available through the project virtual environment on the cluster:
 
 ```bash
 .venv/bin/infer_experiment.py
+```
+
+Step `03` prefers that project executable when present and otherwise resolves:
+
+```bash
+infer_experiment.py
 ```
 
 ### GATK
@@ -1859,19 +1867,10 @@ each runner reports `SKIP`, and when ambient Step `08` packages are absent it
 fails. Neither a skip nor an ambient failure replaces the guarded semantic
 gate. An explicit bad override fails; Step `09` itself uses base R only.
 
-Commit implementation/tests first. Then use the final implementation diff,
-canonical ownership map, and targeted repository-wide searches to identify
-affected documentation and diagrams. Inspect the affected sections, owners,
-direct references, and changed diagrams as routed by
-[`TASK_START.md`](TASK_START.md#documentation-impact-and-validation), then make
-the separate documentation-only commit.
-
-When that documentation patch changes only documentation artifacts and none is
-consumed by executable, configuration, generation, schema, fixture, report-
-template, or test-harness selection or execution behavior, reuse the complete
-computational result recorded for the unchanged implementation state and run
-this documentation gate. A standalone package meeting the same condition
-records computational validation as not applicable and runs this gate only:
+Select affected documentation and validation applicability through
+[`TASK_DELIVERY.md`](TASK_DELIVERY.md#package-delivery) and the
+[`TASK_START.md` impact route](TASK_START.md#documentation-impact-and-validation).
+For a qualifying documentation-only patch or standalone package, run:
 
 ```bash
 cd /Users/elisteiger/dev/norad
@@ -1889,24 +1888,11 @@ normally emits one compact result, so it does not require loading the corpus
 into agent context. It does not replace targeted semantic comparison of each
 changed or otherwise affected diagram with its owning architecture document.
 
-Inspect the complete diff from `<validated-implementation-commit>` for a
-docpatch or from the package predecessor for a standalone documentation
-package; do not classify only one unstaged or staged view. Before commit,
-include staged, unstaged, and untracked paths; after commit, compare the exact
-commits. Require every changed path to be a documentation artifact with no
-executable or test-affecting consumer.
-Do not run computational Python, shell, R, or report-runtime test suites for a
-qualifying documentation-only diff. The complete computational gate becomes
-applicable if the patch changes executable configuration, dependencies, Make
-targets, schemas, fixtures, report templates, or test-harness selection and
-execution semantics, or if implementation changes after its recorded gate.
-Quiet flags, shorter tracebacks, Make command-echo suppression, and output
-redirection do not change test selection or assertions; smoke-test those
-command forms through focused checks when they themselves change.
-
-A documentation-only package uses the documentation gate and one
-documentation commit. Before handing off or creating the next descendant,
-verify the takeover state:
+Classify the complete predecessor-to-final diff, including staged, unstaged,
+and untracked paths before commit and exact commits afterward. Computational
+Python, shell, R, and report-runtime suites are not applicable only when the
+[`TASK_DELIVERY.md` documentation-only boundary](TASK_DELIVERY.md#package-delivery)
+is satisfied. Before handoff or the next descendant, verify takeover state:
 
 ```bash
 git branch --show-current
@@ -2110,6 +2096,60 @@ tail -120 logs/<log-prefix>-<JOBID>.err
 
 Inspect outputs before declaring the step proven.
 
+## Workflow contract and validation convention
+
+The runbook retains exact setup, dry-run, execute, inspection, recovery, and
+focused-validation commands. Functional responsibility, inputs, outputs,
+consumers, exact validator checks, known asymmetries, and scientific limits
+belong to the colocated contracts:
+
+| Historical alias | Runbook commands | Functional contract |
+| --- | --- | --- |
+| `00a` | [STAR index](#step-00a-star-index) | [`construct_STAR_index`](../../src/norad/stages/construct_STAR_index/CONTRACT.md) |
+| `00b` | [GTF to BED12](#step-00b-gtf-to-bed12) | [`convert_GTF_to_BED12`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md) |
+| `00c` | [FASTA sidecars](#step-00c-gatk-reference-sidecars) | [`construct_FASTA_sidecars`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md) |
+| `01` | [STAR alignment](#step-01-star-alignment) | [`align_RNA_reads_with_STAR`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md) |
+| `02` | [canonical BAM](#step-02-canonical-sort-read-group-tagging-and-bam-indexing) | [`construct_canonical_BAM`](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md) |
+| `02b` | [BAM QC](#step-02b-bam-qc) | [`collect_canonical_BAM_QC_evidence`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md) |
+| `03` | [RSeQC orientation](#step-03-rseqc-strandedness--orientation-inference) | [`collect_RSeQC_paired_orientation_evidence`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md) |
+| `04` | [duplicate marking](#step-04-markduplicates) | [`mark_BAM_duplicates_with_Picard`](../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md) |
+| `05` | [split N cigar reads](#step-05-splitncigarreads) | [`split_N_cigar_reads_with_GATK`](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md) |
+| `06` | [mechanical orientation](#step-06-split-bam-by-read-orientation) | [`partition_BAM_by_mechanical_read_orientation`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md) |
+| `07` | [cohort mpileup](#step-07-bcftools-mpileup) | [`generate_partitioned_cohort_mpileup_VCFs`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md) |
+| `08` | [candidate preprocessing](#step-08-vcf-preprocessing) | [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md) |
+| `09` | [paired CMH ranking](#step-09-cmh-editing-site-calling) | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md) |
+| `09c` | [scientific review evidence](#post-step-09-scientific-validation-gate) | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/assemble_scientific_review_evidence_package/CONTRACT.md) |
+
+Structured stage validators use explicit inputs and are dry-run by default.
+Their runbook invocations show how to publish the explicit validation TSV with
+`--execute`; a failed check remains report evidence and is distinct from
+unsafe input, tool, CLI, or publication failure. Validators do not repair
+native outputs, rerun their functional owner, promote evidence state, or alter
+historical runtime status. Use each linked contract for its exact checks and
+limits. Current evidence level and proven scope remain canonical in
+[`HANDOFF.md`](HANDOFF.md#evidence-boundary).
+
+For validators using the shared step-report publisher, execute mode requires
+an existing real output parent, validates any predecessor, uses an owned lock
+and run-token staging/backup paths, rechecks stable inputs, and attempts to
+restore the predecessor on replacement failure. Publisher exception boundaries
+are not uniform; use the transaction-specific entries in
+[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md#validation-publication-leaves-ambiguous-recovery-state)
+when a lock, temporary, previous, final, or recovery state is ambiguous.
+
+### Inline block disposition
+
+Substantive inline shell remains only when it is an exact operator sequence or
+has no tested executable owner. This classification prevents documentation
+compression from becoming an untested code extraction:
+
+| Disposition | Inline blocks | Boundary |
+| --- | --- | --- |
+| Tested executable owner exists; retain only operator ordering and invocation | Documentation/fragment validation, candidate application, finalization, no-op recording, and exact-ref publication | Interfaces live in [`scripts/git_orchestration/`](../../scripts/git_orchestration/README.md); authority, human review, conflict disposition, and recovery remain here and in `CONCURRENT_WORK.md`. |
+| Retain as runbook-owned operator procedure | Demo presence loop; canonical/candidate/immutable-lane checks; coordination checkpoint; ordinary integration and retirement; cluster checkout/promotion; Step `07` and Step `09` scheduler/output inspection; Step `09c` reviewer workflow and rerun matrix | These blocks combine explicit human inspection, action-point safety, evidence interpretation, or recovery meaning not implemented by one helper. |
+| Retain pending a separately tested extraction | Step `07` manifest-pair reconciliation, selector/FAI reconciliation, and manifest-named receipt/VCF census | Current validators cover related per-partition checks but not these exact whole-universe procedures. |
+| Removed as validator-owned duplication | Step `08` manual partition/orientation ordering scan | [`validate_step_08_preprocessing_outputs.py`](../../scripts/validate_step_08_preprocessing_outputs.py) checks the complete ordered partition-by-orientation receipt; the explicit `25 × 2` acceptance remains below. |
+
 ## Reference Prep
 
 Novogene reference source files:
@@ -2163,12 +2203,6 @@ sjdbOverhang=149
 
 because reads are 150 bp.
 
-Status:
-
-```text
-cluster-proven
-```
-
 The structured Step `00a` validator is separate from the historical proof. It
 reads one explicit STAR index, FASTA, GTF, path-resolution base, expected
 overhang, and scope ID:
@@ -2184,13 +2218,9 @@ overhang, and scope ID:
   --output results/qc/validation/00a/novogene_ref.validation.tsv
 ```
 
-Dry-run prints five checks without writing: all 15 required STAR members,
-`genomeFastaFiles` identity, `sjdbGTFfile` identity, exact ordered FASTA/index
-contig names and lengths, and `sjdbOverhang`. Relative paths recorded in
-`genomeParameters.txt` resolve only against the explicit
-`--parameter-path-base`.
-
-After inspection, create the exact parent and add `--execute`:
+Dry-run writes no report. Inspect the exact checks in the
+[`construct_STAR_index` contract](../../src/norad/stages/construct_STAR_index/CONTRACT.md#validation-interface),
+then create the exact parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00a
@@ -2204,15 +2234,6 @@ mkdir -p results/qc/validation/00a
   --output results/qc/validation/00a/novogene_ref.validation.tsv \
   --execute
 ```
-
-The exact seven-column report is read-only and deterministic. Check failures
-are published as evidence; command success means validation and optional
-publication completed, not that every check passed. Publication requires an
-existing real parent, validates any predecessor, uses an owned lock and
-run-token staging/backup paths, rechecks inputs, and rolls back replacement
-failure. The `step00a_validation_report_v1` adapter preserves a failed check as
-a failed artifact/scope in the canonical summary and consolidated reports; it
-does not alter historical cluster status.
 
 Focused validation:
 
@@ -2247,12 +2268,6 @@ Validated output:
 206,601 BED12 transcript records
 ```
 
-Status:
-
-```text
-cluster-proven
-```
-
 The structured Step `00b` validator reads one explicit BED12 and source GTF:
 
 ```bash
@@ -2263,11 +2278,9 @@ The structured Step `00b` validator reads one explicit BED12 and source GTF:
   --output results/qc/validation/00b/novogene_ref.validation.tsv
 ```
 
-Dry-run reports exact 12-column structure, deterministic coordinate sorting,
-block geometry, transcript-name uniqueness, and byte-for-byte agreement with
-the deterministic exon normalization performed by `gtf_to_bed12.py`. It does
-not create an output path. After inspection, create the parent and add
-`--execute`:
+Dry-run writes no report. Inspect the exact checks in the
+[`convert_GTF_to_BED12` contract](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00b
@@ -2278,13 +2291,6 @@ mkdir -p results/qc/validation/00b
   --output results/qc/validation/00b/novogene_ref.validation.tsv \
   --execute
 ```
-
-The validator never rewrites the BED or GTF. Check failures remain explicit
-evidence, and the `step00b_validation_report_v1` adapter carries the resulting
-failed scope into the canonical summary and HTML/PDF reports without changing
-historical cluster state. Publication uses the same exact output-name,
-predecessor-validation, lock, stable-input, staging, backup, and rollback
-contract as Step `00a`.
 
 Focused validation:
 
@@ -2360,12 +2366,6 @@ scripts/step_00c_prepare_gatk_reference.sh \
   --execute
 ```
 
-Status:
-
-```text
-cluster-proven
-```
-
 Step `00c` formalizes the prep required before Step `05` execute-mode validation. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` treats these files as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
 
 The structured Step `00c` validator reads one explicit FASTA and its exact FAI
@@ -2380,9 +2380,9 @@ and DICT sidecars:
   --output results/qc/validation/00c/novogene_ref.validation.tsv
 ```
 
-Dry-run validates FASTA, FAI, and DICT structure and exact ordered contig-name
-and length agreement without creating output. After inspection, create the
-parent and add `--execute`:
+Dry-run writes no report. Inspect the exact checks in the
+[`construct_FASTA_sidecars` contract](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00c
@@ -2394,12 +2394,6 @@ mkdir -p results/qc/validation/00c
   --output results/qc/validation/00c/novogene_ref.validation.tsv \
   --execute
 ```
-
-The validator is read-only. Failed checks remain explicit evidence, and the
-`step00c_validation_report_v1` adapter propagates the failed scope into the
-canonical summary and HTML/PDF reports without changing historical cluster
-state. Publication uses the same predecessor-validation, owned-lock,
-stable-input, staging, backup, and rollback contract as Steps `00a` and `00b`.
 
 Focused validation:
 
@@ -2442,12 +2436,6 @@ results/star/<sample>/<sample>.Log.progress.out
 results/star/<sample>/<sample>.SJ.out.tab
 ```
 
-Status:
-
-```text
-complete and cluster-proven across all six samples
-```
-
 Known alignment summaries:
 
 | Sample | Approximate input reads | Unique mapping rate |
@@ -2473,12 +2461,9 @@ one sample:
   --output results/qc/validation/01/ABE_EV_2.validation.tsv
 ```
 
-Dry-run verifies that every explicit output is nonempty, checks the BAM/BGZF
-container signature, parses unique `Log.final.out` key/value rows, requires
-the unique/multimapping/too-many-loci percentages to be valid values from zero
-through 100, and validates every nonempty splice-junction row as nine columns
-with valid coordinates and counts. It creates no report. After inspection,
-create the parent and add `--execute`:
+Dry-run writes no report. Inspect the exact checks in the
+[`align_RNA_reads_with_STAR` contract](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/01
@@ -2492,11 +2477,6 @@ mkdir -p results/qc/validation/01
   --output results/qc/validation/01/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-Failed checks remain report evidence. The `step01_validation_report_v1`
-adapter carries the sample scope into canonical summaries and HTML/PDF reports
-without changing historical cluster state. The validator never runs STAR or
-modifies its outputs.
 
 Focused validation:
 
@@ -2516,12 +2496,6 @@ Job:
 
 ```bash
 jobs/step_02_sort_index_bam.slurm
-```
-
-Status:
-
-```text
-hardened and cluster-proven across all six samples
 ```
 
 Canonical outputs:
@@ -2554,11 +2528,9 @@ explicit samtools executable:
   --output results/qc/validation/02/ABE_EV_2.validation.tsv
 ```
 
-Dry-run checks BAM/BAI container signatures, `samtools quickcheck -v`, one
-coordinate-sorted `@HD`, one sample-matching `@RG` with both `ID` and `SM`,
-and equality between all alignment records and records carrying the matching
-RG tag. It does not create a report. After inspection, create the parent and
-add `--execute`:
+Dry-run writes no report. Inspect the exact checks and preserved asymmetries in
+the [`construct_canonical_BAM` contract](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/02
@@ -2570,11 +2542,6 @@ mkdir -p results/qc/validation/02
   --output results/qc/validation/02/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-The validator never sorts, indexes, or edits alignments. Its
-`step02_validation_report_v1` adapter carries pass/fail evidence into the
-canonical summary and consolidated reports without changing historical
-cluster state.
 
 Focused validation:
 
@@ -2676,12 +2643,6 @@ Job:
 jobs/step_02b_bam_qc.slurm
 ```
 
-Status:
-
-```text
-implemented and refreshed across all six final hardened Step 02 BAMs
-```
-
 Outputs:
 
 ```bash
@@ -2699,10 +2660,9 @@ The structured Step `02b` validator reads those two persisted evidence files:
   --output results/qc/validation/02b/ABE_EV_2.validation.tsv
 ```
 
-Dry-run requires the exact quickcheck PASS marker, unique flagstat total and
-mapped rows, nonnegative combined QC-passed/QC-failed counts, and
-`mapped <= total`. It does not invoke samtools or create a report. After
-inspection, create the parent and add `--execute`:
+Dry-run writes no report or reruns samtools. Inspect the exact checks in the
+[`collect_canonical_BAM_QC_evidence` contract](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/02b
@@ -2713,9 +2673,6 @@ mkdir -p results/qc/validation/02b
   --output results/qc/validation/02b/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-The `step02b_validation_report_v1` adapter propagates this persisted evidence
-without rerunning QC or changing historical cluster state.
 
 Focused validation:
 
@@ -2769,12 +2726,6 @@ Job:
 jobs/step_03_infer_strandedness_and_orientation.slurm
 ```
 
-Status:
-
-```text
-cluster-proven across all six samples
-```
-
 Output:
 
 ```bash
@@ -2790,11 +2741,10 @@ The structured Step `03` validator reads one exact persisted RSeQC report:
   --output results/qc/validation/03/ABE_EV_2.validation.tsv
 ```
 
-Dry-run requires exactly one finite value from zero through one for the
-failed-to-determine fraction and each of RSeQC's two paired-orientation
-labels. It requires their sum to equal one within the explicit default
-tolerance of `0.001`. It preserves the mechanical labels and does not infer a
-biological strand. After inspection, create the parent and add `--execute`:
+Dry-run writes no report. Inspect the exact checks and neutral-orientation
+boundary in the
+[`collect_RSeQC_paired_orientation_evidence` contract](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/03
@@ -2804,9 +2754,6 @@ mkdir -p results/qc/validation/03
   --output results/qc/validation/03/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-The `step03_validation_report_v1` adapter propagates the explicit evidence
-without rerunning RSeQC or changing historical cluster/biological state.
 
 Focused validation:
 
@@ -2861,12 +2808,6 @@ Job:
 jobs/step_04_mark_duplicates.slurm
 ```
 
-Status:
-
-```text
-cluster-proven across all six samples
-```
-
 Inputs:
 
 ```bash
@@ -2895,11 +2836,9 @@ explicit samtools executable:
   --output results/qc/validation/04/ABE_EV_2.validation.tsv
 ```
 
-Dry-run checks BAM/BAI container signatures, quickcheck, coordinate sort
-order, one preserved sample-matching read group, and exactly one Picard metrics
-row with nonnegative examined pairs, duplicate pairs no greater than examined,
-and a finite duplication fraction from zero through one. After inspection,
-create the output parent and add `--execute`:
+Dry-run writes no report. Inspect the exact checks in the
+[`mark_BAM_duplicates_with_Picard` contract](../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md#validation-interface),
+then create the output parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/04
@@ -2912,10 +2851,6 @@ mkdir -p results/qc/validation/04
   --output results/qc/validation/04/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-The validator does not mark/remove duplicates or modify the BAM pair. The
-`step04_validation_report_v1` adapter propagates explicit evidence without
-changing historical cluster or scientific state.
 
 Focused validation:
 
@@ -2997,12 +2932,6 @@ Duplication is high across the cohort and should be tracked as a library/QC feat
 
 ## Step 05: SplitNCigarReads
 
-Status:
-
-```text
-implemented and cluster-proven across all six samples
-```
-
 Expected tool:
 
 ```text
@@ -3044,9 +2973,9 @@ exact reference inputs, and one explicit samtools executable:
   --output results/qc/validation/05/ABE_EV_2.validation.tsv
 ```
 
-Dry-run checks BAM/BAI containers, quickcheck, coordinate sorting, preserved
-sample read group, and exact ordered FASTA/FAI/DICT contig-name/length
-agreement. After inspection, create the parent and add `--execute`:
+Dry-run writes no report. Inspect the exact output/reference checks in the
+[`split_N_cigar_reads_with_GATK` contract](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/05
@@ -3061,10 +2990,6 @@ mkdir -p results/qc/validation/05
   --output results/qc/validation/05/ABE_EV_2.validation.tsv \
   --execute
 ```
-
-The validator never invokes GATK, repairs reference sidecars, or modifies the
-BAM pair. Its `step05_validation_report_v1` adapter propagates only the
-declared evidence.
 
 Focused validation:
 
@@ -3173,45 +3098,10 @@ Failure cleanup now removes owned temp BAM/BAI files, alternate GATK-created sid
 
 ## Step 06: Split BAM By Read Orientation
 
-Status:
-
-```text
-cluster-proven across all six samples
-```
-
-Entry points:
-
-```text
-jobs/step_06_split_bam_by_read_orientation.slurm
-scripts/step_06_split_bam_by_read_orientation.sh
-tests/shell/test_step_06_split_bam_by_read_orientation.sh
-```
-
-Old reference workflow used samtools flags similar to:
-
-```text
-FWD_like = samtools -f 99 plus samtools -f 147
-REV_like = samtools -f 83 plus samtools -f 163
-```
-
-These are mechanical read-orientation flag groups. `samtools view -f FLAG` means a read has all bits in `FLAG`; it is not exact flag equality. Do not assume `FWD_like` / `REV_like` labels directly equal biological sense/antisense.
-
-Step `06` consumes the Step `05` output contract:
-
-```text
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam
-results/split_ncigar/<sample>/<sample>.split_ncigar.bam.bai
-```
-
-Expected output contract:
-
-```text
-results/orientation/<sample>/<sample>.FWD_like.bam
-results/orientation/<sample>/<sample>.FWD_like.bam.bai
-results/orientation/<sample>/<sample>.REV_like.bam
-results/orientation/<sample>/<sample>.REV_like.bam.bai
-results/qc/orientation/<sample>.orientation_counts.tsv
-```
+The [functional contract](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md)
+owns the entry points, Step `05` inputs, five-file output set, flag grouping,
+count reconciliation, and validator checks. `FWD_like` and `REV_like` are
+mechanical read-orientation labels, not biological sense/antisense claims.
 
 Dry-run:
 
@@ -3265,8 +3155,6 @@ ls -lh "$fwd" "$fwd.bai" "$rev" "$rev.bai" "$counts"
 cat "$counts"
 ```
 
-The counts TSV includes `input_records`, per-flag counts for `99`, `147`, `83`, and `163`, merged `fwd_like_records` and `rev_like_records`, `assigned_records`, `unassigned_records`, and `assigned_fraction`.
-
 Structured validation is explicit-input and dry-run-first:
 
 ```bash
@@ -3280,26 +3168,12 @@ Structured validation is explicit-input and dry-run-first:
   --output "results/qc/validation/06/$sample.validation.tsv"
 ```
 
-After inspecting the five printed checks, publish with the same command plus
-`--execute`. The validator reads only the declared two BAM/BAI pairs and
-counts TSV. It checks container signatures, the exact one-row counts contract,
-the `99 + 147` and `83 + 163` mechanical group sums, assigned/unassigned
-arithmetic, and the recorded assigned fraction. It never invokes samtools,
-splits reads, creates indexes, changes orientation labels, or promotes local
-evidence to runtime, cluster, scientific, or biological status.
+After inspecting the five printed checks, rerun the same command with
+`--execute`. Exact checks and limits remain in the linked contract.
 
 All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
 
 ## Step 07: bcftools mpileup
-
-Status:
-
-```text
-implemented locally
-locally tested with mocked bcftools
-real-bcftools runtime and cluster validation pending
-not cluster-proven
-```
 
 No command in this section has yet produced inspected Step `07` cluster evidence. The prior compute-node probe confirmed bcftools `1.21` at `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools` with exit code `0:0`; it did not validate this workflow.
 
@@ -3334,11 +3208,9 @@ partition_dir="results/mpileup/$cohort/$partition"
   --output "results/qc/validation/07/${cohort}__${partition}.validation.tsv"
 ```
 
-After inspecting the five printed checks, publish with the same command plus
-`--execute`. The validator reads only the declared manifests, FAI, two VCFs,
-and receipt. It reconciles receipt structure, VCF sample columns, selector
-membership, manifest hashes/order, paths, and record counts without invoking
-bcftools or promoting real-runtime or cluster state.
+After inspecting the five printed checks, rerun the same command with
+`--execute`. Exact checks and limits remain in the
+[`generate_partitioned_cohort_mpileup_VCFs` contract](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md#validation-interface).
 
 Partition manifest schema:
 
@@ -3688,13 +3560,9 @@ is dry-run-first:
   --output results/qc/validation/08/NORAD_EV_PUM1.validation.tsv
 ```
 
-After inspecting the five printed checks, publish with the same command plus
-`--execute`. The validator uses the existing Step `08` semantic contracts to
-reconcile exact headers, manifest and annotation identity, ordered
-partition-orientation inputs, candidate uniqueness/sample fields, AF/count
-arithmetic, and the one-row summary. It never invokes R, discovers Step `07`
-inputs, changes native outputs, or promotes runtime, cluster, scientific, or
-biological state.
+After inspecting the five printed checks, rerun the same command with
+`--execute`. Exact checks and limits remain in the
+[Step `08` contract](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md#validation-interface).
 
 Runtime requirements:
 
@@ -3812,53 +3680,11 @@ extra I/O on a representative pilot or chromosome-scale input set using an
 isolated output namespace, and record input size, elapsed time, and maximum
 RSS before relying on the full-universe resource request.
 
-Step `08` constructs the exact partition-manifest cross-product with
-`FWD_like` and `REV_like`; it never globs VCFs. It requires each partition's
-Step `07` receipt and named two-orientation VCF pair, validates receipt/VCF
-paths and SHA-256 hashes, declared/observed record counts, both manifest
-hashes, and exact sample-manifest VCF column order. It also rejects overlapping
-partition selectors, duplicate partition-independent candidate IDs, and
-inputs that change during the run.
-
-Before semantic VCF parsing, the R implementation streams the raw records in
-bounded chunks and validates the lexical values and expected widths of every
-consumed `FORMAT/DP`, `FORMAT/AD`, and present `INFO/AD` field. This prevents a
-malformed token from being coerced into a parsed numeric value by
-`VariantAnnotation`. An AD value may be a single `.` when the whole vector is
-missing; otherwise its width must equal REF plus every ALT.
-The semantic parse then expands multiallelic records by ALT index, extracts the
-matching alternate AD, counts and excludes symbolic and non-SNV alleles, and
-fails on missing FORMAT/INFO definitions, malformed or negative counts,
-one-sided missing DP/AD, AD greater than DP, or sample/count inconsistencies.
-Partition-overlap rejection was already correct and its fixture now asserts
-the expected failure reason. Header-only VCFs remain valid when their receipts
-and zero counts reconcile.
-
-The provisional mapping is:
-
-```text
-orientation_policy=legacy_provisional_v1
-FWD_like -> legacy neg -> compatible + transcripts -> complement genomic REF/ALT
-REV_like -> legacy pos -> compatible - transcripts -> retain genomic REF/ALT
-```
-
-This is legacy compatibility behavior, not a biologically validated
-orientation policy.
-
-Successful execute mode publishes:
-
-```text
-results/vcf_preprocessed/<cohort>/<cohort>.step08_sites.tsv
-results/vcf_preprocessed/<cohort>/<cohort>.step08_inputs.tsv
-results/qc/vcf_preprocessing/<cohort>.step08_summary.tsv
-```
-
-The sites table has fixed genomic/RNA/annotation metadata followed by
-manifest-ordered `DP__<sample>`, `AD__<sample>`, and `AF__<sample>` columns.
-The input receipt has one row per declared partition/orientation, in partition
-manifest order with `FWD_like` then `REV_like`, and records input hashes and
-observed/supported/skipped/published counts. The summary reconciles those
-counts across the cohort.
+The [functional contract](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+owns the complete partition/orientation barrier, bounded lexical and semantic
+parsing, provisional orientation policy, three-output schemas, transaction
+marker, and validator boundary. The policy is compatibility behavior, not a
+biologically validated orientation claim.
 
 Validation checklist after a future execute run:
 
@@ -3875,54 +3701,13 @@ cat "$inputs"
 cat "$summary"
 ```
 
-Require all three outputs, exact schemas, the declared number/order of receipt
-rows, correct sample column groups, stable hashes, globally unique candidate
-IDs, and the invariants:
-
-```text
-observed ALT = supported SNV + skipped symbolic + skipped non-SNV
-published candidate count = supported SNV count
-each summary allele/count total = the matching input-receipt column sum
-summary published candidate count = sites-table row count
-```
-
-For the approved primary manifest, require exactly `50` data rows in
+Use the structured validator above for schemas, identities, ordering,
+uniqueness, and count reconciliation. For the approved primary manifest,
+additionally require exactly `50` data rows in
 `step08_inputs.tsv` (`25` partitions by two orientations) in declared
 partition order with `FWD_like` then `REV_like`. Require one
 `COMPLETED 0:0` job, inspected logs, all three files, and no owned lock or
 run-token scratch residue.
-
-Assert the exact partition/orientation sequence:
-
-```bash
-awk -F '\t' '
-    FNR == NR {
-        if (FNR > 1) {
-            partition[++partition_count] = $1
-        }
-        next
-    }
-    FNR == 1 {
-        for (i = 1; i <= NF; i++) {
-            if ($i == "partition_id") partition_column = i
-            if ($i == "orientation") orientation_column = i
-        }
-        if (!partition_column || !orientation_column) exit 1
-        next
-    }
-    {
-        row = FNR - 1
-        expected_partition = partition[int((row + 1) / 2)]
-        expected_orientation = (row % 2 ? "FWD_like" : "REV_like")
-        if ($partition_column != expected_partition ||
-            $orientation_column != expected_orientation) exit 1
-    }
-    END {
-        if (partition_count != 25 || row != 50) exit 1
-        print "step08_input_rows=" row
-    }
-' configs/step_07_partitions.primary_contigs.tsv "$inputs"
-```
 
 Execute mode owns a cohort lock, uses run-token temporary and backup paths,
 validates before publication, and rolls back a prior complete set on failure.
@@ -3976,20 +3761,10 @@ analysis_dir="results/editing/$analysis"
   --output "results/qc/validation/09/$analysis.validation.tsv"
 ```
 
-Dry-run snapshots every declared regular non-symlink input and prints seven
-checks without writing. It verifies four exact TSV headers; six
-analysis-bound basenames under one parent and six distinct physical files;
-safe analysis/cohort identity and `legacy_provisional_v1`; the complete
-ordered Step `08` candidate universe; target/test/call, depth, AF, and
-enabled-background semantics recomputed from immutable counts; type/range
-validation of the reported CMH fields; global BH recomputation from reported
-p-values; the exact significant subset; summary paths/hashes/pairings/counts;
-the canonical 12-SNV spectrum; and both PDF containers. It does not
-independently recompute the CMH statistic, p-value, common odds ratio, or
-count-table estimability from DP/AD counts.
-
-After inspecting every row, create the exact report parent and add
-`--execute`:
+Dry-run writes no report. Inspect the seven checks and the explicit
+non-recomputation limits in the
+[`rank_cohort_candidates_with_paired_CMH` contract](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md#validation-interface),
+then create the exact report parent and add `--execute`:
 
 ```bash
 analysis=NORAD_EV_vs_PUM1
@@ -4015,13 +3790,6 @@ mkdir -p results/qc/validation/09
   --output "results/qc/validation/09/$analysis.validation.tsv" \
   --execute
 ```
-
-Readable semantic disagreements publish `status=fail` evidence and retain a
-zero command exit when publication succeeds. Missing, empty, symlinked, or
-nonregular inputs and unsafe publication state fail closed without a report.
-The `step09_validation_report_v1` adapter carries the seven rows into the
-canonical summary and consolidated HTML/PDF reports without changing native
-outputs or promoting runtime, cluster, scientific, or biological state.
 
 Focused validation:
 
