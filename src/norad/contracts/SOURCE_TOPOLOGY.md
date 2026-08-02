@@ -199,6 +199,25 @@ to a neutral contract suite only when it represents the shared public contract
 rather than one producer's serialization helper. Test code and fixture
 placement do not create runtime dependency edges.
 
+## Orchestration and scheduler boundary
+
+`orchestration/` may depend on neutral contracts and invoke the public entry
+points of stages, analyses, and evidence operations. It may not import their
+private implementation modules, rewrite their local contracts, or infer order
+from paths. The semantic DAG and explicitly declared run inputs are its only
+ordering inputs.
+
+Stage-, analysis-, and evidence-specific SLURM entry points and job templates
+remain with their functional owner. `scheduler/` owns only neutral scheduler
+submission, state, and adapter contracts shared across owners. It may consume
+neutral contracts and invoke an owner's public scheduler surface; functional
+owners do not import scheduler or orchestration implementation.
+
+Repository-documentation Git orchestration and developer quality gates are not
+scientific-workflow orchestration and do not move into this runtime domain.
+This boundary defines ownership only and does not create an orchestrator,
+generate a job, or choose an optional-stage policy.
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
