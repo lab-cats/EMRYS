@@ -27,7 +27,7 @@ arbitrary-CWD behavior, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03B](../TODO/MIG-03B-migrate-construct-star-index-owner.md) — Fully: the reviewed migration may enter task-specific execution planning.
+- [MIG-03B](../IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md) — Fully: the reviewed migration has entered task-specific execution planning.
 
 ## Prerequisites
 

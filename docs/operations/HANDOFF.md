@@ -17,19 +17,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   the configured upstream and live remote ref. It atomically establishes the
   final validation-report owner, all thirteen caller-local loaders, the moved
   direct/fault owner, and exact coverage/static wiring from the frozen parent.
-- Current package: documentation-only JIT definition of
-  [`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md) and its
-  dedicated architecture, reliability, and usability review chain. No review
-  or executable migration is selected by this checkpoint.
+- Current package: [`MIG-03B`](../tasks/IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md),
+  selected for task-specific execution planning after its dedicated
+  architecture, reliability, and usability reviews completed. No executable or
+  test mutation is authorized by this lifecycle checkpoint alone.
 - Package type at this checkpoint: planning documentation only. The selected
-  candidate is the semantic-root `construct_STAR_index` owner because its one
-  producer job, one validator, and one dedicated direct test form the smallest
-  bounded eligible native-asset surface; historical alias order was not used.
-- Remote publication and upstream equality: `MIG-03A` documentation/lifecycle
-  close `f3f2c2ab335d5a803550defd7676e9e9f9eb9fa4` is the verified clean,
-  upstream-equal predecessor. This planning checkpoint must itself be published
-  and proved local/upstream/live-remote equal before the architecture review is
-  selected.
+  semantic-root `construct_STAR_index` owner has one producer job, one
+  validator, and one dedicated direct test, the smallest bounded eligible
+  native-asset surface; historical alias order was not used.
+- Remote publication and upstream equality: usability-review completion
+  `028eedbcfe9bbc13d2dcae7d2a5ce75003d8267e` is the verified clean,
+  local/upstream/live-remote-equal predecessor. This selection checkpoint must
+  itself be published and proved equal before the task-specific execution plan
+  or pre-mutation baseline is frozen.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -504,14 +504,15 @@ selecting the next dependency-valid physical migration unit.
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
 exactly one JIT unit at a time, then repeat. Do not pre-create later cards or
-activate unrelated work. The only proposed next unit is
-[`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md); after this
-planning checkpoint is clean and published, select and perform
+activate unrelated work. The only active unit is
+[`MIG-03B`](../tasks/IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md).
+Its dedicated
 [`REVIEW-ARCH-03B`](../tasks/COMPLETED/REVIEW-ARCH-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. The next action is to select `MIG-03B` for task-specific execution
-planning; it remains in `TODO` until that lifecycle checkpoint. The unsliced
-`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
+are complete. The next action is task-specific read-only inspection, execution-
+plan freeze, and pre-mutation baseline characterization; executable and test
+mutation waits for those clean published checkpoints. The unsliced `PROGRAM-01`
+remainder and unrelated roadmap remain preserved and out of scope.

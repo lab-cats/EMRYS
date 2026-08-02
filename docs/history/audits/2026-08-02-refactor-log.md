@@ -580,3 +580,24 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   claimed. Corrections affect planning documentation only. No executable/test
   file changed, no computational test ran, and no runtime, cluster, production,
   scientific-review, or biological-readiness evidence was created.
+
+## 2026-08-02T19:32:13-0400 — MIG-03B selected
+
+- **Selection:** move only `MIG-03B` from `TODO` to `IN_PROGRESS` and repair its
+  lifecycle links after usability-review checkpoint `028eedb` was clean,
+  upstream-equal, and live-remote equal. The three dedicated adversarial reviews
+  are complete, and no later migration unit is created or selected.
+- **Decision:** selection opens task-specific read-only inspection, execution-
+  plan freeze, and pre-mutation characterization for the one
+  `construct_STAR_index` owner. It does not by itself begin executable or test
+  mutation; those wait for a clean, published, local/upstream/live-remote-equal
+  selection checkpoint and the package-delivery evidence sequence.
+- **Risk boundary:** the accepted transition changes public repository-relative
+  job, validator, and focused-test paths without an alias. The atomic cutover,
+  caller-CWD versus validator-CWD distinction, exact mixed-layout inventories,
+  coverage measurement-before-update rule, rollback point, and inherited defect
+  preservation remain mandatory card obligations.
+- **Evidence boundary:** this lifecycle change is documentation only. No
+  executable/test file changed, no computational test ran, and no runtime,
+  cluster, production, scientific-review, or biological-readiness evidence was
+  created.
