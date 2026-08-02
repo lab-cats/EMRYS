@@ -44,10 +44,14 @@ runtime/cluster/scientific promotion.
 
 - Every in-scope dynamic `MIG-03-*`, `LOG-04-*`, `CODEDOC-06-*`,
   `DOC-CONS-08-*`, correction, extraction, and additional size card created by
-  `PLAN-02Z` or the reviews is complete and linked here before planning ends.
-- Each dynamic-card creation commit must add that card as a direct blocker here
-  and add this audit to the new card's reciprocal unblock list before this card
-  may enter planning.
+  `PLAN-02Z` or the reviews has an explicit audit disposition before planning
+  ends.
+- Classify each dynamic card against the live registry. Add a reciprocal
+  blocker edge only when its unavailable technical output makes meaningful
+  audit progress impossible; record preferred order, integration lineage,
+  review timing, and useful coverage context in roadmap or prerequisite prose.
+  Do not manufacture blocker edges merely because a card belongs to a dynamic
+  family.
 - The final predecessor is clean, pushed, upstream-equal, and fully docpatched.
 
 ## Required context
@@ -80,6 +84,11 @@ runtime/cluster/scientific promotion.
 
 - Every original and newly discovered in-scope finding is resolved, retained
   intentionally, deferred with owner/trigger, or explicitly accepted.
+- Every purposeful historical or refactor reference records its audited
+  revision, evidence boundary, named consumer or purpose, and any review
+  milestone. Continued discoverable retention is a valid final disposition
+  when justified; Git history alone is not sufficient discoverability, and
+  refactor closure does not imply automatic deletion.
 - Applicable preserved contracts and approved migrations pass; current topology,
   docs, diagrams, task status, and local context agree with implementation.
 - Worktree/history/upstream gates are clean. No remote/cluster/scientific claim

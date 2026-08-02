@@ -2,17 +2,18 @@
 
 ## Objective
 
-Implement the approved `UNREFINED` proposal intake and
-`INTEGRATION_REVIEW` frozen-handoff state across the task registry, concurrent
-workflow, and tested documentation validator.
+Complete tested validator and transition support for the authorized
+`UNREFINED` proposal intake, and implement the `INTEGRATION_REVIEW`
+frozen-handoff state across the task registry and concurrent workflow.
 
 ## Why this exists
 
-Rough ideas currently must either masquerade as fully refined TODO cards or
-remain outside the durable registry, while frozen sidecar work has no precise
-canonical state between active execution and completed integration. Explicit
-states can make intake and the integration queue inspectable without treating
-proposals or unintegrated work as approved or complete.
+Rough ideas now have an authorized durable, nonselectable `UNREFINED` location,
+but the current validator still rejects it and no tested transition support
+exists. Frozen sidecar work also has no precise canonical state between active
+execution and completed integration. Completing these mechanisms makes intake
+and the integration queue inspectable without treating proposals or
+unintegrated work as approved or complete.
 
 ## Fixed decisions
 
@@ -34,8 +35,13 @@ proposals or unintegrated work as approved or complete.
 - [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
   decides the objective trigger for persisting `INTEGRATION_REVIEW`; routine
   immediate integration must not create meaningless status churn.
-- Lifecycle directories remain flat. Logical epic navigation is implemented
-  separately after the lifecycle roots are stable.
+- Current lifecycle directories remain flat and authoritative until an atomic
+  migration passes parity and final validation. The selected target then uses
+  permanent ID-only canonical card paths with reviewed structured lifecycle
+  state; logical epic navigation remains a separate concern.
+- Target lifecycle, dependency, epic, and tranche Markdown projections are
+  committed and byte-for-byte check-regenerated. This is a selected target,
+  not a claim that generated views or the permanent path model exist today.
 
 ## Blocked by
 
@@ -52,8 +58,8 @@ proposals or unintegrated work as approved or complete.
   concurrent handoff state, and validator rule at the selected revision.
 - Verify the completed
   [`CONCURRENCY-02` fragment protocol](../COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md)
-  and `PROGRAM-01` tranche contract without integrating preserved candidate
-  content as part of this task.
+  and the consolidated recovery record without reopening or re-integrating
+  preserved source content as part of this task.
 
 ## Required context
 
@@ -63,8 +69,8 @@ proposals or unintegrated work as approved or complete.
   rolling-delivery decisions in
   [`DECISIONS.md`](../../design/DECISIONS.md), and the extracted documentation
   validator plus focused tests.
-- The completed `CONCURRENCY-02`, `DOC-GATE-01`, and `PROGRAM-01` records and
-  the live handoff/roadmap owners.
+- Completed `CONCURRENCY-02`, the live `DOC-GATE-01` and `PROGRAM-01` cards,
+  and the live handoff/roadmap owners.
 
 ## Questions owned by this card
 
@@ -73,9 +79,9 @@ proposals or unintegrated work as approved or complete.
 
 ## In scope
 
-- Add the lifecycle directories and concise READMEs, the lightweight unrefined
-  proposal schema, the full integration-review card schema, and exact permitted
-  transitions.
+- Formalize and validate the existing lightweight UNREFINED proposal schema,
+  add the `INTEGRATION_REVIEW` directory and concise README, define its full
+  card schema, and specify exact permitted transitions for both mechanisms.
 - Define selectability, mutability, dependency participation, inbound-link
   repair, sidecar proposal, integration-owner authority, return, acceptance,
   and durable-checkpoint behavior.
@@ -88,14 +94,27 @@ proposals or unintegrated work as approved or complete.
 ## Out of scope
 
 - Reclassifying blocker/unblock edges; defining or materializing epic
-  taxonomy; changing card scope; reviewing or integrating preserved pilot
-  content; recasting the refactor program; or changing workflow, schema,
-  scientific, report, runtime, or evidence behavior.
+  taxonomy; changing card scope; reopening or re-integrating the consumed
+  recovery source; recasting the refactor program; or changing workflow,
+  schema, scientific, report, runtime, or evidence behavior.
 
 ## Deliverables
 
-- Implemented `UNREFINED` and `INTEGRATION_REVIEW` directories, schemas,
-  transition rules, authority model, and supported commands.
+- Tested support for the authorized `UNREFINED` location and implemented
+  `INTEGRATION_REVIEW` directory, schemas, transition rules, authority model,
+  and supported commands.
+- Independent fixtures and validator rules that accept the reviewed
+  lightweight `UNREFINED` schema while rejecting selection, priority,
+  dependency, blocker, unblock, completion, and full-card authority there.
+- For the later permanent-path migration, a frozen old/new manifest covering
+  every ID, path, lifecycle state, H1, body, completion record, dependency,
+  and inbound link; legacy-read/new-write transition testing without a mixed
+  canonical registry; exact parity and stale-view checks; one atomic cutover;
+  and abort/rollback that leaves the old registry canonical until every gate
+  passes.
+- Committed lifecycle projections that name their generator, relevant input
+  digest, and exact refresh/check behavior and that are regenerated in
+  temporary space for byte-for-byte comparison.
 - Tested documentation-validator support that distinguishes proposals,
   actionable cards, frozen review work, and completed history.
 - Updated canonical documentation with no duplicated live candidate identity
@@ -125,8 +144,12 @@ proposals or unintegrated work as approved or complete.
   publish authoritative status, review state duplicates live candidate facts,
   a transition weakens completion evidence, or implementation requires the
   blocker-graph migration owned by `TASK-REG-01`.
+- Sequence `TASK-REG-01` before or with the final dependency cutover as
+  migration readiness, not as a blocker on independent lifecycle design.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Not started as an implementation package. The authorized UNREFINED directory,
+README, and recovered proposals exist, while validator and transition support
+remain unimplemented. Select this card for read-only planning; implementation
+requires a separately approved task-specific plan.

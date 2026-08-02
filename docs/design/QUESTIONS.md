@@ -56,14 +56,21 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 ### CHOICE-INTAKE-01 — Exact V1 request fields, run package, and operational directories
 
+- **Decision state:** deliberately deferred; this does not block recovery
+  integration, but it prevents selecting `INTAKE-03A` or beginning its
+  implementation planning.
 - **Question:** What YAML fields, schema versions, request-state directories,
   claim/promotion filenames, and internal run/attempt package layout implement
-  the approved YAML+TSV lifecycle?
+  the approved YAML+TSV lifecycle? `INTAKE-02E` owns the top-level run-request
+  YAML representation; report selector and normalized reporting semantics
+  remain with `RPT-02`.
 - **Why it matters:** identity, duplicate prevention, resume, and operator
   navigation depend on stable names and atomic state transitions.
 - **Owning card:**
   [`INTAKE-02E`](../tasks/TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md).
-- **Decision deadline:** before any ingestion implementation card is created.
+- **Decision deadline:** before recovered
+  [`INTAKE-03A`](../tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md)
+  is selected or its implementation planning begins.
 - **Recommendation:** use explicit versioned fields and a configured state root
   with distinct request-state and immutable `runs/<run>/attempts/<attempt>`
   packages; keep normalized contracts, status, scheduler material, logs,
@@ -72,8 +79,12 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 ### CHOICE-REPORT-01 — Public report profile names and selection interface
 
+- **Decision state:** deliberately deferred; this does not block recovery
+  integration or `RPT-01` characterization.
 - **Question:** What names and CLI/YAML selectors expose the science and retained
-  comprehensive report profiles?
+  comprehensive report profiles? Distinguish the top-level run-request YAML
+  representation owned by `INTAKE-02E` from selector and normalized reporting
+  semantics owned by `RPT-02`.
 - **Why it matters:** profile naming is a public contract and “verbose” would be
   ambiguous with logging verbosity.
 - **Owning card:**
@@ -85,8 +96,12 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 ### CHOICE-REPORT-02 — Exact science report field roster
 
+- **Decision state:** deliberately deferred; this does not block recovery
+  integration or separately selectable current-report corrections.
 - **Question:** Which fields, sections, ordering, descriptions, missing states,
-  and display limits form the versioned science projection?
+  and display limits form the versioned science projection? Decide authorized
+  metadata and state grammar, unavailable values, joins, source authority,
+  units, and display mappings explicitly.
 - **Why it matters:** “minimal” is not testable and could omit scientifically
   necessary context without a closed field catalog.
 - **Owning card:**
@@ -99,9 +114,14 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 ### CHOICE-REPORT-03 — Profile output layout and transaction boundary
 
+- **Decision state:** deliberately deferred; this does not block recovery
+  integration or separately selectable current-report corrections.
 - **Question:** How do science and comprehensive bundle paths, locks,
   profile-specific receipts, shared summary material, and a request for both
-  profiles coexist transactionally?
+  profiles coexist transactionally? Decide profile/format selection,
+  completion-marker and cache visibility, retry/supersession identity,
+  implementation/tool/template/style identity, no-clobber publication,
+  rollback, and one owner for every downstream interface.
 - **Why it matters:** output coexistence is fixed, but ambiguous lock/receipt
   granularity could cause overwrite, partial publication, or unclear identity.
 - **Owning card:**
@@ -111,6 +131,24 @@ task's planning deadline rather than rediscovered by an implementation agent.
   bundle with its own owned lock and receipt published last, bind any shared
   summary by exact hash, and define an all-or-none parent transaction only when
   one request explicitly requires both profiles.
+
+### CHOICE-GATE-REC-01 — Validation receipt contract and storage
+
+- **Decision state:** deliberately deferred; this does not block recovery
+  integration, corrected documentation-gate work, or non-receipt task views.
+- **Question:** What catalog and receipt schema names and versions, storage and
+  retention rules, environment/toolchain compatibility contract, and
+  conservative validation-subject/manifest rules govern reusable validation
+  evidence? Should the receipt extend an existing result or remain separate?
+- **Why it matters:** reusable evidence must exclude credentials and private
+  data, derive identity from content, contain complete successful evidence,
+  invalidate deterministically, and never raise the existing evidence ceiling.
+- **Owning card:**
+  [`GATE-REC-01`](../tasks/TODO/GATE-REC-01-define-machine-readable-gates-and-validation-receipts.md).
+- **Decision deadline:** before validation-receipt schema or persistence
+  implementation.
+- **Recommendation:** none until the owning card compares the complete storage,
+  compatibility, invalidation, privacy, and integration tradeoffs.
 
 ### CHOICE-SKILL-01 — Documentation-health skill name and discovery location
 
@@ -205,8 +243,8 @@ task's planning deadline rather than rediscovered by an implementation agent.
   while premature standalone work can settle cross-cutting contracts twice.
 - **Owning card:**
   [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
-- **Decision deadline:** before `PROGRAM-01` initializes
-  `docs/operations/TRANCHE.md` or selects a post-program delivery card.
+- **Decision deadline:** before `PROGRAM-01` initializes the first durable
+  per-tranche artifact/current pointer or selects a post-program delivery card.
 - **Recommendation:** group only expensive-to-reverse shared invariants; choose
   the smallest evidence-supported vertical slice and let integrated feedback
   shape later tranches.
@@ -302,7 +340,27 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
   ledger, action-point safety repetition, a planned architecture pipeline
   overview, neutral engineering-conventions owner, and dated history index; see
   the [documentation decision](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture)
-  and [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md);
+  and [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md); this remains
+  resolved and is not reopened by the recovery source;
+- `CHOICE-PROGRAM-02`: two independently machine-readable future fields, one
+  for semantic planning category and one for validation impact; see the
+  [proportional-planning decision](DECISIONS.md#use-proportional-planning-categories-and-bounded-approval-envelopes)
+  and [`TASK_START.md`](../operations/TASK_START.md#proportional-planning-categories-and-validation-impact);
+- `CHOICE-TASK-IDENTITY-01`: permanent ID-only canonical card paths with
+  reviewed structured lifecycle metadata after an atomic parity-validated
+  migration; see the
+  [task-registry decision](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry);
+- `CHOICE-TASK-VIEW-01`: committed lifecycle, dependency, epic, and tranche
+  Markdown views that are byte-for-byte check-regenerated with deterministic
+  recovery and fail-closed stale-output detection; see the
+  [task-registry decision](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry);
+- `CHOICE-TRANCHE-VIEW-01`: durable
+  `docs/operations/tranches/<TRANCHE-ID>.md` artifacts plus one recoverable
+  current pointer; see the
+  [rolling-delivery decision](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery);
+- `CHOICE-DOC-GATE-01`: a stable, logic-free Make wrapper over the same
+  explicit-root validator engine, owned for implementation by
+  [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md);
 - a file-backed task registry with separate planning/approval for every card;
 - a future proper documentation-health skill and later separate skill review,
   with no `docs/skills/` directory now.

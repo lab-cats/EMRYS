@@ -47,8 +47,9 @@ speculative rules or automate integration decisions.
 - Inspect the synthetic manual fragment exchange completed by
   [`CONCURRENCY-02`](../COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md)
   plus any retained malformed or stale examples before approving exact
-  validation behavior. The preserved pilot is not required evidence for this
-  card and remains substantively unreviewed.
+  validation behavior. The original pilot and consumed consolidated-recovery
+  source are not required evidence for this card and must not be reopened or
+  treated as pending integration work.
 - Reinspect the extracted validator's public command, fixture conventions, and
   current accepted repository states at the selected revision.
 

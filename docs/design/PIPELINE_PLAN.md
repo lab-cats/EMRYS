@@ -75,7 +75,8 @@ a completed production review.
 | `codex/doc-cons-08b-compress-root-entry-and-priority-views` | Concise newcomer and current-priority root views with canonical routes and no-loss dispositions; see completed [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md) | separately approved local-only documentation exception complete and intentionally unpushed; completed history, roadmap, live state, blockers, task scope, and questions retain one canonical owner, later consolidation remains separately planned, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/doc-cons-08c-compress-operational-guidance` | Indexed exact-command and diagnostic owners, contract crosswalk, and no-loss inline-program dispositions; see completed [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md) | separately approved local-only documentation exception complete and intentionally unpushed; duplicated commands and stage semantics now route to one owner while recovery and scientific-review meaning remain intact, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
 | `codex/doc-cons-08d-establish-dated-documentation-history` | Shallow immutable audit/testing history plus concise current audit and baseline routes; see completed [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md) | separately approved local-only documentation exception complete and intentionally unpushed; exact dated evidence and source provenance now have indexed owners while active recheck, coverage-policy, evidence-vocabulary, and risk routes remain current, and no executable, configuration, generation, schema, fixture, report-template, dependency, source-layout, public-interface, scientific-policy, or test-harness behavior changed |
-| Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, implement proposal/review states, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; current registry remains three-state, while the validator is executable but still lacks the card's independent invalid-state fixture coverage and any separately approved Make exposure |
+| `codex/reconciliation-consolidated-01-integration` | Direct canonical recovery of reviewed proposal material from consolidated source `5a35a057cd9ca259f83ee1dde3116fee63928d72` onto parent `0fd6348e6cfe54457fef5f65f3468bea106e61f9` | documentation-only integration package; eight TODO cards and eight nonselectable UNREFINED proposals are preserved without selection, priority, implementation, or evidence promotion; all 80 fragment requests receive terminal commit-trailer dispositions, the fragment is absent from the final tree, and publication/upstream equality must be resolved from live Git |
+| Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; actionable-card workflow remains directory-owned, authorized UNREFINED preservation is nonselectable, and the validator still rejects its nine current Markdown locations and lacks the card's independent invalid-state fixture coverage and separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md) | implementation `9a4fb09` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01F` |
@@ -87,6 +88,21 @@ a completed production review.
 | Phase `02` independent reviews | Architecture, reliability, and usability reviews in `REVIEW-ARCH-01` → `REVIEW-REL-02` → `REVIEW-UX-03` order | future review set; workflow status is owned by each card's directory |
 | Phase `03` bounded packages | Exact stage/domain migrations, logging adoption, code documentation, consolidation, corrections, and extractions generated by the reviewed plan | not yet named; cards must be evidence-derived and separately approved |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
+
+When reporting planning is explicitly reactivated, readiness order is corrected
+and tested [`RPT-01`](../tasks/TODO/RPT-01-characterize-comprehensive-report.md),
+then corrected and independently reviewed
+[`RPT-02`](../tasks/TODO/RPT-02-define-science-report-contract.md). The latter
+must assign one normalized schema owner for experiment, reference, locus,
+run/attempt, source-hash, and evidence-state inputs. Renderer relocation through
+`RPT-05A` and decomposition through `RPT-05B` precede growth of the legacy
+modules; `RPT-03`, `RPT-04`, and `RPT-06` then own projection, science layout,
+and convergence/default activation. This is readiness order, not selection or
+technological-blocker metadata. Current hostile-PDF terminology/markup,
+publication-transition, identity, and SVG-accessibility corrections remain
+independently selectable repairs. `RPT-META-02A`, `RPT-PDF-04B`, and
+`RPT-PUB-05C` remain only proposed owner identities until explicitly
+classified; this plan does not create or combine them.
 
 Schema validation, adapter completion, summary completion, table approval, and
 report rendering never promote computational, scientific, or biological
@@ -105,7 +121,9 @@ inspection and approval.
 are complete. The user separately selected and completed `DOC-IA-01` and
 `DOC-CONS-08A` through `DOC-CONS-08D` as local-only documentation exceptions;
 those completions do not select `DOC-CONS-08E` through `DOC-CONS-08H` or
-change ordinary runway order. The next
+change ordinary runway order. The separately authorized consolidated-recovery
+integration preserves recovered cards, proposals, decisions, and deferred
+decision points without selecting them or reactivating the frozen program. The next
 eligible ordinary runway action is still to recast `PLAN-02Z` and select its
 independent review just in time before planning the first physical migration;
 neither is selected by this status. Every other package is preserved but
@@ -141,20 +159,23 @@ work. Maintenance order remains distinct from technical blocking:
    may enforce the proven fragment contract using `CONCURRENCY-02`'s synthetic
    exchange evidence,
    [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-   may implement `UNREFINED` and `INTEGRATION_REVIEW`, and
+   may complete validator/transition support for the authorized nonselectable
+   `UNREFINED` intake and implement `INTEGRATION_REVIEW`, and
    [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md)
    may then add orthogonal logical epic indexes. `CONCURRENCY-03` and
    `TASK-LIFECYCLE-01` are independent after their own prerequisites; epic
    indexing follows the lifecycle package.
-7. Only after `CONCURRENCY-02`, `PROGRAM-01`, `DOC-GATE-01`, `CONCURRENCY-03`,
-   and `TASK-LIFECYCLE-01` establish the applicable infrastructure may the
-   separately approved pilot-integration card generated by `PROGRAM-01` be
-   selected. The preserved researcher-path sidecar is the intended first
-   substantive integration candidate; `TASK-EPIC-01` is not a prerequisite
-   unless later evidence establishes a genuine dependency.
+7. The separately authorized recovery integration materializes the reviewed
+   researcher-path proposals without selecting or implementing them. Any later
+   local-pilot card still requires its own task-specific planning and the
+   applicable then-current infrastructure; `TASK-EPIC-01` is not a
+   prerequisite unless later evidence establishes a genuine dependency.
 8. [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md)
-   should then migrate active dependency metadata and validator behavior to the
-   approved true-technological-blocker model.
+   must precede or share the approved atomic cutover to permanent ID-only card
+   paths and committed generated views. Include minimum `TASK-EPIC-01` support
+   in that atom only if approved epic metadata is mandatory for every card;
+   otherwise keep epic work downstream. This is migration readiness, not a
+   technological blocker edge.
 9. Completed
    [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
    leads the Phase `02` documentation family and produced the no-loss bounded
@@ -174,6 +195,41 @@ work. Maintenance order remains distinct from technical blocking:
 Each remains separately planned and approved. If live technical evidence later
 establishes a real blocker, record that evidence on the affected cards rather
 than inferring it from this order.
+
+### Recovered proposal families
+
+The unselected local-pilot family has three parallel inputs:
+[`SETUP-03A`](../tasks/TODO/SETUP-03A-implement-local-pilot-dependency-profile-and-doctor.md),
+[`INTAKE-03A`](../tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md),
+and [`PROFILE-03A`](../tasks/TODO/PROFILE-03A-materialize-local-pilot-workflow-profile.md).
+Together they feed
+[`CLI-03A`](../tasks/TODO/CLI-03A-implement-local-pilot-control-plane.md)
+→ [`E2E-03A`](../tasks/TODO/E2E-03A-prove-fresh-clone-local-pilot.md)
+→ [`ONBOARD-03A`](../tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md).
+`INTAKE-03A` is separately blocked by the still-unavailable accepted design
+from `INTAKE-02E`.
+The arrows preserve reviewed interface/readiness order, not automatic
+selection or newly invented blockers. SETUP owns local-environment readiness;
+INTAKE owns admission/normalization while neutral schemas and orchestration
+retain their cross-owner boundaries; PROFILE owns a non-executable projection
+without taking semantic DAG identity; CLI remains thin over orchestration; E2E
+owns clean-clone proof; and ONBOARD owns researcher guidance. This direct local
+pilot excludes future analysis modules, public acquisition, installable
+distribution, optional-analysis policy, and site/container profiles.
+
+Recovered [`DOC-TASK-SCAN-01`](../tasks/TODO/DOC-TASK-SCAN-01-scan-documentation-for-task-intake.md)
+and [`GATE-REC-01`](../tasks/TODO/GATE-REC-01-define-machine-readable-gates-and-validation-receipts.md)
+are also unselected, separately bounded TODO proposals. `FUT-SITE-01` and
+`FUT-SITE-02`, along with the other recovered
+[`UNREFINED` proposals](../tasks/UNREFINED/), are discovery links only and do
+not join this roadmap. None of these eight TODO cards changes `PLAN-02Z` as the
+next eligible ordinary runway action.
+
+Documentation-package readiness remains parent-first: resolve legacy task-edge
+semantics through `TASK-REG-01` or an explicit reviewed exception, correct and
+review `DOC-REF-02`, then synthesize and review only `DOC-PIPE-04`-owned work on
+that accepted parent. This is integration/readiness order, not a new blocker or
+completion claim.
 
 ## Approved local lineage
 

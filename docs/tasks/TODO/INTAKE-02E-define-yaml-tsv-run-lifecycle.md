@@ -23,6 +23,19 @@ start NORAD, and receive artifacts and a report autonomously. Current
 - Failed requests remain resumable. Promote request metadata only after
   current required tasks, validators, evidence assembly, and requested report
   succeed. Raw data remains stationary.
+- This card owns top-level YAML fields, representation, directory, identity,
+  and transition design. In the target implementation, ingestion owns
+  admission and normalization, `contracts/` owns neutral schemas that cross
+  owners, orchestration owns run/attempt state and coordination, and
+  operational directories remain outside source ownership.
+- The corrected `RPT-02` contract owns report-profile selectors and normalized
+  reporting semantics. Intake may reference that contract but must not copy
+  its profile names, field roster, projection grammar, or publication policy.
+- Deliberate deferral of `CHOICE-INTAKE-01` does not block this recovery
+  integration. It still must be resolved before `INTAKE-03A` implementation
+  planning reaches the fields, directories, identity, or transitions it owns;
+  no report-related dependency is inferred while the intake and reporting
+  choices remain deferred.
 
 ## Blocked by
 
@@ -30,6 +43,7 @@ start NORAD, and receive artifacts and a report autonomously. Current
 
 ## Completion unblocks
 
+- [INTAKE-03A](INTAKE-03A-implement-yaml-tsv-run-lifecycle.md) — Fully: implementation cannot proceed meaningfully until this card accepts the exact V1 fields, directories, identity, claim, transition, retry, and success-promotion design.
 - [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: intake is one required design input.
 
 ## Prerequisites

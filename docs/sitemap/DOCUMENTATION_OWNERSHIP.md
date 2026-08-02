@@ -19,7 +19,15 @@ documentation gate remains responsible for exact link and anchor integrity.
 | Operator | Root [`README.md`](../../README.md) → current [`HANDOFF.md`](../operations/HANDOFF.md) → exact [`RUNBOOK.md`](../operations/RUNBOOK.md) command or [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) symptom | Commands stay in the runbook; current state and evidence stay in the handoff. |
 | Scientist or reviewer | Root evidence boundary → [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) → functional [`CONTRACT.md`](../../src/norad/) or [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) → scientific questions/evidence in [`QUESTIONS.md`](../design/QUESTIONS.md) and [`HANDOFF.md`](../operations/HANDOFF.md) | Mechanical orientation, computational evidence, scientific review, and biological interpretation remain distinct. |
 | Maintainer or agent | Root [`AGENTS.md`](../../AGENTS.md) → [`TASK_START.md`](../operations/TASK_START.md) → selected [task card](../tasks/README.md) → only its routed owners and local contracts | Automatically loaded rules stay concise; detailed repository policy and procedures live in their dedicated owners. |
+| Refactor reviewer | Current [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) and [`HANDOFF.md`](../operations/HANDOFF.md) → current [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) → exact architecture/contracts and dated evidence | Review current ownership, contract parity, recovery, and evidence boundaries without treating history as mutable status. |
+| Presenter | Verified material under [`docs/demo/`](../demo/) → current evidence and limitations in [`HANDOFF.md`](../operations/HANDOFF.md) | Only reviewed presenter/audience guides are current consumers; opaque or dormant preservation material is not silently activated. |
 | Auditor or historian | Completed [task cards](../tasks/COMPLETED/) plus the dated [`docs/history/`](../history/) index, with current recheck routes in [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) | Historical evidence is immutable and dated; it never becomes a second current-state owner. |
+
+A minimal current-state handoff records the snapshot identity, exactly one
+active package, any sensitive active lanes, the evidence delta, preservation
+or recovery notices, genuine blockers, and one exact resume point. Secondary
+task, status, or tranche views link to or derive from those owners rather than
+copying mutable facts.
 
 ## Canonical responsibility matrix
 
@@ -48,6 +56,7 @@ documentation gate remains responsible for exact link and anchor integrity.
 | Exact reversible migration procedure | [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) | Decisions retain rationale; no architecture document copies the procedure. |
 | Stage-, evidence-, or analysis-local interfaces and scientific limits | The applicable colocated [`CONTRACT.md`](../../src/norad/) | Runbook and architecture link to the functional owner. |
 | Task scope, dependency, deliverables, acceptance, lifecycle, and completion record | [`docs/tasks/README.md`](../tasks/README.md) plus one card | Status is the card directory; mutable state and roadmap remain elsewhere. |
+| Preserved nonselectable proposal intake | [`docs/tasks/README.md`](../tasks/README.md#lifecycle), local [`UNREFINED` rules](../tasks/UNREFINED/README.md), and one proposal file | File presence preserves rough rationale and questions only; no roadmap, priority, dependency, status, or implementation authority flows from it. Validator support remains with `TASK-LIFECYCLE-01`. |
 | Presentation walkthrough and discussion material | [`docs/demo/`](../demo/) | Keep action-point evidence cautions; move dated snapshots to history. |
 | Dated audit, testing, operational, or demo snapshots | Shallow [`docs/history/README.md`](../history/) with topic children | Current owners link to the dated record and retain only a current summary. |
 | Standalone diagrams | The applicable source under [`docs/architecture/diagrams/`](../architecture/diagrams/) | Narrative documents link to, but do not embed a second Mermaid source. |
@@ -74,6 +83,25 @@ documentation gate remains responsible for exact link and anchor integrity.
 8. A later consolidation card stops when two candidate owners disagree or a
    unique fact lacks a safe destination; it does not choose truth by
    convenience.
+9. Give every concept or section one reviewed disposition: keep canonical,
+   rehome, retain as a purposeful historical/refactor reference, mark as a
+   deletion candidate, or defer for human review. Unique meaning overrides
+   age, size, or apparent duplication.
+10. A purposeful reference names its audited revision, evidence boundary,
+    consumer, and review milestone. Continued retention may be the final
+    disposition; preservation does not imply promotion.
+11. Before any move, freeze the predecessor and record a source-to-destination
+    ledger with the unique content, internal and named external consumers,
+    reviewer resolution, and required proof. Then perform one bounded
+    relocation and link repair, compare semantics, validate, and retain a
+    workable rollback until acceptance.
+12. No-loss proof includes exact source, destination, old-path, key-phrase,
+    inbound-link, and external-consumer searches plus walkthroughs for each
+    affected audience. Destination presence, Git history, a shorter file, or a
+    passing structural gate is not sufficient by itself.
+13. A noncanonical compatibility stub is allowed only for an inspected
+    consumer, with one owner, a time-bounded removal condition, validation, and
+    rollback. It cannot become a permanent second source of truth.
 
 ## Corpus inventory and dispositions
 
@@ -132,13 +160,16 @@ decision owners. Repeated headings are the intentional registry schema.
 
 | Lifecycle | Exhaustive artifacts | Unique material and disposition |
 | --- | --- | --- |
-| Registry/context | [`docs/tasks/README.md`](../tasks/README.md); [`TODO/README.md`](../tasks/TODO/README.md); [`IN_PROGRESS/README.md`](../tasks/IN_PROGRESS/README.md); [`COMPLETED/README.md`](../tasks/COMPLETED/README.md) | The root registry owns lifecycle, dependency semantics, template, and card authority. Status READMEs are intentional six-line local context. Retain; future logical indexes belong to `TASK-EPIC-01`, not `TODO.md`. |
+| Registry/context | [`docs/tasks/README.md`](../tasks/README.md); [`TODO/README.md`](../tasks/TODO/README.md); [`IN_PROGRESS/README.md`](../tasks/IN_PROGRESS/README.md); [`COMPLETED/README.md`](../tasks/COMPLETED/README.md); [`UNREFINED/README.md`](../tasks/UNREFINED/README.md) | The root registry owns lifecycle, dependency semantics, template, and card authority. Status READMEs remain local context; the UNREFINED README supplies proposal-local prohibitions but no executable validation. Retain; validator support remains with `TASK-LIFECYCLE-01`, and future logical indexes belong to `TASK-EPIC-01`, not `TODO.md`. |
 | Completed architecture/context | [`ARCH-DOC-00`](../tasks/COMPLETED/ARCH-DOC-00-bootstrap-task-registry-and-capture-decisions.md); [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md); [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md); [`ARCH-02C`](../tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md); [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md); [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md); [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md) | Frozen scope, decisions, acceptance, and completion evidence remain historical. Out links route durable truth to architecture/contracts/task routers. Retain. |
 | Completed concurrency/logging | [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md); [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md); [`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md); [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | Frozen policy/evidence packages link to current concurrency and logging owners. Retain; do not treat card prose as current lane or output state. |
 | Completed test characterization | [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md); [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md); [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md); [`TEST-01F`](../tasks/COMPLETED/TEST-01F-create-independent-contract-goldens.md); [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) | Exact characterization decisions and acceptance evidence remain immutable. Out links route live baseline truth to `TEST_BASELINE.md` and fixtures. Retain. |
 | Selected/completed context | [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md); [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | DOC-IA is the completed ownership-design record; `PROGRAM-01` remains the active rolling-program owner and is not consolidated. |
 | Existing TODO documentation/context | [`CODEDOC-05`](../tasks/TODO/CODEDOC-05-inventory-code-documentation.md); [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md); [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md); [`DOC-PIPE-04`](../tasks/TODO/DOC-PIPE-04-create-user-pipeline-overview.md); [`DOC-README-03`](../tasks/TODO/DOC-README-03-establish-directory-readme-coverage.md); [`DOC-REF-02`](../tasks/TODO/DOC-REF-02-create-glossary.md); [`DOC-SITEMAP-01`](../tasks/TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md); [`DOC-SKILL-10`](../tasks/TODO/DOC-SKILL-10-build-documentation-health-skill.md); [`SKILL-11`](../tasks/TODO/SKILL-11-evaluate-repository-skill-opportunities.md) | Retain distinct scopes. Directory READMEs, temporary sitemap relocation, validator extraction, glossary, local context, and skill work are not duplicated by `DOC-CONS` cards. |
 | New consolidation cards | [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md); [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md); [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md); [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md); [`DOC-CONS-08E`](../tasks/TODO/DOC-CONS-08E-separate-live-state-from-history.md); [`DOC-CONS-08F`](../tasks/TODO/DOC-CONS-08F-compress-design-and-architecture-views.md); [`DOC-CONS-08G`](../tasks/TODO/DOC-CONS-08G-consolidate-demo-views.md); [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | `DOC-CONS-08A` through `DOC-CONS-08D` are complete; the remaining cards own separate move packages and remain retained until separately selected, planned, and approved. |
+| Recovered TODO workflow/documentation | [`DOC-TASK-SCAN-01`](../tasks/TODO/DOC-TASK-SCAN-01-scan-documentation-for-task-intake.md); [`GATE-REC-01`](../tasks/TODO/GATE-REC-01-define-machine-readable-gates-and-validation-receipts.md) | Recovered, already-classified cards remain unselected. The scan owns bounded intake discovery; the receipt card owns future machine-readable gate/receipt design. Neither changes current validator behavior or evidence. |
+| Recovered TODO local-pilot family | [`SETUP-03A`](../tasks/TODO/SETUP-03A-implement-local-pilot-dependency-profile-and-doctor.md); [`INTAKE-03A`](../tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md); [`PROFILE-03A`](../tasks/TODO/PROFILE-03A-materialize-local-pilot-workflow-profile.md); [`CLI-03A`](../tasks/TODO/CLI-03A-implement-local-pilot-control-plane.md); [`E2E-03A`](../tasks/TODO/E2E-03A-prove-fresh-clone-local-pilot.md); [`ONBOARD-03A`](../tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md) | Retain the six disjoint environment, intake, profile, CLI, clean-clone proof, and researcher-guidance owners. Their card-owned order and interfaces are proposal state, not selection, roadmap priority, implementation, or evidence. |
+| Recovered UNREFINED proposals | [`FUT-AGENT-01`](../tasks/UNREFINED/FUT-AGENT-01-evaluate-persistent-agent-state.md); [`FUT-AIDEV-01`](../tasks/UNREFINED/FUT-AIDEV-01-portable-ai-development-system.md); [`FUT-ANALYSIS-ECO-01`](../tasks/UNREFINED/FUT-ANALYSIS-ECO-01-evaluate-analysis-ecosystems.md); [`FUT-SITE-01`](../tasks/UNREFINED/FUT-SITE-01-csu-slurm-execution-profile.md); [`FUT-SITE-02`](../tasks/UNREFINED/FUT-SITE-02-portable-site-and-container-profiles.md); [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md); [`TASK-VIEW-01`](../tasks/UNREFINED/TASK-VIEW-01-generate-tranche-dashboard.md); [`TEST-E2E-01`](../tasks/UNREFINED/TEST-E2E-01-local-synthetic-steps-07-09.md) | Preserve rough rationale, questions, and promotion conditions only. These eight files are outside the committed roadmap and cannot be selected, prioritized, depended on, or treated as owners of implementation or evidence without explicit review, TODO conversion, and integration-owner promotion. |
 | TODO architecture/future design | [`FUT-ANALYSIS-01`](../tasks/TODO/FUT-ANALYSIS-01-preprocessing-profiles-and-analysis-modules.md); [`FUT-CLI-03`](../tasks/TODO/FUT-CLI-03-installable-norad-control-plane.md); [`FUT-DATA-02`](../tasks/TODO/FUT-DATA-02-public-reference-and-sra-acquisition.md); [`FUT-SUCCESS-04`](../tasks/TODO/FUT-SUCCESS-04-optional-analysis-and-archival-semantics.md); [`INTAKE-02E`](../tasks/TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md); [`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md); [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | Retain target-only scopes and explicit non-implementation boundaries. They link to future architecture and decisions rather than becoming current truth. |
 | TODO reporting/logging | [`LOG-03`](../tasks/TODO/LOG-03-build-two-sink-logging-foundation.md); [`LOG-05`](../tasks/TODO/LOG-05-activate-concise-default-logging.md); [`RPT-01`](../tasks/TODO/RPT-01-characterize-comprehensive-report.md); [`RPT-02`](../tasks/TODO/RPT-02-define-science-report-contract.md); [`RPT-03`](../tasks/TODO/RPT-03-build-format-neutral-report-projection.md); [`RPT-04`](../tasks/TODO/RPT-04-implement-science-report-usability.md); [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md); [`RPT-05B`](../tasks/TODO/RPT-05B-decompose-report-rendering-modules.md); [`RPT-06`](../tasks/TODO/RPT-06-make-science-report-the-default.md) | Retain separately bounded characterization, design, migration, activation, and default-change work. |
 | TODO reliability/coordination | [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md); [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md); [`REVIEW-ARCH-01`](../tasks/TODO/REVIEW-ARCH-01-review-architecture-plan.md); [`REVIEW-REL-02`](../tasks/TODO/REVIEW-REL-02-review-reliability-plan.md); [`REVIEW-UX-03`](../tasks/TODO/REVIEW-UX-03-review-usability-plan.md); [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md); [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md); [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md) | Retain distinct review, lifecycle, validation, and closure scopes. Consolidation must not pre-implement registry or sidecar lifecycle changes. |
@@ -205,6 +236,17 @@ explicit exhaustive artifact group.
 Line numbers describe the `DOC-IA-01` input and are review aids, not stable
 anchors. `DOC-CONS-08A` compared that live file rule by rule before moving any
 content; this table records the final no-loss disposition.
+
+Commit-bound recovery evidence
+`817406dd3561c9303dbeab80f3ab953bf7ab68a4:docs/operations/PROJECT_AGENT_GUIDE.md`
+is retained as nonauthoritative design input. Its useful contribution is a
+section-routing map from agent-rule groups to canonical owners, coupled routing
+and link repair, and independent omission review. Its proposed physical
+root/project split is stale and is not current architecture. Any later rule
+move must compare that exact design input, the then-current `AGENTS.md`, this
+live disposition table, and target owners; perform exact old/new phrase and
+link searches; and obtain independent no-loss review before removing source
+language.
 
 | Input lines | Rule group | Disposition |
 | --- | --- | --- |

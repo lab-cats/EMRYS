@@ -7,44 +7,84 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/doc-cons-08d-establish-dated-documentation-history`
+  `codex/reconciliation-consolidated-01-integration`
 - Package base:
-  `1e2d38c3f0daf10be3cee33c0f66337c353f1e17`
+  `0fd6348e6cfe54457fef5f65f3468bea106e61f9`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
   without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
   `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01`,
-  `DOC-CONS-08A` through `DOC-CONS-08D` are complete.
-- Current package: shallow dated audit/testing history with explicit immutable
-  provenance and concise current audit and test-baseline routes.
+  `DOC-CONS-08A` through `DOC-CONS-08D` are complete. The consolidated recovery
+  package below preserves reviewed future work without selecting or completing
+  any recovered card.
+- Current package: direct canonical semantic integration of the reviewed
+  reconciliation-recovery source against the exact current parent.
 - Package type: documentation-only; no executable, configuration, generation,
   schema, fixture, report-template, dependency, source-layout, public-interface,
   scientific-policy, or test-harness behavior changed.
-- Remote publication and upstream equality: intentionally not applicable. This
-  branch is local-only, has no configured upstream, and must not be pushed by
-  this package. Cluster work remains paused.
+- Remote publication and upstream equality: this branch is the authorized
+  publication target. Treat publication as established only by live Git; final
+  closure requires local `HEAD`, configured upstream, and the live remote ref
+  to be equal. Cluster work remains paused.
 
-This package descends from the completed local `DOC-CONS-08C` tip. It changes
-only Markdown documentation artifacts and adds no descriptor, schema, runtime,
-or report-template file; current executable paths remain under the flat layout
-until a separately planned physical migration.
+This package is a direct child of canonical parent
+`0fd6348e6cfe54457fef5f65f3468bea106e61f9`. It changes only Markdown
+documentation artifacts and adds no descriptor, schema, runtime, report
+template, or integration fragment; current executable paths remain under the
+flat layout until a separately planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical local DOC-CONS-08D documentation lane.
-No concurrent sidecar content was inspected, integrated, or used by its final
-ownership work. The completed
-CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
-candidate worktrees, paused concurrency attempts, and the researcher pilot
-remain preserved but frozen.
-The user explicitly authorized that pilot before the fragment checkpoint was
-defined; preserve that historical fact without claiming retroactive protocol
-compliance.
+No mutable concurrent lane shares this worktree or branch. The consolidated
+recovery sidecar is immutable source evidence; semantic integration occurs only
+in this canonical lane. The completed CONCURRENCY-02 synthetic exchange remains
+recorded below, and unrelated candidate worktrees remain preserved and frozen.
 
 | Lane ID | Role and owner | Worktree and branch/detached state | Base and target | Reservations and coupling | Validation or execution identity |
 | --- | --- | --- | --- | --- | --- |
-| `researcher-path-cards` | Frozen documentation/card sidecar; user-directed pre-checkpoint pilot | `/Users/elisteiger/dev/norad-worktrees/researcher-path-cards`; `codex/researcher-path-cards`; clean at inspection | Base `32ee4e8f2527bc0b34e69752ab96d69391e3e74c`; future integration target must be selected after protocol/infrastructure review | Exact paths listed below; substantive coupling intentionally unreviewed | Candidate `9f1dcf170549eb7960b8fa76b06040188ab0f8be`; no integration or acceptance validation |
+| `reconciliation-consolidated-01-sidecar` | Frozen, consumed documentation-recovery source | `/Users/elisteiger/dev/norad-worktrees/reconciliation-consolidated-01-sidecar`; `codex/reconciliation-consolidated-01-sidecar`; source must remain clean and unchanged | Base `44a27f033092cd42b79a9504b7fc292d3cc40f20`; canonical integration parent `0fd6348e6cfe54457fef5f65f3468bea106e61f9` | No remaining write reservation; accepted meaning is routed through the canonical owners and commit dispositions below | Source `5a35a057cd9ca259f83ee1dde3116fee63928d72`; no implementation, runtime, cluster, scientific-review, or biological evidence |
+
+## Reconciliation recovery integration
+
+Integration ID `RECONCILIATION-CONSOLIDATED-01` consumes immutable source
+`5a35a057cd9ca259f83ee1dde3116fee63928d72` under a user-authorized recovery
+exception. The 98-checkpoint source is not replayed, merged, rebased, or
+cherry-picked: one direct canonical documentation commit re-materializes its
+reviewed meaning against the exact current parent.
+
+The source ledger covers 11 immutable packets, 16 underlying proposal commits,
+132 per-commit changed-path rows, and 80 recovery requests. The terminal
+request dispositions are 51 `accept`, two `partial`, 24 `defer`, three `stale`,
+and zero `reject`; deliberate deferral is a completed reintegration decision,
+not a reintegration blocker. The commit trailers preserve every disposition,
+both accepted subsets, both residual dispositions, exact source provenance,
+and the protocol exception.
+
+The ledger excludes completed TEST work, corrected LOG reconciliation, final
+`CONCURRENCY-02`, original LOG candidates, obsolete `CONCURRENCY-02` protocol
+or synthetic candidates, `PROGRAM-01`/`ARCH-02A`/JIT work already in the
+authoritative lineage, and the detached demo-report worktree. Their bodies were
+not reopened for reintegration. One narrow historical HANDOFF excerpt was
+checked solely to verify the preserved local `renv` warning; no TEST
+implementation or excluded candidate was reintegrated.
+
+The final tree creates eight complete TODO cards, eight nonselectable UNREFINED
+proposal files, and the UNREFINED lifecycle README. The source classified a
+ninth UNREFINED proposal named `DOC-CONS-08D`; canonical history already owns
+that ID, so no duplicate is created and its unique dormant-demo rationale is
+routed to `DOC-CONS-08G`. The integration fragment is intentionally absent.
+File presence preserves an UNREFINED proposal but does not promote, select,
+prioritize, block, unblock, or authorize implementation.
+
+The current validator does not yet recognize the authorized UNREFINED
+location. Final candidate validation reported exactly nine
+`invalid card location` findings—the README and eight proposal files—and no
+other finding, so the documentation gate is expected-only nonpassing rather
+than passing. `TASK-LIFECYCLE-01` owns that future validator support; this
+package neither implements it nor waives any other structural finding.
+Computational, R, shell, report-runtime, and cluster suites are not applicable
+to this documentation-only integration.
 
 ## Completed CONCURRENCY-02 synthetic exchange
 
@@ -95,23 +135,12 @@ review evidence only. They were not merged, rebased, or replayed into this
 lineage; their obsolete current-state claims and incomplete durability or
 schema coverage are not canonical.
 
-The pilot reserves only these candidate paths:
-
-- `docs/CORE_DOC_CHANGES.md`;
-- `docs/tasks/TODO/CLI-03A-implement-local-pilot-control-plane.md`;
-- `docs/tasks/TODO/E2E-03A-prove-fresh-clone-local-pilot.md`;
-- `docs/tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md`;
-- `docs/tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md`;
-- `docs/tasks/TODO/PROFILE-03A-materialize-local-pilot-workflow-profile.md`;
-- `docs/tasks/TODO/SETUP-03A-implement-local-pilot-dependency-profile-and-doctor.md`;
-- `docs/tasks/UNREFINED/FUT-SITE-01-csu-slurm-execution-profile.md`;
-- `docs/tasks/UNREFINED/FUT-SITE-02-portable-site-and-container-profiles.md`;
-- `docs/tasks/UNREFINED/README.md`.
-
-These paths were inspected only as names. Do not inspect or integrate their
-content as part of this card-bootstrap package. A later integration package
-must reconcile the pilot against the then-current protocol, lifecycle,
-canonical owners, and combined validation requirements.
+The earlier researcher-path pilot is now accounted for through the immutable
+consolidated source and this recovery integration. Its useful card content was
+re-synthesized against current owners; `CORE_DOC_CHANGES.md`, transient source
+status, and incompatible or duplicate ownership were not replayed. The
+original pilot ref remains historical source evidence, not an active lane or
+independent integration authority.
 
 The detached worktree at `/Users/elisteiger/dev/norad-demo-report` on
 `f9aef17f4d6a2aa6e88feb41f85c1364af194889` predates this policy. It is
@@ -185,7 +214,8 @@ The local descendant sequence has implemented:
   all 13 step validators plus the distinct provenance, preflight, and storage
   transactions, with protected success/rollback behavior and current unsafe
   recovery states clearly distinguished in test names and comments.
-- a file-backed task registry with 55 cards in the current working tree,
+- a file-backed task registry with 73 actionable cards in the current working
+  tree plus eight nonselectable UNREFINED proposals,
   bounded acceptance evidence, and an explicit planning-before-implementation
   lifecycle; the legacy reciprocal dependency model remains unchanged pending
   the separately planned `TASK-REG-01` migration;
@@ -203,11 +233,12 @@ The local descendant sequence has implemented:
   or locked detached execution lane, durable lane packets, serialized frozen-
   proposal integration, combined validation, and recoverable preservation;
 - the completed manual integration-fragment protocol and synthetic exchange,
-  with the preserved pilot still substantively unreviewed and unintegrated;
+  followed by the separately authorized consolidated recovery of the reviewed
+  pilot proposals and related immutable source packets;
 - unselected follow-up cards for rolling-wave coordination, structural
-  fragment enforcement, nonselectable `UNREFINED`, frozen
-  `INTEGRATION_REVIEW`, and orthogonal logical epic indexes; none of those
-  future mechanisms is implemented by CONCURRENCY-02;
+  fragment enforcement, validator support for the authorized nonselectable
+  `UNREFINED` intake, frozen `INTEGRATION_REVIEW`, and orthogonal logical epic
+  indexes; none of those future mechanisms is implemented by CONCURRENCY-02;
 - explicit standalone documentation-package semantics: computational
   validation is not applicable when the complete diff has no executable or
   test-affecting consumer;
@@ -384,6 +415,15 @@ causal biological conclusion exists.
 `science_review_complete_exploratory` remains explicitly provisional.
 `biological_interpretation_ready` is reserved and rejected until a separately
 approved policy defines and unlocks stricter exit criteria.
+
+## Preserved local recovery constraint
+
+An earlier sibling-worktree `renv` activation attempted automatic bootstrap
+before failing on missing packages and may have left ignored local cache
+material. Do not delete, repair, normalize, or reuse that cache without
+operator review. The later successful gate referenced the already-restored
+primary project library through `RENV_PATHS_LIBRARY`; it did not restore or
+update packages, and its temporary Python-environment symlink was removed.
 
 ## Current blockers
 

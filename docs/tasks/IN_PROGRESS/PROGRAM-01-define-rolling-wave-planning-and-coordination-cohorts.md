@@ -84,25 +84,38 @@ and unnecessary context for bounded work.
   gate or receiving speculative detailed plans.
 - Use minimal coordination metadata rather than recreating an external project
   tracker. `Blocked by` remains reserved for genuine technological blockers.
-- `docs/operations/TRANCHE.md` will own only the concise current-tranche
-  selection, coordination boundary, reconciliation basis, integration/exit
-  evidence requirements, links to live evidence, and next reconciliation
-  trigger. `PIPELINE_PLAN.md` retains the durable roadmap, task directories
-  retain lifecycle status, and `HANDOFF.md` retains live checkout, results,
-  and evidence state. `TRANCHE.md` never copies those live facts.
+- When this frozen remainder is explicitly reactivated, tranche contracts must
+  carry or link the approved objective and included cards; semantic planning
+  category and validation impact as two independent fields; exact base and
+  lane identities; write sets; allowed mutations and commits; external-
+  authority boundary; exclusions; unresolved choices; stop conditions; and
+  final evidence boundary. Routine in-envelope transitions need no renewed
+  approval, while scope or authority expansion requires deferral or revised
+  approval. Preferred order remains distinct from technological blockers.
+- The selected target uses durable
+  `docs/operations/tranches/<TRANCHE-ID>.md` artifacts plus one recoverable
+  current pointer, with committed, deterministic, byte-for-byte check-
+  regenerated projections. `PIPELINE_PLAN.md` retains the durable roadmap,
+  task metadata retains lifecycle status, and `HANDOFF.md` retains live
+  checkout, results, and evidence state. No tranche view copies those facts.
+  The current single-file `TRANCHE.md` concept remains only pre-implementation
+  design context until a separately approved migration defines and validates
+  the artifact and pointer contracts.
 - A tranche is coordination documentation, not a task card or authorization.
   Integration, combined validation, publication, and upstream equality are
   part of tranche completion; the next tranche is selected only after that
   closeout and its feedback review.
-- `UNREFINED` and `INTEGRATION_REVIEW` are lifecycle concepts whose transition,
-  authority, and exit semantics must be settled here before later
-  implementation. Logical epics are orthogonal navigation groups, not
+- `UNREFINED` is an authorized proposal-intake classification outside
+  actionable task status, with fixed nonselectability and integration-owner
+  promotion authority. `TASK-LIFECYCLE-01` owns its remaining validator and
+  transition support. This program owns only tranche/handoff interaction with
+  the future `INTEGRATION_REVIEW` concept. The intake location does not
+  reactivate this card. Logical epics are orthogonal navigation groups, not
   lifecycle states, blocker substitutes, or physical status categories.
-- The preserved researcher-path sidecar is the intended first substantive
-  fragment-integration candidate, but it is not the synthetic exchange used to
-  stabilize `CONCURRENCY-02` and is not reviewed or integrated by this card.
-  This card creates only its bounded future integration card from recorded
-  lane metadata and infrastructure prerequisites.
+- The separately authorized consolidated recovery integration supersedes the
+  earlier plan to create a future researcher-path integration card. It reviews
+  and routes the frozen source without making this program card the owner of
+  any recovered proposal or selecting its implementation.
 - Do not select this card before the `CONCURRENCY-01` package is complete,
   clean, pushed, and upstream-equal and `HANDOFF.md` records the user strategy
   discussion about how to leverage the new workflow as complete. This is
@@ -158,30 +171,39 @@ and unnecessary context for bounded work.
   implementation families without executing them.
 - Define the feedback questions that update only unstarted work after every
   integrated pilot or tranche.
-- Define the bounded contract for `docs/operations/TRANCHE.md`, including its
-  ownership boundary, required fields, initialization, integration and exit
-  criteria, reconciliation triggers, and closure/replacement behavior.
-- Define implementation-ready semantics for `UNREFINED`,
-  `INTEGRATION_REVIEW`, and logical epics without creating directories, moving
-  cards, or changing validator behavior.
+- Define the bounded contract for durable per-tranche files plus one
+  recoverable current pointer, including ownership, required fields,
+  deterministic committed-view checking, initialization, integration and exit
+  criteria, reconciliation triggers, and closure behavior. The superseded
+  single-file `TRANCHE.md` concept is not an implementation target.
+- Reconcile the selected future registry target: permanent ID-only canonical
+  card paths with structured lifecycle metadata; one authored technological-
+  dependency direction; and committed, byte-for-byte check-regenerated
+  lifecycle, dependency, epic, and tranche views. Preserve the current path
+  and registry authority until an atomic migration passes parity and final
+  validation; decide lifecycle/dependency/minimum-epic cutover order, epic
+  cardinality and taxonomy, and the single owner of tranche membership/order.
+- Preserve the fixed UNREFINED prohibitions/promotion boundary while defining
+  program-specific handoff semantics for `INTEGRATION_REVIEW` and logical epics
+  without moving actionable cards or changing validator behavior.
 - Reconcile the current refactor plan and active card registry under the
   rolling-wave model by classifying each still-live item as retained, split,
   deferred, superseded, current-tranche, or future-tranche work without
   rewriting completed history.
-- Define the exact infrastructure-ready boundary for the preserved pilot and
-  create one separately selectable integration card using only its recorded
-  branch, base, commit, and reserved paths; leave substantive inspection to
-  that future card's own planning stage.
+- Record that the separately authorized consolidated recovery superseded the
+  planned pilot-integration card, and route each recovered TODO or UNREFINED
+  proposal to its own current owner without duplicating integration work here.
 
 ## Out of scope
 
 - Implementing any migration, report, logging, intake, source-layout, or
   scientific behavior; migrating the complete dependency graph; completing
   future-only cards; or generating detailed plans for the full program.
-- Implementing lifecycle directories or transitions, integration-fragment
-  enforcement, validator changes, logical epic indexes, or pilot-candidate
-  integration; those remain with `TASK-LIFECYCLE-01`, `CONCURRENCY-03`,
-  `DOC-GATE-01`, `TASK-EPIC-01`, and the separately reviewed integration lane.
+- Implementing lifecycle transitions or registry migration, integration-
+  fragment enforcement, validator changes, generated views, logical epic
+  indexes, or recovered pilot cards; those remain with `TASK-LIFECYCLE-01`,
+  `TASK-REG-01`, `CONCURRENCY-03`, `DOC-GATE-01`, `TASK-EPIC-01`, and the
+  separately selected card owners.
 
 ## Deliverables
 
@@ -190,17 +212,17 @@ and unnecessary context for bounded work.
 - An evidence-backed current-card classification and cohort map.
 - Revised roadmap, `PLAN-02Z`, review boundaries, and first-tranche selection
   rule.
-- A documented `docs/operations/TRANCHE.md` contract and initialized first
-  current-tranche view that links exact existing cards without duplicating
-  their status.
-- Implementation-ready lifecycle and authority semantics for `UNREFINED` and
+- A documented durable per-tranche artifact and recoverable-current-pointer
+  contract, plus an initialized first current-tranche projection that links
+  exact existing cards without duplicating their status.
+- Program-ready interaction with the fixed UNREFINED boundary and future
   `INTEGRATION_REVIEW`, plus logical epic identity, membership, reference, and
   index semantics.
 - A reconciled `PIPELINE_PLAN.md`, priority view, and active-card map in which
   every still-live refactor item has one explicit disposition and owner.
-- One unselected pilot-integration card with explicit infrastructure
-  prerequisites and a read-only first planning stage; it must not incorporate
-  or summarize candidate substance during this package.
+- One durable route to the completed recovery record and the unselected
+  recovered owners, with no duplicate pilot-integration card or transfer of
+  their scope into this program.
 - Bounded correction cards for any mixed task that must be split; completed
   cards remain unchanged.
 
@@ -214,32 +236,33 @@ and unnecessary context for bounded work.
   delays independent read-only evidence work without technical cause.
 - `PLAN-02Z` can select one small delivery tranche, incorporate its feedback,
   and repeat without rewriting completed history.
-- `docs/operations/TRANCHE.md` identifies exactly one current tranche, its
+- The recoverable current pointer identifies exactly one durable tranche, its
   objective, included cards or epics, coordination boundary, entry/exit
   evidence requirements and links to `HANDOFF.md`, integration sequence,
   reconciliation basis, and next trigger without duplicating roadmap, card-
   status, Git, results, or evidence ownership.
-- Lifecycle semantics define allowed transitions, authority, entry and exit
-  criteria, and prohibited uses for `UNREFINED` and `INTEGRATION_REVIEW`;
-  epic semantics define stable IDs, membership, references, and index
-  integrity while remaining orthogonal to lifecycle and blockers.
+- Program handoff semantics preserve UNREFINED's fixed nonselectability and
+  promotion authority while defining entry and exit criteria for future
+  `INTEGRATION_REVIEW`; epic semantics define stable IDs, membership,
+  references, and index integrity while remaining orthogonal to lifecycle and
+  blockers.
 - Every active refactor-plan row and mutable card is reconciled as retained,
   split, deferred, superseded, current-tranche, or future-tranche work; no
   completed history is rewritten and no preferred sequence becomes a blocker.
-- The preserved pilot has one unselected future integration card and remains
-  substantively unreviewed; the card cannot be selected until the protocol,
-  lifecycle, validator, and enforcement prerequisites recorded by this program
-  are complete.
+- The separately authorized recovery integration reviews and routes the pilot
+  proposals without selecting or implementing them. Any materialized TODO card
+  still requires its own task-specific planning and applicable then-current
+  prerequisites; UNREFINED files remain nonselectable and nonblocking.
 - The documentation gate and an independent architecture/reliability/usability
   consistency review pass; no executable behavior changes.
 
 ## Canonical documentation updates
 
 - `TODO.md`, `PIPELINE_PLAN.md`, `DECISIONS.md`, `QUESTIONS.md`,
-  `docs/operations/TRANCHE.md`, applicable review and planning cards,
-  one concise future-direction link in task-registry guidance, `HANDOFF.md`,
-  and this card. Active lifecycle rules remain unchanged until
-  `TASK-LIFECYCLE-01` implements them.
+  future durable per-tranche artifacts/current pointer, applicable review and
+  planning cards, one concise future-direction link in task-registry guidance,
+  `HANDOFF.md`, and this card. Existing UNREFINED rules remain authoritative;
+  other lifecycle mechanics wait for `TASK-LIFECYCLE-01`.
 
 ## Escalation conditions
 

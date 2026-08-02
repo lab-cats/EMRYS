@@ -31,6 +31,17 @@ progress without another task's output.
   the validator must distinguish active edges from historical records.
 - Every existing active edge requires evidence-based classification. Do not
   mechanically preserve or delete the current graph.
+- Keep preferred order, scope expansion, authority expansion, and blockers
+  distinct. An operational blocker in a plan or handoff may be a missing
+  input, decision, capability, or evidence, but a card's `Blocked by` field is
+  limited to an unavailable technological output that prevents meaningful
+  progress.
+- The selected target uses stable card IDs and one authored forward
+  technological-dependency direction with mechanically derived reverse views.
+  Current reciprocal card fields remain canonical until a separately approved
+  atomic migration passes parity and final validation.
+- Blocker meaning remains independent of whether current lifecycle directories
+  or the selected permanent-path model stores the authored edge.
 
 ## Blocked by
 
@@ -81,6 +92,14 @@ progress without another task's output.
 
 - A documented blocker definition and field-placement guide.
 - An evidence-backed before/after edge inventory and migrated active registry.
+- One stable-ID-keyed authored dependency direction plus deterministic full or
+  partial reverse views. Reject unknown IDs, self-dependencies, genuine
+  cycles, and active references that merely restate completed history.
+- Include the historical `DOC-REF-02` and `DOC-PIPE-04` edges to completed
+  `DOC-IA-01` and `ARCH-02B` in the migration inventory. Classify only
+  still-pending edges as preserve, remove-with-reason, or sequence-only
+  relocation; do not rewrite completed records or turn the corrected
+  DOC-REF-before-DOC-PIPE integration lineage into a blocker.
 - Tested documentation-validator rules that do not require completed-card
   mutation to maintain live consistency.
 - Roadmap or TODO ordering for every removed sequence-only edge that still

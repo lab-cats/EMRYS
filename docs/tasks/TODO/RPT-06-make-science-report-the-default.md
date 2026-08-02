@@ -64,8 +64,10 @@ happen only after content, UX, relocation, and decomposition are stable.
 ## Canonical documentation updates
 
 - `README.md`, `ARCHITECTURE.md`, `RUNBOOK.md`, `TROUBLESHOOTING.md`, schemas or
-  configs if approved, diagrams, demos, `PIPELINE_PLAN.md`, `HANDOFF.md`, and
-  this card.
+  configs if approved, diagrams, `PIPELINE_PLAN.md`, `HANDOFF.md`, this card,
+  and only verified presenter or audience guides whose reviewed user journey
+  changes. Do not silently edit opaque or dormant preservation bodies or treat
+  them as current consumers.
 
 ## Escalation conditions
 

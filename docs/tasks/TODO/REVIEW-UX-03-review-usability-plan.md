@@ -38,6 +38,11 @@ instructions, or local context that omits critical caveats.
 
 - Use representative scientist, operator, maintainer, and machine journeys,
   including malformed input, failed run, resume, and incomplete evidence.
+- After corrected `DOC-REF-02` completes canonically, relink its terminology
+  input to the accepted lifecycle location and retain `REVIEW-REL-02` plus all
+  independent usability requirements. Treat the corrected glossary and the
+  independently reviewed pipeline overview as distinct inputs; neither alone
+  establishes usability readiness.
 
 ## Required context
 

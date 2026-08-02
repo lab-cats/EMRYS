@@ -49,6 +49,15 @@ An implementation lane may draft its directly required documentation when
 that write set is reserved to it. Source-code comments are source changes, not
 documentation-sidecar work, even when they do not alter runtime behavior.
 
+No persistent-intake lane role is currently authorized. The preserved
+[`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md)
+proposal cannot create one. If that proposal is explicitly reviewed and
+promoted later, its owning package must amend this policy with privacy,
+retention, backup, timestamp/authorship, review cadence, scheduling, expiry or
+reset, and fail-closed boundaries. Such a lane could prepare append-only notes
+and reviewed dispositions but could not own live state, promotion, integration,
+publication, or wholesale merge.
+
 ## Required lane packet
 
 Before any concurrent mutation, the integration owner records each lane under
@@ -63,10 +72,17 @@ Before any concurrent mutation, the integration owner records each lane under
 | Base | Exact canonical commit from which the lane starts |
 | Integration target | Canonical branch and intended landing boundary |
 | Task/card | Selected task, or bounded objective if no card exists |
+| Approval envelope | Exact approved plan or durable reference from which this packet is projected |
+| Planning category | Plain-language semantic category and the safeguards it triggers; record separately from validation impact |
 | Candidate write reservations | Exact new card IDs and paths the candidate may edit, including exact deliverables plus zero or one fragment path |
 | Declared canonical targets | For a fragment, each target owner, heading or anchor, mode, and authorization the integration owner must recheck |
 | Prohibited overlap | Active cards, paths, contracts, and owners the lane must not change |
 | Coupling | Independent, coupled draft, implementation candidate, or immutable execution |
+| Allowed actions and local commits | Mutations and commit shape expressly allowed inside the envelope |
+| External-authority boundary | Push, network, production, cluster, install, destructive, or other high-impact actions expressly allowed; everything else remains prohibited |
+| Exclusions and unresolved choices | Work and decisions preserved outside the packet |
+| Stop conditions | Exact boundaries at which the lane hands off or returns to planning |
+| Validation impact | `no mutation`, `documentation-only/non-consuming`, or `executable/test-affecting`, distinct from candidate checks and the final combined gate |
 | Validation | Candidate checks and final combined gate required |
 | Execution identity | For execution only: commit, command/job identity, inputs, configuration, and output/log locations |
 
@@ -78,6 +94,12 @@ not reservations or delegated authority. Several lanes may name one canonical
 target; the integration owner serializes them and rechecks the target after
 every landing. A target declaration that overlaps another lane's write
 reservation creates coupling and integration order, not shared write access.
+
+One approved envelope may project into several disjoint packets, but no packet
+may expand its scope or authority. The packet coordinates in-envelope work; it
+does not create approval. Routine packet work may proceed without renewed
+approval only while every envelope boundary remains true. Preferred order and
+pending integration are sequence state, not technological blockers.
 
 When another authoring or execution lane will rely on the packet, publish it as
 a canonical coordination checkpoint before that lane starts. This is a narrow exception to

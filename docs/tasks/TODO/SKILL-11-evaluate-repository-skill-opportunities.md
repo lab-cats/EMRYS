@@ -17,6 +17,14 @@ premature skill creation would divert attention and freeze unstable workflows.
   boundaries.
 - Prefer repository docs/scripts when a workflow is not reusable enough to
   justify a skill.
+- Treat generic documentation or code review, scaffolding, and bounded
+  reviewer/persona ideas as hypotheses to test against repeated measurable
+  gaps and stable safety boundaries.
+- Persistent agent identity, context, or state is the distinct nonselectable
+  [`FUT-AGENT-01`](../UNREFINED/FUT-AGENT-01-evaluate-persistent-agent-state.md)
+  proposal, not an ordinary skill feature or prerequisite for independent
+  reviewers. This context link grants no persistent state, standing authority,
+  implementation, experiment, selection, or promotion.
 
 ## Blocked by
 

@@ -1,14 +1,18 @@
 # NORAD task registry
 
 This directory is the bounded planning registry for future repository work.
-One Markdown file represents one task card. The directory containing the card
-on the canonical integration branch is its only authoritative status signal:
+One Markdown file represents one actionable task card. For actionable cards,
+the directory on the canonical integration branch is the only authoritative
+status signal:
 
 - [`TODO/`](TODO/) — available or blocked work that has not entered planning;
 - [`IN_PROGRESS/`](IN_PROGRESS/) — a task selected for task-specific,
   read-only planning or approved execution;
 - [`COMPLETED/`](COMPLETED/) — historical records whose acceptance evidence
   has been inspected.
+
+[`UNREFINED/`](UNREFINED/) is a separate nonselectable proposal-intake
+location outside both actionable card status and the committed roadmap.
 
 Cards preserve decisions already made, define scope and dependencies, and
 state what evidence would close the task. They are not implementation plans
@@ -62,6 +66,24 @@ Do not put live branch names, commit IDs, test totals, or mutable status in a
 TODO card. A completion record links to the canonical evidence owner instead
 of copying mutable snapshots.
 
+The current authored card paths and reciprocal dependency fields remain
+canonical until a separately approved atomic registry migration passes parity
+and final validation. The selected future target uses permanent ID-only card
+paths with reviewed structured lifecycle metadata and one authored
+technological-dependency direction. Lifecycle, reverse-dependency, epic, and
+durable per-tranche Markdown projections plus their current pointer are then
+committed and byte-for-byte check-regenerated. That target is not implemented
+by this documentation package.
+
+Every future generated projection must name its generator, relevant canonical
+input digest, exact refresh/check behavior, temporary-space regeneration, and
+deterministic recovery; carry a generated-file banner; and fail closed when
+tracked bytes are stale. Generated views never infer status, dependencies,
+branch identity, or evidence from prose. They may display evidence only from
+an exact matching conforming receipt; while receipt design is deferred, that
+field remains explicitly unavailable. No generated view becomes a second
+authority for its inputs.
+
 ## Lifecycle
 
 1. Create a stable card ID and filename directly in `TODO` unless the card
@@ -77,6 +99,21 @@ of copying mutable snapshots.
    link in the same commit.
 5. Completed cards are immutable historical records apart from link repair or
    factual correction. New work gets a new follow-up card.
+
+`UNREFINED` is a preservation classification, not actionable task status. Its
+files cannot be selected, started, prioritized, placed in dependency
+relationships, block or unblock work, claim implementation authority, or
+satisfy a TODO card's canonical inbound-reference requirement. Rough questions
+and unresolved design choices may remain there. Promotion requires explicit
+review, conversion to the complete TODO-card schema, and an integration-owner
+decision. File presence preserves a proposal; it does not approve or schedule
+implementation.
+
+The current documentation validator does not yet recognize this authorized
+lifecycle location. [`TASK-LIFECYCLE-01`](TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+owns validator implementation and independent fixtures; neither this registry
+text nor the local [`UNREFINED` README](UNREFINED/README.md) is an executable
+owner or a passing-gate claim.
 
 Multiple cards may be `IN_PROGRESS` only when
 [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) records isolated,

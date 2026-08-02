@@ -213,6 +213,39 @@ preserves the correctness boundary without paying that cost repeatedly. An
 unversioned summary or another agent's statement remains orientation rather
 than live proof.
 
+### Use proportional planning categories and bounded approval envelopes
+
+Decision: semantic planning category and validation impact are independent.
+The future machine-readable target uses two fields: one distinguishes read-only
+review, bounded documentation or low-risk maintenance, and behavior or
+architecture planning; the other distinguishes no mutation, documentation-
+only/non-consuming change, and executable/test-affecting change. Tests are
+selected evidence based on affected contracts, risk, and acceptance—not a
+ritual implied by the topic label.
+
+One explicit bounded approval envelope may authorize routine in-scope work. It
+preserves its objective, included cards, both classifications, exact Git and
+lane identities, write sets, allowed mutations and commits, validation and
+evidence boundary, expressly authorized external or high-impact actions,
+exclusions, unresolved choices, and stop conditions. Scope expansion or
+authority expansion requires revised approval. A lane packet projects an
+approved envelope and never creates authority. Preferred sequence remains
+distinct from an execution blocker and from the task registry's narrower
+genuine technological blocker.
+
+Rationale: semantic review can be broad while executable impact is absent, and
+a small consumed file can demand tests without broad architecture planning.
+The rejected alternatives are one formal planning field with validation impact
+left only in prose; a one-dimensional lettered risk/gate class; uniform maximum
+ceremony; computational testing triggered solely by an architectural topic;
+repeated approval for already-authorized routine work; packet-as-authorization;
+and preferred sequence encoded as a blocker.
+
+Consequences: operational classification and envelope fields belong in
+[`TASK_START.md`](../operations/TASK_START.md); projected lane fields belong in
+[`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md). The decision creates
+no metadata schema, gate, receipt, task authority, or current evidence.
+
 ### Make documentation consistency impact-directed
 
 Decision: use the final package diff, canonical ownership, inbound references,
@@ -596,6 +629,13 @@ Reason: mutable facts otherwise drift across independently maintained copies.
 Documents link to canonical owners instead of repeating branch names, commit
 IDs, test totals, commands, live status, or diagrams.
 
+Unique information is relocated and proven discoverable before its old copy is
+removed. Uncertainty remains an explicit pending human-review point instead of
+being normalized into an invented owner or answer. A purposeful historical or
+refactor reference may remain permanently when a named consumer and evidence
+boundary justify it; preservation is not promotion. Intentional safety
+repetition remains at action points.
+
 ## Approved architecture direction (2026-07-31)
 
 The decisions below were approved by the repository owner on 2026-07-31. They
@@ -663,17 +703,28 @@ live graph. The existing registry and validator still implement the original
 broader model until the separately planned `TASK-REG-01` evidence-based
 migration; this decision does not authorize a mechanical edge rewrite.
 
-Confirmed future lifecycle additions are `UNREFINED`, a nonselectable intake
-for lightweight rough proposals, and `INTEGRATION_REVIEW`, a frozen candidate
-state awaiting canonical integration. Logical epics are orthogonal planning
-groups and indexes, not lifecycle states, blocker substitutes, or nested card
-locations. The current three-state `TODO`/`IN_PROGRESS`/`COMPLETED` lifecycle
-remains authoritative until `PROGRAM-01` settles implementation-ready
-transition and authority semantics, `DOC-GATE-01` extracts the validator, and
-the separately approved `TASK-LIFECYCLE-01` package implements the result.
-Cards remain physically flat under lifecycle roots after that change;
-`TASK-EPIC-01` later adds orthogonal navigation indexes without changing
-lifecycle authority or moving cards.
+Current-to-target boundary approved on 2026-08-02: lifecycle-directory paths
+and reciprocal card fields remain canonical until one separately approved
+atomic migration passes parity and final validation. The selected target then
+uses permanent ID-only canonical card paths with reviewed structured lifecycle
+authority, one authored technological-dependency direction, and committed,
+byte-for-byte check-regenerated lifecycle, reverse-dependency, epic, and
+tranche Markdown views. Durable per-tranche artifacts retain history and one
+recoverable pointer identifies the current tranche. Stable IDs, separate
+planning approval, immutable completed history, explicit promotion authority,
+no mixed canonical roots, and no status or evidence inference from prose remain
+mandatory throughout cutover.
+
+`UNREFINED` is now an authorized nonselectable intake for lightweight rough
+proposals outside the roadmap; file presence preserves an idea but grants no
+status, selection, dependency, or implementation authority. Its validator and
+transition support remains with `TASK-LIFECYCLE-01`. `INTEGRATION_REVIEW`
+remains a future frozen-candidate state awaiting implementation. Logical epics
+are orthogonal planning groups and indexes, not lifecycle states or blocker
+substitutes. `TODO`/`IN_PROGRESS`/`COMPLETED` directories remain the current
+actionable-card status authority until the atomic target migration above.
+`TASK-EPIC-01` later adds orthogonal navigation without changing lifecycle
+authority.
 
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative
@@ -685,6 +736,14 @@ commit. The lifecycle and template are canonical in
 [`docs/tasks/README.md`](../tasks/README.md). The approved semantic migration is
 owned by
 [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
+The rejected permanent target is directory-owned identity/status because moves
+destabilize paths and mix identity with lifecycle. On-demand-only generated
+views were rejected because they weaken browseability, reviewability, stale-
+output detection, and deterministic recovery; a single replaceable tranche
+dashboard was rejected because it loses durable history and stable links.
+Committed projections accept bounded repository churn in exchange for exact
+check-regeneration and fail-closed drift detection. No target view or path is
+implemented by this decision.
 
 ### Use an architecture runway with rolling vertical delivery
 
@@ -708,15 +767,18 @@ but attach to the risk boundaries they govern rather than one monolithic plan.
 Future-only cards preserve constraints without joining the current release
 gate or receiving speculative detailed plans.
 
-Future `docs/operations/TRANCHE.md` will be a concise coordination view,
-not a task card, lifecycle state, substitute roadmap, or authorization. It will
-identify the current tranche, its included existing cards or epics, entry and
-exit evidence requirements, links to live evidence in `HANDOFF.md`,
-reconciliation basis, and next trigger. It never copies live results. A tranche
-is not complete until its frozen candidates are canonically integrated,
-combined validation passes, publication succeeds, and upstream equality is
-verified; individual cards remain the separately planned and approved
-execution units.
+The selected target uses durable
+`docs/operations/tranches/<TRANCHE-ID>.md` coordination artifacts plus one
+recoverable current pointer, not one replaceable dashboard. The committed views
+are byte-for-byte check-regenerated from their canonical inputs. Each tranche
+records or links its approved envelope, included existing cards or epics, entry
+and exit evidence requirements, reconciliation basis, and next trigger without
+becoming a task card, lifecycle state, substitute roadmap, or authorization.
+It never copies live results. A tranche is not complete until its frozen
+candidates are canonically integrated, combined validation passes, publication
+succeeds, and upstream equality is verified; individual cards remain the
+separately planned and approved execution units. This target does not create
+the directory, files, pointer, or generator.
 
 Rationale: high-fan-out topology, contract, state, recovery, and evidence
 decisions are cheaper and safer to reconcile before files move. Local
@@ -724,16 +786,16 @@ implementation choices are more accurate after feedback from a completed
 slice. The hybrid keeps necessary architecture without front-loading the whole
 refactor.
 
-Consequences: after the required post-concurrency strategy discussion,
+Consequences: the first
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-will classify active cards, define cohorts, revise `PLAN-02Z` and review
-boundaries, reconcile the existing refactor plan, define and initialize the
-`TRANCHE.md` contract, and select the first tranche. It will not execute
-implementation, implement lifecycle directories or epic indexes, integrate the
-pilot candidate, or migrate the legacy blocker graph. It will define the
-infrastructure boundary for that preserved pilot and create one bounded future
-integration card using recorded lane metadata only; substantive pilot review
-belongs to that later separately planned package.
+slice classified active cards and defined the rolling-wave boundary; its frozen
+remainder may later revise `PLAN-02Z`, review boundaries, cohorts, and the
+durable tranche-file/current-pointer contract before selecting a first tranche.
+It does not execute implementation, implement lifecycle or epic mechanisms, or
+migrate the legacy blocker graph. The separately authorized consolidated
+recovery integration superseded the earlier proposal to create a future pilot-
+integration card; recovered cards and proposals remain owned, unselected, and
+separately planned at their materialized destinations.
 
 ### Target a vertical package with direct contract-preserving migrations
 
@@ -1059,9 +1121,14 @@ does not lose critical protections.
 
 Operational documentation owns supported invocations and behavior summaries,
 not substantial embedded implementations. The current documentation validator
-must be behavior-locked, extracted, and tested before its dependency semantics
-change; `RUNBOOK.md` will retain only the supported invocation and concise
-operator-facing explanation.
+is already extracted under `scripts/git_orchestration/` but must gain an
+independent behavior lock before its dependency semantics change; `RUNBOOK.md`
+retains only the current supported invocation and concise operator-facing
+explanation. The user-selected command target is a stable, logic-free Make
+wrapper over the same explicit-root engine. `DOC-GATE-01` must prove wrapper/
+engine equivalence before the wrapper is described as implemented; task-
+dependency semantics remain owned by `TASK-REG-01`, not validator
+characterization.
 
 Rationale: conventional local documentation makes the repository inspectable
 without creating more canonical owners. A blind cleanup or blanket commenting
@@ -1121,7 +1188,7 @@ Consequences: see
 | Behavior coverage before mutation and independent goldens | Protect behavior before architectural mutation | `TEST-01C`–`TEST-01Z` |
 | Card lifecycle, true technological blockers, separate approvals, future proposal/review states, and logical epic indexes | File-backed task registry | `ARCH-DOC-00`, `TASK-REG-01`, `TASK-LIFECYCLE-01`, `TASK-EPIC-01`, and `docs/tasks/README.md` |
 | Multiple isolated documentation/card sidecars, one canonical integrator, and transient integration fragments | Concurrent authoring with serialized integration | `CONCURRENCY-01`, `CONCURRENCY-02`, and `CONCURRENCY-03` |
-| Architecture runway, planning cohorts, rolling tranches, tranche coordination, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, `TRANCHE.md`, and `REVIEW-*` |
+| Architecture runway, planning cohorts, durable per-tranche artifacts/current pointer, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, future `docs/operations/tranches/`, and `REVIEW-*` |
 | Vertical `src/norad`, black-box stages, mirrored tests, direct migration | Vertical package | `ARCH-02A`–`ARCH-02D` |
 | Semantic names, historical numbers, DAG, user overview | Semantic stages and DAG | `ARCH-02B`, `DOC-PIPE-04` |
 | Local/shared abstraction threshold and ownership | Shared-library promotion | `LIB-02F` |
@@ -1133,6 +1200,7 @@ Consequences: see
 | Science default, comprehensive profile, projection, no nested scroll | Future reporting | `RPT-01`–`RPT-06` |
 | Quiet default, verbose/debug, durable logs, stdout/stderr | Two-sink logging | `LOG-01`–`LOG-05` plus generated `LOG-04-*` |
 | Exact-revision context reuse, selective phase boundaries, impact-directed review | Task-start routing | `CONTEXT-00` |
+| Independent planning category and validation impact plus bounded approval envelopes | Proportional planning and approval envelopes | `TASK_START.md`, `PROGRAM-01`, and concurrent lane packets |
 | Glossary, READMEs, adjacent fixture docs, comments, concise root agent router, validator extraction, consolidation, context | Documentation as architecture | `DOC-GATE-01`, `DOC-IA-01`–`CONTEXT-09` plus generated cleanup/comment cards |
 | Documentation-health skill and later skill review | Deferred skills | `DOC-SKILL-10`, `SKILL-11` |
 | Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |

@@ -22,6 +22,14 @@ universal would be a category error.
   modules, with explicit provenance and evidence limits.
 - Do not build a generic loader, registry, or universal schema before concrete
   modules justify it.
+- The extension contract is language-neutral. It owns module inputs, outputs,
+  provenance, dependencies, isolation, failure, evidence, and reporting
+  semantics without assuming ecosystem parity or transpilation.
+- The nonselectable
+  [`FUT-ANALYSIS-ECO-01`](../UNREFINED/FUT-ANALYSIS-ECO-01-evaluate-analysis-ecosystems.md)
+  proposal preserves comparison of R, Python, maintained command-line tools,
+  or a bounded hybrid for one named analysis. This context link does not
+  promote, prioritize, select, or approve that proposal.
 
 ## Blocked by
 

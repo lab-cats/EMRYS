@@ -29,6 +29,17 @@ provided it links to canonical cross-cutting truth rather than copying it.
   direct upstream/downstream interfaces, relevant tests, and canonical links.
 - Local context never duplicates mutable branch, evidence, command, or roadmap
   state.
+- A bundle identifies its work class explicitly: read-only review, bounded
+  documentation or low-risk maintenance, or behavior/architecture planning.
+  Validation impact is a separate dimension; architecture-only prose can need
+  broad semantic review without computational validation.
+- Include tests and fixtures when their assertions own or exercise the
+  affected contract, the task changes tested behavior, acceptance requires
+  them, or risk cannot otherwise be bounded. Do not load them solely because
+  a bundle is broad.
+- A context bundle may supply inputs to a bounded approval envelope, but it
+  grants no mutation, external-action, production or cluster, or
+  evidence-promotion authority.
 
 ## Blocked by
 

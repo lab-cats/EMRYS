@@ -39,6 +39,12 @@ review repeatable after the underlying rules are stable.
 - The commits that create those concrete cards must add them as direct blockers
   here, with reciprocal unblock links, before this card may enter planning.
 - Use the `skill-creator` instructions when this card is selected.
+- When corrected `DOC-REF-02` completes canonically, relink its glossary input
+  to the accepted lifecycle location while retaining every independent
+  blocker. Consume its revision-bounded audit method, category precision,
+  selective-link rule, receipt/evidence cautions, and semantic review as proven
+  practice; do not encode a permanent term-candidate ledger or infer that the
+  glossary alone makes this card selectable.
 
 ## Required context
 

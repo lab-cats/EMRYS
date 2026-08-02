@@ -21,6 +21,14 @@ documentation, size, and local-context designs are inspected together.
   correctness and contract parity outrank smallness.
 - Preserve the linear descendant gate for executable packages while using the
   DAG to express task prerequisites.
+- Preserve the selected future registry targets—permanent ID-only card paths,
+  committed and byte-for-byte check-regenerated lifecycle/dependency/epic/
+  tranche views, and durable per-tranche files plus one recoverable current
+  pointer—as targets only. Current directories, reciprocal fields, and prose
+  owners remain canonical until separately approved atomic migration.
+- Integration lineage and preferred readiness order are not technological
+  blockers. Use a card edge only when an unavailable technical output prevents
+  meaningful planning.
 
 ## Blocked by
 
@@ -72,6 +80,16 @@ documentation, size, and local-context designs are inspected together.
 - In the same commit that creates each dynamic card, explicit direct blockers
   replace family prerequisites in `LOG-05`, `DOC-SKILL-10`, `AUDIT-99`, and any
   other affected card, with reciprocal unblock links.
+- When reporting planning is reactivated, make one reviewed classification
+  decision for proposed `RPT-META-02A`, `RPT-PDF-04B`, and `RPT-PUB-05C`
+  before any accepted proposal enters the roadmap. Keep current hostile-PDF,
+  publication-transition, identity, and SVG-accessibility corrections
+  independently selectable unless the integration owner explicitly combines
+  them.
+- After corrected `DOC-PIPE-04` is canonically accepted, relink that conceptual
+  flow input to its accepted lifecycle location. Keep it as a blocker only if
+  the unavailable mapping truly prevents meaningful planning; otherwise make
+  it a readiness prerequisite and preserve intentional order in the roadmap.
 
 ## Acceptance evidence
 

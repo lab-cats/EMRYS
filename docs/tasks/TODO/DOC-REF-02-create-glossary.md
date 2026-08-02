@@ -30,9 +30,12 @@ meaning.
 
 ## Prerequisites
 
-- Derive candidate terms from the full tracked documentation and public
-  interface corpus; verify definitions against authoritative implementation or
-  primary scientific references where needed.
+- At one recorded target revision, audit the full tracked documentation and
+  public-interface corpus. Classify formats, schemas, interfaces, tools,
+  methods, fields, sources, environments, sites, project context, project
+  contracts, operations, scientific concepts, and evidence concepts; verify
+  definitions against authoritative implementation or primary scientific
+  references where needed.
 
 ## Required context
 
@@ -57,12 +60,25 @@ meaning.
 ## Deliverables
 
 - The glossary, navigation links, and an update rule for future terms.
+- Explicit dispositions for observed gaps, including `FASTQ.GZ`, `FNA`,
+  `GFF3`, `GBFF`, `ENA`, `GEO`, `GenBank`, `TOCTOU`, `CIGAR`,
+  `SplitNCigarReads`, and `CWD`, without conflating unlike categories.
+- A definition of receipt-last completion that requires a validated receipt
+  whose expected transaction or run identity, member set, paths, hashes,
+  sizes, and stability bindings match; receipt presence alone is never
+  completion evidence.
+- One owner-based no-loss disposition for unique TEST and recovery facts.
+  Repeatable term discovery belongs to future `DOC-SKILL-10`, not a permanent
+  glossary-candidate ledger.
 
 ## Acceptance evidence
 
 - Every unexplained abbreviation and project-specific evidence term has a
   concise verified entry or an explicit exclusion rationale.
 - Link and terminology consistency checks pass.
+- Alphabetical and link checks, the target revision's documentation gate, an
+  independent semantic/no-loss review, and a clean documentation-only diff all
+  pass.
 
 ## Canonical documentation updates
 
@@ -77,4 +93,5 @@ meaning.
 ## Completion record
 
 Not started. Select this card for read-only planning; implementation requires
-separate approval.
+separate approval. Corrected `DOC-REF-02` review precedes `DOC-PIPE-04`
+re-synthesis as lineage and readiness, not as a new technological blocker.

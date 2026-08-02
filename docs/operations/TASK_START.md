@@ -67,6 +67,53 @@ test total is orientation only. Verify mutable claims against the live checkout.
 Compaction does not automatically invalidate context, but reread the exact
 relevant source when the retained summary lacks necessary wording or evidence.
 
+## Proportional planning categories and validation impact
+
+Classify the work on two independent dimensions. The semantic planning
+category is one of `read-only review`, `bounded documentation or low-risk
+maintenance`, or `behavior or architecture planning`. Validation impact is
+separately one of `no mutation`, `documentation-only/non-consuming`, or
+`executable/test-affecting`. If either dimension is uncertain, route it to the
+more conservative applicable treatment.
+
+These are two independently machine-readable fields in the future target, not
+one combined risk or gate class. Their exact metadata schema is not implemented
+here. Until an owning package implements it, state both values plainly in the
+task-specific plan. Tests are evidence selected from affected contracts, risk,
+and acceptance criteria; they are not ritual task-start reading. Semantic
+review breadth and executable validation are orthogonal: safety, scientific,
+architecture, or evidence prose may need broad review without computational
+execution, while a small consumed configuration, fixture, or template change
+may require executable validation.
+
+## Approval envelope and progress terms
+
+The approved task-specific plan is a bounded approval envelope. It records or
+links the objective and included cards; both classifications above; exact base,
+worktree, branch, and lane identities; write sets and prohibited overlap;
+allowed mutations and local commits; selected validation and evidence ceiling;
+every expressly authorized external or high-impact action; exclusions;
+unresolved choices; and stopping conditions. Routine work inside that envelope
+continues without repeated approval. A scope expansion or authority expansion
+requires a revised plan and approval.
+
+Use these progress terms precisely:
+
+- an **execution blocker** prevents the approved outcome from proceeding, but
+  is not necessarily a card dependency;
+- **preferred sequencing** orders otherwise possible work and is not a
+  blocker;
+- **scope expansion** adds an outcome, owner, path, or stopping condition; and
+- **authority expansion** adds a mutation or external/high-impact action that
+  was not expressly approved.
+
+`Blocked by` and `Completion unblocks` retain the narrower genuine
+technological-blocker meaning owned by the
+[`task registry`](../tasks/README.md#dependency-semantics). An approval envelope
+cannot silently authorize a future card, integration, publication, network or
+cluster action, dependency installation, destructive cleanup, or architectural,
+scientific, or evidence-promotion decision.
+
 ## Canonical routing
 
 Open only the needed entry in the

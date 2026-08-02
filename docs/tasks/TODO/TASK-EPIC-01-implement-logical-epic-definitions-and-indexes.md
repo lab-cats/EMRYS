@@ -15,9 +15,10 @@ one physical hierarchy.
 
 ## Fixed decisions
 
-- Cards remain flat beneath their lifecycle-status directories. Do not create
-  physical category subdirectories under `UNREFINED`, `TODO`, `IN_PROGRESS`,
-  `INTEGRATION_REVIEW`, or `COMPLETED`.
+- Under current authority, cards remain flat beneath lifecycle-status
+  directories and no physical category subdirectories are created. The
+  selected future target uses permanent ID-only canonical card paths; neither
+  current nor target placement encodes epic identity.
 - `docs/tasks/epics/README.md` owns the epic index, identifier rules, and
   membership conventions. Each `docs/tasks/epics/<EPIC-ID>/README.md` owns one
   stable thematic description and links to member cards.
@@ -32,6 +33,10 @@ one physical hierarchy.
   model without reopening it.
 - Physical category nesting remains deferred unless later measured navigation
   evidence justifies a separately approved migration.
+- Epic indexes or pages are committed generated views and must be
+  byte-for-byte check-regenerated. This selected target does not create a
+  generator, structured metadata, or permanent card path before its separately
+  approved implementation and atomic cutover.
 
 ## Blocked by
 
@@ -81,6 +86,13 @@ one physical hierarchy.
 ## Deliverables
 
 - A single canonical epic index and one bounded README for each approved epic.
+- A minimal authored epic-definition source and stable-ID membership metadata.
+  Each committed generated output names its generator, relevant input digest,
+  and refresh/check command; regeneration occurs in temporary space and exact
+  bytes are compared.
+- Fail closed on stale or manually edited output, duplicate or unknown card or
+  epic IDs, and any attempt to interpret epic membership as lifecycle,
+  authorization, order, cohort, tranche, or dependency.
 - Tested validator support that treats epic documents as non-card navigation
   and preserves lifecycle-directory status authority.
 - Concise links that allow an agent to load one relevant epic boundary without

@@ -59,14 +59,43 @@ UI work so “minimal” does not become subjective or scientifically incomplete
 
 ## Deliverables
 
-- A versioned science-view contract and format-neutral field catalog.
-- Accessibility/usability acceptance scenarios and implementation-card inputs.
+- A versioned science-view contract and format-neutral field catalog covering
+  authorized normalized experimental design, cohort, condition/contrast,
+  organism/reference build, genomic locus, gene/transcript, run/attempt,
+  source hashes, and explicit unavailable states without manufacturing
+  metadata in reporting. Preserve the source six-section proposal and field
+  tables only as inputs to correct and review, never as settled truth.
+- A mechanical RFC 6901, multi-binding, selector, and keyed-join grammar that
+  enumerates every field ID, unit, exact source, display state, and mapping;
+  separates projection availability from domain status; and exhaustively maps
+  blocked, not-run, failed, empty, externally unavailable, and successful
+  states.
+- Literal non-executable rendering and hostile markup/Unicode extracted-text
+  equality across HTML and PDF, semantic parity, and no inner-panel science
+  scrolling. Accessibility/usability scenarios include 320-, 768-, and
+  1280-pixel viewports, keyboard order, print expansion, and PDF extracted
+  text; proposed scenarios are inputs to prove, not current evidence.
+- Selector and normalized-reporting semantics, profile/request receipts,
+  retry/supersession identity, used implementation/tool/template/style hashes,
+  content-addressed no-clobber bundles, and either one parent completion
+  receipt with explicitly allowed pre-completion cache visibility or one atomic
+  request-root publication. Correct the reporting diagram so profile and
+  format selection are conditional rather than unconditional parallel output.
+- Explicit ownership: `INTAKE-02E` retains top-level V1 YAML syntax,
+  validation, and representation; an upstream canonical metadata/schema owner
+  supplies normalized reporting fields; and every selector, projection,
+  layout, comprehensive-PDF, publication, dispatch, rollback, and default-
+  activation interface has one downstream owner before release.
 
 ## Acceptance evidence
 
 - A scientist can identify what happened, what passed/failed, what was found,
   why it matters, and the limitations without reading operational diagnostics.
 - Every displayed value has one authorized source and neutral evidence language.
+- Independent science/usability, accessibility, architecture, transaction, and
+  security review passes before any `RPT-03` or later feature implementation
+  is released. Corrected and freshly reviewed `RPT-01` evidence is the parent;
+  this is readiness order, not a new technological blocker.
 
 ## Canonical documentation updates
 

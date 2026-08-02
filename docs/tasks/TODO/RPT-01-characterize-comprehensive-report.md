@@ -17,8 +17,11 @@ silently lose evidence or weaken the existing bundle.
   the future science view.
 - Report generation remains a projection of one validated canonical summary
   and authorized tables, never evidence generation.
-- Existing bundles remain immutable and new outputs must coexist without
-  overwrite.
+- Immutable coexistence without overwrite remains the target. Current behavior
+  instead replaces the prior receipt-declared set at stable paths through
+  observable absence and partial windows, and complete-set format transitions
+  can delete a prior presentation; characterize those divergences as defects
+  without changing them in this package.
 
 ## Blocked by
 
@@ -37,6 +40,9 @@ silently lose evidence or weaken the existing bundle.
 
 - Current report implementation, schemas, styles, Quarto assets, report tests,
   `ARCHITECTURE.md`, demo contract, run summary, and authorization rules.
+- Only verified presenter or audience guides are narrative consumers whose
+  report and evidence wording must be characterized. Dormant, opaque,
+  unverified demo bodies are preservation sources, not report-contract inputs.
 
 ## Questions owned by this card
 
@@ -55,19 +61,42 @@ silently lose evidence or weaken the existing bundle.
 
 ## Deliverables
 
-- A comprehensive-report contract/catalog and focused missing characterization
-  tests if separately approved by this card's plan.
+- A test-supported catalog classifying each observed behavior as a preserved
+  contract, characterized defect, or environment-deferred observation. Cover
+  exhaustive HTML; smaller PDF; 13-column summary TSV; 17-column receipt TSV/
+  JSON; authorized supplemental roles; disclosure ordering; determinism;
+  receipt-last behavior; and the `html|pdf|all` format interface with `all` as
+  default and no report-profile selector.
+- Characterization of the canonical-builder versus public-renderer trust
+  boundary; complete known and safe unknown role handling; responsive/browser/
+  print evidence limits, including that the column-count focusability heuristic
+  has no live-browser, responsive-viewport, or print validation; replacement,
+  partial-publication, and format-
+  transition windows; attempt identity; omitted CSS/renderer/tool identity;
+  unused PDF input recorded for HTML-only builds; and the `all` receipt's exact
+  defect of recording only the PDF template while omitting the HTML QMD and
+  CSS. Also cover limited SVG ARIA checks and hostile PDF terminology or markup
+  risk.
+- Focused public-bundle transition and fault tests with test-owned expected
+  values and ordering, including exact TSV/receipt contents, disclosure order,
+  renderer authorization, attempt identity, resolved SVG descriptions, and
+  hostile PDF extracted text. Production corrections remain separately
+  selectable work rather than characterization changes.
 
 ## Acceptance evidence
 
 - Every current report field and interaction maps to an authorized source and
   a protected behavior or explicit characterized defect.
 - HTML/PDF/TSV and transaction behavior are independently traceable.
+- Every catalog row cites its focused test or inspected artifact. Live-browser,
+  responsive, print, unavailable-runtime, scientific, and biological claims
+  remain outside the evidence unless independently observed.
 
 ## Canonical documentation updates
 
 - `TEST_BASELINE.md` when new characterization lands, `PIPELINE_PLAN.md`,
-  `HANDOFF.md`, `QUESTIONS.md`, and this card.
+  `ARCHITECTURE.md`, `HANDOFF.md`, `QUESTIONS.md`, and this card. Factual
+  current-architecture changes wait for the repaired tests and final catalog.
 
 ## Escalation conditions
 

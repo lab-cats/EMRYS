@@ -21,6 +21,14 @@ described elsewhere as dated.
 - A historical snapshot must be explicitly dated/provenanced beneath the
   established history owner or removed as a current claim; do not invent a
   date.
+- Until an authorized inspection establishes otherwise, dormant demo sources
+  are unverified preservation material, not dead files, current guidance, or
+  report-contract inputs. File presence preserves their possible unique
+  meaning; it does not activate or approve their contents.
+- Presenter execution and audience explanation are separate responsibilities.
+  Do not create another narrative without a named consumer and review
+  milestone, and do not make report-card coupling until a guide is verified as
+  a report or evidence consumer.
 
 ## Blocked by
 
@@ -34,6 +42,9 @@ described elsewhere as dated.
 
 - Verify whether the cohort snapshot has repository-backed date/provenance and
   whether `PI_DEMO_REPORT.md` is a current presentation or a frozen snapshot.
+- Approve a bounded read-only inventory before opening any otherwise dormant
+  body. Audit root routes, inbound links, and named external consumers before
+  proposing activation, rename, replacement, or deletion.
 
 ## Required context
 
@@ -54,6 +65,10 @@ described elsewhere as dated.
   preserving any unique evidence.
 - Relabeling presentation versus historical artifacts accurately and repairing
   direct links.
+- If activation is approved later, update source labels, local routing, root
+  routes, inbound links, and affected terminology atomically. Commands and
+  mutable current state must link to their canonical owners rather than being
+  copied into either guide.
 
 ## Out of scope
 
@@ -70,6 +85,9 @@ described elsewhere as dated.
 - Walkthrough narrative, PI evidence table, prompts, and cautions remain.
 - No demo owns mutable current evidence or report contracts.
 - Every historical statement is dated/provenanced and indexed exactly once.
+- Every source has a no-loss destination, purposeful-retention rationale, or
+  explicit human-review point; uncertainty is never resolved by silent
+  deletion or activation.
 - Documentation links and the documentation gate pass.
 
 ## Canonical documentation updates

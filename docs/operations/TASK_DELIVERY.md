@@ -83,6 +83,14 @@ owner.
 
 ## Cleanup classification
 
+An observation remains inside the active card only when resolving it is
+necessary to satisfy that card's already-approved objective and contract. If it
+expands the contract, has a different owner or gate, or can safely be deferred,
+route it to separately selectable follow-up work. Route unrelated ideas to
+durable intake. During the active slice, continue to capture collateral
+observations neutrally without investigating ownership, destination, or a
+solution.
+
 During cleanup, inspect one queue entry only until one disposition is possible,
 then stop discovery:
 
