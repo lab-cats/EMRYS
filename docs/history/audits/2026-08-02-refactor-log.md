@@ -397,3 +397,53 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   first, then atomic commit `9d93694`; published planning tip `1966d03` remains
   the earlier independent recovery point. Do not delete runtime, production,
   lock, backup, or recovery artifacts during rollback.
+
+## 2026-08-02T19:02:53-0400 — MIG-03B JIT unit defined
+
+- **Verified predecessor:** local `HEAD`, configured upstream, and status were
+  clean and equal at published `MIG-03A` close
+  `f3f2c2ab335d5a803550defd7676e9e9f9eb9fa4`; ahead/behind was `0/0`.
+  No untracked, recovery, or lock state was observed in the campaign worktree.
+- **Selection evidence:** the semantic DAG has three currently eligible roots:
+  `construct_STAR_index`, `convert_GTF_to_BED12`, and
+  `construct_FASTA_sidecars`. Live native-asset inspection found the STAR-index
+  unit is the smallest bounded root: one 64-line SLURM producer, one 285-line
+  Python validator, and one 127-line dedicated validator test, versus larger
+  producer/validator/test surfaces for the other roots. Selection therefore
+  follows required-artifact eligibility and bounded cutover risk, not numeric
+  alias order.
+- **Architecture risk and decision:** Step `00a` currently materializes FASTA
+  and GTF files used operationally by Steps `00b` and `00c`, but neither consumes
+  its STAR index or implementation. Preserve that behavior as typed-external-
+  input coupling and move only the assets already assigned by the frozen target
+  topology; do not create a reference-preparation owner or semantic edge.
+- **Caller risk and decision:** moving the job and validator changes explicit
+  public repository paths, the Step `00a` implementation-evidence path, the
+  validator's relative neutral-library route, Make/static/coverage selection,
+  and independent cross-owner test inventories. All named consumers are
+  repository-owned and can cut over atomically, so `MIG-03B` forbids a wrapper,
+  compatibility copy, package marker, symlink, or committed hybrid state.
+- **Coverage risk and decision:** the validator's measured statements would
+  otherwise disappear when it leaves `scripts/`. Replace the narrow
+  `src/norad/libraries` measurement entry with the stable `src/norad` source
+  boundary, preserve explicit old/new line and branch counts, and regenerate
+  the tracked snapshot only through the reviewed repository command. This
+  continues measuring the neutral library while admitting the one active owner;
+  relocation may not appear as an unrelated deletion and addition.
+- **Collision and reconciliation:** two untracked `MIG-03B` drafts appeared
+  within five seconds during card creation. Mutation stopped immediately; the
+  branch, upstream, and live remote remained equal at `f3f2c2a`, no Git recovery
+  or lock state existed, and both drafts then remained byte-stable. Preserve the
+  earlier `MIG-03B-migrate-construct-star-index-owner.md` draft because it names
+  the complete path-aware caller, provenance, README, and stable coverage-root
+  obligations; merge the shared review chain around it and remove only the
+  redundant untracked duplicate before validation. No executable state was
+  touched and no published history was rewritten.
+- **Review decision:** create only `MIG-03B` and its dedicated
+  `REVIEW-ARCH-03B` → `REVIEW-REL-03B` → `REVIEW-UX-03B` chain. Each review is
+  an independent-in-time adversarial pass by the same campaign agent unless a
+  separate author becomes available; independent authorship is not claimed.
+  No executable/test file changed and no computational test ran in this slice.
+- **Evidence boundary:** this checkpoint is planning documentation only. It
+  creates no local runtime, cluster, production, scientific-review, or
+  biological-readiness evidence and does not preselect any later migration.

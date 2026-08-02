@@ -17,19 +17,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   the configured upstream and live remote ref. It atomically establishes the
   final validation-report owner, all thirteen caller-local loaders, the moved
   direct/fault owner, and exact coverage/static wiring from the frozen parent.
-- Current package: `MIG-03A` documentation and lifecycle close. The supported
-  pre-cutover Step `00a` tiny-fixture dry run passed (`1 passed`), the focused
-  characterization passed (`347 passed`), final focused library tests passed
-  (`137 passed`), and the deterministic final coverage lane passed (`1056
-  passed, 17 skipped, 1 deselected`) at `0.812011` line and `0.698382` branch
-  coverage; the migrated module measured `1.000000` line and `0.972222` branch.
-- Package type at this checkpoint: executable/test physical migration followed
-  by an impact-directed documentation close. No validator public path, report
-  schema/bytes, check roster, dependency, scientific policy, or characterized
-  publication behavior changed, and no runtime or cluster evidence was created.
-- Remote publication and upstream equality: established for the executable
-  checkpoint. The documentation-close commit must be published and proved
-  local/upstream/live-remote equal before the next JIT migration unit begins.
+- Current package: documentation-only JIT definition of
+  [`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md) and its
+  dedicated architecture, reliability, and usability review chain. No review
+  or executable migration is selected by this checkpoint.
+- Package type at this checkpoint: planning documentation only. The selected
+  candidate is the semantic-root `construct_STAR_index` owner because its one
+  producer job, one validator, and one dedicated direct test form the smallest
+  bounded eligible native-asset surface; historical alias order was not used.
+- Remote publication and upstream equality: `MIG-03A` documentation/lifecycle
+  close `f3f2c2ab335d5a803550defd7676e9e9f9eb9fa4` is the verified clean,
+  upstream-equal predecessor. This planning checkpoint must itself be published
+  and proved local/upstream/live-remote equal before the architecture review is
+  selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -504,6 +504,9 @@ selecting the next dependency-valid physical migration unit.
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
 exactly one JIT unit at a time, then repeat. Do not pre-create later cards or
-activate unrelated work. The next action after `MIG-03A` closure is therefore
-read-only inspection to choose and charter only the next unit; the unsliced
+activate unrelated work. The only proposed next unit is
+[`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md); after this
+planning checkpoint is clean and published, select and perform
+[`REVIEW-ARCH-03B`](../tasks/TODO/REVIEW-ARCH-03B-review-construct-star-index-migration.md),
+then its dedicated reliability and usability successors. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
