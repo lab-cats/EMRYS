@@ -35,6 +35,7 @@ archival behavior.
 | stage | Construct Canonical BAM | `construct_canonical_BAM` | `norad.stage.construct_canonical_BAM.v1` | `02` |
 | evidence | Collect Canonical BAM QC Evidence | `collect_canonical_BAM_QC_evidence` | `norad.evidence.collect_canonical_BAM_QC_evidence.v1` | `02b` |
 | evidence | Collect RSeQC Paired Orientation Evidence | `collect_RSeQC_paired_orientation_evidence` | `norad.evidence.collect_RSeQC_paired_orientation_evidence.v1` | `03` |
+| stage | Mark BAM Duplicates with Picard | `mark_BAM_duplicates_with_Picard` | `norad.stage.mark_BAM_duplicates_with_Picard.v1` | `04` |
 
 ## Edge semantics
 
@@ -81,6 +82,7 @@ artifact have been frozen from their functional contracts.
 | `construct_canonical_BAM` | `collect_canonical_BAM_QC_evidence` | canonical BAM/BAI pair | required artifact; non-gating evidence branch |
 | `construct_canonical_BAM` | `collect_RSeQC_paired_orientation_evidence` | canonical BAM/BAI pair | required artifact; fan-in; non-gating evidence branch |
 | `convert_GTF_to_BED12` | `collect_RSeQC_paired_orientation_evidence` | BED12 annotation | required artifact; fan-in; non-gating evidence branch |
+| `construct_canonical_BAM` | `mark_BAM_duplicates_with_Picard` | canonical BAM/BAI pair | required artifact |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -105,10 +107,12 @@ flowchart LR
     construct_canonical_BAM["Construct Canonical BAM"]
     collect_canonical_BAM_QC_evidence["Collect Canonical BAM QC Evidence"]
     collect_RSeQC_paired_orientation_evidence["Collect RSeQC Paired Orientation Evidence"]
+    mark_BAM_duplicates_with_Picard["Mark BAM Duplicates with Picard"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
     construct_canonical_BAM -.->|BAM/BAI; non-gating| collect_canonical_BAM_QC_evidence
     construct_canonical_BAM -.->|BAM/BAI; fan-in| collect_RSeQC_paired_orientation_evidence
     convert_GTF_to_BED12 -.->|BED12; fan-in| collect_RSeQC_paired_orientation_evidence
+    construct_canonical_BAM -->|canonical BAM/BAI| mark_BAM_duplicates_with_Picard
 ```
