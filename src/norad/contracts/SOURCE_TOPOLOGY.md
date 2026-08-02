@@ -160,6 +160,7 @@ ownership only; no listed file is moved by this topology contract.
 | `split_N_cigar_reads_with_GATK` | `src/norad/stages/split_N_cigar_reads_with_GATK/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/split_N_cigar_reads_with_GATK/` |
 | `partition_BAM_by_mechanical_read_orientation` | `src/norad/stages/partition_BAM_by_mechanical_read_orientation/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/partition_BAM_by_mechanical_read_orientation/` |
 | `generate_partitioned_cohort_mpileup_VCFs` | `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/generate_partitioned_cohort_mpileup_VCFs/` |
+| `preprocess_and_annotate_cohort_candidates` | `src/norad/stages/preprocess_and_annotate_cohort_candidates/` | `stage.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/stages/preprocess_and_annotate_cohort_candidates/` |
 
 ## Neutral contract boundary
 
