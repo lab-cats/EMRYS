@@ -23,7 +23,7 @@ detail near the files it governs.
 
 ## Blocked by
 
-- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: directory audiences and ownership rules must be settled.
+- [DOC-IA-01](../COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: directory audiences and ownership rules must be settled.
 
 ## Completion unblocks
 

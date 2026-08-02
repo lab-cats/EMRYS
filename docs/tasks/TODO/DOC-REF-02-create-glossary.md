@@ -21,7 +21,7 @@ meaning.
 
 ## Blocked by
 
-- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: reference ownership and navigation placement must be settled.
+- [DOC-IA-01](../COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: reference ownership and navigation placement must be settled.
 
 ## Completion unblocks
 
@@ -66,8 +66,8 @@ meaning.
 
 ## Canonical documentation updates
 
-- New glossary, `README.md`, applicable canonical owners, `AGENTS.md` ownership
-  table if needed, and this card.
+- New glossary, `README.md`, the documentation ownership map, applicable
+  canonical owners, and this card.
 
 ## Escalation conditions
 

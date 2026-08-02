@@ -112,23 +112,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   summary by exact hash, and define an all-or-none parent transaction only when
   one request explicitly requires both profiles.
 
-### CHOICE-DOC-01 — Documentation consolidation, overview, and history locations
-
-- **Question:** Which current sections move, remain, link, or become dated
-  history, and where should the user pipeline overview and preserved historical
-  snapshots live?
-- **Why it matters:** `RUNBOOK.md` and `TROUBLESHOOTING.md` are large, while
-  unique commands, recovery cautions, and evidence snapshots must not be lost.
-- **Owning card:**
-  [`DOC-IA-01`](../tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md).
-- **Decision deadline:** before any `DOC-CONS-08-*` card is created.
-- **Recommendation:** add audience/navigation and a source-to-destination ledger
-  before splitting; retain exact commands in `RUNBOOK.md`, symptom/cause/
-  diagnosis/fix in `TROUBLESHOOTING.md`, and intentional safety repetition at
-  the action point. Prefer a stable architecture/user-guide location for the
-  conceptual overview and a clearly dated `docs/history/`-style owner for
-  noncanonical snapshots, subject to the inventory.
-
 ### CHOICE-SKILL-01 — Documentation-health skill name and discovery location
 
 - **Question:** What supported skill name, filesystem/install scope, and
@@ -315,6 +298,11 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 - future science-default/comprehensive report profiles and two-sink logging;
 - glossary, directory README, adjacent opaque-file documentation,
   code-header/comment inventory, no-loss consolidation, and local context;
+- `CHOICE-DOC-01`: audience routes, exact owner boundaries, move-before-delete
+  ledger, action-point safety repetition, a planned architecture pipeline
+  overview, neutral engineering-conventions owner, and dated history index; see
+  the [documentation decision](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture)
+  and [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md);
 - a file-backed task registry with separate planning/approval for every card;
 - a future proper documentation-health skill and later separate skill review,
   with no `docs/skills/` directory now.

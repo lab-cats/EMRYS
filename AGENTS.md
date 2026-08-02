@@ -184,7 +184,7 @@ Use:
 
 ```text
 scripts/        parameterized workflow and validation scripts
-jobs/           thin SLURM wrappers
+jobs/           SLURM wrappers, with legacy exceptions kept explicit
 tests/          active tests and synthetic fixtures
 tests/pending/  non-runnable future test plans
 configs/        explicit example contracts and configuration
@@ -193,10 +193,13 @@ reports/        report views and styles
 docs/           design, operations, architecture, and demo material
 ```
 
-This is the implemented current layout. The approved target and migration
-constraints live only in
-[`docs/architecture/FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md)
-until a separately planned migration changes current truth.
+This is the implemented current layout. Target principles remain in
+[`docs/architecture/FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md);
+exact target homes and migration constraints are owned by
+[`src/norad/contracts/SOURCE_TOPOLOGY.md`](src/norad/contracts/SOURCE_TOPOLOGY.md)
+and
+[`src/norad/contracts/MIGRATION_MECHANICS.md`](src/norad/contracts/MIGRATION_MECHANICS.md)
+until separately planned migration changes current truth.
 
 Prefer workflow entry points shaped as:
 
@@ -269,35 +272,21 @@ Exact setup, execution, validation, and recovery commands belong only in
 
 ## SLURM wrappers
 
-SLURM wrappers call scripts rather than embedding analysis logic. They use
-strict mode, default to dry-run, log job context and resolved inputs/outputs,
-load required modules inside the job, and validate `EXECUTE`.
+Mature SLURM wrappers call scripts rather than embedding analysis logic. They
+use strict mode, default to dry-run, log job context and resolved inputs/
+outputs, load required modules inside the job, and validate `EXECUTE`. Preserve
+the legacy exceptions recorded in the
+[`functional-owner inventory`](docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+until separately planned migration changes them.
 
 Capture module output with `module list 2>&1 || true`. Do not add explicit
 memory requests unless the relevant cluster contract has been confirmed.
 
 ## Documentation responsibilities
 
-Each mutable fact has one canonical owner:
-
-| Document | Responsibility |
-| --- | --- |
-| `AGENTS.md` | Stable conduct, safety, conventions, evidence language, and gates |
-| `README.md` | Concise entry point, purpose, minimal quick start, and repository map |
-| `TODO.md` | Short prioritized pending work and current blockers |
-| `HANDOFF.md` | Current takeover snapshot and evidence boundary |
-| `PIPELINE_PLAN.md` | Pipeline/package/evidence roadmap, status matrix, acceptance criteria, and branch lineage |
-| `QUESTIONS.md` | Open operational/scientific questions, open design choices, and a resolved-question index |
-| `RUNBOOK.md` | Executable setup, validation, cluster, and recovery commands |
-| `TASK_START.md` | Version-aware task-start routing, context freshness, expansion triggers, and documentation-impact selection |
-| `CONCURRENT_WORK.md` | Concurrent lane roles, authority, coupling, handoff, integration, and evidence-reuse policy |
-| `DECISIONS.md` | Durable decisions, rationale, alternatives, and consequences |
-| `TROUBLESHOOTING.md` | Symptom, cause, diagnosis, and fix |
-| `ARCHITECTURE.md` | Current topology, boundaries, contracts, and data flow |
-| `FUTURE_ARCHITECTURE.md` | Target architecture and future constraints |
-| `docs/tasks/` | Bounded task scope, task-workflow status by directory, direct dependencies, acceptance evidence, and historical completion records |
-| Demo documents | Presentation walkthroughs or explicitly dated snapshots |
-| Standalone `.mmd` files | Canonical diagram sources |
+Each mutable fact has one canonical owner. The audience routes, detailed
+responsibility matrix, corpus dispositions, and no-loss move ledger belong in
+[`docs/sitemap/DOCUMENTATION_OWNERSHIP.md`](docs/sitemap/DOCUMENTATION_OWNERSHIP.md).
 
 Do not duplicate live branch names, commit IDs, test totals, tool versions,
 roadmaps, or next-step narratives outside their canonical owner. Link instead.

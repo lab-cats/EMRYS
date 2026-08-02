@@ -24,7 +24,7 @@ currently make the overall scientific flow hard to grasp.
 ## Blocked by
 
 - [ARCH-02B](../COMPLETED/ARCH-02B-define-semantic-stage-map.md) — Required: the overview needs approved semantic names and DAG order.
-- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: audience, owner, and navigation placement must be settled.
+- [DOC-IA-01](../COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: audience, owner, and navigation placement must be settled.
 
 ## Completion unblocks
 
@@ -46,7 +46,7 @@ currently make the overall scientific flow hard to grasp.
 
 ## In scope
 
-- One user-facing overview document or owned section, one Mermaid source,
+- `docs/architecture/PIPELINE_OVERVIEW.md`, one adjacent Mermaid source,
   concise stage table, and navigation links.
 
 ## Out of scope
@@ -66,8 +66,8 @@ currently make the overall scientific flow hard to grasp.
 
 ## Canonical documentation updates
 
-- `README.md`, appropriate architecture/user owner selected by `DOC-IA-01`,
-  glossary links, diagram index, and this card.
+- `README.md`, `docs/architecture/PIPELINE_OVERVIEW.md`, glossary links,
+  diagram index, and this card.
 
 ## Escalation conditions
 

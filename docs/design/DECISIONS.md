@@ -1037,6 +1037,17 @@ owners so bounded work does not load the whole repository. Phase and cross-
 cutting work reassesses impact and broadens according to the global task-start
 triggers; correctness outranks token reduction.
 
+`CHOICE-DOC-01` is resolved by the canonical
+[`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
+Exact commands remain in `RUNBOOK.md`; symptom, cause, diagnosis, and fix remain
+in `TROUBLESHOOTING.md`; neutral cross-language conventions will move
+atomically to `docs/operations/ENGINEERING_CONVENTIONS.md`; and the concise
+user pipeline overview will live at `docs/architecture/PIPELINE_OVERVIEW.md`.
+Dated noncanonical records will be indexed by a shallow `docs/history/README.md`
+with topic-specific children for audit, testing, operational, and demo history.
+No planned destination becomes authoritative before its owning card creates it
+and moves the source without leaving a duplicate.
+
 The repository-root `AGENTS.md` is a concise, automatically loaded project
 router, not the owner of detailed NORAD commands, topology, mutable state,
 scientific policy, or coding conventions. It retains only always-needed
@@ -1056,10 +1067,12 @@ without creating more canonical owners. A blind cleanup or blanket commenting
 pass would either lose meaning or add noise.
 
 Consequences: see
-[`DOC-IA-01`](../tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+[`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 through
 [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
-[`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md).
+[`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md) and
+the bounded `DOC-CONS-08A`–`DOC-CONS-08H` cards linked from the
+[ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md#bounded-follow-up-packages).
 Concrete consolidation/comment rollout cards are created only after inventories.
 
 ### Defer repository skills until the underlying practice is proven

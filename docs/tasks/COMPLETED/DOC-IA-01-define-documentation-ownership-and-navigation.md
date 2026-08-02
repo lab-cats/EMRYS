@@ -49,6 +49,12 @@ scientific meaning.
 
 ## Completion unblocks
 
+- [DOC-CONS-08A](../TODO/DOC-CONS-08A-slim-root-agent-router.md) — Fully: every root rule has a settled destination and reachability boundary.
+- [DOC-CONS-08B](../TODO/DOC-CONS-08B-compress-root-entry-and-priority-views.md) — Fully: root audiences and retained facts have settled owners.
+- [DOC-CONS-08C](../TODO/DOC-CONS-08C-compress-operational-guidance.md) — Fully: runbook/troubleshooting boundaries and no-loss constraints are settled.
+- [DOC-CONS-08D](../TODO/DOC-CONS-08D-establish-dated-documentation-history.md) — Fully: the history location and migration rules are settled.
+- [DOC-CONS-08F](../TODO/DOC-CONS-08F-compress-design-and-architecture-views.md) — Fully: conceptual and exact contract-owner boundaries are settled.
+- [DOC-CONS-08H](../TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) — Fully: the temporary-record disposition is settled, subject to its live prerequisites.
 - [DOC-REF-02](../TODO/DOC-REF-02-create-glossary.md) — Fully: glossary ownership and navigation will be settled.
 - [DOC-README-03](../TODO/DOC-README-03-establish-directory-readme-coverage.md) — Fully: directory-audience and detail rules will be settled.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the semantic stage map is also required.
@@ -69,7 +75,9 @@ scientific meaning.
 
 ## Questions owned by this card
 
-- [`CHOICE-DOC-01`](../../design/QUESTIONS.md#choice-doc-01--documentation-consolidation-overview-and-history-locations).
+- `CHOICE-DOC-01` — Resolved in the
+  [documentation decision](../../design/DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture)
+  and indexed under [resolved questions](../../design/QUESTIONS.md#resolved-index).
 
 ## In scope
 
@@ -118,5 +126,20 @@ scientific meaning.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed 2026-08-02 as an explicitly approved local-only documentation
+package. The canonical
+[`documentation ownership and consolidation map`](../../sitemap/DOCUMENTATION_OWNERSHIP.md)
+records audience routes, responsibility boundaries, all 114 Markdown and six
+Mermaid dispositions, semantic inbound/outbound link roles, the no-loss move
+ledger, and every current `AGENTS.md` rule class. `CHOICE-DOC-01` is resolved
+in `DECISIONS.md`, and concrete `DOC-CONS-08A` through `DOC-CONS-08H` cards
+bound later work without selecting it or duplicating existing sitemap, README,
+validator, overview, code-documentation, or task-index scopes.
+
+Independent read-only operations, design, navigation, structure, and no-loss
+reviews found no remaining permitted corpus-category omission; their boundary
+corrections are incorporated. The final link/anchor/card/dependency/cycle/
+orphan/Mermaid documentation gate passes against the combined tree.
+Computational validation is not applicable because the package changes only
+Markdown documentation and no executable, configuration, generation, schema,
+fixture, report-template, dependency, or test-harness behavior.

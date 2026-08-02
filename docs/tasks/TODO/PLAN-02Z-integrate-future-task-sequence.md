@@ -29,7 +29,7 @@ documentation, size, and local-context designs are inspected together.
 - [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Required: extraction/retention rules must be applied to candidates.
 - [RPT-02](../TODO/RPT-02-define-science-report-contract.md) — Required: report design packages must be scoped.
 - [LOG-02](../COMPLETED/LOG-02-define-logging-contract.md) — Required: logging foundation and rollout boundaries must be scoped.
-- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: documentation sequencing and consolidation ownership must be known.
+- [DOC-IA-01](../COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: documentation sequencing and consolidation ownership must be known.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Required: the human conceptual flow must agree with the stage map.
 - [CODEDOC-05](../TODO/CODEDOC-05-inventory-code-documentation.md) — Required: local code-documentation cards must be known.
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: mandatory decomposition/exception work must be known.

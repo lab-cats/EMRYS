@@ -64,29 +64,10 @@ logs/           ignored runtime logs
 
 ## Documentation map
 
-| Document | Use it for |
-| --- | --- |
-| [`AGENTS.md`](AGENTS.md) | Stable repository conduct and development gates |
-| [`TODO.md`](TODO.md) | Short prioritized pending work |
-| [`HANDOFF.md`](docs/operations/HANDOFF.md) | Current branch, evidence boundary, blockers, and resume point |
-| [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md) | Authoritative roadmap, status matrix, and acceptance criteria |
-| [`REFACTOR_AUDIT.md`](docs/design/REFACTOR_AUDIT.md) | Evidence-ranked refactor findings, risks, and retained boundaries |
-| [`TEST_BASELINE.md`](docs/design/TEST_BASELINE.md) | Measured Python baseline and public-contract risk-to-test traceability |
-| [`QUESTIONS.md`](docs/design/QUESTIONS.md) | Open questions and resolved-question links |
-| [`RUNBOOK.md`](docs/operations/RUNBOOK.md) | Setup, validation, cluster, inspection, and recovery commands |
-| [`TASK_START.md`](docs/operations/TASK_START.md) | Minimum task-start context, freshness rules, and canonical routing |
-| [`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md) | Isolated lane roles, write authority, coupling, handoff, and serialized integration |
-| [`DECISIONS.md`](docs/design/DECISIONS.md) | Durable decisions and rationale |
-| [`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Symptom-to-fix guidance |
-| [`ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current topology, contracts, and data flow |
-| [`FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md) | Target-state design and deferred constraints |
-| [`docs/tasks/`](docs/tasks/) | One bounded card per future task, with scope, dependencies, and acceptance evidence |
-| [`DEMO_WALKTHROUGH.md`](docs/demo/DEMO_WALKTHROUGH.md) | Presentation-oriented walkthrough |
-| [`PI_DEMO_REPORT.md`](docs/demo/PI_DEMO_REPORT.md) | Dated evidence snapshot for discussion |
-
-Canonical Mermaid sources live under
-[`docs/architecture/diagrams/`](docs/architecture/diagrams/). Architecture
-documents link to those files instead of maintaining inline copies.
+Use the [documentation sitemap](docs/sitemap/README.md) for top-level categories
+and the [ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) for short user,
+operator, scientist, maintainer, and historical routes. Those maps link the
+canonical documents and Mermaid sources without reproducing their contents.
 
 ## Data and Git policy
 

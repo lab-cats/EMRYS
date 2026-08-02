@@ -7,33 +7,34 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/arch-02b-through-02d-jit`
+  `codex/doc-ia-01-documentation-compression`
 - Package base:
-  `e728e8587faca2538b3acc4e777a25f66435313a`
+  `44a27f033092cd42b79a9504b7fc292d3cc40f20`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
-  without completing that card; `ARCH-02A` through `ARCH-02D` and the
-  interposed `JIT-01` workflow bootstrap are complete.
-- Current package: the sequential ARCH-02B semantic identity/DAG owner,
-  ARCH-02C source/contract/test topology, and ARCH-02D reversible direct-
-  migration procedure plus final canonical reconciliation.
+  without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
+  `JIT-01`, and explicitly selected `DOC-IA-01` are complete.
+- Current package: audience-aware documentation ownership and navigation,
+  corpus dispositions, a no-loss source-to-destination ledger, exact planned
+  overview/history/convention homes, and eight separately planned
+  consolidation cards.
 - Package type: documentation-only; no executable, configuration, schema,
   fixture, report-template, dependency, or test-harness behavior changed.
 - Remote publication and upstream equality: intentionally not applicable. This
   branch is local-only, has no configured upstream, and must not be pushed by
   this package. Cluster work remains paused.
 
-This package descends from the published JIT-01 tip. It changes only Markdown
-and Mermaid documentation artifacts and adds no descriptor/schema/runtime
-file; current executable paths remain under the flat layout until a separately
-planned physical migration.
+This package descends from the completed local ARCH-02B-through-02D tip. It
+changes only Markdown documentation artifacts and adds no descriptor, schema,
+runtime, or report-template file; current executable paths remain under the
+flat layout until a separately planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical local ARCH-02B-through-02D documentation lane.
+This checkout is the canonical local DOC-IA-01 documentation lane.
 No concurrent sidecar content was inspected, integrated, or used by its final
-reconciliation. The completed
+ownership work. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
 candidate worktrees, paused concurrency attempts, and the researcher pilot
 remain preserved but frozen.
@@ -282,6 +283,7 @@ The local descendant sequence has implemented:
 | Task-start context documentation | task-start router, context-freshness matrix, expansion triggers, impact-directed documentation review, and documentation-only validation semantics updated; `git diff --check`, the 71-document/51-card/6-diagram structural gate, and independent read-only consistency review passed; computational validation was not applicable because no executable, dependency, schema, config, fixture, report-template, test-harness, scientific-method, runtime, cluster, or evidence-state surface changed |
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
 | Strategy follow-up card bootstrap | Four future cards plus reciprocal dependency and canonical roadmap/decision/question/handoff references recorded; no card selected and no pilot content reviewed or integrated; `git diff --check`, the 76-document/55-card/6-diagram structural gate, and independent dependency, ownership, and handoff/roadmap audits passed; computational validation is not applicable because the complete diff is non-consuming Markdown only, and publication state remains subject to live Git verification |
+| Documentation ownership and navigation | Audience routes, canonical responsibilities, exhaustive Markdown/Mermaid dispositions, semantic link roles, a no-loss move ledger, rule-by-rule `AGENTS.md` disposition, resolved overview/history/convention locations, and eight bounded consolidation cards recorded; root ownership rosters now link one owner; the final structural documentation gate and independent no-loss/dependency reviews passed; later consolidation remains unselected, computational validation is not applicable, and no executable or evidence state changed |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -407,13 +409,13 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-[`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md),
-[`ARCH-02C`](../tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md),
-and [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
-are complete on the JIT-01 predecessor. Their canonical results are
-[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md),
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md), and
-[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
+[`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+is complete. Its canonical result is the
+[`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md),
+and its eight `DOC-CONS-08A`–`DOC-CONS-08H` children remain TODO cards requiring
+separate selection, task-specific planning, and approval. Existing
+`DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`, `CODEDOC-05`,
+and `TASK-EPIC-01` retain their nonoverlapping scopes.
 
 This package changes documentation only. Its final gate is Git and repository
 documentation validation; computational, R, shell, report-runtime, and cluster

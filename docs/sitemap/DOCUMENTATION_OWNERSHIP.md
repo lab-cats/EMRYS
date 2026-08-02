@@ -1,0 +1,241 @@
+# Documentation ownership and consolidation map
+
+This document is the canonical owner for NORAD documentation audiences,
+responsibility boundaries, corpus dispositions, and no-loss consolidation
+routing. It tells a reader where a fact belongs; it does not restate the fact.
+Current state, commands, topology, scientific contracts, and task status remain
+in the owners linked below.
+
+The inventory records link *roles* rather than mutable link counts. `In` names
+the normal routes by which readers reach an artifact; `out` names the
+authorities the artifact should cite instead of copying. The repository-wide
+documentation gate remains responsible for exact link and anchor integrity.
+
+## Audience routes
+
+| Audience | Short route | Boundary |
+| --- | --- | --- |
+| User | Root [`README.md`](../../README.md) → current [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md), then the planned `docs/architecture/PIPELINE_OVERVIEW.md` owned by [`DOC-PIPE-04`](../tasks/TODO/DOC-PIPE-04-create-user-pipeline-overview.md) | The overview will explain the scientific flow; it links rather than reproduces stage identities or contracts. |
+| Operator | Root [`README.md`](../../README.md) → current [`HANDOFF.md`](../operations/HANDOFF.md) → exact [`RUNBOOK.md`](../operations/RUNBOOK.md) command or [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) symptom | Commands stay in the runbook; current state and evidence stay in the handoff. |
+| Scientist or reviewer | Root evidence boundary → [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) → functional [`CONTRACT.md`](../../src/norad/) or [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) → scientific questions/evidence in [`QUESTIONS.md`](../design/QUESTIONS.md) and [`HANDOFF.md`](../operations/HANDOFF.md) | Mechanical orientation, computational evidence, scientific review, and biological interpretation remain distinct. |
+| Maintainer or agent | Root [`AGENTS.md`](../../AGENTS.md) → [`TASK_START.md`](../operations/TASK_START.md) → selected [task card](../tasks/README.md) → only its routed owners and local contracts | Automatically loaded rules stay concise; detailed repository policy and procedures live in their dedicated owners. |
+| Auditor or historian | Completed [task cards](../tasks/COMPLETED/) plus [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), transitioning through `DOC-CONS-08D` to a dated `docs/history/` index | Historical evidence is immutable and dated; it never becomes a second current-state owner. |
+
+## Canonical responsibility matrix
+
+| Information | Canonical owner | Secondary views may |
+| --- | --- | --- |
+| Automatically loaded approval, destructive-action, safety, evidence-language, and task-routing guardrails | Root [`AGENTS.md`](../../AGENTS.md) | Repeat a warning only at an action point and link back. |
+| Product identity, evidence caveat, minimal start, and shallow repository map | Root [`README.md`](../../README.md) | Link to the detailed sitemap and current owners. |
+| Short current priority view | Root [`TODO.md`](../../TODO.md) | Link to cards, current state, and roadmap; never preserve completed history or a second roadmap. |
+| Audience routes, documentation ownership, inventory dispositions, and consolidation ledger | This file | Child maps may route within one category without duplicating entries. |
+| Top-level documentation categories | [`TOP_LEVEL.md`](TOP_LEVEL.md) | Link to this ownership map and future shallow child maps. |
+| Current checkout, active lanes, blockers, runtime/scientific evidence boundary, and exact resume point | [`HANDOFF.md`](../operations/HANDOFF.md) | Link to dated evidence; never absorb roadmap or command detail. |
+| Supported setup, validation, execution, inspection, and recovery commands | [`RUNBOOK.md`](../operations/RUNBOOK.md) | Include concise operator context and action-point safety warnings. |
+| Symptom, cause, diagnosis, and fix | [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) | Link to exact runbook commands instead of copying them. |
+| Task-start freshness, routing, expansion, and impact selection | [`TASK_START.md`](../operations/TASK_START.md) | Link to task-delivery and sitemap detail. |
+| Slice execution and close, cleanup-queue semantics, and task delivery | [`TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md) | Link to runbook gates and current task state. |
+| Concurrent authority, lane isolation, handoff, integration, and evidence reuse | [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) | Link to current lanes in the handoff and exact commands in the runbook. |
+| Neutral cross-language repository conventions | Planned `docs/operations/ENGINEERING_CONVENTIONS.md`, created atomically by `DOC-CONS-08A` | Stage-local contracts retain stage-specific rules; `AGENTS.md` keeps only the always-needed guard. |
+| Durable decisions, rationale, alternatives, and consequences | [`DECISIONS.md`](../design/DECISIONS.md) | Link to implementations and contracts without copying their procedures. |
+| Open operational/scientific questions, open design choices, and resolved-choice index | [`QUESTIONS.md`](../design/QUESTIONS.md) | Link a resolved choice to its durable decision. |
+| Pipeline/package/evidence roadmap, acceptance matrix, and branch lineage | [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Link task lifecycle and current checkout rather than restating them. |
+| Current implemented topology, boundaries, and conceptual data flow | [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) | Link exact stage/edge identities and functional contracts. |
+| Target architecture and deferred constraints | [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) | Link exact target source topology and migration mechanics. |
+| Current functional-owner roster and implementation exceptions | [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md) | Link each colocated contract; avoid copied contract detail. |
+| Exact semantic identities, aliases, direct DAG edges, and barrier semantics | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) | Architecture and overview documents show only concise conceptual flow. |
+| Exact target homes and dependency direction | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) | Target architecture links to it. |
+| Exact reversible migration procedure | [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) | Decisions retain rationale; no architecture document copies the procedure. |
+| Stage-, evidence-, or analysis-local interfaces and scientific limits | The applicable colocated [`CONTRACT.md`](../../src/norad/) | Runbook and architecture link to the functional owner. |
+| Task scope, dependency, deliverables, acceptance, lifecycle, and completion record | [`docs/tasks/README.md`](../tasks/README.md) plus one card | Status is the card directory; mutable state and roadmap remain elsewhere. |
+| Presentation walkthrough and discussion material | [`docs/demo/`](../demo/) | Keep action-point evidence cautions; move dated snapshots to history. |
+| Dated audit, testing, operational, or demo snapshots | Planned shallow `docs/history/README.md` with topic children, established by `DOC-CONS-08D` | Current owners link to the dated record and retain only a current summary. |
+| Standalone diagrams | The applicable source under [`docs/architecture/diagrams/`](../architecture/diagrams/) | Narrative documents link to, but do not embed a second Mermaid source. |
+| Fixture or tool-directory purpose and local invariants | The adjacent `README.md` | Parent documentation links without restating local detail. |
+
+## No-loss and intentional-repetition rules
+
+1. Identify the unique fact, its current owner, and its destination before any
+   deletion or rewrite.
+2. In one coherent change, move the fact, repair inbound links, and remove the
+   old copy. A temporary second owner must not survive the commit.
+3. Preserve semantically unique rationale, failed approaches, recovery
+   constraints, scientific limitations, and evidence provenance even when the
+   surrounding status prose is stale.
+4. Keep safety repetition where a reader acts: transaction recovery, dry-run
+   and login-node boundaries, destructive Git operations, dependency
+   restoration, orientation interpretation, and evidence promotion.
+5. Independent test or validator expectations may intentionally duplicate a
+   production contract when that independence is the regression boundary.
+6. Do not delete a tracked historical or temporary record merely because Git
+   can recover it. First provide an indexed, authorized destination for every
+   still-unique item.
+7. Keep target architecture distinct from implemented current topology.
+8. A later consolidation card stops when two candidate owners disagree or a
+   unique fact lacks a safe destination; it does not choose truth by
+   convenience.
+
+## Corpus inventory and dispositions
+
+This inventory covers every tracked Markdown and Mermaid artifact present
+when `DOC-IA-01` completed, including the ownership map and follow-up cards it
+created. Grouped task-card rows are exhaustive path rosters. Every card retains
+its unique bounded scope, dependency, acceptance, and historical evidence;
+consolidation changes navigation around cards, not those records.
+
+### Root, sitemap, architecture, design, operations, and demos
+
+| Artifact | Audience and unique owner | Link/overlap review | Disposition |
+| --- | --- | --- | --- |
+| [`AGENTS.md`](../../AGENTS.md) | Maintainer/agent; automatically loaded guards | In: repository root. Out: task routing and dedicated owners. Detailed procedure, topology, conventions, and ownership overlap their canonical documents. | Retain and slim through `DOC-CONS-08A`; this task removes the now-duplicated responsibility table and repairs stale target/wrapper ownership claims. |
+| [`README.md`](../../README.md) | User; product identity, evidence caveat, minimal start, repository map | Out: current state, roadmap, operations, sitemap. Its full documentation roster and development procedure duplicate deeper owners. | Retain; route the roster here now, then compress through `DOC-CONS-08B`. |
+| [`TODO.md`](../../TODO.md) | Maintainer; short prioritized pending view | In: root. Out: cards, handoff, roadmap. Completed lineage and family catalogs overlap those owners. | Retain and compress through `DOC-CONS-08B`. |
+| [`docs/sitemap/README.md`](README.md) | All audiences; shallow sitemap entry | In: root map. Out: `TOP_LEVEL.md` and this file. | Retain shallow. |
+| [`docs/sitemap/TOP_LEVEL.md`](TOP_LEVEL.md) | All audiences; top-level categories | In: sitemap README/task router. Out: category owners. Temporary task-start blocks overlap operations and status owners. | Existing `DOC-SITEMAP-01` moves the temporary blocks; retain a concise category map. |
+| [`docs/sitemap/DOCUMENTATION_OWNERSHIP.md`](DOCUMENTATION_OWNERSHIP.md) | All audiences; routes, ownership, inventory, and move ledger | In: root/sitemap/agent router. Out: every canonical owner. | Retain as this information's sole owner. |
+| [`docs/architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) | User/scientist/maintainer; conceptual current topology and heterogeneous guarantees | In: README/sitemap. Out: stage map and contracts. Detailed rosters and contract tables overlap local owners. | Retain and compress through `DOC-CONS-08F`. |
+| [`docs/architecture/FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) | Maintainer; target architecture and deferred constraints | In: sitemap/decisions. Out: source topology and migration mechanics. Must not merge with current topology. | Retain and compress links through `DOC-CONS-08F`. |
+| [`docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md) | Maintainer; current owner roster and implementation exceptions | In: current architecture/cards. Out: colocated contracts. Some contract details and mutable totals overlap local owners/validators. | Retain compact roster; review through `DOC-CONS-08F`. |
+| [`docs/architecture/diagrams/pipeline.mmd`](../architecture/diagrams/pipeline.mmd) | User/scientist; current pipeline diagram source | In: current architecture. Out: conceptual labels that must agree with `STAGE_MAP.md`. | Retain as canonical diagram source. |
+| [`docs/architecture/diagrams/reliability.mmd`](../architecture/diagrams/reliability.mmd) | Maintainer/operator; current reliability flow source | In: current architecture. Out: current operational owners. | Retain; reconcile labels only when affected. |
+| [`docs/architecture/diagrams/future_manifest_config_contracts.mmd`](../architecture/diagrams/future_manifest_config_contracts.mmd) | Maintainer; target manifest/config relationship | In: future architecture. Out: future target decisions. | Retain target-only. |
+| [`docs/architecture/diagrams/future_modular_pipeline.mmd`](../architecture/diagrams/future_modular_pipeline.mmd) | Maintainer; target modular topology | In: future architecture. Out: source topology/stage map. | Retain target-only. |
+| [`docs/architecture/diagrams/future_reporting_layer.mmd`](../architecture/diagrams/future_reporting_layer.mmd) | Maintainer/scientist; target reporting topology | In: future architecture. Out: reporting decisions/contracts. | Retain target-only. |
+| [`docs/architecture/diagrams/future_roadmap_sequence.mmd`](../architecture/diagrams/future_roadmap_sequence.mmd) | Maintainer; legacy target-sequence view | In: future architecture/plan. Its waterfall implication may conflict with rolling JIT delivery. | Preserve until `DOC-CONS-08F` verifies unique content and rewrites or retires it. |
+| [`docs/design/DECISIONS.md`](../design/DECISIONS.md) | Maintainer/auditor; durable rationale and consequences | In: sitemap/cards. Out: dedicated implementation and contract owners. Procedures/status/crosswalk rows overlap those owners. | Retain and compress through `DOC-CONS-08F`. |
+| [`docs/design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Maintainer; roadmap, status matrix, acceptance, lineage | In: root/TODO/cards. Out: task registry and handoff. Dated package narratives overlap history/cards. | Retain current view; separate history through `DOC-CONS-08E`. |
+| [`docs/design/QUESTIONS.md`](../design/QUESTIONS.md) | Operator/scientist/maintainer; open questions and resolved index | In: root/cards. Out: decisions and owning cards. Verbose resolved blocks overlap decisions. | Retain; `CHOICE-DOC-01` moves to the resolved index now and later compression belongs to `DOC-CONS-08F`. |
+| [`docs/design/REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) | Auditor/maintainer; dated evidence-ranked audit and recheck triggers | In: root/plan/cards. Out: completed and future cards. Old status/recommendations are not current roadmap truth. | Preserve intact until `DOC-CONS-08D` moves dated evidence to history and leaves an active index/recheck owner. |
+| [`docs/design/TEST_BASELINE.md`](../design/TEST_BASELINE.md) | Auditor/maintainer; test evidence boundary, notation, risk matrices, dated gate evidence | In: root/plan/cards. Out: tests/contracts. Dated narratives and current evidence are interleaved. | Preserve intact until `DOC-CONS-08D` separates dated testing history from the current baseline owner. |
+| [`docs/operations/HANDOFF.md`](../operations/HANDOFF.md) | Operator/maintainer; current checkout, lanes, blockers, evidence, resume point | In: root/agent/TODO. Out: roadmap, commands, history. Completed rosters and timings duplicate plan/cards/history. | Retain current view; separate dated material through `DOC-CONS-08E`. |
+| [`docs/operations/RUNBOOK.md`](../operations/RUNBOOK.md) | Operator; exact supported commands and concise execution context | In: root/handoff/troubleshooting. Out: contracts/current state. It duplicates troubleshooting commands, stage contracts, policy, and history. | Retain exact commands; index and compress through `DOC-CONS-08C`. Substantive inline programs remain until a tested executable owner exists. |
+| [`docs/operations/TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) | Operator; symptom, cause, diagnosis, fix | In: root/runbook. Out: exact runbook commands and contracts. Repeated command blocks and templates overlap the runbook/each other. | Retain diagnostic knowledge; index and compress through `DOC-CONS-08C`. Preserve transaction-specific recovery boundaries. |
+| [`docs/operations/TASK_START.md`](../operations/TASK_START.md) | Maintainer/agent; context freshness, routing, expansion, impact selection | In: AGENTS/cards. Out: sitemap/delivery/canonical owners. | Retain; existing `DOC-SITEMAP-01` owns temporary-router relocation and stub cleanup. |
+| [`docs/operations/TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md) | Maintainer/agent; JIT slice start/close and cleanup queue | In: task start/cards. Out: runbook gates and state owners. | Retain single-purpose. |
+| [`docs/operations/CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) | Maintainer/operator; concurrency authority and lifecycle | In: AGENTS/task start. Out: handoff current lanes and runbook commands. Dated first-use completion overlaps handoff/history. | Retain policy; move dated state through `DOC-CONS-08E`. |
+| [`docs/demo/DEMO_WALKTHROUGH.md`](../demo/DEMO_WALKTHROUGH.md) | User/scientist; walkthrough order and action-point cautions | In: README. Out: current evidence/report owners. It contains an undated cohort snapshot. | Retain presentation narrative; classify snapshot through `DOC-CONS-08G`. |
+| [`docs/demo/PI_DEMO_REPORT.md`](../demo/PI_DEMO_REPORT.md) | Scientist/PI; evidence-model table, discussion view, prompts, cautions | In: README/demo. Out: current evidence/report owners. It is not presently a dated artifact despite the old root label. | Retain as presentation material or date/archive through `DOC-CONS-08G`; root label is corrected now. |
+| [`docs/fragments/README.md`](../fragments/README.md) | Maintainer; fragment filename and candidate-field format | In: concurrency/task registry. Out: authority/lifecycle in `CONCURRENT_WORK.md`. | Retain compact format owner. |
+
+### Task registry
+
+All task cards have the maintainer/auditor audience. Their normal inbound links
+come from `TODO.md`, `PIPELINE_PLAN.md`, dependent cards, or completion records;
+their outbound links go to direct dependencies and canonical evidence or
+decision owners. Repeated headings are the intentional registry schema.
+
+| Lifecycle | Exhaustive artifacts | Unique material and disposition |
+| --- | --- | --- |
+| Registry/context | [`docs/tasks/README.md`](../tasks/README.md); [`TODO/README.md`](../tasks/TODO/README.md); [`IN_PROGRESS/README.md`](../tasks/IN_PROGRESS/README.md); [`COMPLETED/README.md`](../tasks/COMPLETED/README.md) | The root registry owns lifecycle, dependency semantics, template, and card authority. Status READMEs are intentional six-line local context. Retain; future logical indexes belong to `TASK-EPIC-01`, not `TODO.md`. |
+| Completed architecture/context | [`ARCH-DOC-00`](../tasks/COMPLETED/ARCH-DOC-00-bootstrap-task-registry-and-capture-decisions.md); [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md); [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md); [`ARCH-02C`](../tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md); [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md); [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md); [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md) | Frozen scope, decisions, acceptance, and completion evidence remain historical. Out links route durable truth to architecture/contracts/task routers. Retain. |
+| Completed concurrency/logging | [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md); [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md); [`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md); [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | Frozen policy/evidence packages link to current concurrency and logging owners. Retain; do not treat card prose as current lane or output state. |
+| Completed test characterization | [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md); [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md); [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md); [`TEST-01F`](../tasks/COMPLETED/TEST-01F-create-independent-contract-goldens.md); [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) | Exact characterization decisions and acceptance evidence remain immutable. Out links route live baseline truth to `TEST_BASELINE.md` and fixtures. Retain. |
+| Selected/completed context | [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md); [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) | DOC-IA is the completed ownership-design record; `PROGRAM-01` remains the active rolling-program owner and is not consolidated. |
+| Existing TODO documentation/context | [`CODEDOC-05`](../tasks/TODO/CODEDOC-05-inventory-code-documentation.md); [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md); [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md); [`DOC-PIPE-04`](../tasks/TODO/DOC-PIPE-04-create-user-pipeline-overview.md); [`DOC-README-03`](../tasks/TODO/DOC-README-03-establish-directory-readme-coverage.md); [`DOC-REF-02`](../tasks/TODO/DOC-REF-02-create-glossary.md); [`DOC-SITEMAP-01`](../tasks/TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md); [`DOC-SKILL-10`](../tasks/TODO/DOC-SKILL-10-build-documentation-health-skill.md); [`SKILL-11`](../tasks/TODO/SKILL-11-evaluate-repository-skill-opportunities.md) | Retain distinct scopes. Directory READMEs, temporary sitemap relocation, validator extraction, glossary, local context, and skill work are not duplicated by `DOC-CONS` cards. |
+| New consolidation TODO cards | [`DOC-CONS-08A`](../tasks/TODO/DOC-CONS-08A-slim-root-agent-router.md); [`DOC-CONS-08B`](../tasks/TODO/DOC-CONS-08B-compress-root-entry-and-priority-views.md); [`DOC-CONS-08C`](../tasks/TODO/DOC-CONS-08C-compress-operational-guidance.md); [`DOC-CONS-08D`](../tasks/TODO/DOC-CONS-08D-establish-dated-documentation-history.md); [`DOC-CONS-08E`](../tasks/TODO/DOC-CONS-08E-separate-live-state-from-history.md); [`DOC-CONS-08F`](../tasks/TODO/DOC-CONS-08F-compress-design-and-architecture-views.md); [`DOC-CONS-08G`](../tasks/TODO/DOC-CONS-08G-consolidate-demo-views.md); [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | These cards own the exact move packages below. Retain until separately selected, approved, and completed. |
+| TODO architecture/future design | [`FUT-ANALYSIS-01`](../tasks/TODO/FUT-ANALYSIS-01-preprocessing-profiles-and-analysis-modules.md); [`FUT-CLI-03`](../tasks/TODO/FUT-CLI-03-installable-norad-control-plane.md); [`FUT-DATA-02`](../tasks/TODO/FUT-DATA-02-public-reference-and-sra-acquisition.md); [`FUT-SUCCESS-04`](../tasks/TODO/FUT-SUCCESS-04-optional-analysis-and-archival-semantics.md); [`INTAKE-02E`](../tasks/TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md); [`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md); [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) | Retain target-only scopes and explicit non-implementation boundaries. They link to future architecture and decisions rather than becoming current truth. |
+| TODO reporting/logging | [`LOG-03`](../tasks/TODO/LOG-03-build-two-sink-logging-foundation.md); [`LOG-05`](../tasks/TODO/LOG-05-activate-concise-default-logging.md); [`RPT-01`](../tasks/TODO/RPT-01-characterize-comprehensive-report.md); [`RPT-02`](../tasks/TODO/RPT-02-define-science-report-contract.md); [`RPT-03`](../tasks/TODO/RPT-03-build-format-neutral-report-projection.md); [`RPT-04`](../tasks/TODO/RPT-04-implement-science-report-usability.md); [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md); [`RPT-05B`](../tasks/TODO/RPT-05B-decompose-report-rendering-modules.md); [`RPT-06`](../tasks/TODO/RPT-06-make-science-report-the-default.md) | Retain separately bounded characterization, design, migration, activation, and default-change work. |
+| TODO reliability/coordination | [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md); [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md); [`REVIEW-ARCH-01`](../tasks/TODO/REVIEW-ARCH-01-review-architecture-plan.md); [`REVIEW-REL-02`](../tasks/TODO/REVIEW-REL-02-review-reliability-plan.md); [`REVIEW-UX-03`](../tasks/TODO/REVIEW-UX-03-review-usability-plan.md); [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md); [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md); [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md) | Retain distinct review, lifecycle, validation, and closure scopes. Consolidation must not pre-implement registry or sidecar lifecycle changes. |
+| TODO size work | [`SIZE-07`](../tasks/TODO/SIZE-07-refresh-large-file-inventory.md); [`SIZE-07A`](../tasks/TODO/SIZE-07A-decompose-artifact-index-builder.md); [`SIZE-07B`](../tasks/TODO/SIZE-07B-decompose-scientific-validation-tooling.md); [`SIZE-07D`](../tasks/TODO/SIZE-07D-decompose-run-summary-builder.md); [`SIZE-07E`](../tasks/TODO/SIZE-07E-resolve-step08-r-module-size.md); [`SIZE-07F`](../tasks/TODO/SIZE-07F-decompose-artifact-contract-validator.md) | Retain code-size evidence and separately gated executable scopes. Documentation compression must not change those implementations. |
+
+### Colocated contracts, tool and fixture READMEs, and temporary work
+
+| Artifacts | Audience and unique owner | Link/overlap review and disposition |
+| --- | --- | --- |
+| [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md); [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) | Maintainer/scientist; exact cross-stage identity/DAG, target source homes, and reversible migration procedure respectively | In: architecture/decisions/cards. Out: local contracts. Retain all three; architecture documents link instead of reproducing their tables/procedures. |
+| Stage contracts: [`align_RNA_reads_with_STAR`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md); [`construct_FASTA_sidecars`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md); [`construct_STAR_index`](../../src/norad/stages/construct_STAR_index/CONTRACT.md); [`construct_canonical_BAM`](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md); [`convert_GTF_to_BED12`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md); [`generate_partitioned_cohort_mpileup_VCFs`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md); [`mark_BAM_duplicates_with_Picard`](../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md); [`partition_BAM_by_mechanical_read_orientation`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md); [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md); [`split_N_cigar_reads_with_GATK`](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md) | Maintainer/scientist/operator; each file owns its stage purpose, dependencies, typed inputs, outputs, consumers, behavior and evidence boundary | In: stage map/architecture/runbook. Out: direct owner neighbors and neutral contracts. Retain; validators stay within their functional owner and are not separate documentation nodes. |
+| Evidence contracts: [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/assemble_scientific_review_evidence_package/CONTRACT.md); [`collect_RSeQC_paired_orientation_evidence`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md); [`collect_canonical_BAM_QC_evidence`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md) | Scientist/maintainer; evidence inputs/outputs, non-gating branch semantics, review limits | In: stage map/architecture/runbook. Out: source artifacts and review consumers. Retain; preserve evidence/biological boundaries. |
+| Analysis contract: [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md) | Scientist/maintainer; CMH ranking interface, outputs, consumers, and interpretation limits | In: stage map/architecture. Out: stage/evidence inputs. Retain as first-class analysis owner. |
+| [`scripts/git_orchestration/README.md`](../../scripts/git_orchestration/README.md) | Operator/maintainer; local helper boundaries and entry-point roster | In: runbook/concurrency. Out: exact help/tests. Retain; runbook keeps supported sequence rather than copying helper internals. |
+| [`tests/git_orchestration/README.md`](../../tests/git_orchestration/README.md) | Maintainer; isolated test purpose, exact focused command, and safety | In: helper README. Out: tested behaviors. Retain adjacent. |
+| [`tests/fixtures/independent_contract_goldens/README.md`](../../tests/fixtures/independent_contract_goldens/README.md) | Maintainer/scientist; independent-golden provenance and evidence limits | In: test baseline/completed card. Out: fixture roles. Retain; intentional independent duplication is protected. |
+| [`tests/fixtures/public_cli_contracts/README.md`](../../tests/fixtures/public_cli_contracts/README.md) | Maintainer; Make expansion fixture provenance, normalization, environment, and limits | In: test baseline/completed card. Out: fixture contract. Retain adjacent. |
+| [`work/active/JIT-01.md`](../../work/active/JIT-01.md) | Maintainer; temporary JIT slice and cleanup queue | In: completed JIT card. Out: two not-yet-durable cleanup destinations. The cleanup items remain unique. | Preserve untouched until `DOC-CONS-08H` gives both items authorized owners, repairs backlinks, and removes the temporary record. |
+
+### Link-graph evidence
+
+The completion audit resolves every local Markdown target and anchor, builds
+the exact inbound graph used to reject orphan cards and diagrams, and confirms
+that every current Markdown/Mermaid path appears in this inventory. That exact
+graph is reproducible through the canonical
+[`documentation gate`](../operations/RUNBOOK.md#local-validation-gate); it is
+not copied here as a second, immediately stale link-count table. The tables
+above preserve the reviewed semantic `in`/`out` role for each artifact or
+explicit exhaustive artifact group.
+
+## Source-to-destination consolidation ledger
+
+| Source | Unique material retained | Destination or retained owner | Package |
+| --- | --- | --- | --- |
+| `AGENTS.md` approval/task-start guard | Approval boundary and card-selection semantics | Concise root guard linking `TASK_START.md` and task registry | `DOC-CONS-08A` |
+| `AGENTS.md` concurrency detail | Shared-worktree danger, integration authority, evidence binding | Concise root guard; procedure in `CONCURRENT_WORK.md`, current lanes in `HANDOFF.md`, commands in `RUNBOOK.md` | `DOC-CONS-08A` |
+| `AGENTS.md` development-gate procedure | Linear delivery, applicable validation, docpatch reopening | `TASK_DELIVERY.md` and exact `RUNBOOK.md` gate; concise approval/destructive branch guard remains root | `DOC-CONS-08A` |
+| `AGENTS.md` evidence language and biological caution | Exact evidence states, CMH terminology, orientation/biological boundary | Retain automatically loaded in root; link scientific contracts | `DOC-CONS-08A` |
+| `AGENTS.md` local/cluster/data/destructive safety | Fixture limits, login-node boundary, forbidden artifacts, recovery preservation | Retain automatically loaded, with action-point repeats in operations docs | `DOC-CONS-08A` |
+| `AGENTS.md` layout, script/publication, R, and SLURM conventions | Neutral current-workflow engineering constraints and known legacy exceptions | Stale target/wrapper owner claims repaired by `DOC-IA-01`; remaining detail moves to new `docs/operations/ENGINEERING_CONVENTIONS.md` plus stage-local contracts, while a concise safety guard remains root | `DOC-CONS-08A` |
+| `AGENTS.md` documentation owner table | Responsibility roster | This document | Moved and old table removed by `DOC-IA-01` |
+| `AGENTS.md` generic context/engineering preferences | Correctness-over-brevity and explicit/portable design | Retain until a separately authorized global owner is verified; then remove repository copy in the same change | `DOC-CONS-08A` |
+| Root `README.md` documentation roster and development procedure | Newcomer routes and approval/data cautions | This sitemap/ownership map and concise links to `AGENTS.md`, `TASK_START.md`, `CONCURRENT_WORK.md`, `HANDOFF.md`, and `PIPELINE_PLAN.md` | Direct roster moved by `DOC-IA-01`; remaining compression in `DOC-CONS-08B` |
+| Root `TODO.md` completed history, frozen sequence, family catalog, future catalog | Current eligible priorities only; historical facts and plans remain discoverable | Existing completed cards, `PIPELINE_PLAN.md`, and `HANDOFF.md`; retain any unique family grouping in `TODO.md` until `TASK-EPIC-01` creates an accepted index | `DOC-CONS-08B` |
+| `TOP_LEVEL.md` temporary runway, routing, situation, and impact blocks | All task-start safety and selection semantics | Current order/state to `HANDOFF.md`/`PIPELINE_PLAN.md`; routing/impact to `TASK_START.md`/`TASK_DELIVERY.md`/`RUNBOOK.md` | Existing `DOC-SITEMAP-01` |
+| `HANDOFF.md` completed rosters, lineage, counts, and timings | Unique evidence state, unresolved cohort/runtime/scientific limits | Current evidence summary remains; dated detail moves beneath `docs/history/` or links to completed cards/`TEST_BASELINE.md`/`PIPELINE_PLAN.md` | `DOC-CONS-08E` after `08D` |
+| `PIPELINE_PLAN.md` frozen package narratives and old lineage | Durable roadmap decisions and acceptance | Current matrix/roadmap remains; dated lineage moves beneath `docs/history/` or completed cards | `DOC-CONS-08E` after `08D` |
+| `CONCURRENT_WORK.md` dated first-use milestone | Durable concurrency policy | Current milestone in `HANDOFF.md`; dated evidence beneath `docs/history/` | `DOC-CONS-08E` after `08D` |
+| `RUNBOOK.md` command corpus | Exact supported invocations, recovery cautions, human-review procedure | Retain commands in runbook with a manual index; stage semantics link local contracts; scientific review procedure moves adjacent to its evidence owner only after destination exists | `DOC-CONS-08C` |
+| `RUNBOOK.md` embedded substantive programs | Recoverable exact mechanics | Existing tested `scripts/git_orchestration/` helpers where equivalent; otherwise retain until a separately tested executable extraction is approved | `DOC-CONS-08C` boundary; no untested extraction |
+| `TROUBLESHOOTING.md` repeated commands/templates | Unique symptom/cause/diagnosis/fix, stage-specific limitations, transaction recovery | Diagnostic prose remains; exact commands link `RUNBOOK.md`; common validator template plus per-owner differences | `DOC-CONS-08C` |
+| `REFACTOR_AUDIT.md` dated findings/resolutions | Evidence, rejected approaches, open recheck triggers | `docs/history/audits/` for frozen dated record; concise active index/recheck route remains in design | `DOC-CONS-08D` |
+| `TEST_BASELINE.md` dated runs and current baseline | Evidence boundary, notation, risk matrices, gate provenance | `docs/history/testing/` for dated records; concise current baseline owner remains in design | `DOC-CONS-08D` |
+| `ARCHITECTURE.md` rosters, identity/edge tables, and detailed contract prose | Conceptual current topology and heterogeneous guarantees | Exact identity/DAG to `STAGE_MAP.md`; functional details to local contracts; roster to `FUNCTIONAL_OWNER_INVENTORY.md` | `DOC-CONS-08F` |
+| `FUTURE_ARCHITECTURE.md` exact topology/migration detail | Target principles and deferred constraints | Exact homes/directions to `SOURCE_TOPOLOGY.md`; mechanics to `MIGRATION_MECHANICS.md` | `DOC-CONS-08F` |
+| `DECISIONS.md` copied procedure/status and long crosswalk | Durable rationale, rejected alternatives, consequences | Dedicated owners and compact links | `DOC-CONS-08F` |
+| `QUESTIONS.md` verbose resolved material | Open questions/choices and discoverable resolved IDs | Durable answer in `DECISIONS.md`; compact resolved index link | `DOC-CONS-08F` |
+| `future_roadmap_sequence.mmd` | Any semantically unique target relationship | Rewrite as a non-waterfall target view or retire only after its unique content is represented in `FUTURE_ARCHITECTURE.md`/`PIPELINE_PLAN.md` | `DOC-CONS-08F` |
+| Demo documents' shared product/report prose and snapshots | Walkthrough order, PI evidence table, prompts, action-point cautions, dated cohort evidence | Presentation owners keep narrative; dated snapshot moves to `docs/history/demos/` and current evidence links `HANDOFF.md` | `DOC-CONS-08G` after `08D` |
+| `work/active/JIT-01.md` | Two cleanup-queue entries and their provenance | Authorized task/durable cleanup owners chosen without depending on unaccepted sidecar state; completed-card backlinks repaired | `DOC-CONS-08H` |
+
+## `AGENTS.md` rule disposition
+
+Line numbers describe the `DOC-IA-01` input and are review aids, not stable
+anchors. `DOC-CONS-08A` must compare the live file rule by rule before moving
+anything.
+
+| Input lines | Rule group | Disposition |
+| --- | --- | --- |
+| `1–6` | Repository purpose and maintainable research-software standard | Retain concise automatically loaded context. |
+| `8–12` | Correctness over token reduction; targeted context when equivalent | Global reusable preference candidate. Retain until global placement is separately authorized and verified. |
+| `14–17` | Current-state and roadmap routes | Retain concise links. |
+| `19–51` | Plan/review start, exact-current instructions, task router/card, live Git, approval, permitted status-only move | Retain the approval and routing guard; move explanatory detail to `TASK_START.md` and task registry only after exact semantic parity. |
+| `53–70` | Shared-worktree isolation, lane roles, integration authority, combined evidence | Retain a short shared-worktree/authority guard and link `CONCURRENT_WORK.md`; no weakening. |
+| `72–78` | First-use strategy milestone and coordination-checkpoint procedure | Move current milestone to `HANDOFF.md` and exact publication procedure to operations owners; remove stale root status only after parity review. |
+| `80–125` | Linear development/docpatch gate, validation selection, runtime promotion | Move procedure to `TASK_DELIVERY.md`/`RUNBOOK.md`; retain concise approval, applicable-gate, and upstream-sequential safety guards. |
+| `127–128` | No destructive stage-branch operations without direction | Retain automatically loaded. |
+| `130–157` | Evidence-state vocabulary, cluster-proof boundary, evidence non-equivalence, reserved biological state, CMH term | Retain automatically loaded verbatim or with proven semantic equivalence. Intentional action-point repetition is allowed. |
+| `159–179` | Tiny-fixture, login-node, forbidden-artifact, private-data, destructive production-artifact, lock/recovery safety | Retain automatically loaded. Intentional action-point repetition is allowed. |
+| `181–215` | Repository layout, entry-point shapes, manifest/path/glob rules, target-owner claim | Move current layout to `README.md`/architecture and neutral rules to `ENGINEERING_CONVENTIONS.md`/contracts. Correct the stale thin-wrapper and target-owner claims before or during the move. |
+| `217–255` | Cross-language script, dry-run, publication, and report-rendering conventions | Move neutral detail to `ENGINEERING_CONVENTIONS.md` and functional detail to contracts; retain concise dry-run/publication/evidence safety if needed for automatic reachability. |
+| `257–268` | No implicit dependency installation, opt-in R environment, exact-command owner | Retain the no-install guard; move exact R behavior to the neutral convention/decision and commands to `RUNBOOK.md`. |
+| `270–277` | SLURM wrapper conventions and module/memory details | Move to `ENGINEERING_CONVENTIONS.md` and owner contracts, explicitly preserving legacy exceptions. |
+| `279–314` | Single-owner roster, anti-duplication, no embedded programs, docpatch duties | The detailed roster moves to this file now. Retain concise single-owner/no-loss guard and route delivery/impact procedure to `TASK_DELIVERY.md`/`TASK_START.md`. |
+| `316–324` | Mechanical orientation versus biological interpretation | Retain automatically loaded; intentional scientific action-point repetition is allowed. |
+| `326–330` | Explicit/portable engineering style and anti-premature-abstraction rule | Global reusable preference candidate plus repository-specific convention. Retain until verified destinations exist. |
+
+## Bounded follow-up packages
+
+The task cards are authoritative for scope and dependencies. This table is a
+navigation summary, not a second roadmap.
+
+| Card | One bounded result | Stop condition |
+| --- | --- | --- |
+| `DOC-CONS-08A` | Slim the root agent router and establish the neutral engineering-conventions owner. | Any current rule lacks a destination or an automatically loaded guard becomes less reachable. |
+| `DOC-CONS-08B` | Make root `README.md` and `TODO.md` concise entry/priority views. | Completed history, roadmap, or user safety meaning lacks a canonical linked owner. |
+| `DOC-CONS-08C` | Index and separate runbook commands from troubleshooting diagnosis and local contracts. | A command/procedure has no tested owner or transaction-specific recovery meaning would be merged. |
+| `DOC-CONS-08D` | Establish dated documentation history and separate frozen audit/testing evidence. | A historical fact is undated, unindexed, or still needed as current truth. |
+| `DOC-CONS-08E` | Remove completed/dated history from live handoff, roadmap, and concurrency views. | Current state or lineage cannot be distinguished from the proposed history record. |
+| `DOC-CONS-08F` | Compress design/architecture views to principles and links to exact contract owners. | Target/current truth conflicts or a diagram/decision contains unique unmapped meaning. |
+| `DOC-CONS-08G` | Consolidate demo views and classify the cohort snapshot. | Presentation cautions or dated evidence would become less discoverable. |
+| `DOC-CONS-08H` | Move both JIT cleanup entries to authorized owners and retire the temporary record. | Either item lacks an accepted durable destination or depends on unaccepted sidecar state. |
+
+Existing `DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`,
+`CODEDOC-05`, and `TASK-EPIC-01` retain their distinct responsibilities; the
+new packages must not absorb or pre-implement them.

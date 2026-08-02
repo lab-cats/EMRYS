@@ -48,6 +48,9 @@ and completion history. They link rather than duplicate durable truth:
   [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md);
 - unresolved choices belong in
   [`../design/QUESTIONS.md`](../design/QUESTIONS.md).
+- documentation audiences, canonical responsibility boundaries, and
+  consolidation dispositions belong in
+  [`../sitemap/DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
 
 `PIPELINE_PLAN.md` owns pipeline/package/evidence state and lineage. The task
 card's directory is the only owner of TODO/IN_PROGRESS/COMPLETED workflow

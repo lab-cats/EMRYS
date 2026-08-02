@@ -34,10 +34,14 @@ checkout and exact resume point belong in
    are also complete. The next eligible runway action is the just-in-time
    recast of [`PLAN-02Z`](docs/tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md)
    and selection of its independent review; eligibility is not selection.
-5. TEST-01Z's side of `CODEDOC-05` is satisfied, but that card retains its
-   `DOC-IA-01` blocker. Both recorded prerequisites for `SIZE-07` are now
-   complete; its technical eligibility does not override the active runway
-   freeze.
+5. Preserve completed
+   [`DOC-IA-01`](docs/tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md),
+   an explicitly selected local-only documentation exception that established
+   the [ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) and eight
+   separately planned consolidation cards. Its dependent documentation cards
+   are released from that blocker but remain unselected under the active runway.
+   Both recorded prerequisites for `SIZE-07` are also complete; technical
+   eligibility does not override the freeze.
 
 The temporary critical runway in
 [`TASK_START.md`](docs/operations/TASK_START.md#temporary-critical-runway)
@@ -83,9 +87,10 @@ and authorizes no work without a separately approved plan:
    unless later evidence establishes a genuine dependency.
 8. Correct live task-dependency semantics and validator enforcement through
    [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
-9. Put [`DOC-IA-01`](docs/tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-   first within the Phase `02` documentation family so it can produce the
-   no-loss `AGENTS.md` slim-down and later consolidation cards.
+9. Preserve completed
+   [`DOC-IA-01`](docs/tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+   and its no-loss `AGENTS.md` slim-down and consolidation cards; none of those
+   follow-up cards is selected by completion of the inventory.
 
 ## Current-program task families
 
@@ -117,8 +122,11 @@ and authorizes no work without a separately approved plan:
   tracked separately:
   [`DOC-GATE-01`](docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
   [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md),
-  [`DOC-IA-01`](docs/tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-  through [`CONTEXT-09`](docs/tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
+  completed
+  [`DOC-IA-01`](docs/tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md),
+  its [bounded consolidation children](docs/sitemap/DOCUMENTATION_OWNERSHIP.md#bounded-follow-up-packages),
+  and the remaining cards through
+  [`CONTEXT-09`](docs/tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
 - Large-file dispositions:
   [`SIZE-07`](docs/tasks/TODO/SIZE-07-refresh-large-file-inventory.md) and its
   named family cards; report rendering is owned by

@@ -8,6 +8,8 @@
 - [Task registry](../tasks/README.md) — bounded task scope and lifecycle.
 - [Integration fragments](../fragments/README.md) — candidate-fragment format.
 - [Demonstrations](../demo/) — presentation and walkthrough material.
+- [Audience and ownership map](DOCUMENTATION_OWNERSHIP.md) — short reader
+  routes, canonical responsibility boundaries, and no-loss dispositions.
 
 ## Temporary task-start routing
 
