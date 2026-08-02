@@ -164,6 +164,41 @@ ownership only; no listed file is moved by this topology contract.
 | `rank_cohort_candidates_with_paired_CMH` | `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/` | `analysis.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/analyses/rank_cohort_candidates_with_paired_CMH/` |
 | `assemble_scientific_review_evidence_package` | `src/norad/evidence/assemble_scientific_review_evidence_package/` | `evidence.v1.yaml` | Python validation/publication implementation; shell launcher | `tests/evidence/assemble_scientific_review_evidence_package/` |
 
+## Mirrored test ownership
+
+```text
+tests/
+├── stages/<public-slug>/
+├── analyses/<public-slug>/
+├── evidence/<public-slug>/
+├── cli/
+├── orchestration/
+├── scheduler/
+├── contracts/
+├── libraries/
+├── reporting/
+├── ingestion/
+├── contract_integration/
+└── workflow_integration/
+```
+
+An owner-local test home covers that owner's public entry points, native
+assets, local schemas, failure semantics, and independent fixtures. Language-
+specific runners may remain below the owner home, but `tests/shell/` or
+`tests/r/` is not the durable functional owner merely because it selects an
+interpreter.
+
+`tests/contracts/` independently tests neutral schemas and shared
+vocabularies. `tests/contract_integration/` checks producer/consumer agreement
+at public artifact boundaries without importing either implementation to
+construct expected results. `tests/workflow_integration/` exercises multiple
+owners only through their public entry points and explicit contracts.
+
+Fixtures and goldens remain local to the narrowest test owner. A fixture moves
+to a neutral contract suite only when it represents the shared public contract
+rather than one producer's serialization helper. Test code and fixture
+placement do not create runtime dependency edges.
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
