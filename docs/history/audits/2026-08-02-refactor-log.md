@@ -501,3 +501,43 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   implementation evidence, coverage rename accounting, and rollback. The same
   campaign agent performs the pass, so independent authorship is not claimed;
   executable/test mutation and computational testing remain out of scope.
+
+## 2026-08-02T19:22:35-0400 — REVIEW-REL-03B completed
+
+- **High finding — producer state coverage:** the existing mocked Step `00a`
+  case proves one success and module/STAR exits but does not prove the promised
+  default-eight-thread path, preservation of nonempty prepared reference bytes,
+  directory creation timing, success without complete index validation, or the
+  exact side effects retained after failure. Add those assertions against the
+  old path before movement and run the identical owner-local cases after it.
+- **High finding — validator arbitrary-CWD parity:** public characterization
+  covers help and malformed input from an arbitrary CWD, while the complete
+  dry-run and execute/repeat fixture runs currently force repository CWD. Add
+  full identical-input journeys from a non-repository CWD before and after the
+  move, comparing streams, exits, report bytes, and invocation-directory
+  residue.
+- **Medium finding — fault-fixture topology:** shared copied-validator failure
+  tests currently flatten every file beneath a copied `scripts/` directory.
+  Recreate each validator at its actual repository-relative location so the
+  moved Step `00a` validator exercises its real owner-relative neutral-library
+  resolution under missing and corrupt owner states.
+- **Medium finding — provenance assertion:** artifact-index construction hashes
+  each registered producer but no focused test names the Step `00a` path
+  transition. Add one assertion that the final path changes while status,
+  evidence ID, Git commit, job bytes/SHA-256, artifact identities, schemas, and
+  ordering remain intact.
+- **Coverage decision:** the frozen tracked Step `00a` validator entry is
+  `165/189` covered/statements and `42/60` covered/total branches. Generate and
+  inspect the final-path measurement before running the reviewed baseline-update
+  command; only then may the tracked row move. Keep the neutral-library
+  threshold and global exact-rate non-regression checks active.
+- **Fault-state disposition:** the neutral fault suite already owns first/repeat
+  publication, malformed stage/predecessor, symlink, fsync, replace, restoration,
+  interruption, residue, file-descriptor, and lock-cleanup states. Preserve its
+  same-size/restored-mtime, row-order, late-foreign deletion, incomplete
+  rollback/lock loss, cleanup residue, and lock-cleanup findings as defects.
+- **Independence and evidence boundary:** this was a separate committed-time
+  adversarial pass by the same campaign agent; independent authorship is not
+  claimed. Corrections affect planning documentation only. No executable/test
+  file changed, no computational test ran, and no runtime, cluster, production,
+  scientific-review, or biological-readiness evidence was created.

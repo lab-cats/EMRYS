@@ -23,7 +23,7 @@ arbitrary-CWD behavior, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03B](../IN_PROGRESS/REVIEW-REL-03B-review-construct-star-index-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03B](../COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

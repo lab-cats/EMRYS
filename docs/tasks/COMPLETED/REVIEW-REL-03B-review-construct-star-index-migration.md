@@ -87,5 +87,19 @@ Relocation must not normalize, hide, or accidentally correct those states.
 
 ## Completion record
 
-Not started. If performed by the campaign owner, record an independent-in-time
-adversarial pass and do not claim independent authorship.
+Completed as a read-only independent-in-time adversarial pass against published
+architecture checkpoint `94199dc` after selection checkpoint `22dd2d4`. One
+high finding added missing old/new mocked-producer coverage for prepared-
+reference reuse, default threads, partial-success/no-validation, module/STAR
+failures, and their retained side effects. A second high finding added full
+validator dry-run and execute/repeat parity from a non-repository CWD. Two
+medium findings require copied-validator fault fixtures to reproduce each real
+relative layout and require a focused artifact implementation-evidence path/
+hash assertion. Coverage is frozen at `165/189` covered/statements and `42/60`
+covered/total branches; final measurement must prove those counts before the
+reviewed baseline update overwrites the tracked snapshot. All shared
+publication success/failure/interruption/residue states and named defects remain
+owned by the neutral fault suite and are explicitly preserved. No escalation
+condition was triggered. The same campaign agent performed the pass, so
+independent authorship is not claimed. No executable/test file changed and no
+computational test ran.

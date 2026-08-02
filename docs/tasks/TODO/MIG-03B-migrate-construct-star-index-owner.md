@@ -60,6 +60,23 @@ the first functional owner physically unmigrated.
   layout. Only Step `00a` changes path in this unit; do not weaken exact roster
   equality, infer paths from numeric aliases, add recursive runtime discovery,
   or use a legacy path to keep basename-only test code working.
+- Extend the owner-local mocked producer characterization before moving it, then
+  run the same cases at the final path. Cover default eight-thread fallback,
+  preservation/reuse of existing nonempty FASTA and GTF bytes, creation timing,
+  success without complete index validation, and the exact module/STAR failure
+  exits and retained side effects. These tests preserve current behavior; they
+  do not approve its nontransactional design.
+- Preserve the inherited validation-publication defects exactly: same-size and
+  restored-mtime rewrite blindness, unenforced report-row order, late foreign-
+  final deletion, incomplete rollback with lock/recovery loss, previous/staged
+  cleanup residue, open-file-descriptor/lock retention during cleanup failure, and
+  post-publication lock-cleanup failure. This migration neither fixes nor
+  blesses any of them.
+- Freeze the moved validator's coverage entry at `165/189` covered/statements
+  and `42/60` covered/total branches on the planning parent. After the final
+  path and `src/norad` source boundary are active, measure first, compare the
+  final-path entry to those exact counts, and only then run the reviewed
+  baseline-update command. Do not overwrite the only comparison evidence.
 
 ## Blocked by
 
@@ -78,8 +95,9 @@ the first functional owner physically unmigrated.
   supported local mocked-job run and validator dry run before the cutover; do
   not submit to SLURM, use production inputs, or install/restore dependencies.
 - Confirm the pre-move coverage snapshot measures the validator at its legacy
-  path and that the approved Python/R environments required by the complete
-  gate are already available.
+  path with `165/189` covered/statements and `42/60` covered/total branches, and
+  that the approved Python/R environments required by the complete gate are
+  already available.
 
 ## Required context
 
@@ -112,17 +130,31 @@ the first functional owner physically unmigrated.
   and narrow fixtures to the mirrored owner home. Remove that owner-specific
   case from the cross-owner module while retaining its exact roster/directive/
   mode assertions as independent consumers.
+- Before the move, extend and run that mocked-job case against the legacy path
+  for reference reuse, default threads, partial-success/no-validation, and
+  module/STAR failure side effects. Run identical assertions at the final path.
+- Run the validator's full dry-run and execute/repeat journeys from a non-repo
+  working directory with identical explicit absolute inputs before and after
+  the move; compare stdout/stderr, exit status, output bytes, and invocation-CWD
+  residue in addition to the existing help/malformed public matrix.
 - Cut over the independent SLURM, public-CLI, validator-roster, validation-
   report-loader, artifact-provenance, coverage, Make, and literal-expansion
   consumers to explicit final paths in the same atomic executable/test commit.
   Use exact path maps keyed by the existing public basename or semantic ID so
   mixed-layout characterization stays exhaustive without compatibility files.
+- Rebuild copied-validator missing/corrupt-owner fixtures under each validator's
+  actual repository-relative path. The moved Step `00a` copy must occupy its
+  final owner path and resolve the same copied `src/norad/libraries` owner; do
+  not flatten it back into `scripts` and thereby test a path contract that no
+  longer exists.
 - Preserve `STEP_PRODUCERS["00a"]` evidence identity and job hash while
   intentionally changing only its recorded implementation path to the final
-  owner.
+  owner. Add a focused assertion for the final relative path, evidence ID,
+  status, Git commit, and unchanged source SHA-256.
 - Update the tracked coverage snapshot only through the reviewed baseline-
-  update command after proving the moved validator remains measured and global
-  line/branch rates do not regress.
+  update command after a separate final-path measurement proves the moved
+  validator retains the frozen `165/189` line and `42/60` branch counts and
+  global line/branch rates do not regress.
 - After executable state is final, add the concise owner README and update only
   impact-directed topology, inventory, commands, test-baseline, roadmap,
   handoff, card lifecycle, links, and dated audit documentation in a separate
@@ -169,17 +201,21 @@ the first functional owner physically unmigrated.
   load/list handling, default eight-thread fallback, `sjdbOverhang=149`, reuse
   of nonempty prepared references, directory creation timing, exact mocked STAR
   arguments, streams, child/module exit propagation, and lack of final output
-  validation.
+  validation. Failure assertions preserve the exact prepared references and
+  directories left behind rather than treating their cleanup as approved.
 - The validator preserves mode `0644`, explicit-interpreter invocation,
   arbitrary-CWD help/malformed behavior, all arguments, dry-run/execute effects,
   stdout/stderr, exit status, five ordered check IDs, deterministic report
   bytes, stable-input recheck, lock/publication behavior, and foreign-state
-  preservation through the exact neutral owner.
+  preservation through the exact neutral owner. Full dry-run and execute/repeat
+  fixture journeys pass from a non-repository working directory without
+  invocation-CWD residue.
 - Loader tests prove the moved validator resolves the exact final neutral file,
   uses the same private module object, leaves `sys.path` unchanged, rejects a
   wrong/partial cache, cleans only its owned partial on execution failure, and
   retains actionable artifact-free failure diagnostics. The twelve remaining
-  legacy loaders retain their prior path logic and behavior.
+  legacy loaders retain their prior path logic and behavior. Missing/corrupt-
+  owner copies reproduce each validator's actual relative layout.
 - Public CLI and SLURM inventories contain every current entry exactly once at
   its actual path; Step `00a` independent wrapper, roster, artifact-index,
   shared publication, public-CLI, Make-expansion, and direct-validator tests
@@ -188,11 +224,13 @@ the first functional owner physically unmigrated.
   test home rather than the cross-owner inventory module.
 - Artifact implementation evidence changes only the Step `00a` source path to
   the final job while retaining status, evidence ID, Git commit, job bytes/hash,
-  artifact identities, schemas, ordering, and consumer behavior.
+  artifact identities, schemas, ordering, and consumer behavior; a focused
+  final-path assertion protects this transition.
 - Coverage metadata names exactly `scripts` and `src/norad`; the legacy
-  validator baseline row is replaced by its final path with comparable counts,
-  the neutral library remains threshold-enforced, and global exact line and
-  branch rates do not decrease.
+  validator baseline row is replaced by its final path only after a separate
+  measurement shows `165/189` covered/statements and `42/60` covered/total
+  branches, the neutral library remains threshold-enforced, and global exact
+  line and branch rates do not decrease.
 - Exact searches find no live legacy job, validator, or direct-test path; no
   wrapper, duplicate implementation, package marker, stage-to-stage import,
   undeclared caller, stale runbook command, or stale Markdown link remains.
