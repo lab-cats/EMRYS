@@ -19,9 +19,11 @@ repository, proposing a task-specific plan, and obtaining user approval before
 editing or running mutating commands.
 
 The registry begins with the completed `ARCH-DOC-00` bootstrap card. It does
-not reconstruct retrospective cards for earlier refactor packages; their
-historical scope and evidence remain in `REFACTOR_AUDIT.md`,
-`TEST_BASELINE.md`, `PIPELINE_PLAN.md`, and `HANDOFF.md`.
+not reconstruct retrospective cards for earlier refactor packages. Their
+frozen audit history is indexed under [`docs/history/`](../history/), while
+current audit triggers, test baselines, roadmap, and checkout evidence route
+through `REFACTOR_AUDIT.md`, `TEST_BASELINE.md`, `PIPELINE_PLAN.md`, and
+`HANDOFF.md`.
 
 ## Ownership boundary
 

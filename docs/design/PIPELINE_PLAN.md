@@ -323,8 +323,10 @@ validation during this sequence.
 
 ### Comprehensive refactor program
 
-- [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) owns the evidence-ranked findings,
-  test-first dispositions, and explicit retained/deferred boundaries;
+- [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) owns the current finding index and
+  recheck triggers and links the immutable dated audit that owns the original
+  evidence-ranked findings, test-first dispositions, and retained/deferred
+  boundaries;
 - [`TEST_BASELINE.md`](TEST_BASELINE.md) owns the measured global Python
   line/branch summary, public-contract risk-to-test matrix, fixture
   independence classification, and the evidence behind the exact Phase `01`

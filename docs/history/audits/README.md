@@ -8,4 +8,6 @@ recheck triggers remain in
 
 ## Records
 
-No dated audit record has been migrated yet.
+| Audit date | Record | Provenance and boundary |
+| --- | --- | --- |
+| 2026-07-30 | [Comprehensive refactor audit](2026-07-30-comprehensive-refactor-audit.md) | Initial record `02c1ae8`; exact frozen snapshot `dcdb371` from 2026-07-31. Dated evidence and recommendations only; current routing and recheck triggers remain in `REFACTOR_AUDIT.md`. |

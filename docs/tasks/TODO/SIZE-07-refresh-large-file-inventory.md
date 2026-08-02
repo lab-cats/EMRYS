@@ -74,8 +74,9 @@ combine size, cohesion, contract sensitivity, and scientific constraints.
 
 ## Canonical documentation updates
 
-- `REFACTOR_AUDIT.md` only as a new dated addendum rather than rewriting old
-  evidence, `PIPELINE_PLAN.md`, task registry, and this card.
+- The current `REFACTOR_AUDIT.md` route plus a new immutable dated audit
+  addendum rather than rewriting old evidence, `PIPELINE_PLAN.md`, task
+  registry, and this card.
 
 ## Escalation conditions
 
