@@ -28,7 +28,7 @@ ownership model must be explicit before direct migrations begin.
 
 ## Completion unblocks
 
-- [ARCH-02D](../TODO/ARCH-02D-define-direct-migration-mechanics.md) — Fully: migration mechanics can target one final topology.
+- [ARCH-02D](../IN_PROGRESS/ARCH-02D-define-direct-migration-mechanics.md) — Fully: migration mechanics can target one final topology.
 - [INTAKE-02E](../TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md) — Fully: ingestion and orchestration ownership have a target home.
 - [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Partially: the functional inventory is also required.
 - [CONTEXT-09](../TODO/CONTEXT-09-define-local-maintainer-context.md) — Partially: documentation ownership and README coverage are also required.

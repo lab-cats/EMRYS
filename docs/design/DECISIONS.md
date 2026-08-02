@@ -777,7 +777,7 @@ Consequences: the exact inventory, semantic map, topology, and migration
 mechanics belong to
 [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
 through
-[`ARCH-02D`](../tasks/TODO/ARCH-02D-define-direct-migration-mechanics.md).
+[`ARCH-02D`](../tasks/IN_PROGRESS/ARCH-02D-define-direct-migration-mechanics.md).
 Current flat-layout documentation remains current truth until migrations land.
 
 ### Identify stages semantically and order them with a DAG
