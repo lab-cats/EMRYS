@@ -28,7 +28,7 @@ test defects.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: shared-library scope is one required design input.
+- None.
 
 ## Prerequisites
 

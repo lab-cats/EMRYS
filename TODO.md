@@ -5,10 +5,13 @@ scope, roadmap, current state, blockers, or open questions.
 
 ## Current priority
 
-The next eligible ordinary runway action is to recast
-[`PLAN-02Z`](docs/tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
-select its independent review just in time before planning the first physical
-source migration. Eligibility is not selection or authorization.
+[`PLAN-02Z`](docs/tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md)
+is selected for the user-authorized, documentation-only first-tranche planning
+cycle. Its proposed unit is
+[`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
+preceded by the tranche-specific architecture, reliability, and usability
+reviews linked from that card. No physical source migration is selected or
+executing yet.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)

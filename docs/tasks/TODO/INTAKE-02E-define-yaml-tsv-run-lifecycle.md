@@ -44,7 +44,6 @@ start NORAD, and receive artifacts and a report autonomously. Current
 ## Completion unblocks
 
 - [INTAKE-03A](INTAKE-03A-implement-yaml-tsv-run-lifecycle.md) — Fully: implementation cannot proceed meaningfully until this card accepts the exact V1 fields, directories, identity, claim, transition, retry, and success-promotion design.
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: intake is one required design input.
 
 ## Prerequisites
 

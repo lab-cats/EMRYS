@@ -27,7 +27,6 @@ print suppression.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: logging design is one input to the integrated sequence.
 - [LOG-03](../TODO/LOG-03-build-two-sink-logging-foundation.md) — Partially: implementation also waits for the independent reviews.
 
 ## Prerequisites

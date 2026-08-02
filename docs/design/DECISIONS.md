@@ -870,8 +870,18 @@ Rationale: this captures real reuse without converting lexical similarity into
 repository-wide coupling or a shared defect. The alternatives of never sharing
 or extracting on sight both impose avoidable maintenance risk.
 
-Consequences: intentional independent validation stays duplicated. Candidate
-decisions belong to
+The first rolling-wave application is the validation-evidence report protocol:
+twelve validators import the same nine safety-critical helpers from the Step
+`00a` validator, while an independent fault matrix already exercises their one
+shared implementation. That bounded seam qualifies for neutral ownership in
+`src/norad/libraries/`; it does not prove that BAM helpers, scientific checks,
+parsing/hashing, fixture builders, or other transaction mechanisms are
+equivalent. The exact reviewed migration boundary belongs to
+[`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md).
+
+Consequences: intentional independent validation and heterogeneous
+transactions stay local. The remaining candidate inventory and promotion or
+retention decisions belong to
 [`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md).
 
 ### Apply risk-based source-size thresholds
@@ -1206,7 +1216,7 @@ Consequences: see
 | Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |
 
 The integrated sequence and three independent reviews are owned by
-[`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
+[`PLAN-02Z`](../tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) and
 `REVIEW-*`; final closure is owned by
 [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md).
 

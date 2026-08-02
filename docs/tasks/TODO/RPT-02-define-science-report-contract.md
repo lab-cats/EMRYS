@@ -27,7 +27,6 @@ UI work so “minimal” does not become subjective or scientifically incomplete
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: report design is one input to the integrated sequence.
 - [RPT-03](../TODO/RPT-03-build-format-neutral-report-projection.md) — Partially: implementation also waits for the independent reviews.
 
 ## Prerequisites

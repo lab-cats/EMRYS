@@ -32,7 +32,7 @@ currently make the overall scientific flow hard to grasp.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: the conceptual map is one integrated-plan input.
+- None.
 
 ## Prerequisites
 

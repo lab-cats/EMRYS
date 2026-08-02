@@ -49,7 +49,7 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: local planning boundaries are one integrated-plan input.
+- None.
 
 ## Prerequisites
 

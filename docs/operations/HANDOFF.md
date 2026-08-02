@@ -7,32 +7,28 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/reconciliation-consolidated-01-integration`
+  `codex/plan-02z-first-migration-readiness`
 - Package base:
-  `0fd6348e6cfe54457fef5f65f3468bea106e61f9`
+  `15aba53c538cabf2b7d2284575be0089b0ca90cf`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: the first `PROGRAM-01` runway slice remains complete
-  without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
-  `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01`,
-  `DOC-CONS-08A` through `DOC-CONS-08D` are complete. The consolidated recovery
-  package below preserves reviewed future work without selecting or completing
-  any recovered card.
-- Current package: direct canonical semantic integration of the reviewed
-  reconciliation-recovery source against the exact current parent.
+- Recorded package state: the canonical recovery integration is clean,
+  published, and live-remote equal at the package base above. `PLAN-02Z` is
+  selected only for its first rolling tranche; all other work remains frozen.
+- Current package: documentation-only first-migration planning and review
+  readiness for the neutral validation-report protocol.
 - Package type: documentation-only; no executable, configuration, generation,
   schema, fixture, report-template, dependency, source-layout, public-interface,
   scientific-policy, or test-harness behavior changed.
-- Remote publication and upstream equality: this branch is the authorized
-  publication target. Treat publication as established only by live Git; final
-  closure requires local `HEAD`, configured upstream, and the live remote ref
-  to be equal. Cluster work remains paused.
+- Remote publication and upstream equality: the package branch is not yet
+  published. Final closure requires local `HEAD`, configured upstream, and the
+  live remote ref to be equal. Cluster work remains paused.
 
-This package is a direct child of canonical parent
-`0fd6348e6cfe54457fef5f65f3468bea106e61f9`. It changes only Markdown
-documentation artifacts and adds no descriptor, schema, runtime, report
-template, or integration fragment; current executable paths remain under the
-flat layout until a separately planned physical migration.
+This package descends directly from the verified integrated canonical tip
+`15aba53c538cabf2b7d2284575be0089b0ca90cf`. It changes only Markdown
+planning/review artifacts and adds no descriptor, schema, runtime, report
+template, test-harness change, or integration fragment. Current executable
+paths remain under the flat layout.
 
 ## Active concurrent lanes
 
@@ -482,9 +478,11 @@ suites are not applicable. It creates no runtime, cluster, scientific-review,
 or biological-readiness evidence, and no dependency was installed, restored,
 or updated.
 
-The next eligible ordinary runway action is to recast
-[`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and select
-its independent review just in time. Neither action is selected or authorized
-by this handoff, and no physical migration has begun. All other work, including
+[`PLAN-02Z`](../tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) is
+the selected current package. It proposes
+[`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md) and a
+dedicated architecture, reliability, and usability review chain. The next
+action is to finish and commit this planning checkpoint, then select those
+reviews in order. No physical migration has begun. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

@@ -27,7 +27,7 @@ preserving accidental paths forever.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: the integrated sequence has several other design inputs.
+- None.
 
 ## Prerequisites
 

@@ -60,7 +60,6 @@ scientific meaning.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the semantic stage map is also required.
 - [CODEDOC-05](../TODO/CODEDOC-05-inventory-code-documentation.md) — Partially: an affirmative behavior gate is also required.
 - [CONTEXT-09](../TODO/CONTEXT-09-define-local-maintainer-context.md) — Partially: target topology and README coverage are also required.
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: documentation sequencing is one integrated-plan input.
 
 ## Prerequisites
 

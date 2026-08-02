@@ -28,7 +28,6 @@ combine size, cohesion, contract sensitivity, and scientific constraints.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: size dispositions are one integrated-plan input.
 - [SIZE-07A](../TODO/SIZE-07A-decompose-artifact-index-builder.md) — Partially: implementation also waits for the independent reviews.
 - [SIZE-07B](../TODO/SIZE-07B-decompose-scientific-validation-tooling.md) — Partially: implementation also waits for the independent reviews.
 - [SIZE-07D](../TODO/SIZE-07D-decompose-run-summary-builder.md) — Partially: implementation also waits for the independent reviews.

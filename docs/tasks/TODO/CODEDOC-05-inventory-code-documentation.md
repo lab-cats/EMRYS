@@ -31,7 +31,6 @@ noise and invite accidental behavior changes.
 
 ## Completion unblocks
 
-- [PLAN-02Z](../TODO/PLAN-02Z-integrate-future-task-sequence.md) — Partially: the integrated plan needs exact local comment/header work.
 - [DOC-SKILL-10](../TODO/DOC-SKILL-10-build-documentation-health-skill.md) — Partially: the skill also depends on proven glossary, README, review, and consolidation practices.
 
 ## Prerequisites
