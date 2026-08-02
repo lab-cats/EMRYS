@@ -541,3 +541,15 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   claimed. Corrections affect planning documentation only. No executable/test
   file changed, no computational test ran, and no runtime, cluster, production,
   scientific-review, or biological-readiness evidence was created.
+
+## 2026-08-02T19:25:27-0400 — REVIEW-UX-03B selected
+
+- **Selection:** move only `REVIEW-UX-03B` to `IN_PROGRESS` and repair its
+  lifecycle links after published reliability checkpoint `581879f` was clean,
+  upstream-equal, and live-remote equal. `MIG-03B` remains unselected in `TODO`.
+- **Review boundary:** this begins the final read-only independent-in-time
+  adversarial pass over submitted-job and interpreter-only validator paths,
+  arbitrary-CWD journeys, diagnostics, Make/operator commands, artifact
+  provenance, owner findability, link repair, and rollback. The same campaign
+  agent performs the pass, so independent authorship is not claimed;
+  executable/test mutation and computational testing remain out of scope.

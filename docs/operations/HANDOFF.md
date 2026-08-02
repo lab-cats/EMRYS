@@ -510,6 +510,7 @@ planning checkpoint is clean and published, select and perform
 [`REVIEW-ARCH-03B`](../tasks/COMPLETED/REVIEW-ARCH-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
-are complete. The next action is to select the dedicated usability review;
-`MIG-03B` remains unselected. The unsliced
+are complete. The dedicated
+[`REVIEW-UX-03B`](../tasks/IN_PROGRESS/REVIEW-UX-03B-review-construct-star-index-migration.md)
+is selected for read-only review; `MIG-03B` remains unselected. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

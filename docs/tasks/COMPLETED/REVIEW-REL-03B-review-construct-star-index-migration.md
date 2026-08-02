@@ -26,7 +26,7 @@ Relocation must not normalize, hide, or accidentally correct those states.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03B](../TODO/REVIEW-UX-03B-review-construct-star-index-migration.md) — Fully: public and maintainer continuity can be reviewed after failure-state obligations are fixed.
+- [REVIEW-UX-03B](../IN_PROGRESS/REVIEW-UX-03B-review-construct-star-index-migration.md) — Fully: public and maintainer continuity can be reviewed after failure-state obligations are fixed.
 
 ## Prerequisites
 

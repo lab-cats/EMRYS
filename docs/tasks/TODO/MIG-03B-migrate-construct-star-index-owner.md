@@ -80,7 +80,7 @@ the first functional owner physically unmigrated.
 
 ## Blocked by
 
-- [REVIEW-UX-03B](REVIEW-UX-03B-review-construct-star-index-migration.md) — Required: the dedicated architecture, reliability, and usability passes must close before task-specific execution planning.
+- [REVIEW-UX-03B](../IN_PROGRESS/REVIEW-UX-03B-review-construct-star-index-migration.md) — Required: the dedicated architecture, reliability, and usability passes must close before task-specific execution planning.
 
 ## Completion unblocks
 
