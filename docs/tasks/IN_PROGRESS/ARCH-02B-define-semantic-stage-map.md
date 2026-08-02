@@ -24,7 +24,7 @@ explicit ordering model would create a different ambiguity.
 
 ## Completion unblocks
 
-- [ARCH-02C](../TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Fully: target directories and contract ownership can use stable semantic identities.
+- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Fully: target directories and contract ownership can use stable semantic identities.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the documentation information architecture must also be settled.
 
 ## Prerequisites

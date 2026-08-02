@@ -23,7 +23,7 @@ preserving accidental paths forever.
 
 ## Blocked by
 
-- [ARCH-02C](../TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: the final destination and dependency rules must be settled.
+- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: the final destination and dependency rules must be settled.
 
 ## Completion unblocks
 

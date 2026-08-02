@@ -26,7 +26,7 @@ start NORAD, and receive artifacts and a report autonomously. Current
 
 ## Blocked by
 
-- [ARCH-02C](../TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: ingestion, orchestration, contract, and state ownership must have target homes.
+- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: ingestion, orchestration, contract, and state ownership must have target homes.
 
 ## Completion unblocks
 

@@ -32,7 +32,7 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 ## Blocked by
 
-- [ARCH-02C](../TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: local domain and contract ownership must be settled.
+- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: local domain and contract ownership must be settled.
 - [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: canonical ownership and audiences must be settled.
 - [DOC-README-03](../TODO/DOC-README-03-establish-directory-readme-coverage.md) — Required: the local README convention must be proven.
 

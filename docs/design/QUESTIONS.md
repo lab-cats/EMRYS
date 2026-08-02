@@ -76,7 +76,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
   serialized descriptor that orchestration, documentation, and validation will
   consume.
 - **Owning card:**
-  [`ARCH-02C`](../tasks/TODO/ARCH-02C-define-vertical-source-contract-and-test-topology.md).
+  [`ARCH-02C`](../tasks/IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md).
 - **Decision deadline:** before `ARCH-02D` or any source migration planning.
 - **Recommendation:** pair the human `README.md` with one predictable,
   versioned stage-local descriptor (prefer YAML for inspectable metadata) that
