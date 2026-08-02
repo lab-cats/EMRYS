@@ -162,6 +162,7 @@ ownership only; no listed file is moved by this topology contract.
 | `generate_partitioned_cohort_mpileup_VCFs` | `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/generate_partitioned_cohort_mpileup_VCFs/` |
 | `preprocess_and_annotate_cohort_candidates` | `src/norad/stages/preprocess_and_annotate_cohort_candidates/` | `stage.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/stages/preprocess_and_annotate_cohort_candidates/` |
 | `rank_cohort_candidates_with_paired_CMH` | `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/` | `analysis.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/analyses/rank_cohort_candidates_with_paired_CMH/` |
+| `assemble_scientific_review_evidence_package` | `src/norad/evidence/assemble_scientific_review_evidence_package/` | `evidence.v1.yaml` | Python validation/publication implementation; shell launcher | `tests/evidence/assemble_scientific_review_evidence_package/` |
 
 ## Neutral contract boundary
 
