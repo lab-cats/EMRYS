@@ -120,3 +120,14 @@ Each committed checkpoint must leave every supported caller executable through
 either the final path or the single declared wrapper. A migration never edits
 an output schema, scientific policy, or evidence vocabulary merely to make a
 source path cutover easier.
+
+## Parity evidence by migration class
+
+The migration card selects only the rows applicable to its owner. “Parity”
+means comparison against the frozen old-path baseline with identical explicit
+inputs and controlled environment; it is not a license to bless newly observed
+behavior.
+
+| Class | Required parity evidence | Cutover and rollback boundary |
+| --- | --- | --- |
+| Python | Compare direct interpreter and executable-mode entry where supported: help, malformed arguments, arbitrary working directory, imports, dry-run and execute effects, stdout/stderr roles, exit status, deterministic artifacts, modes, and applicable focused/independent tests. Preserve the measured line/branch baseline across the path rename; a moved module is not treated as an unreviewed disappearance plus unrelated new file. | Update same-owner imports before external imports. A named CLI-path caller may receive a pure delegating wrapper; a named import caller may receive a temporary re-export only when exact imported names and import side effects are parity-tested. Do not require installation or alter `sys.path` globally. Roll back import callers before reverting the moved module, and restore the recorded executable bit and shebang behavior. |
