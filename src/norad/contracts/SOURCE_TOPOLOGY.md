@@ -247,6 +247,22 @@ supplemental tables authorized by exact contract. It does not discover inputs,
 run analysis, install tools, or promote evidence state. Native report assets
 remain under the reporting owner; their packaging is deferred.
 
+## Ingestion boundary
+
+`ingestion/` owns admission and normalization of external requests, manifests,
+and input references into neutral contracts. Manifest and request schemas that
+cross into orchestration remain under `contracts/`; ingestion-specific parsing
+and admission behavior remain under `ingestion/`.
+
+Ingestion may depend on neutral contracts and reviewed libraries. It hands an
+explicit validated contract to orchestration and does not import functional-
+owner implementation, infer sample relationships from filenames, execute
+stages, or make evidence claims. Operational inboxes, run-state directories,
+and acquired data remain outside source ownership.
+
+This boundary does not choose request fields, preprocessing profiles,
+acquisition policy, lifecycle directories, or an ingestion runner.
+
 ## Orchestration and scheduler boundary
 
 `orchestration/` may depend on neutral contracts and invoke the public entry
