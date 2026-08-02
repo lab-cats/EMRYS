@@ -49,7 +49,7 @@ scientific meaning.
 
 ## Completion unblocks
 
-- [DOC-CONS-08A](../TODO/DOC-CONS-08A-slim-root-agent-router.md) — Fully: every root rule has a settled destination and reachability boundary.
+- [DOC-CONS-08A](../IN_PROGRESS/DOC-CONS-08A-slim-root-agent-router.md) — Fully: every root rule has a settled destination and reachability boundary.
 - [DOC-CONS-08B](../TODO/DOC-CONS-08B-compress-root-entry-and-priority-views.md) — Fully: root audiences and retained facts have settled owners.
 - [DOC-CONS-08C](../TODO/DOC-CONS-08C-compress-operational-guidance.md) — Fully: runbook/troubleshooting boundaries and no-loss constraints are settled.
 - [DOC-CONS-08D](../TODO/DOC-CONS-08D-establish-dated-documentation-history.md) — Fully: the history location and migration rules are settled.
