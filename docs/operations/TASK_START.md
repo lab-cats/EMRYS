@@ -44,6 +44,9 @@ Before proposing a task-specific plan:
    unresolved blocker in the task-specific plan. Obtain approval before
    mutation, apart from the permitted card-selection move in `AGENTS.md`.
 
+After approval, follow the bounded slice and card-close procedure in
+[`TASK_DELIVERY.md`](TASK_DELIVERY.md).
+
 ## Context freshness and reuse
 
 Existing context may replace a reread only when all of these are true:

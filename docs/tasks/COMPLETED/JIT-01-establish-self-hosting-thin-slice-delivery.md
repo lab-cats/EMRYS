@@ -17,7 +17,10 @@ creation before the next architecture card is selected.
   only that slice.
 - Capture collateral observations neutrally without investigating or resolving
   them during a slice.
-- Preserve the user-owned `ARCHITECTURE.md` edit outside JIT-01.
+- Include the user-owned `ARCHITECTURE.md` deletion unchanged in the final
+  JIT-01 reconciliation commit.
+- Retain noncritical input-dependent items in the active record as decision
+  artifacts until their dispositions are durable.
 - Defer general documentation migration, validator redesign, `AGENTS.md`
   cleanup, child-sitemap design, and `ARCH-02B`.
 
@@ -33,8 +36,8 @@ creation before the next architecture card is selected.
 
 - The completed [ARCH-02A inventory](../COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
   is the inspected predecessor.
-- The user-owned architecture edit remains unchanged and outside every JIT-01
-  commit.
+- The user-owned architecture deletion remains unchanged until its authorized
+  inclusion in final reconciliation.
 
 ## Required context
 
@@ -66,36 +69,51 @@ creation before the next architecture card is selected.
 
 ## Deliverables
 
-- The temporary `work/active/JIT-01.md` record and its removal at reconciliation.
+- The temporary `work/active/JIT-01.md` record, retained after reconciliation
+  only while it contains input-dependent decision artifacts.
 - The top-level sitemap bootstrap and the bounded task-delivery procedure.
 - The reduced task-start router, the three named card enrichments, and one
   concise sitemap follow-up card.
-- A fully dispositioned cleanup queue and a final published documentation-only
-  package.
+- Resolved cleanup items plus explicit durable classifications for retained
+  input-dependent decisions, and a final published documentation-only package.
 
 ## Acceptance evidence
 
 - Every slice was bounded by the exact three-line charter and committed at its
   stopping condition without future-slice inspection or collateral expansion.
-- Final review confirms information preservation, owner separation, and complete
-  cleanup dispositions.
+- Final review confirms information preservation, owner separation, resolved
+  cleanup corrections, and durable classification of retained decisions.
 - Git checks and one final repository documentation validation pass; computational,
   R, shell, report-runtime, and cluster suites remain not applicable.
-- The final branch is clean, published, and upstream-equal, and the temporary
-  active record is absent.
+- The final branch is clean, published, and upstream-equal. The active record is
+  absent unless it retains an explicitly classified input-dependent decision.
 
 ## Canonical documentation updates
 
 - Only this card, its required registry references, and the documentation owners
   explicitly named by the active slice or final reconciliation.
+- Final reconciliation updates `HANDOFF.md`, `PIPELINE_PLAN.md`, and `TODO.md`
+  once so the completed bootstrap and `ARCH-02B` resume point agree.
 
 ## Escalation conditions
 
-- Stop if the preservation-only architecture diff changes, the current validator
-  makes the bounded procedure impossible, or safe information preservation
-  requires work outside the active slice.
+- Stop if the architecture deletion changes beyond its authorized content, the
+  current validator makes the bounded procedure impossible, or safe information
+  preservation requires work outside the active slice.
 
 ## Completion record
 
-In progress. The approved bootstrap selects this card before content slices
-begin; final stable evidence will be recorded once during reconciliation.
+Completed as a documentation-only self-hosting procedure before `ARCH-02B`.
+The final reconciliation preserves one concise task-start router, temporary
+targeted routing in the top-level sitemap, bounded delivery and cleanup rules,
+and the approved architecture deletion. The base-to-tip semantic review and
+the repository documentation gate cover the final published content;
+computational, R, shell, report-runtime, and cluster validation are not
+applicable.
+
+The retained [decision record](../../../work/active/JIT-01.md) preserves only
+noncritical input-dependent items. Future sitemap classification and
+touch-move-delete migration are owned by
+[`DOC-SITEMAP-01`](../TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md).
+Publication and exact checkout evidence remain in
+[`HANDOFF.md`](../../operations/HANDOFF.md).

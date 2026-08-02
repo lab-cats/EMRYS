@@ -1,9 +1,10 @@
 ## Current slice
 
-Outcome: The temporary runway records JIT-01 priority and conditional slice-close validation.
-Touches: `docs/sitemap/TOP_LEVEL.md` and `work/active/JIT-01.md`.
-Stop: The two corrected observations leave the queue while the `DOC-GATE-01` observation remains untouched.
+Outcome: JIT-01 is reconciled while input-dependent decisions remain durably retained.
+Touches: JIT-01 final documentation owners, lifecycle paths, architecture edit, and `work/active/JIT-01.md`.
+Stop: Resolved work is reconciled and every retained item has a durable cleanup classification.
 
 ## Cleanup queue
 
-- Slice 7A | `docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md` | The card describes the validator as already extracted while also listing extraction as future scope and a deliverable.
+- Slice 7A | `docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md` | `KNOWN_CARD` — extraction and integration status awaits user input before any card correction.
+- Ingestion-card slice | task-ingestion card awaiting integration | `TASK_INTAKE` — task ingestion owns batched registry search, deduplication, and update/create/unrefined/no-action decisions; recording that rule awaits a durable card path.

@@ -7,31 +7,32 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/arch-02a-slice-7-infer-paired-read-orientation-contract`
-- ARCH-02A package base:
-  `ed518c0 docs(program): establish critical runway slice`
+  `codex/jit-01-self-hosting-thin-slice-delivery`
+- JIT-01 package base:
+  `a84d07c docs(arch): complete ARCH-02A reconciliation`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: the first `PROGRAM-01` runway slice is complete
-  without completing that card; `ARCH-02A` is complete across 14 approved JIT
-  slices and one exact public-surface coverage audit.
-- Current package: implementation-backed contracts for historical owners
-  `00a` through `09c`, cross-cutting ownership classification, and final
-  canonical-document reconciliation.
+- Recorded package state: the first `PROGRAM-01` runway slice remains complete
+  without completing that card; `ARCH-02A` and the interposed `JIT-01`
+  workflow bootstrap are complete.
+- Current package: minimal self-hosting thin-slice delivery, targeted task-start
+  routing, retained input-dependent decision records, and final documentation
+  reconciliation before `ARCH-02B`.
 - Package type: documentation-only; no executable, configuration, schema,
   fixture, report-template, dependency, or test-harness behavior changed.
-- Remote publication and upstream equality: resolve from live Git before
-  selecting the successor; remote and cluster work remain paused.
+- Remote publication and upstream equality: this package is published and
+  upstream-equal at the commit containing this handoff; resolve its exact SHA
+  from live Git. Cluster work remains paused.
 
-The ARCH-02A lineage descends from the critical-runway slice at `ed518c0`.
-Its 14 colocated contracts and exact 88-surface inventory preserve current
-behavior, dependency direction, evidence boundaries, direct protection, and
-known ownership leaks without moving code or choosing target semantic names.
+JIT-01 descends from the completed ARCH-02A reconciliation. It changes only
+documentation and includes the user-authorized removal of redundant individual
+contract links from `ARCHITECTURE.md` while retaining the functional-owner
+contract index and its inventory link.
 
 ## Active concurrent lanes
 
-This checkout is the canonical ARCH-02A documentation lane. No concurrent lane
-contributed to the inventory or its completion reconciliation. The completed
+This checkout is the canonical JIT-01 documentation lane. No concurrent lane
+contributed to its final reconciliation. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
 candidate worktrees, paused concurrency attempts, and the researcher pilot
 remain preserved but frozen.
@@ -397,23 +398,26 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
+[`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md)
+is complete on the
 [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
-is complete. The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-assigns all 88 current public workflow and repository-development surfaces
-exactly once, while 14 colocated contracts make inputs, outputs, dependencies,
-consumers, validator boundaries, direct protection, and unresolved ownership
-leaks traceable without filename inference.
+predecessor. [`TASK_DELIVERY.md`](TASK_DELIVERY.md) now separates thin-slice
+close from final card review, validation, and verification;
+[`TASK_START.md`](TASK_START.md) is a universal router; and the top-level
+sitemap temporarily preserves conditional routing without designing permanent
+child maps.
 
-The current architecture overview and Mermaid source now show Step `02b` and
-Step `03` as evidence branches rather than computational prerequisites, and
-distinguish reference preparation dependencies. Redundant per-validator prose
-was consolidated into the contracts without deleting unique behavior or
-failure knowledge.
+The retained [JIT-01 decision record](../../work/active/JIT-01.md) contains
+only noncritical input-dependent items with durable `KNOWN_CARD` or
+`TASK_INTAKE` classifications. The future temporary-routing classification and
+touch-move-delete migration are captured by
+[`DOC-SITEMAP-01`](../tasks/TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md).
 
-This package changes documentation only. It creates no new runtime, cluster,
-scientific-review, or biological-readiness evidence, and computational
-validation is not applicable. No dependency was installed, restored, or
-updated. The sibling worktree's pre-existing ignored R cache remains untouched.
+This package changes documentation only. Its final gate is Git and repository
+documentation validation; computational, R, shell, report-runtime, and cluster
+suites are not applicable. It creates no runtime, cluster, scientific-review,
+or biological-readiness evidence, and no dependency was installed, restored,
+or updated.
 
 The next eligible critical-runway package is
 [`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md). It must be

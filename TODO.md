@@ -25,6 +25,8 @@ checkout and exact resume point belong in
    remains substantively unreviewed and unintegrated.
 4. Preserve the completed implementation-backed functional inventory in
    [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md).
+   Preserve the completed interposed workflow bootstrap in
+   [`JIT-01`](docs/tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md).
    The next eligible critical-runway package is `ARCH-02B`, followed by
    `ARCH-02C` and `ARCH-02D` in dependency order; none is selected merely by
    being eligible.

@@ -43,35 +43,6 @@ parameterized scripts. The login node is not a compute engine.
 The exact public-entrypoint and cross-cutting-domain coverage roster is
 [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md).
 
-- Historical Step `00a`, working name `construct_STAR_index`:
-  [`CONTRACT.md`](../../src/norad/stages/construct_STAR_index/CONTRACT.md)
-- Historical Step `00b`, working name `convert_GTF_to_BED12`:
-  [`CONTRACT.md`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md)
-- Historical Step `00c`, working name `construct_FASTA_sidecars`:
-  [`CONTRACT.md`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md)
-- Historical Step `01`, working name `align_RNA_reads_with_STAR`:
-  [`CONTRACT.md`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md)
-- Historical Step `02`, working name `construct_canonical_BAM`:
-  [`CONTRACT.md`](../../src/norad/stages/construct_canonical_BAM/CONTRACT.md)
-- Historical Step `02b`, evidence operation `collect_canonical_BAM_QC_evidence`:
-  [`CONTRACT.md`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/CONTRACT.md)
-- Historical Step `03`, evidence operation `collect_RSeQC_paired_orientation_evidence`:
-  [`CONTRACT.md`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md)
-- Historical Step `04`, working name `mark_BAM_duplicates_with_Picard`:
-  [`CONTRACT.md`](../../src/norad/stages/mark_BAM_duplicates_with_Picard/CONTRACT.md)
-- Historical Step `05`, working name `split_N_cigar_reads_with_GATK`:
-  [`CONTRACT.md`](../../src/norad/stages/split_N_cigar_reads_with_GATK/CONTRACT.md)
-- Historical Step `06`, working name `partition_BAM_by_mechanical_read_orientation`:
-  [`CONTRACT.md`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/CONTRACT.md)
-- Historical Step `07`, working name `generate_partitioned_cohort_mpileup_VCFs`:
-  [`CONTRACT.md`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md)
-- Historical Step `08`, working name `preprocess_and_annotate_cohort_candidates`:
-  [`CONTRACT.md`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
-- Historical Step `09`, analysis operation `rank_cohort_candidates_with_paired_CMH`:
-  [`CONTRACT.md`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md)
-- Historical Step `09c`, evidence operation `assemble_scientific_review_evidence_package`:
-  [`CONTRACT.md`](../../src/norad/evidence/assemble_scientific_review_evidence_package/CONTRACT.md)
-
 ## Identity and explicit-input boundaries
 
 The sample manifest is the source of sample identity, order, condition, and

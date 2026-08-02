@@ -28,12 +28,12 @@ freshness, evidence, ownership, or
   runway slice and
   [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
   are complete.
-  [`JIT-01`](../tasks/IN_PROGRESS/JIT-01-establish-self-hosting-thin-slice-delivery.md)
-  inherits `ARCH-02B`'s priority as the current bootstrap needed to unblock
-  that work. After JIT-01, the next eligible runway package is `ARCH-02B`,
-  followed by `ARCH-02C` and `ARCH-02D` in dependency order. Each remains
-  unselected until its own JIT plan is approved; the unsliced `PROGRAM-01`
-  remainder is preserved but out of scope pending user reassessment.
+  [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md)
+  is also complete after inheriting `ARCH-02B`'s priority to unblock that work.
+  The next eligible runway package is `ARCH-02B`, followed by `ARCH-02C` and
+  `ARCH-02D` in dependency order. Each remains unselected until its own JIT
+  plan is approved; the unsliced `PROGRAM-01` remainder is preserved but out
+  of scope pending user reassessment.
 - Plan each architecture card just in time. Divide its execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one. Do not pre-plan the four cards comprehensively.

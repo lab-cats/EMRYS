@@ -1,5 +1,9 @@
 # Task delivery
 
+Task selection and context routing remain in
+[`TASK_START.md`](TASK_START.md), with conditional routes in the
+[top-level sitemap](../sitemap/TOP_LEVEL.md#temporary-task-start-routing).
+
 ## Neutral cleanup capture
 
 During an active slice, a cleanup-queue entry contains only the slice ID, the
@@ -13,6 +17,32 @@ Misplaced information directly implicated by the active work becomes a move
 candidate. Movement occurs only during cleanup: move the information, repair
 its references, and remove the old copy. Do not copy information into a second
 owner.
+
+## Cleanup classification
+
+During cleanup, inspect one queue entry only until one disposition is possible,
+then stop discovery:
+
+- `FIX_NOW_REQUIRED` — leaving the item unresolved would make current
+  information incorrect, broken, unsafe, contradictory, or misleading.
+- `FIX_NOW_TRIVIAL` — semantics are settled, the owner is obvious, scope is
+  tiny and bounded, and correction is lower effort and risk than later intake.
+  Decision-bearing public, scientific, schema, safety, or evidence changes are
+  not trivial.
+- `KNOWN_CARD` — the exact card is already known from authorized active
+  context. Do not search for alternatives, and update that card only when the
+  active scope authorizes it.
+- `TASK_INTAKE` — every other potential task. Do not search the task registry
+  during cleanup, and preserve the item until it has a durable intake
+  destination.
+- `NO_CHANGE` — the observation requires no repository change.
+
+## Input-dependent decision records
+
+When a noncritical disposition still requires user input, retain its active
+record as a decision artifact until the disposition is durable. Retention does
+not expand the active card, authorize related work, or by itself prevent close
+of an otherwise accepted card.
 
 ## Slice start and close
 
