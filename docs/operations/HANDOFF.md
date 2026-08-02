@@ -7,32 +7,32 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/doc-ia-01-documentation-compression`
+  `codex/doc-cons-08a-slim-root-agent-router`
 - Package base:
-  `44a27f033092cd42b79a9504b7fc292d3cc40f20`
+  `936337845bbf5dd7983d319fe4011146205d325c`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
   without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
-  `JIT-01`, and explicitly selected `DOC-IA-01` are complete.
-- Current package: audience-aware documentation ownership and navigation,
-  corpus dispositions, a no-loss source-to-destination ledger, exact planned
-  overview/history/convention homes, and eight separately planned
-  consolidation cards.
+  `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01` and
+  `DOC-CONS-08A` are complete.
+- Current package: a concise root agent router, one neutral engineering-
+  conventions owner, and one package-delivery procedure, with every moved rule
+  covered by the final no-loss disposition.
 - Package type: documentation-only; no executable, configuration, schema,
   fixture, report-template, dependency, or test-harness behavior changed.
 - Remote publication and upstream equality: intentionally not applicable. This
   branch is local-only, has no configured upstream, and must not be pushed by
   this package. Cluster work remains paused.
 
-This package descends from the completed local ARCH-02B-through-02D tip. It
-changes only Markdown documentation artifacts and adds no descriptor, schema,
-runtime, or report-template file; current executable paths remain under the
-flat layout until a separately planned physical migration.
+This package descends from the completed local `DOC-IA-01` tip. It changes only
+Markdown documentation artifacts and adds no descriptor, schema, runtime, or
+report-template file; current executable paths remain under the flat layout
+until a separately planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical local DOC-IA-01 documentation lane.
+This checkout is the canonical local DOC-CONS-08A documentation lane.
 No concurrent sidecar content was inspected, integrated, or used by its final
 ownership work. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
@@ -284,6 +284,7 @@ The local descendant sequence has implemented:
 | Concurrent documentation lanes | `CONCURRENT_WORK.md`, fail-closed Git 2.54 worktree/integration/recovery commands, write authority, card/status rules, immutable-execution attribution, and final-combined validation semantics completed; `git diff --check`, the 72-document/51-card/6-diagram structural gate, and independent policy/ownership and Git/recovery audits passed; no active delivery experiment ran and computational validation was not applicable because the complete diff is non-consuming Markdown only |
 | Strategy follow-up card bootstrap | Four future cards plus reciprocal dependency and canonical roadmap/decision/question/handoff references recorded; no card selected and no pilot content reviewed or integrated; `git diff --check`, the 76-document/55-card/6-diagram structural gate, and independent dependency, ownership, and handoff/roadmap audits passed; computational validation is not applicable because the complete diff is non-consuming Markdown only, and publication state remains subject to live Git verification |
 | Documentation ownership and navigation | Audience routes, canonical responsibilities, exhaustive Markdown/Mermaid dispositions, semantic link roles, a no-loss move ledger, rule-by-rule `AGENTS.md` disposition, resolved overview/history/convention locations, and eight bounded consolidation cards recorded; root ownership rosters now link one owner; the final structural documentation gate and independent no-loss/dependency reviews passed; later consolidation remains unselected, computational validation is not applicable, and no executable or evidence state changed |
+| Root agent-router compression | Root `AGENTS.md` reduced from 319 to 195 lines while retaining automatic approval, authority, safety, evidence, scientific, and destructive-action guards; neutral engineering conventions and the full package-delivery procedure now have dedicated owners; independent no-loss and owner-boundary reviews plus `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -412,8 +413,13 @@ approved policy defines and unlocks stricter exit criteria.
 [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 is complete. Its canonical result is the
 [`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md),
-and its eight `DOC-CONS-08A`–`DOC-CONS-08H` children remain TODO cards requiring
-separate selection, task-specific planning, and approval. Existing
+and separately approved
+[`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
+is complete. Its root compression, neutral
+[`engineering-conventions owner`](ENGINEERING_CONVENTIONS.md), and expanded
+[`task-delivery procedure`](TASK_DELIVERY.md#package-delivery) do not select the
+remaining `DOC-CONS-08B`–`DOC-CONS-08H` cards; each still requires separate
+selection, task-specific planning, and approval. Existing
 `DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`, `CODEDOC-05`,
 and `TASK-EPIC-01` retain their nonoverlapping scopes.
 

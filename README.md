@@ -33,10 +33,14 @@ authoritative step/package matrix and descendant roadmap, read
 1. Apply [`AGENTS.md`](AGENTS.md), read the concise
    [`task-start router`](docs/operations/TASK_START.md), and follow the selected
    card to the applicable current-state and canonical sections.
-2. Use the commands in
+2. Apply the neutral
+   [`engineering conventions`](docs/operations/ENGINEERING_CONVENTIONS.md) for
+   new or changed implementation and the applicable owner-local contract for
+   exact current behavior.
+3. Use the commands in
    [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md).
-3. Start with synthetic fixtures and dry-run mode.
-4. Never treat a local pass as cluster or scientific evidence.
+4. Start with synthetic fixtures and dry-run mode.
+5. Never treat a local pass as cluster or scientific evidence.
 
 To preview a populated synthetic HTML/PDF bundle, use the
 [demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
@@ -51,8 +55,9 @@ analysis dependencies.
 ```text
 scripts/        workflow, validation, artifact, and report entry points
   git_orchestration/  tested operator safeguards for exact Git integration
-jobs/           SLURM wrappers
+jobs/           SLURM jobs and wrapper interfaces
 tests/          active Python, shell, R, and fixture tests
+tests/pending/  non-runnable future test plans
 configs/        example manifests and explicit contracts
 schemas/        versioned public artifact/report JSON Schemas
 reports/        static report source and style
@@ -81,12 +86,10 @@ recorded before downstream runtime promotion; filenames are not provenance.
 
 ## Development model
 
-Each package uses a clean descendant branch, focused and complete applicable
-local validation, an implementation commit when executable behavior changes,
-a separate impact-directed documentation commit, and a clean pushed gate
-before another branch begins. Documentation-only packages use one
-documentation commit and no computational suite when the complete diff has no
-executable or test-affecting consumer.
+The [`task-delivery procedure`](docs/operations/TASK_DELIVERY.md#package-delivery)
+owns branch, implementation, validation, documentation-impact, commit, and
+publication order. Exact validation commands remain in the
+[`runbook`](docs/operations/RUNBOOK.md#local-validation-gate).
 
 Future work is selected from the
 [`task registry`](docs/tasks/README.md). Moving a card to `IN_PROGRESS` begins
@@ -104,7 +107,8 @@ state and candidate disposition remain in
 [`HANDOFF.md`](docs/operations/HANDOFF.md). That milestone does not select,
 accept, or authorize candidate work.
 
-Remote and cluster promotion remain upstream-sequential. See
-[`AGENTS.md`](AGENTS.md) for the durable gate and
+Remote and cluster promotion remain upstream-sequential. See the
+[`task-delivery procedure`](docs/operations/TASK_DELIVERY.md#package-delivery)
+for the durable gate and
 [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md) for the approved current
 lineage.

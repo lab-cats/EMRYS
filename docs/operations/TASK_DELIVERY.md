@@ -4,6 +4,69 @@ Task selection and context routing remain in
 [`TASK_START.md`](TASK_START.md), with conditional routes in the
 [top-level sitemap](../sitemap/TOP_LEVEL.md#temporary-task-start-routing).
 
+## Package delivery
+
+Every implementation package uses a linear descendant branch from the latest
+clean, documentation-patched predecessor. Verify that predecessor is pushed and
+upstream-equal before branching.
+
+Deliver an implementation package in this order:
+
+1. Create the approved package branch and implement only that package and its
+   directly required contracts.
+2. Add focused tests. During implementation, use focused checks repeatedly and
+   reserve one de-duplicated complete applicable computational gate for the
+   final executable state.
+3. Commit the implementation and tests.
+4. Use the final diff, the
+   [documentation ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md), and
+   targeted link/search results to select affected documents and diagrams.
+   Inspect their canonical owners and direct references.
+5. Perform a repository-wide documentation impact check. Broaden semantic
+   inspection only when the change is cross-cutting, changes ownership, reveals
+   a contradiction, or cannot otherwise be bounded safely.
+6. When behavior changes, update every affected status, interface, command,
+   path, schema, limitation, diagram, and next-step claim. Durable truth belongs
+   in its canonical owner, not in the selected card.
+7. For any selected card, update its lifecycle, completion record, and all
+   inbound status links in the same patch, regardless of whether behavior
+   changed.
+8. Commit the impact-directed documentation patch separately.
+9. Run the documentation gate. Do not repeat computational suites when the
+   documentation patch leaves executable configuration, dependencies, Make
+   targets, schemas, fixtures, report templates, and test-harness selection and
+   execution semantics unchanged.
+10. Require a clean worktree, inspect history, push, and prove upstream equality
+    before creating the next package branch.
+
+If executable behavior changes after the documentation patch, reopen the gate:
+retest the corrected final executable state, commit it, and perform another
+separate impact-directed documentation patch.
+
+A standalone documentation-only package uses one documentation commit after
+any applicable status-only card-selection commit. When the complete
+predecessor-to-final diff changes only documentation artifacts that are not
+consumed by executable, configuration, generation, schema, fixture,
+report-template, dependency, or test-harness selection or execution behavior,
+computational validation is not applicable. Run Git and documentation
+validation only; do not fabricate an implementation commit or run computational
+Python, shell, R, report-runtime, full-suite, or cluster validation.
+
+Pytest is quiet by default and retains captured output for failures. Use the
+quiet Make and log-capture procedures in the
+[`RUNBOOK.md` local validation gate](RUNBOOK.md#local-validation-gate); full
+output is for failures or an explicitly requested verbose run. A recorded full
+gate may be reused after a documentation-only patch only when Git inspection
+proves the executable state is unchanged.
+
+Runtime and cluster promotion remain upstream-sequential, including during an
+approved local-only descendant sequence. Never promote a downstream stage
+before its prerequisite runtime gates pass.
+
+After each task, suggest relevant owner updates that remain outside the
+authorized write set and preserve them through the cleanup process below rather
+than expanding the active package.
+
 ## Neutral cleanup capture
 
 During an active slice, a cleanup-queue entry contains only the slice ID, the

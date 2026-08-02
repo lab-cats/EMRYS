@@ -19,9 +19,10 @@ every task pay for unrelated detail and leaves several facts with two owners.
 - Keep approval, destructive-action, shared-worktree, local/cluster/data,
   evidence-language, and biological-interpretation guards automatically
   reachable from the root file.
-- Create `docs/operations/ENGINEERING_CONVENTIONS.md` as the neutral owner for
-  cross-language current-workflow conventions; stage-specific detail remains
-  in colocated contracts.
+- Create
+  [`ENGINEERING_CONVENTIONS.md`](../../operations/ENGINEERING_CONVENTIONS.md)
+  as the neutral owner for cross-language current-workflow conventions;
+  stage-specific detail remains in colocated contracts.
 - Move content, repair links, and remove the old copy in the same coherent
   change. Do not leave a permanent compatibility copy.
 - Generic reusable preferences remain in the repository until a separately
@@ -85,8 +86,9 @@ every task pay for unrelated detail and leaves several facts with two owners.
 
 ## Canonical documentation updates
 
-- `AGENTS.md`, `docs/operations/ENGINEERING_CONVENTIONS.md`, the documentation
-  ownership map, affected direct routes, and this card.
+- `AGENTS.md`,
+  [`ENGINEERING_CONVENTIONS.md`](../../operations/ENGINEERING_CONVENTIONS.md),
+  the documentation ownership map, affected direct routes, and this card.
 
 ## Escalation conditions
 
@@ -95,5 +97,30 @@ every task pay for unrelated detail and leaves several facts with two owners.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed 2026-08-02 as an explicitly approved local-only documentation
+exception. The root `AGENTS.md` is materially shorter, from 319 to 195 lines,
+while retaining automatic approval, concurrent-authority, destructive-action,
+evidence, local/cluster/data, dependency, publication, and biological guards.
+Detailed repository, entry-point, manifest/path, cross-language, dry-run, R,
+SLURM, and documentation-code rules moved to
+[`ENGINEERING_CONVENTIONS.md`](../../operations/ENGINEERING_CONVENTIONS.md),
+with current legacy behavior still owned by colocated contracts and the
+functional-owner inventory. The full linear implementation/documentation-patch
+procedure moved to `TASK_DELIVERY.md` before its root copy was removed.
+
+The README now owns the complete shallow current-layout map and routes package
+delivery and neutral conventions to their dedicated owners. The final no-loss
+ledger records every input rule as retained, moved, intentionally repeated, or
+routed to an existing owner. Independent read-only rule-parity and engineering-
+owner reviews found no unresolved weakened guard, missing destination, false
+current-behavior claim, or duplicate owner within this card's moved convention
+and procedure scope after corrections.
+
+`git diff --check` and the final repository documentation gate pass. The
+complete package diff changes only Markdown documentation; computational
+Python, shell, R, report-runtime, full-suite, and cluster validation are not
+applicable. No executable, configuration, generation, schema, fixture,
+report-template, dependency, source-layout, public-interface, scientific-policy,
+or test-harness behavior changed. The branch remains intentionally local-only
+and must not be pushed by this package. `DOC-CONS-08B` through `DOC-CONS-08H`
+remain unselected.

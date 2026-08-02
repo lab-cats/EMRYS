@@ -37,11 +37,12 @@ checkout and exact resume point belong in
 5. Preserve completed
    [`DOC-IA-01`](docs/tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md),
    an explicitly selected local-only documentation exception that established
-   the [ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) and eight
-   separately planned consolidation cards. Its dependent documentation cards
-   are released from that blocker but remain unselected under the active runway.
-   Both recorded prerequisites for `SIZE-07` are also complete; technical
-   eligibility does not override the freeze.
+   the [ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md), and completed
+   [`DOC-CONS-08A`](docs/tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md),
+   the separately approved local-only root-router compression exception.
+   `DOC-CONS-08B` through `DOC-CONS-08H` remain unselected under the active
+   runway. Both recorded prerequisites for `SIZE-07` are also complete;
+   technical eligibility does not override the freeze.
 
 The temporary critical runway in
 [`TASK_START.md`](docs/operations/TASK_START.md#temporary-critical-runway)
@@ -89,8 +90,10 @@ and authorizes no work without a separately approved plan:
    [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
 9. Preserve completed
    [`DOC-IA-01`](docs/tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-   and its no-loss `AGENTS.md` slim-down and consolidation cards; none of those
-   follow-up cards is selected by completion of the inventory.
+   and separately completed
+   [`DOC-CONS-08A`](docs/tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md);
+   the remaining no-loss consolidation cards are not selected by either
+   completion.
 
 ## Current-program task families
 

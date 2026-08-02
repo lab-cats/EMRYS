@@ -1040,9 +1040,10 @@ triggers; correctness outranks token reduction.
 `CHOICE-DOC-01` is resolved by the canonical
 [`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
 Exact commands remain in `RUNBOOK.md`; symptom, cause, diagnosis, and fix remain
-in `TROUBLESHOOTING.md`; neutral cross-language conventions will move
-atomically to `docs/operations/ENGINEERING_CONVENTIONS.md`; and the concise
-user pipeline overview will live at `docs/architecture/PIPELINE_OVERVIEW.md`.
+in `TROUBLESHOOTING.md`; neutral cross-language conventions are owned by
+[`ENGINEERING_CONVENTIONS.md`](../operations/ENGINEERING_CONVENTIONS.md); and
+the concise user pipeline overview will live at
+`docs/architecture/PIPELINE_OVERVIEW.md`.
 Dated noncanonical records will be indexed by a shallow `docs/history/README.md`
 with topic-specific children for audit, testing, operational, and demo history.
 No planned destination becomes authoritative before its owning card creates it

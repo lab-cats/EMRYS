@@ -34,7 +34,12 @@ freshness, evidence, ownership, or
   and [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md)
   through
   [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
-  are also complete. The next eligible runway action is to recast
+  are also complete. Separately approved local-only documentation exceptions
+  [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+  and
+  [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
+  are complete; `DOC-CONS-08B` through `DOC-CONS-08H` remain unselected. The
+  next eligible ordinary runway action is to recast
   [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
   select its independent review just in time; neither is selected by this
   status update. The unsliced `PROGRAM-01` remainder remains preserved and out
@@ -42,10 +47,10 @@ freshness, evidence, ownership, or
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one.
-- Every other task, candidate, integration, branch package, and program family
-  is frozen and currently dead/out of scope. Preserve it, but do not select,
-  inspect routinely, integrate, execute, or maintain it while this boundary is
-  active.
+- Every other pending task, candidate, integration, branch package, and program
+  family is frozen and currently dead/out of scope. Preserve it, but do not
+  select, inspect routinely, integrate, execute, or maintain it while this
+  boundary is active.
 - Frozen material may be inspected or corrected only when a concrete technical
   contradiction, safety issue, direct interface dependency, or
   [mandatory expansion trigger](../operations/TASK_START.md#mandatory-expansion-triggers)
