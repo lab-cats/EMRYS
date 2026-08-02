@@ -878,6 +878,9 @@ shared implementation. That bounded seam qualifies for neutral ownership in
 parsing/hashing, fixture builders, or other transaction mechanisms are
 equivalent. The exact reviewed migration boundary belongs to
 [`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md).
+Neutral source ownership here does not establish a public Python import name,
+package marker, build metadata, or installable distribution; those remain
+deferred.
 
 Consequences: intentional independent validation and heterogeneous
 transactions stay local. The remaining candidate inventory and promotion or

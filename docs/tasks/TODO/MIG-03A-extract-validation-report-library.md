@@ -17,22 +17,29 @@ coverage, making it the smallest evidence-supported migration unit.
 
 ## Fixed decisions
 
-- The one neutral concern is `norad.libraries.validation_report`, implemented
-  at `src/norad/libraries/validation_report.py`; its mirrored direct test owner
-  is `tests/libraries/test_validation_report.py`.
-- Move only `HEADER`, `ValidationError`, `Snapshot`, `fail`, `clean`,
-  `regular_snapshot`, `stable_text`, `render`, `validate_report`, and `publish`.
-  Step `00a` parsing, STAR-specific validation, report rows, CLI, and all other
-  stage-specific checks remain with their functional owners.
+- The one neutral concern has final source owner
+  `src/norad/libraries/validation_report.py`; its mirrored direct test owner is
+  `tests/libraries/test_validation_report.py`. This source placement does not
+  create a public/import/package identity, `__init__.py`, or distribution
+  contract.
+- Move the nine shared API names `ValidationError`, `Snapshot`, `fail`, `clean`,
+  `regular_snapshot`, `stable_text`, `render`, `validate_report`, and `publish`,
+  plus their internal `HEADER` constant. Step `00a` parsing, STAR-specific
+  validation, report rows, CLI, and all other stage-specific checks remain with
+  their functional owners.
 - All thirteen current validator scripts remain at their public legacy paths
-  in this unit. Each resolves the repository-local `src` directory from its own
-  file location before importing the final neutral module; no installation,
-  global `PYTHONPATH`, working-directory assumption, or shared bootstrap helper
-  is introduced.
+  in this unit. Each uses a caller-local `importlib` loader to resolve the exact
+  final file from its own location, cache one private internal module identity,
+  and reject a cached module whose resolved `__file__` is not that exact path.
+  The loader does not change `sys.path`, install anything, assume caller CWD or
+  global `PYTHONPATH`, introduce a shared bootstrap helper, or establish a
+  public import name. Its caller-local scaffolding leaves with that validator
+  in the validator's later owner migration.
 - No legacy wrapper is required: all repository-owned import consumers can cut
-  over within the bounded checkpoints, and no public Python module API for the
-  Step `00a` implementation is declared. A temporary re-export is allowed only
-  between committed cutover checkpoints and must be removed before acceptance.
+  over atomically, and no public Python module API for the Step `00a`
+  implementation is declared. Final-owner introduction, all caller/test
+  cutovers, and removal of the old embedded implementation therefore form one
+  executable commit; no temporary re-export or compatibility commit is allowed.
 - The same-size/restored-mtime snapshot gap, report-row-order gap, late foreign-
   final deletion, incomplete rollback/recovery, previous/staged cleanup, and
   lock-cleanup behaviors remain characterized defects. This migration neither
@@ -78,11 +85,13 @@ coverage, making it the smallest evidence-supported migration unit.
 
 - Record the exact frozen parent, refreshed consumer roster, pre-move modes,
   applicable contract rows, and rollback targets before source mutation.
-- Introduce the final neutral module and mirrored direct tests with a temporary
-  Step `00a` re-export only if required to leave the first checkpoint usable.
-- Cut all thirteen validators and direct tests to the final module using
-  file-relative repository-local `src` resolution, then remove every temporary
-  re-export and prove one implementation remains.
+- Introduce the final neutral module, move the direct fault-test owner, cut all
+  thirteen validators and affected direct tests through the exact file-based
+  private loader, and remove the old embedded implementation in one atomic
+  executable commit.
+- Prove that the caller-local loaders resolve one exact module object, leave
+  `sys.path` unchanged, reject a wrong cached path, and preserve arbitrary-CWD
+  direct execution without a package install or compatibility re-export.
 - Update the explicit coverage baseline path/rates through its reviewed command
   only if measurement requires it; a moved module may not disappear from the
   baseline or evade the new-shared-module thresholds.
@@ -99,14 +108,17 @@ coverage, making it the smallest evidence-supported migration unit.
   fields, row order, check rosters, failures, transactions, logging, or evidence
   state; extracting BAM helpers or Step `09c` science helpers; or creating a
   generic transaction, I/O, validation, or utility framework.
-- Packaging, dependency installation/restoration, cluster execution, production
-  data, scientific review, or biological interpretation.
+- `__init__.py`, packaging/import identity, dependency installation/restoration,
+  cluster execution, production data, scientific review, or biological
+  interpretation.
 
 ## Deliverables
 
 - Frozen-baseline evidence and a stable pre-mutation reversion commit.
-- Final-owner introduction, complete caller cutover, compatibility removal,
-  and documentation-close commits with reverse-order rollback boundaries.
+- One atomic final-owner/caller/test cutover commit plus a separate
+  documentation-close commit, with reverse-order rollback boundaries. The
+  executable commit is reverted as one unit because no supported intermediate
+  caller state exists.
 - One implementation at `src/norad/libraries/validation_report.py`, direct
   library tests at `tests/libraries/test_validation_report.py`, and no remaining
   import of shared primitives from `validate_step_00a_star_index.py`.
@@ -120,6 +132,9 @@ coverage, making it the smallest evidence-supported migration unit.
   malformed input, dry run, execute effects, stdout/stderr, exit status,
   deterministic TSV bytes, exact per-stage rosters, import identity, and file
   modes for every affected validator.
+- Import tests prove all validators reference the one exact final file and
+  module object, `sys.path` is unchanged, wrong-path cache collisions fail
+  closed, and no package installation or public import identity is required.
 - The full publication-fault matrix still observes each current success,
   failure, interruption, rollback, residue, and characterized-defect state
   against the final module; independent golden and roster expectations remain
@@ -142,9 +157,9 @@ coverage, making it the smallest evidence-supported migration unit.
 ## Escalation conditions
 
 - Stop if live inspection finds an external/unmovable importer, a declared
-  public module API, packaging-dependent import, path-sensitive side effect,
-  missing parity owner, changed publication state, or need to touch a second
-  neutral concern or scientific contract.
+  public module API, unavoidable package or global-path dependency,
+  path-sensitive side effect, missing parity owner, changed publication state,
+  or need to touch a second neutral concern or scientific contract.
 
 ## Completion record
 

@@ -81,4 +81,14 @@ compatibility layer.
 
 ## Completion record
 
-Not started. Selection authorizes review only, not implementation.
+Completed as a read-only adversarial pass against immutable plan tip `ed4f42d`
+after selection checkpoint `b6f741b`. One high finding replaced the planned
+`sys.path` mutation with exact file-based private loading and wrong-path cache
+rejection. Two medium findings removed the implied public/package import
+identity and the unnecessary temporary Step `00a` re-export; all known callers
+now cut over with final-owner introduction in one atomic executable commit.
+Neutral ownership, the nine-name shared API, internal `HEADER`, test home,
+dependency direction, and no-wrapper outcome otherwise passed. The same agent
+authored and reviewed the plan, so author independence is not claimed; the
+separate committed evidence pass and this residual limitation are recorded in
+the dated audit log. No executable file changed or computational test ran.

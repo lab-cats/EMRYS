@@ -7,8 +7,10 @@ scope, roadmap, current state, blockers, or open questions.
 
 [`PLAN-02Z`](docs/tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md)
 has completed the documentation-only first-tranche plan. Its dedicated
-[`REVIEW-ARCH-03A`](docs/tasks/IN_PROGRESS/REVIEW-ARCH-03A-review-validation-publication-migration.md)
-pass is selected for review only. The proposed unit is
+[`architecture review`](docs/tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
+is complete; the next eligible action is
+[`REVIEW-REL-03A`](docs/tasks/TODO/REVIEW-REL-03A-review-validation-publication-migration.md).
+The proposed unit is
 [`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
 which remains preceded by its architecture, reliability, and usability reviews.
 No physical source migration is selected or executing yet.

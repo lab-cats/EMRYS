@@ -103,3 +103,27 @@ that sequence closes; current checkout and roadmap truth remain in
   limitation in its completion record, and place any correction after the
   immutable plan checkpoints. A later requirement for a different reviewer
   reopens this review before execution rather than being silently claimed now.
+
+## 2026-08-02T13:38:20-0400 — Architecture review findings incorporated
+
+- **High — revised:** the planned repository-local `src` insertion would
+  mutate process-global `sys.path`, contradicting the Python migration contract
+  and risking ambient package resolution. `MIG-03A` now requires caller-local
+  exact-file loading, one private cached module identity, exact `__file__`
+  verification, wrong-path rejection, and a test that `sys.path` is unchanged.
+- **Medium — revised:** naming `norad.libraries.validation_report` as an import
+  identity implied package semantics despite the explicit packaging deferral.
+  The card now fixes only the source-owner path and excludes `__init__.py`,
+  build metadata, distribution, and a public import name.
+- **Medium — revised:** a temporary Step `00a` re-export had no unmovable
+  caller and would add avoidable compatibility state. Final-owner introduction,
+  all caller/test cutovers, and removal of the embedded implementation are now
+  one atomic executable commit with one-step rollback.
+- **Accepted:** neutral ownership, the nine shared API names plus internal
+  `HEADER`, mirrored test home, stage-local check ownership, future dependency
+  direction, and no-wrapper final tree are coherent.
+- **Residual risk:** review authorship is not independent. The result is a
+  separate clean-tree adversarial pass, not a claim of external review.
+- **Evidence boundary:** documentation only; no import was changed and no
+  Python, runtime, cluster, scientific-review, or biological evidence was
+  produced.
