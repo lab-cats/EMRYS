@@ -286,6 +286,8 @@ Selected for task-specific read-only planning from clean review checkpoint
 `b714f61` at status checkpoint `40d6907`. Live refresh confirms twelve direct
 importers plus Step `00a`, nine shared APIs and internal `HEADER`, mode `0644`
 for all thirteen validators/direct tests, and no executable change since
-integrated parent `15aba53`. Planning is complete subject only to publication
-of this documentation base. No supported dry run, implementation branch,
-source/test mutation, computational test, or physical migration has begun.
+integrated parent `15aba53`. The documentation base is published and
+upstream-equal; the exact final planning tip containing this record is the
+execution parent resolved from live Git. No supported dry run, implementation
+branch, source/test mutation, computational test, or physical migration has
+yet begun.

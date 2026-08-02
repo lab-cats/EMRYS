@@ -11,4 +11,4 @@ recheck triggers remain in
 | Audit date | Record | Provenance and boundary |
 | --- | --- | --- |
 | 2026-07-30 | [Comprehensive refactor audit](2026-07-30-comprehensive-refactor-audit.md) | Initial record `02c1ae8`; exact frozen snapshot `dcdb371` from 2026-07-31. Dated evidence and recommendations only; current routing and recheck triggers remain in `REFACTOR_AUDIT.md`. |
-| 2026-08-02 | [Pre-migration refactor log](2026-08-02-refactor-log.md) | Active chronological risk/decision record rooted at canonical integration `15aba53`; planning and documentation evidence only until the reviewed pre-migration base closes. |
+| 2026-08-02 | [Refactor and first-migration log](2026-08-02-refactor-log.md) | The pre-migration phase is closed on a published planning descendant rooted at canonical integration `15aba53`; the same chronological record continues only for the separately authorized `MIG-03A` execution descendant. |

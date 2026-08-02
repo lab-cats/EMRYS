@@ -16,8 +16,10 @@ has now closed the dedicated review chain.
 The proposed unit is
 [`MIG-03A`](docs/tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md),
 whose task-specific plan and three dedicated reviews are complete. Publication
-and upstream-equality verification of this pre-migration base are the only
-remaining actions; no physical source migration or executable action has begun.
+and upstream equality of the pre-migration base are established. The authorized
+next action is the dedicated execution branch, frozen-parent/no-overlap refresh,
+and supported tiny-fixture dry run before the atomic cutover; no physical source
+migration has begun.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)

@@ -13,16 +13,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the canonical recovery integration is clean,
-  published, and live-remote equal at the package base above. `PLAN-02Z` has
-  completed its first rolling tranche plan; all other work remains frozen.
-- Current package: documentation-only execution-plan closure for selected
-  `MIG-03A`, the neutral validation-report protocol migration.
+  published, and live-remote equal at the package base above. `PLAN-02Z`, all
+  three dedicated reviews, and the `MIG-03A` task-specific plan are complete.
+- Current package: closed documentation-only pre-migration base; the separately
+  authorized next package is `MIG-03A` execution on its own descendant branch.
 - Package type: documentation-only; no executable, configuration, generation,
   schema, fixture, report-template, dependency, source-layout, public-interface,
   scientific-policy, or test-harness behavior changed.
-- Remote publication and upstream equality: the package branch is not yet
-  published. Final closure requires local `HEAD`, configured upstream, and the
-  live remote ref to be equal. Cluster work remains paused.
+- Remote publication and upstream equality: established for
+  `codex/plan-02z-first-migration-readiness`; resolve the exact current SHA from
+  live Git. Local `HEAD`, configured upstream, and the live remote ref must
+  remain equal before creating the execution branch. Cluster work remains
+  paused.
 
 This package descends directly from the verified integrated canonical tip
 `15aba53c538cabf2b7d2284575be0089b0ca90cf`. It changes only Markdown
@@ -482,9 +484,11 @@ or updated.
 complete. It proposes
 [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. All three
-reviews and the `MIG-03A` task-specific plan are complete. Publication and
-upstream-equality verification of the pre-migration base remain. No dry run,
-implementation branch, source/test mutation, or physical migration has begun.
-All other work, including
+reviews and the `MIG-03A` task-specific plan are complete. The pre-migration
+base is published and upstream-equal; the authorized next action is to create
+the dedicated execution branch, reverify the frozen parent/no-overlap roster,
+and run the tiny-fixture dry run before source mutation. No dry run,
+implementation branch, source/test mutation, or physical migration has yet
+begun. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

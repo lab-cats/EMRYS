@@ -1,19 +1,21 @@
 # 2026-08-02 pre-migration refactor log
 
-- Status: active until the reviewed pre-migration base is published and verified.
+- Status: pre-migration phase closed; the chronological record continues on the
+  separately authorized `MIG-03A` execution descendant.
 - Originating canonical integration commit:
   `15aba53c538cabf2b7d2284575be0089b0ca90cf`.
 - Integration source evidence:
   `5a35a057cd9ca259f83ee1dde3116fee63928d72`.
 - Working branch: `codex/plan-02z-first-migration-readiness`.
-- Evidence boundary: planning and non-consuming Markdown documentation only;
-  no source migration, executable behavior, runtime, cluster, scientific-review,
-  or biological-readiness evidence.
+- Evidence boundary through the pre-migration close: planning and non-consuming
+  Markdown documentation only; no source migration, executable behavior,
+  runtime, cluster, scientific-review, or biological-readiness evidence.
 
 This is the user-requested chronological risk and decision record for the
-bounded pre-migration planning/review sequence. It remains mutable only until
-that sequence closes; current checkout and roadmap truth remain in
-`HANDOFF.md` and `PIPELINE_PLAN.md`.
+bounded pre-migration planning/review sequence and the now-authorized first
+migration. The pre-migration portion is frozen on the published planning branch;
+new entries belong only to its `MIG-03A` descendant. Current checkout and
+roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 
 ## 2026-08-02T13:08:21-0400 — Canonical integration parent frozen
 
@@ -268,3 +270,24 @@ that sequence closes; current checkout and roadmap truth remain in
   tests/harness wiring, impact-directed documentation, local validation,
   commits, and publication; it does not activate another migration, cluster or
   production work, dependency installation, or defect correction.
+
+## 2026-08-02T17:47:22-0400 — Pre-migration base published and closed
+
+- **Verification:** planning tip `3fdc6e7` was pushed to
+  `origin/codex/plan-02z-first-migration-readiness`; local `HEAD`, configured
+  upstream, and the live remote ref were identical with ahead/behind `0/0`.
+  The committed tree was clean, changed no executable/test-harness path from
+  integrated parent `15aba53`, passed `git diff --check`, and reproduced only
+  the nine inherited unsupported-`UNREFINED` documentation findings.
+- **Risk:** GitHub reported that configured origin
+  `https://github.com/Glen-Cocoa/norad.git` redirects to
+  `https://github.com/lab-cats/norad.git`. Silently rewriting local remote
+  configuration would be an unrequested workstation mutation; ignoring the
+  redirect would hide the actual publication destination.
+- **Decision:** preserve the configured `origin`, record the redirect, and use
+  live-ref equality rather than the URL spelling as publication proof. Repush
+  this final closure commit and verify equality again; the resulting exact tip
+  is the only valid `MIG-03A` execution parent.
+- **Boundary:** close the pre-migration phase before creating the execution
+  branch. The planning branch contains Markdown only and remains the stable
+  remote rollback point requested before risky source work.
