@@ -38,6 +38,7 @@ archival behavior.
 | stage | Mark BAM Duplicates with Picard | `mark_BAM_duplicates_with_Picard` | `norad.stage.mark_BAM_duplicates_with_Picard.v1` | `04` |
 | stage | Split N-Cigar Reads with GATK | `split_N_cigar_reads_with_GATK` | `norad.stage.split_N_cigar_reads_with_GATK.v1` | `05` |
 | stage | Partition BAM by Mechanical Read Orientation | `partition_BAM_by_mechanical_read_orientation` | `norad.stage.partition_BAM_by_mechanical_read_orientation.v1` | `06` |
+| stage | Generate Partitioned Cohort Mpileup VCFs | `generate_partitioned_cohort_mpileup_VCFs` | `norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1` | `07` |
 
 ## Edge semantics
 
@@ -65,9 +66,11 @@ not create edges.
 
 | Input type | Meaning | Current semantic consumers |
 | --- | --- | --- |
-| `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars`, `split_N_cigar_reads_with_GATK` |
+| `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars`, `split_N_cigar_reads_with_GATK`, `generate_partitioned_cohort_mpileup_VCFs` |
 | `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12` |
 | `paired_rna_fastq` | One externally supplied read-1/read-2 RNA-seq FASTQ pair for a declared sample. | `align_RNA_reads_with_STAR` |
+| `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs` |
+| `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs` |
 
 Runtime tools and scalar parameters are stage-local contract inputs, not DAG
 nodes.
@@ -88,6 +91,8 @@ artifact have been frozen from their functional contracts.
 | `mark_BAM_duplicates_with_Picard` | `split_N_cigar_reads_with_GATK` | duplicate-marked BAM/BAI pair | required artifact; fan-in |
 | `construct_FASTA_sidecars` | `split_N_cigar_reads_with_GATK` | reference FAI and sequence dictionary | required artifact; fan-in |
 | `split_N_cigar_reads_with_GATK` | `partition_BAM_by_mechanical_read_orientation` | split-N-cigar BAM/BAI pair | required artifact |
+| `partition_BAM_by_mechanical_read_orientation` | `generate_partitioned_cohort_mpileup_VCFs` | both orientation BAM/BAI pairs for every declared sample | required artifact; declared-sample barrier; fan-in |
+| `construct_FASTA_sidecars` | `generate_partitioned_cohort_mpileup_VCFs` | reference FAI paired with the external reference FASTA | required artifact; fan-in |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -115,6 +120,7 @@ flowchart LR
     mark_BAM_duplicates_with_Picard["Mark BAM Duplicates with Picard"]
     split_N_cigar_reads_with_GATK["Split N-Cigar Reads with GATK"]
     partition_BAM_by_mechanical_read_orientation["Partition BAM by Mechanical Read Orientation"]
+    generate_partitioned_cohort_mpileup_VCFs["Generate Partitioned Cohort Mpileup VCFs"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
@@ -125,4 +131,6 @@ flowchart LR
     mark_BAM_duplicates_with_Picard -->|marked BAM/BAI; fan-in| split_N_cigar_reads_with_GATK
     construct_FASTA_sidecars -->|FAI/DICT; fan-in| split_N_cigar_reads_with_GATK
     split_N_cigar_reads_with_GATK -->|split BAM/BAI| partition_BAM_by_mechanical_read_orientation
+    partition_BAM_by_mechanical_read_orientation -->|all samples; both BAM/BAI pairs| generate_partitioned_cohort_mpileup_VCFs
+    construct_FASTA_sidecars -->|FAI; FASTA is external| generate_partitioned_cohort_mpileup_VCFs
 ```
