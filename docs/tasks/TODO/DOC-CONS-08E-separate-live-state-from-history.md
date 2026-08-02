@@ -23,7 +23,7 @@ first-use milestones. That duplication makes stale history look operational.
 
 ## Blocked by
 
-- [DOC-CONS-08D](DOC-CONS-08D-establish-dated-documentation-history.md) — Required: dated material needs an indexed history destination before removal.
+- [DOC-CONS-08D](../IN_PROGRESS/DOC-CONS-08D-establish-dated-documentation-history.md) — Required: dated material needs an indexed history destination before removal.
 
 ## Completion unblocks
 

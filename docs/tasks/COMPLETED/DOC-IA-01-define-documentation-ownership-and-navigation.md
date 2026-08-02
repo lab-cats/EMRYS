@@ -52,7 +52,7 @@ scientific meaning.
 - [DOC-CONS-08A](DOC-CONS-08A-slim-root-agent-router.md) — Fully: every root rule has a settled destination and reachability boundary.
 - [DOC-CONS-08B](DOC-CONS-08B-compress-root-entry-and-priority-views.md) — Fully: root audiences and retained facts have settled owners.
 - [DOC-CONS-08C](DOC-CONS-08C-compress-operational-guidance.md) — Fully: runbook/troubleshooting boundaries and no-loss constraints are settled.
-- [DOC-CONS-08D](../TODO/DOC-CONS-08D-establish-dated-documentation-history.md) — Fully: the history location and migration rules are settled.
+- [DOC-CONS-08D](../IN_PROGRESS/DOC-CONS-08D-establish-dated-documentation-history.md) — Fully: the history location and migration rules are settled.
 - [DOC-CONS-08F](../TODO/DOC-CONS-08F-compress-design-and-architecture-views.md) — Fully: conceptual and exact contract-owner boundaries are settled.
 - [DOC-CONS-08H](../TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) — Fully: the temporary-record disposition is settled, subject to its live prerequisites.
 - [DOC-REF-02](../TODO/DOC-REF-02-create-glossary.md) — Fully: glossary ownership and navigation will be settled.
