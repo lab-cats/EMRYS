@@ -156,6 +156,7 @@ ownership only; no listed file is moved by this topology contract.
 | `construct_canonical_BAM` | `src/norad/stages/construct_canonical_BAM/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/construct_canonical_BAM/` |
 | `collect_canonical_BAM_QC_evidence` | `src/norad/evidence/collect_canonical_BAM_QC_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_canonical_BAM_QC_evidence/` |
 | `collect_RSeQC_paired_orientation_evidence` | `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_RSeQC_paired_orientation_evidence/` |
+| `mark_BAM_duplicates_with_Picard` | `src/norad/stages/mark_BAM_duplicates_with_Picard/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/mark_BAM_duplicates_with_Picard/` |
 
 ## Neutral contract boundary
 
