@@ -78,4 +78,15 @@ the shared owner and its known limitations.
 
 ## Completion record
 
-Not started. Selection authorizes review only, not implementation.
+Completed as a read-only public-boundary review against reliability checkpoint
+`102510b` after selection checkpoint `22f7a5b`. The current matrix proves all
+thirteen validators are mode-`0644` interpreter-only entry points whose
+healthy-repository help and malformed-argument journeys are arbitrary-CWD and
+result-artifact free. A high finding added a stable stderr-only, nonzero,
+artifact-free diagnostic for missing, wrong-cache, or ordinarily failing shared
+owner loads while preserving control-flow exceptions. A medium finding added a
+maintainer README, module docstring, and caller-local owner comments without
+creating a package/import identity. The card now separates those new corrupted-
+owner tests from the unchanged healthy CLI contract and names the exact stop
+before source mutation. The same-author review limitation remains disclosed.
+No executable file changed or computational test ran.

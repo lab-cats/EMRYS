@@ -43,18 +43,29 @@ coverage, making it the smallest evidence-supported migration unit.
   implementation is declared. Final-owner introduction, all caller/test
   cutovers, and removal of the old embedded implementation therefore form one
   executable commit; no temporary re-export or compatibility commit is allowed.
+- When the exact shared owner cannot be loaded, each validator fails before
+  argument parsing or validation with one concise, stable stderr diagnostic
+  that names the expected owner path and causal exception type/reason. That
+  failure is nonzero, leaves stdout empty, creates no report or invocation-CWD
+  artifact, and does not convert `KeyboardInterrupt` or another control-flow
+  exception into an ordinary load error. Healthy-repository `--help`, malformed-
+  argument, dry-run, and execute behavior remain byte-for-byte or
+  outcome-equivalent to the characterized public contract.
 - The same-size/restored-mtime snapshot gap, report-row-order gap, late foreign-
   final deletion, incomplete rollback without a retained lock/recovery marker,
   previous/staged cleanup residue, open-descriptor/lock retention, and
   post-publication lock-cleanup behavior remain characterized defects. This
   migration neither corrects nor approves them.
-- Source and direct-test modes are `0644`; public validator filenames, shebangs,
+- All thirteen public validators remain interpreter-only files at mode `0644`;
+  the supported public form remains an explicit Python interpreter plus the
+  existing script path, not direct `./script.py` execution. The new source and
+  direct-test owners are also `0644`. Public validator filenames, shebangs,
   arguments, help, streams, exit statuses, dry-run/execute effects, TSV bytes,
   check rosters, and evidence meanings remain unchanged.
 
 ## Blocked by
 
-- [REVIEW-UX-03A](../IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md) — Required: tranche-specific architecture, reliability, and public-boundary reviews must be incorporated before execution planning closes.
+- [REVIEW-UX-03A](../COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) — Required: tranche-specific architecture, reliability, and public-boundary reviews must be incorporated before execution planning closes.
 
 ## Completion unblocks
 
@@ -99,6 +110,18 @@ coverage, making it the smallest evidence-supported migration unit.
   direct execution without a package install or compatibility re-export. Fault
   injection must also prove owned partial-cache removal and foreign-cache
   preservation when module execution fails.
+- Prove the owner-missing, wrong-cache, and ordinary module-execution failure
+  journeys through focused import/subprocess tests: one actionable stderr-only
+  diagnostic, nonzero exit, no traceback for an ordinary load failure, and no
+  report or invocation-CWD artifact. Preserve the existing healthy-owner
+  arbitrary-CWD `--help` and malformed-argument matrix for all thirteen
+  interpreter-only validators.
+- Add a module docstring, a concise caller-local loader comment pointing to the
+  final owner, and `src/norad/libraries/README.md`. The README names the nine
+  shared API symbols and internal `HEADER`, records that no package/import
+  identity is established, lists the preserved characterized defects, and
+  explains that the repeated caller-local loaders leave only with later
+  validator-owner migrations.
 - Update the explicit coverage baseline path/rates through its reviewed command
   only if measurement requires it; a moved module may not disappear from the
   baseline or evade the new-shared-module thresholds.
@@ -129,6 +152,9 @@ coverage, making it the smallest evidence-supported migration unit.
 - One implementation at `src/norad/libraries/validation_report.py`, direct
   library tests at `tests/libraries/test_validation_report.py`, and no remaining
   import of shared primitives from `validate_step_00a_star_index.py`.
+- Maintainer-facing owner documentation at `src/norad/libraries/README.md`, a
+  focused module docstring, and local loader comments without a package marker,
+  install step, public import name, new CLI flag, or logging dependency.
 - A legacy-path/import search, focused parity results, complete applicable local
   gate, clean worktree, publication/upstream-equality evidence, and explicit
   local-only evidence ceiling.
@@ -139,6 +165,11 @@ coverage, making it the smallest evidence-supported migration unit.
   malformed input, dry run, execute effects, stdout/stderr, exit status,
   deterministic TSV bytes, exact per-stage rosters, import identity, and file
   modes for every affected validator.
+- With the owner unavailable or invalid, every affected entry point emits the
+  planned stable diagnostic only on stderr, exits nonzero, and leaves stdout,
+  report targets, and the invocation directory unchanged. Under a valid owner,
+  `--help` remains successful and malformed arguments retain argparse's stderr
+  usage and nonzero status without result artifacts.
 - Import tests prove all validators reference the one exact final file and
   module object, `sys.path` is unchanged, wrong-path cache collisions fail
   closed, and no package installation or public import identity is required.
@@ -161,9 +192,10 @@ coverage, making it the smallest evidence-supported migration unit.
 ## Canonical documentation updates
 
 - `ARCHITECTURE.md`, `FUNCTIONAL_OWNER_INVENTORY.md`, `PIPELINE_PLAN.md`,
-  `HANDOFF.md`, this card, and the dated pre-migration/refactor log; update
-  `RUNBOOK.md`, public CLI fixtures, and coverage baseline only when the final
-  executable diff makes their owned bytes or commands change.
+  `HANDOFF.md`, `src/norad/libraries/README.md`, this card, and the dated pre-
+  migration/refactor log; update `RUNBOOK.md`, public CLI fixtures, and coverage
+  baseline only when the final executable diff makes their owned bytes or
+  commands change.
 
 ## Escalation conditions
 

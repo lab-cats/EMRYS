@@ -170,3 +170,30 @@ that sequence closes; current checkout and roadmap truth remain in
   require explicit loader-failure behavior and discoverable owner documentation,
   and preserve an unambiguous stop before source mutation. The same-author
   review limitation remains disclosed.
+
+## 2026-08-02T13:48:53-0400 — Usability review findings incorporated
+
+- **High — revised:** all thirteen validators are tracked at mode `0644` and
+  the public contract invokes them through an explicit Python interpreter. The
+  card now prohibits implying direct executable support and requires the
+  healthy-owner arbitrary-CWD help/malformed matrix to remain unchanged.
+- **High — revised:** exact-file owner loading creates new corrupted-checkout
+  failure journeys before argument parsing. Each validator must now emit one
+  concise stderr-only diagnostic with the expected path and causal exception,
+  exit nonzero, and create no report or invocation-directory artifact; ordinary
+  load errors must not produce a traceback or swallow control-flow exceptions.
+- **Medium — revised:** a path-only owner is hard to discover when it has no
+  package/import identity. The migration now includes a local library README,
+  module docstring, and concise caller comments that name the nine APIs,
+  internal `HEADER`, known defects, and temporary loader lifetime without
+  adding package metadata or an installation step.
+- **Accepted:** public filenames, shebangs, runbook command, flags, streams,
+  normal exit states, dry-run/execute effects, report bytes, check rosters, and
+  evidence meanings remain unchanged. Corrupted-owner tests are separate from
+  the existing healthy public-CLI contract.
+- **Residual risk:** review authorship is not independent. This was a separate
+  clean-tree pass against immutable reliability checkpoint `102510b`, not a
+  claim of external review.
+- **Evidence boundary:** documentation-only review; no source/test mutation,
+  command execution, result publication, runtime, cluster, scientific-review,
+  or biological evidence occurred.

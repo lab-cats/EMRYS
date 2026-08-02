@@ -481,9 +481,9 @@ or updated.
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) is
 complete. It proposes
 [`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md) and a
-dedicated architecture, reliability, and usability review chain. The next
-action is the selected read-only usability pass after the completed
-architecture and reliability reviews. No physical migration has begun. All
-other work, including
+dedicated architecture, reliability, and usability review chain. All three
+reviews are complete; the next action is task-specific read-only selection and
+planning of `MIG-03A`. No physical migration has begun. All other work,
+including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

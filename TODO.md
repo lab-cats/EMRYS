@@ -8,14 +8,15 @@ scope, roadmap, current state, blockers, or open questions.
 [`PLAN-02Z`](docs/tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md)
 has completed the documentation-only first-tranche plan. Its dedicated
 [`architecture review`](docs/tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
-is complete; the next eligible action is
-[`REVIEW-UX-03A`](docs/tasks/IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md),
-which is selected for review only after the completed architecture and
-reliability passes.
+and
+[`reliability review`](docs/tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md)
+are complete; the
+[`usability review`](docs/tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
+has now closed the dedicated review chain.
 The proposed unit is
 [`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
-which remains preceded by its architecture, reliability, and usability reviews.
-No physical source migration is selected or executing yet.
+which is now the next eligible action for task-specific read-only selection and
+planning. No physical source migration is selected or executing yet.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)
