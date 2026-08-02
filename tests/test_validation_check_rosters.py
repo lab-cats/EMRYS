@@ -17,6 +17,7 @@ from validation_roster_expectations import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
+REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
 VALIDATOR_SCRIPTS = {
     "00a": "validate_step_00a_star_index.py",
     "00b": "validate_step_00b_bed12.py",
@@ -44,7 +45,7 @@ VALIDATION_HEADER = (
 
 
 def load_shared_report_validator() -> ModuleType:
-    path = SCRIPTS_ROOT / VALIDATOR_SCRIPTS["00a"]
+    path = REPORT_LIBRARY
     spec = importlib.util.spec_from_file_location("shared_report_validator", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load shared report validator: {path}")

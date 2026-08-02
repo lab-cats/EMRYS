@@ -9,21 +9,27 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import importlib.util
 import os
+import shutil
+import subprocess
 import sys
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_ROOT = REPO_ROOT / "scripts"
+REPORT_PATH = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-REPORT = importlib.import_module("validate_step_00a_star_index")
+STEP_00A = importlib.import_module("validate_step_00a_star_index")
+REPORT = STEP_00A.report
 
 VALIDATOR_MODULES = (
     "validate_step_00a_star_index",
@@ -118,8 +124,10 @@ def test_exact_step_validator_inventory_uses_one_shared_publisher() -> None:
     assert discovered == set(VALIDATOR_MODULES)
 
     # One adversarial helper matrix therefore exercises all thirteen public
-    # step-report formats; the other twelve modules import this exact owner.
-    for module_name in VALIDATOR_MODULES[1:]:
+    # step-report formats through the exact final owner and private identity.
+    assert Path(REPORT.__file__).resolve() == REPORT_PATH.resolve()
+    assert sys.modules["_norad_validation_report"] is REPORT
+    for module_name in VALIDATOR_MODULES:
         module = importlib.import_module(module_name)
         assert module.report is REPORT
 
@@ -128,10 +136,351 @@ def test_exact_step_validator_inventory_uses_one_shared_publisher() -> None:
             encoding="utf-8"
         )
         assert "changed after validation" in source
-        if module_name == "validate_step_00a_star_index":
-            assert "publish(args.output" in source
-        else:
-            assert "report.publish(" in source
+        assert "report.publish(" in source
+        assert "import validate_step_00a_star_index as report" not in source
+
+
+def test_all_validator_loaders_preserve_sys_path() -> None:
+    before = list(sys.path)
+    for module_name in VALIDATOR_MODULES:
+        sys.modules.pop(module_name, None)
+        module = importlib.import_module(module_name)
+        assert module.report is REPORT
+        assert Path(module.report.__file__).resolve() == REPORT_PATH.resolve()
+    assert sys.path == before
+
+
+@pytest.mark.parametrize(
+    ("cached_file", "ready", "message"),
+    (
+        ("wrong-owner.py", True, "expected"),
+        (str(REPORT_PATH), False, "partially initialized"),
+    ),
+)
+@pytest.mark.parametrize("module_name", VALIDATOR_MODULES)
+def test_loader_rejects_and_preserves_foreign_cache_entries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    cached_file: str,
+    ready: bool,
+    message: str,
+    module_name: str,
+) -> None:
+    validator = importlib.import_module(module_name)
+    foreign = ModuleType("_norad_validation_report")
+    foreign.__file__ = (
+        str(tmp_path / cached_file) if cached_file == "wrong-owner.py" else cached_file
+    )
+    if ready:
+        foreign._NORAD_VALIDATION_REPORT_READY = True
+    monkeypatch.setitem(sys.modules, "_norad_validation_report", foreign)
+
+    with pytest.raises(ImportError, match=message):
+        validator._load_validation_report()
+
+    assert sys.modules["_norad_validation_report"] is foreign
+
+
+@pytest.mark.parametrize(
+    ("cached_file", "ready"),
+    (
+        ("wrong-owner.py", True),
+        (str(REPORT_PATH), False),
+    ),
+)
+@pytest.mark.parametrize("module_name", VALIDATOR_MODULES)
+def test_public_loader_cache_collision_is_one_stderr_line(
+    tmp_path: Path,
+    cached_file: str,
+    ready: bool,
+    module_name: str,
+) -> None:
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    effective_file = (
+        str(tmp_path / cached_file) if cached_file == "wrong-owner.py" else cached_file
+    )
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        cached = ModuleType("_norad_validation_report")
+        cached.__file__ = {effective_file!r}
+        cached._NORAD_VALIDATION_REPORT_READY = {ready!r}
+        sys.modules["_norad_validation_report"] = cached
+        runpy.run_path(
+            {str(SCRIPT_ROOT / f"{module_name}.py")!r},
+            run_name="__main__",
+        )
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert_owner_failure(result, REPORT_PATH, "ImportError")
+    assert list(invocation_cwd.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("source", "error_type"),
+    (
+        ("raise RuntimeError('injected ordinary owner failure')\n", RuntimeError),
+        ("raise KeyboardInterrupt\n", KeyboardInterrupt),
+    ),
+)
+@pytest.mark.parametrize("module_name", VALIDATOR_MODULES)
+def test_loader_removes_only_its_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source: str,
+    error_type: type[BaseException],
+    module_name: str,
+) -> None:
+    validator = importlib.import_module(module_name)
+    failing_owner = tmp_path / "validation_report.py"
+    failing_owner.write_text(source, encoding="utf-8")
+    monkeypatch.setattr(validator, "_REPORT_MODULE_PATH", failing_owner)
+    monkeypatch.delitem(sys.modules, "_norad_validation_report", raising=False)
+
+    with pytest.raises(error_type):
+        validator._load_validation_report()
+
+    assert "_norad_validation_report" not in sys.modules
+
+
+@pytest.mark.parametrize("module_name", VALIDATOR_MODULES)
+def test_each_loader_can_initialize_the_exact_owner_from_an_empty_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    module_name: str,
+) -> None:
+    validator = importlib.import_module(module_name)
+    monkeypatch.delitem(sys.modules, "_norad_validation_report", raising=False)
+
+    loaded = validator._load_validation_report()
+
+    assert Path(loaded.__file__).resolve() == REPORT_PATH.resolve()
+    assert getattr(loaded, "_NORAD_VALIDATION_REPORT_READY") is True
+    assert sys.modules["_norad_validation_report"] is loaded
+
+
+@pytest.mark.parametrize("module_name", VALIDATOR_MODULES)
+def test_each_loader_fails_closed_when_no_specification_can_be_created(
+    monkeypatch: pytest.MonkeyPatch,
+    module_name: str,
+) -> None:
+    validator = importlib.import_module(module_name)
+    monkeypatch.delitem(sys.modules, "_norad_validation_report", raising=False)
+    monkeypatch.setattr(
+        validator.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: None,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        validator._load_validation_report()
+
+    assert "_norad_validation_report" not in sys.modules
+
+
+def owner_failure_result(
+    script: Path,
+    invocation_cwd: Path,
+) -> subprocess.CompletedProcess[str]:
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    return subprocess.run(
+        [sys.executable, str(script), "--help"],
+        cwd=invocation_cwd,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def assert_owner_failure(
+    result: subprocess.CompletedProcess[str],
+    expected_path: Path,
+    exception_name: str,
+) -> None:
+    assert result.returncode == 2
+    assert result.stdout == ""
+    lines = result.stderr.splitlines()
+    assert len(lines) == 1
+    assert lines[0].startswith(
+        f"ERROR: unable to load NORAD validation-report owner at {expected_path}: "
+        f"{exception_name}: "
+    )
+    assert "Traceback" not in result.stderr
+
+
+def test_every_copied_validator_reports_a_missing_exact_owner_without_artifacts(
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "copied"
+    copied_scripts = copied_root / "scripts"
+    copied_scripts.mkdir(parents=True)
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    expected_path = copied_root / "src" / "norad" / "libraries" / "validation_report.py"
+
+    for module_name in VALIDATOR_MODULES:
+        source = SCRIPT_ROOT / f"{module_name}.py"
+        copied = copied_scripts / source.name
+        shutil.copy2(source, copied)
+        result = owner_failure_result(copied, invocation_cwd)
+        assert_owner_failure(result, expected_path, "FileNotFoundError")
+        assert list(invocation_cwd.iterdir()) == []
+
+
+def test_every_copied_validator_reports_owner_execution_failure_without_artifacts(
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "copied"
+    copied_scripts = copied_root / "scripts"
+    copied_scripts.mkdir(parents=True)
+    owner = copied_root / "src" / "norad" / "libraries" / "validation_report.py"
+    owner.parent.mkdir(parents=True)
+    owner.write_text("raise RuntimeError('injected corrupt owner')\n", encoding="utf-8")
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+
+    for module_name in VALIDATOR_MODULES:
+        source = SCRIPT_ROOT / f"{module_name}.py"
+        copied = copied_scripts / source.name
+        shutil.copy2(source, copied)
+        result = owner_failure_result(copied, invocation_cwd)
+        assert_owner_failure(result, owner, "RuntimeError")
+        assert list(invocation_cwd.iterdir()) == []
+
+
+def test_regular_snapshot_rejects_an_empty_required_file(tmp_path: Path) -> None:
+    empty = tmp_path / "empty.tsv"
+    empty.touch()
+
+    with pytest.raises(REPORT.ValidationError, match="must be nonempty"):
+        REPORT.regular_snapshot(empty, "Empty fixture")
+
+
+def test_regular_snapshot_rejects_a_missing_file(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.tsv"
+
+    with pytest.raises(REPORT.ValidationError, match="is unavailable"):
+        REPORT.regular_snapshot(missing, "Missing fixture")
+
+
+def test_stable_text_rejects_non_utf8_input(tmp_path: Path) -> None:
+    invalid = tmp_path / "invalid.tsv"
+    invalid.write_bytes(b"\xff")
+
+    with pytest.raises(REPORT.ValidationError, match="cannot be read as UTF-8"):
+        REPORT.stable_text(invalid, "Invalid fixture")
+
+
+def test_stable_text_rejects_a_snapshot_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "changing.tsv"
+    source.write_text("stable\n", encoding="utf-8")
+    snapshots = iter(
+        (
+            REPORT.Snapshot(1, 2, 7, 3),
+            REPORT.Snapshot(1, 2, 7, 4),
+        )
+    )
+    monkeypatch.setattr(
+        REPORT,
+        "regular_snapshot",
+        lambda *_args, **_kwargs: next(snapshots),
+    )
+
+    with pytest.raises(REPORT.ValidationError, match="changed while read"):
+        REPORT.stable_text(source, "Changing fixture")
+
+
+def test_report_validator_rejects_non_utf8_bytes() -> None:
+    with pytest.raises(REPORT.ValidationError, match="not UTF-8"):
+        REPORT.validate_report(b"\xff", SCOPE_ID)
+
+
+def test_report_validator_rejects_an_extra_column() -> None:
+    malformed = report_bytes("extra").rstrip(b"\n") + b"\textra\n"
+
+    with pytest.raises(REPORT.ValidationError, match="invalid row"):
+        REPORT.validate_report(
+            malformed,
+            SCOPE_ID,
+            step_id=STEP_ID,
+            check_ids=CHECK_IDS,
+        )
+
+
+def test_report_validator_rejects_wrong_check_identity() -> None:
+    with pytest.raises(REPORT.ValidationError, match="check IDs"):
+        REPORT.validate_report(
+            report_bytes("wrong check"),
+            SCOPE_ID,
+            step_id=STEP_ID,
+            check_ids={"different_check"},
+        )
+
+
+def test_report_validator_rejects_wrong_scope_identity() -> None:
+    with pytest.raises(REPORT.ValidationError, match="scope identity"):
+        REPORT.validate_report(
+            report_bytes("wrong scope"),
+            "different_scope",
+            step_id=STEP_ID,
+            check_ids=CHECK_IDS,
+        )
+
+
+def test_report_validator_rejects_invalid_status() -> None:
+    invalid = report_bytes("wrong status").replace(b"\tpass\t", b"\tunknown\t")
+
+    with pytest.raises(REPORT.ValidationError, match="status is invalid"):
+        REPORT.validate_report(
+            invalid,
+            SCOPE_ID,
+            step_id=STEP_ID,
+            check_ids=CHECK_IDS,
+        )
+
+
+def test_publish_rejects_a_missing_output_parent(tmp_path: Path) -> None:
+    output = tmp_path / "missing" / f"{SCOPE_ID}.validation.tsv"
+
+    with pytest.raises(REPORT.ValidationError, match="Output parent"):
+        publish(output, report_bytes("missing parent"))
+
+
+def test_publish_rejects_a_wrong_output_basename(tmp_path: Path) -> None:
+    output = tmp_path / "wrong-name.tsv"
+
+    with pytest.raises(REPORT.ValidationError, match="Output basename"):
+        publish(output, report_bytes("wrong basename"))
+
+
+def test_publish_rejects_an_existing_lock(tmp_path: Path) -> None:
+    output = tmp_path / f"{SCOPE_ID}.validation.tsv"
+    lock = tmp_path / f".{output.name}.lock"
+    lock.write_text("foreign lock\n", encoding="utf-8")
+
+    with pytest.raises(REPORT.ValidationError, match="lock already exists"):
+        publish(output, report_bytes("locked"))
+
+    assert lock.read_text(encoding="utf-8") == "foreign lock\n"
 
 
 def test_snapshot_characterizes_same_size_restored_mtime_gap(

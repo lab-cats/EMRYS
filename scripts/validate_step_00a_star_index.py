@@ -4,39 +4,80 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import os
-import stat
+import importlib.util
 import sys
-import uuid
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
 
-HEADER = ("step_id", "scope_id", "check_id", "status", "observed", "expected", "detail")
+# Temporary exact-file bridge; the final owner is src/norad/libraries/validation_report.py.
+_REPORT_MODULE_NAME = "_norad_validation_report"
+_REPORT_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "libraries"
+    / "validation_report.py"
+).resolve(strict=False)
+_REPORT_READY_ATTRIBUTE = "_NORAD_VALIDATION_REPORT_READY"
+
+
+def _validated_validation_report(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError("cached validation-report owner has no valid file path") from exc
+    if module_path != _REPORT_MODULE_PATH:
+        raise ImportError(
+            f"cached validation-report owner resolves to {module_path}, "
+            f"expected {_REPORT_MODULE_PATH}"
+        )
+    if getattr(module, _REPORT_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached validation-report owner is partially initialized")
+    return module
+
+
+def _load_validation_report() -> object:
+    cached = sys.modules.get(_REPORT_MODULE_NAME)
+    if cached is not None:
+        return _validated_validation_report(cached)
+    spec = importlib.util.spec_from_file_location(
+        _REPORT_MODULE_NAME, _REPORT_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError("unable to create an exact-file module specification")
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_REPORT_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_validation_report(existing)
+    try:
+        spec.loader.exec_module(module)
+        _validated_validation_report(module)
+    except BaseException:
+        if sys.modules.get(_REPORT_MODULE_NAME) is module:
+            del sys.modules[_REPORT_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    report = _load_validation_report()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load NORAD validation-report owner at "
+        f"{_REPORT_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
 REQUIRED_MEMBERS = (
     "genomeParameters.txt", "Genome", "SA", "SAindex", "chrLength.txt",
     "chrName.txt", "chrNameLength.txt", "chrStart.txt", "exonGeTrInfo.tab",
     "exonInfo.tab", "geneInfo.tab", "sjdbInfo.txt",
     "sjdbList.fromGTF.out.tab", "sjdbList.out.tab", "transcriptInfo.tab",
 )
-
-
-class ValidationError(RuntimeError):
-    """Raised when the validator contract or publication state is unsafe."""
-
-
-@dataclass(frozen=True)
-class Snapshot:
-    device: int
-    inode: int
-    size: int
-    mtime_ns: int
-
-
-def fail(message: str) -> None:
-    raise ValidationError(message)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -57,51 +98,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def clean(value: object) -> str:
-    return " ".join(str(value).replace("\x00", "").split())
-
-
-def regular_snapshot(path: Path, label: str, *, nonempty: bool = True) -> Snapshot:
-    try:
-        value = path.lstat()
-    except OSError as exc:
-        fail(f"{label} is unavailable: {path}: {exc}")
-    if stat.S_ISLNK(value.st_mode) or not stat.S_ISREG(value.st_mode):
-        fail(f"{label} must be a regular non-symlink file: {path}")
-    if nonempty and value.st_size == 0:
-        fail(f"{label} must be nonempty: {path}")
-    return Snapshot(value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns)
-
-
-def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
-    before = regular_snapshot(path, label)
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        fail(f"{label} cannot be read as UTF-8: {path}: {exc}")
-    after = regular_snapshot(path, label)
-    if before != after:
-        fail(f"{label} changed while read: {path}")
-    return text, after
-
-
-def parse_parameters(path: Path) -> tuple[dict[str, list[str]], Snapshot]:
-    text, snapshot = stable_text(path, "STAR genomeParameters")
+def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]:
+    text, snapshot = report.stable_text(path, "STAR genomeParameters")
     parsed: dict[str, list[str]] = {}
     for number, raw in enumerate(text.splitlines(), 1):
         fields = raw.split()
         if not fields:
             continue
         if len(fields) < 2:
-            fail(f"STAR genomeParameters line {number} has no value")
+            report.fail(f"STAR genomeParameters line {number} has no value")
         if fields[0] in parsed:
-            fail(f"STAR genomeParameters repeats {fields[0]!r}")
+            report.fail(f"STAR genomeParameters repeats {fields[0]!r}")
         parsed[fields[0]] = fields[1:]
     return parsed, snapshot
 
 
-def fasta_contigs(path: Path) -> tuple[list[tuple[str, int]], Snapshot]:
-    before = regular_snapshot(path, "Reference FASTA")
+def fasta_contigs(path: Path) -> tuple[list[tuple[str, int]], report.Snapshot]:
+    before = report.regular_snapshot(path, "Reference FASTA")
     contigs: list[tuple[str, int]] = []
     name: str | None = None
     length = 0
@@ -115,38 +128,46 @@ def fasta_contigs(path: Path) -> tuple[list[tuple[str, int]], Snapshot]:
                         contigs.append((name, length))
                     name = line[1:].split()[0]
                     if not name or name in seen:
-                        fail(f"Reference FASTA line {number} has invalid or duplicate contig")
+                        report.fail(
+                            f"Reference FASTA line {number} has invalid or duplicate contig"
+                        )
                     seen.add(name)
                     length = 0
                 else:
                     if name is None or not line:
-                        fail(f"Reference FASTA line {number} is invalid")
+                        report.fail(f"Reference FASTA line {number} is invalid")
                     length += len(line)
     except (OSError, UnicodeError) as exc:
-        fail(f"Reference FASTA cannot be read: {exc}")
+        report.fail(f"Reference FASTA cannot be read: {exc}")
     if name is not None:
         contigs.append((name, length))
     if not contigs or any(length <= 0 for _, length in contigs):
-        fail("Reference FASTA must contain nonempty contigs")
-    after = regular_snapshot(path, "Reference FASTA")
+        report.fail("Reference FASTA must contain nonempty contigs")
+    after = report.regular_snapshot(path, "Reference FASTA")
     if before != after:
-        fail("Reference FASTA changed while read")
+        report.fail("Reference FASTA changed while read")
     return contigs, after
 
 
-def index_contigs(index_dir: Path) -> tuple[list[tuple[str, int]], tuple[Snapshot, Snapshot]]:
-    names_text, names_snapshot = stable_text(index_dir / "chrName.txt", "STAR chrName")
-    lengths_text, lengths_snapshot = stable_text(index_dir / "chrLength.txt", "STAR chrLength")
+def index_contigs(
+    index_dir: Path,
+) -> tuple[list[tuple[str, int]], tuple[report.Snapshot, report.Snapshot]]:
+    names_text, names_snapshot = report.stable_text(
+        index_dir / "chrName.txt", "STAR chrName"
+    )
+    lengths_text, lengths_snapshot = report.stable_text(
+        index_dir / "chrLength.txt", "STAR chrLength"
+    )
     names = names_text.splitlines()
     lengths = lengths_text.splitlines()
     if not names or len(names) != len(lengths) or len(names) != len(set(names)):
-        fail("STAR chrName/chrLength rows are empty, duplicate, or misaligned")
+        report.fail("STAR chrName/chrLength rows are empty, duplicate, or misaligned")
     try:
         parsed = [(name, int(length)) for name, length in zip(names, lengths, strict=True)]
     except ValueError as exc:
-        fail(f"STAR chrLength contains a non-integer: {exc}")
+        report.fail(f"STAR chrLength contains a non-integer: {exc}")
     if any(not name or length <= 0 for name, length in parsed):
-        fail("STAR contig names and lengths must be nonempty and positive")
+        report.fail("STAR contig names and lengths must be nonempty and positive")
     return parsed, (names_snapshot, lengths_snapshot)
 
 
@@ -160,67 +181,34 @@ def normalized_declared_path(value: str, path_base: Path) -> Path:
 def row(scope_id: str, check_id: str, passed: bool, observed: object, expected: object, detail: str) -> tuple[str, ...]:
     return (
         "00a", scope_id, check_id, "pass" if passed else "fail",
-        clean(observed), clean(expected), clean(detail),
+        report.clean(observed), report.clean(expected), report.clean(detail),
     )
 
 
-def render(rows: Sequence[Sequence[str]]) -> bytes:
-    lines = ["\t".join(HEADER)]
-    lines.extend("\t".join(clean(value) for value in values) for values in rows)
-    return ("\n".join(lines) + "\n").encode("utf-8")
-
-
-def validate_report(
-    data: bytes,
-    scope_id: str,
-    *,
-    step_id: str = "00a",
-    check_ids: set[str] | None = None,
-) -> None:
-    try:
-        reader = csv.DictReader(data.decode("utf-8").splitlines(), delimiter="\t")
-    except UnicodeError as exc:
-        fail(f"Validation report is not UTF-8: {exc}")
-    if tuple(reader.fieldnames or ()) != HEADER:
-        fail("Validation report header is invalid")
-    expected_ids = check_ids or {
-        "index_members", "fasta_identity", "gtf_identity",
-        "contig_names_lengths", "sjdb_overhang",
-    }
-    rows = list(reader)
-    if len(rows) != len(expected_ids):
-        fail(
-            f"Step {step_id} validation report must contain exactly "
-            f"{len(expected_ids)} checks"
-        )
-    if any(None in item or any(value is None for value in item.values()) for item in rows):
-        fail("Validation report contains an invalid row")
-    if {item["check_id"] for item in rows} != expected_ids:
-        fail("Validation report check IDs are invalid")
-    if any(item["step_id"] != step_id or item["scope_id"] != scope_id for item in rows):
-        fail("Validation report scope identity is invalid")
-    if any(item["status"] not in {"pass", "fail"} for item in rows):
-        fail("Validation report status is invalid")
-
-
-def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, Snapshot]]:
+def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
-        fail("scope-id must be nonempty and contain no whitespace")
+        report.fail("scope-id must be nonempty and contain no whitespace")
     if args.expected_sjdb_overhang < 0:
-        fail("expected-sjdb-overhang must be nonnegative")
+        report.fail("expected-sjdb-overhang must be nonnegative")
     index_dir = args.index_dir.resolve(strict=False)
     if not index_dir.is_dir() or index_dir.is_symlink():
-        fail(f"STAR index directory must be an existing real directory: {index_dir}")
+        report.fail(
+            f"STAR index directory must be an existing real directory: {index_dir}"
+        )
     path_base = args.parameter_path_base.resolve(strict=False)
     if not path_base.is_dir() or path_base.is_symlink():
-        fail(f"Parameter path base must be an existing real directory: {path_base}")
-    snapshots: dict[Path, Snapshot] = {}
+        report.fail(
+            f"Parameter path base must be an existing real directory: {path_base}"
+        )
+    snapshots: dict[Path, report.Snapshot] = {}
     missing: list[str] = []
     for name in REQUIRED_MEMBERS:
         path = index_dir / name
         try:
-            snapshots[path] = regular_snapshot(path, f"STAR index member {name}")
-        except ValidationError:
+            snapshots[path] = report.regular_snapshot(
+                path, f"STAR index member {name}"
+            )
+        except report.ValidationError:
             missing.append(name)
     members_pass = not missing
     parameters, parameter_snapshot = parse_parameters(index_dir / "genomeParameters.txt")
@@ -229,7 +217,7 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, Snapshot]]
     gtf = args.reference_gtf.resolve(strict=False)
     fasta_records, fasta_snapshot = fasta_contigs(fasta)
     snapshots[fasta] = fasta_snapshot
-    _, gtf_snapshot = stable_text(gtf, "Reference GTF")
+    _, gtf_snapshot = report.stable_text(gtf, "Reference GTF")
     snapshots[gtf] = gtf_snapshot
     star_records, star_snapshots = index_contigs(index_dir)
     snapshots[index_dir / "chrName.txt"] = star_snapshots[0]
@@ -264,69 +252,9 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, Snapshot]]
             observed_overhang if observed_overhang is not None else "invalid",
             args.expected_sjdb_overhang, "configured STAR splice-junction overhang"),
     )
-    data = render(rows)
-    validate_report(data, args.scope_id)
+    data = report.render(rows)
+    report.validate_report(data, args.scope_id)
     return data, snapshots
-
-
-def publish(
-    path: Path,
-    data: bytes,
-    scope_id: str,
-    *,
-    step_id: str = "00a",
-    check_ids: set[str] | None = None,
-) -> None:
-    parent = path.parent
-    if not parent.exists() or parent.is_symlink() or not parent.is_dir():
-        fail(f"Output parent must be an existing real directory: {parent}")
-    if path.name != f"{scope_id}.validation.tsv":
-        fail(f"Output basename must be {scope_id}.validation.tsv")
-    lock = parent / f".{path.name}.lock"
-    token = uuid.uuid4().hex
-    staged = parent / f".{path.name}.{token}.tmp"
-    previous = parent / f".{path.name}.{token}.previous"
-    try:
-        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError:
-        fail(f"Validation report lock already exists: {lock}")
-    replaced = False
-    try:
-        os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
-        with staged.open("xb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        validate_report(
-            staged.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
-        )
-        if path.exists() or path.is_symlink():
-            if path.is_symlink() or not path.is_file():
-                fail(f"Existing validation report is unsafe: {path}")
-            validate_report(
-                path.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
-            )
-            os.replace(path, previous)
-            replaced = True
-        try:
-            os.replace(staged, path)
-            validate_report(
-                path.read_bytes(), scope_id, step_id=step_id, check_ids=check_ids
-            )
-        except BaseException:
-            if path.exists() and not path.is_symlink():
-                path.unlink()
-            if replaced and previous.exists():
-                os.replace(previous, path)
-            raise
-        if previous.exists():
-            previous.unlink()
-    finally:
-        if staged.exists() and not staged.is_symlink():
-            staged.unlink()
-        os.close(descriptor)
-        if lock.exists() and not lock.is_symlink():
-            lock.unlink()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -343,12 +271,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Dry-run complete; no output was written.")
             return 0
         for path, expected in snapshots.items():
-            if regular_snapshot(path, f"Input {path.name}") != expected:
-                fail(f"Input changed after validation: {path}")
-        publish(args.output, data, args.scope_id)
+            if report.regular_snapshot(path, f"Input {path.name}") != expected:
+                report.fail(f"Input changed after validation: {path}")
+        report.publish(args.output, data, args.scope_id)
         print(f"Published Step 00a validation report: {args.output}")
         return 0
-    except ValidationError as exc:
+    except report.ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 

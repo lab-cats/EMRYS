@@ -126,8 +126,9 @@ def test_check_rejects_global_regression(
 def test_new_shared_module_thresholds_are_explicit() -> None:
     baseline = TOOL.build_snapshot(raw_document())
     current = copy.deepcopy(baseline)
+    shared_path = "src/norad/libraries/validation_report.py"
     new_module = TOOL.measured_file(
-        "scripts/shared.py", summary((95, 100), (18, 20))
+        shared_path, summary((95, 100), (18, 20))
     )
     current["files"].append(new_module)
     current["files"].sort(key=lambda item: item["path"])
@@ -146,16 +147,21 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
     }
 
     assert "passed" in TOOL.compare_snapshots(
-        baseline, current, ["scripts/shared.py"]
+        baseline, current, [shared_path]
+    )
+    # The threshold remains enforceable after the reviewed snapshot promotes
+    # the new owner into the tracked baseline.
+    assert "passed" in TOOL.compare_snapshots(
+        copy.deepcopy(current), current, [shared_path]
     )
 
     shared_index = next(
         index
         for index, item in enumerate(current["files"])
-        if item["path"] == "scripts/shared.py"
+        if item["path"] == shared_path
     )
     current["files"][shared_index] = TOOL.measured_file(
-        "scripts/shared.py", summary((89, 100), (16, 20))
+        shared_path, summary((89, 100), (16, 20))
     )
     aggregate = {
         field: sum(item[field] for item in current["files"])
@@ -171,10 +177,10 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
         ),
     }
     with pytest.raises(TOOL.SnapshotError, match="below 90%"):
-        TOOL.compare_snapshots(baseline, current, ["scripts/shared.py"])
+        TOOL.compare_snapshots(baseline, current, [shared_path])
 
     current["files"][shared_index] = TOOL.measured_file(
-        "scripts/shared.py", summary((95, 100), (16, 20))
+        shared_path, summary((95, 100), (16, 20))
     )
     aggregate = {
         field: sum(item[field] for item in current["files"])
@@ -190,7 +196,7 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
         ),
     }
     with pytest.raises(TOOL.SnapshotError, match="below 85%"):
-        TOOL.compare_snapshots(baseline, current, ["scripts/shared.py"])
+        TOOL.compare_snapshots(baseline, current, [shared_path])
 
 
 def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
@@ -202,7 +208,10 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert config.getboolean("run", "branch")
     assert config.getboolean("run", "parallel")
     assert config.getboolean("run", "relative_files")
-    assert config.get("run", "source").split() == ["scripts"]
+    assert config.get("run", "source").split() == [
+        "scripts",
+        "src/norad/libraries",
+    ]
     assert config.get("run", "patch").split() == ["subprocess"]
 
     makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
@@ -210,6 +219,10 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile
     assert "--new-shared-module scripts/git_orchestration/_common.py" in makefile
+    assert (
+        "--new-shared-module src/norad/libraries/validation_report.py" in makefile
+    )
+    assert "compileall -q scripts src/norad/libraries tests" in makefile
 
 
 def test_cli_help_build_and_check_interfaces(tmp_path: Path) -> None:

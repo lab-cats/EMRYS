@@ -227,7 +227,8 @@ python-coverage-check: python-coverage-measure
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
 		--current "$(PYTHON_COVERAGE_CURRENT)" \
-		--new-shared-module scripts/git_orchestration/_common.py
+		--new-shared-module scripts/git_orchestration/_common.py \
+		--new-shared-module src/norad/libraries/validation_report.py
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
@@ -244,7 +245,7 @@ validation-static:
 	bash -n scripts/git_orchestration/*.sh
 	bash -n jobs/*.slurm
 	PYTHONDONTWRITEBYTECODE=1 \
-		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts tests
+		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad/libraries tests
 	"$(REPORT_PYTHON_BIN)" scripts/validate_manifest.py \
 		--manifest samples.example.tsv
 
@@ -257,7 +258,7 @@ smoke:
 	bash -n jobs/*.slurm
 
 lint:
-	python -m compileall scripts tests
+	python -m compileall scripts src/norad/libraries tests
 
 all-checks:
 	"$(REPORT_PYTHON_BIN)" tests/tools/run_validation.py \

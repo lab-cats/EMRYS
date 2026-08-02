@@ -13,7 +13,7 @@ from typing import Any, Sequence
 
 SCHEMA_VERSION = "1.0.0"
 COVERAGE_VERSION = "7.15.2"
-SOURCE_ROOTS = ("scripts",)
+SOURCE_ROOTS = ("scripts", "src/norad/libraries")
 REQUIRED_SUBPROCESS_FILES = (
     "scripts/gtf_to_bed12.py",
     "scripts/validate_manifest.py",
@@ -84,7 +84,7 @@ def normalized_source_path(value: Any) -> str:
     if ".." in Path(path).parts or not path.endswith(".py"):
         raise SnapshotError(f"Coverage source path is outside the Python policy: {value}")
     if not any(path.startswith(f"{root}/") for root in SOURCE_ROOTS):
-        raise SnapshotError(f"Coverage source path is outside scripts/: {value}")
+        raise SnapshotError(f"Coverage source path is outside configured roots: {value}")
     return path
 
 
@@ -137,7 +137,7 @@ def build_snapshot(document: Any) -> dict[str, Any]:
         files.append(measured_file(path, summary))
     files.sort(key=lambda item: item["path"])
     if not files:
-        raise SnapshotError("Coverage input contains no scripts/*.py files")
+        raise SnapshotError("Coverage input contains no configured Python source files")
 
     aggregate = {field: sum(item[field] for item in files) for field in COUNT_FIELDS}
     declared_totals = counts_from_summary(
@@ -299,10 +299,6 @@ def compare_snapshots(
 
     for raw_path in new_shared_modules:
         path = normalized_source_path(raw_path)
-        if path in baseline_files:
-            raise SnapshotError(
-                f"New shared module was already present in the baseline: {path}"
-            )
         if path not in current_files:
             raise SnapshotError(f"New shared module is not measured: {path}")
         entry = current_files[path]

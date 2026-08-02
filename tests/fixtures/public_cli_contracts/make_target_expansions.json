@@ -91,7 +91,7 @@
     "\t\tjobs/step_03_infer_strandedness_and_orientation.slurm"
   ],
   "lint": [
-    "python -m compileall scripts tests"
+    "python -m compileall scripts src/norad/libraries tests"
   ],
   "local-real-r-test": [
     "NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
@@ -148,7 +148,8 @@
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
     "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" \\",
-    "\t\t--new-shared-module scripts/git_orchestration/_common.py"
+    "\t\t--new-shared-module scripts/git_orchestration/_common.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation_report.py"
   ],
   "python-coverage-measure": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",
@@ -290,7 +291,8 @@
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
     "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" \\",
-    "\t\t--new-shared-module scripts/git_orchestration/_common.py"
+    "\t\t--new-shared-module scripts/git_orchestration/_common.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation_report.py"
   ],
   "validation-report-runtime": [
     "test -n \"\" || { \\",
@@ -332,7 +334,7 @@
     "bash -n scripts/git_orchestration/*.sh",
     "bash -n jobs/*.slurm",
     "PYTHONDONTWRITEBYTECODE=1 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts tests",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad/libraries tests",
     "\"<REPO_ROOT>/.venv/bin/python\" scripts/validate_manifest.py \\",
     "\t\t--manifest samples.example.tsv"
   ]

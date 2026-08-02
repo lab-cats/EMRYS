@@ -3,6 +3,7 @@ branch = True
 parallel = True
 source =
     scripts
+    src/norad/libraries
 relative_files = True
 patch =
     subprocess
