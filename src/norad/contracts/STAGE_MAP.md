@@ -31,6 +31,7 @@ archival behavior.
 | stage | Construct STAR Index | `construct_STAR_index` | `norad.stage.construct_STAR_index.v1` | `00a` |
 | stage | Convert GTF to BED12 | `convert_GTF_to_BED12` | `norad.stage.convert_GTF_to_BED12.v1` | `00b` |
 | stage | Construct FASTA Sidecars | `construct_FASTA_sidecars` | `norad.stage.construct_FASTA_sidecars.v1` | `00c` |
+| stage | Align RNA Reads with STAR | `align_RNA_reads_with_STAR` | `norad.stage.align_RNA_reads_with_STAR.v1` | `01` |
 
 ## Edge semantics
 
@@ -60,6 +61,7 @@ not create edges.
 | --- | --- | --- |
 | `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars` |
 | `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12` |
+| `paired_rna_fastq` | One externally supplied read-1/read-2 RNA-seq FASTQ pair for a declared sample. | `align_RNA_reads_with_STAR` |
 
 Runtime tools and scalar parameters are stage-local contract inputs, not DAG
 nodes.
@@ -71,6 +73,7 @@ artifact have been frozen from their functional contracts.
 
 | Producer | Consumer | Artifact | Semantics |
 | --- | --- | --- | --- |
+| `construct_STAR_index` | `align_RNA_reads_with_STAR` | STAR genome-index directory | required artifact |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -91,4 +94,7 @@ flowchart LR
     construct_STAR_index["Construct STAR Index"]
     convert_GTF_to_BED12["Convert GTF to BED12"]
     construct_FASTA_sidecars["Construct FASTA Sidecars"]
+    align_RNA_reads_with_STAR["Align RNA Reads with STAR"]
+
+    construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
 ```
