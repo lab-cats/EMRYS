@@ -228,6 +228,25 @@ depend on a reviewed library through its public API, with independent library
 and consumer tests. This topology assigns dependency direction but does not
 approve any extraction candidate.
 
+## Reporting boundary
+
+`reporting/` owns the downstream application chain for artifact indexing,
+canonical run-summary construction, view-model projection, renderers, styles,
+and templates. Neutral artifact and report schemas remain under `contracts/`;
+artifact semantics unique to a stage, analysis, or evidence operation remain
+with that producer.
+
+Reporting may depend on neutral contracts and libraries and may consume only
+explicitly declared public artifacts from functional owners. No stage,
+analysis, or evidence implementation depends on reporting. Artifact indexing,
+summary construction, and rendering are consumers and are not peer nodes in
+the computational DAG.
+
+A renderer consumes one explicit validated canonical run summary plus only
+supplemental tables authorized by exact contract. It does not discover inputs,
+run analysis, install tools, or promote evidence state. Native report assets
+remain under the reporting owner; their packaging is deferred.
+
 ## Orchestration and scheduler boundary
 
 `orchestration/` may depend on neutral contracts and invoke the public entry
