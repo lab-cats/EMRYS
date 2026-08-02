@@ -23,6 +23,15 @@ decide whether a Make target should become the stable public entry point.
   a separately justified source-layout decision, not incidental cleanup.
 - A concise Make target may wrap the executable, but it must not duplicate the
   validation logic.
+- Semantic review, automated validation, and completion verification remain
+  separate ordered responsibilities; the validator owns only validation.
+- Smaller, independently understandable gate stages may be exposed through
+  modes or orchestration only when they reuse one validator engine rather than
+  duplicate implementations.
+- Ordinary thin-slice close does not require validation unless continuing
+  would be unsafe or a later slice directly depends on unverified behavior.
+- Reserve complete repository documentation validation for the final
+  reconciliation boundary.
 - Dependency-semantic changes belong to `TASK-REG-01`, not this extraction.
 
 ## Blocked by
@@ -82,6 +91,10 @@ decide whether a Make target should become the stable public entry point.
 - The extracted command accepts the same repository state and rejects the
   same representative invalid states as the characterized inline program.
 - Focused tests and the complete applicable documentation gate pass.
+- Each supported stage or mode has an independently understandable result while
+  exercising the same underlying validator engine.
+- The command surface supports complete reconciliation validation without
+  making that full gate mandatory at every thin-slice boundary.
 - The runbook contains no embedded validator implementation.
 - No workflow, schema, fixture, scientific-method, report, or evidence-state
   behavior changes.
