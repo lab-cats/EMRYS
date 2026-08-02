@@ -13,8 +13,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the canonical recovery integration is clean,
-  published, and live-remote equal at the package base above. `PLAN-02Z` is
-  selected only for its first rolling tranche; all other work remains frozen.
+  published, and live-remote equal at the package base above. `PLAN-02Z` has
+  completed its first rolling tranche plan; all other work remains frozen.
 - Current package: documentation-only first-migration planning and review
   readiness for the neutral validation-report protocol.
 - Package type: documentation-only; no executable, configuration, generation,
@@ -478,11 +478,11 @@ suites are not applicable. It creates no runtime, cluster, scientific-review,
 or biological-readiness evidence, and no dependency was installed, restored,
 or updated.
 
-[`PLAN-02Z`](../tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) is
-the selected current package. It proposes
+[`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) is
+complete. It proposes
 [`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. The next
-action is to finish and commit this planning checkpoint, then select those
-reviews in order. No physical migration has begun. All other work, including
+action is to select `REVIEW-ARCH-03A`, then continue those reviews in order. No
+physical migration has begun. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

@@ -121,5 +121,13 @@ validation-report protocol from the Step `00a` validator.
 
 ## Completion record
 
-In progress under the user-authorized pre-migration planning envelope. No
-physical source migration or executable validation has begun.
+Completed as a documentation-only rolling checkpoint rooted at integrated
+canonical parent `15aba53c538cabf2b7d2284575be0089b0ca90cf`; the immutable
+planning proposal is checkpoint `c45e748`. Live inspection found exactly twelve
+validator importers and the nine shared symbols recorded in `MIG-03A`, with all
+affected current files at mode `0644`. The card created one migration and three
+dedicated review cards, removed seven obsolete waterfall blockers, and left
+unrelated work frozen. `git diff --check` passed, and documentation validation
+reported only the inherited nine unsupported-`UNREFINED` locations. No
+executable file changed, no computational test ran, and no physical migration
+or evidence promotion began.

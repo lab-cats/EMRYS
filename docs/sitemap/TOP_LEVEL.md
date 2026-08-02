@@ -48,11 +48,11 @@ freshness, evidence, ownership, or
   are complete; `DOC-CONS-08E` through `DOC-CONS-08H` remain unselected and
   require separate selection, task-specific planning, and approval. These
   exceptions do not change ordinary runway order. The
-  selected ordinary runway action is
-  [`PLAN-02Z`](../tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md),
-  bounded to one proposed validation-report migration and its dedicated review
-  chain. The unsliced `PROGRAM-01` remainder remains preserved and out of scope
-  pending user reassessment.
+  completed ordinary runway action is
+  [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md),
+  bounded to one proposed validation-report migration. Its dedicated
+  architecture review is next. The unsliced `PROGRAM-01` remainder remains
+  preserved and out of scope pending user reassessment.
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one.
@@ -66,10 +66,9 @@ freshness, evidence, ownership, or
   makes that work necessary for the active runway.
   Preferred ordering, general consistency, or potential future usefulness is
   not an exception.
-- Complete `PLAN-02Z`, then select its tranche-specific architecture,
-  reliability, and usability reviews in order. Selecting `MIG-03A` remains
-  deferred until those reviews are complete; source mutation remains outside
-  this pre-migration boundary.
+- Select the tranche-specific architecture, reliability, and usability reviews
+  in order. Selecting `MIG-03A` remains deferred until those reviews are
+  complete; source mutation remains outside this pre-migration boundary.
 - Validation is quiet by default. Ordinary slice close follows the
   [`TASK_DELIVERY.md` boundary](../operations/TASK_DELIVERY.md#slice-start-and-close),
   and final reconciliation uses the applicable

@@ -21,7 +21,7 @@ compatibility layers, and branch-point category mistakes before implementation.
 
 ## Blocked by
 
-- [PLAN-02Z](../IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) — Required: the complete integrated plan and generated card set must exist.
+- [PLAN-02Z](../COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) — Required: the rolling plan boundary and generated card set must exist.
 
 ## Completion unblocks
 

@@ -5,13 +5,14 @@ scope, roadmap, current state, blockers, or open questions.
 
 ## Current priority
 
-[`PLAN-02Z`](docs/tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md)
-is selected for the user-authorized, documentation-only first-tranche planning
-cycle. Its proposed unit is
+[`PLAN-02Z`](docs/tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md)
+has completed the documentation-only first-tranche plan. The next eligible
+action is its dedicated
+[`REVIEW-ARCH-03A`](docs/tasks/TODO/REVIEW-ARCH-03A-review-validation-publication-migration.md)
+pass. The proposed unit is
 [`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
-preceded by the tranche-specific architecture, reliability, and usability
-reviews linked from that card. No physical source migration is selected or
-executing yet.
+which remains preceded by its architecture, reliability, and usability reviews.
+No physical source migration is selected or executing yet.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)

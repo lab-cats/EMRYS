@@ -23,7 +23,7 @@ compatibility layer.
 
 ## Blocked by
 
-- [PLAN-02Z](../IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) — Required: the proposed unit, owner, consumer roster, and migration card must exist.
+- [PLAN-02Z](../COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) — Required: the proposed unit, owner, consumer roster, and migration card must exist.
 
 ## Completion unblocks
 

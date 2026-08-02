@@ -75,3 +75,19 @@ that sequence closes; current checkout and roadmap truth remain in
   computational test ran. `git diff --check` passes; documentation validation
   is back to exactly the inherited nine unsupported-`UNREFINED` findings, with
   all seven stale PLAN blocker findings eliminated.
+
+## 2026-08-02T13:31:03-0400 — PLAN-02Z accepted and closed
+
+- **Verification:** committed checkpoint `c45e748` is a clean direct descendant
+  of the frozen integrated parent. Reinspection found twelve direct importers,
+  the exact nine shared symbols named by `MIG-03A`, and mode `0644` for every
+  affected validator and the current fault-test owner.
+- **Risk:** treating the planning proposal as implementation evidence, or
+  completing a broad `REVIEW-*` card, would either bypass executable task start
+  or falsely unblock unrelated logging, report, size, and documentation work.
+- **Decision:** close only `PLAN-02Z`. Keep the broad review cards frozen and
+  route this tranche through `REVIEW-ARCH-03A`, `REVIEW-REL-03A`, and
+  `REVIEW-UX-03A` before selecting `MIG-03A`.
+- **Validation boundary:** the committed planning tree adds no validator
+  finding beyond the inherited nine unsupported-`UNREFINED` locations. No
+  source, test, configuration, dependency, runtime, or cluster action occurred.

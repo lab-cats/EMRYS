@@ -1216,7 +1216,7 @@ Consequences: see
 | Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |
 
 The integrated sequence and three independent reviews are owned by
-[`PLAN-02Z`](../tasks/IN_PROGRESS/PLAN-02Z-integrate-future-task-sequence.md) and
+[`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 `REVIEW-*`; final closure is owned by
 [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md).
 
