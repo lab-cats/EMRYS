@@ -29,6 +29,7 @@ archival behavior.
 | Kind | Display title | Public slug | Frozen machine key | Historical aliases |
 | --- | --- | --- | --- | --- |
 | stage | Construct STAR Index | `construct_STAR_index` | `norad.stage.construct_STAR_index.v1` | `00a` |
+| stage | Convert GTF to BED12 | `convert_GTF_to_BED12` | `norad.stage.convert_GTF_to_BED12.v1` | `00b` |
 
 ## Edge semantics
 
@@ -57,7 +58,7 @@ not create edges.
 | Input type | Meaning | Current semantic consumers |
 | --- | --- | --- |
 | `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index` |
-| `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index` |
+| `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12` |
 
 Runtime tools and scalar parameters are stage-local contract inputs, not DAG
 nodes.
@@ -87,4 +88,5 @@ frozen. Node labels use public slugs; machine keys remain in the identity map.
 ```mermaid
 flowchart LR
     construct_STAR_index["Construct STAR Index"]
+    convert_GTF_to_BED12["Convert GTF to BED12"]
 ```
