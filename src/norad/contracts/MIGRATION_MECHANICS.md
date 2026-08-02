@@ -137,3 +137,29 @@ behavior.
 | Make callers | Compare the public target inventory, literal recipe expansion, variable/default and quoting behavior, target prerequisites and order, dry-run/operator-mutation/output classification, stdout/stderr, side effects, and child exit propagation. A path-only change updates the reviewed literal expansion fixture; it does not regenerate or relax unrelated expectations. | Cut over a Make recipe only after the final entry point or approved wrapper exists, and update its exact expansion evidence in the same commit. Keep explicit paths; do not replace them with globbing, PATH discovery, or numeric-name inference. Roll back the Makefile and its literal fixture together before reverting the invoked path. |
 | Reports | With one identical explicit canonical summary and authorized supplemental inputs, compare CLI behavior, arbitrary working directory, dry-run/execute effects, evidence banners and terminology, HTML/PDF semantic structure, deterministic tables, bundle membership, hashes/row counts, receipt bytes, no-clobber/replacement, locks, rollback/recovery, repeat publication, and exit status using pinned renderer and independent structural readers where applicable. Relocation does not establish production report evidence. | Move renderer code, templates, styles, and other report-owned assets as one functional boundary or through wrapper-backed checkpoints that keep asset resolution explicit and path-stable. The legacy public launcher may delegate temporarily under the wrapper policy. Cut over Make and operator commands before removal. Rollback reverts code and assets together and never deletes previously generated report bundles. |
 | Non-Python assets | Compare exact bytes or the stronger existing semantic golden, executable mode where applicable, relative-path resolution, deterministic ordering, hashes, row counts, schema `$id`/`$ref` identity, YAML/JSON/TSV validation, template/style references, and every named runtime/test consumer. A relocation preserves public schema and artifact versions; a source-path change alone does not rewrite field semantics or bump identity. | Data assets have no behavioral forwarding wrapper. Keep an asset at its old owner until all named consumers can move atomically, then move it once with those references. Do not maintain compatibility copies or unverified symlinks. Roll back consumers before the asset path, preserve exact bytes/mode, and keep fixtures under the narrowest independent test owner rather than the production source tree. |
+
+## Concrete migration-card checklist
+
+Each future migration card records and closes these fields for its one owner:
+
+- frozen parent commit, public slug/machine key, current paths, final source and
+  test homes, and exact pre-move file modes;
+- direct imports, invocations, jobs, Make targets, configs, schemas, report
+  consumers, tests/fixtures, runbook commands, and documentation links;
+- preserved-contract roster and explicit characterized defects that remain
+  defects rather than accepted target behavior;
+- wrapper decision (`not required` or one legacy path), every named wrapper
+  consumer, the parity obligation for each, and the removal checkpoint;
+- applicable parity-matrix rows, focused commands/evidence, independent
+  goldens or semantic oracles, and environmental deferrals;
+- final-owner, caller-cutover, wrapper-removal, and documentation commit IDs,
+  with the reverse-order rollback boundary for each;
+- exact search evidence that the legacy implementation/path has no undeclared
+  consumer and that no duplicate implementation or asset owner remains; and
+- final Git/documentation impact, complete applicable gate, clean worktree,
+  publication state, and evidence-language boundary.
+
+The migration card links exact commands to `RUNBOOK.md` rather than embedding
+an executable program. A passing broad suite does not replace a missing named
+old/new parity obligation, and local parity does not become cluster,
+scientific-review, or biological-readiness evidence.
