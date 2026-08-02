@@ -154,6 +154,7 @@ ownership only; no listed file is moved by this topology contract.
 | `construct_FASTA_sidecars` | `src/norad/stages/construct_FASTA_sidecars/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/construct_FASTA_sidecars/` |
 | `align_RNA_reads_with_STAR` | `src/norad/stages/align_RNA_reads_with_STAR/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/align_RNA_reads_with_STAR/` |
 | `construct_canonical_BAM` | `src/norad/stages/construct_canonical_BAM/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/construct_canonical_BAM/` |
+| `collect_canonical_BAM_QC_evidence` | `src/norad/evidence/collect_canonical_BAM_QC_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_canonical_BAM_QC_evidence/` |
 
 ## Neutral contract boundary
 
