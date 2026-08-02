@@ -1,8 +1,8 @@
 ## Current slice
 
-Outcome: `DOC-GATE-01` contains the missing settled gate constraints.
-Touches: `docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md` and `work/active/JIT-01.md`.
-Stop: No validator implementation, other-card inspection, lifecycle move, or JIT-01 status text is added.
+Outcome: `DOC-IA-01` contains the missing settled ownership and navigation constraints.
+Touches: `docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md` and `work/active/JIT-01.md`.
+Stop: No final hierarchy is designed, and no other card is inspected or moved.
 
 ## Cleanup queue
 

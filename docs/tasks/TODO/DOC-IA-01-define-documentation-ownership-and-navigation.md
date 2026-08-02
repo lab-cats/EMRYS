@@ -15,8 +15,22 @@ scientific meaning.
 ## Fixed decisions
 
 - Preserve one canonical owner per mutable fact and link from secondary views.
+- Compress aggressively around strict single-purpose owners rather than retain
+  broad documents for convenience.
+- Relocate unique information before deleting its old copy. Move the
+  information, repair references, and remove the prior copy; never copy it into
+  a second owner.
+- Touch-driven migration eliminates a duplicate owner directly implicated by
+  the active work instead of preserving both copies.
 - Use `README.md` for eligible durable directories; parent READMEs stay shallow
   and child READMEs own detail.
+- The top-level sitemap routes to documentation categories; future child maps
+  may route within one category. Parent maps reference child maps without
+  duplicating their entries or contents.
+- A directory `README.md` explains local purpose and links to contracts; it
+  does not restate those contracts.
+- Architecture documentation stays conceptual and links to contract
+  inventories or canonical contracts rather than reproducing their entries.
 - Consolidation requires a source-to-destination ledger and no-loss review;
   intentional safety repetition remains at action points.
 - The repository-root `AGENTS.md` remains a concise automatically loaded
@@ -81,6 +95,10 @@ scientific meaning.
 
 - Every current document and unique fact has one retained owner/destination or
   an explicitly approved historical disposition.
+- Every touched migration relocates unique information before removal and
+  leaves no duplicate owner behind.
+- Sitemap, directory-README, and architecture views route to authoritative
+  detail without restating it.
 - Every current `AGENTS.md` rule has a reviewed disposition, all critical
   approval, safety, scientific-evidence, and destructive-action guards remain
   automatically reachable, and a concrete slim-down card has been created.
