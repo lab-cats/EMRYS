@@ -282,6 +282,23 @@ scientific-workflow orchestration and do not move into this runtime domain.
 This boundary defines ownership only and does not create an orchestrator,
 generate a job, or choose an optional-stage policy.
 
+## Dependency-direction summary
+
+Process invocation and artifact consumption are shown separately from code
+imports; invoking a public entry point does not authorize importing its private
+module.
+
+| Owner | May import | May invoke or consume | Prohibited direction |
+| --- | --- | --- | --- |
+| `contracts/` | no NORAD runtime domain | none | every implementation domain |
+| `libraries/` | `contracts/`; lower neutral libraries in an acyclic chain | none | every functional or application owner |
+| `stages/`, `analyses/`, `evidence/` | `contracts/`; reviewed `libraries/`; owner-local code | owner-local tools; peer artifacts through contracts | peer implementation; `cli/`; `orchestration/`; `scheduler/`; `reporting/`; `ingestion/` |
+| `ingestion/` | `contracts/`; reviewed `libraries/` | external inputs; emit validated request/manifest contracts | functional-owner or orchestration implementation |
+| `reporting/` | `contracts/`; reviewed `libraries/`; reporting-local code | explicit public artifacts and canonical summaries | functional-owner implementation; input discovery |
+| `orchestration/` | `contracts/`; reviewed `libraries/`; orchestration-local code | public functional and reporting entry points | private owner implementation; path- or number-inferred order |
+| `scheduler/` | `contracts/`; reviewed `libraries/`; scheduler-local code | public owner scheduler surfaces | private functional or orchestration implementation |
+| `cli/` | `contracts/`; public orchestration API; CLI-local code | public owner entry points | private application or functional implementation |
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
