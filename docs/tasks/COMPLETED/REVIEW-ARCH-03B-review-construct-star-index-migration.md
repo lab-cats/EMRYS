@@ -86,5 +86,19 @@ permanent compatibility surface.
 
 ## Completion record
 
-Not started. If performed by the campaign owner, record an independent-in-time
-adversarial pass and do not claim independent authorship.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `9507e03` and planning checkpoint `5ac7723`. One high
+finding corrected mirrored test ownership: the Step `00a`-specific mocked-job
+behavior case and its narrow fixtures move with the validator test, while the
+cross-owner job roster/directive/mode assertions remain independent consumers.
+One medium finding requires explicit relative-path maps keyed by existing public
+basenames or semantic IDs in each mixed-layout inventory, preventing flat-root
+assumptions from forcing wrappers or weakening exact roster equality. One low
+finding makes the owner README state that native-asset placement is implemented
+without claiming the still-unrealized descriptor/schema or package identity.
+The stable `scripts` plus `src/norad` coverage boundary, artifact-producer path
+transition, exact-file neutral-library dependency, direct atomic cutover,
+reference-materialization non-edge, and no-wrapper/one-owner rollback design
+otherwise pass. The campaign agent authored or reconciled and reviewed the
+plan, so independent authorship is not claimed. No executable/test file changed
+and no computational test ran.

@@ -458,3 +458,34 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   campaign agent authored or reconciled the plan, so independent authorship is
   not claimed. No executable/test file changes and no computational test is
   authorized by this review.
+
+## 2026-08-02T19:16:41-0400 — REVIEW-ARCH-03B completed
+
+- **High finding — mirrored test ownership:** `MIG-03B` initially moved only
+  the dedicated validator file even though the frozen mirrored-test contract
+  says an owner home covers its native assets and failure semantics. Move the
+  Step `00a`-specific mocked-job behavior case and its narrow fixtures into the
+  mirrored owner test home as well; retain only exact cross-owner job roster,
+  directive, mode, and generic wrapper assertions in the independent suite.
+- **Medium finding — mixed-layout inventories:** the current SLURM, public-CLI,
+  validator-roster, and validation-report tests treat basenames as children of
+  one flat root. Require explicit repository-relative path maps keyed by the
+  existing public basename or semantic ID, with Step `00a` as the only changed
+  entry. Preserve exact roster equality; do not use wrappers, path inference,
+  recursive runtime discovery, or global path mutation to hide the move.
+- **Low finding — maturity claim:** the target topology names a future
+  descriptor, but this physical unit does not own descriptor schemas or loading.
+  The new README must link the detailed contract and distinguish implemented
+  native-asset placement from the unrealized descriptor/schema and package
+  identity. Do not claim the complete mature stage shape.
+- **Accepted architecture:** use one atomic wrapper-free cutover, one physical
+  job and validator owner, exact-file dependency on the neutral report library,
+  unchanged typed-external-input reference materialization, and an intentional
+  artifact implementation-evidence path transition. Measure `scripts` plus the
+  stable `src/norad` source boundary; this is coverage/static selection, not a
+  package identity or future-owner preload.
+- **Independence and evidence boundary:** this was a separate committed-time
+  adversarial pass by the same campaign agent; independent authorship is not
+  claimed. Corrections affect planning documentation only. No executable/test
+  file changed, no computational test ran, and no runtime, cluster, production,
+  scientific-review, or biological-readiness evidence was created.

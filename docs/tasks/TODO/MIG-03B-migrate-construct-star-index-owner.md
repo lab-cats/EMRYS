@@ -29,16 +29,22 @@ the first functional owner physically unmigrated.
   `jobs/step_00a_build_novogene_star_index.slurm` and mode-`0644` validator
   `scripts/validate_step_00a_star_index.py` to those final owner paths without
   renaming their basenames. Move mode-`0644` direct validator test
-  `tests/test_validate_step_00a_star_index.py` to the mirrored test home.
+  `tests/test_validate_step_00a_star_index.py` and the Step `00a`-specific
+  mocked-job behavior test plus its narrow fixtures to the mirrored test home.
+  Keep the cross-owner job roster, directive, mode, and generic wrapper checks
+  in `tests/test_slurm_wrapper_contracts.py` as independent consumers.
 - No legacy wrapper is required. Every named repository caller can cut over in
   the same atomic executable/test commit, the architecture decision records no
   justified external consumer, and a wrapper would retain an accidental public
   path without implementation value. The old job, validator, and direct-test
   paths are absent from the accepted tree.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Add only a
-  concise owner `README.md` during documentation close. Do not add a package
-  marker, descriptor/schema, loader framework, scheduler abstraction, new CLI,
-  reference-preparation owner, or installation contract.
+  concise owner `README.md` during documentation close. It links to the
+  contract and states that physical native-asset placement is implemented while
+  the target descriptor/schema remains unrealized; it does not claim the mature
+  descriptor shape is complete. Do not add a package marker, descriptor/schema,
+  loader framework, scheduler abstraction, new CLI, reference-preparation owner,
+  or installation contract.
 - The moved validator continues loading the exact neutral
   `src/norad/libraries/validation_report.py` file through its private cache
   identity without global `sys.path` mutation. The owner-relative path changes;
@@ -47,7 +53,13 @@ the first functional owner physically unmigrated.
   `src/norad` so the neutral library and every physically migrated owner remain
   measured through one stable source boundary. Preserve the moved validator's
   exact counts/rates across the reviewed baseline update; do not treat it as a
-  deletion plus unrelated new code.
+  deletion plus unrelated new code. The source boundary is coverage/static
+  selection only and creates no Python package or public import identity.
+- Preserve each cross-owner inventory's public basename/semantic keys while
+  adding an explicit repository-relative path map for the mixed flat/final
+  layout. Only Step `00a` changes path in this unit; do not weaken exact roster
+  equality, infer paths from numeric aliases, add recursive runtime discovery,
+  or use a legacy path to keep basename-only test code working.
 
 ## Blocked by
 
@@ -75,7 +87,8 @@ the first functional owner physically unmigrated.
   commands in `RUNBOOK.md`; `STAGE_MAP.md`; `SOURCE_TOPOLOGY.md`;
   `MIGRATION_MECHANICS.md`; the `construct_STAR_index` contract; the functional-
   owner inventory; and `TEST_BASELINE.md`.
-- The current SLURM job, validator, direct validator test, Step `00a` cases in
+- The current SLURM job, validator, direct validator test, the Step `00a`
+  behavior case and shared inventory assertions in
   `test_slurm_wrapper_contracts.py`, validator-roster and public-CLI suites, and
   the validation-report loader matrix.
 - The `STEP_PRODUCERS["00a"]` provenance consumer in
@@ -95,10 +108,15 @@ the first functional owner physically unmigrated.
   rollback evidence before source mutation.
 - Move the job and validator once into the final functional-owner directory,
   adjust only the validator's exact neutral-library resolution, and move the
-  direct validator test to the mirrored owner home.
+  direct validator test plus the Step `00a`-specific mocked-job behavior case
+  and narrow fixtures to the mirrored owner home. Remove that owner-specific
+  case from the cross-owner module while retaining its exact roster/directive/
+  mode assertions as independent consumers.
 - Cut over the independent SLURM, public-CLI, validator-roster, validation-
   report-loader, artifact-provenance, coverage, Make, and literal-expansion
   consumers to explicit final paths in the same atomic executable/test commit.
+  Use exact path maps keyed by the existing public basename or semantic ID so
+  mixed-layout characterization stays exhaustive without compatibility files.
 - Preserve `STEP_PRODUCERS["00a"]` evidence identity and job hash while
   intentionally changing only its recorded implementation path to the final
   owner.
@@ -132,9 +150,10 @@ the first functional owner physically unmigrated.
   intermediate path state and one separate documentation/lifecycle-close
   commit.
 - Final job and validator under
-  `src/norad/stages/construct_STAR_index/`, direct test under
-  `tests/stages/construct_STAR_index/`, and no legacy implementation, direct-
-  test path, wrapper, compatibility copy, or duplicate owner.
+  `src/norad/stages/construct_STAR_index/`, direct validator and mocked-job
+  behavior tests under `tests/stages/construct_STAR_index/`, and no legacy
+  implementation, owner-specific test case, direct-test path, wrapper,
+  compatibility copy, or duplicate owner.
 - Path-aware independent caller inventories that continue covering all public
   Python and SLURM surfaces without pretending final-owner files remain flat.
 - Coverage/static/smoke/Make wiring that measures and compiles the final owner,
@@ -164,7 +183,9 @@ the first functional owner physically unmigrated.
 - Public CLI and SLURM inventories contain every current entry exactly once at
   its actual path; Step `00a` independent wrapper, roster, artifact-index,
   shared publication, public-CLI, Make-expansion, and direct-validator tests
-  pass without weakening their cross-owner assertions.
+  pass without weakening their cross-owner assertions. The Step `00a` mocked
+  producer behavior case and its narrow fixtures live in the mirrored owner
+  test home rather than the cross-owner inventory module.
 - Artifact implementation evidence changes only the Step `00a` source path to
   the final job while retaining status, evidence ID, Git commit, job bytes/hash,
   artifact identities, schemas, ordering, and consumer behavior.
