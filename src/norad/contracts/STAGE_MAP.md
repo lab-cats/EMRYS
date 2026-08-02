@@ -32,6 +32,7 @@ archival behavior.
 | stage | Convert GTF to BED12 | `convert_GTF_to_BED12` | `norad.stage.convert_GTF_to_BED12.v1` | `00b` |
 | stage | Construct FASTA Sidecars | `construct_FASTA_sidecars` | `norad.stage.construct_FASTA_sidecars.v1` | `00c` |
 | stage | Align RNA Reads with STAR | `align_RNA_reads_with_STAR` | `norad.stage.align_RNA_reads_with_STAR.v1` | `01` |
+| stage | Construct Canonical BAM | `construct_canonical_BAM` | `norad.stage.construct_canonical_BAM.v1` | `02` |
 
 ## Edge semantics
 
@@ -74,6 +75,7 @@ artifact have been frozen from their functional contracts.
 | Producer | Consumer | Artifact | Semantics |
 | --- | --- | --- | --- |
 | `construct_STAR_index` | `align_RNA_reads_with_STAR` | STAR genome-index directory | required artifact |
+| `align_RNA_reads_with_STAR` | `construct_canonical_BAM` | coordinate-sorted STAR BAM | required artifact |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -95,6 +97,8 @@ flowchart LR
     convert_GTF_to_BED12["Convert GTF to BED12"]
     construct_FASTA_sidecars["Construct FASTA Sidecars"]
     align_RNA_reads_with_STAR["Align RNA Reads with STAR"]
+    construct_canonical_BAM["Construct Canonical BAM"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
+    align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
 ```
