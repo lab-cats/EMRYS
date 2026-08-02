@@ -199,6 +199,20 @@ to a neutral contract suite only when it represents the shared public contract
 rather than one producer's serialization helper. Test code and fixture
 placement do not create runtime dependency edges.
 
+## CLI boundary
+
+`cli/` owns shared user-facing command selection, argument parsing, and
+translation into neutral request contracts. A CLI surface may depend on
+`contracts/` and call an orchestration or functional owner's public entry
+point. It may not import private stage, analysis, evidence, reporting, or
+ingestion implementation or become the owner of their validation and
+publication semantics.
+
+Owner-specific public shell, Python, and R entry points remain with their
+functional owner unless a later migration proves a thin compatibility wrapper
+is required. This boundary does not create an installable console script or a
+packaging contract.
+
 ## Orchestration and scheduler boundary
 
 `orchestration/` may depend on neutral contracts and invoke the public entry
