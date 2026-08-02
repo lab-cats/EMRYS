@@ -29,11 +29,15 @@ coverage, making it the smallest evidence-supported migration unit.
   their functional owners.
 - All thirteen current validator scripts remain at their public legacy paths
   in this unit. Each uses a caller-local `importlib` loader to resolve the exact
-  final file from its own location, cache one private internal module identity,
-  and reject a cached module whose resolved `__file__` is not that exact path.
+  final file from its own location, cache the private internal module identity
+  `_norad_validation_report`, and reject a cached module whose resolved
+  `__file__` is not that exact path. The exact path is
+  `Path(__file__).resolve().parents[1] / "src/norad/libraries/validation_report.py"`;
+  no ambient search participates.
   On first load it registers the owned module before execution and removes only
-  that exact owned cache entry if execution fails; it never overwrites or
-  deletes a foreign entry, and it never reuses a partially initialized module.
+  that exact owned cache entry if execution fails for any reason; it never
+  overwrites or deletes a foreign entry, and it never reuses a partially
+  initialized module. Cleanup re-raises control-flow exceptions unchanged.
   The loader does not change `sys.path`, install anything, assume caller CWD or
   global `PYTHONPATH`, introduce a shared bootstrap helper, or establish a
   public import name. Its caller-local scaffolding leaves with that validator
@@ -44,13 +48,14 @@ coverage, making it the smallest evidence-supported migration unit.
   cutovers, and removal of the old embedded implementation therefore form one
   executable commit; no temporary re-export or compatibility commit is allowed.
 - When the exact shared owner cannot be loaded, each validator fails before
-  argument parsing or validation with one concise, stable stderr diagnostic
-  that names the expected owner path and causal exception type/reason. That
-  failure is nonzero, leaves stdout empty, creates no report or invocation-CWD
-  artifact, and does not convert `KeyboardInterrupt` or another control-flow
-  exception into an ordinary load error. Healthy-repository `--help`, malformed-
-  argument, dry-run, and execute behavior remain byte-for-byte or
-  outcome-equivalent to the characterized public contract.
+  argument parsing or validation with status `2` and one concise stderr line:
+  `ERROR: unable to load NORAD validation-report owner at <path>: <type>: <reason>`.
+  That failure leaves stdout empty, creates no report or invocation-CWD
+  artifact, emits no ordinary-error traceback, and does not convert
+  `KeyboardInterrupt` or another control-flow exception into an ordinary load
+  error. Healthy-repository `--help`, malformed-argument, dry-run, and execute
+  behavior remain byte-for-byte or outcome-equivalent to the characterized
+  public contract.
 - The same-size/restored-mtime snapshot gap, report-row-order gap, late foreign-
   final deletion, incomplete rollback without a retained lock/recovery marker,
   previous/staged cleanup residue, open-descriptor/lock retention, and
@@ -62,6 +67,14 @@ coverage, making it the smallest evidence-supported migration unit.
   direct-test owners are also `0644`. Public validator filenames, shebangs,
   arguments, help, streams, exit statuses, dry-run/execute effects, TSV bytes,
   check rosters, and evidence meanings remain unchanged.
+- Coverage must follow the moved implementation. In the same atomic executable/
+  test commit, extend `.coveragerc` and the deterministic coverage tool from
+  `scripts` to `scripts` plus `src/norad/libraries`, add the final module as a
+  `--new-shared-module` in the Make gate, compile the new source root, update
+  the pinned wiring test and literal Make expansions, and regenerate the
+  reviewed snapshot only through the existing baseline-update command. This is
+  migration evidence wiring, not a new runtime package or general source-root
+  expansion.
 
 ## Blocked by
 
@@ -91,6 +104,10 @@ coverage, making it the smallest evidence-supported migration unit.
   all thirteen direct validator tests; `test_validation_publication_faults.py`;
   `test_validation_check_rosters.py`; `test_independent_contract_goldens.py`;
   `test_public_cli_contracts.py`; and the tracked Python coverage snapshot.
+- `.coveragerc`; the Make coverage/static/lint recipes;
+  `tests/tools/python_coverage_baseline.py`;
+  `tests/test_python_coverage_baseline.py`; and the literal Make-expansion
+  fixture.
 
 ## Questions owned by this card
 
@@ -122,9 +139,13 @@ coverage, making it the smallest evidence-supported migration unit.
   identity is established, lists the preserved characterized defects, and
   explains that the repeated caller-local loaders leave only with later
   validator-owner migrations.
-- Update the explicit coverage baseline path/rates through its reviewed command
-  only if measurement requires it; a moved module may not disappear from the
-  baseline or evade the new-shared-module thresholds.
+- Update `.coveragerc`, `Makefile`, the coverage tool/wiring test, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json` so the final
+  library is compiled and measured. Add the final module to the repeated
+  `--new-shared-module` gate, then update
+  `tests/baselines/python_coverage.json` only through the reviewed command; the
+  moved statements may not disappear from the baseline or evade the 90% line/
+  85% branch thresholds.
 - After executable state is final, update current topology, functional-owner
   inventory, runbook links only where paths actually changed, roadmap, handoff,
   this card, and the dated refactor log in a separate documentation commit.
@@ -141,6 +162,9 @@ coverage, making it the smallest evidence-supported migration unit.
 - `__init__.py`, packaging/import identity, dependency installation/restoration,
   cluster execution, production data, scientific review, or biological
   interpretation.
+- Any source-root, Make, coverage-tool, baseline, or public-expansion change
+  beyond the exact wiring required to compile and measure this one final
+  library owner.
 
 ## Deliverables
 
@@ -155,6 +179,9 @@ coverage, making it the smallest evidence-supported migration unit.
 - Maintainer-facing owner documentation at `src/norad/libraries/README.md`, a
   focused module docstring, and local loader comments without a package marker,
   install step, public import name, new CLI flag, or logging dependency.
+- Exact coverage/static wiring in `.coveragerc`, `Makefile`, the coverage tool
+  and wiring test, the literal Make-expansion fixture, and the reviewed baseline
+  snapshot; no dependency or coverage-version change.
 - A legacy-path/import search, focused parity results, complete applicable local
   gate, clean worktree, publication/upstream-equality evidence, and explicit
   local-only evidence ceiling.
@@ -171,8 +198,9 @@ coverage, making it the smallest evidence-supported migration unit.
   `--help` remains successful and malformed arguments retain argparse's stderr
   usage and nonzero status without result artifacts.
 - Import tests prove all validators reference the one exact final file and
-  module object, `sys.path` is unchanged, wrong-path cache collisions fail
-  closed, and no package installation or public import identity is required.
+  `_norad_validation_report` module object, `sys.path` is unchanged, wrong-path
+  cache collisions fail closed, and no package installation or public import
+  identity is required.
 - The full publication-fault matrix still observes each current success,
   failure, interruption, rollback, residue, and characterized-defect state
   against the final module. It includes first/repeat publication, malformed
@@ -184,6 +212,10 @@ coverage, making it the smallest evidence-supported migration unit.
 - Every affected direct validator test passes, the complete Python suite and
   coverage gate pass, the new shared module satisfies at least 90% line and 85%
   branch coverage, and Git/documentation validation passes at the final tree.
+- Coverage metadata names exactly `scripts` and `src/norad/libraries` as source
+  roots, static/lint recipes compile the final module, the literal Make oracle
+  contains both shared-module checks, and the tracked Step `00a` coverage is
+  redistributed rather than silently discarded.
 - Exact searches find no undeclared Step `00a` shared-helper importer,
   compatibility re-export, duplicate implementation, stale test owner, or
   documentation claim that relocation corrected a defect or established
@@ -191,11 +223,11 @@ coverage, making it the smallest evidence-supported migration unit.
 
 ## Canonical documentation updates
 
-- `ARCHITECTURE.md`, `FUNCTIONAL_OWNER_INVENTORY.md`, `PIPELINE_PLAN.md`,
+- Root `README.md`, `ARCHITECTURE.md`, `FUNCTIONAL_OWNER_INVENTORY.md`,
+  `TEST_BASELINE.md`, `DOCUMENTATION_OWNERSHIP.md`, `PIPELINE_PLAN.md`,
   `HANDOFF.md`, `src/norad/libraries/README.md`, this card, and the dated pre-
-  migration/refactor log; update `RUNBOOK.md`, public CLI fixtures, and coverage
-  baseline only when the final executable diff makes their owned bytes or
-  commands change.
+  migration/refactor log. Update `RUNBOOK.md` only if a supported operator
+  command changes; its current validator path is intended to remain exact.
 
 ## Escalation conditions
 
@@ -206,8 +238,54 @@ coverage, making it the smallest evidence-supported migration unit.
 
 ## Completion record
 
+Outcome: Relocate only the proven validation-report protocol to its neutral
+owner with complete public, fault, import, and coverage parity.
+
+Touches: One future branch from the published planning tip; the thirteen
+validator scripts; the final source/README and direct-test owners; directly
+affected validation, fault, roster, public-CLI, coverage-tool, coverage-config,
+Make-expansion, and baseline files; then only impact-directed canonical docs.
+
+Stop: After one atomic executable/test cutover commit, one documentation-close
+commit, the complete applicable local gate, and clean upstream equality—or
+immediately on any escalation condition above.
+
+- Current planning classification: `behavior or architecture planning` with
+  `documentation-only/non-consuming` validation impact. Future authorized
+  migration classification: `behavior or architecture planning` with
+  `executable/test-affecting` validation impact.
+- Exact planning worktree is `/Users/elisteiger/dev/norad`; planning branch is
+  `codex/plan-02z-first-migration-readiness`; proposed execution branch is
+  `codex/mig-03a-extract-validation-report-library`. The executable parent is
+  the final clean, pushed, upstream-equal planning tip resolved from live Git,
+  not an input sidecar or an earlier review checkpoint.
+- At a separately authorized execution start, reverify that parent and the
+  no-overlap roster, create the one execution branch, record the frozen baseline
+  and rollback target, and run the existing Step `00a` tiny-fixture dry-run
+  before mutation. Do not install dependencies or use production/cluster data.
+- Implement the final owner, all thirteen caller-local loaders, direct/fault/
+  import/public-boundary tests, and exact coverage/static/Make wiring as one
+  atomic executable/test commit. There is no supported hybrid caller state,
+  compatibility re-export, wrapper, or intermediate package commit.
+- Run focused library, thirteen-validator, fault, roster, independent-golden,
+  public-CLI, and coverage-wiring tests during the slice. Once executable state
+  is final, run the complete applicable local gate once and update the tracked
+  coverage snapshot only through its reviewed command. Local results cannot
+  establish runtime, cluster, scientific-review, or biological evidence.
+- Semantically review the final diff, update only the canonical owners listed
+  above in a separate documentation commit, rerun Git/documentation validation,
+  then publish and prove upstream equality. Rollback reverts documentation
+  first and the atomic executable commit second; it never removes runtime,
+  production, lock, backup, or recovery artifacts.
+- Execution was not authorized by the planning handoff itself. The user
+  separately authorized continuation after the pre-migration base closes; the
+  next action therefore begins with the live parent/no-overlap/dry-run checks
+  above.
+
 Selected for task-specific read-only planning from clean review checkpoint
-`b714f61`. The lifecycle move does not begin the supported dry run, create an
-implementation branch, or authorize executable source/test mutation. The exact
-clean, pushed, upstream-equal planning tip remains to be frozen from live Git as
-the executable parent at the separate execution boundary.
+`b714f61` at status checkpoint `40d6907`. Live refresh confirms twelve direct
+importers plus Step `00a`, nine shared APIs and internal `HEADER`, mode `0644`
+for all thirteen validators/direct tests, and no executable change since
+integrated parent `15aba53`. Planning is complete subject only to publication
+of this documentation base. No supported dry run, implementation branch,
+source/test mutation, computational test, or physical migration has begun.

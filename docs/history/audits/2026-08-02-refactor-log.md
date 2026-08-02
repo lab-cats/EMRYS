@@ -213,3 +213,58 @@ that sequence closes; current checkout and roadmap truth remain in
 - **Evidence boundary:** this is a status/documentation checkpoint only. Live
   Git will define the later executable parent after the planning base is clean,
   published, and proved upstream-equal.
+
+## 2026-08-02T13:58:28-0400 — MIG-03A execution plan frozen
+
+- **Verification:** the selected clean tree still has exactly twelve Step
+  `00a` importers plus the owner CLI, the nine planned APIs and internal
+  `HEADER`, thirteen mode-`0644` validator and direct-test pairs, the complete
+  adversarial publication suite, and no executable diff from integrated parent
+  `15aba53`. Repository searches found no external runtime importer or public
+  path that requires a compatibility wrapper.
+- **High — revised:** `.coveragerc` and the deterministic snapshot tool measure
+  only `scripts`, while the proposed owner is under `src/norad/libraries`.
+  Without a coupled harness cutover, the moved safety-critical implementation
+  could disappear from coverage while the gate appeared healthy. The one
+  atomic executable/test commit must therefore update the exact source roots,
+  new-shared-module Make arguments, compile/static targets, wiring tests,
+  literal Make expansions, and reviewed snapshot. This is direct evidence
+  wiring for one owner, not authority for general harness refactoring.
+- **Medium — revised:** the loader plan named a private cache concept but not
+  its stable identity or new failure status. Freeze `_norad_validation_report`,
+  exact caller-relative owner resolution, and status `2` with the stable
+  `ERROR: unable to load NORAD validation-report owner ...` stderr prefix.
+  Cleanup owns only the exact partial cache entry and re-raises control-flow
+  exceptions.
+- **Medium — revised:** current root and architecture prose says executable
+  source has not migrated under `src/norad`. The documentation-close write set
+  now includes those implemented-topology owners, `TEST_BASELINE.md`, and the
+  documentation ownership map, while the unchanged runbook validator command
+  remains untouched unless final impact inspection proves otherwise.
+- **Decision:** use one future branch from the final published planning tip,
+  one atomic executable/test cutover commit, and one impact-directed
+  documentation-close commit. The published planning tip is the stable pre-
+  mutation rollback point; do not add a wrapper, package marker, install step,
+  generic loader, or empty baseline commit.
+- **Stop boundary:** publication/equality verification is the only remaining
+  pre-migration action. Do not create the execution branch or run even the
+  supported tiny-fixture dry run in this sequence.
+- **Evidence boundary:** planning and existing-test inspection only; no
+  computational test, dependency action, runtime/cluster work, source/test
+  mutation, defect correction, or evidence promotion occurred.
+
+## 2026-08-02T14:00:58-0400 — Execution authority expanded
+
+- **Authority:** after the narrow execution plan was prepared, the user
+  explicitly directed the migration to begin upon completion of the pre-
+  migration base and to continue autonomously.
+- **Risk:** beginning source work on an unpushed planning tip would erase the
+  requested stable publication/reversion boundary and make the executable
+  parent ambiguous.
+- **Decision:** first commit, validate, publish, and prove the planning branch
+  upstream-equal. Only then create the one `MIG-03A` execution branch from that
+  exact tip, record baseline evidence, and run the supported dry run before
+  source mutation. The authority expansion covers the reviewed card, its exact
+  tests/harness wiring, impact-directed documentation, local validation,
+  commits, and publication; it does not activate another migration, cluster or
+  production work, dependency installation, or defect correction.

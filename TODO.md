@@ -15,8 +15,9 @@ are complete; the
 has now closed the dedicated review chain.
 The proposed unit is
 [`MIG-03A`](docs/tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md),
-which is selected for task-specific read-only planning. No physical source
-migration or executable action has begun.
+whose task-specific plan and three dedicated reviews are complete. Publication
+and upstream-equality verification of this pre-migration base are the only
+remaining actions; no physical source migration or executable action has begun.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)

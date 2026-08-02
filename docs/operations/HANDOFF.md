@@ -482,8 +482,9 @@ or updated.
 complete. It proposes
 [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. All three
-reviews are complete, and `MIG-03A` is selected only for task-specific
-read-only planning. No dry run, implementation branch, source/test mutation,
-or physical migration has begun. All other work, including
+reviews and the `MIG-03A` task-specific plan are complete. Publication and
+upstream-equality verification of the pre-migration base remain. No dry run,
+implementation branch, source/test mutation, or physical migration has begun.
+All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.
