@@ -289,7 +289,59 @@ the first functional owner physically unmigrated.
 
 ## Completion record
 
-Not started. JIT carded from frozen published parent
-`f3f2c2ab335d5a803550defd7676e9e9f9eb9fa4`. Architecture, reliability, and
-usability review must close sequentially before selection; no executable or
-test path has moved under this card.
+Selected for execution planning at clean, published, local/upstream/live-
+remote-equal checkpoint `be1b658`. The architecture, reliability, and
+usability reviews are complete. The task-specific baseline below changes
+planning documentation only; no executable or test path has moved.
+
+### Frozen task-specific execution baseline
+
+- Semantic planning category: behavior or architecture planning. Validation
+  impact: executable/test-affecting. Execution remains the one reviewed
+  `construct_STAR_index` owner; it does not activate another owner or neutral
+  concern.
+- The executable/test write set is limited to `.coveragerc`, `Makefile`, the
+  three moved native/test files, `scripts/build_artifact_index.py`, the owner-
+  local mocked-producer test added beneath the final mirrored home,
+  `tests/test_slurm_wrapper_contracts.py`, `tests/test_public_cli_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/test_artifact_adapters.py`, the coverage tool and its direct test, the
+  tracked coverage snapshot, and the literal Make-expansion fixture. No schema,
+  report asset, scientific implementation, dependency, or other owner changes.
+- Exact path inventories remain keyed by the current public basenames or
+  semantic IDs. They name every mixed flat/final path literally; they do not
+  discover recursively, derive from historical numbers, or retain an old-path
+  compatibility file. The wrapper decision remains `not required`.
+- The uncommitted execution sequence first extends the owner-local mocked job
+  and validator arbitrary-CWD parity cases at the old paths, runs them, moves
+  the three files once with mode/bytes preserved, moves the mocked producer
+  case and narrow fakes out of the cross-owner suite, and cuts over all named
+  path consumers. It then runs the identical owner cases at the final paths.
+- The pre-move job is mode `0644`, 1,954 bytes, and SHA-256
+  `f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc`;
+  the validator is mode `0644`, 11,883 bytes, and SHA-256
+  `0bb5ce8f87f1542fd731bcdd80f606d2f3a3982df1f65f8a17e6bc39bf9c0a6e`.
+  The direct test is mode `0644`, 4,621 bytes, and SHA-256
+  `65a9f07b6f8465290b44c9b4dde76a44ad0c59d51b225421fc749fb955a8c95a`.
+- Focused pre-move evidence at `be1b658`: direct validator `5 passed`; Step
+  `00a` mocked/inventory selection `4 passed, 109 deselected`; public-path
+  selection `3 passed, 116 deselected`; validator rosters `105 passed`; shared
+  validator/loader selection `113 passed, 24 deselected`; coverage-tool unit
+  tests `7 passed`; and artifact-index dry-run `1 passed, 68 deselected`.
+  These are local fixture/mock checks only.
+- The tracked pre-move validator coverage row is exactly `165/189` lines and
+  `42/60` branches; global totals are `9343/11506` lines and `3281/4698`
+  branches. Final-path `make python-coverage-measure` must be inspected against
+  both before `make python-coverage-baseline-update`, followed by
+  `make python-coverage-check` and the one complete final `make -s all-checks`.
+- The approved environment is already present without restoration or install:
+  repository `.venv` Python `3.14.5`, coverage `7.15.2`, pytest `9.0.3`,
+  pytest-xdist `3.8.0`, execnet `2.1.2`, `/usr/local/bin/Rscript` `4.6.1`, the
+  repository R library, and the pinned Quarto tools root. The complete runner
+  must demonstrably start before its result is classified.
+- Rollback for executable failure is the stable pre-mutation commit containing
+  this record, then the earlier clean selection checkpoint `be1b658`; do not
+  copy files back, retain a duplicate, or touch runtime/production/lock/
+  recovery artifacts. Documentation close is a later separate commit and is
+  reverted before the executable cutover if rollback occurs after closure.

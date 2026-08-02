@@ -18,18 +18,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   final validation-report owner, all thirteen caller-local loaders, the moved
   direct/fault owner, and exact coverage/static wiring from the frozen parent.
 - Current package: [`MIG-03B`](../tasks/IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md),
-  selected for task-specific execution planning after its dedicated
-  architecture, reliability, and usability reviews completed. No executable or
-  test mutation is authorized by this lifecycle checkpoint alone.
+  selected after its dedicated reviews and now frozen at its task-specific
+  execution plan and focused old-path baseline. No executable or test file has
+  changed at this checkpoint.
 - Package type at this checkpoint: planning documentation only. The selected
   semantic-root `construct_STAR_index` owner has one producer job, one
   validator, and one dedicated direct test, the smallest bounded eligible
   native-asset surface; historical alias order was not used.
-- Remote publication and upstream equality: usability-review completion
-  `028eedbcfe9bbc13d2dcae7d2a5ce75003d8267e` is the verified clean,
-  local/upstream/live-remote-equal predecessor. This selection checkpoint must
-  itself be published and proved equal before the task-specific execution plan
-  or pre-mutation baseline is frozen.
+- Remote publication and upstream equality: selection checkpoint
+  `be1b658779c49c9641b9f910867d6b96a34554af` is the verified clean,
+  local/upstream/live-remote-equal predecessor. The commit containing this
+  baseline must itself be published and proved equal before executable or test
+  mutation.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -512,7 +512,7 @@ and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. The next action is task-specific read-only inspection, execution-
-plan freeze, and pre-mutation baseline characterization; executable and test
-mutation waits for those clean published checkpoints. The unsliced `PROGRAM-01`
-remainder and unrelated roadmap remain preserved and out of scope.
+are complete. Task-specific inspection and the focused old-path baseline are
+frozen; after this documentation checkpoint is clean, published, and equal,
+the next action is the one atomic executable/test cutover. The unsliced
+`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

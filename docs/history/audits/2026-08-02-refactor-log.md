@@ -601,3 +601,59 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   executable/test file changed, no computational test ran, and no runtime,
   cluster, production, scientific-review, or biological-readiness evidence was
   created.
+
+## 2026-08-02T19:41:13-0400 — MIG-03B execution baseline frozen
+
+- **Git and authority:** inspected clean selection tip `be1b658` on the one
+  campaign branch and proved local/upstream equality `0 0`; no merge commit,
+  recovery head, index lock, untracked file, or shared mutable branch was
+  present. Existing sibling worktrees remain separate historical lanes and do
+  not authorize or receive mutation from this package.
+- **Bounded plan:** move only the mode-`0644` Step `00a` job, validator, direct
+  validator test, and owner-specific mocked producer behavior/fixtures into the
+  frozen `construct_STAR_index` source/test homes. Cut over the explicit SLURM,
+  public-CLI, validator-roster, shared-loader, artifact-provenance, coverage,
+  Make, static/smoke, and literal-expansion consumers in one uncommitted batch
+  and one atomic executable/test commit. No wrapper, alias, symlink, package
+  marker, descriptor, schema, scheduler abstraction, or second owner is allowed.
+- **Parity decision:** extend and run the mocked job cases and full validator
+  non-repository-CWD dry-run/execute/repeat journey at the legacy paths before
+  moving them, then run the identical cases at the final paths. The cross-owner
+  SLURM suite retains only independent roster/directive/mode/generic behavior;
+  the Step `00a` behavior test and narrow fakes move to the mirrored owner home.
+- **Frozen bytes and modes:** job `0644`, 1,954 bytes,
+  `f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc`;
+  validator `0644`, 11,883 bytes,
+  `0bb5ce8f87f1542fd731bcdd80f606d2f3a3982df1f65f8a17e6bc39bf9c0a6e`;
+  direct test `0644`, 4,621 bytes,
+  `65a9f07b6f8465290b44c9b4dde76a44ad0c59d51b225421fc749fb955a8c95a`.
+- **Focused old-path evidence:** direct validator `5 passed`; Step `00a`
+  mocked/inventory selection `4 passed, 109 deselected`; public-path selection
+  `3 passed, 116 deselected`; exact validator rosters `105 passed`; shared
+  validator/loader selection `113 passed, 24 deselected`; coverage tool
+  `7 passed`; artifact-index dry-run `1 passed, 68 deselected`. These results
+  are local fixtures/mocks, not runtime, cluster, production, scientific-review,
+  or biological-readiness evidence.
+- **Documentation gate ceiling:** the exact runbook checker reports only the
+  same nine inherited `invalid card location` findings for the authorized
+  `UNREFINED` documents. This is expected-only nonpassing evidence with no
+  migration-caused finding; it is not recorded as a passing gate.
+- **Coverage risk:** the source policy must expand from `scripts` plus
+  `src/norad/libraries` to `scripts` plus `src/norad`. Measure before update and
+  compare the moved row to `165/189` lines and `42/60` branches and global
+  totals to `9343/11506` lines and `3281/4698` branches. Only then use the
+  reviewed baseline-update command; a path rename is not deleted coverage.
+- **Environment decision:** the existing approved tools are executable and
+  version-compatible: repository Python `3.14.5`, coverage `7.15.2`, pytest
+  `9.0.3`, pytest-xdist `3.8.0`, execnet `2.1.2`, Rscript `4.6.1`, repository R
+  library, and pinned Quarto root. No install, restore, or ambient substitution
+  is authorized; the final runner must start before its result is classified.
+- **Cleanup classification:** the stale final `ARCHITECTURE.md` paragraph that
+  still says shared report publication lives in the Step `00a` validator is
+  `FIX_NOW_REQUIRED` because it would contradict both the already implemented
+  neutral owner and this move. Correct it during impact-directed documentation
+  close. No other collateral observation expands this card.
+- **Rollback:** the commit containing this baseline is the stable pre-mutation
+  reversion point. Rollback uses Git history and reverses a later documentation
+  close before the atomic executable cutover; it never copies an implementation
+  back or touches runtime, production, lock, backup, or recovery artifacts.
