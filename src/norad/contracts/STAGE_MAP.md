@@ -40,6 +40,7 @@ archival behavior.
 | stage | Partition BAM by Mechanical Read Orientation | `partition_BAM_by_mechanical_read_orientation` | `norad.stage.partition_BAM_by_mechanical_read_orientation.v1` | `06` |
 | stage | Generate Partitioned Cohort Mpileup VCFs | `generate_partitioned_cohort_mpileup_VCFs` | `norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1` | `07` |
 | stage | Preprocess and Annotate Cohort Candidates | `preprocess_and_annotate_cohort_candidates` | `norad.stage.preprocess_and_annotate_cohort_candidates.v1` | `08` |
+| analysis | Rank Cohort Candidates with Paired CMH | `rank_cohort_candidates_with_paired_CMH` | `norad.analysis.rank_cohort_candidates_with_paired_CMH.v1` | `09` |
 
 ## Edge semantics
 
@@ -70,8 +71,8 @@ not create edges.
 | `reference_fasta` | Materialized reference FASTA supplied outside the computational-stage DAG. | `construct_STAR_index`, `construct_FASTA_sidecars`, `split_N_cigar_reads_with_GATK`, `generate_partitioned_cohort_mpileup_VCFs` |
 | `reference_gtf` | Materialized reference GTF supplied outside the computational-stage DAG. | `construct_STAR_index`, `convert_GTF_to_BED12`, `preprocess_and_annotate_cohort_candidates` |
 | `paired_rna_fastq` | One externally supplied read-1/read-2 RNA-seq FASTQ pair for a declared sample. | `align_RNA_reads_with_STAR` |
-| `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates` |
-| `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates` |
+| `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
+| `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
 
 Runtime tools and scalar parameters are stage-local contract inputs, not DAG
 nodes.
@@ -95,6 +96,7 @@ artifact have been frozen from their functional contracts.
 | `partition_BAM_by_mechanical_read_orientation` | `generate_partitioned_cohort_mpileup_VCFs` | both orientation BAM/BAI pairs for every declared sample | required artifact; declared-sample barrier; fan-in |
 | `construct_FASTA_sidecars` | `generate_partitioned_cohort_mpileup_VCFs` | reference FAI paired with the external reference FASTA | required artifact; fan-in |
 | `generate_partitioned_cohort_mpileup_VCFs` | `preprocess_and_annotate_cohort_candidates` | receipt and both orientation VCFs for every declared partition | required artifact; declared-partition-and-orientation barrier |
+| `preprocess_and_annotate_cohort_candidates` | `rank_cohort_candidates_with_paired_CMH` | sites table and Step 08 input receipt | required artifact |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -124,6 +126,7 @@ flowchart LR
     partition_BAM_by_mechanical_read_orientation["Partition BAM by Mechanical Read Orientation"]
     generate_partitioned_cohort_mpileup_VCFs["Generate Partitioned Cohort Mpileup VCFs"]
     preprocess_and_annotate_cohort_candidates["Preprocess and Annotate Cohort Candidates"]
+    rank_cohort_candidates_with_paired_CMH["Rank Cohort Candidates with Paired CMH"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
@@ -137,4 +140,5 @@ flowchart LR
     partition_BAM_by_mechanical_read_orientation -->|all samples; both BAM/BAI pairs| generate_partitioned_cohort_mpileup_VCFs
     construct_FASTA_sidecars -->|FAI; FASTA is external| generate_partitioned_cohort_mpileup_VCFs
     generate_partitioned_cohort_mpileup_VCFs -->|all partitions and orientations| preprocess_and_annotate_cohort_candidates
+    preprocess_and_annotate_cohort_candidates -->|sites and input receipt| rank_cohort_candidates_with_paired_CMH
 ```
