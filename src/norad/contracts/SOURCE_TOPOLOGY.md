@@ -213,6 +213,21 @@ functional owner unless a later migration proves a thin compatibility wrapper
 is required. This boundary does not create an installable console script or a
 packaging contract.
 
+## Library boundary
+
+Implementation begins inside its functional owner. Promotion to `libraries/`
+requires proven equivalent reuse and the narrowest named neutral domain; it is
+not justified by similar filenames or helper signatures. There is no `utils`,
+generic stage dispatcher, universal transaction framework, or forced cross-
+language abstraction.
+
+A neutral library may depend on neutral contracts and on lower-level neutral
+libraries with an acyclic direction. It may not depend on `stages/`,
+`analyses/`, `evidence/`, or another application domain. Functional owners may
+depend on a reviewed library through its public API, with independent library
+and consumer tests. This topology assigns dependency direction but does not
+approve any extraction candidate.
+
 ## Orchestration and scheduler boundary
 
 `orchestration/` may depend on neutral contracts and invoke the public entry
