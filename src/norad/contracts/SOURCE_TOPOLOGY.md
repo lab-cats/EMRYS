@@ -150,6 +150,7 @@ ownership only; no listed file is moved by this topology contract.
 | Public slug | Target source home | Descriptor | Owned native assets | Mirrored test home |
 | --- | --- | --- | --- | --- |
 | `construct_STAR_index` | `src/norad/stages/construct_STAR_index/` | `stage.v1.yaml` | SLURM producer; Python validator | `tests/stages/construct_STAR_index/` |
+| `convert_GTF_to_BED12` | `src/norad/stages/convert_GTF_to_BED12/` | `stage.v1.yaml` | Python producer and validator; SLURM entry point | `tests/stages/convert_GTF_to_BED12/` |
 
 ## Neutral contract boundary
 
