@@ -60,3 +60,35 @@ owner or delete runtime, production, lock, backup, or recovery artifacts.
 The final accepted tree has one implementation owner and no migration wrapper.
 A hybrid tree is an explicit, time-bounded checkpoint, never target
 architecture.
+
+## Temporary-wrapper policy
+
+A legacy-path wrapper is necessary only when at least one named, currently
+supported caller cannot move atomically with the implementation and a direct
+cutover would otherwise break that caller. The migration card records every
+such caller and the parity check that permits its later cutover.
+
+A wrapper is not justified by hypothetical external use, convenience for
+stale tests or documentation, avoidance of caller discovery, or a desire to
+keep two public paths indefinitely. When all known callers are repository-
+owned and can change coherently with the move, migration uses a direct cutover
+without a wrapper.
+
+An approved wrapper:
+
+- occupies only the legacy path and preserves its executable mode when that
+  mode is part of the public contract;
+- resolves the final entry point independently of caller working directory;
+- forwards arguments, environment, standard input/output/error, signals, and
+  exit status without reinterpretation;
+- contains no defaults, validation, scientific logic, output creation,
+  locking, publication, cleanup, or fallback implementation; and
+- emits no new warning or diagnostic unless that output change is separately
+  approved and parity-tested.
+
+The wrapper is removable only when all named callers use the final path, exact
+repository searches find no undeclared legacy invocation/import, both paths
+have passed the applicable parity obligations, runbook and documentation links
+use the final path, and the rollback checkpoint can restore the wrapper. The
+removal commit deletes the wrapper and its wrapper-only tests together; it does
+not retain a forwarding module in the target package.
