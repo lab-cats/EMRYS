@@ -7,32 +7,32 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/doc-cons-08a-slim-root-agent-router`
+  `codex/doc-cons-08b-compress-root-entry-and-priority-views`
 - Package base:
-  `936337845bbf5dd7983d319fe4011146205d325c`
+  `028d342388291b0eec9fb76062c50067cde32dac`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
   without completing that card; `ARCH-02A` through `ARCH-02D`, interposed
-  `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01` and
-  `DOC-CONS-08A` are complete.
-- Current package: a concise root agent router, one neutral engineering-
-  conventions owner, and one package-delivery procedure, with every moved rule
-  covered by the final no-loss disposition.
-- Package type: documentation-only; no executable, configuration, schema,
-  fixture, report-template, dependency, or test-harness behavior changed.
+  `JIT-01`, and explicitly selected documentation exceptions `DOC-IA-01`,
+  `DOC-CONS-08A`, and `DOC-CONS-08B` are complete.
+- Current package: concise newcomer and current-priority root views, with every
+  removed roster, history, sequence, and catalog routed to its canonical owner.
+- Package type: documentation-only; no executable, configuration, generation,
+  schema, fixture, report-template, dependency, source-layout, public-interface,
+  scientific-policy, or test-harness behavior changed.
 - Remote publication and upstream equality: intentionally not applicable. This
   branch is local-only, has no configured upstream, and must not be pushed by
   this package. Cluster work remains paused.
 
-This package descends from the completed local `DOC-IA-01` tip. It changes only
-Markdown documentation artifacts and adds no descriptor, schema, runtime, or
-report-template file; current executable paths remain under the flat layout
+This package descends from the completed local `DOC-CONS-08A` tip. It changes
+only Markdown documentation artifacts and adds no descriptor, schema, runtime,
+or report-template file; current executable paths remain under the flat layout
 until a separately planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical local DOC-CONS-08A documentation lane.
+This checkout is the canonical local DOC-CONS-08B documentation lane.
 No concurrent sidecar content was inspected, integrated, or used by its final
 ownership work. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
@@ -285,6 +285,7 @@ The local descendant sequence has implemented:
 | Strategy follow-up card bootstrap | Four future cards plus reciprocal dependency and canonical roadmap/decision/question/handoff references recorded; no card selected and no pilot content reviewed or integrated; `git diff --check`, the 76-document/55-card/6-diagram structural gate, and independent dependency, ownership, and handoff/roadmap audits passed; computational validation is not applicable because the complete diff is non-consuming Markdown only, and publication state remains subject to live Git verification |
 | Documentation ownership and navigation | Audience routes, canonical responsibilities, exhaustive Markdown/Mermaid dispositions, semantic link roles, a no-loss move ledger, rule-by-rule `AGENTS.md` disposition, resolved overview/history/convention locations, and eight bounded consolidation cards recorded; root ownership rosters now link one owner; the final structural documentation gate and independent no-loss/dependency reviews passed; later consolidation remains unselected, computational validation is not applicable, and no executable or evidence state changed |
 | Root agent-router compression | Root `AGENTS.md` reduced from 319 to 195 lines while retaining automatic approval, authority, safety, evidence, scientific, and destructive-action guards; neutral engineering conventions and the full package-delivery procedure now have dedicated owners; independent no-loss and owner-boundary reviews plus `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
+| Root entry and priority compression | Root `README.md` retains product identity, evidence limits, minimal start, repository map, and action-point cautions while routing detail to dedicated owners; root `TODO.md` now contains only the ordinary runway priority and canonical state/blocker/task/question routes; the no-loss ledger and independent review found no orphaned fact or duplicate owner; `git diff --check` and the 115-Markdown/65-card/6-diagram documentation gate passed; computational validation is not applicable, and no executable or evidence state changed |
 
 The measured parent serial workflow was approximately 554 seconds from its
 successful component timings. Removing duplicate Python and report execution
@@ -413,13 +414,16 @@ approved policy defines and unlocks stricter exit criteria.
 [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 is complete. Its canonical result is the
 [`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md),
-and separately approved
+and separately approved local-only documentation exceptions
 [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
-is complete. Its root compression, neutral
+and
+[`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
+are complete. Their root compression, neutral
 [`engineering-conventions owner`](ENGINEERING_CONVENTIONS.md), and expanded
-[`task-delivery procedure`](TASK_DELIVERY.md#package-delivery) do not select the
-remaining `DOC-CONS-08B`–`DOC-CONS-08H` cards; each still requires separate
-selection, task-specific planning, and approval. Existing
+[`task-delivery procedure`](TASK_DELIVERY.md#package-delivery), concise newcomer
+entry, and short current-priority route do not select the remaining
+`DOC-CONS-08C`–`DOC-CONS-08H` cards or change ordinary runway order; each still
+requires separate selection, task-specific planning, and approval. Existing
 `DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`, `CODEDOC-05`,
 and `TASK-EPIC-01` retain their nonoverlapping scopes.
 
@@ -429,7 +433,7 @@ suites are not applicable. It creates no runtime, cluster, scientific-review,
 or biological-readiness evidence, and no dependency was installed, restored,
 or updated.
 
-The next eligible critical-runway action is to recast
+The next eligible ordinary runway action is to recast
 [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and select
 its independent review just in time. Neither action is selected or authorized
 by this handoff, and no physical migration has begun. All other work, including

@@ -38,7 +38,11 @@ freshness, evidence, ownership, or
   [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
   and
   [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
-  are complete; `DOC-CONS-08B` through `DOC-CONS-08H` remain unselected. The
+  and
+  [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
+  are complete; `DOC-CONS-08C` through `DOC-CONS-08H` remain unselected and
+  require separate selection, task-specific planning, and approval. These
+  exceptions do not change ordinary runway order. The
   next eligible ordinary runway action is to recast
   [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
   select its independent review just in time; neither is selected by this

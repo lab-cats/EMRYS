@@ -88,5 +88,30 @@ task-family catalogs owned elsewhere or awaiting a real index.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed 2026-08-02 as a separately approved local-only documentation
+exception. Root `README.md` retains NORAD's product identity, evidence boundary,
+minimal start, stable `repository-map` anchor, shallow current layout, and
+action-point data, approval, dependency-restoration, and promotion cautions.
+Its process detail now routes to the architecture, ownership map, owner-local
+contracts, engineering conventions, task-delivery procedure, runbook,
+concurrency policy, handoff, roadmap, and task registry.
+
+Root `TODO.md` now owns only the next eligible ordinary runway priority and
+short canonical routes for task scope, roadmap, live state and blockers, and
+open questions. Completed history remains in completed cards, roadmap and
+lineage remain in `PIPELINE_PLAN.md`, current evidence and blockers remain in
+`HANDOFF.md`, task lifecycle remains in the task registry, and open questions
+remain in `QUESTIONS.md`. Targeted no-loss review found no semantically unique
+task-family grouping or historical fact without a discoverable existing owner.
+
+The complete package diff changes only Markdown documentation. Independent
+no-loss review, `git diff --check`, and the final repository documentation gate
+pass. Computational Python, shell, R, report-runtime, full-suite, and cluster
+validation are not applicable. No executable, configuration, generation,
+schema, fixture, report-template, dependency, source-layout, public-interface,
+scientific-policy, or test-harness behavior changed, and no runtime, cluster,
+scientific-review, or biological-readiness evidence was created. The branch
+remains intentionally local-only and must not be pushed by this package.
+`DOC-CONS-08C` through `DOC-CONS-08H` remain unselected and require separate
+selection, task-specific planning, and approval; this completion does not
+change ordinary runway order.
