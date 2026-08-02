@@ -1,9 +1,11 @@
 # `rank_cohort_candidates_with_paired_CMH` analysis contract
 
 This is the observed contract of historical Step `09` for `ARCH-02A`. It is an
-analysis operation rather than another preprocessing stage. The working name
-is not a stable slug or implemented source location; executables remain in
-`scripts/` and `jobs/`.
+analysis operation rather than another preprocessing stage. The exact public
+identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -160,5 +162,5 @@ cluster, completed scientific review, or biological interpretation readiness.
 - A complete predecessor is checked for six-file presence, not semantic
   validity, before replacement.
 - Analysis-policy versioning, method-module interface, sibling-output binding,
-  stable identity, target files, recovery tooling, and migration mechanics
+  target files, recovery tooling, and migration mechanics
   remain deferred.

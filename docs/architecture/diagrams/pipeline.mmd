@@ -1,56 +1,51 @@
 flowchart LR
-    runtime_profile["Explicit runtime profile"] --> runtime_preflight["Read-only runtime availability TSV"]
-    reference_inventory["Explicit reference inventory"] --> reference_provenance["Read-only reference provenance TSVs"]
-    storage_contracts["Explicit storage roots + retention policy"] --> storage_inventory["Read-only storage evidence TSVs"]
-    reference["Reference inputs"] --> star_index["00a STAR index"]
-    reference --> bed12["00b BED12"]
-    reference --> fasta_sidecars["00c FASTA sidecars"]
-    star_index --> validate00a["00a read-only validation TSV"]
-    bed12 --> validate00b["00b read-only validation TSV"]
-    fasta_sidecars --> validate00c["00c read-only validation TSV"]
-    manifest["Explicit sample manifest"] --> align["01 STAR alignment"]
-    reads["Explicit paired FASTQ"] --> align
-    star_index --> align
-    align --> validate01["01 read-only validation TSV"]
-    align --> bam["02 canonical BAM"]
-    bam --> validate02["02 read-only validation TSV"]
-    bam --> qc["02b BAM-QC evidence"]
-    qc --> validate02b["02b read-only validation TSV"]
-    bam --> orientation["03 paired-orientation evidence"]
-    bed12 --> orientation
-    orientation --> validate03["03 read-only validation TSV"]
-    bam --> markdup["04 MarkDuplicates"]
-    markdup --> validate04["04 read-only validation TSV"]
-    markdup --> splitn["05 SplitNCigarReads"]
-    fasta_sidecars --> splitn
-    splitn --> validate05["05 read-only validation TSV"]
-    splitn --> splitread["06 mechanical orientation split"]
-    splitread --> validate06["06 read-only validation TSV"]
-    partitions["Explicit partition manifest"] --> mpileup["07 cohort mpileup"]
-    splitread --> mpileup
-    mpileup --> validate07["07 read-only validation TSV"]
-    mpileup --> preprocess["08 VCF preprocessing"]
-    preprocessing_inputs["Explicit manifests + annotation"] --> preprocess
-    preprocess --> validate08["08 read-only validation TSV"]
-    preprocess --> cmh["09 paired CMH ranking"]
-    analysis_policy["Explicit pairing + analysis policy"] --> cmh
-    cmh --> validate09["09 read-only validation TSV"]
-    cmh --> science["09c scientific evidence review"]
-    declared_evidence["Declared scientific evidence"] --> science
-    cmh --> adapters["Read-only artifact adapters"]
-    science --> adapters
-    validate00a --> adapters
-    validate00b --> adapters
-    validate00c --> adapters
-    validate01 --> adapters
-    validate02 --> adapters
-    validate02b --> adapters
-    validate03 --> adapters
-    validate04 --> adapters
-    validate05 --> adapters
-    validate06 --> adapters
-    validate07 --> adapters
-    validate08 --> adapters
-    validate09 --> adapters
-    adapters --> summary["Canonical run summary"]
-    summary --> report["Receipt-last HTML/PDF/TSV report bundle"]
+    subgraph inputs["Explicit external inputs"]
+        references["Materialized FASTA/GTF and declared reference artifacts"]
+        reads["Paired FASTQ"]
+        manifests["Sample and partition manifests"]
+        review_inputs["Review plan and declared scientific evidence"]
+    end
+
+    subgraph workflow["Current flat executable workflow under scripts/ and jobs/"]
+        reference_owners["Reference-derived owners (00a/00b/00c)"]
+        sample_owners["Per-sample alignment and BAM owners (01-06)"]
+        evidence_branches["Non-gating QC/orientation evidence (02b/03)"]
+        cohort_owners["Declared cohort preprocessing (07/08)"]
+        analysis["First-class paired-CMH analysis (09)"]
+        review["Scientific-review evidence package (09c)"]
+
+        reference_owners -->|"STAR index to 01; FAI/DICT to 05"| sample_owners
+        reference_owners -.->|"BED12 to 03"| evidence_branches
+        sample_owners -.-> evidence_branches
+        sample_owners --> cohort_owners
+        reference_owners -->|"FAI to 07"| cohort_owners
+        cohort_owners --> analysis
+        cohort_owners -.->|"direct review lineage"| review
+        analysis -.->|"direct review lineage"| review
+    end
+
+    references --> reference_owners
+    references -->|"FASTA to 05"| sample_owners
+    references -->|"FASTA to 07; GTF to 08"| cohort_owners
+    reads --> sample_owners
+    manifests --> cohort_owners
+    manifests --> analysis
+    manifests --> review
+    review_inputs --> review
+
+    registered["Declared artifacts plus owner-local validation evidence"]
+    adapters["Read-only artifact indexing"]
+    summary["Canonical run summary"]
+    report["Receipt-last HTML/PDF/TSV report bundle"]
+
+    reference_owners --> registered
+    sample_owners --> registered
+    evidence_branches --> registered
+    cohort_owners --> registered
+    analysis --> registered
+    review --> registered
+    registered --> adapters --> summary --> report
+
+    runtime_profile["Explicit runtime profile"] --> runtime_preflight["Read-only runtime availability evidence"]
+    reference_inventory["Explicit reference inventory"] --> reference_provenance["Read-only reference provenance evidence"]
+    storage_contracts["Explicit storage roots and retention policy"] --> storage_inventory["Read-only storage evidence"]

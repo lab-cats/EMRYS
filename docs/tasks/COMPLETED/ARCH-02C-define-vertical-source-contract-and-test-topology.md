@@ -15,7 +15,7 @@ ownership model must be explicit before direct migrations begin.
 
 - Target `src/norad/stages/<semantic-stage>/` for stage implementation,
   validator, job template, stage README, and stage-only contracts.
-- Target `src/norad/{cli,orchestration,scheduler,contracts,libraries,evidence,reporting,ingestion}`
+- Target `src/norad/{cli,orchestration,scheduler,contracts,libraries,analyses,evidence,reporting,ingestion}`
   for cross-cutting domains.
 - Root `tests/` mirrors source domains/stages and retains independent
   contract/integration suites.
@@ -24,11 +24,11 @@ ownership model must be explicit before direct migrations begin.
 
 ## Blocked by
 
-- [ARCH-02B](../IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) — Required: target paths need stable semantic identities.
+- [ARCH-02B](../COMPLETED/ARCH-02B-define-semantic-stage-map.md) — Required: target paths need stable semantic identities.
 
 ## Completion unblocks
 
-- [ARCH-02D](../IN_PROGRESS/ARCH-02D-define-direct-migration-mechanics.md) — Fully: migration mechanics can target one final topology.
+- [ARCH-02D](../COMPLETED/ARCH-02D-define-direct-migration-mechanics.md) — Fully: migration mechanics can target one final topology.
 - [INTAKE-02E](../TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md) — Fully: ingestion and orchestration ownership have a target home.
 - [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Partially: the functional inventory is also required.
 - [CONTEXT-09](../TODO/CONTEXT-09-define-local-maintainer-context.md) — Partially: documentation ownership and README coverage are also required.
@@ -46,7 +46,9 @@ ownership model must be explicit before direct migrations begin.
 
 ## Questions owned by this card
 
-- [`CHOICE-ARCH-01`](../../design/QUESTIONS.md#choice-arch-01--machine-stage-descriptor-and-contract-serialization).
+- `CHOICE-ARCH-01` is closed in the
+  [resolved index](../../design/QUESTIONS.md#resolved-index); exact results live
+  in [`SOURCE_TOPOLOGY.md`](../../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 
 ## In scope
 
@@ -83,5 +85,15 @@ ownership model must be explicit before direct migrations begin.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed as a documentation-only JIT package. The canonical
+[`SOURCE_TOPOLOGY.md`](../../../src/norad/contracts/SOURCE_TOPOLOGY.md) assigns
+all 14 inventoried functional owners one source home, one kind-specific
+versioned YAML descriptor name, explicit native-asset ownership, and one
+mirrored test home. It preserves `analyses/` as first-class, fixes stage-local
+versus neutral JSON-Schema ownership, and defines acyclic import/invocation
+directions for every target domain. The focused audit matched all 14 identity
+rows to 14 unique source/test homes with no kind/path mismatch.
+
+No descriptor file, schema, loader, package, orchestrator, job, or physical
+source move was implemented. The final combined documentation gate passed;
+computational validation was not applicable.

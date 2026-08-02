@@ -1,8 +1,10 @@
 # `preprocess_and_annotate_cohort_candidates` stage contract
 
 This is the observed contract of historical Step `08` for `ARCH-02A`. The
-working name is not a stable slug or implemented source location; executables
-remain in `scripts/` and `jobs/`.
+exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -148,5 +150,5 @@ production, cluster, scientific-review, or biological evidence.
   parameters.
 - The orientation policy mixes compatibility behavior with preprocessing and
   remains explicitly provisional.
-- Stable identity, target files, policy/schema ownership, recovery design, and
+- Target files, policy/schema ownership, recovery design, and
   migration mechanics remain deferred.

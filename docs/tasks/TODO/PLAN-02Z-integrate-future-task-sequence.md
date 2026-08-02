@@ -24,7 +24,7 @@ documentation, size, and local-context designs are inspected together.
 
 ## Blocked by
 
-- [ARCH-02D](../IN_PROGRESS/ARCH-02D-define-direct-migration-mechanics.md) — Required: migration mechanics must be settled.
+- [ARCH-02D](../COMPLETED/ARCH-02D-define-direct-migration-mechanics.md) — Required: migration mechanics must be settled.
 - [INTAKE-02E](../TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md) — Required: intake boundaries must be designed.
 - [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Required: extraction/retention rules must be applied to candidates.
 - [RPT-02](../TODO/RPT-02-define-science-report-contract.md) — Required: report design packages must be scoped.

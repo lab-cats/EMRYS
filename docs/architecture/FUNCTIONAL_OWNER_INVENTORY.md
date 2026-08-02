@@ -2,8 +2,11 @@
 
 This is the implementation-backed `ARCH-02A` ownership roster. It assigns
 every current public script, SLURM job, validator, and Make interface exactly
-once without choosing future package names or changing historical execution
-order. Working owner names describe current responsibility only.
+once without changing historical execution order. Functional-owner slugs are
+the stable public identities owned by
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); this inventory owns
+their current executable surfaces and direct protection, not identity or DAG
+definitions.
 
 The executable roster is protected by
 [`test_public_cli_contracts.py`](../../tests/test_public_cli_contracts.py), the

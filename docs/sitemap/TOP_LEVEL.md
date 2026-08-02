@@ -29,14 +29,17 @@ freshness, evidence, ownership, or
   [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
   are complete.
   [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md)
-  is also complete after inheriting `ARCH-02B`'s priority to unblock that work.
-  The next eligible runway package is `ARCH-02B`, followed by `ARCH-02C` and
-  `ARCH-02D` in dependency order. Each remains unselected until its own JIT
-  plan is approved; the unsliced `PROGRAM-01` remainder is preserved but out
+  and [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md)
+  through
+  [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
+  are also complete. The next eligible runway action is to recast
+  [`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and
+  select its independent review just in time; neither is selected by this
+  status update. The unsliced `PROGRAM-01` remainder remains preserved and out
   of scope pending user reassessment.
-- Plan each architecture card just in time. Divide its execution into small,
+- Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
-  detail for the next one. Do not pre-plan the four cards comprehensively.
+  detail for the next one.
 - Every other task, candidate, integration, branch package, and program family
   is frozen and currently dead/out of scope. Preserve it, but do not select,
   inspect routinely, integrate, execute, or maintain it while this boundary is
@@ -47,9 +50,10 @@ freshness, evidence, ownership, or
   makes that work necessary for the active runway.
   Preferred ordering, general consistency, or potential future usefulness is
   not an exception.
-- Recasting `PLAN-02Z`, selecting a migration, defining its independent review,
-  and deciding any required corrections are deferred until just after
-  `ARCH-02D`, immediately before the first migration is planned.
+- Recasting `PLAN-02Z` and selecting its independent review are now the next
+  eligible runway actions. Selecting a migration and deciding corrections
+  remain deferred until that plan and review are complete, immediately before
+  the first migration is planned.
 - Validation is quiet by default. Ordinary slice close follows the
   [`TASK_DELIVERY.md` boundary](../operations/TASK_DELIVERY.md#slice-start-and-close),
   and final reconciliation uses the applicable

@@ -1,8 +1,10 @@
 # `generate_partitioned_cohort_mpileup_VCFs` stage contract
 
 This is the observed contract of historical Step `07` for `ARCH-02A`. The
-working name is not a stable slug or implemented source location; executables
-remain in `scripts/` and `jobs/`.
+exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -127,4 +129,4 @@ cluster, scientific-review, or biological evidence.
   validator, downstream preprocessing, and artifact adapters.
 - Shared report publication remains owned by the Step `00a` validator.
 - Attempt identity, complete provenance, output hashes, recovery interface,
-  stable identity, target files, and migration mechanics remain deferred.
+  target files, and migration mechanics remain deferred.

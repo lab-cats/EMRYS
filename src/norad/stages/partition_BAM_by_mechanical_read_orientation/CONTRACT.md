@@ -1,8 +1,10 @@
 # `partition_BAM_by_mechanical_read_orientation` stage contract
 
 This is the observed contract of historical Step `06` for `ARCH-02A`. The
-working name is not a stable slug or implemented source location; executables
-remain in `scripts/` and `jobs/`.
+exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -114,5 +116,5 @@ scientific-review, or biological evidence.
   reconciliation code.
 - Shared report publication remains owned by the Step `00a` validator.
 - Native completion and transaction semantics lack attempt and input identity.
-- Stable identity, target files, policy ownership, recovery design, shared
+- Target files, policy ownership, recovery design, shared
   schema/reconciliation ownership, and migration mechanics remain deferred.

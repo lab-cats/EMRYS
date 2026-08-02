@@ -7,32 +7,33 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/jit-01-self-hosting-thin-slice-delivery`
-- JIT-01 package base:
-  `a84d07c docs(arch): complete ARCH-02A reconciliation`
+  `codex/arch-02b-through-02d-jit`
+- Package base:
+  `e728e8587faca2538b3acc4e777a25f66435313a`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: the first `PROGRAM-01` runway slice remains complete
-  without completing that card; `ARCH-02A` and the interposed `JIT-01`
-  workflow bootstrap are complete.
-- Current package: minimal self-hosting thin-slice delivery, targeted task-start
-  routing, retained input-dependent decision records, and final documentation
-  reconciliation before `ARCH-02B`.
+  without completing that card; `ARCH-02A` through `ARCH-02D` and the
+  interposed `JIT-01` workflow bootstrap are complete.
+- Current package: the sequential ARCH-02B semantic identity/DAG owner,
+  ARCH-02C source/contract/test topology, and ARCH-02D reversible direct-
+  migration procedure plus final canonical reconciliation.
 - Package type: documentation-only; no executable, configuration, schema,
   fixture, report-template, dependency, or test-harness behavior changed.
-- Remote publication and upstream equality: this package is published and
-  upstream-equal at the commit containing this handoff; resolve its exact SHA
-  from live Git. Cluster work remains paused.
+- Remote publication and upstream equality: intentionally not applicable. This
+  branch is local-only, has no configured upstream, and must not be pushed by
+  this package. Cluster work remains paused.
 
-JIT-01 descends from the completed ARCH-02A reconciliation. It changes only
-documentation and includes the user-authorized removal of redundant individual
-contract links from `ARCHITECTURE.md` while retaining the functional-owner
-contract index and its inventory link.
+This package descends from the published JIT-01 tip. It changes only Markdown
+and Mermaid documentation artifacts and adds no descriptor/schema/runtime
+file; current executable paths remain under the flat layout until a separately
+planned physical migration.
 
 ## Active concurrent lanes
 
-This checkout is the canonical JIT-01 documentation lane. No concurrent lane
-contributed to its final reconciliation. The completed
+This checkout is the canonical local ARCH-02B-through-02D documentation lane.
+No concurrent sidecar content was inspected, integrated, or used by its final
+reconciliation. The completed
 CONCURRENCY-02 synthetic exchange remains recorded below, and unrelated
 candidate worktrees, paused concurrency attempts, and the researcher pilot
 remain preserved but frozen.
@@ -217,9 +218,17 @@ The local descendant sequence has implemented:
   machine/human streams, dry-run command visibility, one-writer operation
   identity, durable JSONL, receipt-safe ordering, bounded failure summaries,
   protected retention, scheduler/evidence separation, and adoption inputs;
+- one canonical 14-owner semantic identity and DAG map with 15 direct artifact
+  edges, explicit barriers, typed external inputs, and historical aliases;
+- one target source/contract/test topology assigning every functional owner a
+  unique home, versioned YAML descriptor convention, native-asset owner,
+  mirrored tests, and acyclic dependency direction; and
+- one reversible direct-migration procedure with temporary-wrapper criteria,
+  caller order, seven-class parity matrix, rollback/removal boundaries, and a
+  concrete-card checklist;
 - an open-choice ledger and updated future Mermaid sources. Current executable
-  topology, report behavior, logging behavior, numeric stage identifiers, and
-  runtime/scientific evidence remain unchanged.
+  topology and paths, report behavior, logging behavior, historical numeric
+  aliases, and runtime/scientific evidence remain unchanged.
 
 ## Evidence boundary
 
@@ -398,20 +407,13 @@ approved policy defines and unlocks stricter exit criteria.
 
 ## Immediate resume point
 
-[`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md)
-is complete on the
-[`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
-predecessor. [`TASK_DELIVERY.md`](TASK_DELIVERY.md) now separates thin-slice
-close from final card review, validation, and verification;
-[`TASK_START.md`](TASK_START.md) is a universal router; and the top-level
-sitemap temporarily preserves conditional routing without designing permanent
-child maps.
-
-The retained [JIT-01 decision record](../../work/active/JIT-01.md) contains
-only noncritical input-dependent items with durable `KNOWN_CARD` or
-`TASK_INTAKE` classifications. The future temporary-routing classification and
-touch-move-delete migration are captured by
-[`DOC-SITEMAP-01`](../tasks/TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md).
+[`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md),
+[`ARCH-02C`](../tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md),
+and [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
+are complete on the JIT-01 predecessor. Their canonical results are
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md),
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md), and
+[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
 
 This package changes documentation only. Its final gate is Git and repository
 documentation validation; computational, R, shell, report-runtime, and cluster
@@ -419,10 +421,9 @@ suites are not applicable. It creates no runtime, cluster, scientific-review,
 or biological-readiness evidence, and no dependency was installed, restored,
 or updated.
 
-The next eligible critical-runway package is
-[`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md). It must be
-selected and planned just in time before mutation; its eligibility does not
-authorize it automatically. `ARCH-02C` and `ARCH-02D` follow in dependency
-order. All other work, including the unsliced `PROGRAM-01` remainder, remains
-preserved but currently dead/out of scope until the first physical migration
-and explicit user reassessment.
+The next eligible critical-runway action is to recast
+[`PLAN-02Z`](../tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md) and select
+its independent review just in time. Neither action is selected or authorized
+by this handoff, and no physical migration has begun. All other work, including
+the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
+of scope until the first physical migration and explicit user reassessment.

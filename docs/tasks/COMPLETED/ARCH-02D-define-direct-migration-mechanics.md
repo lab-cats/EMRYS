@@ -23,7 +23,7 @@ preserving accidental paths forever.
 
 ## Blocked by
 
-- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: the final destination and dependency rules must be settled.
+- [ARCH-02C](../COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Required: the final destination and dependency rules must be settled.
 
 ## Completion unblocks
 
@@ -77,5 +77,13 @@ preserving accidental paths forever.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed as a documentation-only JIT package. The canonical
+[`MIGRATION_MECHANICS.md`](../../../src/norad/contracts/MIGRATION_MECHANICS.md)
+defines reversible checkpoints, strict temporary-wrapper criteria, caller
+cutover order, rollback and wrapper-removal boundaries, a parity matrix for
+Python, shell, R, SLURM, Make callers, reports, and non-Python assets, and a
+reusable concrete-card checklist.
+
+No implementation or asset was moved, no compatibility layer was created, and
+no packaging or public-versioning work began. The final combined documentation
+gate passed; computational validation was not applicable.

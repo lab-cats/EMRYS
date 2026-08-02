@@ -23,7 +23,7 @@ currently make the overall scientific flow hard to grasp.
 
 ## Blocked by
 
-- [ARCH-02B](../IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) — Required: the overview needs approved semantic names and DAG order.
+- [ARCH-02B](../COMPLETED/ARCH-02B-define-semantic-stage-map.md) — Required: the overview needs approved semantic names and DAG order.
 - [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: audience, owner, and navigation placement must be settled.
 
 ## Completion unblocks

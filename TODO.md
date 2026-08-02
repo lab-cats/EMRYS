@@ -27,9 +27,13 @@ checkout and exact resume point belong in
    [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md).
    Preserve the completed interposed workflow bootstrap in
    [`JIT-01`](docs/tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md).
-   The next eligible critical-runway package is `ARCH-02B`, followed by
-   `ARCH-02C` and `ARCH-02D` in dependency order; none is selected merely by
-   being eligible.
+   [`ARCH-02B`](docs/tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md),
+   [`ARCH-02C`](docs/tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md),
+   and
+   [`ARCH-02D`](docs/tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
+   are also complete. The next eligible runway action is the just-in-time
+   recast of [`PLAN-02Z`](docs/tasks/TODO/PLAN-02Z-integrate-future-task-sequence.md)
+   and selection of its independent review; eligibility is not selection.
 5. TEST-01Z's side of `CODEDOC-05` is satisfied, but that card retains its
    `DOC-IA-01` blocker. Both recorded prerequisites for `SIZE-07` are now
    complete; its technical eligibility does not override the active runway
@@ -87,9 +91,12 @@ and authorizes no work without a separately approved plan:
 
 - Architecture, semantic stages, direct migration, intake, and shared-library
   design: [`ARCH-02A`](docs/tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
-  is complete; the remaining family runs from
-  [`ARCH-02B`](docs/tasks/IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) through
-  [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md).
+  through
+  [`ARCH-02D`](docs/tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
+  are complete; remaining design cards include
+  [`INTAKE-02E`](docs/tasks/TODO/INTAKE-02E-define-yaml-tsv-run-lifecycle.md)
+  and [`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md),
+  subject to the active runway.
 - Science/comprehensive reporting and concise/durable logging:
   [`RPT-01`](docs/tasks/TODO/RPT-01-characterize-comprehensive-report.md) and
   completed [`LOG-01`](docs/tasks/COMPLETED/LOG-01-characterize-current-output.md)

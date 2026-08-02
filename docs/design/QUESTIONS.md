@@ -54,35 +54,6 @@ The entries below are unresolved design choices, not implementation
 authorization. Each choice has one owning task and must be decided by that
 task's planning deadline rather than rediscovered by an implementation agent.
 
-### CHOICE-STAGE-01 — Exact semantic stage identities and DAG
-
-- **Question:** What exact display title, public slug, stable versioned key,
-  historical aliases, and DAG edges apply to every functional stage?
-- **Why it matters:** target paths, contracts, user documentation, and migration
-  cards require identities that do not encode mutable lexical order.
-- **Owning card:**
-  [`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md).
-- **Decision deadline:** before `ARCH-02C` planning begins.
-- **Recommendation:** derive names only from the completed functional inventory;
-  retain numeric IDs as historical aliases and make the explicit DAG the sole
-  ordering authority.
-
-### CHOICE-ARCH-01 — Machine stage descriptor and contract serialization
-
-- **Question:** What exact stage-descriptor filename/format, local contract
-  layout, and schema/reference mechanism represent each stage's machine-readable
-  interface?
-- **Why it matters:** the conceptual vertical tree fixes ownership but not the
-  serialized descriptor that orchestration, documentation, and validation will
-  consume.
-- **Owning card:**
-  [`ARCH-02C`](../tasks/IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md).
-- **Decision deadline:** before `ARCH-02D` or any source migration planning.
-- **Recommendation:** pair the human `README.md` with one predictable,
-  versioned stage-local descriptor (prefer YAML for inspectable metadata) that
-  references stage-local or central JSON Schemas according to the approved
-  public/cross-stage ownership rule.
-
 ### CHOICE-INTAKE-01 — Exact V1 request fields, run package, and operational directories
 
 - **Question:** What YAML fields, schema versions, request-state directories,
@@ -323,10 +294,17 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
   and [target contract](../architecture/FUTURE_ARCHITECTURE.md#logging-target);
 - behavior-contract sufficiency rather than 100% line coverage before
   architectural mutation;
-- a vertical `src/norad` target with semantic black-box stages, mirrored tests,
-  and direct contract-preserving migrations;
-- semantic stage title/slug/versioned-key identities with DAG-defined order and
-  historical numeric aliases;
+- `CHOICE-STAGE-01`: exact display titles, public slugs, frozen machine keys,
+  historical aliases, typed external inputs, and direct DAG/barrier semantics;
+  see [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md);
+- `CHOICE-ARCH-01`: a vertical `src/norad` target with first-class stages,
+  analyses, and evidence owners; predictable versioned YAML descriptors;
+  owner-local or neutral JSON Schemas; mirrored tests; and explicit dependency
+  direction; see
+  [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md);
+- direct, reversible, contract-preserving migrations with bounded wrapper
+  criteria and parity/removal gates; see
+  [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md);
 - evidence-based shared-library promotion and risk-based source-size thresholds;
 - YAML run requests plus TSV sample manifests, atomic claim, immutable run/
   attempt identity, success-only metadata promotion, and stationary raw data;

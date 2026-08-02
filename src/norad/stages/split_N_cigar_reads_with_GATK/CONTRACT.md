@@ -1,8 +1,10 @@
 # `split_N_cigar_reads_with_GATK` stage contract
 
-This is the observed contract of historical Step `05` for `ARCH-02A`.
-`split_N_cigar_reads_with_GATK` is a working name, not a stable slug or
-implemented source location. Executables remain in `scripts/` and `jobs/`.
+This is the observed contract of historical Step `05` for `ARCH-02A`. The
+exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -103,5 +105,5 @@ scientific-review, or biological evidence.
 - The native pair transaction lacks stable-input identity, receipt, and robust
   rollback-failure recovery evidence.
 - Producer and validator prove structure but not the GATK-specific transform.
-- Stable identity, target files, helper ownership, transaction policy, and
+- Target files, helper ownership, transaction policy, and
   migration mechanics remain deferred.

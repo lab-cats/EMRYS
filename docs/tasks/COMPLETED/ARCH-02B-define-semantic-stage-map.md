@@ -24,7 +24,7 @@ explicit ordering model would create a different ambiguity.
 
 ## Completion unblocks
 
-- [ARCH-02C](../IN_PROGRESS/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Fully: target directories and contract ownership can use stable semantic identities.
+- [ARCH-02C](../COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md) — Fully: target directories and contract ownership can use stable semantic identities.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the documentation information architecture must also be settled.
 
 ## Prerequisites
@@ -39,7 +39,9 @@ explicit ordering model would create a different ambiguity.
 
 ## Questions owned by this card
 
-- [`CHOICE-STAGE-01`](../../design/QUESTIONS.md#choice-stage-01--exact-semantic-stage-identities-and-dag).
+- `CHOICE-STAGE-01` is closed in the
+  [resolved index](../../design/QUESTIONS.md#resolved-index); exact results live
+  in [`STAGE_MAP.md`](../../../src/norad/contracts/STAGE_MAP.md).
 
 ## In scope
 
@@ -76,5 +78,15 @@ explicit ordering model would create a different ambiguity.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed as a documentation-only JIT package. The canonical
+[`STAGE_MAP.md`](../../../src/norad/contracts/STAGE_MAP.md) freezes 14 public
+identities and 15 direct artifact edges, including typed external references,
+non-gating evidence branches, cohort barriers, direct Step `08` review lineage,
+and the historical `00a` reference-materialization coupling that is not a DAG
+edge. Focused checks found no duplicate identities/keys/aliases, reciprocal or
+cyclic edges, dangling endpoints/inputs, or missing required barrier.
+
+No executable, schema, fixture, report-template, dependency, test-harness,
+runtime, cluster, scientific-review, or biological-readiness behavior changed.
+The final combined documentation gate passed; computational validation was not
+applicable.

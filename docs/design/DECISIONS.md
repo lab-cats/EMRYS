@@ -741,32 +741,19 @@ Context: `scripts/` and `jobs/` now contain application domains, but packaging
 and public distribution are premature. There are no external consumers that
 justify indefinite preservation of accidental repository paths.
 
-Decision: the target is a vertical Python source tree:
-
-```text
-src/norad/
-├── stages/<semantic-stage>/
-├── cli/
-├── orchestration/
-├── scheduler/
-├── contracts/
-├── libraries/
-├── evidence/
-├── reporting/
-└── ingestion/
-```
-
-Each stage owns its implementation, validator, job template, README, and
-stage-only contracts. Cross-stage/public contracts are central. Stages are
-black boxes and never import another stage's implementation. Root `tests/`
-mirrors stages and neutral domains while retaining independent contract and
-integration suites. Do not create a generic `utils` owner.
+Decision: the target is a vertical source tree with distinct preprocessing
+stages, first-class analyses, evidence operations, and neutral application
+domains. Functional owners keep implementation, validation, native assets,
+human documentation, and local contracts together; cross-owner contracts are
+neutral, tests mirror ownership, and no owner imports a peer implementation or
+uses a generic `utils` bucket. Exact homes and dependency direction live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 
 Move each concern directly to its final home. A hybrid layout is temporary
-migration scaffolding only: introduce a root wrapper where required, migrate
-callers/tests/docs, prove old/new parity, and remove the wrapper. Preserve
-behavior, scientific meaning, output/evidence/recovery contracts, dry-run, and
-publication guarantees—not paths for their own sake.
+migration scaffolding only, and any legacy wrapper is named, parity-tested,
+bounded, and removed. Exact caller order, parity evidence, rollback, and
+removal rules live in
+[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
 
 Rationale: the final vertical home provides local ownership and supports a
 later installable package without forcing versioning now. A permanent hybrid
@@ -777,7 +764,7 @@ Consequences: the exact inventory, semantic map, topology, and migration
 mechanics belong to
 [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
 through
-[`ARCH-02D`](../tasks/IN_PROGRESS/ARCH-02D-define-direct-migration-mechanics.md).
+[`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md).
 Current flat-layout documentation remains current truth until migrations land.
 
 ### Identify stages semantically and order them with a DAG
@@ -786,21 +773,23 @@ Context: numeric names such as `00c`, `02b`, and `09c` convey historical order
 but not user meaning. Encoding order in a new filename would repeat the same
 problem and make future branches awkward.
 
-Decision: each future stage has a display title for people, a public semantic
-slug, and a stable versioned machine key. Numeric IDs remain historical
-provenance/aliases. Explicit DAG edges define order and branch points.
+Decision: each functional stage, analysis, or evidence owner has a display
+title for people, a public semantic slug, and a stable versioned machine key.
+Numeric IDs remain historical provenance/aliases. Explicit DAG edges define
+order and branch points.
 
 Retain a minimal user overview with a conceptual sequence table and Mermaid
 diagram explaining purpose, ordering rationale, and input/output contracts.
-The current detailed technical pipeline remains separate. Exact names and DAG
-edges are deferred until the functional inventory is complete.
+The current detailed technical pipeline remains separate. Exact identities,
+typed external inputs, edges, and barrier semantics live in
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
 
 Rationale: semantic identities improve comprehension while stable keys and a
 DAG decouple identity from mutable order. The alternative of deleting all
 historical identifiers would weaken provenance.
 
 Consequences: see
-[`ARCH-02B`](../tasks/TODO/ARCH-02B-define-semantic-stage-map.md) and
+[`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md) and
 [`DOC-PIPE-04`](../tasks/TODO/DOC-PIPE-04-create-user-pipeline-overview.md).
 
 ### Promote shared libraries only from proven reuse

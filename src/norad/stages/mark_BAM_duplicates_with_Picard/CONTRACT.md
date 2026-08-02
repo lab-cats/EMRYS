@@ -1,8 +1,10 @@
 # `mark_BAM_duplicates_with_Picard` stage contract
 
-This is the observed contract of historical Step `04` for `ARCH-02A`.
-`mark_BAM_duplicates_with_Picard` is a working name, not a stable slug or
-implemented source location. Executables remain in `scripts/` and `jobs/`.
+This is the observed contract of historical Step `04` for `ARCH-02A`. The
+exact public identity and historical alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
@@ -108,5 +110,5 @@ scientific-review, or biological evidence.
 - Sample/library/platform metadata is hardcoded or scope-derived rather than
   manifest-bound.
 - Step-named validators own reusable BAM and publication helpers.
-- Stable identity, target filenames, receipt/recovery policy, shared-helper
+- Target filenames, receipt/recovery policy, shared-helper
   ownership, and migration mechanics remain deferred.

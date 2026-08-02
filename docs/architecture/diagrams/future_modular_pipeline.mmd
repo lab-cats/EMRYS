@@ -7,7 +7,7 @@ flowchart LR
     artifacts --> custom["Exploratory custom analysis module"]
     builtin --> native["Native module outputs"]
     custom --> native
-    native --> validators["Stage and module validators"]
+    native --> validators["Owner-local stage and module validators"]
     native --> adapters["Explicit read-only adapters"]
     validators --> adapters
     adapters --> summary["Canonical run summary"]

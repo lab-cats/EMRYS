@@ -12,36 +12,31 @@ Canonical diagrams:
 
 ## Compute pipeline
 
-The workflow is a directed graph with a primary reference-and-read preparation
-chain, parallel QC/evidence branches, and downstream cohort analysis:
+Current executable workflow entry points remain under `scripts/` and `jobs/`.
+The colocated documents under `src/norad/` describe functional ownership; they
+do not claim that executable source has migrated.
 
-```text
-reference inputs
-|-> 00a STAR index
-|-> 00b BED12
-`-> 00c FASTA sidecars
+The supported workflow is a directed graph of shared reference inputs,
+per-sample alignment and BAM transformations, non-gating QC/orientation
+evidence branches, manifest-declared cohort processing, a first-class analysis,
+and explicit scientific-review packaging. The exact semantic identities,
+historical aliases, direct artifact edges, typed external inputs, and barrier
+semantics have one owner in
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md). The current executable
+diagram remains [`diagrams/pipeline.mmd`](diagrams/pipeline.mmd).
 
-paired FASTQ + sample manifest + STAR index
--> STAR alignment
--> canonical sorted/read-group BAM
-   |-> 02b BAM-QC evidence
-   |-> 03 paired-orientation evidence (+ BED12)
-   `-> 04 duplicate marking
-       -> 05 SplitNCigarReads (+ FASTA sidecars)
-       -> 06 mechanical FWD_like / REV_like BAMs
-       -> 07 manifest-partitioned cohort mpileup
-       -> 08 deterministic VCF preprocessing and annotation
-       -> 09 paired CMH candidate ranking
-       -> 09c explicit scientific-evidence review (+ declared evidence)
-```
-
-SLURM wrappers remain thin. Analysis and validation logic lives in
-parameterized scripts. The login node is not a compute engine.
+Most numbered SLURM entry points delegate functional work to parameterized
+scripts; the historical `00a` and `00b` embedded-compute exceptions remain
+recorded in their colocated contracts. The login node is not a compute engine.
 
 ### Functional-owner contract index
 
 The exact public-entrypoint and cross-cutting-domain coverage roster is
 [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md).
+Target source/test ownership and future direct-migration mechanics live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and
+[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md),
+not in this implemented-current-topology document.
 
 ## Identity and explicit-input boundaries
 

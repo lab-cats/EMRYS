@@ -2,8 +2,11 @@
 
 This is the observed contract of historical Step `09c` for `ARCH-02A`. It is a
 scientific-evidence governance and review operation, not a computational
-transformation or analysis rerun. The working name is not a stable slug or
-implemented source location; executables remain in `scripts/`.
+transformation or analysis rerun. The exact public identity and historical
+alias are owned by the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
+uses that public slug; it is not yet an implemented source location.
+Executables remain in `scripts/`.
 
 ## Responsibility and execution dependencies
 
@@ -132,5 +135,5 @@ interpretation readiness is established in this checkout.
 - State/evidence rules are duplicated across publication, artifact indexing,
   science normalization, and tests. Review-plan Git/software/runtime values
   are declared metadata, not independently observed environment facts.
-- Stable identity, target files, schema/policy modules, recovery tooling,
+- Target files, schema/policy modules, recovery tooling,
   reviewer workflow, and migration mechanics remain deferred.

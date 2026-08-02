@@ -31,80 +31,27 @@ Canonical future diagrams:
 
 ## Target source and test topology
 
-The approved conceptual target is:
+The target is a vertical, owner-local source and mirrored-test topology, not a
+claim that every asset is Python or that current executable source has already
+moved. Preprocessing stages, first-class analyses, evidence operations, and
+neutral application domains have distinct homes. Native shell, R, SLURM,
+schema, style, template, and fixture assets remain with their functional owner;
+packaging is a later concern.
 
-```text
-src/
-└── norad/
-    ├── cli/
-    ├── orchestration/
-    ├── scheduler/
-    ├── contracts/
-    ├── libraries/
-    ├── evidence/
-    ├── reporting/
-    ├── ingestion/
-    └── stages/
-        └── <semantic-stage>/
-            ├── README.md
-            ├── stage implementation files
-            ├── validator entry point or files
-            ├── job template or files
-            └── stage descriptor and local contracts
-
-tests/
-├── stages/<semantic-stage>/
-├── cli/
-├── orchestration/
-├── scheduler/
-├── contracts/
-├── libraries/
-├── evidence/
-├── reporting/
-├── ingestion/
-├── <independent contract suites>/
-└── <integration suites>/
-```
-
-This is a vertical package target, not a claim that every asset is Python.
-Shell, R, scheduler, schema, style, template, and other runtime resources keep
-their native form under an explicit owner. Packaging those resources is a later
-distribution concern.
-
-The named top-level domains and stage-local ownership are fixed. Exact
-stage-descriptor filename/serialization, submodule filenames, schema placement,
-and packaged-asset locations remain owned by the reviewed topology task; the
-tree above is not a generated-files specification.
-
-Stage-local contracts live with the stage. Cross-stage contracts, public
-schemas, run identity, and shared state vocabularies live in neutral owners.
-The test tree mirrors local ownership while independent contract and integration
-suites remain separate enough to detect producer/consumer shared defects.
-
-Reporting implementation belongs in `src/norad/reporting` because it is an
-application domain, not a repository-level output directory. Current root
-`reports/` assets remain current truth until an approved migration establishes
-their final package/asset ownership. Ingestion implementation belongs in
-`src/norad/ingestion`; configured operational inbox/run-state directories live
-outside source code. A root `ingestion/` source directory is not the target.
+The exact target tree, every functional-owner home, descriptor serialization,
+schema-placement rule, non-Python asset owner, test mirror, and allowed
+dependency direction are owned by
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). Current
+root `reports/` and other flat executable assets remain current truth until a
+separately approved migration lands.
 
 ## Stage identity, DAG, and black-box boundary
 
-Every future stage has:
-
-- a human display title;
-- a public semantic slug;
-- a stable versioned machine key;
-- zero or more historical numeric aliases;
-- declared typed inputs and outputs;
-- explicit DAG predecessors and successors;
-- a local README, validator, and focused tests.
-
-Numeric identifiers remain useful provenance but do not define future ordering.
-The execution DAG defines required sequence, parallel branches, and typed
-analysis branch points. A separate concise user overview explains the general
-scientific order and why it exists; the detailed technical diagram remains a
-maintainer view.
+The exact display titles, public slugs, frozen machine keys, historical
+aliases, typed external inputs, direct artifact edges, evidence branches, and
+barriers are owned by
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md). Numeric aliases remain
+provenance only; the DAG, not lexical or historical order, defines dependency.
 
 A stage may depend on neutral contracts/libraries but never import another
 stage's implementation. Orchestration navigates only declared DAG edges and
@@ -112,26 +59,17 @@ contracts. No stage discovers upstream data by glob, filename convention, or a
 neighbor's private directory. Failures identify the stage, run, attempt,
 contract, and next safe operator action without hiding filesystem state.
 
-The exact identity map and DAG are intentionally unresolved until the live
-functional inventory is reviewed.
-
 ## Direct migration model
 
-The hybrid flat/packaged repository is temporary migration scaffolding, not an
-end state. Each bounded migration:
+The hybrid flat/target repository is temporary scaffolding, never an end
+state. Each bounded migration moves one owner directly to its final home,
+preserves its behavior and evidence contracts, and removes any strictly
+necessary legacy wrapper after named callers and parity obligations close.
 
-1. refreshes applicable behavior and consumer characterization;
-2. moves one concern directly to its final owner;
-3. retains a temporary root wrapper only when needed for a known caller;
-4. migrates imports, jobs, Make targets, tests, commands, and documentation;
-5. compares old/new behavior and output contracts where feasible;
-6. removes the wrapper after all named callers and parity gates pass.
-
-There are no known external consumers that require an indefinite legacy-path
-program. Migrations preserve behavior, scientific meaning, artifacts, evidence,
-dry-run/execute, transaction, recovery, and exit contracts. An intentionally
-changed interface/path is versioned or otherwise made explicit in the approved
-task; it is not described as accidental compatibility.
+The exact wrapper criteria, caller order, language/asset parity matrix,
+rollback boundaries, removal criteria, and reusable card checklist are owned
+by
+[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
 
 ## Intake, identity, attempts, and promotion
 
@@ -186,16 +124,12 @@ success from file presence alone.
 
 ## Shared libraries and dependency direction
 
-Code starts local. At a second use, compare complete semantics; promote at two
-only for a safety-critical or sufficiently complex equivalent, otherwise
-normally at the third equivalent use. Put shared code in the narrowest neutral
-owner and require independent API and consumer tests.
-
-`libraries` never depends on `stages`. Neutral contracts never import producers.
-Cross-language repetition remains when it provides independent verification or
-when a cross-language abstraction would obscure execution. There is no generic
-`utils` package, universal transaction framework, or generic stage dispatcher
-without separately reviewed evidence.
+Code starts local and moves only after proven equivalent reuse justifies the
+narrowest neutral owner. Neutral libraries and contracts never depend on
+functional implementations; independent or meaningfully different cross-
+language behavior may remain duplicated. The exact dependency-direction rules
+and catch-all prohibitions are owned by
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#library-boundary).
 
 ## Source-size and local-context constraints
 

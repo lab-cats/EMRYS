@@ -102,7 +102,7 @@ designed safely from filenames alone.
 
 ## Completion unblocks
 
-- [ARCH-02B](../IN_PROGRESS/ARCH-02B-define-semantic-stage-map.md) — Fully: semantic names can be derived from inspected responsibilities.
+- [ARCH-02B](../COMPLETED/ARCH-02B-define-semantic-stage-map.md) — Fully: semantic names can be derived from inspected responsibilities.
 - [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Partially: shared-domain candidates also require the target topology.
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Partially: size findings can be mapped to functional ownership.
 
