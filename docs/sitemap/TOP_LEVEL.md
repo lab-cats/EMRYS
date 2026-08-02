@@ -56,8 +56,10 @@ freshness, evidence, ownership, or
   [`reliability review`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md)
   and
   [`usability review`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
-  are complete. `MIG-03A` is next eligible for task-specific read-only
-  selection and planning. The unsliced `PROGRAM-01` remainder remains
+  are complete.
+  [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md)
+  is selected for task-specific read-only planning only. The unsliced
+  `PROGRAM-01` remainder remains
   preserved and out of scope pending user reassessment.
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
@@ -73,8 +75,8 @@ freshness, evidence, ownership, or
   Preferred ordering, general consistency, or potential future usefulness is
   not an exception.
 - The tranche-specific architecture, reliability, and usability reviews are
-  complete. Select `MIG-03A` only for task-specific read-only planning; source
-  mutation remains outside this pre-migration boundary.
+  complete. `MIG-03A` is selected only for task-specific read-only planning;
+  source mutation remains outside this pre-migration boundary.
 - Validation is quiet by default. Ordinary slice close follows the
   [`TASK_DELIVERY.md` boundary](../operations/TASK_DELIVERY.md#slice-start-and-close),
   and final reconciliation uses the applicable

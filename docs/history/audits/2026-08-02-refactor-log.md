@@ -197,3 +197,19 @@ that sequence closes; current checkout and roadmap truth remain in
 - **Evidence boundary:** documentation-only review; no source/test mutation,
   command execution, result publication, runtime, cluster, scientific-review,
   or biological evidence occurred.
+
+## 2026-08-02T13:52:46-0400 — MIG-03A selected for read-only planning
+
+- **Verification:** review checkpoint `b714f61` is clean, eight commits ahead
+  of integrated parent `15aba53`, and changes Markdown only. All three dedicated
+  review cards are complete; the broad review cards remain frozen.
+- **Risk:** treating an `IN_PROGRESS` lifecycle move as executable authority
+  would bypass the required clean published parent, supported dry run, live
+  import/mode/test refresh, and separate source-mutation boundary.
+- **Decision:** move only `MIG-03A` into `IN_PROGRESS`, repair its inbound
+  status links, and continue task-specific read-only planning on the same
+  branch. Do not create the implementation branch, run the validator, edit
+  source/tests, or begin the migration.
+- **Evidence boundary:** this is a status/documentation checkpoint only. Live
+  Git will define the later executable parent after the planning base is clean,
+  published, and proved upstream-equal.

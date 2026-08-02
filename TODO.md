@@ -14,9 +14,9 @@ are complete; the
 [`usability review`](docs/tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
 has now closed the dedicated review chain.
 The proposed unit is
-[`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
-which is now the next eligible action for task-specific read-only selection and
-planning. No physical source migration is selected or executing yet.
+[`MIG-03A`](docs/tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md),
+which is selected for task-specific read-only planning. No physical source
+migration or executable action has begun.
 
 All other work remains frozen under the
 [active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)

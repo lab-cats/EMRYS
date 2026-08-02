@@ -15,8 +15,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: the canonical recovery integration is clean,
   published, and live-remote equal at the package base above. `PLAN-02Z` has
   completed its first rolling tranche plan; all other work remains frozen.
-- Current package: documentation-only first-migration planning and review
-  readiness for the neutral validation-report protocol.
+- Current package: documentation-only execution-plan closure for selected
+  `MIG-03A`, the neutral validation-report protocol migration.
 - Package type: documentation-only; no executable, configuration, generation,
   schema, fixture, report-template, dependency, source-layout, public-interface,
   scientific-policy, or test-harness behavior changed.
@@ -480,10 +480,10 @@ or updated.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) is
 complete. It proposes
-[`MIG-03A`](../tasks/TODO/MIG-03A-extract-validation-report-library.md) and a
+[`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. All three
-reviews are complete; the next action is task-specific read-only selection and
-planning of `MIG-03A`. No physical migration has begun. All other work,
-including
+reviews are complete, and `MIG-03A` is selected only for task-specific
+read-only planning. No dry run, implementation branch, source/test mutation,
+or physical migration has begun. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.

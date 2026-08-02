@@ -25,7 +25,7 @@ the shared owner and its known limitations.
 
 ## Completion unblocks
 
-- [MIG-03A](../TODO/MIG-03A-extract-validation-report-library.md) — Fully: the first executable migration may enter task-start planning after all tranche-specific reviews close.
+- [MIG-03A](../IN_PROGRESS/MIG-03A-extract-validation-report-library.md) — Fully: the first executable migration may enter task-start planning after all tranche-specific reviews close.
 
 ## Prerequisites
 

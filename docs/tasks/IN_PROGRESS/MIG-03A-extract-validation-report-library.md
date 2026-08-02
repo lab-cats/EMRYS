@@ -206,5 +206,8 @@ coverage, making it the smallest evidence-supported migration unit.
 
 ## Completion record
 
-Not started. Selection begins task-specific read-only planning only; executable
-source mutation requires a separately authorized execution boundary.
+Selected for task-specific read-only planning from clean review checkpoint
+`b714f61`. The lifecycle move does not begin the supported dry run, create an
+implementation branch, or authorize executable source/test mutation. The exact
+clean, pushed, upstream-equal planning tip remains to be frozen from live Git as
+the executable parent at the separate execution boundary.
