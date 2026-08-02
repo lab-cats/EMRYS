@@ -1,7 +1,7 @@
 ## Current slice
 
-Outcome: JIT-01 has a durable but temporary active record.
-Touches: `work/active/JIT-01.md`.
-Stop: The file contains only this current-slice charter and the cleanup queue.
+Outcome: A minimal top-level documentation entry exists.
+Touches: `docs/sitemap/README.md`, `docs/sitemap/TOP_LEVEL.md`, and the cleanup queue only for neutral collateral observations.
+Stop: Both sitemap files fulfill their narrow roles and no child-map design has begun.
 
 ## Cleanup queue
