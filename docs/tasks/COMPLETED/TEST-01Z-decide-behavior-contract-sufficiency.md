@@ -31,7 +31,7 @@ over every applicable contract row before production structure changes.
 - [ARCH-02A](ARCH-02A-inventory-functional-stages-and-contracts.md) — Fully: only an affirmative recorded decision releases this target.
 - [RPT-01](../TODO/RPT-01-characterize-comprehensive-report.md) — Fully: only an affirmative recorded decision releases this target.
 - [LOG-01](../COMPLETED/LOG-01-characterize-current-output.md) — Fully: only an affirmative recorded decision releases this target.
-- [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Fully: only an affirmative recorded decision releases this target.
+- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Fully: only an affirmative recorded decision releases this target.
 - [CODEDOC-05](../TODO/CODEDOC-05-inventory-code-documentation.md) — Partially: it also requires the documentation ownership model.
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Partially: it also requires the functional-stage inventory.
 

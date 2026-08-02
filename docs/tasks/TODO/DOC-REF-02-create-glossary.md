@@ -21,7 +21,7 @@ meaning.
 
 ## Blocked by
 
-- [DOC-IA-01](../TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: reference ownership and navigation placement must be settled.
+- [DOC-IA-01](../IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md) — Required: reference ownership and navigation placement must be settled.
 
 ## Completion unblocks
 

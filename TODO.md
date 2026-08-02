@@ -83,7 +83,7 @@ and authorizes no work without a separately approved plan:
    unless later evidence establishes a genuine dependency.
 8. Correct live task-dependency semantics and validator enforcement through
    [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
-9. Put [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+9. Put [`DOC-IA-01`](docs/tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
    first within the Phase `02` documentation family so it can produce the
    no-loss `AGENTS.md` slim-down and later consolidation cards.
 
@@ -117,7 +117,7 @@ and authorizes no work without a separately approved plan:
   tracked separately:
   [`DOC-GATE-01`](docs/tasks/TODO/DOC-GATE-01-extract-documentation-validator.md),
   [`TASK-REG-01`](docs/tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md),
-  [`DOC-IA-01`](docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+  [`DOC-IA-01`](docs/tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
   through [`CONTEXT-09`](docs/tasks/TODO/CONTEXT-09-define-local-maintainer-context.md).
 - Large-file dispositions:
   [`SIZE-07`](docs/tasks/TODO/SIZE-07-refresh-large-file-inventory.md) and its

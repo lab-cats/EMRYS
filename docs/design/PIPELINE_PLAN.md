@@ -146,7 +146,7 @@ work. Maintenance order remains distinct from technical blocking:
 8. [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md)
    should then migrate active dependency metadata and validator behavior to the
    approved true-technological-blocker model.
-9. [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+9. [`DOC-IA-01`](../tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
    should lead the Phase `02` documentation family and produce a no-loss,
    bounded `AGENTS.md` slim-down card before broader consolidation packages.
 

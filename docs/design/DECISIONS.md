@@ -1056,7 +1056,7 @@ without creating more canonical owners. A blind cleanup or blanket commenting
 pass would either lose meaning or add noise.
 
 Consequences: see
-[`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md)
+[`DOC-IA-01`](../tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 through
 [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
 [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md).

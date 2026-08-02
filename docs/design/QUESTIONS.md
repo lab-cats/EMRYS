@@ -120,7 +120,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Why it matters:** `RUNBOOK.md` and `TROUBLESHOOTING.md` are large, while
   unique commands, recovery cautions, and evidence snapshots must not be lost.
 - **Owning card:**
-  [`DOC-IA-01`](../tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md).
+  [`DOC-IA-01`](../tasks/IN_PROGRESS/DOC-IA-01-define-documentation-ownership-and-navigation.md).
 - **Decision deadline:** before any `DOC-CONS-08-*` card is created.
 - **Recommendation:** add audience/navigation and a source-to-destination ledger
   before splitting; retain exact commands in `RUNBOOK.md`, symptom/cause/
