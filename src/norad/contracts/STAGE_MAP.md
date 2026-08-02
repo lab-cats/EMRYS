@@ -34,6 +34,7 @@ archival behavior.
 | stage | Align RNA Reads with STAR | `align_RNA_reads_with_STAR` | `norad.stage.align_RNA_reads_with_STAR.v1` | `01` |
 | stage | Construct Canonical BAM | `construct_canonical_BAM` | `norad.stage.construct_canonical_BAM.v1` | `02` |
 | evidence | Collect Canonical BAM QC Evidence | `collect_canonical_BAM_QC_evidence` | `norad.evidence.collect_canonical_BAM_QC_evidence.v1` | `02b` |
+| evidence | Collect RSeQC Paired Orientation Evidence | `collect_RSeQC_paired_orientation_evidence` | `norad.evidence.collect_RSeQC_paired_orientation_evidence.v1` | `03` |
 
 ## Edge semantics
 
@@ -78,6 +79,8 @@ artifact have been frozen from their functional contracts.
 | `construct_STAR_index` | `align_RNA_reads_with_STAR` | STAR genome-index directory | required artifact |
 | `align_RNA_reads_with_STAR` | `construct_canonical_BAM` | coordinate-sorted STAR BAM | required artifact |
 | `construct_canonical_BAM` | `collect_canonical_BAM_QC_evidence` | canonical BAM/BAI pair | required artifact; non-gating evidence branch |
+| `construct_canonical_BAM` | `collect_RSeQC_paired_orientation_evidence` | canonical BAM/BAI pair | required artifact; fan-in; non-gating evidence branch |
+| `convert_GTF_to_BED12` | `collect_RSeQC_paired_orientation_evidence` | BED12 annotation | required artifact; fan-in; non-gating evidence branch |
 
 ## Current operational coupling that is not a semantic edge
 
@@ -101,8 +104,11 @@ flowchart LR
     align_RNA_reads_with_STAR["Align RNA Reads with STAR"]
     construct_canonical_BAM["Construct Canonical BAM"]
     collect_canonical_BAM_QC_evidence["Collect Canonical BAM QC Evidence"]
+    collect_RSeQC_paired_orientation_evidence["Collect RSeQC Paired Orientation Evidence"]
 
     construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
     align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
     construct_canonical_BAM -.->|BAM/BAI; non-gating| collect_canonical_BAM_QC_evidence
+    construct_canonical_BAM -.->|BAM/BAI; fan-in| collect_RSeQC_paired_orientation_evidence
+    convert_GTF_to_BED12 -.->|BED12; fan-in| collect_RSeQC_paired_orientation_evidence
 ```
