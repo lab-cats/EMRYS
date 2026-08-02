@@ -250,19 +250,18 @@ Stop: After one atomic executable/test cutover commit, one documentation-close
 commit, the complete applicable local gate, and clean upstream equality—or
 immediately on any escalation condition above.
 
-- Current planning classification: `behavior or architecture planning` with
-  `documentation-only/non-consuming` validation impact. Future authorized
-  migration classification: `behavior or architecture planning` with
-  `executable/test-affecting` validation impact.
+- Current execution classification: `behavior or architecture planning` with
+  `executable/test-affecting` validation impact. The frozen baseline commit is
+  documentation-only/non-consuming; the next atomic cutover is executable.
 - Exact planning worktree is `/Users/elisteiger/dev/norad`; planning branch is
   `codex/plan-02z-first-migration-readiness`; proposed execution branch is
   `codex/mig-03a-extract-validation-report-library`. The executable parent is
   the final clean, pushed, upstream-equal planning tip resolved from live Git,
   not an input sidecar or an earlier review checkpoint.
-- At a separately authorized execution start, reverify that parent and the
-  no-overlap roster, create the one execution branch, record the frozen baseline
-  and rollback target, and run the existing Step `00a` tiny-fixture dry-run
-  before mutation. Do not install dependencies or use production/cluster data.
+- Execution authorization is active. The exact parent and no-overlap roster
+  were reverified, the dedicated branch was created, and the existing Step
+  `00a` tiny-fixture dry run passed before mutation. No dependency was installed
+  or restored, and no production or cluster data was used.
 - Implement the final owner, all thirteen caller-local loaders, direct/fault/
   import/public-boundary tests, and exact coverage/static/Make wiring as one
   atomic executable/test commit. There is no supported hybrid caller state,
@@ -282,12 +281,13 @@ immediately on any escalation condition above.
   next action therefore begins with the live parent/no-overlap/dry-run checks
   above.
 
-Selected for task-specific read-only planning from clean review checkpoint
-`b714f61` at status checkpoint `40d6907`. Live refresh confirms twelve direct
-importers plus Step `00a`, nine shared APIs and internal `HEADER`, mode `0644`
-for all thirteen validators/direct tests, and no executable change since
-integrated parent `15aba53`. The documentation base is published and
-upstream-equal; the exact final planning tip containing this record is the
-execution parent resolved from live Git. No supported dry run, implementation
-branch, source/test mutation, computational test, or physical migration has
-yet begun.
+Selected for task-specific planning from clean review checkpoint `b714f61` at
+status checkpoint `40d6907`. The exact clean, published, upstream-equal
+execution parent is `1966d03a9906f1fe8afbe21d8373d877569182ad`; the dedicated
+branch is `codex/mig-03a-extract-validation-report-library`. Live refresh
+confirms twelve direct importers plus Step `00a`, nine shared APIs and internal
+`HEADER`, mode `0644` for all thirteen validators/direct tests, and no
+executable change from the parent. The supported Step `00a` dry run passed
+(`1 passed`), and the thirteen-validator, publication-fault, roster,
+independent-golden, public-CLI, and coverage-wiring characterization passed
+(`347 passed`). No source/test mutation or physical migration has yet begun.

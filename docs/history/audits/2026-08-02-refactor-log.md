@@ -291,3 +291,42 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Boundary:** close the pre-migration phase before creating the execution
   branch. The planning branch contains Markdown only and remains the stable
   remote rollback point requested before risky source work.
+
+## 2026-08-02T17:52:01-0400 — MIG-03A execution baseline frozen
+
+- **Parent verification:** dedicated branch
+  `codex/mig-03a-extract-validation-report-library` was created at exact clean,
+  published, upstream-equal planning tip
+  `1966d03a9906f1fe8afbe21d8373d877569182ad`. No other mutable lane owns this
+  branch, worktree, card, or write set; source, tests, and harness still match
+  that parent.
+- **Supported dry run:** the existing Step `00a` tiny-fixture dry-run test
+  passed (`1 passed`) without execute mode or dependency restoration. This is
+  local fixture evidence only and does not establish real-runtime, cluster,
+  scientific-review, or biological evidence.
+- **Characterization baseline:** the thirteen direct validator suites,
+  publication-fault suite, exact check rosters, independent contract goldens,
+  public CLI contracts, and coverage-baseline wiring passed together
+  (`347 passed`). All thirteen public validators and their direct tests remain
+  tracked at mode `0644`; the target library directory is still absent.
+- **High risk:** the final owner and every caller must change together because
+  no supported hybrid import state or compatibility re-export exists.
+  **Decision:** publish this documentation-only execution baseline as the
+  stable pre-mutation rollback point, then make the final module, all thirteen
+  loaders, direct/fault/import tests, and exact coverage/static wiring one
+  atomic executable/test commit.
+- **Medium risk:** an exact-file loader can reuse a wrong or partial cache
+  entry, overwrite foreign state, or convert `KeyboardInterrupt` into an
+  ordinary diagnostic. **Decision:** use the frozen private identity
+  `_norad_validation_report`, verify the exact resolved `__file__` and ready
+  sentinel, register before execution, remove only the exact owned partial on
+  any execution failure, preserve foreign entries, and catch only ordinary
+  `Exception` at the public diagnostic boundary.
+- **Rollback:** before executable mutation, the migration branch must be
+  pushed and proved upstream-equal at this baseline. Later rollback reverts the
+  documentation close first and the atomic executable/test cutover second;
+  the published planning branch remains the earlier independent recovery base.
+- **Documentation validation:** `git diff --check` passed. The repository
+  documentation validator reproduced exactly the nine inherited unsupported-
+  `UNREFINED` location findings and no other finding; this remains expected-
+  only nonpassing evidence, not a passing documentation gate.

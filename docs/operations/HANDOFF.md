@@ -7,30 +7,35 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/plan-02z-first-migration-readiness`
+  `codex/mig-03a-extract-validation-report-library`
 - Package base:
-  `15aba53c538cabf2b7d2284575be0089b0ca90cf`
+  `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: the canonical recovery integration is clean,
-  published, and live-remote equal at the package base above. `PLAN-02Z`, all
-  three dedicated reviews, and the `MIG-03A` task-specific plan are complete.
-- Current package: closed documentation-only pre-migration base; the separately
-  authorized next package is `MIG-03A` execution on its own descendant branch.
-- Package type: documentation-only; no executable, configuration, generation,
-  schema, fixture, report-template, dependency, source-layout, public-interface,
-  scientific-policy, or test-harness behavior changed.
-- Remote publication and upstream equality: established for
-  `codex/plan-02z-first-migration-readiness`; resolve the exact current SHA from
-  live Git. Local `HEAD`, configured upstream, and the live remote ref must
-  remain equal before creating the execution branch. Cluster work remains
-  paused.
+- Recorded package state: the exact package base above is the clean, published,
+  upstream-equal planning tip. `PLAN-02Z`, all three dedicated reviews, and the
+  `MIG-03A` task-specific plan are complete; this dedicated execution branch
+  was created from that exact parent with no overlap in another mutable lane.
+- Current package: `MIG-03A` execution baseline. The supported Step `00a`
+  tiny-fixture dry run passed (`1 passed`), and the thirteen-validator,
+  publication-fault, roster, independent-golden, public-CLI, and coverage-
+  wiring baseline passed (`347 passed`) before source mutation.
+- Package type at this checkpoint: documentation-only execution baseline; no
+  executable, configuration, generation, schema, fixture, report-template,
+  dependency, source-layout, public-interface, scientific-policy, or test-
+  harness behavior has changed yet. The next commit is the reviewed atomic
+  executable/test cutover.
+- Remote publication and upstream equality: established for the planning base.
+  Resolve this branch's baseline commit and publication state from live Git;
+  source mutation may begin only after local `HEAD`, configured upstream, and
+  the live remote ref are equal. Cluster work remains paused.
 
-This package descends directly from the verified integrated canonical tip
-`15aba53c538cabf2b7d2284575be0089b0ca90cf`. It changes only Markdown
-planning/review artifacts and adds no descriptor, schema, runtime, report
-template, test-harness change, or integration fragment. Current executable
-paths remain under the flat layout.
+This package descends directly from the verified planning tip
+`1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
+integrated canonical tip. This baseline checkpoint changes only Markdown and
+adds no descriptor, schema, runtime, report template, test-harness change, or
+integration fragment. Current executable paths remain under the flat layout
+until the atomic cutover commit.
 
 ## Active concurrent lanes
 
@@ -485,10 +490,11 @@ complete. It proposes
 [`MIG-03A`](../tasks/IN_PROGRESS/MIG-03A-extract-validation-report-library.md) and a
 dedicated architecture, reliability, and usability review chain. All three
 reviews and the `MIG-03A` task-specific plan are complete. The pre-migration
-base is published and upstream-equal; the authorized next action is to create
-the dedicated execution branch, reverify the frozen parent/no-overlap roster,
-and run the tiny-fixture dry run before source mutation. No dry run,
-implementation branch, source/test mutation, or physical migration has yet
-begun. All other work, including
+base is published and upstream-equal. The dedicated execution branch now
+exists at that exact parent; parent/no-overlap/mode evidence was refreshed, the
+supported tiny-fixture dry run passed (`1 passed`), and the pre-cutover focused
+baseline passed (`347 passed`). No source/test mutation or physical migration
+has yet begun. Publish and prove this execution-baseline checkpoint equal
+before the atomic cutover. All other work, including
 the unsliced `PROGRAM-01` remainder, remains preserved but currently dead/out
 of scope until the first physical migration and explicit user reassessment.
