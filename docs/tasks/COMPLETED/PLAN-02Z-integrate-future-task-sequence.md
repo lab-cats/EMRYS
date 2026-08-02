@@ -89,7 +89,7 @@ validation-report protocol from the Step `00a` validator.
 - [REVIEW-ARCH-03A](REVIEW-ARCH-03A-review-validation-publication-migration.md),
   [REVIEW-REL-03A](REVIEW-REL-03A-review-validation-publication-migration.md),
   and
-  [REVIEW-UX-03A](../TODO/REVIEW-UX-03A-review-validation-publication-migration.md)
+  [REVIEW-UX-03A](../IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md)
   as the narrow pre-execution review chain.
 - A reconciled roadmap and handoff that keep all other work frozen and identify
   the exact pre-migration stop.

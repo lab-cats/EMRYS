@@ -54,8 +54,10 @@ freshness, evidence, ownership, or
   [`architecture review`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
   and
   [`reliability review`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md)
-  are complete; usability review is next. The unsliced `PROGRAM-01` remainder
-  remains preserved and out of scope pending user reassessment.
+  are complete;
+  [`usability review`](../tasks/IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md)
+  is selected for review only. The unsliced `PROGRAM-01` remainder remains
+  preserved and out of scope pending user reassessment.
 - Plan each runway package just in time. Divide execution into small,
   internally reviewed phases and complete only the active phase before loading
   detail for the next one.

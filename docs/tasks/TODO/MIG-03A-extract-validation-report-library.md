@@ -54,7 +54,7 @@ coverage, making it the smallest evidence-supported migration unit.
 
 ## Blocked by
 
-- [REVIEW-UX-03A](REVIEW-UX-03A-review-validation-publication-migration.md) — Required: tranche-specific architecture, reliability, and public-boundary reviews must be incorporated before execution planning closes.
+- [REVIEW-UX-03A](../IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md) — Required: tranche-specific architecture, reliability, and public-boundary reviews must be incorporated before execution planning closes.
 
 ## Completion unblocks
 

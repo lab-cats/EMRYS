@@ -158,3 +158,15 @@ that sequence closes; current checkout and roadmap truth remain in
 - **Evidence boundary:** documentation-only review of existing fault evidence;
   no test execution, defect correction, cleanup, recovery action, or evidence
   promotion occurred.
+
+## 2026-08-02T13:43:57-0400 — Usability review selected
+
+- **Boundary:** `REVIEW-UX-03A` starts from reliability-corrected checkpoint
+  `102510b` and may revise only public-boundary planning/card documentation.
+- **Risk:** a private loader can preserve computation while degrading direct
+  command diagnostics, arbitrary-CWD behavior, or maintainer findability; a
+  handoff can also blur "selected for planning" into "implementation begun."
+- **Decision:** compare every current public script path and CLI boundary,
+  require explicit loader-failure behavior and discoverable owner documentation,
+  and preserve an unambiguous stop before source mutation. The same-author
+  review limitation remains disclosed.

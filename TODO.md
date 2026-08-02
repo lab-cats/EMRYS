@@ -9,8 +9,9 @@ scope, roadmap, current state, blockers, or open questions.
 has completed the documentation-only first-tranche plan. Its dedicated
 [`architecture review`](docs/tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
 is complete; the next eligible action is
-[`REVIEW-UX-03A`](docs/tasks/TODO/REVIEW-UX-03A-review-validation-publication-migration.md)
-after the completed architecture and reliability passes.
+[`REVIEW-UX-03A`](docs/tasks/IN_PROGRESS/REVIEW-UX-03A-review-validation-publication-migration.md),
+which is selected for review only after the completed architecture and
+reliability passes.
 The proposed unit is
 [`MIG-03A`](docs/tasks/TODO/MIG-03A-extract-validation-report-library.md),
 which remains preceded by its architecture, reliability, and usability reviews.
