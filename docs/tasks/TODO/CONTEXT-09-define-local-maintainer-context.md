@@ -16,6 +16,15 @@ provided it links to canonical cross-cutting truth rather than copying it.
 - Correctness outranks token reduction; local bundles extend the freshness,
   routing, and impact-based expansion rules in
   [`TASK_START.md`](../../operations/TASK_START.md).
+- Load only context relevant to the current thin slice. Use task-oriented maps
+  and targeted anchors for traversal rather than broad document bundles.
+- Do not routinely reread unchanged documents when the task-start freshness
+  conditions permit reuse, and do not load unrelated test or implementation
+  context.
+- Keep `TASK_START.md` universal and route conditional information elsewhere.
+- Add child maps progressively as the repository evolves; parent maps link to
+  them without duplicating their entries or contents.
+- Observing cleanup debt does not expand the active slice or its context.
 - Each local context explains purpose, local files, input/output contracts,
   direct upstream/downstream interfaces, relevant tests, and canonical links.
 - Local context never duplicates mutable branch, evidence, command, or roadmap
@@ -65,6 +74,9 @@ provided it links to canonical cross-cutting truth rather than copying it.
 
 - A maintainer can correctly scope representative local work from the bundle
   and canonical links; cross-cutting risks still trigger broader inspection.
+- Representative tasks traverse targeted maps and anchors without routine
+  unchanged-document rereads or unrelated test and implementation context.
+- Cleanup observations remain deferred without expanding the active context.
 - No mutable fact gains a second owner.
 
 ## Canonical documentation updates

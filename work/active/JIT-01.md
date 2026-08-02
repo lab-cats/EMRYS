@@ -1,8 +1,8 @@
 ## Current slice
 
-Outcome: `DOC-IA-01` contains the missing settled ownership and navigation constraints.
-Touches: `docs/tasks/TODO/DOC-IA-01-define-documentation-ownership-and-navigation.md` and `work/active/JIT-01.md`.
-Stop: No final hierarchy is designed, and no other card is inspected or moved.
+Outcome: `CONTEXT-09` contains the missing settled thin-slice context constraints.
+Touches: `docs/tasks/TODO/CONTEXT-09-define-local-maintainer-context.md` and `work/active/JIT-01.md`.
+Stop: No future context system is implemented, and no other card is inspected or moved.
 
 ## Cleanup queue
 
