@@ -510,7 +510,8 @@ planning checkpoint is clean and published, select and perform
 [`REVIEW-ARCH-03B`](../tasks/COMPLETED/REVIEW-ARCH-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
-are complete. The dedicated
-[`REVIEW-UX-03B`](../tasks/IN_PROGRESS/REVIEW-UX-03B-review-construct-star-index-migration.md)
-is selected for read-only review; `MIG-03B` remains unselected. The unsliced
+and
+[`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
+are complete. The next action is to select `MIG-03B` for task-specific execution
+planning; it remains in `TODO` until that lifecycle checkpoint. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

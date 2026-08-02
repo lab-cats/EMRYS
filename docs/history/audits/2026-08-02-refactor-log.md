@@ -553,3 +553,30 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   provenance, owner findability, link repair, and rollback. The same campaign
   agent performs the pass, so independent authorship is not claimed;
   executable/test mutation and computational testing remain out of scope.
+
+## 2026-08-02T19:27:45-0400 — REVIEW-UX-03B completed
+
+- **High finding — command/CWD ambiguity:** the current runbook lists the job
+  as a bare path, while the migration changes that path and the job remains a
+  mode-`0644`, implicit-execute scheduler input whose relative data paths use
+  caller CWD. Publish one explicit final `sbatch` command and distinguish that
+  preserved CWD dependence from the validator's explicit-interpreter,
+  explicit-input arbitrary-CWD behavior. Do not retain a legacy alias.
+- **Medium finding — Make visibility:** both `validation-static` and `smoke`
+  currently cover the job only through `jobs/*.slurm`. Add the exact final job
+  path alongside the remaining flat-job check and update literal expansions in
+  the executable/test commit; do not let the migrated native asset fall outside
+  syntax validation or restore its old path for wildcard convenience.
+- **Medium finding — owner journey:** the documentation-close README must name
+  final job/validator/test paths and invocation forms, warn about implicit job
+  execution and caller-relative inputs, link the contract/runbook, describe the
+  intentional artifact-provenance path transition, and state the no-wrapper,
+  no-package, no-descriptor, and local-only evidence boundaries.
+- **Accepted transition:** all repository-owned job, validator, Make, artifact,
+  test, and documentation consumers can move atomically. A compatibility alias
+  would preserve an accidental flat-layout surface and is not justified.
+- **Independence and evidence boundary:** this was a separate committed-time
+  adversarial pass by the same campaign agent; independent authorship is not
+  claimed. Corrections affect planning documentation only. No executable/test
+  file changed, no computational test ran, and no runtime, cluster, production,
+  scientific-review, or biological-readiness evidence was created.

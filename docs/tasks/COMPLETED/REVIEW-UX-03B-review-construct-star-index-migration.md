@@ -83,5 +83,18 @@ arbitrary-CWD behavior, or an undiscoverable final owner.
 
 ## Completion record
 
-Not started. If performed by the campaign owner, record an independent-in-time
-adversarial pass and do not claim independent authorship.
+Completed as a read-only independent-in-time adversarial pass against published
+reliability checkpoint `581879f` after selection checkpoint `2f39154`. One high
+finding replaces the ambiguous bare job path with the explicit final `sbatch`
+command and requires documentation/tests to distinguish its preserved caller-
+CWD dependence from the explicit-interpreter validator's arbitrary-CWD
+behavior. One medium finding requires `validation-static` and `smoke` plus their
+literal Make oracle to keep syntax-checking the final job after it leaves the
+flat wildcard. A second medium finding freezes the owner README journey: final
+paths and invocation forms, implicit-execute/CWD warning, contract/runbook
+links, provenance transition, no-wrapper/package/descriptor boundary, and
+local-only evidence ceiling. All known repository commands and consumers can
+move coherently, so no alias or compatibility wrapper is justified and no
+escalation condition was triggered. The same campaign agent performed the pass,
+so independent authorship is not claimed. No executable/test file changed and
+no computational test ran.

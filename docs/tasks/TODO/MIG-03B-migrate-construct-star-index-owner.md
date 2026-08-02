@@ -77,10 +77,25 @@ the first functional owner physically unmigrated.
   path and `src/norad` source boundary are active, measure first, compare the
   final-path entry to those exact counts, and only then run the reviewed
   baseline-update command. Do not overwrite the only comparison evidence.
+- The reviewed public path transition has no alias. The supported scheduler
+  command becomes
+  `sbatch src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm`
+  from the same caller-owned working directory required today; the mode-`0644`
+  job is not a direct-execution CLI and remains CWD-dependent. The supported
+  validator form becomes an explicit compatible Python interpreter plus
+  `src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py`; with
+  explicit input/output paths it remains CWD-independent. Keep those two CWD
+  contracts distinct in tests and documentation.
+- The owner README must list the final job, validator, and mirrored test paths;
+  show the supported invocation forms; warn about implicit job execution and
+  caller-relative inputs; link the detailed contract and exact runbook; explain
+  the intentional artifact implementation-evidence path transition; state the
+  no-wrapper/no-package/no-descriptor boundary; and label all migration evidence
+  as local fixture/mock evidence only.
 
 ## Blocked by
 
-- [REVIEW-UX-03B](../IN_PROGRESS/REVIEW-UX-03B-review-construct-star-index-migration.md) — Required: the dedicated architecture, reliability, and usability passes must close before task-specific execution planning.
+- [REVIEW-UX-03B](../COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md) — Required: the dedicated architecture, reliability, and usability passes must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -155,10 +170,18 @@ the first functional owner physically unmigrated.
   update command after a separate final-path measurement proves the moved
   validator retains the frozen `165/189` line and `42/60` branch counts and
   global line/branch rates do not regress.
+- Update `validation-static` and `smoke` so each still syntax-checks every flat
+  job plus the exact final Step `00a` job path. Do not leave the moved job
+  outside the gate, restore the legacy path for a wildcard, or replace explicit
+  paths with runtime discovery; update the literal Make oracle in the same
+  executable/test commit.
 - After executable state is final, add the concise owner README and update only
   impact-directed topology, inventory, commands, test-baseline, roadmap,
   handoff, card lifecycle, links, and dated audit documentation in a separate
-  commit.
+  commit. Replace every active Step `00a` job, validator, and focused-test path
+  in `RUNBOOK.md`; document the job as an explicit `sbatch` command and retain
+  the validator's explicit-interpreter form. Do not retain a legacy command as
+  an alias or fallback.
 
 ## Out of scope
 
@@ -188,6 +211,8 @@ the first functional owner physically unmigrated.
   compatibility copy, or duplicate owner.
 - Path-aware independent caller inventories that continue covering all public
   Python and SLURM surfaces without pretending final-owner files remain flat.
+- One discoverable owner README and one authoritative final command for the
+  scheduler job, validator dry run/execute, and focused tests; no legacy alias.
 - Coverage/static/smoke/Make wiring that measures and compiles the final owner,
   plus a reviewed baseline whose moved-validator counts remain traceable.
 - Exact legacy-path searches, focused old/new parity evidence, one complete
@@ -234,6 +259,11 @@ the first functional owner physically unmigrated.
 - Exact searches find no live legacy job, validator, or direct-test path; no
   wrapper, duplicate implementation, package marker, stage-to-stage import,
   undeclared caller, stale runbook command, or stale Markdown link remains.
+- `validation-static`, `smoke`, `shell-test`, and their literal Make expansions
+  invoke or inspect the exact final paths. The runbook and owner README
+  distinguish the job's caller-CWD dependence from the validator's explicit-
+  path arbitrary-CWD behavior and do not imply direct execution of a mode-`0644`
+  file.
 - The complete applicable computational gate runs on the final executable tree.
   After the documentation-only close, Git/documentation validation reports no
   migration-caused finding. Any inherited nonpassing condition is recorded
