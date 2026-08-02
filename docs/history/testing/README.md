@@ -7,4 +7,6 @@ remain in [`TEST_BASELINE.md`](../../design/TEST_BASELINE.md).
 
 ## Records
 
-No dated testing record has been migrated yet.
+| Frozen date | Record | Provenance and boundary |
+| --- | --- | --- |
+| 2026-08-01 | [Test baseline and public-contract traceability](2026-08-01-test-baseline-and-public-contract-traceability.md) | Initial baseline `4fc32e0` and affirmative TEST-01Z snapshot `dc6f444` on 2026-07-31; exact final source `eb65c95` on 2026-08-01. Dated counts, matrices, LOG-01 inventory, gates, and decisions only; current policy and risk routes remain in `TEST_BASELINE.md`. |

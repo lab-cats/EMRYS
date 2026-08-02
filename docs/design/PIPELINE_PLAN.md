@@ -327,10 +327,10 @@ validation during this sequence.
   recheck triggers and links the immutable dated audit that owns the original
   evidence-ranked findings, test-first dispositions, and retained/deferred
   boundaries;
-- [`TEST_BASELINE.md`](TEST_BASELINE.md) owns the measured global Python
-  line/branch summary, public-contract risk-to-test matrix, fixture
-  independence classification, and the evidence behind the exact Phase `01`
-  characterization sequence;
+- [`TEST_BASELINE.md`](TEST_BASELINE.md) owns the current Python non-regression
+  policy, evidence vocabulary, contract-risk checklist, and direct regression
+  routes and links the immutable dated baseline that owns exact counts,
+  matrices, and Phase `01` characterization evidence;
 - the independent Step `09` characterization oracle is complete without
   changing the production validator or statistical method;
 - validation efficiency is measured and hardened before the five
