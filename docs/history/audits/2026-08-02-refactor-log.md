@@ -139,3 +139,22 @@ that sequence closes; current checkout and roadmap truth remain in
   golden owner to the exact final file, require old/new state equivalence, and
   keep every known unsafe state explicitly characterized. The previously
   disclosed same-author limitation continues to apply.
+
+## 2026-08-02T13:42:33-0400 — Reliability review findings incorporated
+
+- **High — revised:** a private exact-file loader can leave a partially
+  initialized module in `sys.modules` if execution fails. The card now requires
+  exact cache ownership, wrong-path rejection, owned-partial removal, and
+  foreign-entry preservation; no loader may reuse partial state.
+- **Medium — revised:** the initial parity prose named headline defects but did
+  not enumerate every protected injected outcome. The acceptance boundary now
+  covers first/repeat publication, malformed stage/predecessor, symlinks,
+  fsync, both move boundaries, post-publish validation, interruption, late
+  collision, failed restoration, cleanup, descriptor, and lock residue.
+- **Accepted:** the current safe outcomes stay preserved; metadata-only rewrite
+  blindness, unordered report acceptance, late-foreign deletion, unprotected
+  rollback residue, cleanup/descriptor retention, and post-publication lock
+  residue remain characterized defects rather than target behavior.
+- **Evidence boundary:** documentation-only review of existing fault evidence;
+  no test execution, defect correction, cleanup, recovery action, or evidence
+  promotion occurred.

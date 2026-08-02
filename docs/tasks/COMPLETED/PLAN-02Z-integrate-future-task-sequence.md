@@ -87,7 +87,7 @@ validation-report protocol from the Step `00a` validator.
 - [MIG-03A](../TODO/MIG-03A-extract-validation-report-library.md), a single
   neutral-concern migration card.
 - [REVIEW-ARCH-03A](REVIEW-ARCH-03A-review-validation-publication-migration.md),
-  [REVIEW-REL-03A](../IN_PROGRESS/REVIEW-REL-03A-review-validation-publication-migration.md),
+  [REVIEW-REL-03A](REVIEW-REL-03A-review-validation-publication-migration.md),
   and
   [REVIEW-UX-03A](../TODO/REVIEW-UX-03A-review-validation-publication-migration.md)
   as the narrow pre-execution review chain.

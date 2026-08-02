@@ -31,6 +31,9 @@ coverage, making it the smallest evidence-supported migration unit.
   in this unit. Each uses a caller-local `importlib` loader to resolve the exact
   final file from its own location, cache one private internal module identity,
   and reject a cached module whose resolved `__file__` is not that exact path.
+  On first load it registers the owned module before execution and removes only
+  that exact owned cache entry if execution fails; it never overwrites or
+  deletes a foreign entry, and it never reuses a partially initialized module.
   The loader does not change `sys.path`, install anything, assume caller CWD or
   global `PYTHONPATH`, introduce a shared bootstrap helper, or establish a
   public import name. Its caller-local scaffolding leaves with that validator
@@ -41,9 +44,10 @@ coverage, making it the smallest evidence-supported migration unit.
   cutovers, and removal of the old embedded implementation therefore form one
   executable commit; no temporary re-export or compatibility commit is allowed.
 - The same-size/restored-mtime snapshot gap, report-row-order gap, late foreign-
-  final deletion, incomplete rollback/recovery, previous/staged cleanup, and
-  lock-cleanup behaviors remain characterized defects. This migration neither
-  corrects nor approves them.
+  final deletion, incomplete rollback without a retained lock/recovery marker,
+  previous/staged cleanup residue, open-descriptor/lock retention, and
+  post-publication lock-cleanup behavior remain characterized defects. This
+  migration neither corrects nor approves them.
 - Source and direct-test modes are `0644`; public validator filenames, shebangs,
   arguments, help, streams, exit statuses, dry-run/execute effects, TSV bytes,
   check rosters, and evidence meanings remain unchanged.
@@ -84,14 +88,17 @@ coverage, making it the smallest evidence-supported migration unit.
 ## In scope
 
 - Record the exact frozen parent, refreshed consumer roster, pre-move modes,
-  applicable contract rows, and rollback targets before source mutation.
+  applicable contract rows, complete shared fault-outcome matrix, and rollback
+  targets before source mutation.
 - Introduce the final neutral module, move the direct fault-test owner, cut all
   thirteen validators and affected direct tests through the exact file-based
   private loader, and remove the old embedded implementation in one atomic
   executable commit.
 - Prove that the caller-local loaders resolve one exact module object, leave
   `sys.path` unchanged, reject a wrong cached path, and preserve arbitrary-CWD
-  direct execution without a package install or compatibility re-export.
+  direct execution without a package install or compatibility re-export. Fault
+  injection must also prove owned partial-cache removal and foreign-cache
+  preservation when module execution fails.
 - Update the explicit coverage baseline path/rates through its reviewed command
   only if measurement requires it; a moved module may not disappear from the
   baseline or evade the new-shared-module thresholds.
@@ -137,8 +144,12 @@ coverage, making it the smallest evidence-supported migration unit.
   closed, and no package installation or public import identity is required.
 - The full publication-fault matrix still observes each current success,
   failure, interruption, rollback, residue, and characterized-defect state
-  against the final module; independent golden and roster expectations remain
-  independent of production rules.
+  against the final module. It includes first/repeat publication, malformed
+  staged/predecessor bytes, symlink rejection, staged fsync, predecessor and
+  final moves, post-publication validation, `KeyboardInterrupt`, late foreign
+  collision, failed restoration, previous/staged/lock cleanup, and descriptor
+  retention. Independent golden and roster expectations remain independent of
+  production rules.
 - Every affected direct validator test passes, the complete Python suite and
   coverage gate pass, the new shared module satisfies at least 90% line and 85%
   branch coverage, and Git/documentation validation passes at the final tree.
