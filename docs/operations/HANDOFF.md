@@ -508,6 +508,7 @@ activate unrelated work. The only proposed next unit is
 [`MIG-03B`](../tasks/TODO/MIG-03B-migrate-construct-star-index-owner.md); after this
 planning checkpoint is clean and published, select and perform
 [`REVIEW-ARCH-03B`](../tasks/COMPLETED/REVIEW-ARCH-03B-review-construct-star-index-migration.md)
-is complete. The next action is to select its dedicated reliability review;
-usability and `MIG-03B` remain unselected. The unsliced
+is complete. Its dedicated
+[`REVIEW-REL-03B`](../tasks/IN_PROGRESS/REVIEW-REL-03B-review-construct-star-index-migration.md)
+is selected for read-only review; usability and `MIG-03B` remain unselected. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

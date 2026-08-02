@@ -489,3 +489,15 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   claimed. Corrections affect planning documentation only. No executable/test
   file changed, no computational test ran, and no runtime, cluster, production,
   scientific-review, or biological-readiness evidence was created.
+
+## 2026-08-02T19:18:58-0400 — REVIEW-REL-03B selected
+
+- **Selection:** move only `REVIEW-REL-03B` to `IN_PROGRESS` and repair its
+  lifecycle links after published architecture checkpoint `94199dc` was clean,
+  upstream-equal, and live-remote equal. `REVIEW-UX-03B` and `MIG-03B` remain
+  unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time adversarial
+  pass over job side effects/failures, validator publication states, artifact
+  implementation evidence, coverage rename accounting, and rollback. The same
+  campaign agent performs the pass, so independent authorship is not claimed;
+  executable/test mutation and computational testing remain out of scope.
