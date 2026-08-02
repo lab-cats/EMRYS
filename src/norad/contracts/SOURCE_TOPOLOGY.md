@@ -88,6 +88,32 @@ The descriptor version governs this YAML envelope. It does not alter the
 frozen identity key, implement descriptor loading, or establish a packaging or
 distribution version.
 
+## Analysis-module contract
+
+Scientific analyses remain first-class modules rather than being placed under
+`stages/`:
+
+```text
+src/norad/analyses/<public-slug>/
+├── README.md
+├── CONTRACT.md
+├── analysis.v1.yaml
+├── contracts/
+│   └── <analysis-local-interface>.v1.schema.json
+└── <owned implementation, validation, and scheduler assets>
+```
+
+`analysis.v1.yaml` uses the same fixed identity, documentation, and interface-
+reference fields as the stage envelope, with
+`$schema: ../../contracts/schemas/analysis_descriptor.v1.schema.json`,
+`kind: analysis`, and the frozen `norad.analysis.<public-slug>.v1` key. Local
+analysis schemas remain under the analysis owner; cross-stage inputs and
+public analysis outputs reference neutral versioned schemas.
+
+An analysis consumes declared stage artifacts through those contracts. It does
+not import a stage implementation or become a child of the final preprocessing
+stage that happens to precede it in the current DAG.
+
 ## Neutral contract boundary
 
 `contracts/` is neutral: it may not import implementation from `stages/`,
