@@ -25,7 +25,10 @@ VALIDATOR_PATHS = {
     "00b": Path(
         "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
     ),
-    "00c": Path("scripts/validate_step_00c_reference_sidecars.py"),
+    "00c": Path(
+        "src/norad/stages/construct_FASTA_sidecars/"
+        "validate_step_00c_reference_sidecars.py"
+    ),
     "01": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/"
         "validate_step_01_star_alignment.py"

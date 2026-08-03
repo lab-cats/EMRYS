@@ -10,7 +10,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/step_00c_prepare_gatk_reference.sh \
+  src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh \
     --reference-fasta refs/novogene_ref/genome.fa \
     [--samtools-bin SAMTOOLS_BIN] \
     [--gatk-bin GATK_BIN] \

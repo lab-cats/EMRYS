@@ -232,6 +232,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["00c"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_00c",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/construct_FASTA_sidecars/"
+                    "step_00c_prepare_gatk_reference.sh"
+                ),
+                "sha256": (
+                    "ed3e9ca039102c881c4f91cb02fd32e4"
+                    "a67d09ad799300c789cbab27ce1ab0a1"
+                ),
+            }
+        ],
+    }
     assert evidence["01"] == {
         "status": "implemented",
         "git_commit": git_commit,

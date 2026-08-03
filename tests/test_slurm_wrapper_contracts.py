@@ -22,7 +22,8 @@ JOB_PATHS = {
         "src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
     ),
     "step_00c_prepare_gatk_reference.slurm": Path(
-        "jobs/step_00c_prepare_gatk_reference.slurm"
+        "src/norad/stages/construct_FASTA_sidecars/"
+        "step_00c_prepare_gatk_reference.slurm"
     ),
     "step_01_star_align.slurm": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm"
@@ -99,7 +100,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="fallback",
-        delegation="scripts/step_00c_prepare_gatk_reference.sh",
+        delegation=(
+            "src/norad/stages/construct_FASTA_sidecars/"
+            "step_00c_prepare_gatk_reference.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

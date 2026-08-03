@@ -48,7 +48,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
     ),
     "validate_step_00c_reference_sidecars.py": Path(
-        "scripts/validate_step_00c_reference_sidecars.py"
+        "src/norad/stages/construct_FASTA_sidecars/"
+        "validate_step_00c_reference_sidecars.py"
     ),
     "validate_step_01_star_alignment.py": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/"
@@ -99,7 +100,8 @@ INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPO
 SHELL_ENTRYPOINT_PATHS = {
     "render_run_report.sh": Path("scripts/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
-        "scripts/step_00c_prepare_gatk_reference.sh"
+        "src/norad/stages/construct_FASTA_sidecars/"
+        "step_00c_prepare_gatk_reference.sh"
     ),
     "step_01_star_align.sh": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"

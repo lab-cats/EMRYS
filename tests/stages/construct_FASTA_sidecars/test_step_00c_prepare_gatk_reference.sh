@@ -2,9 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_00c_prepare_gatk_reference.sh"
-JOB="$REPO_ROOT/jobs/step_00c_prepare_gatk_reference.slurm"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh"
+JOB="$REPO_ROOT/src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -401,6 +401,50 @@ assert_contains "$lock_output" "lock already exists"
 assert_contains "$lock_output" "test-owner"
 assert_not_exists "$lock_fasta.fai"
 assert_not_exists "$lock_dir/genome.dict"
+
+printf 'Running partial final publication failure check...\n'
+real_mv_bin="$(command -v mv)"
+cat >"$fake_bin/mv" <<'EOF_MV'
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="${!#}"
+if [[ -n "${FAIL_MV_DESTINATION:-}" && "$destination" == "$FAIL_MV_DESTINATION" ]]; then
+    printf 'controlled final DICT publication failure: %s\n' "$destination" >&2
+    exit 73
+fi
+exec "$REAL_MV_BIN" "$@"
+EOF_MV
+chmod +x "$fake_bin/mv"
+
+partial_dir="$tmp_dir/partial_publication"
+partial_fasta="$partial_dir/genome.fa"
+partial_dict="$partial_dir/genome.dict"
+partial_run_token="partial-publication"
+write_fasta "$partial_fasta"
+partial_output="$tmp_dir/partial_publication.out"
+set +e
+REAL_MV_BIN="$real_mv_bin" \
+FAIL_MV_DESTINATION="$partial_dict" \
+SLURM_JOB_ID="$partial_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$partial_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$partial_output" 2>&1
+partial_status=$?
+set -e
+
+[[ "$partial_status" -eq 73 ]] || fail "partial publication exit was $partial_status, expected 73"
+[[ -s "$partial_fasta.fai" ]] || fail "partial publication did not retain final FAI"
+assert_not_exists "$partial_dict"
+assert_not_exists "$partial_dir/.step_00c_prepare_gatk_reference.lock"
+assert_not_exists "$partial_fasta.fai.tmp.$partial_run_token"
+assert_not_exists "$partial_dict.tmp.$partial_run_token"
+assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input"
+assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input.fai"
+assert_contains "$partial_output" "controlled final DICT publication failure"
 
 printf 'Running stale Step 05 path check...\n'
 stale_output="$tmp_dir/stale.out"
