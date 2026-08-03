@@ -35,7 +35,7 @@ characterize these defects without fixing or approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03K](REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03K](../TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 
@@ -115,5 +115,8 @@ characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Architecture prerequisite is complete; this card remains in
-`TODO` until separately selected. No executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal architecture checkpoint
+`2452332d463f9517eeaf0b2a5af13b9f0bf65fbc`. No reliability finding is
+recorded yet, no usability review or migration card is selected, and no
+executable/test file changed or ran.
