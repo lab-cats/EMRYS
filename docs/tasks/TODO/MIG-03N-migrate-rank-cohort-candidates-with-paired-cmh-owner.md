@@ -29,7 +29,8 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   `09`, final source home
   `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/`, and mirrored
   test home `tests/analyses/rank_cohort_candidates_with_paired_CMH/`.
-- Candidate production moves are the mode-`0755` Bash transaction entry point
+- Architecture-reviewed production moves are the mode-`0755` Bash transaction
+  entry point
   `scripts/step_09_cmh_editing_site_calling.sh`, mode-`0644` R implementation
   `scripts/step_09_cmh_editing_site_calling.R`, mode-`0644` Python validator
   `scripts/validate_step_09_cmh_outputs.py`, and mode-`0755` scheduler entry
@@ -45,7 +46,8 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   `1b24184273a33b9e0389de12816b78ce396d408319556141dad6b66a0c5957ba`,
   and job
   `5d78f88bc0eed7e48821d7abaf7986c9f38c49ebbb7191b90729a08ea9124049`.
-- Candidate owner-local protection moves are the mode-`0755` shell test
+- Architecture-reviewed owner-local protection moves are the mode-`0755` shell
+  test
   `tests/shell/test_step_09_cmh_editing_site_calling.sh`, mode-`0755` guarded-R
   runner `tests/r/run_step_09_cmh_tests.sh`, mode-`0644` R semantic test
   `tests/r/test_step_09_cmh_editing_site_calling.R`, mode-`0644` validator test
@@ -60,11 +62,15 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   `e7a2906052c1ae81f56e11b2698a253652a91af42076edc5e570e772379a1b57`,
   `c0888fcf97204b04d78fb02089a25e0d164108ad80b34dfa9253d885406a8438`,
   and `61dd40ca6a128cc06c5457d963d4569484512f34b57fbf544cf4608c01a429e7`.
-  These seven files total `125,573` bytes and `3,111` lines. Architecture
-  review must prove whether all seven belong in the mirrored owner and that no
-  Step `09` pending scaffold exists.
-- The evidence-backed cutover hypothesis is eleven moves plus ten explicit
-  integration owners: `Makefile`, `scripts/build_artifact_index.py`,
+  These seven files total `125,573` bytes and `3,111` lines. All seven belong
+  in the mirrored analysis-test owner: the R runner/test, Python oracle/test,
+  and golden corpus are Step `09`-specific and no other tracked owner consumes
+  the oracle implementation. The R semantic test alone also consumes the
+  corpus. Exact tracked-path and target-root searches find no Step `09` pending
+  scaffold; the existing final `CONTRACT.md` is documentation, not a second
+  executable or test owner.
+- The architecture-reviewed executable cutover is exactly eleven moves plus
+  ten explicit integration owners: `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
   `tests/test_validation_check_rosters.py`,
@@ -72,10 +78,15 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   `tests/shell/test_local_r_environment.sh`,
   `tests/baselines/python_coverage.json`, and
   `tests/fixtures/public_cli_contracts/make_target_expansions.json`.
-  Architecture review must prove the full caller/import/test set, exact move
-  count, and logical-file ceiling before execution planning. Artifact evidence
-  must add an exact final Step `09` producer path/hash assertion even if no old
-  literal currently exists in that test.
+  Exact tracked-path, basename, import, Make, R, job, artifact, and test
+  searches prove the full caller/import/test set and no eleventh integration
+  owner. The artifact test adds the exact final Step `09` producer path/hash
+  assertion even though it has no old producer literal. The unchanged
+  `tests/test_report_exports_v1.py` basename occurrence is a negative rendered-
+  report assertion, not a path consumer. The unchanged Step `09c` and run-
+  summary imports consume the still-flat Step `09c` contract owner, not the
+  moved Step `09` implementation. A twelfth move, eleventh integration update,
+  or different production file reopens architecture review.
 - Production path edits are limited to shell/R usage text, validator owner-root
   and exact-file dependency resolution, and scheduler R/child defaults. The
   shell and R implementation remain siblings. The validator must continue to
@@ -83,9 +94,45 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   its ambient sibling import of flat
   `scripts/step_09c_scientific_validation.py` with a private exact-file bridge,
   without moving or changing the Step `09c` owner, adding `PYTHONPATH`, changing
-  global `sys.path`, or creating a public package identity. Architecture review
-  owns exact identities, cache/path/failure behavior, root depths, and projected
-  final hashes.
+  global `sys.path`, or creating a public package identity. The bridge uses
+  private identity `_norad_step_09c_scientific_validation_contracts`, resolves
+  repository root with `parents[4]`, targets exact flat
+  `scripts/step_09c_scientific_validation.py`, inserts only that private
+  identity before execution for dataclass safety, validates cached `__file__`
+  plus readiness marker `_NORAD_STEP09C_CONTRACTS_READY`, removes its own
+  partial cache entry on failure, and reports sanitized exit-`2` diagnostics.
+  The neutral report bridge changes only `parents[1]` to `parents[4]` while
+  retaining its existing private identity, readiness, cache, and failure
+  behavior.
+- Exact reviewed path/root edits project final native values: shell mode
+  `0755`, `58,279` bytes / `1,331` lines / SHA-256
+  `7926d13bd9f0192522a20224c24716b7b8dca7a1348803cb7e8aefa1b056123a`;
+  R program mode `0644`, `48,993` bytes / `1,205` lines /
+  `f429fa71d91794f0a5f3bf4c77c7ce1981cbf5ebe98ea1ab50302dda2b18d1dc`;
+  validator mode `0644`, `18,201` bytes / `487` lines /
+  `ab14263de43d624f39490e080ead040309d9584d6bf08f101346192a8758763a`;
+  and job mode `0755`, `4,387` bytes / `121` lines /
+  `d84cfbd9afe3822b7abe8e1e5a249444801030387c77c46a29ca61cd97dcc677`.
+  Any production hash, byte, line, or mode difference reopens architecture
+  review.
+- The moved shell test resolves repository root with `../../..`, targets the
+  final producer/job/R paths, and constructs its delegated-job fixture at the
+  exact final child path. The moved guarded-R runner resolves root with
+  `../../..`, targets the owner-local R test and final R program, and remains
+  the Make/local-R route. The R test resolves root with three parent segments,
+  targets the final R program, and consumes the owner-local golden corpus. The
+  moved validator test uses `parents[3]`, targets the final validator, and
+  exact-loads root `tests/validation_roster_expectations.py` without ambient
+  import or global path mutation; its existing exact Step `09c` fixture loader
+  remains private and dataclass-safe. The moved oracle test uses `parents[3]`
+  and sibling oracle/corpus paths under its owner. The oracle implementation
+  and corpus move byte-identically.
+- Make moves the shell, validator, and guarded-R runner recipes; the central
+  local-R oracle changes only its expected Step `09` test path. Once the shell
+  and job leave flat wildcards, their exact final paths enter both
+  `validation-static` and `smoke` plus the literal Make expansion evidence.
+  Public CLI, R, SLURM, validation roster, neutral report, artifact producer,
+  and coverage routes remain explicit rather than adding recursive discovery.
 - Preserve shell CLI/help, safe analysis/cohort IDs, explicit sample and
   partition manifests, Step `08` root, output root, control/treatment and
   optional background conditions, target RNA substitution, thresholds,
@@ -147,6 +194,13 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   branches with global floors `9601/11758` lines and `3367/4784` branches.
   Final measurement must retain target rates, keep every non-target row exact,
   and preserve global covered-count floors after the path move.
+- Old and final executable/test paths may not coexist. After reviewed
+  reliability baselines, apply all eleven moves, ten integrations, and exact
+  production/test path and loader edits atomically. Reverse rollback restores
+  documentation last-in-first-out, then the eleven-move/ten-update cutover,
+  then any test-only reliability checkpoints in reverse order. No wrapper,
+  alias, symlink, compatibility copy, descriptor, schema, or future-owner
+  preload is justified.
 - Use only minimal old/final focused checks inside executable slices. Run the
   complete applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, migration links, small

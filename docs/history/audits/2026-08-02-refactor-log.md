@@ -5697,3 +5697,67 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   only validation rule, the complete documentation gate belongs to
   architecture-review completion. Publish and prove this selection checkpoint
   clean/upstream/live-remote-equal before beginning the review.
+
+## 2026-08-03T16:42:51-0400 — REVIEW-ARCH-03N completed
+
+- **Verified review parent:** selection
+  `cf6deb8f3a53634b0a0870f69cd82edf9c73ac0e` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Complete only the selected read-only architecture
+  pass; reliability, usability, MIG-03N, Step `09c`, and all executable/test
+  files remain unselected.
+- **DAG and move disposition:** Step `09` remains the sole dependency-valid
+  unmigrated owner. Accept exactly four native moves plus the shell test,
+  guarded-R runner, R semantic test, validator test, independent-oracle test,
+  independent oracle, and golden corpus: eleven moves total. The final source
+  home contains only `CONTRACT.md`, the final test home is absent, and exact
+  consumers prove the seven protection assets are Step `09`-specific rather
+  than shared or duplicate owners.
+- **Caller/integration disposition:** accept exactly ten integration owners:
+  Make, artifact producer mapping/evidence, public CLI, SLURM contracts,
+  validation roster, neutral report-loader matrix, guarded local-R oracle,
+  coverage baseline, and literal Make expansion. Exact path/basename/import/
+  R/job/test searches find no eleventh owner. The report-export basename check
+  remains an unchanged negative assertion; Step `09c` and run-summary imports
+  still consume the flat Step `09c` module, not moved Step `09` code.
+- **Production and loader disposition:** change only shell/R usage text,
+  validator root and ambient Step `09c` loading, and scheduler R/child defaults.
+  Both private paths resolve from `parents[4]`. Keep neutral report identity and
+  behavior; use private Step `09c` identity
+  `_norad_step_09c_scientific_validation_contracts` with exact cached file,
+  readiness marker, pre-execution dataclass-safe insertion, owned partial-cache
+  cleanup, sanitized exit `2`, and no public identity or global path mutation.
+- **Projected identities:** path-only temporary copies project shell
+  `0755` / `58,279` bytes / `1,331` lines /
+  `7926d13bd9f0192522a20224c24716b7b8dca7a1348803cb7e8aefa1b056123a`;
+  R `0644` / `48,993` / `1,205` /
+  `f429fa71d91794f0a5f3bf4c77c7ce1981cbf5ebe98ea1ab50302dda2b18d1dc`;
+  validator `0644` / `18,201` / `487` /
+  `ab14263de43d624f39490e080ead040309d9584d6bf08f101346192a8758763a`;
+  and job `0755` / `4,387` / `121` /
+  `d84cfbd9afe3822b7abe8e1e5a249444801030387c77c46a29ca61cd97dcc677`.
+  Any variance reopens architecture review.
+- **Test, artifact, and coverage disposition:** shell/R tests resolve three
+  parent segments and final/owner-local assets. The validator and oracle tests
+  use `parents[3]`, private exact helpers, and no ambient root path. Central
+  scheduler/local-R/report/CLI/artifact/roster/coverage/Make owners stay
+  central. Artifact Step `09` producer evidence changes only to the final shell
+  path/hash. Coverage moves only the validator row, retains at least `154/158`
+  lines and `34/40` branches, keeps every non-target row exact, and preserves
+  global floors `9601/11758` lines and `3367/4784` branches.
+- **Atomicity, rollback, and evidence:** after reliability checkpoints, apply
+  exactly eleven moves plus ten integrations atomically with no old/final
+  coexistence. Reverse documentation close, atomic cutover, then test-only
+  checkpoints. Add no wrapper, alias, symlink, package, schema, descriptor,
+  Step `09c` extraction, dependency action, or future-owner preload. This was a
+  same-agent committed-time read-only pass; temporary copies only projected
+  bytes. No repository executable, test, harness, dependency, R runtime,
+  scheduler, cluster, production, scientific-review, or biological state
+  changed or ran.
+- **Card-boundary gate:** after moving the card to `COMPLETED` and repairing
+  every direct lifecycle link, `git diff --check` passes and the exact RUNBOOK
+  `make -s documentation-check` reports `PASS documentation structure (208
+  Markdown documents, 129 task cards, 6 Mermaid sources)`. No path, anchor,
+  lifecycle, dependency, cycle, orphan, schema, or diagram finding remains.
+  Publish and prove completion clean/upstream/live-remote-equal before
+  selecting reliability alone.
