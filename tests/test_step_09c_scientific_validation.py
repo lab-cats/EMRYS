@@ -828,6 +828,262 @@ def test_identical_byte_input_replacement_is_not_detected(
     )
 
 
+def test_first_publication_moves_twelve_payloads_then_summary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    ordered_keys = [key for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES]
+    final_by_path = {path: key for key, path in context.output_paths.items()}
+    original_replace = FIXTURES.CONTRACT.os.replace
+    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    original_confirm = FIXTURES.CONTRACT.confirm_inputs_unchanged
+    published_reads: list[str] = []
+    confirm_count = 0
+    publication_order: list[str] = []
+    barrier: dict[str, Any] = {}
+
+    def observe_read_tsv(label: str, *args: Any, **kwargs: Any) -> Any:
+        if label.startswith("Published Step 09c"):
+            published_reads.append(label)
+        return original_read_tsv(label, *args, **kwargs)
+
+    def observe_confirm(input_hashes: Any) -> None:
+        nonlocal confirm_count
+        confirm_count += 1
+        original_confirm(input_hashes)
+
+    def observe_replace(source: Any, destination: Any) -> None:
+        source_path = Path(source)
+        destination_path = Path(destination)
+        original_replace(source, destination)
+        key = final_by_path.get(destination_path)
+        if key is None or not source_path.parent.name.endswith(".tmp"):
+            return
+        publication_order.append(key)
+        if key == "review_summary":
+            output_dir = destination_path.parent
+            temp_dirs = list(
+                output_dir.glob(f".{fixture.review_id}.step09c.*.tmp")
+            )
+            barrier.update(
+                finals={
+                    output_key
+                    for output_key, path in context.output_paths.items()
+                    if path.is_file()
+                },
+                lock_is_file=(
+                    output_dir / f".{fixture.review_id}.step09c.lock"
+                ).is_file(),
+                temp_dir_count=len(temp_dirs),
+                temp_dir_entries=(
+                    list(temp_dirs[0].iterdir()) if len(temp_dirs) == 1 else []
+                ),
+                backup_dir_count=len(
+                    list(
+                        output_dir.glob(
+                            f".{fixture.review_id}.step09c.*.previous"
+                        )
+                    )
+                ),
+                published_read_count=len(published_reads),
+                confirm_count=confirm_count,
+            )
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", observe_read_tsv)
+    monkeypatch.setattr(
+        FIXTURES.CONTRACT,
+        "confirm_inputs_unchanged",
+        observe_confirm,
+    )
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_replace)
+
+    FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert publication_order == ordered_keys
+    assert barrier == {
+        "finals": set(ordered_keys),
+        "lock_is_file": True,
+        "temp_dir_count": 1,
+        "temp_dir_entries": [],
+        "backup_dir_count": 0,
+        "published_read_count": 0,
+        "confirm_count": 1,
+    }
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    assert {path.name for path in final_dir.iterdir()} == expected_output_names(
+        fixture.review_id
+    )
+
+
+def test_replacement_backs_up_summary_first_then_publishes_summary_last(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    rewrite_field(fixture.review_plan, "notes", "Replacement publication order.")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    ordered_keys = [key for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES]
+    key_by_name = {path.name: key for key, path in context.output_paths.items()}
+    final_by_path = {path: key for key, path in context.output_paths.items()}
+    original_replace = FIXTURES.CONTRACT.os.replace
+    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    original_confirm = FIXTURES.CONTRACT.confirm_inputs_unchanged
+    operations: list[tuple[str, str]] = []
+    published_reads: list[str] = []
+    confirm_count = 0
+    barrier: dict[str, Any] = {}
+
+    def observe_read_tsv(label: str, *args: Any, **kwargs: Any) -> Any:
+        if label.startswith("Published Step 09c"):
+            published_reads.append(label)
+        return original_read_tsv(label, *args, **kwargs)
+
+    def observe_confirm(input_hashes: Any) -> None:
+        nonlocal confirm_count
+        confirm_count += 1
+        original_confirm(input_hashes)
+
+    def observe_replace(source: Any, destination: Any) -> None:
+        source_path = Path(source)
+        destination_path = Path(destination)
+        original_replace(source, destination)
+        if destination_path.parent.name.endswith(".previous"):
+            operations.append(("backup", key_by_name[destination_path.name]))
+            return
+        key = final_by_path.get(destination_path)
+        if key is None or not source_path.parent.name.endswith(".tmp"):
+            return
+        operations.append(("publish", key))
+        if key == "review_summary":
+            backup_dirs = list(
+                final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
+            )
+            temp_dirs = list(
+                final_dir.glob(f".{fixture.review_id}.step09c.*.tmp")
+            )
+            barrier.update(
+                finals={
+                    output_key
+                    for output_key, path in context.output_paths.items()
+                    if path.is_file()
+                },
+                backup_bytes=(
+                    {
+                        path.name: path.read_bytes()
+                        for path in backup_dirs[0].iterdir()
+                    }
+                    if len(backup_dirs) == 1
+                    else {}
+                ),
+                lock_is_file=(
+                    final_dir / f".{fixture.review_id}.step09c.lock"
+                ).is_file(),
+                temp_dir_count=len(temp_dirs),
+                temp_dir_entries=(
+                    list(temp_dirs[0].iterdir()) if len(temp_dirs) == 1 else []
+                ),
+                published_read_count=len(published_reads),
+                confirm_count=confirm_count,
+            )
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", observe_read_tsv)
+    monkeypatch.setattr(
+        FIXTURES.CONTRACT,
+        "confirm_inputs_unchanged",
+        observe_confirm,
+    )
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_replace)
+
+    FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    expected_operations = [("backup", "review_summary")]
+    expected_operations.extend(
+        ("backup", key) for key in ordered_keys if key != "review_summary"
+    )
+    expected_operations.extend(
+        ("publish", key) for key in ordered_keys if key != "review_summary"
+    )
+    expected_operations.append(("publish", "review_summary"))
+    assert operations == expected_operations
+    assert barrier["finals"] == set(ordered_keys)
+    assert barrier["backup_bytes"] == predecessor_bytes
+    assert barrier["lock_is_file"] is True
+    assert barrier["temp_dir_count"] == 1
+    assert barrier["temp_dir_entries"] == []
+    assert barrier["published_read_count"] == 0
+    assert barrier["confirm_count"] == 1
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
+
+
+def test_late_input_mutation_after_summary_restores_predecessor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    rewrite_field(fixture.review_plan, "notes", "Late mutation replacement.")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    summary = context.output_paths["review_summary"]
+    changed_input = fixture.root / "evidence" / "orientation_locus_audit.tsv"
+    original_replace = FIXTURES.CONTRACT.os.replace
+    barrier_observed = False
+
+    def mutate_after_summary(source: Any, destination: Any) -> None:
+        nonlocal barrier_observed
+        source_path = Path(source)
+        destination_path = Path(destination)
+        original_replace(source, destination)
+        if (
+            not barrier_observed
+            and source_path.parent.name.endswith(".tmp")
+            and destination_path == summary
+        ):
+            barrier_observed = True
+            assert all(path.is_file() for path in context.output_paths.values())
+            assert len(
+                list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
+            ) == 1
+            assert (
+                final_dir / f".{fixture.review_id}.step09c.lock"
+            ).is_file()
+            changed_input.write_bytes(changed_input.read_bytes() + b"changed\n")
+
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", mutate_after_summary)
+
+    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="changed"):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert barrier_observed
+    assert {
+        path.name: path.read_bytes()
+        for path in final_dir.iterdir()
+        if path.name in predecessor_bytes
+    } == predecessor_bytes
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
+
+
 def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
