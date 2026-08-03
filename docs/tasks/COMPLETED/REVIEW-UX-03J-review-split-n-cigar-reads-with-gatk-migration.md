@@ -29,7 +29,7 @@ dry-run claims, unsafe retry guidance, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03J](../TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03J](../IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) — Fully: migration is selected after all three reviews closed.
 
 ## Prerequisites
 

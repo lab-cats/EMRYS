@@ -3809,3 +3809,22 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings. No usability-review path, lifecycle, dependency, cycle,
   orphan, anchor, or diagram finding remains. This expected-only ceiling is
   nonpassing, not green, and not authority to alter inherited lifecycle state.
+
+## 2026-08-03T07:15:06-0400 — MIG-03J selected
+
+- **Selection:** after usability-completion checkpoint
+  `0328fbed07aadd2d316d4b96ae8d7bba17aee63c` was clean, tracked/untracked
+  empty, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch, move only `MIG-03J` to `IN_PROGRESS` and repair its
+  reciprocal usability link. All three dedicated reviews are complete. Step
+  `06` and every later owner/review card remain uncreated and unselected.
+- **Boundary:** this checkpoint selects migration work but does not plan or
+  perform it. No executable, test, harness, configuration, dependency, schema,
+  runtime, scheduler, cluster, production, scientific-review, or biological
+  state changes or runs.
+- **Documentation gate:** after repairing the selection's current lifecycle
+  links, `git diff --check` passes and the exact RUNBOOK documentation validator
+  reports only the nine inherited `UNREFINED` card-location findings. No
+  selection-caused path, lifecycle, dependency, cycle, orphan, anchor, or
+  diagram finding remains. The expected-only result is nonpassing and is not
+  called green.

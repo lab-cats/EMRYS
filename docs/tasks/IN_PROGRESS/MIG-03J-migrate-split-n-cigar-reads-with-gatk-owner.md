@@ -325,6 +325,8 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture, reliability, and usability reviews are complete in
-their respective completed cards. No executable/test path changed, no
-computational test ran, and no Step `06` or later owner is preloaded.
+Selected as the sole active migration from clean, published, local/upstream/
+live-remote-equal usability checkpoint
+`0328fbed07aadd2d316d4b96ae8d7bba17aee63c`. All three dedicated reviews are
+complete. No executable/test path changed or computational test ran in this
+selection, and no Step `06` or later owner is preloaded.
