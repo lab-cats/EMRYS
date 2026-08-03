@@ -12,7 +12,7 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen parent is published architecture-review
-  selection `a0d1af9422d47a22a6aa308b750e53e4c8506a1f`.
+  completion `77405848a860021b64e5f41d9d127984687af150`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -34,24 +34,23 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   executable/test checkpoint `60eb356` and documentation/lifecycle close
   `4562ec3` are published and local/upstream/live-remote-equal. MIG-03M
   definition `546538c` and architecture selection `a0d1af9` are also published
-  and equal. Architecture completion is the commit containing this handoff.
+  and equal. Architecture completion `7740584` is published and equal.
 - Current package: unselected
   [`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
   after completed
   [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md),
+  with active
+  [`REVIEW-REL-03M`](../tasks/IN_PROGRESS/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
   followed by unselected
-  [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
-  → [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
-  Reliability is now dependency-unblocked but not selected. Step `09` and every
-  later owner/review card remain uncreated.
-- Package type at this checkpoint: documentation-only architecture-review
-  completion. It fixes the exact cutover, private loaders, native hashes/modes,
-  artifact/coverage ownership, and rollback without changing or running an
-  executable, test, configuration, dependency, schema, fixture, or report
-  template.
-- Remote publication and upstream equality: selection parent `a0d1af9` is
-  verified local/upstream/live-remote-equal. Publish and prove this completion
-  checkpoint equal before selecting reliability review alone.
+  [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
+  Reliability review alone is selected. Step `09` and every later owner/review
+  card remain uncreated.
+- Package type at this checkpoint: documentation-only reliability-review
+  selection. It records no finding yet and changes or runs no executable,
+  test, configuration, dependency, schema, fixture, or report template.
+- Remote publication and upstream equality: architecture completion `7740584`
+  is verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before recording reliability findings.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -533,16 +532,17 @@ The checkpoint containing this handoff defines only unselected
 [`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
 and sequential unselected
 [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
-→ [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-REL-03M`](../tasks/IN_PROGRESS/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
-Architecture completes in the checkpoint containing this handoff. It fixes the
+Architecture is complete at published/equal `7740584`. It fixes the
 four Step `08` native and four owner-local protection moves plus ten integration
 owners; private neutral-report and flat-Step-`09c` exact-file bridges; guarded-
 R ownership; exact final native hashes/modes; artifact marker and coverage
-assignment; atomicity; and reverse rollback. Reliability, usability, and
-migration remain unselected. No executable/test file changed or ran, no R
-dependency action occurred, and no Step `09` or later card is created or
-preloaded.
+assignment; atomicity; and reverse rollback. Reliability review alone is
+selected in the checkpoint containing this handoff; no finding is recorded yet.
+Usability and migration remain unselected. No executable/test file changed or
+ran, no R dependency action occurred, and no Step `09` or later card is created
+or preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1148,10 +1148,11 @@ left only
 [`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
 eligible, with sequential
 [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
-→ [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-REL-03M`](../tasks/IN_PROGRESS/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
-defined at published/equal checkpoint `546538c`. Architecture is complete in
-the checkpoint containing this handoff; reliability, usability, and migration
-remain unselected. Step `09` and later cards remain uncreated.
+defined at published/equal checkpoint `546538c`. Architecture is complete at
+published/equal `7740584`; reliability alone is active in the checkpoint
+containing this handoff. Usability and migration remain unselected. Step `09`
+and later cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

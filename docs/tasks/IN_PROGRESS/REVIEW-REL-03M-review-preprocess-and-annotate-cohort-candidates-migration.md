@@ -33,7 +33,7 @@ path text without restoring or changing dependencies.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03M](REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: usability review needs the fixed failure, residue, recovery, R, validator, and scheduler obligations.
+- [REVIEW-UX-03M](../TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: usability review needs the fixed failure, residue, recovery, R, validator, and scheduler obligations.
 
 ## Prerequisites
 
@@ -107,5 +107,8 @@ path text without restoring or changing dependencies.
 
 ## Completion record
 
-Not selected. The architecture prerequisite is complete; no executable/test
-file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal architecture completion
+`77405848a860021b64e5f41d9d127984687af150`. No reliability finding is
+recorded yet, no later review or migration card is selected, and no
+executable/test file changed or ran.
