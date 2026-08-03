@@ -39,7 +39,10 @@ JOB_PATHS = {
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.slurm"
     ),
-    "step_04_mark_duplicates.slurm": Path("jobs/step_04_mark_duplicates.slurm"),
+    "step_04_mark_duplicates.slurm": Path(
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "step_04_mark_duplicates.slurm"
+    ),
     "step_05_split_n_cigar_reads.slurm": Path(
         "jobs/step_05_split_n_cigar_reads.slurm"
     ),
@@ -180,7 +183,10 @@ CONTRACTS = {
             "list",
         ),
         submit_cwd="fallback",
-        delegation="scripts/step_04_mark_duplicates.sh",
+        delegation=(
+            "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+            "step_04_mark_duplicates.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

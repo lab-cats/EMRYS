@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.785714",
-      "covered_branches": 33,
-      "covered_lines": 144,
-      "line_rate": "0.929032",
-      "num_branches": 42,
-      "num_statements": 155,
-      "path": "scripts/validate_step_04_mark_duplicates.py"
-    },
-    {
       "branch_rate": "0.815789",
       "covered_branches": 31,
       "covered_lines": 138,
@@ -287,6 +278,15 @@
       "num_branches": 36,
       "num_statements": 140,
       "path": "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
+    },
+    {
+      "branch_rate": "0.833333",
+      "covered_branches": 35,
+      "covered_lines": 146,
+      "line_rate": "0.941935",
+      "num_branches": 42,
+      "num_statements": 155,
+      "path": "src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py"
     }
   ],
   "measurement": {
@@ -322,10 +322,10 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.700378",
-    "covered_branches": 3331,
-    "covered_lines": 9508,
-    "line_rate": "0.814250",
+    "branch_rate": "0.700799",
+    "covered_branches": 3333,
+    "covered_lines": 9510,
+    "line_rate": "0.814422",
     "num_branches": 4756,
     "num_statements": 11677
   }

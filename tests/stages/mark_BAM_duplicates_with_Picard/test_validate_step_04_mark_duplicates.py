@@ -1,13 +1,25 @@
 import csv
+import importlib.util
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-from validation_roster_expectations import assert_exact_check_roster
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_04_mark_duplicates.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "mark_duplicates_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+    "validate_step_04_mark_duplicates.py"
+)
 
 
 def fixture(root: Path):

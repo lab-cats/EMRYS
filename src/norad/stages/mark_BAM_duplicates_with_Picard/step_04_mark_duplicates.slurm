@@ -126,7 +126,7 @@ echo "samtools: $(command -v samtools || true)"
 
 cmd=(
     bash
-    scripts/step_04_mark_duplicates.sh
+    src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh
     --sample-id "$SAMPLE_ID"
     --input-bam "$INPUT_BAM"
     --output-dir "$OUTPUT_DIR"

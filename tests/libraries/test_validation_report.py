@@ -53,7 +53,8 @@ VALIDATOR_PATHS = {
         "validate_step_03_rseqc_orientation.py"
     ),
     "validate_step_04_mark_duplicates": Path(
-        "scripts/validate_step_04_mark_duplicates.py"
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "validate_step_04_mark_duplicates.py"
     ),
     "validate_step_05_split_ncigar": Path(
         "scripts/validate_step_05_split_ncigar.py"

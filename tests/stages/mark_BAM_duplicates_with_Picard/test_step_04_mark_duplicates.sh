@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_04_mark_duplicates.sh"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2

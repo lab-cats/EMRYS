@@ -971,7 +971,10 @@ STEP_PRODUCERS = {
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": "scripts/step_04_mark_duplicates.sh",
+    "04": (
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "step_04_mark_duplicates.sh"
+    ),
     "05": "scripts/step_05_split_n_cigar_reads.sh",
     "06": "scripts/step_06_split_bam_by_read_orientation.sh",
     "07": "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh",

@@ -14,7 +14,7 @@ from typing import Sequence
 # Temporary exact-file bridge; the final owner is src/norad/libraries/validation_report.py.
 _REPORT_MODULE_NAME = "_norad_validation_report"
 _REPORT_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
     / "libraries"
@@ -75,7 +75,7 @@ except Exception as exc:
 
 _BAM_MODULE_NAME = "_norad_bam_validation"
 _BAM_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
     / "libraries"

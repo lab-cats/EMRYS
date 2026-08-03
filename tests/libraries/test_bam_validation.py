@@ -29,7 +29,12 @@ CALLERS = (
         ROOT
         / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py",
     ),
-    Caller("step04", ROOT / "scripts/validate_step_04_mark_duplicates.py"),
+    Caller(
+        "step04",
+        ROOT
+        / "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "validate_step_04_mark_duplicates.py",
+    ),
     Caller("step05", ROOT / "scripts/validate_step_05_split_ncigar.py"),
 )
 

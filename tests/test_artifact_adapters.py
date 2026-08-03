@@ -323,6 +323,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["04"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_04",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+                    "step_04_mark_duplicates.sh"
+                ),
+                "sha256": (
+                    "b845aa910ccabaf8799e000dc62e8939b"
+                    "0203c7848511524fadf51c79292eb2d"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

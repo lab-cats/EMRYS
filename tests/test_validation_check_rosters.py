@@ -45,7 +45,10 @@ VALIDATOR_PATHS = {
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "validate_step_03_rseqc_orientation.py"
     ),
-    "04": Path("scripts/validate_step_04_mark_duplicates.py"),
+    "04": Path(
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "validate_step_04_mark_duplicates.py"
+    ),
     "05": Path("scripts/validate_step_05_split_ncigar.py"),
     "06": Path("scripts/validate_step_06_orientation_outputs.py"),
     "07": Path("scripts/validate_step_07_mpileup_outputs.py"),
