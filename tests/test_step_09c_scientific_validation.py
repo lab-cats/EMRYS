@@ -5,6 +5,8 @@ from __future__ import annotations
 import csv
 import hashlib
 import importlib.util
+import multiprocessing
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -62,6 +64,36 @@ def run_validator(
         capture_output=True,
         check=False,
     )
+
+
+def publish_with_summary_barrier(
+    context: Any,
+    tables: Any,
+    ready: Any,
+    release: Any,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    original_replace = contract.os.replace
+    summary = context.output_paths["review_summary"]
+    barrier_reached = False
+
+    def wait_after_summary(source: Any, destination: Any) -> None:
+        nonlocal barrier_reached
+        source_path = Path(source)
+        destination_path = Path(destination)
+        original_replace(source, destination)
+        if (
+            not barrier_reached
+            and source_path.parent.name.endswith(".tmp")
+            and destination_path == summary
+        ):
+            barrier_reached = True
+            ready.set()
+            if not release.wait(20):
+                raise RuntimeError("summary barrier release timed out")
+
+    contract.os.replace = wait_after_summary
+    contract.publish_outputs(context, tables)
 
 
 def read_single_row(path: Path) -> dict[str, str]:
@@ -1268,6 +1300,177 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
     assert len(recovery_notices) == 1
     assert "synthetic predecessor restore failure" in recovery_notices[0].read_text()
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+
+
+def test_term_after_summary_retains_unvalidated_replacement_and_backups(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    rewrite_field(fixture.review_plan, "notes", "TERM after summary.")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    process_context = multiprocessing.get_context("fork")
+    ready = process_context.Event()
+    release = process_context.Event()
+    process = process_context.Process(
+        target=publish_with_summary_barrier,
+        args=(context, tables, ready, release),
+    )
+    process.start()
+    if not ready.wait(10):
+        release.set()
+        process.join(10)
+        pytest.fail(f"TERM summary barrier was not reached; exit={process.exitcode}")
+
+    backup_dirs = list(
+        final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
+    )
+    temp_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
+    lock = final_dir / f".{fixture.review_id}.step09c.lock"
+    assert all(path.is_file() for path in context.output_paths.values())
+    assert len(backup_dirs) == 1
+    assert {
+        path.name: path.read_bytes() for path in backup_dirs[0].iterdir()
+    } == predecessor_bytes
+    assert lock.is_file()
+    assert len(temp_dirs) == 1
+    assert list(temp_dirs[0].iterdir()) == []
+    assert not list(
+        final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
+    )
+
+    process.terminate()
+    process.join(10)
+    assert not process.is_alive()
+    assert process.exitcode == -signal.SIGTERM
+    assert all(path.is_file() for path in context.output_paths.values())
+    assert len(
+        list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
+    ) == 1
+    assert lock.is_file()
+    assert len(list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))) == 1
+    assert not list(
+        final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
+    )
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+
+
+def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    replacement_notes = "KeyboardInterrupt after summary."
+    rewrite_field(fixture.review_plan, "notes", replacement_notes)
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    summary = context.output_paths["review_summary"]
+    original_replace = FIXTURES.CONTRACT.os.replace
+    barrier: dict[str, Any] = {}
+
+    def interrupt_after_summary(source: Any, destination: Any) -> None:
+        source_path = Path(source)
+        destination_path = Path(destination)
+        original_replace(source, destination)
+        if (
+            not barrier
+            and source_path.parent.name.endswith(".tmp")
+            and destination_path == summary
+        ):
+            barrier.update(
+                finals=sum(
+                    path.is_file() for path in context.output_paths.values()
+                ),
+                backups=sum(
+                    1
+                    for backup_dir in final_dir.glob(
+                        f".{fixture.review_id}.step09c.*.previous"
+                    )
+                    for _ in backup_dir.iterdir()
+                ),
+                lock=(
+                    final_dir / f".{fixture.review_id}.step09c.lock"
+                ).is_file(),
+            )
+            raise KeyboardInterrupt("synthetic post-summary interrupt")
+
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", interrupt_after_summary)
+
+    with pytest.raises(KeyboardInterrupt, match="post-summary interrupt"):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert barrier == {"finals": 13, "backups": 13, "lock": True}
+    assert {path.name for path in context.output_paths.values()} == (
+        expected_output_names(fixture.review_id)
+    )
+    assert all(path.is_file() for path in context.output_paths.values())
+    assert read_single_row(context.output_paths["review_plan"])["notes"] == (
+        replacement_notes
+    )
+    assert context.output_paths["review_plan"].read_bytes() != predecessor_bytes[
+        context.output_paths["review_plan"].name
+    ]
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+
+
+def test_same_review_contender_waits_for_admitted_winner_to_release_lock(
+    tmp_path: Path,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    final_dir.mkdir(parents=True)
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    process_context = multiprocessing.get_context("fork")
+    ready = process_context.Event()
+    release = process_context.Event()
+    winner = process_context.Process(
+        target=publish_with_summary_barrier,
+        args=(context, tables, ready, release),
+    )
+    winner.start()
+    if not ready.wait(10):
+        release.set()
+        winner.join(10)
+        pytest.fail(
+            f"concurrency summary barrier was not reached; exit={winner.exitcode}"
+        )
+
+    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="locked"):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+    assert (
+        final_dir / f".{fixture.review_id}.step09c.lock"
+    ).is_file()
+
+    release.set()
+    winner.join(10)
+    assert not winner.is_alive()
+    assert winner.exitcode == 0
+    assert {path.name for path in context.output_paths.values()} == (
+        expected_output_names(fixture.review_id)
+    )
+    assert all(path.is_file() for path in context.output_paths.values())
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
 
 
 def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
