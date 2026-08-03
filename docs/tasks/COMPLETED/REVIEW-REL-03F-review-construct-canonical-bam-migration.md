@@ -100,8 +100,50 @@ preserve and characterize each state without approving it.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal architecture
-checkpoint `c429d8d398344ea94bdcc1a071db605d01115d54`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `a49e45c765582126d42cffa3a039524db4a190a5` after architecture
+checkpoint `c429d8d`.
+
+- **High — failure inside rollback lacked an exact safe oracle:** extend only
+  the moved producer shell suite's fake `mv` so final BAI publication fails and
+  restoration of the prior BAM then fails. Old and final paths must return
+  nonzero, report both the rollback attempt and forced restoration failure,
+  retain the prior BAI bytes while leaving the canonical BAM absent, remove
+  both backups and the owned lock, and leave no run-token scratch. This
+  lockless partial pair and lost prior BAM are a characterized ambiguous/data-
+  loss defect, not a successful restore or authority to repair production data.
+- **High — helper extraction needed byte/exception and loader-fault proof:**
+  capture the old Step `02` `run_tool` argv/result and representative
+  `parse_header` outcomes before extraction. The neutral suite must compare
+  those bytes/results after extraction and own healthy reuse, missing file,
+  foreign wrong-path cache, correct-path incomplete API, and loader-owned
+  execution failure for all three callers at both flat and final Step `02`
+  depths. It must preserve foreign cache objects and `sys.path`, remove only an
+  owned partial, require both callables plus readiness, and prove the exact
+  path/type/reason diagnostic appears before report publication or CWD residue.
+- **Medium — the direct validator suite lacked a complete relocated journey:**
+  add one non-repository-CWD dry-run, execute, and repeat journey at the moved
+  path. It must preserve the exact ordered five rows and deterministic report
+  bytes, empty successful stderr, stable replacement, input bytes/modes, and an
+  empty invocation directory. Existing shared publication-fault and roster
+  suites continue to own their independent contracts.
+- **Accepted independent owners:** the moved shell suite owns the producer
+  state machine and new rollback-failure oracle. The neutral BAM suite owns
+  helper/loader faults. The moved validator suite owns the arbitrary-CWD
+  journey. The existing central scheduler matrix already freezes mode `0644`,
+  directives, caller CWD, strict/tolerated modules, defaults, Bash `3.2`, child
+  status, output checks, and streams; no duplicate scheduler harness is
+  justified.
+- **Coverage disposition:** the exact starting rows are Step `02` `105/115`
+  lines and `21/28` branches, Step `04` `105/114` and `22/28`, and Step `05`
+  `98/108` and `19/24`; global covered-count floors are `9381/11549` lines and
+  `3293/4714` branches. Only those three rows plus the new helper may change.
+  Final measurement must retain each old row's line/branch rate, retain at least
+  the combined `308` covered lines and `62` covered branches across those four
+  rows, keep every non-target row exact, and give the helper at least 90% line
+  and 85% branch coverage before updating the committed baseline.
+- **Evidence boundary:** this was a read-only committed-time adversarial pass
+  by the same campaign agent; independent authorship is not claimed. No source,
+  test, dependency, runtime tool, scheduler, production, scientific-review, or
+  biological evidence changed or ran. The safe fixture oracle exists, so no
+  escalation condition was triggered.

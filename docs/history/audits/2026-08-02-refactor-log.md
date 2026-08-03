@@ -2048,3 +2048,33 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   test mutation, computational test, runtime tool, scheduler submission,
   production input, dependency action, scientific review, or biological
   evidence is in scope.
+
+## 2026-08-03T01:03:49-0400 — REVIEW-REL-03F completed
+
+- **High finding — failure inside rollback lacked a safe exact oracle:** extend
+  only the moved shell suite's fake `mv` so final BAI publication fails and
+  prior-BAM restoration then fails. Both old and final paths must fail nonzero,
+  retain the prior BAI but no canonical BAM, remove backups and the owned lock,
+  and leave no run-token scratch. The resulting lockless partial pair and lost
+  prior BAM are a characterized ambiguous/data-loss defect, not a repaired or
+  approved transaction.
+- **High finding — extraction parity and loader faults needed one owner:**
+  capture old Step `02` `run_tool` and `parse_header` results before extraction;
+  then make the neutral suite prove exact result/exception parity plus healthy,
+  missing, wrong-cache, incomplete-API, and owned-execution-failure states for
+  the three callers at flat and final Step `02` depths. Preserve foreign cache
+  objects and `sys.path`, remove only an owned partial, emit the exact path/type/
+  reason diagnostic, and publish no report or CWD residue on load failure.
+- **Medium finding — relocated validator journey was incomplete:** extend only
+  the moved validator suite with non-repository-CWD dry-run, execute, and repeat
+  parity: exact deterministic five-row bytes, empty successful stderr, stable
+  replacement, unchanged inputs/modes, and no invocation-directory residue.
+  The existing central scheduler and shared publication/roster suites retain
+  their independent contracts; duplicating them is not justified.
+- **Coverage and evidence boundary:** freeze Step `02` at `105/115` lines and
+  `21/28` branches, Step `04` at `105/114` and `22/28`, Step `05` at `98/108`
+  and `19/24`, combined targeted covered-count floors `308`/`62`, global floors
+  `9381/11549` and `3293/4714`, exact non-target rows, and new-helper thresholds
+  90%/85%. This was a read-only committed-time pass by the same campaign agent;
+  no executable/test mutation or computational, dependency, runtime, scheduler,
+  production, scientific-review, or biological evidence changed or ran.

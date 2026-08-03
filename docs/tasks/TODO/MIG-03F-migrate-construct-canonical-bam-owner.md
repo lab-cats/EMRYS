@@ -72,6 +72,14 @@ migrate either downstream stage.
   behavior and the three-caller healthy/missing/wrong-cache/incomplete/owned-
   failure matrix. Existing Step `02`, `04`, and `05` direct tests remain
   unchanged but run as the smallest affected regression set.
+- Before that extraction, capture an old-path helper baseline that exact-loads
+  the current Step `02` functions and freezes `run_tool` argv, stdout, stderr,
+  return code, and representative valid/multiple/missing/mismatched
+  `parse_header` results. After extraction, the neutral suite must prove exact
+  result/exception parity and the complete loader matrix for all three callers
+  at the flat layout and final Step `02` depth, including foreign-cache and
+  unchanged-`sys.path` preservation, owned-partial cleanup, fail-closed
+  diagnostics, no report publication, and no invocation-CWD residue.
 - Freeze the subsequent owner cutover to exactly fifteen logical tracked files:
   five moves of the producer, validator, job, shell test, and validator test;
   plus `Makefile`, `scripts/build_artifact_index.py`,
@@ -118,11 +126,23 @@ migrate either downstream stage.
   then be removed, and no receipt or recovery marker records an incomplete
   restore. Reviews must decide the exact old/final-path fault oracle and
   evidence-preservation response without changing this behavior.
+- The reliability oracle is one synthetic previous-pair case in the moved
+  shell suite: fail final BAI publication, then fail restoration of the prior
+  BAM. Old and final paths must fail nonzero with both diagnostics, retain only
+  the prior BAI bytes, leave the canonical BAM and both backups absent, remove
+  the owned lock, and leave no run-token scratch. This lockless partial pair and
+  lost prior BAM are an intentionally preserved ambiguous/data-loss defect; do
+  not repair, bless, or use it as authority for cleanup.
 - Preserve the validator's mode, public basename, five check IDs, report bytes,
   dry-run/execute behavior, stable-input recheck, and publication semantics.
   Preserve its characterized disagreement with the producer: zero-record BAMs,
   missing `LB`/`PL`, quickcheck detail, and BAI/BAM identity are not silently
   normalized by relocation.
+- Extend only the moved validator suite with one non-repository-CWD dry-run,
+  execute, and repeat journey. Require exact ordered five-row bytes, empty
+  successful stderr, stable replacement, unchanged input bytes/modes, and no
+  invocation-directory residue. Shared publication-fault and roster suites
+  remain the independent owners of their existing contracts.
 - Change the validator's exact neutral validation-report lookup only as required
   by final owner depth. The new BAM-helper loader is the only reviewed semantic-
   ownership correction; stage-specific `integer_stdout`, checks, CLI, and
@@ -135,12 +155,15 @@ migrate either downstream stage.
   Preserve status, evidence ID, Git projection, artifact identities, schemas,
   contents, ordering, reconciliation, and consumers. Record the reviewed final
   producer hash after the required help self-path change.
-- Coverage already measures `scripts` and `src/norad`. The committed Step `02`
-  validator row is `105/115` covered lines and `21/28` branches. The current
-  global accepted snapshot is `9381/11549` lines and `3293/4714` branches. Move
-  the validator row only after inspected final-path measurement proves
-  non-regression, and require the new shared helper to meet the existing new-
-  shared-module threshold of at least 90% line and 85% branch coverage.
+- Coverage already measures `scripts` and `src/norad`. Frozen starting rows are
+  Step `02` `105/115` covered lines and `21/28` branches, Step `04` `105/114`
+  and `22/28`, and Step `05` `98/108` and `19/24`; the current global snapshot
+  is `9381/11549` lines and `3293/4714` branches. Extraction may change only
+  those three rows plus the new helper. Final measurement must retain each old
+  row's line/branch rate, retain at least the combined `308` covered lines and
+  `62` covered branches across the four rows, keep every non-target row exact,
+  preserve the global covered-count floors, and give the helper at least 90%
+  line and 85% branch coverage before the committed baseline changes.
 - Once both shell assets leave flat wildcards, add their exact final paths to
   `validation-static` and `smoke` shell syntax and to the literal Make-expansion
   oracle. Move the direct shell/validator recipe paths. Keep public CLI, SLURM,
@@ -255,7 +278,8 @@ migrate either downstream stage.
   `sys.path` loader states for each distinct caller depth required by review.
 - Producer parity preserves every CLI, dry-run, execute, transaction, lock,
   replacement, rollback-attempt, cleanup, stream, exit, and characterized
-  ambiguous-recovery state apart from the final displayed self-path.
+  ambiguous-recovery state apart from the final displayed self-path, including
+  the exact lockless prior-BAI-only result when BAM restoration fails.
 - Validator parity preserves all arguments, five rows, mismatch evidence,
   dry-run/execute/repeat effects, report bytes, streams/exits, stable-input
   recheck, publication faults, and documented producer asymmetries.

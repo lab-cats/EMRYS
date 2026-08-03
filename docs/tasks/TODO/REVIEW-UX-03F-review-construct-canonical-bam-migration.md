@@ -25,7 +25,7 @@ caller-CWD/module behavior, or an undiscoverable owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03F](../IN_PROGRESS/REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03F](../COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 
