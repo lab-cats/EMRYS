@@ -14,11 +14,7 @@ from typing import Sequence
 # Temporary exact-file bridge; the final owner is src/norad/libraries/validation_report.py.
 _REPORT_MODULE_NAME = "_norad_validation_report"
 _REPORT_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "norad"
-    / "libraries"
-    / "validation_report.py"
+    Path(__file__).resolve().parents[2] / "libraries" / "validation_report.py"
 ).resolve(strict=False)
 _REPORT_READY_ATTRIBUTE = "_NORAD_VALIDATION_REPORT_READY"
 

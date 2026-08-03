@@ -64,15 +64,6 @@
       "path": "scripts/git_orchestration/validate_fragment_target.py"
     },
     {
-      "branch_rate": "0.785714",
-      "covered_branches": 44,
-      "covered_lines": 151,
-      "line_rate": "0.904192",
-      "num_branches": 56,
-      "num_statements": 167,
-      "path": "scripts/gtf_to_bed12.py"
-    },
-    {
       "branch_rate": "0.717105",
       "covered_branches": 109,
       "covered_lines": 320,
@@ -152,15 +143,6 @@
       "num_branches": 52,
       "num_statements": 111,
       "path": "scripts/validate_manifest.py"
-    },
-    {
-      "branch_rate": "0.805556",
-      "covered_branches": 29,
-      "covered_lines": 127,
-      "line_rate": "0.907143",
-      "num_branches": 36,
-      "num_statements": 140,
-      "path": "scripts/validate_step_00b_bed12.py"
     },
     {
       "branch_rate": "0.884615",
@@ -278,6 +260,24 @@
       "num_branches": 60,
       "num_statements": 189,
       "path": "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
+    },
+    {
+      "branch_rate": "0.785714",
+      "covered_branches": 44,
+      "covered_lines": 151,
+      "line_rate": "0.904192",
+      "num_branches": 56,
+      "num_statements": 167,
+      "path": "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
+    },
+    {
+      "branch_rate": "0.805556",
+      "covered_branches": 29,
+      "covered_lines": 127,
+      "line_rate": "0.907143",
+      "num_branches": 36,
+      "num_statements": 140,
+      "path": "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
     }
   ],
   "measurement": {
@@ -303,7 +303,7 @@
       "line_rate": "0.900000"
     },
     "required_subprocess_coverage": [
-      "scripts/gtf_to_bed12.py",
+      "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
       "scripts/validate_manifest.py"
     ]
   },

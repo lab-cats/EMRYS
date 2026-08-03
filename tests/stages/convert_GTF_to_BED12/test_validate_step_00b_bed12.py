@@ -1,13 +1,27 @@
 import csv
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
-from validation_roster_expectations import assert_exact_check_roster
-
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_00b_bed12.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "convert_gtf_to_bed12_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "convert_GTF_to_BED12"
+    / "validate_step_00b_bed12.py"
+)
 
 
 def fixture(tmp_path: Path):
@@ -28,7 +42,13 @@ def fixture(tmp_path: Path):
     return bed, gtf, output_dir / "novogene_ref.validation.tsv"
 
 
-def run(bed: Path, gtf: Path, output: Path, *extra: str):
+def run(
+    bed: Path,
+    gtf: Path,
+    output: Path,
+    *extra: str,
+    cwd: Path = ROOT,
+):
     return subprocess.run(
         [
             sys.executable, str(SCRIPT),
@@ -38,7 +58,7 @@ def run(bed: Path, gtf: Path, output: Path, *extra: str):
             "--output", str(output),
             *extra,
         ],
-        cwd=ROOT,
+        cwd=cwd,
         text=True,
         capture_output=True,
     )
@@ -99,3 +119,36 @@ def test_foreign_lock_and_invalid_predecessor_are_preserved(tmp_path):
     output.write_text("foreign\n")
     assert run(bed, gtf, output, "--execute").returncode == 2
     assert output.read_text() == "foreign\n"
+
+
+def test_nonrepository_cwd_dry_run_execute_and_repeat_are_identical(tmp_path):
+    bed, gtf, output = fixture(tmp_path)
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+
+    dry_run = run(bed, gtf, output, cwd=invocation_cwd)
+
+    assert dry_run.returncode == 0
+    assert dry_run.stderr == ""
+    assert dry_run.stdout.endswith("Dry-run complete; no output was written.\n")
+    assert not output.exists()
+    assert list(invocation_cwd.iterdir()) == []
+
+    first = run(bed, gtf, output, "--execute", cwd=invocation_cwd)
+    first_bytes = output.read_bytes()
+    second = run(bed, gtf, output, "--execute", cwd=invocation_cwd)
+
+    assert first.returncode == second.returncode == 0
+    assert first.stderr == second.stderr == ""
+    assert first.stdout == second.stdout
+    assert output.read_bytes() == first_bytes
+    assert [row["check_id"] for row in rows(output)] == [
+        "bed12_structure",
+        "coordinate_sorting",
+        "block_structure",
+        "unique_transcript_names",
+        "gtf_transcript_agreement",
+    ]
+    assert {row["status"] for row in rows(output)} == {"pass"}
+    assert list(invocation_cwd.iterdir()) == []
+    assert sorted(path.name for path in output.parent.iterdir()) == [output.name]

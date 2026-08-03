@@ -29,7 +29,9 @@ VALIDATOR_PATHS = {
     "validate_step_00a_star_index": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     ),
-    "validate_step_00b_bed12": Path("scripts/validate_step_00b_bed12.py"),
+    "validate_step_00b_bed12": Path(
+        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
+    ),
     "validate_step_00c_reference_sidecars": Path(
         "scripts/validate_step_00c_reference_sidecars.py"
     ),
@@ -63,6 +65,16 @@ VALIDATOR_PATHS = {
     ),
 }
 VALIDATOR_MODULES = tuple(VALIDATOR_PATHS)
+STEP_00B_VALIDATOR_NAME = "validate_step_00b_bed12"
+STEP_00B_PRODUCER_NAME = "gtf_to_bed12"
+STEP_00B_PRODUCER_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "convert_GTF_to_BED12"
+    / "gtf_to_bed12.py"
+)
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
@@ -71,25 +83,49 @@ def validator_path(module_name: str) -> Path:
     return REPO_ROOT / VALIDATOR_PATHS[module_name]
 
 
-def load_validator_module(module_name: str) -> ModuleType:
-    if module_name != "validate_step_00a_star_index":
-        return importlib.import_module(module_name)
+def load_exact_test_module(module_name: str, path: Path) -> ModuleType:
     cached = sys.modules.get(module_name)
     if cached is not None:
+        try:
+            cached_path = Path(getattr(cached, "__file__")).resolve(strict=False)
+        except (OSError, TypeError) as exc:
+            raise RuntimeError(
+                f"cached test module {module_name} has no valid file path"
+            ) from exc
+        if cached_path != path.resolve(strict=False):
+            raise RuntimeError(
+                f"cached test module {module_name} resolves to {cached_path}, "
+                f"expected {path.resolve(strict=False)}"
+            )
         assert isinstance(cached, ModuleType)
         return cached
-    path = validator_path(module_name)
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load moved validator: {path}")
+        raise RuntimeError(f"Could not exact-load test module: {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except BaseException:
-        sys.modules.pop(module_name, None)
+        if sys.modules.get(module_name) is module:
+            sys.modules.pop(module_name, None)
         raise
     return module
+
+
+def load_validator_module(module_name: str) -> ModuleType:
+    if module_name == STEP_00B_VALIDATOR_NAME:
+        producer_was_cached = STEP_00B_PRODUCER_NAME in sys.modules
+        load_exact_test_module(STEP_00B_PRODUCER_NAME, STEP_00B_PRODUCER_PATH)
+        try:
+            return load_exact_test_module(module_name, validator_path(module_name))
+        except BaseException:
+            if not producer_was_cached:
+                sys.modules.pop(STEP_00B_PRODUCER_NAME, None)
+            raise
+    if module_name == "validate_step_00a_star_index":
+        return load_exact_test_module(module_name, validator_path(module_name))
+    return importlib.import_module(module_name)
 
 
 STEP_00A = load_validator_module("validate_step_00a_star_index")
@@ -176,6 +212,7 @@ def test_exact_step_validator_inventory_uses_one_shared_publisher() -> None:
     assert discovered_flat == expected_flat
     assert all(validator_path(name).is_file() for name in VALIDATOR_MODULES)
     assert len(set(VALIDATOR_PATHS.values())) == len(VALIDATOR_MODULES)
+    assert STEP_00B_PRODUCER_PATH.is_file()
 
     # One adversarial helper matrix therefore exercises all thirteen public
     # step-report formats through the exact final owner and private identity.
@@ -184,6 +221,10 @@ def test_exact_step_validator_inventory_uses_one_shared_publisher() -> None:
     for module_name in VALIDATOR_MODULES:
         module = load_validator_module(module_name)
         assert module.report is REPORT
+    assert (
+        Path(sys.modules[STEP_00B_PRODUCER_NAME].__file__).resolve()
+        == STEP_00B_PRODUCER_PATH.resolve()
+    )
 
     for module_name in VALIDATOR_MODULES:
         source = validator_path(module_name).read_text(encoding="utf-8")
@@ -199,6 +240,22 @@ def test_all_validator_loaders_preserve_sys_path() -> None:
         module = load_validator_module(module_name)
         assert module.report is REPORT
         assert Path(module.report.__file__).resolve() == REPORT_PATH.resolve()
+    assert sys.path == before
+
+
+def test_step00b_exact_loader_rejects_a_foreign_sibling_cache(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = list(sys.path)
+    foreign = ModuleType(STEP_00B_PRODUCER_NAME)
+    foreign.__file__ = str(tmp_path / "foreign_gtf_to_bed12.py")
+    monkeypatch.setitem(sys.modules, STEP_00B_PRODUCER_NAME, foreign)
+
+    with pytest.raises(RuntimeError, match="expected"):
+        load_validator_module(STEP_00B_VALIDATOR_NAME)
+
+    assert sys.modules[STEP_00B_PRODUCER_NAME] is foreign
     assert sys.path == before
 
 
@@ -376,6 +433,16 @@ def assert_owner_failure(
     assert "Traceback" not in result.stderr
 
 
+def copy_validator_fixture(module_name: str, copied_root: Path) -> Path:
+    source = validator_path(module_name)
+    copied = copied_root / VALIDATOR_PATHS[module_name]
+    copied.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, copied)
+    if module_name == STEP_00B_VALIDATOR_NAME:
+        shutil.copy2(STEP_00B_PRODUCER_PATH, copied.parent / "gtf_to_bed12.py")
+    return copied
+
+
 def test_every_copied_validator_reports_a_missing_exact_owner_without_artifacts(
     tmp_path: Path,
 ) -> None:
@@ -385,10 +452,7 @@ def test_every_copied_validator_reports_a_missing_exact_owner_without_artifacts(
     expected_path = copied_root / "src" / "norad" / "libraries" / "validation_report.py"
 
     for module_name in VALIDATOR_MODULES:
-        source = validator_path(module_name)
-        copied = copied_root / VALIDATOR_PATHS[module_name]
-        copied.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, copied)
+        copied = copy_validator_fixture(module_name, copied_root)
         result = owner_failure_result(copied, invocation_cwd)
         assert_owner_failure(result, expected_path, "FileNotFoundError")
         assert list(invocation_cwd.iterdir()) == []
@@ -405,10 +469,7 @@ def test_every_copied_validator_reports_owner_execution_failure_without_artifact
     invocation_cwd.mkdir()
 
     for module_name in VALIDATOR_MODULES:
-        source = validator_path(module_name)
-        copied = copied_root / VALIDATOR_PATHS[module_name]
-        copied.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, copied)
+        copied = copy_validator_fixture(module_name, copied_root)
         result = owner_failure_result(copied, invocation_cwd)
         assert_owner_failure(result, owner, "RuntimeError")
         assert list(invocation_cwd.iterdir()) == []

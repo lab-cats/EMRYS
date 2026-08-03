@@ -69,7 +69,7 @@ echo "Converting GTF to unsorted BED12..."
 # Build the Python command as an array so paths stay quoted safely.
 gtf_to_bed12_cmd=(
 "$PYTHON_BIN"
-scripts/gtf_to_bed12.py
+src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py
 --gtf "$GTF"
 --bed "$UNSORTED_BED"
 )

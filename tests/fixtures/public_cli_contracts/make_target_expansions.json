@@ -228,7 +228,7 @@
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_reference_provenance.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_storage_inventory.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_00b_bed12.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_00c_reference_sidecars.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_01_star_alignment.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_02_canonical_bam.py",
@@ -244,7 +244,7 @@
   "smoke": [
     "bash -n scripts/*.sh",
     "bash -n scripts/git_orchestration/*.sh",
-    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
+    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
   ],
   "test": [
     "python -m pytest"
@@ -332,7 +332,7 @@
     "git diff --check",
     "bash -n scripts/*.sh",
     "bash -n scripts/git_orchestration/*.sh",
-    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm",
+    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm",
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad tests",
     "\"<REPO_ROOT>/.venv/bin/python\" scripts/validate_manifest.py \\",

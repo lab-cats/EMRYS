@@ -27,7 +27,9 @@ MAKE_EXPANSION_GOLDEN = (
 PYTHON_ENTRYPOINT_PATHS = {
     "build_artifact_index.py": Path("scripts/build_artifact_index.py"),
     "build_run_summary.py": Path("scripts/build_run_summary.py"),
-    "gtf_to_bed12.py": Path("scripts/gtf_to_bed12.py"),
+    "gtf_to_bed12.py": Path(
+        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
+    ),
     "reference_provenance.py": Path("scripts/reference_provenance.py"),
     "render_run_report.py": Path("scripts/render_run_report.py"),
     "render_run_report_bundle.py": Path("scripts/render_run_report_bundle.py"),
@@ -42,7 +44,9 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_step_00a_star_index.py": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     ),
-    "validate_step_00b_bed12.py": Path("scripts/validate_step_00b_bed12.py"),
+    "validate_step_00b_bed12.py": Path(
+        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
+    ),
     "validate_step_00c_reference_sidecars.py": Path(
         "scripts/validate_step_00c_reference_sidecars.py"
     ),

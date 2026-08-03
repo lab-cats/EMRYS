@@ -189,7 +189,7 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert not artifact_fixture.output_root.exists()
 
 
-def test_step00a_implementation_evidence_uses_final_path_and_frozen_job_bytes(
+def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
 ) -> None:
     git_commit = "a" * 40
 
@@ -210,6 +210,24 @@ def test_step00a_implementation_evidence_uses_final_path_and_frozen_job_bytes(
                 "sha256": (
                     "f27924e80fee3b8f207a41fd7af472897"
                     "ad51f06aa2e4c670973eb51f25b5fcc"
+                ),
+            }
+        ],
+    }
+    assert evidence["00b"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_00b",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/convert_GTF_to_BED12/"
+                    "gtf_to_bed12.py"
+                ),
+                "sha256": (
+                    "5c69dabba9139598a9c67331b3200b8d"
+                    "b8a29793334ff80f19850eb37ad57a04"
                 ),
             }
         ],

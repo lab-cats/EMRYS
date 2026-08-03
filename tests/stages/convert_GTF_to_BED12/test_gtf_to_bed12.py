@@ -4,8 +4,15 @@ from pathlib import Path
 from typing import List, Union
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "gtf_to_bed12.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "convert_GTF_to_BED12"
+    / "gtf_to_bed12.py"
+)
 
 
 def run_converter(
@@ -285,3 +292,43 @@ def test_arbitrary_cwd_silently_replaces_only_the_declared_output(
     assert "Wrote 1 transcript BED12 record" in result.stdout
     assert output.read_text() == "chr1\t0\t5\ttx1|gene1\t0\t+\t0\t5\t0\t1\t5,\t0,\n"
     assert unrelated.read_bytes() == unrelated_before
+
+
+def test_direct_and_exact_interpreter_journeys_match_from_arbitrary_cwd(
+    tmp_path: Path,
+) -> None:
+    gtf = write_gtf(
+        tmp_path / "input.gtf",
+        [
+            gtf_row(
+                "chr1",
+                "exon",
+                1,
+                4,
+                "+",
+                'gene_id "g1"; transcript_id "tx1";',
+            )
+        ],
+    )
+    bed = tmp_path / "output" / "models.bed"
+    invocation_cwd = tmp_path / "elsewhere"
+    invocation_cwd.mkdir()
+    arguments = ("--gtf", str(gtf), "--bed", str(bed))
+
+    direct = subprocess.run(
+        [str(SCRIPT), *arguments],
+        cwd=invocation_cwd,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    direct_bytes = bed.read_bytes()
+    bed.write_text("predecessor\n")
+    interpreted = run_converter(*arguments, cwd=invocation_cwd)
+
+    assert direct.returncode == interpreted.returncode == 0
+    assert direct.stdout == interpreted.stdout
+    assert direct.stderr == interpreted.stderr == ""
+    assert bed.read_bytes() == direct_bytes
+    assert direct_bytes == b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n"
+    assert list(invocation_cwd.iterdir()) == []

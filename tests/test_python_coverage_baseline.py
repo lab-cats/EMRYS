@@ -29,7 +29,7 @@ def raw_document() -> dict[str, object]:
         "scripts/validate_manifest.py": {
             "summary": summary((90, 100), (36, 40))
         },
-        "scripts/gtf_to_bed12.py": {
+        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py": {
             "summary": summary((80, 100), (30, 40))
         },
         "scripts/example.py": {

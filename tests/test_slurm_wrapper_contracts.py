@@ -18,7 +18,9 @@ JOB_PATHS = {
         "src/norad/stages/construct_STAR_index/"
         "step_00a_build_novogene_star_index.slurm"
     ),
-    "step_00b_gtf_to_bed12.slurm": Path("jobs/step_00b_gtf_to_bed12.slurm"),
+    "step_00b_gtf_to_bed12.slurm": Path(
+        "src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
+    ),
     "step_00c_prepare_gatk_reference.slurm": Path(
         "jobs/step_00c_prepare_gatk_reference.slurm"
     ),
@@ -1331,146 +1333,6 @@ def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, st
     install_module_fake(fake_bin)
     install_tool_fakes(fake_bin)
     return submit, launch, base_environment(tmp_path, fake_bin)
-
-
-def install_step00b_fakes(fake_bin: Path) -> None:
-    write_executable(
-        fake_bin / "python-step00b",
-        """#!/bin/bash
-set -euo pipefail
-{
-    printf 'python-step00b'
-    printf '\t%s' "$@"
-    printf '\n'
-} >> "${FAKE_TOOL_LOG:?}"
-[[ "${FAKE_FAIL_TOOL:-}" == "python-step00b" ]] && exit "${FAKE_TOOL_EXIT:-37}"
-bed=''
-while (($#)); do
-    if [[ "$1" == "--bed" ]]; then
-        bed="$2"
-        shift 2
-    else
-        shift
-    fi
-done
-mkdir -p "$(dirname "$bed")"
-printf 'chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n' > "$bed"
-""",
-    )
-    write_executable(
-        fake_bin / "bedtools",
-        """#!/bin/bash
-set -euo pipefail
-{
-    printf 'bedtools'
-    printf '\t%s' "$@"
-    printf '\n'
-} >> "${FAKE_TOOL_LOG:?}"
-[[ "${FAKE_FAIL_TOOL:-}" == "bedtools" ]] && exit "${FAKE_TOOL_EXIT:-37}"
-input=''
-while (($#)); do
-    if [[ "$1" == "-i" ]]; then
-        input="$2"
-        shift 2
-    else
-        shift
-    fi
-done
-if [[ "${FAKE_BAD_BED:-0}" == "1" ]]; then
-    printf 'not-bed12\n'
-else
-    cat "$input"
-fi
-""",
-    )
-
-
-def test_step00b_embedded_converter_sort_and_validation_contract(
-    tmp_path: Path,
-) -> None:
-    submit, launch, environment = prepare_legacy_environment(tmp_path)
-    fake_bin = Path(environment["PATH"].split(os.pathsep)[0])
-    install_step00b_fakes(fake_bin)
-    gtf = touch(submit / "inputs" / "genes.gtf")
-    unsorted_bed = submit / "outputs" / "genes.unsorted.bed"
-    bed = submit / "outputs" / "genes.bed"
-    environment.update(
-        {
-            "SLURM_SUBMIT_DIR": str(submit),
-            "GTF": str(gtf),
-            "UNSORTED_BED": str(unsorted_bed),
-            "BED": str(bed),
-            "PYTHON_BIN": str(fake_bin / "python-step00b"),
-        }
-    )
-
-    result = subprocess.run(
-        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
-        cwd=launch,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == CONTRACTS[
-        "step_00b_gtf_to_bed12.slurm"
-    ].module_calls
-    assert read_lines(Path(environment["FAKE_TOOL_LOG"])) == (
-        f"python-step00b\tscripts/gtf_to_bed12.py\t--gtf\t{gtf}\t--bed\t{unsorted_bed}",
-        f"bedtools\tsort\t-i\t{unsorted_bed}",
-    )
-    assert len(bed.read_text(encoding="utf-8").rstrip("\n").split("\t")) == 12
-
-    child_environment = environment.copy()
-    child_environment["FAKE_FAIL_TOOL"] = "python-step00b"
-    child_failed = subprocess.run(
-        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
-        cwd=launch,
-        env=child_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert child_failed.returncode == 37
-
-    bad_bed_environment = environment.copy()
-    bad_bed_environment["FAKE_BAD_BED"] = "1"
-    bad_bed = subprocess.run(
-        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
-        cwd=launch,
-        env=bad_bed_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert bad_bed.returncode != 0
-    assert "expected 12 fields" in bad_bed.stdout
-
-    module_environment = environment.copy()
-    module_environment["FAKE_MODULE_EXIT"] = "23"
-    module_failed = subprocess.run(
-        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
-        cwd=launch,
-        env=module_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert module_failed.returncode == 23
-
-    missing_submit_environment = environment.copy()
-    missing_submit_environment.pop("SLURM_SUBMIT_DIR")
-    missing_submit = subprocess.run(
-        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
-        cwd=launch,
-        env=missing_submit_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert missing_submit.returncode != 0
 
 
 UTILITY_JOBS = (

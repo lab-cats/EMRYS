@@ -951,7 +951,7 @@ STEP_PRODUCERS = {
         "src/norad/stages/construct_STAR_index/"
         "step_00a_build_novogene_star_index.slurm"
     ),
-    "00b": "scripts/gtf_to_bed12.py",
+    "00b": "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
     "00c": "scripts/step_00c_prepare_gatk_reference.sh",
     "01": "scripts/step_01_star_align.sh",
     "02": "scripts/step_02_sort_index_bam.sh",

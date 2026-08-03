@@ -52,7 +52,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_00b_bed12.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_00c_reference_sidecars.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_01_star_alignment.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_02_canonical_bam.py
@@ -243,7 +243,7 @@ validation-static:
 	git diff --check
 	bash -n scripts/*.sh
 	bash -n scripts/git_orchestration/*.sh
-	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm
+	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
 	"$(REPORT_PYTHON_BIN)" scripts/validate_manifest.py \
@@ -255,7 +255,7 @@ validate:
 smoke:
 	bash -n scripts/*.sh
 	bash -n scripts/git_orchestration/*.sh
-	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm
+	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm
 
 lint:
 	python -m compileall scripts src/norad tests
