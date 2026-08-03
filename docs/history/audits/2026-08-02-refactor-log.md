@@ -3678,6 +3678,85 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to usability-
   review completion.
 
+## 2026-08-03T10:13:57-0400 — REVIEW-UX-03L completed
+
+- **Review basis:** complete a separate read-only usability pass from clean,
+  published, local/upstream/live-remote-equal selection checkpoint
+  `3ec83073ceae62eb6a59afe9470941cd1bf1eec3`. Inspect public CLI/Make/SLURM
+  characterization, producer/validator help and behavior, final owner/test
+  topology, artifact/coverage/helper routes, contract, runbook,
+  troubleshooting, documentation ownership, predecessor/consumer semantics,
+  and every reliability-reviewed defect. Independent authorship is not
+  claimed.
+- **Final invocation decision:** documentation close must replace every active
+  Step `07` producer, validator, job, focused-test, helper, artifact-provenance,
+  and coverage path. Root use directly invokes the final mode-`0755` producer,
+  uses an explicit interpreter for the final mode-`0644` validator, and
+  submits the final mode-`0644` job with `sbatch` after creating checkout-root
+  `logs/`. Explicit Bash is only a local wrapper diagnostic. Arbitrary-CWD use
+  makes code, manifests, selector file, orientation root, BAM/BAIs, FASTA/FAI,
+  output/report roots, bcftools, checkout, and owner paths absolute. Supported
+  producer commands use an absolute output root so receipt VCF strings agree
+  with validator-resolved paths. Add no installed command, package import,
+  legacy alias, wrapper, symlink, `PYTHONPATH`, or global `sys.path` route.
+- **Dry-run and scheduler decision:** producer dry-run validates manifests,
+  FAI-bound selector, relative selector-file resolution, every BAM/BAI,
+  bcftools, depth/filter, and manifest hashes; prints both exact pipelines and
+  output/lock/temp/validation/publication paths; invokes no bcftools child; and
+  writes nothing. Validator dry-run reads/snapshots all six explicit inputs,
+  prints five report rows plus completion, invokes no bcftools, and writes no
+  report. Scheduler `EXECUTE=0` still changes to submit/fallback CWD, creates
+  `logs/`, performs module/tool/version diagnostics when applicable, and
+  delegates producer dry-run. Preserve one CPU, exported `/tmp`, exact
+  defaults/overrides, warning-only unusable preflight, version failure,
+  basename forwarding, child delegation, and stale-three-file false success;
+  do not call scheduler dry-run side-effect-free.
+- **Recovery and provenance decision:** before cleanup/recovery/retry, preserve
+  all three finals, run-token temps/backups, lock/owner, both manifests, every
+  BAM/BAI, FASTA/FAI, regions file, unrelated bytes, streams, scheduler job/
+  accounting/logs, CWD, exact bcftools path/version, depth/filter, and
+  environment. The reviewed receipt-publication exit `67` followed by prior-
+  FWD restoration exit `68` leaves prior FWD absent with its backup preserved,
+  restores prior REV/receipt, removes owned temps/lock, and creates no recovery
+  marker. Receipt visibility, counts, timestamps, and residue absence do not
+  identify a clean/current attempt. Never combine files, reconstruct a member,
+  remove a foreign lock, trust stale wrapper success, or rerun the same output
+  path. Rule out every producer and Step `08` reader; any separately authorized
+  diagnostic retry uses a distinct output root and is not production authority.
+- **Ownership and evidence-language decision:** add the owner README; repair
+  the contract's flat/unimplemented paths; update inventory/topology/test/
+  documentation ownership, runbook, troubleshooting, neutral-library, Step
+  `06`, Step `08`, artifact, and partition-manifest routes. Keep `FWD_like` and
+  `REV_like` mechanical. Producer exit `0` does not bind unhashed BAM/BAI/
+  reference/FAI/regions/tool/depth/filter/VCF state. Validator exit `0` may
+  publish failed evidence and does not prove bcftools execution, selector-bound
+  coordinates, REF/ALT/FORMAT/filter semantics, immutable inputs, output
+  hashes, or attempt identity. Scheduler exit `0` may accept stale outputs.
+  None proves variants, RNA-editing sites, transcript strand, scientific
+  readiness, or biological readiness. Migration evidence remains local fake-
+  tool/fixture evidence, not real bcftools, scheduler, cluster, production,
+  scientific-review, variant/editing-site, or biological proof.
+- **Findability, rollback, and next boundary:** the owner README and runbook
+  must own root/arbitrary-CWD producer/validator commands, scheduler submission,
+  selector/depth/filter/tool/output/lock/receipt selection, focused direct and
+  central tests, evidence preservation, provenance, and next safe action. Add
+  a dedicated partial-transaction/rollback-failure producer/wrapper route and
+  link structured validation to it. No diagram changes are needed because the
+  semantic DAG and public flow are unchanged. Roll back documentation, then
+  atomic five-move/nine-update cutover, scheduler, validator, producer
+  stability/provenance, transaction/recovery, and pipeline/selector baselines
+  in reverse order. Git rollback never changes runtime evidence. Publish and
+  prove this review completion equal, then cut a fresh branch as a separate
+  reversible boundary before selecting `MIG-03L`; do not preload Step `08`.
+- **Evidence boundary:** this pass changed or ran no source, test, harness,
+  dependency, real bcftools, scheduler, cluster, production, scientific-review,
+  variant/editing-site, or biological evidence.
+- **Card-boundary gate:** `git diff --check` passed. The exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings and no usability-review-caused path, lifecycle, dependency,
+  cycle, orphan, anchor, or diagram finding. The expected-only result remains
+  nonpassing and is not called green.
+
 ## 2026-08-03T10:00:03-0400 — REVIEW-REL-03L selected
 
 - **Selection:** from clean, published, local/upstream/live-remote-equal

@@ -35,7 +35,7 @@ characterize these defects without fixing or approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03L](../IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03L](REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: completed public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

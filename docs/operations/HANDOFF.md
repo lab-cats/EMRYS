@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published reliability-review
-  completion `db33d9cdf562134f8377639c23db74cc860830b3`.
+  exact SHA from live Git. Its frozen parent is published usability-review
+  selection `3ec83073ceae62eb6a59afe9470941cd1bf1eec3`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -26,24 +26,27 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   close `b73b12b` are published and local/upstream/live-remote-equal. MIG-03L
   definition `8dc6128`, architecture selection `e34edb5`, architecture
   completion `ec7e8d9`, reliability selection `3d2b9c0`, and reliability
-  completion `db33d9c` are also published and equal.
+  completion `db33d9c`, and usability selection `3ec8307` are also published
+  and equal.
 - Current package: unselected
   [`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
   after completed
   [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
-  and completed
+  completed
   [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
-  with active
-  [`REVIEW-UX-03L`](../tasks/IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
-  Usability review alone is selected. Step `08` and later cards remain
-  uncreated.
+  and completed
+  [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
+  All three reviews are complete; migration remains unselected. Step `08` and
+  later cards remain uncreated.
 - Package type at this checkpoint: documentation-only usability-review
-  selection. It records no finding yet and changes or runs no executable,
-  test, configuration, dependency, schema, fixture, or report-template
-  behavior.
-- Remote publication and upstream equality: reliability-completion parent
-  `db33d9c` is verified local/upstream/live-remote-equal. Publish and prove this
-  selection checkpoint equal before recording usability findings.
+  completion. It records final commands, distinct dry-run effects, recovery,
+  ownership, provenance, evidence ceilings, and rollback without changing or
+  running executable, test, configuration, dependency, schema, fixture, or
+  report-template behavior.
+- Remote publication and upstream equality: usability-selection parent
+  `3ec8307` is verified local/upstream/live-remote-equal. Publish and prove this
+  completion checkpoint equal, then cut a fresh branch from it as a separate
+  reversible boundary before selecting `MIG-03L`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -449,15 +452,18 @@ checkpoint `8dc6128` created only unselected
 and sequential
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-→ [`REVIEW-UX-03L`](../tasks/IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
+→ [completed `REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
 Architecture confirms exactly five moves, nine integration owners, unchanged
 native modes, one private moved-test roster bridge, final native hashes,
 unchanged shared partition-manifest ownership, artifact/coverage ownership,
 and reverse rollback. Reliability fixes five small old-path test-only
-checkpoints and their exact defect-preservation oracles. Usability alone is
-selected in the checkpoint containing this handoff; no finding is recorded
-yet. Migration remains unselected, no executable/test file changed or ran, and
-no Step `08` or later owner/review card is preloaded.
+checkpoints and their exact defect-preservation oracles. Usability fixes final
+producer/validator/scheduler commands, distinct dry-run effects, absolute-path
+and receipt-path choices, preservation-first recovery, non-calling language,
+owner findability, evidence ceilings, and reverse rollback. Migration remains
+unselected, no executable/test file changed or ran, and no Step `08` or later
+owner/review card is preloaded. Publish this completion, then cut a fresh branch
+before migration selection.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1048,9 +1054,10 @@ and its sequential reviews, defined at published checkpoint `8dc6128`.
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 is published/equal at `ec7e8d9`;
 [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-is in the checkpoint containing this handoff;
-[`REVIEW-UX-03L`](../tasks/IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-alone is active; migration remains unselected. Step `08` and later cards remain
-uncreated.
+is published/equal at `db33d9c`;
+[completed `REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
+is in the checkpoint containing this handoff. Migration remains unselected;
+the next boundary is a fresh branch cut before selection. Step `08` and later
+cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

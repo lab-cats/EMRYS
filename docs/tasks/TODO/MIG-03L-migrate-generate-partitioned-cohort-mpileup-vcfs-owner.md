@@ -222,6 +222,31 @@ but does not select it.
   card boundary, then batch canonical paths, commands, migration links, small
   documentation updates, lifecycle repair, and audit evidence in a separate
   close.
+- Final producer use is the mode-`0755` repository path
+  `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh`;
+  final validator use is an explicit interpreter plus
+  `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py`;
+  and scheduler use is `sbatch` plus the mode-`0644` final owner-local job from
+  a checkout with `logs/` created first. Arbitrary-CWD use makes every code,
+  input, selector, output/report, tool, and checkout path absolute. Use an
+  absolute producer output root in supported commands so receipt VCF paths
+  agree with validator-resolved arguments. Add no installed or legacy route.
+- Producer dry-run is side-effect-free after validating manifests, FAI/selector,
+  BAM/BAIs, tool, depth/filter, and hashes and printing exact pipelines plus
+  output/lock/temp/publication paths. Validator dry-run reads six inputs and
+  prints five rows without writing. Scheduler `EXECUTE=0` is not side-effect-
+  free: it changes to the submit/fallback directory, creates `logs/`, performs
+  module/tool/version diagnostics as applicable, and delegates producer dry-
+  run. Documentation must keep these three effects distinct.
+- Recovery guidance must preserve all finals, temps/backups, lock/owner,
+  manifests, BAM/BAIs, FASTA/FAI, regions file, unrelated bytes, streams,
+  scheduler evidence, CWD, tool/version, depth/filter, and environment before
+  action. It must name the controlled exit-`67`/restore-exit-`68` state where
+  prior FWD is absent but its backup survives while prior REV/receipt are
+  restored, with no marker. Never combine attempts, reconstruct a member,
+  remove a foreign lock, trust receipt presence/counts/timestamps, or retry the
+  same output path. Any separately authorized diagnostic retry uses an
+  isolated output root after ruling out producer and Step `08` readers.
 - Publish exactly five small sequential old-path test-only checkpoints—
   producer pipeline/selector, producer transaction/recovery, producer
   stability/provenance, validator, then scheduler—before the atomic five-move/
@@ -242,7 +267,7 @@ but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03L](../IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03L](../COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: architecture, reliability, and usability reviews are complete before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -362,7 +387,8 @@ but does not select it.
 
 ## Completion record
 
-Not selected. Architecture and reliability reviews completed from published/
-equal checkpoints; usability remains unselected in `TODO`. No executable/test
-path changed, no computational test ran, and no Step `08` or later owner is
-preloaded.
+Not selected. Architecture, reliability, and usability reviews completed from
+published/equal checkpoints. The next separate reversible boundary is a fresh
+branch cut from the published usability-completion checkpoint before migration
+selection. No executable/test path changed, no computational test ran, and no
+Step `08` or later owner is preloaded.
