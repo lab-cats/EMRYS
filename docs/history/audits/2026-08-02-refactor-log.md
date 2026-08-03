@@ -5935,3 +5935,24 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   reports `PASS documentation structure (208 Markdown documents, 129 task
   cards, 6 Mermaid sources)`. No usability-review path, lifecycle, dependency,
   cycle, orphan, schema, anchor, or diagram finding remains.
+
+## 2026-08-03T17:05:33-0400 — MIG-03N selected
+
+- **Selection:** usability completion
+  `c6c47129461f32e43d317e35afe84b49c9ec079c` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Move only MIG-03N from `TODO` to `IN_PROGRESS`
+  and repair its completed-usability lifecycle link. Step `09c`, every later
+  owner, and the frozen program remainder stay uncreated/unselected.
+- **Reviewed execution order:** publish exactly five small old-path test-only
+  checkpoints—runtime/input provenance, publication order, signal/concurrency,
+  validator, scheduler—changing only the named existing test owner and running
+  its smallest focused check. Then apply the reviewed eleven moves and ten
+  integration updates atomically, run the exact complete computational card
+  gate once, and publish an executable checkpoint. Finish with one separate
+  impact-directed documentation/lifecycle close and documentation-only gate.
+  Do not batch canonical path/link/README/runbook changes into executable
+  slices or preload Step `09c`.
+- **Minimal slice check:** run `git diff --check` only. Publish and prove this
+  selection checkpoint clean/upstream/live-remote-equal before the first test-
+  only slice.

@@ -55,24 +55,23 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   are also published and equal. Lifecycle documentation close `776dad3` and
   recursive-Make fixture correction `10be692` are published and local/
   upstream/live-remote-equal.
-- Current package: completed
-  [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
+- Current package: selected
+  [`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md),
   after completed
   [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
   and [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
-  with unselected
-  [`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md).
-  No card is selected. Step `09c` and every later migration/review card
+  plus completed
+  [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md).
+  No other card is selected. Step `09c` and every later migration/review card
   remain uncreated.
-- Package type at this checkpoint: documentation-only usability-review
-  completion. It fixes final command, side-effect, recovery-preservation,
-  evidence-language, findability, and rollback obligations; moves one card;
-  repairs every direct lifecycle link; and updates current status/audit truth
-  without changing or running an executable, test, configuration, dependency,
-  schema, fixture, report template, scheduler, cluster, or production surface.
-- Remote publication and upstream equality: usability selection `cd8930c` is
-  verified local/upstream/live-remote-equal. Publish and prove this completion
-  checkpoint equal before selecting MIG-03N alone. The configured `origin` is
+- Package type at this checkpoint: documentation-only MIG-03N selection. It
+  fixes the seven ordered implementation boundaries, moves one card, repairs
+  its direct usability link, and updates current status/audit truth without
+  changing or running an executable, test, configuration, dependency, schema,
+  fixture, report template, scheduler, cluster, or production surface.
+- Remote publication and upstream equality: usability completion `c6c4712` is
+  verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before the first runtime/input test-only slice. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -593,7 +592,7 @@ and input receipt predecessor is migrated. Step `09c` remains blocked on the
 complete six-output Step `09` transaction.
 
 Definition checkpoint `8bb27d4` created only unselected
-[`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+[`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
 and sequential unselected
 [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
@@ -1040,7 +1039,7 @@ Python-environment symlink remains removed.
 
 ## Immediate resume point
 
-All three MIG-03N reviews are complete; no card is selected. The
+MIG-03N alone is selected after all three completed reviews. The
 repository-health package is complete, and the definition checkpoint created
 only MIG-03N plus its three sequential review cards.
 Standalone
@@ -1060,11 +1059,11 @@ exact network-enabled rerun
 `0.120s`, shell `53.922s`, guarded R `163.293s`, report runtime `128.434s`,
 Python coverage `198.164s`, and overall parallel summary status `0` in
 `198.291s`. This is local repository evidence, not cluster, production,
-scientific-review, or biological-readiness proof. Usability selection
-`cd8930c` is published/equal; the checkpoint containing this handoff completes
-only `REVIEW-UX-03N`. After it is published/equal, select only MIG-03N; do not
+scientific-review, or biological-readiness proof. Usability completion
+`c6c4712` is published/equal; execute only selected MIG-03N through its five
+test-only, atomic-cutover/full-gate, and documentation-close boundaries. Do not
 select `CONCURRENCY-03`, `TASK-EPIC-01`, Step `09c`, or the frozen program
-remainder in that slice.
+remainder in those slices.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
@@ -1223,15 +1222,15 @@ published test checkpoints `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
 `7a667ee`, published/equal executable checkpoint `5e51496`, and the
 published documentation/lifecycle close `3f91fce`. Repository-health close
 `57d7ea4` then supported the live-DAG refresh that leaves only unselected
-[`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+[`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
 eligible, with sequential unselected
 [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 defined at `8bb27d4`. Architecture review is complete at `e36cb94`;
-reliability review is complete at `f0160c4`; usability is complete in the
-checkpoint containing this handoff. MIG-03N remains in `TODO`, no card is
-selected, and no executable/test file is selected.
+reliability review is complete at `f0160c4`; usability is complete at
+`c6c4712`. MIG-03N alone is now in `IN_PROGRESS`, and its first runtime/input
+test-only slice has not begun.
 Step `09c` migration and later owner cards remain uncreated and unselected.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

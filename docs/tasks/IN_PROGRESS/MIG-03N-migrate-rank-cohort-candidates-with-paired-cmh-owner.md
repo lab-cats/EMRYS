@@ -418,6 +418,15 @@ defines Step `09` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published repository-health close
-`57d7ea4`; no executable/test file changed or ran, and no Step `09c` migration
-or later owner card was created.
+Selected alone from clean, published, local/upstream/live-remote-equal
+three-review checkpoint `c6c47129461f32e43d317e35afe84b49c9ec079c`.
+
+Execution remains exactly seven sequential published boundaries: five small
+old-path test-only checkpoints in reviewed order; one atomic eleven-move/ten-
+integration executable cutover followed by the complete computational card
+gate; and one separately committed documentation/lifecycle close. Each
+test-only slice changes only its named existing test owner and runs only its
+smallest focused check. Canonical path/link batches, owner README, runbook/
+troubleshooting, topology/status owners, and lifecycle movement remain deferred
+to the documentation close. No Step `09c` migration or later owner card is
+created or selected.
