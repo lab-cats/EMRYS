@@ -42,6 +42,39 @@ run_expect_failure() {
     fi
 }
 
+run_expect_status() {
+    local expected_status="$1"
+    local stdout_path="$2"
+    local stderr_path="$3"
+    local observed_status
+    shift 3
+    if "$@" >"$stdout_path" 2>"$stderr_path"; then
+        observed_status=0
+    else
+        observed_status=$?
+    fi
+    [[ "$observed_status" == "$expected_status" ]] ||
+        fail "Expected exit $expected_status, got $observed_status: $*"
+}
+
+assert_text_equals() {
+    local path="$1"
+    local expected="$2"
+    local observed
+    observed="$(<"$path")"
+    [[ "$observed" == "$expected" ]] ||
+        fail "Unexpected content in $path: $observed"
+}
+
+assert_no_owned_step07_paths() {
+    local directory="$1"
+    local pattern="$2"
+    if find "$directory" -maxdepth 1 -name "$pattern" -print -quit |
+        grep -q .; then
+        fail "Invocation-owned Step 07 path remains in: $directory"
+    fi
+}
+
 fake_bcftools="$test_root/fake-bcftools"
 apply_fake_path="$fake_bcftools"
 
@@ -72,6 +105,10 @@ case "$command_name" in
         if [[ "${FAKE_BCFTOOLS_FAIL_STAGE:-}" == "mpileup" ||
               "${FAKE_BCFTOOLS_FAIL_STAGE:-}" == "mpileup_${orientation}" ]]; then
             exit 41
+        fi
+        if [[ -n "${FAKE_BCFTOOLS_MUTATE_PATH:-}" &&
+              "${FAKE_BCFTOOLS_MUTATE_ORIENTATION:-FWD_like}" == "$orientation" ]]; then
+            printf '# controlled mutation\n' >>"$FAKE_BCFTOOLS_MUTATE_PATH"
         fi
         printf 'ORIENTATION=%s\n' "$orientation"
         ;;
@@ -204,6 +241,54 @@ assert_contains "$test_root/dry-run.out" "Dry-run complete; no directories or fi
 assert_not_exists "$fixture/output"
 assert_not_exists "$test_root/dry-run.log"
 
+missing_bcftools="$test_root/does-not-exist/bcftools"
+run_expect_status 1 "$test_root/missing-bcftools.out" \
+    "$test_root/missing-bcftools.err" \
+    bash "$script" "${common_args[@]}" --bcftools-bin "$missing_bcftools" --execute
+assert_text_equals "$test_root/missing-bcftools.err" \
+    "ERROR: bcftools does not exist: $missing_bcftools"
+assert_not_exists "$fixture/output"
+
+nonexecutable_bcftools="$test_root/nonexecutable-bcftools"
+printf 'not executable\n' >"$nonexecutable_bcftools"
+chmod 0644 "$nonexecutable_bcftools"
+run_expect_status 1 "$test_root/nonexecutable-bcftools.out" \
+    "$test_root/nonexecutable-bcftools.err" \
+    bash "$script" "${common_args[@]}" \
+    --bcftools-bin "$nonexecutable_bcftools" --execute
+assert_text_equals "$test_root/nonexecutable-bcftools.err" \
+    "ERROR: bcftools exists but is not executable: $nonexecutable_bcftools"
+assert_not_exists "$fixture/output"
+
+path_bcftools_dir="$test_root/path-bcftools"
+arbitrary_cwd="$test_root/arbitrary-cwd"
+arbitrary_fixture="$test_root/arbitrary-fixture"
+mkdir -p "$path_bcftools_dir" "$arbitrary_cwd"
+cp "$fake_bcftools" "$path_bcftools_dir/bcftools-by-name"
+chmod +x "$path_bcftools_dir/bcftools-by-name"
+cp -R "$fixture" "$arbitrary_fixture"
+rm -rf "$arbitrary_fixture/output"
+arbitrary_args=(
+    --cohort-id cohort_path
+    --sample-manifest "$arbitrary_fixture/samples.tsv"
+    --partition-manifest "$arbitrary_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$arbitrary_fixture/orientation"
+    --reference-fasta "$arbitrary_fixture/reference.fa"
+    --output-root "$arbitrary_fixture/output"
+    --bcftools-bin bcftools-by-name
+)
+(
+    cd "$arbitrary_cwd"
+    PATH="$path_bcftools_dir:$PATH" bash "$script" "${arbitrary_args[@]}"
+) >"$test_root/arbitrary-cwd.out"
+assert_contains "$test_root/arbitrary-cwd.out" \
+    "bcftools: $path_bcftools_dir/bcftools-by-name"
+assert_not_exists "$arbitrary_fixture/output"
+if find "$arbitrary_cwd" -mindepth 1 -print -quit | grep -q .; then
+    fail "Arbitrary-CWD dry-run left invocation-CWD residue"
+fi
+
 FAKE_BCFTOOLS_LOG="$test_root/execute.log" \
 FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
     bash "$script" "${common_args[@]}" --execute >"$test_root/execute.out"
@@ -304,6 +389,35 @@ regions_receipt="$regions_fixture/output/cohort_regions/target/cohort_regions.ta
 [[ "$(awk -F '\t' 'NR == 2 { print $4 }' "$regions_receipt")" == "target.bed" ]] ||
     fail "Receipt must preserve the manifest-declared regions_file value"
 assert_contains "$test_root/regions-execute.log" "$regions_fixture/target.bed"
+
+compressed_regions_fixture="$test_root/compressed-regions"
+cp -R "$fixture" "$compressed_regions_fixture"
+rm -rf "$compressed_regions_fixture/output"
+printf '1\t0\t4\n' >"$compressed_regions_fixture/target.bed"
+gzip -c "$compressed_regions_fixture/target.bed" \
+    >"$compressed_regions_fixture/target.bed.gz"
+printf 'partition_id\tselector_type\tselector_value\ncompressed\tregions_file\ttarget.bed.gz\n' \
+    >"$compressed_regions_fixture/partitions.tsv"
+compressed_regions_args=(
+    --cohort-id cohort_compressed
+    --sample-manifest "$compressed_regions_fixture/samples.tsv"
+    --partition-manifest "$compressed_regions_fixture/partitions.tsv"
+    --partition-id compressed
+    --orientation-root "$compressed_regions_fixture/orientation"
+    --reference-fasta "$compressed_regions_fixture/reference.fa"
+    --output-root "$compressed_regions_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+FAKE_BCFTOOLS_LOG="$test_root/compressed-regions.log" \
+FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
+    bash "$script" "${compressed_regions_args[@]}" --execute >/dev/null
+compressed_regions_receipt="$compressed_regions_fixture/output/cohort_compressed/compressed/cohort_compressed.compressed.step07_outputs.tsv"
+assert_exists "$compressed_regions_receipt"
+[[ "$(awk -F '\t' 'NR == 2 { print $4 }' "$compressed_regions_receipt")" == \
+    "target.bed.gz" ]] ||
+    fail "Receipt must preserve the compressed regions_file declaration"
+assert_contains "$test_root/compressed-regions.log" \
+    "$compressed_regions_fixture/target.bed.gz"
 
 invalid_regions_fixture="$test_root/invalid-regions"
 cp -R "$regions_fixture" "$invalid_regions_fixture"
@@ -441,28 +555,91 @@ run_expect_failure "$test_root/missing-bai.out" "$test_root/missing-bai.err" \
 assert_contains "$test_root/missing-bai.err" "REV_like BAI for sample_B does not exist or is empty"
 assert_not_exists "$missing_bai_fixture/output"
 
-failure_fixture="$test_root/failure"
-cp -R "$fixture" "$failure_fixture"
-rm -rf "$failure_fixture/output"
-failure_args=(
-    --cohort-id cohort_failure
-    --sample-manifest "$failure_fixture/samples.tsv"
-    --partition-manifest "$failure_fixture/partitions.tsv"
-    --partition-id 1
-    --orientation-root "$failure_fixture/orientation"
-    --reference-fasta "$failure_fixture/reference.fa"
-    --output-root "$failure_fixture/output"
-    --bcftools-bin "$fake_bcftools"
-)
-run_expect_failure "$test_root/tool-failure.out" "$test_root/tool-failure.err" \
-    env FAKE_BCFTOOLS_FAIL_STAGE=filter_REV_like FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
-    bash "$script" "${failure_args[@]}" --execute
-assert_contains "$test_root/tool-failure.err" "REV_like bcftools mpileup/filter pipeline failed"
-failure_output="$failure_fixture/output/cohort_failure/1"
-assert_not_exists "$failure_output/cohort_failure.1.FWD_like.mpileup.vcf"
-assert_not_exists "$failure_output/cohort_failure.1.REV_like.mpileup.vcf"
-assert_not_exists "$failure_output/cohort_failure.1.step07_outputs.tsv"
-assert_not_exists "$failure_output/.cohort_failure.1.step07.lock"
+for failure_stage in \
+    mpileup_FWD_like filter_FWD_like mpileup_REV_like filter_REV_like
+do
+    failure_fixture="$test_root/failure-$failure_stage"
+    cp -R "$fixture" "$failure_fixture"
+    rm -rf "$failure_fixture/output"
+    failure_output="$failure_fixture/output/cohort_failure/1"
+    mkdir -p "$failure_output"
+    unrelated_path="$failure_output/unrelated.txt"
+    printf 'preserve unrelated bytes\n' >"$unrelated_path"
+    failure_args=(
+        --cohort-id cohort_failure
+        --sample-manifest "$failure_fixture/samples.tsv"
+        --partition-manifest "$failure_fixture/partitions.tsv"
+        --partition-id 1
+        --orientation-root "$failure_fixture/orientation"
+        --reference-fasta "$failure_fixture/reference.fa"
+        --output-root "$failure_fixture/output"
+        --bcftools-bin "$fake_bcftools"
+    )
+    case "$failure_stage" in
+        *_FWD_like) expected_failure_orientation="FWD_like" ;;
+        *_REV_like) expected_failure_orientation="REV_like" ;;
+        *) fail "Unhandled fake failure stage: $failure_stage" ;;
+    esac
+    run_expect_status 1 "$test_root/$failure_stage.out" \
+        "$test_root/$failure_stage.err" \
+        env FAKE_BCFTOOLS_FAIL_STAGE="$failure_stage" \
+        FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+        bash "$script" "${failure_args[@]}" --execute
+    assert_text_equals "$test_root/$failure_stage.err" \
+        "ERROR: $expected_failure_orientation bcftools mpileup/filter pipeline failed."
+    assert_not_exists "$failure_output/cohort_failure.1.FWD_like.mpileup.vcf"
+    assert_not_exists "$failure_output/cohort_failure.1.REV_like.mpileup.vcf"
+    assert_not_exists "$failure_output/cohort_failure.1.step07_outputs.tsv"
+    assert_not_exists "$failure_output/.cohort_failure.1.step07.lock"
+    assert_text_equals "$unrelated_path" "preserve unrelated bytes"
+    assert_no_owned_step07_paths "$failure_output" \
+        '.cohort_failure.1.step07.*'
+done
+
+for manifest_kind in sample partition; do
+    mutation_fixture="$test_root/mutation-$manifest_kind"
+    cp -R "$fixture" "$mutation_fixture"
+    rm -rf "$mutation_fixture/output"
+    mutation_output="$mutation_fixture/output/cohort_mutation/1"
+    mkdir -p "$mutation_output"
+    mutation_unrelated="$mutation_output/unrelated.txt"
+    printf 'preserve mutation neighbor\n' >"$mutation_unrelated"
+    case "$manifest_kind" in
+        sample)
+            mutation_path="$mutation_fixture/samples.tsv"
+            expected_mutation_label="Sample manifest"
+            ;;
+        partition)
+            mutation_path="$mutation_fixture/partitions.tsv"
+            expected_mutation_label="Partition manifest"
+            ;;
+        *) fail "Unhandled manifest mutation kind: $manifest_kind" ;;
+    esac
+    mutation_args=(
+        --cohort-id cohort_mutation
+        --sample-manifest "$mutation_fixture/samples.tsv"
+        --partition-manifest "$mutation_fixture/partitions.tsv"
+        --partition-id 1
+        --orientation-root "$mutation_fixture/orientation"
+        --reference-fasta "$mutation_fixture/reference.fa"
+        --output-root "$mutation_fixture/output"
+        --bcftools-bin "$fake_bcftools"
+    )
+    run_expect_status 1 "$test_root/mutation-$manifest_kind.out" \
+        "$test_root/mutation-$manifest_kind.err" \
+        env FAKE_BCFTOOLS_MUTATE_PATH="$mutation_path" \
+        FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+        bash "$script" "${mutation_args[@]}" --execute
+    assert_text_equals "$test_root/mutation-$manifest_kind.err" \
+        "ERROR: $expected_mutation_label changed during Step 07: $mutation_path"
+    assert_not_exists "$mutation_output/cohort_mutation.1.FWD_like.mpileup.vcf"
+    assert_not_exists "$mutation_output/cohort_mutation.1.REV_like.mpileup.vcf"
+    assert_not_exists "$mutation_output/cohort_mutation.1.step07_outputs.tsv"
+    assert_not_exists "$mutation_output/.cohort_mutation.1.step07.lock"
+    assert_text_equals "$mutation_unrelated" "preserve mutation neighbor"
+    assert_no_owned_step07_paths "$mutation_output" \
+        '.cohort_mutation.1.step07.*'
+done
 
 mismatch_fixture="$test_root/mismatch"
 cp -R "$fixture" "$mismatch_fixture"
