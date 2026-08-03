@@ -2770,3 +2770,39 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   independent authorship is not claimed. Executable/test mutation and
   computational, real-RSeQC, scheduler, production, scientific-review, and
   biological evidence remain out of scope.
+
+## 2026-08-03T04:08:19-0400 — REVIEW-REL-03H completed
+
+- **High finding — predecessor-bearing producer faults lacked exact oracles:**
+  add one test-only old-path baseline across exactly the direct shell test,
+  direct validator test, and central SLURM suite. Partial RSeQC stdout followed
+  by exit `42` propagates `42`, replaces a predecessor with partial bytes,
+  preserves an unrelated file, and exposes child stderr. Empty exit `0` makes
+  the producer exit `1`, truncates the predecessor to empty, preserves the
+  unrelated file, and emits the producer diagnostic. Both prove the absence of
+  transaction/recovery artifacts without approving the behavior.
+- **High finding — producer/validator and stable-input coverage was incomplete:**
+  add a nonempty malformed report that producer accepts but validator publishes
+  as failed evidence; explicit-binary arbitrary-CWD producer use; arbitrary-CWD
+  validator dry-run/execute/repeat byte parity; and post-build input mutation
+  that exits `2` while preserving a valid predecessor report. Neutral shared-
+  publication fault mechanics remain in the neutral report suite.
+- **High finding — scheduler tool and stale-file states lacked direct oracles:**
+  freeze repository `.venv` preference and activation, PATH fallback, dry-run
+  `logs/` creation without scientific output, and an exit-`0` child that emits
+  nothing while a stale nonempty report satisfies the wrapper's `-s` check and
+  remains byte-exact. Existing submit-CWD fallback, tolerated module list,
+  exported `/tmp`, Bash `3.2`, invalid mode, and child-exit oracles remain.
+- **Accepted boundary:** no fourth test file, production edit, fixture, coverage
+  baseline, documentation, dependency, or later owner enters the old-path
+  baseline. The architecture-reviewed five-move/nine-update ceiling stays
+  exact; target coverage may increase but cannot regress below frozen rates or
+  global covered-count floors.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. That expected-only result is not a green gate; no reliability-
+  review-caused finding remains.

@@ -30,7 +30,7 @@ without approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03H](REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03H](../TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 
@@ -98,8 +98,36 @@ without approving them.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal architecture-
-completion checkpoint `350223f0fc43969416b481a8dc090f9d67273c41`. This is a
-read-only independent-in-time adversarial pass by the same campaign agent;
-independent authorship is not claimed. No executable/test mutation or
-computational test is part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `13755af8e878ca6ffa2f92a7279730e698087b0d`.
+
+- **High — predecessor-bearing producer faults lacked exact oracles:** add one
+  test-only old-path baseline across exactly the direct shell test, direct
+  validator test, and central SLURM suite. Partial RSeQC stdout followed by exit
+  `42` must propagate `42`, replace the predecessor with only partial bytes,
+  preserve an unrelated file, and expose child stderr. Empty exit `0` must make
+  the producer exit `1`, truncate the predecessor to empty, preserve the
+  unrelated file, and expose the producer diagnostic. Neither behavior is
+  approved.
+- **High — producer/validator and stable-input coverage was incomplete:** add a
+  nonempty malformed report that the producer accepts but the validator
+  publishes as failed evidence; explicit-binary arbitrary-CWD producer use;
+  arbitrary-CWD validator dry-run/execute/repeat byte parity; and post-build
+  input mutation that exits `2` while preserving a valid predecessor report.
+  Keep shared publication fault mechanics in the neutral report suite.
+- **High — scheduler tool and stale-file states lacked direct assertions:**
+  freeze `.venv` preference plus activation, PATH fallback, dry-run `logs/`
+  creation without scientific output, and a mocked exit-`0` child that emits
+  nothing while one stale nonempty Step `03` report satisfies the wrapper's
+  `-s` check and remains byte-exact. Existing submit-CWD fallback, tolerated
+  module list, exported `/tmp`, Bash `3.2`, invalid mode, and child-exit oracles
+  remain applicable.
+- **Accepted evidence and coverage boundary:** no fourth test file, production
+  edit, fixture, coverage-baseline, documentation, dependency, or later owner
+  enters the old-path baseline. The final cutover retains the architecture-
+  reviewed five-move/nine-update ceiling. Coverage may increase but cannot
+  regress below the frozen target rates or global covered-count floors.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

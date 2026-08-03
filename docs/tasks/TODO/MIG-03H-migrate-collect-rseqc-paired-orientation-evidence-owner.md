@@ -91,6 +91,35 @@ eligible owner remains uncreated and unselected.
   RSeQC failure or empty success can truncate a predecessor or leave partial
   final bytes. Reliability review owns exact safe old/final-path predecessor
   and residue oracles; it may not repair the behavior.
+- Before movement, publish one test-only old-path baseline limited to
+  `tests/shell/test_step_03_infer_strandedness_and_orientation.sh`,
+  `tests/test_validate_step_03_rseqc_orientation.py`, and
+  `tests/test_slurm_wrapper_contracts.py`. No production, fixture, coverage-
+  baseline, documentation, or later-owner file belongs in that checkpoint.
+- The shell baseline must freeze two predecessor-bearing faults with separated
+  stdout/stderr and exact statuses. RSeQC partial stdout followed by child exit
+  `42` propagates `42`, replaces the predecessor with only partial child bytes,
+  exposes the child diagnostic on stderr, and preserves an unrelated file. An
+  exit-`0` empty result makes the producer exit `1`, truncates the predecessor
+  to zero bytes, emits the exact producer diagnostic, and preserves the
+  unrelated file. Both retain the output directory and prove there is no lock,
+  stage, backup, receipt, or recovery artifact; these are characterized
+  defects, not approved behavior.
+- The shell baseline also freezes a nonempty structurally malformed RSeQC
+  report as producer success and one explicit-binary arbitrary-CWD journey.
+  The validator baseline turns that readable malformed report into published
+  failed evidence, adds arbitrary-CWD dry-run/execute/repeat with exact input
+  and report bytes, and adds post-build input mutation that exits `2` while
+  preserving a valid prior report. Shared report-publication faults remain in
+  the neutral suite rather than being duplicated.
+- The scheduler baseline adds Step `03`-specific default-selection and stale-
+  predecessor coverage. Without `INFER_EXPERIMENT_BIN`, a repository `.venv`
+  executable is preferred and its activation is sourced; without that file,
+  the command name is delegated through PATH. Dry-run creates `logs/` but no
+  scientific output. In execute mode, an exit-`0` child that emits nothing can
+  still succeed when the named final report is already nonempty; its stale
+  bytes remain unchanged. Preserve these states without blessing or repairing
+  them.
 - Preserve the producer/validator boundary: producer nonempty success does not
   prove the three required fractions, and validator exit `0` may publish failed
   rows. Preserve the unused shallow BAI admission, sample/input nonbinding,
@@ -255,6 +284,7 @@ eligible owner remains uncreated and unselected.
 ## Completion record
 
 Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H` is complete;
-reliability and usability reviews remain unselected in `TODO`. No executable/
-test path changed, no computational test ran, and no later owner is preloaded.
+`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H` and
+`REVIEW-REL-03H` are complete; usability remains unselected in `TODO`. No
+executable/test path changed, no computational test ran, and no later owner is
+preloaded.
