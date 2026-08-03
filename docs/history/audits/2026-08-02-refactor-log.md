@@ -4300,3 +4300,34 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings and no usability-review-caused path, lifecycle, dependency,
   cycle, orphan, anchor, or diagram finding. The expected-only result remains
   nonpassing and is not called green.
+
+## 2026-08-03T08:50:01-0400 — MIG-03K selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  usability-review completion
+  `5653ce25a6f5f442b8136691a58030c831180f88`, move only `MIG-03K` to
+  `IN_PROGRESS`, repair its direct usability-review lifecycle link, and make it
+  the sole active migration. Step `07` and every later owner/review card remain
+  uncreated.
+- **Seven-slice boundary:** execute five old-path test-only baselines in strict
+  order—producer child/count, producer transaction, producer stability/
+  collision, validator, then scheduler—followed by one atomic five-move/nine-
+  update executable/test cutover with the single complete computational card-
+  boundary gate, then one separate canonical documentation/lifecycle close.
+  Each slice is independently revertible and must be published and proven
+  upstream/live-remote-equal before the next.
+- **Validation and documentation decision:** run only the smallest named
+  focused check at each test-only or cutover sub-boundary. Defer all migration-
+  link repairs, small canonical-documentation updates, the owner README/
+  contract close, and deletion of the obsolete pending scaffold to the final
+  documentation slice. Run the complete computational gate only at the
+  assembled executable card boundary and the exact documentation-only gate
+  only at lifecycle close.
+- **Boundary:** selection changes only lifecycle, planning, current roadmap/
+  handoff, and this audit. It changes or runs no executable, test, harness,
+  configuration, dependency, schema, fixture, report-template, runtime,
+  scheduler, cluster, production, scientific-review, biological-orientation,
+  or biological state.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; those checks remain assigned to their recorded boundaries.

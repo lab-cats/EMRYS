@@ -12,31 +12,31 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen parent is published usability-review
-  selection checkpoint `3f71f877627d039b158ded9b5f470c04ee1424b0`.
+  completion checkpoint `5653ce25a6f5f442b8136691a58030c831180f88`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
   published and local/upstream/live-remote-equal. MIG-03K definition
   `0bc12ac`, architecture selection `efdec11`, architecture completion
   `2452332`, reliability selection `7ca503d`, reliability completion `1d5406a`,
-  and usability selection `3f71f87` are also published and equal.
-- Current package: unselected
-  [`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+  usability selection `3f71f87`, and usability completion `5653ce2` are also
+  published and equal.
+- Current package: active
+  [`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
   after completed
   [`REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   and completed
   [`REVIEW-REL-03K`](../tasks/COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   followed by completed
   [`REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
-  All reviews are complete; migration remains unselected. Step `07` and later
-  cards remain uncreated.
-- Package type at this checkpoint: documentation-only usability-review
-  completion. It fixes final journeys, preservation, ownership, provenance,
-  and evidence language and changes or runs no executable, test, configuration,
-  dependency, schema, fixture, or report-template behavior.
-- Remote publication and upstream equality: usability-selection parent
-  `3f71f87` is verified local/upstream/live-remote-equal. Publish and prove this
-  completion checkpoint equal before selecting migration.
+  All reviews are complete; migration selection fixes seven bounded remaining
+  slices. Step `07` and later cards remain uncreated.
+- Package type at this checkpoint: documentation-only migration selection and
+  task-specific execution plan. It changes or runs no executable, test,
+  configuration, dependency, schema, fixture, or report-template behavior.
+- Remote publication and upstream equality: usability-completion parent
+  `5653ce2` is verified local/upstream/live-remote-equal. Publish and prove this
+  selection checkpoint equal before the first test-only baseline.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -367,8 +367,8 @@ published documentation/lifecycle checkpoint `db60dfa`.
 That clean, upstream-equal, live-remote-equal checkpoint supported a fresh DAG
 refresh. Only `partition_BAM_by_mechanical_read_orientation` is eligible: its
 sole direct predecessor is migrated, while Step `07` still depends on Step
-`06`. Published/equal definition checkpoint `0bc12ac` created only unselected
-[`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+`06`. Published/equal definition checkpoint `0bc12ac` created only
+[`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and sequential
 [completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 → [completed `REVIEW-REL-03K`](../tasks/COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
@@ -384,10 +384,12 @@ erased recovery evidence, shared-QC collision, absent receipt, validator exit-
 `0` failed rows, one-CPU/thread mismatch, warning-only tool probe, Bash `3.2`,
 and stale-five-file defects without approving them.
 Architecture is published/equal at `2452332`; reliability completion is
-published/equal at `1d5406a`. Usability is complete from published/equal
-selection `3f71f87` in the checkpoint containing this handoff. Migration
-remains unselected; no executable/test file changed or ran, and no Step `07` or
-later owner/review card is preloaded.
+published/equal at `1d5406a`; usability completion is published/equal at
+`5653ce2`. MIG-03K is the sole active migration and has seven bounded remaining
+slices: five old-path test-only baselines, one atomic executable/test cutover
+with the complete computational card-boundary gate, and one separate
+documentation/lifecycle close. Selection changes or runs no executable/test
+file, and no Step `07` or later owner/review card is preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -958,8 +960,8 @@ at `0328fbe`. MIG-03J is complete at published transaction `42bf851`,
 admission/signal `3913215`, validator `8eb3a0b`, and scheduler `ec240ae`
 baselines plus published executable/test checkpoint `ef4cad7`; documentation/
 lifecycle close is published at `db60dfa`. A fresh live-DAG check then
-supported only unselected
-[`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+supported only
+[`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and its sequential reviews, defined at published checkpoint `0bc12ac`.
 [completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 is published/equal at `2452332`;
@@ -967,8 +969,8 @@ is published/equal at `2452332`;
 is complete from published/equal selection `7ca503d` in the checkpoint
 containing this handoff;
 [`REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
-is complete from published/equal selection `3f71f87` in the checkpoint
-containing this handoff; migration remains unselected. Step `07` and later cards
-remain uncreated.
+is complete at published/equal checkpoint `5653ce2`; MIG-03K is selected with
+seven bounded remaining slices and no executable/test mutation yet. Step `07`
+and later cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

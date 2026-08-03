@@ -14,8 +14,8 @@ After `MIG-03J`, the refreshed live semantic DAG has exactly one eligible
 unmigrated owner: `partition_BAM_by_mechanical_read_orientation`. Its sole
 direct artifact predecessor, `split_N_cigar_reads_with_GATK`, is migrated.
 Historical Step `07` remains blocked on this owner, and no Step `07` card is
-created or selected. This card defines Step `06` as the smallest next JIT unit
-but does not select it.
+created or selected. This card selects Step `06` as the smallest next JIT unit
+after all three dedicated reviews completed.
 
 ## Fixed decisions
 
@@ -360,7 +360,135 @@ but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03J` documentation checkpoint `db60dfa`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no Step `07` or later owner is preloaded.
+Selected as the sole active migration from clean, published, local/upstream/
+live-remote-equal usability-review checkpoint
+`5653ce25a6f5f442b8136691a58030c831180f88`. All three dedicated reviews are
+complete. No executable/test path changed or computational test ran in this
+selection, and no Step `07` or later owner is preloaded.
+
+### Task-specific execution plan
+
+Keep the remaining work to seven bounded, independently revertible slices and
+publish/prove each checkpoint before the next:
+
+1. add and run only the old-path producer child/count oracles;
+2. add and run only the old-path producer transaction oracles;
+3. add and run only the old-path producer stability/collision oracles;
+4. add and run only the old-path direct-validator oracles;
+5. add and run only the old-path central-scheduler oracles, then record the
+   assembled five-checkpoint baseline identity;
+6. apply the atomic five-move/nine-update cutover, run minimal final-path
+   checks, then run the complete applicable computational gate once at the
+   assembled executable card boundary and publish the executable checkpoint;
+7. batch canonical paths/commands, owner README/contract repair, migration and
+   lifecycle links, current status/evidence, pending-scaffold disposition, and
+   audit proof in the separate documentation close.
+
+The first baseline slice changes only
+`tests/shell/test_step_06_split_bam_by_read_orientation.sh`. Add exact filter,
+merge, index, and count-command exits `71`-`74` with stderr, no finals, cleanup,
+and unrelated-file preservation; missing explicit samtools rejection before
+directory creation; basename/PATH execution from arbitrary CWD; assigned-
+greater-than-input rejection; and exit-`0` publication when flag `99 + 147`
+disagrees with the merged FWD count. Run only `bash -n` on that test and its
+complete direct shell suite. Record exact effects plus mode, bytes, lines, and
+SHA-256. Existing help/admission/thread/dry-run, success, empty-group,
+temporary-quickcheck, lock, stale-path, and ordinary rollback cases remain the
+owners of their behavior. Do not run Python, scheduler, coverage, or broad
+gates.
+
+The second baseline slice changes only that same direct shell test. Add a final
+move-order oracle with counts last, incomplete-final-set rejection with byte-
+exact preservation, restoration of all five predecessor files after final-path
+quickcheck failure, and publication exit `67` followed by FWD-BAM restoration
+exit `68`. The last case must preserve primary exit `67`, leave the prior FWD
+BAM missing, restore the other four prior files, preserve unrelated bytes, and
+show erased backup/lock/scratch/recovery evidence. Run only `bash -n` and the
+complete direct shell suite and record mode, bytes, lines, SHA-256, streams,
+exits, predecessor/final/unrelated bytes, and residue. Do not repair or approve
+the best-effort restoration defect.
+
+The third baseline slice changes only that same direct shell test. Add
+controlled BAM/BAI mutation during the first filter while the producer still
+exits `0` and publishes; controlled `TERM` exit `143` with predecessor and
+unrelated bytes preserved and owned lock/scratch removed; and a deterministic
+same-sample barrier where distinct output directories and shared QC let both
+runs exit `0`, retain both BAM/BAI quartets, and leave last-writer counts from
+one attempt beside the other attempt's outputs. Assert no receipt or durable
+recovery marker. Run only `bash -n` and the complete direct shell suite and
+record exact effects plus mode, bytes, lines, and SHA-256. Add no serialization,
+receipt, recovery mechanism, or production edit.
+
+The fourth baseline slice changes only
+`tests/test_validate_step_06_orientation_outputs.py`. Add arbitrary-CWD dry-
+run/execute/repeat byte parity with unchanged inputs and no invocation-CWD
+residue; invalid BAM/BAI container magic as exit-`0` failed evidence; and a
+compact post-build mutation matrix over all five inputs that exits `2` while
+preserving a valid predecessor report. Run only `.venv/bin/python -m pytest -q
+tests/test_validate_step_06_orientation_outputs.py` and record exact report
+effects plus mode, bytes, lines, and SHA-256. Existing count disagreement owns
+flag/merged and assigned failures; neutral report tests own exact-loader and
+publication faults. Add no duplicate helper or production change.
+
+The fifth baseline slice changes only `tests/test_slurm_wrapper_contracts.py`.
+Add samtools version-command failure before delegation; missing and
+nonexecutable tool warnings with unchanged delegation; PATH-basename
+forwarding; absent-`SLURM_SUBMIT_DIR` fallback; dry-run `logs/`-only mutation;
+explicit `THREADS` independent of the one-CPU request; and a zero-exit child
+whose five stale nonempty outputs are falsely accepted byte-exactly. Run only
+`.venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k
+step_06_split_bam_by_read_orientation` and record counts, streams, delegation/
+output effects, mode, bytes, lines, and SHA-256. Generic scheduler cases retain
+directives/mode, module calls/tolerance, override arguments, invalid mode,
+child exit, missing-output rejection, and Bash `3.2`. This tip is the assembled
+old-path baseline; no other test, production, fixture, coverage, documentation,
+dependency, or later-owner file enters any baseline slice.
+
+The executable cutover is atomic because every known caller is repository-
+owned. Move exactly producer, validator, mode-`0755` job, shell test, and
+validator test to their reviewed stage-owner homes. Update exactly `Makefile`,
+`scripts/build_artifact_index.py`, `tests/test_artifact_adapters.py`,
+`tests/test_public_cli_contracts.py`, `tests/test_slurm_wrapper_contracts.py`,
+`tests/test_validation_check_rosters.py`,
+`tests/libraries/test_validation_report.py`,
+`tests/baselines/python_coverage.json`, and
+`tests/fixtures/public_cli_contracts/make_target_expansions.json`. Apply only
+the reviewed producer usage path, validator neutral-library root, job child
+path, moved-test roots/targets and private roster load, explicit map paths,
+artifact path/hash assertion, coverage row, and literal Make expansion. No
+wrapper, alias, duplicate, package, descriptor, schema, transaction, receipt,
+recovery marker, dependency action, canonical-documentation path, pending-
+scaffold deletion, or later owner enters the cutover.
+
+Before the complete gate, run only producer/job/moved-shell-test syntax; the
+moved direct shell and validator suites; the Step `06` scheduler subset; and
+the smallest explicit public-CLI/Make, roster/report, artifact, and coverage-
+path assertions affected by the cutover. Measure final Python coverage once
+with only
+`tests/git_orchestration/test_validators.py::test_documentation_validator_accepts_repository_from_arbitrary_cwd`
+deselected so intentionally deferred documentation does not prevent exact
+moved-row accounting. Update only the moved validator row and mechanically
+changed global counts, keep every non-target row exact, and enforce frozen
+target rates and global covered-count floors.
+
+Run the canonical RUNBOOK aggregate once against the assembled executable tree
+with `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks
+VALIDATION_ARGS="--result-json /private/tmp/norad-validation-mig-03k.json"`.
+Canonical documentation is intentionally deferred, so the aggregate may report
+only the repository documentation assertion with the exact Step `06`
+migration-caused stale paths plus the nine inherited `UNREFINED` locations.
+Record the exact list and report this as an expected-only nonpassing ceiling,
+never a green gate. Any other failure, coverage regression, missing tool, or
+lane fault must be understood before the executable commit. Do not install
+dependencies or use scheduler, cluster, or production resources.
+
+At documentation close, use the full canonical roster and add no unrelated
+docs. Add the owner README, repair every migration-caused path and inbound
+lifecycle link, delete only the obsolete pending scaffold, move this card to
+`COMPLETED`, and run exactly the RUNBOOK documentation-only sequence. The
+accepted close may retain only the nine inherited `UNREFINED` locations and
+must contain no migration-caused finding. Roll back documentation and the
+pending-scaffold deletion first, the atomic cutover second, then scheduler,
+validator, producer stability/collision, producer transaction, and producer
+child/count baselines in reverse order. Git rollback never deletes or changes
+runtime evidence, production data, locks, logs, or recovery artifacts.

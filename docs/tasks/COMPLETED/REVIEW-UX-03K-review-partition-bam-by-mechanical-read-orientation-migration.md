@@ -30,7 +30,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03K](../TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03K](../IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
