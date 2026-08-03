@@ -21,7 +21,7 @@ PUBLIC_COMMANDS = (
 )
 
 
-def test_documentation_validator_accepts_repository_from_arbitrary_cwd(
+def test_documentation_validator_reports_authorized_unimplemented_unrefined_state(
     run_cli,
 ) -> None:
     result = run_cli(
@@ -33,8 +33,29 @@ def test_documentation_validator_accepts_repository_from_arbitrary_cwd(
         ]
     )
 
-    assert result.returncode == 0, result.stderr
-    assert "PASS documentation structure" in result.stdout
+    expected = (
+        "ERROR: Documentation gate failures:\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/FUT-AGENT-01-evaluate-persistent-agent-state.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/FUT-AIDEV-01-portable-ai-development-system.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/FUT-ANALYSIS-ECO-01-evaluate-analysis-ecosystems.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/FUT-SITE-01-csu-slurm-execution-profile.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/FUT-SITE-02-portable-site-and-container-profiles.md\n"
+        "invalid card location: docs/tasks/UNREFINED/README.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/TASK-VIEW-01-generate-tranche-dashboard.md\n"
+        "invalid card location: "
+        "docs/tasks/UNREFINED/TEST-E2E-01-local-synthetic-steps-07-09.md\n"
+    )
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == expected
 
 
 @pytest.mark.parametrize(("interpreter", "script"), PUBLIC_COMMANDS)
