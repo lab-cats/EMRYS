@@ -29,7 +29,7 @@ caller-CWD/module behavior, or an undiscoverable owner.
 
 ## Completion unblocks
 
-- [MIG-03F](MIG-03F-migrate-construct-canonical-bam-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03F](../TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -92,5 +92,8 @@ caller-CWD/module behavior, or an undiscoverable owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal reliability
+checkpoint `b3fe32691a60ed62c5930e6c89639f780a4bd1b3`. This is a read-only
+independent-in-time adversarial pass by the same campaign agent; independent
+authorship is not claimed. No executable/test mutation or computational test is
+part of review selection.

@@ -185,7 +185,7 @@ migrate either downstream stage.
 
 ## Blocked by
 
-- [REVIEW-UX-03F](REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03F](../IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

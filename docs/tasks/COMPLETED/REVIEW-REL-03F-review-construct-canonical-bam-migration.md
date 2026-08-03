@@ -31,7 +31,7 @@ preserve and characterize each state without approving it.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03F](../TODO/REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03F](../IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

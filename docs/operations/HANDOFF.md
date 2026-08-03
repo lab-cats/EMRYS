@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03E` documentation/lifecycle checkpoint
   `fa79883683b37559dfa90880a3f04a978bbfb530` is clean, published, and
   local/upstream/live-remote-equal; its executable checkpoint is `cd3b547`.
-- Current package: completed
-  [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
-  for the `MIG-03F` helper, transaction, loader, scheduler, coverage, and
-  rollback pass. Usability and migration remain unselected.
-- Package type at this checkpoint: documentation-only reliability-review
-  completion; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: reliability selection parent
-  `a49e45c` is verified local/upstream/live-remote-equal. The commit containing
-  this handoff must be published and proved equal before usability selection.
+- Current package: selected
+  [`REVIEW-UX-03F`](../tasks/IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
+  for the `MIG-03F` producer, validator, scheduler, helper-diagnostic,
+  recovery, and maintainer journeys. Migration remains unselected.
+- Package type at this checkpoint: documentation-only usability-review
+  selection; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: reliability completion parent
+  `b3fe326` is verified local/upstream/live-remote-equal. The commit containing
+  this handoff must be published and proved equal before review completion.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -578,7 +578,9 @@ four were unselected at definition checkpoint `ee25492`. Only
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
 is complete, and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
-is complete. Usability and migration remain unselected; no downstream or later
+is complete, and
+[`REVIEW-UX-03F`](../tasks/IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
+alone is selected. Migration remains unselected; no downstream or later
 migration card is created.
 
 The user has authorized one continuous physical-migration campaign on this
@@ -615,7 +617,9 @@ unselected;
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
 and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
-are complete. Publish and prove this completion checkpoint equal before
-usability selection; migration, downstream, and later owners remain unselected.
-The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
-out of scope.
+are complete, and
+[`REVIEW-UX-03F`](../tasks/IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
+alone is selected. Publish and prove this selection checkpoint equal before the
+read-only pass completes; migration, downstream, and later owners remain
+unselected. The unsliced `PROGRAM-01` remainder and unrelated roadmap remain
+preserved and out of scope.

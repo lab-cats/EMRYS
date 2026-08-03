@@ -2078,3 +2078,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   90%/85%. This was a read-only committed-time pass by the same campaign agent;
   no executable/test mutation or computational, dependency, runtime, scheduler,
   production, scientific-review, or biological evidence changed or ran.
+
+## 2026-08-03T01:09:25-0400 — REVIEW-UX-03F selected
+
+- **Selection:** move only `REVIEW-UX-03F` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after reliability completion checkpoint
+  `b3fe326` was clean, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch. `MIG-03F` remains unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time pass over
+  producer direct/explicit-Bash/arbitrary-CWD journeys, validator dry-run/
+  execute/repeat commands, scheduler submission/CWD/default/override/module
+  caveats, helper-integrity diagnostics, recovery preservation, Make/test
+  routes, implementation provenance, owner findability, rollback, and evidence
+  ceilings. The same campaign agent performs the pass, so independent
+  authorship is not claimed. No executable/test mutation, computational test,
+  runtime tool, scheduler submission, dependency action, production input,
+  scientific review, or biological evidence is in scope.
