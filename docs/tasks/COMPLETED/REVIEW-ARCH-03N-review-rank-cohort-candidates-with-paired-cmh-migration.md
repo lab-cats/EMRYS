@@ -37,7 +37,7 @@ schemas, or leaving a compatibility owner.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03N](../TODO/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Fully: reliability review requires this completed architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03N](../IN_PROGRESS/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Fully: selected reliability review consumes this completed architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

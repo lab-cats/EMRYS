@@ -27,7 +27,7 @@ retry guidance, scientific overclaim, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03N](REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03N](../IN_PROGRESS/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 
@@ -98,5 +98,5 @@ retry guidance, scientific overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-REL-03N`; no executable/test file
-changed or ran.
+Not selected. Blocked on selected, incomplete `REVIEW-REL-03N`; no
+executable/test file changed or ran.

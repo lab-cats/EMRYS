@@ -5761,3 +5761,25 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   lifecycle, dependency, cycle, orphan, schema, or diagram finding remains.
   Publish and prove completion clean/upstream/live-remote-equal before
   selecting reliability alone.
+
+## 2026-08-03T16:46:02-0400 — REVIEW-REL-03N selected
+
+- **Selection:** architecture completion
+  `e36cb9463fe5cf54777b48d5a063c28e28a44e62` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Move only `REVIEW-REL-03N` from `TODO` to
+  `IN_PROGRESS` and repair its architecture and usability lifecycle links.
+  MIG-03N, usability, Step `09c`, every later owner, and the frozen program
+  remainder stay unselected.
+- **Read-only plan:** inspect existing shell transaction/failure oracles,
+  admitted-input binding, six-output publication/restore states, signal and
+  same-analysis contention, guarded real-R and independent count-derived CMH/
+  BH evidence, production validator ceilings and private-loader faults,
+  scheduler module/R/CWD/log/child/stale-output behavior, artifact meaning,
+  coverage, and rollback. Record only the smallest test-only checkpoints still
+  required before cutover. Run no executable, test, dependency, R runtime,
+  scheduler, cluster, production, scientific-review, or biological workload.
+- **Minimal slice check:** run `git diff --check` only. Per the card-boundary-
+  only validation rule, the complete documentation gate belongs to reliability-
+  review completion. Publish and prove this selection checkpoint clean/
+  upstream/live-remote-equal before beginning the review.

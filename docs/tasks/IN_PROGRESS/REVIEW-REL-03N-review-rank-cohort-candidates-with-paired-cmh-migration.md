@@ -108,5 +108,8 @@ dependencies.
 
 ## Completion record
 
-Not selected. Architecture prerequisite is complete; no executable/test file
-changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+architecture-completion checkpoint
+`e36cb9463fe5cf54777b48d5a063c28e28a44e62` for a read-only
+reliability pass. MIG-03N, usability, Step `09c`, and all executable/test files
+remain unselected and unchanged; no computational test runs in this review.
