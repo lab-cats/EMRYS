@@ -151,6 +151,13 @@ migrate either downstream stage.
   all directives, mode, strictness, caller-CWD behavior, module calls, defaults,
   output-directory/log creation, `EXECUTE` handling, output checks, streams,
   exits, and Bash `3.2` empty-array dry-run defect.
+- Final scheduler instructions must `cd` to the checkout, create `logs/`, submit
+  the exact final job, and expose `SAMPLE_ID`, `INPUT_ALIGNMENT`, `OUTPUT_DIR`,
+  `THREADS`, and `EXECUTE`. State that the wrapper ignores `SLURM_SUBMIT_DIR`,
+  forces `TMPDIR=/tmp`, creates log/output directories in dry-run, strictly
+  loads samtools `1.19.2`, tolerates only module-list diagnostics, and can fail
+  before producer delegation on Bash `3.2`. Do not imply local mocked coverage
+  proves a real submission.
 - `STEP_PRODUCERS["02"]` intentionally changes to the final producer path.
   Preserve status, evidence ID, Git projection, artifact identities, schemas,
   contents, ordering, reconciliation, and consumers. Record the reviewed final
@@ -175,6 +182,24 @@ migrate either downstream stage.
   transaction diagnostics, ambiguous rollback preservation, final paths,
   focused tests, implementation-provenance transition, rollback, and the local-
   only evidence ceiling.
+- The README and Step `02` runbook must show final-path producer dry-run and
+  `--execute` in both direct and explicit-`bash` forms. Explain that the
+  producer resolves samtools only from PATH, that dry-run invokes no samtools
+  command and creates no output directory/lock/scratch/backup/BAM/BAI, and that
+  arbitrary-CWD use requires absolute producer/input/output paths. Show the
+  mode-`0644` validator through an explicit interpreter for dry-run, execute,
+  repeat, and arbitrary-CWD use with an explicit samtools path.
+- Replace any unconditional complete-rollback claim. The owner README, runbook,
+  and troubleshooting route must name the possible prior-BAI-only lockless
+  state and require preservation of the pair directory, producer and scheduler
+  streams, run-token temporary/backup paths, and exact final/backup bytes before
+  any separately authorized recovery decision. The absence of a lock, backup,
+  receipt, or marker does not authorize deletion, adoption, or retry.
+- Route the exact-loader diagnostic to checkout-integrity inspection of private
+  `src/norad/libraries/bam_validation.py`; do not suggest `PYTHONPATH`, package
+  installation, a public helper CLI, or a legacy Step `02` path. Focused local
+  commands must include the moved shell/validator suites, neutral helper suite,
+  unchanged Step `04`/`05` validator regressions, and central scheduler suite.
 - Add no descriptor, schema, package marker, compatibility copy, symlink,
   scheduler abstraction, receipt, recovery marker, transaction redesign,
   manifest policy, or public neutral-helper CLI.
@@ -185,7 +210,7 @@ migrate either downstream stage.
 
 ## Blocked by
 
-- [REVIEW-UX-03F](../IN_PROGRESS/REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03F](../COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

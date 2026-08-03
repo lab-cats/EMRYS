@@ -92,8 +92,42 @@ caller-CWD/module behavior, or an undiscoverable owner.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal reliability
-checkpoint `b3fe32691a60ed62c5930e6c89639f780a4bd1b3`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `308f02e33fd573f9f45df95d043f7120bb454132` and the
+reliability-corrected migration card.
+
+One high finding requires replacement of the stale, incomplete Step `02`
+runbook journey at documentation close. Final instructions must use the final
+producer, validator, and job paths; include repository-root direct and
+explicit-`bash` producer dry-run/execute forms plus arbitrary-CWD absolute
+paths; explain that producer samtools resolution is PATH-only; and retain the
+mode-`0644` validator as an explicit-interpreter dry-run/execute/repeat journey
+with an explicit samtools path. Producer dry-run checks inputs and PATH but
+invokes no samtools command and creates no output directory, lock, scratch,
+backup, BAM, or BAI.
+
+A second high finding requires operator-safe scheduler and recovery routes.
+Submission must `cd` to the checkout, create `logs/`, use the exact final job,
+and expose `SAMPLE_ID`, `INPUT_ALIGNMENT`, `OUTPUT_DIR`, `THREADS`, and
+`EXECUTE`; the wrapper ignores `SLURM_SUBMIT_DIR`, forces `TMPDIR=/tmp`, creates
+logs/output directories in dry-run, strictly loads samtools `1.19.2`, tolerates
+only module-list diagnostics, and retains the Bash `3.2` empty-array defect.
+Runbook prose must stop promising complete rollback: a failed restore can
+leave only the prior BAI with no BAM, backups, lock, receipt, or marker.
+Troubleshooting must preserve the pair directory, producer/scheduler streams,
+run-token paths, and exact final/backup state; it must authorize neither
+cleanup nor retry without ownership and provenance inspection.
+
+Medium findings require the adjacent owner README to explain the private
+neutral helper and exact-loader diagnostic as checkout-integrity boundaries,
+not a `PYTHONPATH`, package, or public-CLI workaround. It must route the moved
+owner suites, neutral helper suite, unchanged Step `04`/`05` direct regressions,
+and central scheduler suite; record the producer implementation path/hash-only
+artifact transition; and state documentation-first reverse rollback and the
+local fixture/mock evidence ceiling. Every known journey has a final path, so
+no compatibility alias is justified.
+
+The same campaign agent performed this separate committed-time pass, so
+independent authorship is not claimed. No executable, test, dependency,
+runtime-tool, scheduler, production, scientific-review, or biological evidence
+changed or ran.

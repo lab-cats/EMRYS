@@ -2094,3 +2094,32 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   authorship is not claimed. No executable/test mutation, computational test,
   runtime tool, scheduler submission, dependency action, production input,
   scientific review, or biological evidence is in scope.
+
+## 2026-08-03T01:11:45-0400 — REVIEW-UX-03F completed
+
+- **High finding — public journeys need complete final commands:** the owner
+  README and Step `02` runbook must replace bare old paths with final direct and
+  explicit-`bash` producer dry-run/execute forms, arbitrary-CWD absolute paths,
+  and explicit PATH-only samtools resolution. The mode-`0644` validator remains
+  an explicit-interpreter dry-run/execute/repeat journey with an explicit
+  samtools path. Producer dry-run invokes no samtools command and creates no
+  output directory, lock, scratch, backup, BAM, or BAI.
+- **High finding — scheduler and recovery guidance overstate safety:** final
+  submission must `cd` to the checkout, create `logs/`, name the final job, and
+  expose `SAMPLE_ID`, `INPUT_ALIGNMENT`, `OUTPUT_DIR`, `THREADS`, and `EXECUTE`.
+  Document caller CWD, forced `/tmp`, strict samtools load, tolerated module
+  lists, dry-run directory creation, and the Bash `3.2` defect. Replace the
+  complete-rollback promise with the characterized prior-BAI-only lockless
+  state and preserve pair, stream, run-token, final, and backup evidence before
+  any separately authorized recovery decision.
+- **Medium findings — maintainer routes and evidence boundaries:** the adjacent
+  README must treat neutral-helper loader errors as checkout-integrity
+  diagnostics, never `PYTHONPATH`/package/public-CLI workarounds; route the
+  moved owner, neutral helper, unchanged Step `04`/`05`, and central scheduler
+  suites; record only the producer implementation path/hash artifact change;
+  and state documentation-first rollback plus the local fixture/mock ceiling.
+  No compatibility alias is required.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, dependency, runtime tool, scheduler, production, scientific-review, or
+  biological evidence changed or ran.
