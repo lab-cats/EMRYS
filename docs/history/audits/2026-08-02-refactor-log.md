@@ -744,3 +744,58 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   then reported only the same nine `invalid card location` findings and no
   migration-caused path, anchor, lifecycle, or ownership error. This remains an
   expected-only nonpassing documentation ceiling, not a passing gate.
+
+## 2026-08-02T20:32:00-0400 — MIG-03C JIT unit defined
+
+- **Git and predecessor:** inspected clean campaign tip
+  `1b82e4f04b926ac12e6306e40d03fee7840f3fa6` and proved local/upstream equality
+  `0 0`. Recent history is linear through separate `MIG-03B` executable and
+  documentation commits; no merge/rebase/cherry-pick/revert marker, index lock,
+  recovery state, untracked file, or overlapping mutable lane was present.
+- **Selection decision:** the live semantic map exposes two currently eligible
+  typed-external-input roots, `convert_GTF_to_BED12` and
+  `construct_FASTA_sidecars`. Select only `convert_GTF_to_BED12`: its validator
+  imports only its same-owner producer plus the already migrated neutral report
+  owner. The sidecar validator additionally imports the still-flat cross-cutting
+  reference-provenance parser owner. The selected unit is therefore the smaller
+  dependency-safe surface; historical aliases and filenames did not determine
+  order. The sidecar owner remains uninspected beyond this bounded comparison.
+- **Frozen native surface:** producer `scripts/gtf_to_bed12.py` is mode `0755`,
+  10,613 bytes, SHA-256
+  `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`;
+  validator `scripts/validate_step_00b_bed12.py` is mode `0644`, 8,953 bytes,
+  SHA-256 `e7f2caac22bf461374e23c18dd3a92c9c61456422b0fcf960b52aa7b7076d97d`;
+  job `jobs/step_00b_gtf_to_bed12.slurm` is mode `0755`, 3,119 bytes, SHA-256
+  `7eb6b3f904daa7ec6cb74f7a55377d0be1aa485b2c80cdd1464d025f9129414f`.
+  The two mode-`0644` direct tests and owner-specific mocked-job case are the
+  initial mirrored-test surface.
+- **Direct graph:** the scheduler names the producer; the validator imports the
+  producer's normalization logic; artifact implementation evidence names and
+  hashes the producer. Exact public-CLI, SLURM, validator-roster, shared-loader,
+  Make, literal-expansion, coverage, runbook, troubleshooting, inventory, and
+  contract consumers name one or more legacy paths. No config, public schema,
+  report template, or scientific consumer names a source path.
+- **Wrapper decision:** all named path callers are repository-owned and can move
+  atomically with the three assets. A legacy wrapper, re-export, package marker,
+  symlink, compatibility copy, or global path mutation is not justified. The
+  scheduler's delegated argument and artifact evidence intentionally transition
+  to the final producer path; public BED12 and validation artifact identities do
+  not change.
+- **Coverage boundary:** stable source roots already include `src/norad`.
+  Tracked producer coverage is `151/167` lines and `44/56` branches; tracked
+  validator coverage is `127/140` lines and `29/36` branches. Global baseline is
+  `9343/11506` lines and `3281/4698` branches. Final-path measurement must be
+  inspected before moving both rows and the producer's required-subprocess
+  identity through the reviewed update command.
+- **Risk boundary:** preserve converter warning/skip, deterministic bytes,
+  immediate write, output-parent creation, and silent replacement; validator
+  producer-coupled agreement and neutral publication faults; and scheduler
+  implicit execution, submit-directory requirement, directory timing, duplicate
+  sorting, redirect truncation, nontransactional intermediate/final residue,
+  field-count diagnostics, module/child failures, and exact modes/directives.
+  Reviews must identify any missing old/new oracle before mutation.
+- **Review and evidence boundary:** create only `MIG-03C` and dedicated
+  `REVIEW-ARCH-03C`, `REVIEW-REL-03C`, and `REVIEW-UX-03C` cards. All remain
+  unselected in `TODO`. This is documentation-only behavior/architecture
+  planning; no computational test ran and no executable, runtime, scheduler,
+  production, scientific-review, or biological evidence was created.

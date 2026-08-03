@@ -13,19 +13,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
 - Recorded package state: [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md)
-  executable/test checkpoint `4f9c863e9cdc2ba43ce631830ca237878b7ff875`
-  is clean, published, and equal to the configured upstream. It atomically
-  establishes the final `construct_STAR_index` job, validator, mirrored owner
-  tests, explicit mixed-layout callers, coverage/static wiring, and artifact
-  implementation-evidence path without a wrapper or duplicate.
-- Current package: MIG-03B documentation/lifecycle close. The commit containing
-  this handoff is its documentation checkpoint; resolve and verify its exact
-  SHA from live Git before beginning the next JIT unit.
-- Package type at this checkpoint: impact-directed documentation only, following
-  the separately published executable/test state above.
-- Remote publication and upstream equality: `4f9c863e9cdc2ba43ce631830ca237878b7ff875`
-  is verified local/upstream-equal. The documentation-close commit must be
-  published and proved equal before the next unit is selected.
+  documentation/lifecycle checkpoint
+  `1b82e4f04b926ac12e6306e40d03fee7840f3fa6` is clean, published, and
+  local/upstream-equal. Its executable/test checkpoint is `4f9c863`.
+- Current package: JIT definition of
+  [`MIG-03C`](../tasks/TODO/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) and its
+  dedicated architecture, reliability, and usability reviews. All four cards
+  remain unselected in `TODO` at this checkpoint.
+- Package type at this checkpoint: behavior/architecture planning with
+  documentation-only/non-consuming mutation; no executable or test file has
+  changed.
+- Remote publication and upstream equality: parent `1b82e4f` is verified
+  local/upstream-equal. The commit containing this JIT definition must be
+  published and proved equal before the architecture review is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -40,6 +40,13 @@ documentation test found six migration-caused stale links plus nine inherited,
 authorized `UNREFINED` locations. This close removes the six; the nine inherited
 findings remain an expected-only evidence ceiling, not a passing gate and not
 authority to change task-lifecycle behavior in this package.
+
+The next unit is `convert_GTF_to_BED12`, selected from the two current typed-
+external-input root candidates because its producer/validator dependency stays
+inside one owner. `construct_FASTA_sidecars` also remains dependency-valid but
+its validator additionally depends on the still-flat cross-cutting reference-
+provenance parser owner, so it is not preloaded or selected. Historical aliases
+did not determine this choice.
 
 ## Active concurrent lanes
 
@@ -493,10 +500,10 @@ or updated.
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
 complete. The second JIT unit,
 [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md),
-is complete at atomic executable/test checkpoint `4f9c863`; this
-impact-directed documentation/lifecycle close records the exact local evidence
-and inherited gate ceiling. Publish this close and prove clean equality before
-selecting the next dependency-valid physical migration unit.
+is complete at executable/test checkpoint `4f9c863` and documentation close
+`1b82e4f`. The next JIT card is
+[`MIG-03C`](../tasks/TODO/MIG-03C-migrate-convert-gtf-to-bed12-owner.md); its
+definition checkpoint must be published and equal before review selection.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -507,7 +514,12 @@ and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. After this documentation checkpoint is clean, published, and
-equal, the next action is read-only JIT selection and review of exactly one
-dependency-valid owner; no later card is pre-created here. The unsliced
-`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
+are complete. MIG-03C and
+[`REVIEW-ARCH-03C`](../tasks/TODO/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
+[`REVIEW-REL-03C`](../tasks/TODO/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
+and
+[`REVIEW-UX-03C`](../tasks/TODO/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
+are defined and unselected. After this checkpoint is clean, published, and
+equal, select only the architecture review for its read-only pass. No later
+card is pre-created. The unsliced `PROGRAM-01` remainder and unrelated roadmap
+remain preserved and out of scope.
