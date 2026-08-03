@@ -44,6 +44,45 @@ assert_fails() {
     fi
 }
 
+assert_file_equals() {
+    local file="$1"
+    local expected="$2"
+    local expected_file="$tmp_dir/expected-file.txt"
+
+    printf '%s' "$expected" >"$expected_file"
+    if ! cmp -s "$expected_file" "$file"; then
+        printf 'Expected exact content:\n' >&2
+        cat "$expected_file" >&2
+        printf 'Actual exact content:\n' >&2
+        cat "$file" >&2
+        fail "unexpected file content: $file"
+    fi
+}
+
+assert_only_entries() {
+    local directory="$1"
+    shift
+    local path
+    local expected
+    local matched
+    local actual_count=0
+
+    while IFS= read -r path; do
+        actual_count=$((actual_count + 1))
+        matched=false
+        for expected in "$@"; do
+            if [[ "${path##*/}" == "$expected" ]]; then
+                matched=true
+                break
+            fi
+        done
+        [[ "$matched" == true ]] || fail "unexpected entry in $directory: $path"
+    done < <(find "$directory" -mindepth 1 -maxdepth 1 -print)
+
+    [[ "$actual_count" -eq "$#" ]] ||
+        fail "expected $# entries in $directory; found $actual_count"
+}
+
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -83,8 +122,22 @@ case "\$subcommand" in
         esac
         ;;
     flagstat)
-        printf '10 + 0 in total (QC-passed reads + QC-failed reads)\\n'
-        printf '8 + 0 mapped (80.00%% : N/A)\\n'
+        mode="\${FAKE_FLAGSTAT_MODE:-success}"
+        case "\$mode" in
+            success)
+                printf '10 + 0 in total (QC-passed reads + QC-failed reads)\\n'
+                printf '8 + 0 mapped (80.00%% : N/A)\\n'
+                ;;
+            partial_fail)
+                printf 'partial flagstat output\\n'
+                printf 'flagstat failure diagnostic\\n' >&2
+                exit 43
+                ;;
+            *)
+                printf 'unknown FAKE_FLAGSTAT_MODE: %s\\n' "\$mode" >&2
+                exit 64
+                ;;
+        esac
         ;;
     *)
         printf 'fake samtools unknown subcommand: %s\\n' "\$subcommand" >&2
@@ -174,6 +227,19 @@ bash "$SCRIPT" \
     >"$stem_index_output"
 assert_contains "$stem_index_output" "BAM index found: $bam_stem_bai"
 
+printf 'Running PATH-only missing samtools failure check...\n'
+empty_bin="$tmp_dir/empty-bin"
+mkdir -p "$empty_bin"
+missing_samtools_output="$tmp_dir/missing_samtools.out"
+missing_samtools_output_dir="$tmp_dir/results/missing_samtools"
+assert_fails "$missing_samtools_output" /usr/bin/env PATH="$empty_bin" /bin/bash "$SCRIPT" \
+    --sample-id sample_missing_samtools \
+    --bam "$bam" \
+    --output-dir "$missing_samtools_output_dir"
+assert_contains "$missing_samtools_output" "samtools executable was not found on PATH"
+[[ ! -e "$missing_samtools_output_dir" ]] ||
+    fail "missing-samtools failure created the output directory"
+
 printf 'Running execute check with empty quickcheck success...\n'
 execute_output="$tmp_dir/execute.out"
 execute_output_dir="$tmp_dir/results/execute"
@@ -212,20 +278,73 @@ nonempty_quickcheck_out="$nonempty_output_dir/sample_nonempty.quickcheck.txt"
 assert_contains "$nonempty_quickcheck_out" "quickcheck success output"
 assert_not_contains "$nonempty_quickcheck_out" "PASS: samtools quickcheck completed with no errors."
 
-printf 'Running quickcheck failure preservation check...\n'
-failure_output="$tmp_dir/failure.out"
+printf 'Running predecessor-bearing quickcheck failure preservation check...\n'
+failure_stdout="$tmp_dir/failure.stdout"
+failure_stderr="$tmp_dir/failure.stderr"
 failure_output_dir="$tmp_dir/results/failure"
-assert_fails "$failure_output" env FAKE_QUICKCHECK_MODE=fail bash "$SCRIPT" \
+mkdir -p "$failure_output_dir"
+failure_quickcheck_out="$failure_output_dir/sample_failure.quickcheck.txt"
+failure_flagstat_out="$failure_output_dir/sample_failure.flagstat.txt"
+failure_unrelated="$failure_output_dir/unrelated.txt"
+printf 'prior quickcheck\n' >"$failure_quickcheck_out"
+printf 'prior flagstat\n' >"$failure_flagstat_out"
+printf 'unrelated predecessor\n' >"$failure_unrelated"
+
+set +e
+FAKE_QUICKCHECK_MODE=fail bash "$SCRIPT" \
     --sample-id sample_failure \
     --bam "$bam" \
     --output-dir "$failure_output_dir" \
-    --execute
+    --execute \
+    >"$failure_stdout" 2>"$failure_stderr"
+failure_status=$?
+set -e
 
-failure_quickcheck_out="$failure_output_dir/sample_failure.quickcheck.txt"
-failure_flagstat_out="$failure_output_dir/sample_failure.flagstat.txt"
+[[ "$failure_status" -eq 1 ]] ||
+    fail "quickcheck child exit 42 did not become producer exit 1: $failure_status"
 [[ -f "$failure_quickcheck_out" ]] || fail "quickcheck failure did not preserve quickcheck output"
-[[ ! -f "$failure_flagstat_out" ]] || fail "quickcheck failure should not create flagstat output"
-assert_contains "$failure_quickcheck_out" "quickcheck failure output"
-assert_contains "$failure_output" "samtools quickcheck failed"
+assert_file_equals "$failure_quickcheck_out" $'quickcheck failure output\n'
+assert_file_equals "$failure_flagstat_out" $'prior flagstat\n'
+assert_file_equals "$failure_unrelated" $'unrelated predecessor\n'
+assert_contains "$failure_stderr" "samtools quickcheck failed"
+assert_not_contains "$failure_stderr" "quickcheck failure output"
+assert_only_entries "$failure_output_dir" \
+    "sample_failure.quickcheck.txt" \
+    "sample_failure.flagstat.txt" \
+    "unrelated.txt"
+
+printf 'Running predecessor-bearing flagstat failure preservation check...\n'
+flag_failure_stdout="$tmp_dir/flag_failure.stdout"
+flag_failure_stderr="$tmp_dir/flag_failure.stderr"
+flag_failure_output_dir="$tmp_dir/results/flag_failure"
+mkdir -p "$flag_failure_output_dir"
+flag_failure_quickcheck_out="$flag_failure_output_dir/sample_flag_failure.quickcheck.txt"
+flag_failure_flagstat_out="$flag_failure_output_dir/sample_flag_failure.flagstat.txt"
+flag_failure_unrelated="$flag_failure_output_dir/unrelated.txt"
+printf 'prior quickcheck\n' >"$flag_failure_quickcheck_out"
+printf 'prior flagstat\n' >"$flag_failure_flagstat_out"
+printf 'unrelated predecessor\n' >"$flag_failure_unrelated"
+
+set +e
+FAKE_FLAGSTAT_MODE=partial_fail bash "$SCRIPT" \
+    --sample-id sample_flag_failure \
+    --bam "$bam" \
+    --output-dir "$flag_failure_output_dir" \
+    --execute \
+    >"$flag_failure_stdout" 2>"$flag_failure_stderr"
+flag_failure_status=$?
+set -e
+
+[[ "$flag_failure_status" -eq 43 ]] ||
+    fail "flagstat child exit 43 was not propagated: $flag_failure_status"
+assert_file_equals "$flag_failure_quickcheck_out" \
+    $'PASS: samtools quickcheck completed with no errors.\n'
+assert_file_equals "$flag_failure_flagstat_out" $'partial flagstat output\n'
+assert_file_equals "$flag_failure_unrelated" $'unrelated predecessor\n'
+assert_file_equals "$flag_failure_stderr" $'flagstat failure diagnostic\n'
+assert_only_entries "$flag_failure_output_dir" \
+    "sample_flag_failure.quickcheck.txt" \
+    "sample_flag_failure.flagstat.txt" \
+    "unrelated.txt"
 
 printf 'All step_02b BAM QC smoke tests passed.\n'

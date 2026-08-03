@@ -1269,6 +1269,31 @@ def test_delegated_output_validation_decision_is_observable(
         assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_step_02b_bam_qc_stale_named_outputs_mask_missing_child_outputs(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_02b_bam_qc.slurm", tmp_path)
+    stale_bytes = (
+        b"stale quickcheck evidence\n",
+        b"stale flagstat evidence\n",
+    )
+    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
+    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
+    assert "Validated Step 02b QC outputs:" in result.stdout
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_module_failure_policy_is_observable(
     name: str,
