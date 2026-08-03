@@ -5846,3 +5846,26 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   reports `PASS documentation structure (208 Markdown documents, 129 task
   cards, 6 Mermaid sources)`. No reliability-review path, lifecycle,
   dependency, cycle, orphan, schema, anchor, or diagram finding remains.
+
+## 2026-08-03T16:57:40-0400 — REVIEW-UX-03N selected
+
+- **Selection:** reliability completion
+  `f0160c46072370390c04b558891dfdb27c1fbaee` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Move only `REVIEW-UX-03N` from `TODO` to
+  `IN_PROGRESS` and repair its reliability and MIG-03N lifecycle links.
+  MIG-03N, Step `09c`, every later owner, and the frozen program remainder stay
+  unselected.
+- **Read-only plan:** inspect supported root/arbitrary-CWD shell, Rscript,
+  validator, guarded-R, independent-oracle, scheduler, and Make journeys;
+  pairing/statistical/scientific language; R/input/output/lock/summary choices;
+  summary-visible and incomplete-restore preservation; scheduler submit-CWD,
+  logs, R forwarding, and stale outputs; artifact/coverage provenance; final
+  owner findability; exact focused/final commands; and reverse rollback.
+  Record only command, documentation, diagnostic, and evidence-language
+  corrections in MIG-03N. Run no executable, test, dependency, R runtime,
+  scheduler, cluster, production, scientific-review, or biological workload.
+- **Minimal slice check:** run `git diff --check` only. Per the card-boundary-
+  only validation rule, the complete documentation gate belongs to usability-
+  review completion. Publish and prove this selection checkpoint clean/
+  upstream/live-remote-equal before beginning the review.

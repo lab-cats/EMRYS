@@ -98,5 +98,8 @@ retry guidance, scientific overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Completed `REVIEW-REL-03N` supplies the exact five-checkpoint
-reliability plan; no executable/test file changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+reliability-completion checkpoint
+`f0160c46072370390c04b558891dfdb27c1fbaee` for a read-only usability pass.
+MIG-03N, Step `09c`, and all executable/test files remain unselected and
+unchanged; no computational test runs in this review.

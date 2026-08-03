@@ -34,7 +34,7 @@ dependencies.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03N](../TODO/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Fully: usability review needs the fixed failure, residue, recovery, R/oracle, validator, and scheduler obligations.
+- [REVIEW-UX-03N](../IN_PROGRESS/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Fully: selected usability review consumes the fixed failure, residue, recovery, R/oracle, validator, and scheduler obligations.
 
 ## Prerequisites
 

@@ -261,7 +261,7 @@ defines Step `09` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03N](REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03N](../IN_PROGRESS/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
