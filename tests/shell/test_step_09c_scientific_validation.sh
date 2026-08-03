@@ -7,6 +7,8 @@ script="$repo_root/scripts/step_09c_scientific_validation.sh"
 fixture_builder="$repo_root/tests/fixtures/step09c/build_fixture.py"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
+invocation_cwd="$test_root/invocation-cwd"
+mkdir -p "$invocation_cwd"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -66,14 +68,34 @@ input_args=(
     --evidence-manifest "$fixture_root/evidence_manifest.tsv"
 )
 
+run_step09c_with_launcher() {
+    local launcher="$1"
+    local output_root="$2"
+    shift 2
+
+    if [[ "$launcher" == "direct" ]]; then
+        (
+            cd "$invocation_cwd"
+            env PYTHON_BIN_OVERRIDE="$test_python" \
+                "$script" \
+                "${input_args[@]}" \
+                --output-root "$output_root" \
+                "$@"
+        )
+    else
+        (
+            cd "$invocation_cwd"
+            env PYTHON_BIN_OVERRIDE="$test_python" \
+                bash "$script" \
+                "${input_args[@]}" \
+                --output-root "$output_root" \
+                "$@"
+        )
+    fi
+}
+
 run_step09c() {
-    local output_root="$1"
-    shift
-    env PYTHON_BIN_OVERRIDE="$test_python" \
-        bash "$script" \
-        "${input_args[@]}" \
-        --output-root "$output_root" \
-        "$@"
+    run_step09c_with_launcher bash "$@"
 }
 
 printf 'Running Step 09c wrapper help and required-argument checks...\n'
@@ -100,16 +122,91 @@ expect_failure \
     bash "$script" \
     --review-id "$review_id"
 
-printf 'Running Step 09c side-effect-free dry-run check...\n'
+printf 'Running Step 09c Python resolution and delegation checks...\n'
+missing_python="$test_root/missing/python"
+expect_failure \
+    "Python executable does not exist" \
+    env PYTHON_BIN_OVERRIDE="$missing_python" \
+    bash "$script" \
+    "${input_args[@]}" \
+    --output-root "$test_root/missing-python-output"
+
+nonexecutable_python="$test_root/nonexecutable-python"
+printf '#!/usr/bin/env bash\n' >"$nonexecutable_python"
+chmod 0644 "$nonexecutable_python"
+expect_failure \
+    "Python path is not executable" \
+    env PYTHON_BIN_OVERRIDE="$nonexecutable_python" \
+    bash "$script" \
+    "${input_args[@]}" \
+    --output-root "$test_root/nonexecutable-python-output"
+
+mock_bin_dir="$test_root/mock-bin"
+mock_python="$mock_bin_dir/step09c-python"
+mkdir -p "$mock_bin_dir"
+cat >"$mock_python" <<'MOCK_PYTHON'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$@" >"$MOCK_ARGS_FILE"
+printf 'child stdout marker\n'
+printf 'child stderr marker\n' >&2
+exit "${MOCK_EXIT_STATUS:-0}"
+MOCK_PYTHON
+chmod 0755 "$mock_python"
+
+expect_failure \
+    "Python executable was not found on PATH" \
+    env PATH="$mock_bin_dir:/usr/bin:/bin" \
+    PYTHON_BIN_OVERRIDE="missing-step09c-python" \
+    bash "$script" \
+    "${input_args[@]}" \
+    --output-root "$test_root/missing-path-python-output"
+
+mock_args="$test_root/mock-args.txt"
+mock_expected_args="$test_root/mock-expected-args.txt"
+mock_output_root="$test_root/mock-output"
+printf '%s\n' \
+    "$repo_root/scripts/step_09c_scientific_validation.py" \
+    "${input_args[@]}" \
+    --output-root "$mock_output_root" \
+    >"$mock_expected_args"
+
+set +e
+(
+    cd "$invocation_cwd"
+    env PATH="$mock_bin_dir:/usr/bin:/bin" \
+        PYTHON_BIN_OVERRIDE="step09c-python" \
+        MOCK_ARGS_FILE="$mock_args" \
+        MOCK_EXIT_STATUS=23 \
+        bash "$script" \
+        "${input_args[@]}" \
+        --output-root "$mock_output_root"
+) >"$test_root/mock.out" 2>"$test_root/mock.err"
+mock_status="$?"
+set -e
+[[ "$mock_status" == "23" ]] ||
+    fail "wrapper did not preserve child exit 23; got $mock_status"
+assert_contains "$(<"$test_root/mock.out")" "Python: $mock_python"
+assert_contains "$(<"$test_root/mock.out")" \
+    "Python implementation: $repo_root/scripts/step_09c_scientific_validation.py"
+assert_contains "$(<"$test_root/mock.out")" "child stdout marker"
+assert_contains "$(<"$test_root/mock.err")" "child stderr marker"
+diff -u "$mock_expected_args" "$mock_args" ||
+    fail "wrapper did not delegate the exact sibling implementation and arguments"
+[[ ! -e "$mock_output_root" ]] ||
+    fail "mock delegation unexpectedly created its output root"
+
+printf 'Running Step 09c arbitrary-CWD Bash dry-run check...\n'
 dry_output_root="$test_root/dry-output"
 run_step09c "$dry_output_root" >"$test_root/dry-run.out"
 assert_contains "$(<"$test_root/dry-run.out")" "Mode: dry-run"
 [[ ! -e "$dry_output_root" ]] ||
     fail "Step 09c dry-run created its output root: $dry_output_root"
 
-printf 'Running Step 09c successful 13-output publication check...\n'
+printf 'Running Step 09c arbitrary-CWD direct 13-output publication check...\n'
 execute_output_root="$test_root/execute-output"
-run_step09c "$execute_output_root" --execute >"$test_root/execute.out"
+run_step09c_with_launcher direct "$execute_output_root" --execute \
+    >"$test_root/execute.out"
 execute_dir="$execute_output_root/$review_id"
 [[ -d "$execute_dir" ]] ||
     fail "Step 09c execute did not create its review directory."
@@ -166,5 +263,9 @@ expect_failure \
 assert_file_equals "$partial_file" "prior partial output"
 [[ ! -e "$partial_dir/$review_id.step09c_review_summary.tsv" ]] ||
     fail "partial-set refusal published a summary commit marker."
+
+if find "$invocation_cwd" -mindepth 1 -print -quit | grep -q .; then
+    fail "Step 09c wrapper journeys left residue in the invocation CWD"
+fi
 
 printf 'PASS: Step 09c scientific-validation shell tests\n'
