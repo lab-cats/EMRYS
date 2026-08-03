@@ -52,6 +52,15 @@ alias order.
 - No legacy wrapper is required. Every named source-path caller is repository-
   owned and can cut over in one atomic executable/test commit; a wrapper would
   preserve accidental flat placement without an unmovable consumer.
+- Final public instructions must use complete commands, not bare path labels.
+  From the repository root, document both the mode-`0755` producer's direct
+  invocation and its exact-interpreter form with explicit GTF/BED arguments;
+  from another CWD, require an absolute checkout path or an explicit `cd`.
+  Document the validator only through an explicit interpreter. Document the
+  scheduler entry point as `cd <checkout>` followed by `sbatch` of its exact
+  final path because `SLURM_SUBMIT_DIR` is mandatory and becomes the job CWD.
+  State that submission executes implicitly, has no dry-run control, honors
+  the four existing overrides, and publishes nontransactionally.
 - `STEP_PRODUCERS["00b"]` intentionally changes only its implementation path
   to the final producer. Preserve status, evidence ID, Git commit projection,
   producer bytes/SHA-256, artifact identities, schemas, ordering, and consumer
@@ -60,6 +69,11 @@ alias order.
   tracked rows to their final paths, move the required-subprocess identity for
   `gtf_to_bed12.py`, and update the snapshot only after a separate reviewed
   final-path measurement proves exact counts and global non-regression.
+- Once the job leaves `jobs/*.slurm`, add its exact final path to both
+  `validation-static` and `smoke` shell-syntax commands and to the literal Make
+  expansion oracle. Existing `compileall` roots already cover `src/norad`.
+  Move the `shell-test` validator path and publish one focused command covering
+  the moved producer, validator, and owner-local mocked-job suites.
 - Existing explicit path maps stay keyed by public basename or semantic ID.
   They name the final producer, validator, and job literally, continue proving
   every flat and owner-local surface exists exactly once, and do not infer
@@ -73,7 +87,7 @@ alias order.
 
 ## Blocked by
 
-- [REVIEW-UX-03C](../IN_PROGRESS/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03C](../COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -153,6 +167,13 @@ alias order.
   directed current topology, inventory, test baseline, commands,
   troubleshooting, ownership, roadmap, handoff, lifecycle links, and dated
   audit documentation in a separate commit.
+- In that README and the runbook, distinguish repository-root direct and
+  exact-interpreter producer commands from arbitrary-CWD absolute-path use;
+  give the validator dry-run/execute commands and the exact scheduler
+  submission/CWD/override contract. Name silent producer replacement, job
+  nontransactional residue, diagnostics, recovery, implementation-provenance
+  path transition, local-only evidence ceiling, and the next safe validation
+  action. Troubleshooting must name the exact final producer path.
 
 ## Out of scope
 
@@ -236,6 +257,17 @@ alias order.
   duplicate basename, wrapper, package marker, stage-to-stage import, stale
   command, or stale active link. Final owner tests and independent caller
   suites pass without weakening exact inventories.
+- The runbook contains complete final producer direct/exact-interpreter,
+  validator dry-run/execute, exact `sbatch`, and three-suite focused-test
+  commands; it does not present a bare file path as an invocation. The owner
+  README preserves repository-root versus arbitrary-CWD guidance and makes the
+  no-dry-run, replacement, scheduler-residue, recovery, provenance, and
+  local-only evidence boundaries findable. Troubleshooting names the exact
+  final producer.
+- `validation-static` and `smoke` continue syntax-checking the moved job by its
+  exact path, `compileall` continues covering both moved Python files through
+  `src/norad`, `shell-test` names the final validator test, and the literal Make
+  oracle records those expansions exactly.
 - The accepted job diff changes its delegated producer path and nothing else;
   the original job hash remains rollback evidence rather than an impossible
   final-byte invariant. The producer itself remains byte-identical so artifact

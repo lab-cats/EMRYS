@@ -918,3 +918,35 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   is not claimed; executable/test mutation and computational, runtime,
   scheduler, production, scientific-review, and biological evidence remain out
   of scope.
+
+## 2026-08-02T20:50:49-0400 — REVIEW-UX-03C completed
+
+- **High finding — bare paths are not usable final commands:** replace the
+  runbook's bare producer and job listings with complete final-path commands.
+  Distinguish repository-root direct and exact-interpreter producer use from
+  arbitrary-CWD absolute-path use; keep the validator interpreter-only. The
+  owner README must preserve the same distinctions and name silent declared-
+  output replacement, diagnostics, artifact expectations, rollback, and the
+  local-only evidence ceiling.
+- **High finding — scheduler CWD and execution must be explicit:** the supported
+  command is `cd <checkout>` followed by `sbatch` of the exact final job path.
+  This preserves required `SLURM_SUBMIT_DIR`, implicit execution with no dry-run,
+  four environment overrides, and characterized nontransactional intermediate/
+  final residue. An alias or bare path would conceal rather than solve those
+  conditions.
+- **Medium finding — flat wildcard loses the moved job:** add the exact final job
+  to `validation-static` and `smoke` shell-syntax commands and their literal Make
+  oracle after it leaves `jobs/*.slurm`. Existing `compileall` roots already
+  cover `src/norad`; move the `shell-test` path and give one focused command for
+  producer, validator, and owner-local mocked-job suites.
+- **Findability and recovery disposition:** add one concise owner README linking
+  contract, runbook, and troubleshooting; record final paths, invocation forms,
+  provenance transition, diagnostics, recovery, next safe validation action,
+  no-wrapper/package/descriptor boundary, and evidence ceiling. Update Step
+  `00b` troubleshooting to name the exact final producer. No compatibility
+  alias is needed because every known caller is repository-owned and movable.
+- **Independence and evidence boundary:** this separate committed-time pass was
+  performed by the same campaign agent; independent authorship is not claimed.
+  Corrections affect planning documentation only. No executable/test mutation
+  or computational, runtime, scheduler, production, scientific-review, or
+  biological evidence was created.

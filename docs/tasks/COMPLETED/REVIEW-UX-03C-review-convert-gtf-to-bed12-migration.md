@@ -84,5 +84,22 @@ or an undiscoverable owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+usability-selection checkpoint `b01b6f1` after reliability checkpoint
+`f12bc8b`. One high finding replaces bare producer and job path listings with
+complete final-path commands and distinguishes repository-root direct and
+explicit-interpreter producer use, arbitrary-CWD absolute-path use, the
+interpreter-only validator, and `cd <checkout>` before the exact `sbatch`
+command. The job remains implicit execution with no dry-run and preserves its
+required submit-directory and override behavior. One medium finding requires
+`validation-static` and `smoke`, plus their literal Make oracle, to name the
+final job after it leaves `jobs/*.slurm`; existing `compileall` coverage of
+`src/norad` remains sufficient. A second medium finding requires the focused
+command to include producer, validator, and owner-local mocked-job suites and
+requires an owner README covering final commands, replacement/nontransactional
+warnings, artifact-path provenance, diagnostics, recovery, evidence ceiling,
+and the no-wrapper/package/descriptor boundary. Troubleshooting must name the
+exact final producer path. All repository consumers can cut over coherently, so
+no compatibility alias is justified and no escalation condition was triggered.
+The same campaign agent performed the pass, so independent authorship is not
+claimed. No executable/test file changed and no computational test ran.
