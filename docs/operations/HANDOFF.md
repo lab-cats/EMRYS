@@ -11,9 +11,9 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published MIG-03M
-  documentation/lifecycle close
-  `3f91fceb769707fd8f8a18e350619b84c5625595`.
+  exact SHA from live Git. Its frozen parent is published post-MIG-03M
+  authority synchronization
+  `a6bd366e5fd5c4088019a561d1e81b2960898b9b`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -43,24 +43,21 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `7a667ee` test baselines plus executable/test checkpoint `5e51496` are
   published and local/upstream/live-remote-equal. Documentation/lifecycle close
   `3f91fce` is published and equal on both the prior campaign branch and the
-  current neutral remediation branch.
-- Current package: completed
+  current neutral remediation branch. Authority-sync checkpoint `a6bd366` is
+  published and local/upstream/live-remote-equal.
+- Current package: Slice `2` of active
+  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
+  replacing the completed physical-migration campaign boundary with a bounded
+  repository-health runway. Completed
   [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
-  after completed
-  [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md),
-  and completed
-  [`REVIEW-REL-03M`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md),
-  followed by completed
-  [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
-  All three reviews and the migration are complete. Step `09` and every later
-  owner/review card remain uncreated and unselected.
-- Package type at this checkpoint: documentation-only post-MIG-03M authority
-  synchronization. It records the already-created neutral remediation branch,
-  canonical remote URL, and untouched default branch; it changes or runs no
-  executable, test, configuration, dependency, schema, fixture, report
-  template, card lifecycle, or migration owner.
-- Remote publication and upstream equality: MIG-03M close `3f91fce` is verified
-  local/upstream/live-remote-equal. The configured `origin` is
+  remains the latest migration; Step `09` and every later owner/review card
+  remain uncreated and unselected.
+- Package type at this checkpoint: documentation-only runway-state
+  reconciliation. It changes or runs no executable, test, configuration,
+  dependency, schema, fixture, report template, card lifecycle, runtime state,
+  or migration owner.
+- Remote publication and upstream equality: authority sync `a6bd366` is
+  verified local/upstream/live-remote-equal. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip

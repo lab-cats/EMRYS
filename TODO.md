@@ -5,25 +5,16 @@ scope, roadmap, current state, blockers, or open questions.
 
 ## Current priority
 
-[`PLAN-02Z`](docs/tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md)
-has completed the documentation-only first-tranche plan. Its dedicated
-[`architecture review`](docs/tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
-and
-[`reliability review`](docs/tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md)
-are complete; the
-[`usability review`](docs/tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
-has now closed the dedicated review chain.
-The first unit,
-[`MIG-03A`](docs/tasks/COMPLETED/MIG-03A-extract-validation-report-library.md),
-is complete: the validation-report protocol has one neutral owner, all thirteen
-legacy validators use the final file, and the executable checkpoint is
-published/upstream-equal. The authorized physical-migration campaign now
-selects only the next dependency-valid unit just in time; no later migration
-card is pre-created here.
-
-Unrelated work remains frozen under the
-[active critical runway](docs/design/PIPELINE_PLAN.md#active-critical-runway)
-while that campaign proceeds. Roadmap order is not blocker metadata.
+The physical-migration campaign is paused after completed
+[`MIG-03M`](docs/tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md).
+No Step `09` or later migration/review card is created or selected. The active
+boundary is Slice `2` of
+[`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
+which activates only one separately planned repository-health package at a
+time under the
+[critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
+Unrelated work and the preserved program remainder remain frozen; roadmap
+order is not blocker metadata.
 
 ## Canonical routes
 

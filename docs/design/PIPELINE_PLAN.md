@@ -79,7 +79,7 @@ a completed production review.
 | `codex/plan-02z-first-migration-readiness` | Rolling [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) checkpoint, tranche-specific reviews, and first migration-card readiness rooted at the verified integrated canonical tip | plan checkpoint `c45e748`, all three dedicated [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) reviews, and the completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) task-specific plan remain the documentation-only readiness record; the branch is published/upstream-equal |
 | `codex/mig-03a-extract-validation-report-library` | Physical migration campaign through completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)–[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md), plus completed [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), and [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) | the first eleven units are complete through published documentation/lifecycle close `b73b12b`; the branch ends clean and published at usability completion `5a501df`, before MIG-03L execution. |
 | `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` | Fresh execution branch for completed [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md), completed [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md), and its completed [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) reviews | MIG-03M test baselines and executable checkpoint `5e51496` are published/equal; the documentation/lifecycle close is the commit containing this row. No Step `09` or later card is created or selected. |
-| `codex/post-mig-03m-completion` | Neutral remediation integration lane created at published MIG-03M documentation/lifecycle close `3f91fce` | the checkpoint containing this row synchronizes current branch and remote authority only; no card, runtime, migration owner, or default-branch integration is selected, and remote `master` remains untouched pending a separate explicit decision. |
+| `codex/post-mig-03m-completion` | Neutral remediation integration lane created at published MIG-03M documentation/lifecycle close `3f91fce` | authority synchronization `a6bd366` is published/equal; the checkpoint containing this row activates only the post-MIG-03M repository-health runway under `PROGRAM-01` Slice `2`. No runtime, migration owner, or default-branch integration is selected, and remote `master` remains untouched pending a separate explicit decision. |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; actionable-card workflow remains directory-owned, authorized UNREFINED preservation is nonselectable, and the validator still rejects its nine current Markdown locations and lacks the card's independent invalid-state fixture coverage and separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -144,6 +144,15 @@ names: each live task-specific plan selects its descendant branch only after
 inspection and approval.
 
 ## Active critical runway
+
+The physical-migration campaign is paused after completed MIG-03M. The current
+boundary is Slice `2` of
+[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md):
+only one separately planned dependency-valid repository-health package may be
+active at a time. No Step `09` or later migration/review card is created or
+selected, and the preserved program remainder remains frozen. The chronology
+below records how the completed physical-migration boundary was reached; it
+does not authorize another migration.
 
 `ARCH-02A` through `ARCH-02D` and the interposed `JIT-01` workflow bootstrap
 are complete. The user separately selected and completed `DOC-IA-01` and
@@ -385,10 +394,10 @@ biological evidence changed. This checkpoint selects no Step `09` or later
 owner; the requested campaign pause follows publication and equality proof.
 
 Published MIG-03M documentation/lifecycle close `3f91fce` is the exact base of
-neutral remediation branch `codex/post-mig-03m-completion`. The state-sync
-checkpoint containing this plan changes only current branch/remote authority
-documentation. Remote `master` remains untouched; no merge, card selection,
-runtime cleanup, or next migration is implied.
+neutral remediation branch `codex/post-mig-03m-completion`; authority sync
+`a6bd366` is published/equal. The checkpoint containing this plan changes only
+the current runway state. Remote `master` remains untouched; no merge,
+lifecycle implementation, runtime cleanup, or next migration is implied.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 

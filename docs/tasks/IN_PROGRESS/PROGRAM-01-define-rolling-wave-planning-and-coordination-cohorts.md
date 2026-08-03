@@ -1,47 +1,49 @@
 # PROGRAM-01 — Define rolling-wave planning and coordination cohorts
 
-**Current execution boundary — Slice 1**
+**Current execution boundary — Slice 2**
 
-Only this slice is active. It establishes the temporary execution boundary
-needed to reach the first physical source migration without activating the
-rest of the program.
+Only this slice is active. It replaces the completed physical-migration
+campaign boundary with a bounded repository-health runway without activating
+the preserved program remainder.
 
 **Active objective**
 
-- Record the temporary freeze, active architecture runway, just-in-time
-  decision boundary, and quiet-validation rule in
-  [`TASK_START.md`](../../operations/TASK_START.md).
+- Record that the one-unit-at-a-time physical-migration campaign paused after
+  completed MIG-03M and that no Step `09` or later owner is selected.
+- Activate only one separately planned repository-health package at a time
+  under the existing just-in-time and quiet-validation rules.
 - Keep this card in progress for later separately planned slices.
 
 **Active scope**
 
-- Select `ARCH-02A` through `ARCH-02D`, in dependency order, as the only active
-  runway after this slice.
-- Freeze every other task, candidate, integration, and program family until
-  the first migration is complete and the user reassesses the program.
-- Require each architecture card to be planned just in time and executed in
-  smaller internal phases rather than as one comprehensive pass.
+- Correct the temporary task-start route, current-priority view, roadmap, and
+  handoff so they agree on the post-MIG-03M health boundary.
+- Freeze physical migration, runtime cleanup, lifecycle implementation,
+  default-branch integration, and the preserved program remainder; each still
+  requires its own later task-specific slice.
+- Do not select, create, or preload the next health package in this slice.
 - Use quiet validation immediately; retain complete output for failures or an
   explicitly requested verbose run.
 
 **Active acceptance evidence**
 
-- `TASK_START.md` states the temporary boundary, its exception rule, and its
-  explicit sunset condition without weakening mandatory safety or context-
-  expansion triggers.
-- No downstream design, review, correction, migration, integration, or
-  implementation decision is made by this slice.
+- The temporary route, current-priority view, roadmap, handoff, and this card
+  agree that MIG-03M is complete, physical migration is paused, and only
+  separately planned repository-health work may proceed.
+- No lifecycle dependency, validator behavior, runtime library, migration
+  owner, default branch, or preserved program-design decision changes.
 - Existing program information below remains present and unchanged in meaning.
-- Mandatory card-move links resolve, Git checks pass, and the quiet
-  documentation gate passes. Computational validation is not applicable.
+- Git checks pass and the documentation validator introduces no finding beyond
+  the nine inherited `UNREFINED` locations. Computational validation is not
+  applicable.
 
 **Currently dead / out of scope**
 
 Every remaining section below is preserved as a program-design record but is
 currently dead and out of scope. Its content is not an active dependency,
 acceptance criterion, required-context route, or authorization for this slice.
-Do not execute, expand, reconcile, or routinely maintain it while the temporary
-freeze is active. A later slice may reactivate only the information needed for
+Do not execute, expand, reconcile, or routinely maintain it while the health
+runway is active. A later slice may reactivate only the information needed for
 the then-current decision, with explicit user approval and just-in-time
 inspection.
 
@@ -273,8 +275,11 @@ and unnecessary context for bounded work.
 
 ## Completion record
 
-Not started. Select this card only after the `CONCURRENCY-01` and completed
-`CONCURRENCY-02` packages are clean, pushed, and upstream-equal, and
-`HANDOFF.md` records the required post-concurrency strategy discussion as
-complete. This ordering is a prerequisite, not a blocker edge; implementation
-requires a separately approved task-specific plan.
+Slice `1` completed in published documentation checkpoint `ed518c0`; it
+established the temporary critical runway without completing this card. The
+user later reassessed that boundary after MIG-03A and retained it for the
+one-unit-at-a-time physical-migration campaign through completed MIG-03M.
+Published authority-sync checkpoint `a6bd366` is the clean base for Slice `2`,
+which records the post-MIG-03M repository-health runway. This card remains
+`IN_PROGRESS`; none of its preserved unsliced program-design deliverables is
+activated or claimed complete.

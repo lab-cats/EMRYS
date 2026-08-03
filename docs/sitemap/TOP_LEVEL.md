@@ -20,62 +20,27 @@ for every task.
 
 ### Temporary critical runway
 
-The user reassessed this boundary after the first physical source migration and
-kept it active as the one-unit-at-a-time physical-migration campaign boundary.
-It narrows work selection and routine context loading; it does not weaken the
-safety, freshness, evidence, ownership, or
+The one-unit-at-a-time physical-migration campaign is paused after completed
+[`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md).
+No Step `09` or later migration/review card is created or selected. The user
+replaced that campaign boundary with a bounded repository-health runway under
+Slice `2` of
+[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+This route narrows work selection and routine context loading; it does not
+weaken safety, freshness, evidence, ownership, or
 [mandatory-expansion rules](../operations/TASK_START.md#mandatory-expansion-triggers).
 
-- The first
-  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-  runway slice and
-  [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
-  are complete.
-  [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md)
-  and [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md)
-  through
-  [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md)
-  are also complete. Separately approved local-only documentation exceptions
-  [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-  and
-  [`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
-  and
-  [`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
-  and
-  [`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
-  and
-  [`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md)
-  are complete; `DOC-CONS-08E` through `DOC-CONS-08H` remain unselected and
-  require separate selection, task-specific planning, and approval. These
-  exceptions do not change ordinary runway order. The
-  completed ordinary runway action is
-  [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md),
-  bounded to one proposed validation-report migration. Its dedicated
-  [`architecture review`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md)
-  and
-  [`reliability review`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md)
-  and
-  [`usability review`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md)
-  are complete.
-  [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)
-  is now complete. The authorized physical-migration campaign selects and
-  reviews only one next dependency-valid migration unit at a time; the unsliced
-  `PROGRAM-01` remainder remains preserved and out of scope.
-- Plan each migration package just in time. Complete its dedicated architecture,
-  reliability, and usability reviews, execution, documentation close, and
-  publication before loading detail for the next unit.
-- Every other pending task, candidate, integration, branch package, and program
-  family is frozen and currently dead/out of scope. Preserve it, but do not
-  select, inspect routinely, integrate, execute, or maintain it while this
-  boundary is active.
-- Frozen material may be inspected or corrected only when a concrete technical
-  contradiction, safety issue, direct interface dependency, or
+- Select, plan, execute, validate, document, publish, and prove only one
+  dependency-valid repository-health package at a time.
+- Do not preload a later health package, resume physical migration, mutate
+  runtime state, install dependencies, or integrate the default branch merely
+  because the broader health campaign is authorized.
+- Every unrelated pending task, candidate, integration, branch package, and
+  preserved program-design remainder remains frozen and out of scope.
+- Frozen material may be inspected only when a concrete contradiction, safety
+  issue, direct interface dependency, or
   [mandatory expansion trigger](../operations/TASK_START.md#mandatory-expansion-triggers)
-  makes that work necessary for the active runway.
-  Preferred ordering, general consistency, or potential future usefulness is
-  not an exception.
-- The first tranche-specific reviews and `MIG-03A` are complete. Their closure
-  does not preselect a later migration or activate unrelated roadmap work.
+  makes that inspection necessary for the active package.
 - Validation is quiet by default. Ordinary slice close follows the
   [`TASK_DELIVERY.md` boundary](../operations/TASK_DELIVERY.md#slice-start-and-close),
   and final reconciliation uses the applicable
