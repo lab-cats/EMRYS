@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.766667",
-      "covered_branches": 23,
-      "covered_lines": 107,
-      "line_rate": "0.899160",
-      "num_branches": 30,
-      "num_statements": 119,
-      "path": "scripts/validate_step_06_orientation_outputs.py"
-    },
-    {
       "branch_rate": "0.666667",
       "covered_branches": 48,
       "covered_lines": 167,
@@ -280,6 +271,15 @@
       "path": "src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py"
     },
     {
+      "branch_rate": "0.800000",
+      "covered_branches": 24,
+      "covered_lines": 108,
+      "line_rate": "0.907563",
+      "num_branches": 30,
+      "num_statements": 119,
+      "path": "src/norad/stages/partition_BAM_by_mechanical_read_orientation/validate_step_06_orientation_outputs.py"
+    },
+    {
       "branch_rate": "0.833333",
       "covered_branches": 45,
       "covered_lines": 178,
@@ -322,10 +322,10 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.701383",
-    "covered_branches": 3347,
-    "covered_lines": 9550,
-    "line_rate": "0.814846",
+    "branch_rate": "0.701593",
+    "covered_branches": 3348,
+    "covered_lines": 9551,
+    "line_rate": "0.814932",
     "num_branches": 4772,
     "num_statements": 11720
   }

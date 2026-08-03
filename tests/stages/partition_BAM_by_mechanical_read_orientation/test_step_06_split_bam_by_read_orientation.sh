@@ -4,9 +4,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_06_split_bam_by_read_orientation.sh"
-JOB="$REPO_ROOT/jobs/step_06_split_bam_by_read_orientation.slurm"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh"
+JOB="$REPO_ROOT/src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2

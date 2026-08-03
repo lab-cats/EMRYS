@@ -48,7 +48,8 @@ JOB_PATHS = {
         "step_05_split_n_cigar_reads.slurm"
     ),
     "step_06_split_bam_by_read_orientation.slurm": Path(
-        "jobs/step_06_split_bam_by_read_orientation.slurm"
+        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "step_06_split_bam_by_read_orientation.slurm"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
         "jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
@@ -212,7 +213,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="fallback",
-        delegation="scripts/step_06_split_bam_by_read_orientation.sh",
+        delegation=(
+            "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+            "step_06_split_bam_by_read_orientation.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

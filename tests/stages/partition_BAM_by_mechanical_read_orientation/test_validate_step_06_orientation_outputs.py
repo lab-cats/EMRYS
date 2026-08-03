@@ -7,10 +7,24 @@ from types import ModuleType
 
 import pytest
 
-from validation_roster_expectations import assert_exact_check_roster
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_06_orientation_outputs.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "partition_bam_by_mechanical_read_orientation_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "partition_BAM_by_mechanical_read_orientation"
+    / "validate_step_06_orientation_outputs.py"
+)
 TEST_MODULE_NAME = "_norad_test_validate_step_06_orientation_outputs"
 
 

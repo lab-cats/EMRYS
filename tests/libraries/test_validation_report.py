@@ -61,7 +61,8 @@ VALIDATOR_PATHS = {
         "validate_step_05_split_ncigar.py"
     ),
     "validate_step_06_orientation_outputs": Path(
-        "scripts/validate_step_06_orientation_outputs.py"
+        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "validate_step_06_orientation_outputs.py"
     ),
     "validate_step_07_mpileup_outputs": Path(
         "scripts/validate_step_07_mpileup_outputs.py"

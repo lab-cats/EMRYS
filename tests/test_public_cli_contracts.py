@@ -76,7 +76,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_05_split_ncigar.py"
     ),
     "validate_step_06_orientation_outputs.py": Path(
-        "scripts/validate_step_06_orientation_outputs.py"
+        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "validate_step_06_orientation_outputs.py"
     ),
     "validate_step_07_mpileup_outputs.py": Path(
         "scripts/validate_step_07_mpileup_outputs.py"
@@ -133,7 +134,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
-        "scripts/step_06_split_bam_by_read_orientation.sh"
+        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
         "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh"

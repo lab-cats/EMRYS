@@ -359,6 +359,25 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["06"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_06",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/"
+                    "partition_BAM_by_mechanical_read_orientation/"
+                    "step_06_split_bam_by_read_orientation.sh"
+                ),
+                "sha256": (
+                    "74399ceb42cb081b213256977b03137d"
+                    "7ae8513c07f98fb4cd06b2f7ee6a2730"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(
