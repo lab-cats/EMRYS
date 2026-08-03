@@ -48,7 +48,8 @@ it.
   `c92426b4e7594795e5f6a3b3f00c1174418aa870b17ffc5d576f0f7bc63283a7`
   and validator
   `e3ed5075abf29b3715b4f2dfa0ecbf95f76f4f079419083dbcd7c9985c4b77d6`.
-- Proposed owner cutover is exactly five moves plus ten explicit updates:
+- Architecture-reviewed owner cutover is exactly five moves plus ten explicit
+  updates:
   `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
@@ -58,8 +59,8 @@ it.
   `tests/baselines/python_coverage.json`, and
   `tests/fixtures/public_cli_contracts/make_target_expansions.json`. The BAM-
   helper caller matrix is the Step `04`-specific tenth update. Dedicated
-  architecture review must confirm this fifteen-logical-file ceiling before
-  execution planning.
+  architecture review confirms this fifteen-logical-file ceiling. An eleventh
+  update or sixth move reopens architecture review.
 - Production bytes may change only for the producer usage self-path, both
   validator neutral-library root depths, and scheduler child path. The
   projected hashes after only those changes are producer
@@ -70,6 +71,16 @@ it.
   `4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`.
   Any semantic producer, validator, or scheduler edit requires an explicit
   review finding before mutation.
+- Freeze each moved file's path-only adjustment. The producer changes only its
+  usage self-path; both validator bridges resolve the repository through
+  `Path(__file__).parents[4]`; and the job delegates to the final producer. The
+  moved shell test resolves the repository root through `SCRIPT_DIR/../../..`
+  and the final producer. The moved Python test resolves `ROOT` through
+  `parents[3]`, uses the final validator, and exact-loads unchanged
+  `tests/validation_roster_expectations.py` by repository path because its flat
+  direct import will not resolve from the deeper owner home. This creates no
+  package, `PYTHONPATH`, new logical file, or production change. Any other
+  moved-file edit reopens architecture review.
 - Preserve the producer CLI, Bash-only invocation, exact `<bam>.bai` input,
   explicit output and metrics directories, explicit Picard jar, path-or-command
   Java and samtools selection, caller-owned existing writable `TMPDIR`, side-
@@ -111,9 +122,16 @@ it.
   moves to its final path.
 - Once producer and job leave flat wildcards, add their exact final paths to
   `validation-static`/`smoke` and the literal Make oracle. Move direct shell
-  and validator recipes; keep public CLI, SLURM, validation, neutral BAM-
-  helper, artifact, and coverage maps explicit rather than adding recursive
-  discovery.
+  and validator recipes. Step `04` has no Make demo target to move. Keep public
+  CLI, SLURM, validation, neutral BAM-helper, artifact, and coverage maps
+  explicit rather than adding recursive discovery.
+- Direct shell and validator tests move with the stage owner. Central public-
+  CLI, scheduler, validation-roster, validation-report, neutral BAM-helper,
+  artifact, coverage, and Make suites remain independent cross-owner
+  consumers. Every known executable caller is repository-owned and fits the
+  same atomic cutover, so no legacy wrapper, alias, symlink, or compatibility
+  path is warranted. Documentation paths are deferred to the separate close
+  and do not justify a compatibility owner.
 - Run only minimal old/final focused checks inside executable slices. Run the
   full applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, migration links, small
@@ -222,8 +240,9 @@ it.
   `DOCUMENTATION_OWNERSHIP.md`; `PIPELINE_PLAN.md`; `HANDOFF.md`; Step `04`
   commands in `RUNBOOK.md`; Step `04` partial/mixed/stale-output, Picard/Java/
   samtools/`TMPDIR`, validation, and recovery routes in `TROUBLESHOOTING.md`;
-  this card; review lifecycle links; and the dated audit log. Update diagrams
-  only if final inspection finds a material DAG or public-flow change.
+  the impacted `construct_canonical_BAM/README.md` helper/test paths; this card;
+  review lifecycle links; and the dated audit log. Update diagrams only if
+  final inspection finds a material DAG or public-flow change.
 
 ## Escalation conditions
 

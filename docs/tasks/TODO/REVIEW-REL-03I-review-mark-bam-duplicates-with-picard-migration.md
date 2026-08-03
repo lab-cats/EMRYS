@@ -27,7 +27,7 @@ characterize them without approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03I](../IN_PROGRESS/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, helper, artifact, and cutover boundary.
+- [REVIEW-ARCH-03I](../COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, helper, artifact, and cutover boundary.
 
 ## Completion unblocks
 

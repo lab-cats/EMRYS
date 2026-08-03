@@ -3105,3 +3105,51 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   caught and the final tree fixes the architecture-card link to the still-TODO
   reliability card; no selection-caused finding remains. The inherited result
   is nonpassing, not green.
+
+## 2026-08-03T05:30:40-0400 — REVIEW-ARCH-03I completed
+
+- **Verified parent:** selection checkpoint `d277bc3` was clean, tracked/
+  untracked empty, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch before the read-only architecture pass.
+- **High finding — moved-test and dual-loader depths needed an explicit
+  boundary:** freeze only the producer usage self-path, both validator neutral-
+  library roots at `parents[4]`, scheduler child, shell-test root
+  `SCRIPT_DIR/../../..`, and Python-test root `parents[3]`. The moved Python
+  test exact-loads unchanged `tests/validation_roster_expectations.py` by
+  repository path; package creation and `PYTHONPATH` mutation are rejected. Any
+  other moved-file edit reopens architecture review.
+- **High finding — exact cutover ceiling confirmed:** one atomic direct cutover
+  contains five moves plus ten updates: Make, artifact producer, artifact
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  neutral BAM-helper caller matrix, coverage row, and literal Make fixture. The
+  BAM-helper matrix is the Step `04`-specific tenth update. Both final shell
+  assets become explicit static/smoke inputs; Step `04` has no Make demo target.
+  An eleventh update or sixth move reopens review.
+- **Medium finding — helper, test, artifact, and documentation ownership
+  confirmed:** the final validator retains private exact loads of both neutral
+  libraries, and Step `05` stays an unchanged flat peer caller of the neutral
+  BAM helper. Direct shell/validator tests move with the stage; central suites
+  stay cross-owner consumers. Artifact evidence changes only the implementation
+  path and reviewed producer hash
+  `b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`;
+  evidence ID, four artifact identities, schemas, contents, ordering, meaning,
+  and consumers remain fixed. The canonical-BAM owner README is an impacted
+  documentation close target because it names the Step `04` helper test/path.
+- **Accepted architecture and rollback:** Step `04` is uniquely live-DAG-
+  eligible; Step `05` remains blocked, uncreated, and unselected. Exhaustive
+  nonhistorical path inspection found all executable callers repository-owned
+  and compatible with the fifteen-logical-file atomic cutover. No wrapper,
+  duplicate, alias, symlink, package, descriptor, schema, helper extraction,
+  or second owner is warranted. Roll back documentation first, then owner/
+  caller/helper-matrix/coverage cutover, then any reliability baseline; keep
+  Make/oracle and artifact path/hash/assertion together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, Make, fixture, dependency, runtime, scheduler, production,
+  scientific-review, or biological evidence changed or ran. Reliability and
+  usability reviews plus `MIG-03I` remain unselected.
+- **Card-boundary gate:** `git diff --check` passed and the complete
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. This remains a nonpassing expected-only ceiling, not a
+  green gate; no architecture-review path, lifecycle, dependency, or anchor
+  finding remains.

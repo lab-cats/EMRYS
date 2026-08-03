@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `MIG-03I` definition checkpoint
-  `86419d36eb623887f86f7d99cba8af09afe9f005` is clean, published, and
-  local/upstream/live-remote-equal; completed `MIG-03H` close is `ef990c8`.
-- Current package: selected
-  [`REVIEW-ARCH-03I`](../tasks/IN_PROGRESS/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
-  for the Step `04` stage-owner architecture pass. All later `03I` cards remain
-  unselected.
+- Recorded package state: architecture-review selection checkpoint
+  `d277bc383382b30bf3d51fe0a7e721a3f3aa1636` is clean, published, and
+  local/upstream/live-remote-equal; definition checkpoint is `86419d3`.
+- Current package: completed
+  [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
+  with exact five-move/ten-update, dual-loader, test/helper, artifact, no-
+  wrapper, documentation-impact, and rollback findings.
 - Package type at this checkpoint: documentation-only architecture-review
-  selection; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: definition parent `86419d3` is
-  verified local/upstream/live-remote-equal. Publish and prove the selection
-  checkpoint equal before review completion.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: selection parent `d277bc3` is
+  verified local/upstream/live-remote-equal. Publish and prove the completion
+  checkpoint equal before selecting `REVIEW-REL-03I`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -239,15 +239,15 @@ The refreshed live DAG leaves only `mark_BAM_duplicates_with_Picard` eligible:
 its sole direct predecessor, `construct_canonical_BAM`, is migrated, while
 Step `05` remains blocked on Step `04`. Only
 [`MIG-03I`](../tasks/TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
-and unselected
-[`REVIEW-ARCH-03I`](../tasks/IN_PROGRESS/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
+and reviews
+[`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-REL-03I`](../tasks/TODO/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
-are defined at published checkpoint `86419d3`. Only `REVIEW-ARCH-03I` is
-selected; reliability, usability, migration, Step `05`, and every later owner/
-review card remain unselected.
+are defined at published checkpoint `86419d3`. Architecture is complete in the
+commit containing this handoff; reliability, usability, migration, Step `05`,
+and every later owner/review card remain unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -795,14 +795,15 @@ complete at published test-only baseline `88f4994`, published executable/test
 checkpoint `24ed9b1`, and documentation/lifecycle close in the commit
 `ef990c8`. The ninth migration card,
 [`MIG-03I`](../tasks/TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md),
-and unselected reviews
-[`REVIEW-ARCH-03I`](../tasks/IN_PROGRESS/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
+and its reviews
+[`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-REL-03I`](../tasks/TODO/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
 are defined at published checkpoint `86419d3`. Step `04` is the only eligible
-unmigrated live-DAG owner; only `REVIEW-ARCH-03I` is selected, and reliability,
-usability, migration, Step `05`, and all later cards remain unselected. The
+unmigrated live-DAG owner; architecture is complete in the commit containing
+this handoff, and reliability, usability, migration, Step `05`, and all later
+cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

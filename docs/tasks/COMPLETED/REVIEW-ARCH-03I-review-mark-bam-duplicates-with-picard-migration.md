@@ -94,8 +94,43 @@ frozen topology and migration boundary.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal definition
-checkpoint `86419d36eb623887f86f7d99cba8af09afe9f005`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `d277bc383382b30bf3d51fe0a7e721a3f3aa1636`.
+
+- **High — moved-test and dual-loader depths needed an explicit boundary:**
+  freeze only the producer usage path, both validator neutral-library roots at
+  `parents[4]`, scheduler child path, shell-test root `SCRIPT_DIR/../../..`, and
+  Python-test root `parents[3]`. The moved Python test must exact-load the
+  unchanged root roster oracle by repository path; package creation or
+  `PYTHONPATH` mutation is rejected. Any other moved-file edit reopens review.
+- **High — exact cutover ceiling confirmed:** one atomic direct cutover is five
+  moves plus ten updates: Make, artifact producer, artifact assertion, public
+  CLI, SLURM, validation roster, validation-report map, neutral BAM-helper
+  caller matrix, coverage row, and literal Make fixture. Both final shell
+  assets become exact static/smoke inputs; Step `04` has no Make demo target.
+  An eleventh update or sixth move reopens this review.
+- **Medium — helper, test, artifact, and documentation ownership confirmed:**
+  the validator retains private exact loads of both neutral libraries; neither
+  helper moves or changes API. Direct shell/validator suites move with the
+  stage, while all ten central files remain cross-owner consumers. Artifact
+  evidence changes only Step `04` implementation path and projected producer
+  hash `b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`;
+  evidence ID, four artifact identities, schemas, contents, ordering, meaning,
+  and consumers stay fixed. Documentation close also repairs the impacted
+  canonical-BAM owner README; diagrams are conditional on a material flow
+  change, which relocation does not propose.
+- **Accepted architecture and rollback:** Step `04` is uniquely eligible after
+  `MIG-03H`; Step `05` remains blocked and uncreated. Every known executable
+  caller is repository-owned and fits the atomic cutover, so no wrapper,
+  duplicate, package, descriptor, schema, alias, symlink, helper extraction, or
+  second owner is warranted. Roll back documentation, then owner/caller/helper-
+  matrix/coverage cutover, then any reliability test baseline; keep Make/oracle
+  and artifact path/hash/assertion changes together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. That expected-only result is not a green gate; no architecture-
+  review-caused finding remains.
