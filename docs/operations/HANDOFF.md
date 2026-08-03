@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03H` definition checkpoint
   `0cd872e6a46f0b6310caf857bde5cd7fb1e8e086` is clean, published, and
   local/upstream/live-remote-equal; completed `MIG-03G` close is `eafec29`.
-- Current package: completed
-  [`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-  for the Step `03` evidence-owner reliability boundary. Usability and
-  migration remain unselected.
-- Package type at this checkpoint: documentation-only reliability-review
-  completion; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: reliability-selection parent
-  `13755af` is verified local/upstream/live-remote-equal. Publish and prove the
-  completion checkpoint equal before usability-review selection.
+- Current package: selected
+  [`REVIEW-UX-03H`](../tasks/IN_PROGRESS/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+  for the Step `03` evidence-owner usability pass. Migration remains
+  unselected.
+- Package type at this checkpoint: documentation-only usability-review
+  selection; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: reliability-completion parent
+  `1d1de19` is verified local/upstream/live-remote-equal. Publish and prove the
+  selection checkpoint equal before usability-review completion.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -187,8 +187,9 @@ published and equal checkpoint `0cd872e`.
 [`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 is complete at published checkpoint `350223f`.
 [`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-is now complete. Step `04` and every later owner/review card remain uncreated
-and unselected.
+is complete at published checkpoint `1d1de19`; `REVIEW-UX-03H` alone is now
+selected. Step `04` and every later owner/review card remain uncreated and
+unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -729,10 +730,10 @@ and its reviews
 →
 [`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
-[`REVIEW-UX-03H`](../tasks/TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+[`REVIEW-UX-03H`](../tasks/IN_PROGRESS/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 are defined at published checkpoint `0cd872e`; architecture is complete at
-`350223f` and reliability completes in the commit containing this handoff.
-Publish and prove this completion checkpoint equal before selecting usability;
-migration, Step `04`, and all later owner cards remain unselected. The
+`350223f`, reliability is complete at `1d1de19`, and only `REVIEW-UX-03H` is
+selected. Publish and prove this selection checkpoint equal before completing
+usability; migration, Step `04`, and all later owner cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

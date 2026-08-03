@@ -2806,3 +2806,20 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validator reported only the nine inherited `UNREFINED` card-location
   findings. That expected-only result is not a green gate; no reliability-
   review-caused finding remains.
+
+## 2026-08-03T04:11:14-0400 — REVIEW-UX-03H selected
+
+- **Selection:** move only `REVIEW-UX-03H` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after reliability-completion checkpoint
+  `1d1de19` was clean, tracked/untracked empty, published, and equal across
+  local `HEAD`, configured upstream, and the live remote branch. `MIG-03H`
+  remains unselected in `TODO`; Step `04` and later owner cards remain
+  uncreated.
+- **Review boundary:** this begins one read-only independent-in-time journey
+  pass over Bash-only producer and explicit-interpreter validator commands,
+  arbitrary CWD, `.venv`/PATH selection, dry-run effects, scheduler submission
+  and demo targets, partial/stale evidence preservation, focused checks,
+  implementation provenance, mechanical-orientation language, and rollback.
+  The same campaign agent performs the pass, so independent authorship is not
+  claimed. Executable/test mutation and computational, real-RSeQC, scheduler,
+  production, scientific-review, and biological evidence remain out of scope.

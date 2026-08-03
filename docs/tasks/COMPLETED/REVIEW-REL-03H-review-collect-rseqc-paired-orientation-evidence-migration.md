@@ -30,7 +30,7 @@ without approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03H](../TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03H](../IN_PROGRESS/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

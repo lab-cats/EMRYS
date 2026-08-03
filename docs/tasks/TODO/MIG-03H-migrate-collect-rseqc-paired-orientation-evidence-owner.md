@@ -178,7 +178,7 @@ eligible owner remains uncreated and unselected.
 
 ## Blocked by
 
-- [REVIEW-UX-03H](REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03H](../IN_PROGRESS/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

@@ -93,5 +93,8 @@ or an undiscoverable final owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal reliability-
+completion checkpoint `1d1de1949605b316e1d7285aaf031155d2be23a3`. This is a
+read-only independent-in-time adversarial pass by the same campaign agent;
+independent authorship is not claimed. No executable/test mutation or
+computational test is part of review selection.
