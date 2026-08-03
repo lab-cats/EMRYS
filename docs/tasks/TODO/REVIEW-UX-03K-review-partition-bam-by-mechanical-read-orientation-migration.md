@@ -26,7 +26,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03K](../IN_PROGRESS/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03K](../COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 
@@ -94,5 +94,5 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-REL-03K`; no executable/test file
-changed or ran.
+Not selected. Unblocked by completed `REVIEW-REL-03K`; migration remains
+unselected, and no executable/test file changed or ran.

@@ -36,7 +36,7 @@ functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03K](../IN_PROGRESS/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: reliability review uses the architecture-corrected owner, loader, caller, artifact, test, pending-scaffold, and rollback boundary.
+- [REVIEW-REL-03K](REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: reliability review uses the architecture-corrected owner, loader, caller, artifact, test, pending-scaffold, and rollback boundary.
 
 ## Prerequisites
 

@@ -4158,3 +4158,67 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validation rule, no computational suite or complete documentation validator
   runs at selection; the complete documentation gate belongs to reliability-
   review completion.
+
+## 2026-08-03T08:38:44-0400 — REVIEW-REL-03K completed
+
+- **Review basis:** complete a separate read-only reliability pass from clean,
+  published, local/upstream/live-remote-equal selection checkpoint
+  `7ca503d7224f068fe51df0e9ad54c35b1d346583`. Inspect the producer, validator,
+  scheduler, three active test owners, neutral report/roster/public-CLI suites,
+  artifact reconciliation, coverage baseline, runbook/troubleshooting, and
+  historical risk matrix. Independent authorship is not claimed.
+- **Producer child/count decision:** the first old-path direct-shell checkpoint
+  will freeze exact filter, merge, index, and count-command exits `71`-`74`,
+  stderr, nonpublication, unrelated-file preservation, and owned dual-directory
+  cleanup. It also owns missing explicit samtools before directory creation,
+  arbitrary-CWD basename/PATH execution, assigned-greater-than-input rejection,
+  and current exit-`0` publication when flag `99 + 147` disagrees with the
+  merged FWD count. Existing cases retain help/admission/thread/dry-run,
+  command/count/fraction success, empty group, temporary quickcheck, lock,
+  stale-path, and ordinary rollback behavior.
+- **Producer transaction/recovery decision:** the second old-path direct-shell
+  checkpoint will fix final move order with counts last, preserve an incomplete
+  predecessor, restore a complete five-file predecessor after final-path
+  quickcheck failure, and inject publication exit `67` followed by FWD-BAM
+  restoration exit `68`. The last fault propagates `67`, leaves the prior FWD
+  BAM missing, restores the other four prior files, preserves unrelated bytes,
+  and exposes cleanup erasure of backups, lock, scratch, and recovery evidence.
+  This ambiguous data-loss state is not approved.
+- **Producer stability/collision decision:** the third old-path direct-shell
+  checkpoint will preserve the admitted BAM/BAI mutation blind spot, controlled
+  `TERM` exit `143`, and the output-directory-only lock defect. A deterministic
+  barrier lets two same-sample runs with distinct output directories and shared
+  QC both exit `0`; both BAM/BAI quartets remain while the last writer replaces
+  the shared counts TSV, producing mixed-attempt evidence. Assert predecessor/
+  unrelated preservation where applicable and the absence of a receipt or
+  durable recovery marker; add no transaction mechanism.
+- **Validator decision:** one old-path direct-validator checkpoint will add
+  arbitrary-CWD dry-run/execute/repeat byte parity, invalid container magic as
+  exit-`0` failed evidence, and post-build mutation of each of the five inputs
+  as exit `2` with a valid predecessor report preserved. Existing direct count
+  disagreement owns flag/merged and assigned arithmetic failure; the neutral
+  report suite owns exact-loader/publication faults, and the roster suite owns
+  the five IDs. No duplicate helper or private/public API is warranted.
+- **Scheduler decision:** one old-path central-suite checkpoint will add
+  samtools version-command failure before delegation, missing/nonexecutable
+  warning with unchanged delegation, PATH basename forwarding, absent-submit-
+  directory fallback, dry-run `logs/`-only mutation, `THREADS` independent of
+  the one-CPU request, and byte-exact false success over five stale nonempty
+  outputs. Generic cases continue to own directives/mode, module calls and
+  tolerance, override arguments, invalid mode, child exit, missing-output
+  rejection, and the Bash `3.2` empty-array defect.
+- **Bounded sequence, artifact, coverage, and evidence:** execute exactly five
+  small sequential old-path test-only checkpoints—producer child/count,
+  producer transaction, producer stability/collision, validator, scheduler—
+  using only the existing three test files. Add no fixture, fourth test owner,
+  production edit, coverage edit, documentation batch, dependency, or future
+  owner. Existing artifact tests own six Step `06` identities, reconciliation,
+  and six-decimal fraction. Later coverage may rise but must preserve target
+  rates, every non-target row, and global covered-count floors. This review
+  changed or ran no executable, test, harness, runtime, scheduler, production,
+  scientific-review, biological-orientation, or biological evidence.
+- **Card-boundary gate:** `git diff --check` passed. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no reliability-review-caused path, lifecycle,
+  dependency, cycle, orphan, anchor, or diagram finding. The expected-only
+  result remains nonpassing and is not called green.

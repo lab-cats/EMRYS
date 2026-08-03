@@ -112,10 +112,25 @@ but does not select it.
   rechecked; the counts TSV is a native output rather than an attempt receipt;
   restoration moves are best-effort; cleanup can erase backups after failed
   restoration; and the lock lives only under the selected output directory
-  while the counts file may live in a shared QC directory. Reliability review
-  owns exact predecessor, cross-directory collision, recovery-residue, input-
-  mutation, signal, and absent-attempt-identity oracles and may not repair or
-  bless these behaviors.
+  while the counts file may live in a shared QC directory. Preserve these
+  behaviors through exact predecessor, cross-directory collision, recovery-
+  residue, input-mutation, signal, and absent-attempt-identity oracles without
+  repairing or blessing them.
+- Publish three small old-path producer test-only baselines in the existing
+  direct shell owner. The child/count slice adds exact filter, merge, index,
+  and count-command exits `71`-`74`; missing explicit samtools rejection before
+  directory creation; basename/PATH execution from arbitrary CWD; assigned-
+  greater-than-input rejection; and successful publication of the current
+  flag-subcount/merged-count mismatch defect. The transaction slice fixes
+  counts-last move order, incomplete-final-set preservation, byte-exact five-
+  file restoration after final-path quickcheck failure, and publication exit
+  `67` followed by restoration exit `68`, which leaves the prior FWD BAM
+  missing while restoring the other four prior files and erasing backup/lock/
+  scratch/recovery evidence. The stability/collision slice fixes admitted BAM/
+  BAI mutation blindness, `TERM` exit `143`, and barrier-controlled same-sample
+  runs whose distinct output-directory locks both succeed while the last
+  writer replaces their shared counts TSV. Preserve unrelated files and assert
+  absent receipts/recovery markers throughout.
 - Preserve producer/validator asymmetry. The producer quickchecks both merged
   BAMs and enforces nonempty groups plus assigned/input bounds, but it does not
   prove biological orientation or current-attempt identity. The independent
@@ -125,9 +140,15 @@ but does not select it.
 - Preserve the eleven-column, one-row orientation-counts TSV, six-decimal
   assigned fraction, five validator check IDs, container magic, typed counts,
   both flag-group sums, assigned/unassigned arithmetic, stable-input recheck,
-  report bytes, streams, and exits. Reliability review must disposition the
-  producer's current lack of explicit flag-subcount-to-merged-count
-  reconciliation without changing it.
+  report bytes, streams, and exits. The producer's lack of explicit flag-
+  subcount-to-merged-count reconciliation remains a characterized defect.
+- Publish one old-path direct-validator test-only baseline: arbitrary-CWD dry-
+  run/execute/repeat byte parity with unchanged inputs and no invocation-CWD
+  residue; invalid BAM/BAI container magic as exit-`0` failed evidence; and a
+  compact post-build mutation matrix across all five inputs that exits `2`
+  while preserving a valid predecessor report. The existing disagreement case
+  owns flag/merged and assigned arithmetic failure. Neutral report-loader and
+  publication-fault suites remain the shared owners; add no duplicate helper.
 - The validator continues to privately exact-load neutral
   `src/norad/libraries/validation_report.py`. Add no BAM helper, package
   identity, wrapper, alias, ambient `PYTHONPATH`, public helper API, or neutral-
@@ -136,10 +157,15 @@ but does not select it.
   fallback, exported `/tmp`, sample/input/output/QC/thread defaults, tolerated
   samtools module load, fixed default samtools path with override, tool/version
   diagnostics, delegation, streams/exits, five-nonempty-file post-check, body-
-  level `logs/` mutation, and Bash `3.2` empty-array defect. Reliability review
-  must disposition stale complete output, missing/unusable tool, module,
-  version, child, and `THREADS` versus requested-CPU states without hardening
-  them.
+  level `logs/` mutation, and Bash `3.2` empty-array defect.
+- Publish one old-path central-scheduler test-only baseline for Step `06`:
+  samtools version-command failure before delegation; missing/nonexecutable
+  warnings with unchanged delegation; PATH basename forwarding; dynamic absent-
+  submit-directory fallback; dry-run `logs/`-only mutation; explicit `THREADS`
+  independent of the one-CPU request; and a zero-exit child with five stale
+  nonempty outputs falsely accepted byte-exactly. Existing generic cases retain
+  directives/mode, module calls/tolerance, override arguments, invalid mode,
+  child exit, missing outputs, and Bash `3.2` behavior.
 - `STEP_PRODUCERS["06"]` changes only to final path
   `src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh`
   with projected hash
@@ -173,9 +199,10 @@ but does not select it.
   atomic direct cutover, so no temporary wrapper is justified. Roll back the
   documentation close and pending-scaffold deletion first, then the five-move/
   nine-update executable cutover with Make/oracle and artifact path/hash
-  assertion together, then any reliability baselines in reverse order. Git
-  rollback never alters runtime BAM/BAI/counts, lock, backup, scratch, log, or
-  recovery evidence.
+  assertion together, then scheduler, validator, producer stability/collision,
+  producer transaction, and producer child/count baselines in reverse order.
+  Git rollback never alters runtime BAM/BAI/counts, lock, backup, scratch, log,
+  or recovery evidence.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction/receipt/recovery mechanism, scheduler abstraction,
   orientation-policy change, manifest mutation, or public library API.
@@ -242,8 +269,9 @@ but does not select it.
 
 ## Deliverables
 
-- One or more small reviewed old-path reliability checkpoints only where
-  required, one exact final-owner/caller/test cutover checkpoint, and one
+- Exactly five small reviewed old-path test-only checkpoints—producer child/
+  count, producer transaction, producer stability/collision, validator, then
+  scheduler—one exact final-owner/caller/test cutover checkpoint, and one
   separate documentation/lifecycle close, sequentially published on the same
   branch.
 - Final native assets under
