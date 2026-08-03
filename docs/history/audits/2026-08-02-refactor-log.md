@@ -3659,3 +3659,21 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings and no architecture-review-caused path, lifecycle,
   dependency, cycle, orphan, anchor, or diagram finding. The expected-only
   result remains nonpassing and is not called green.
+
+## 2026-08-03T06:59:46-0400 — REVIEW-REL-03J selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  architecture checkpoint `e40fb3b90462b0f0bf77410b8e035995ce03a13d`, move
+  only `REVIEW-REL-03J` to `IN_PROGRESS` and repair reciprocal links from the
+  completed architecture and unselected usability cards. Usability and
+  migration remain unselected in `TODO`; Step `06` and every later card remain
+  uncreated.
+- **Boundary:** this checkpoint selects review work but does not perform it.
+  No reliability finding or migration-card correction is recorded; no
+  executable, test, harness, configuration, dependency, runtime, scheduler,
+  cluster, production, scientific-review, or biological state changes or runs.
+- **Documentation gate:** after repairing the selection's current lifecycle
+  links, `git diff --check` passes and the exact RUNBOOK documentation validator
+  reports only the nine inherited `UNREFINED` card-location findings. No
+  selection-caused finding remains; the expected-only result is nonpassing and
+  is not called green.

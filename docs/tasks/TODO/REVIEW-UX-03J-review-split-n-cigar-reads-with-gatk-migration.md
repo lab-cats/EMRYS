@@ -25,7 +25,7 @@ dry-run claims, unsafe retry guidance, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03J](REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03J](../IN_PROGRESS/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: usability review needs the corrected architecture and active reliability obligations.
 
 ## Completion unblocks
 
@@ -92,5 +92,5 @@ dry-run claims, unsafe retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-REL-03J`; no executable/test file
+Not selected. Blocked on active `REVIEW-REL-03J`; no executable/test file
 changed or ran.

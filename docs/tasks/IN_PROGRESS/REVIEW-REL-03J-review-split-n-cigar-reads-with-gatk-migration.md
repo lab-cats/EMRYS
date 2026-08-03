@@ -31,7 +31,7 @@ must preserve and characterize these defects without fixing or approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03J](REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03J](../TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 
@@ -102,5 +102,8 @@ must preserve and characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Architecture prerequisite is complete; this card remains in
-`TODO` until separately selected. No executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal architecture checkpoint
+`e40fb3b90462b0f0bf77410b8e035995ce03a13d`. No reliability finding is
+recorded yet, no later review or migration card is selected, and no
+executable/test file changed or ran.
