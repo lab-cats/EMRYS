@@ -56,7 +56,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_01_star_alignment.py"
     ),
     "validate_step_02_canonical_bam.py": Path(
-        "scripts/validate_step_02_canonical_bam.py"
+        "src/norad/stages/construct_canonical_BAM/"
+        "validate_step_02_canonical_bam.py"
     ),
     "validate_step_02b_bam_qc.py": Path("scripts/validate_step_02b_bam_qc.py"),
     "validate_step_03_rseqc_orientation.py": Path(
@@ -106,7 +107,9 @@ SHELL_ENTRYPOINT_PATHS = {
     "step_01_star_align.sh": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
     ),
-    "step_02_sort_index_bam.sh": Path("scripts/step_02_sort_index_bam.sh"),
+    "step_02_sort_index_bam.sh": Path(
+        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
+    ),
     "step_02b_bam_qc.sh": Path("scripts/step_02b_bam_qc.sh"),
     "step_03_infer_strandedness_and_orientation.sh": Path(
         "scripts/step_03_infer_strandedness_and_orientation.sh"

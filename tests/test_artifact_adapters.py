@@ -268,6 +268,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["02"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_02",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/construct_canonical_BAM/"
+                    "step_02_sort_index_bam.sh"
+                ),
+                "sha256": (
+                    "602c9b6f71d7fb38533e29e294fcdd36"
+                    "85339614daa6efa264ba413669dd0cd3"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

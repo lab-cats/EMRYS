@@ -959,7 +959,10 @@ STEP_PRODUCERS = {
     "01": (
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
     ),
-    "02": "scripts/step_02_sort_index_bam.sh",
+    "02": (
+        "src/norad/stages/construct_canonical_BAM/"
+        "step_02_sort_index_bam.sh"
+    ),
     "02b": "scripts/step_02b_bam_qc.sh",
     "03": "scripts/step_03_infer_strandedness_and_orientation.sh",
     "04": "scripts/step_04_mark_duplicates.sh",

@@ -34,7 +34,7 @@ test:
 validation-shell-contracts:
 	bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh
 	bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh
-	bash tests/shell/test_step_02_sort_index_bam.sh
+	bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
 	bash tests/shell/test_step_02b_bam_qc.sh
 	bash tests/shell/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/shell/test_step_04_mark_duplicates.sh
@@ -55,7 +55,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_02_canonical_bam.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_02b_bam_qc.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_03_rseqc_orientation.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_validate_step_04_mark_duplicates.py
@@ -228,7 +228,8 @@ python-coverage-check: python-coverage-measure
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
 		--current "$(PYTHON_COVERAGE_CURRENT)" \
 		--new-shared-module scripts/git_orchestration/_common.py \
-		--new-shared-module src/norad/libraries/validation_report.py
+		--new-shared-module src/norad/libraries/validation_report.py \
+		--new-shared-module src/norad/libraries/bam_validation.py
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
@@ -241,9 +242,9 @@ validation-guarded-r:
 
 validation-static:
 	git diff --check
-	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh
+	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh
 	bash -n scripts/git_orchestration/*.sh
-	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm
+	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
 	"$(REPORT_PYTHON_BIN)" scripts/validate_manifest.py \
@@ -253,9 +254,9 @@ validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
 
 smoke:
-	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh
+	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh
 	bash -n scripts/git_orchestration/*.sh
-	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm
+	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm
 
 lint:
 	python -m compileall scripts src/norad tests

@@ -1,12 +1,24 @@
 import csv
+import hashlib
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
-from validation_roster_expectations import assert_exact_check_roster
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_02_canonical_bam.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "construct_canonical_bam_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
+)
 
 
 def fixture(root: Path):
@@ -32,13 +44,16 @@ def fixture(root: Path):
     return bam, bai, tool, out / "S.validation.tsv"
 
 
-def run(values, *extra, env=None):
+def run(values, *extra, env=None, cwd: Path | None = None):
     bam, bai, tool, output = values
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
          "--bai", str(bai), "--samtools-bin", str(tool),
          "--output", str(output), *extra],
-        cwd=ROOT, text=True, capture_output=True, env=env,
+        cwd=ROOT if cwd is None else cwd,
+        text=True,
+        capture_output=True,
+        env=env,
     )
 
 
@@ -88,3 +103,40 @@ def test_foreign_lock_is_preserved(tmp_path):
     lock.write_text("foreign\n")
     assert run(values, "--execute").returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_arbitrary_cwd_dry_run_execute_and_repeat_are_exact(tmp_path):
+    values = fixture(tmp_path / "data")
+    invocation = tmp_path / "invoke"
+    invocation.mkdir()
+    inputs = values[:3]
+    before = {
+        path: (path.read_bytes(), path.stat().st_mode) for path in inputs
+    }
+
+    dry = run(values, cwd=invocation)
+    assert dry.returncode == 0
+    assert dry.stderr == ""
+    assert not values[-1].exists()
+    assert hashlib.sha256(dry.stdout.encode()).hexdigest() == (
+        "e0edf8f70d40ffc6ca9ae6ef732c797ac00abd056ee16496ad22038e277c5c1f"
+    )
+
+    first = run(values, "--execute", cwd=invocation)
+    assert first.returncode == 0
+    assert first.stderr == ""
+    first_bytes = values[-1].read_bytes()
+    assert len(first_bytes) == 542
+    assert hashlib.sha256(first_bytes).hexdigest() == (
+        "0007c190b23071286fea72670f72d9cf98666c5c11fd76f1657715aa2d76a7c8"
+    )
+    assert_exact_check_roster(rows(values[-1]), "02")
+
+    second = run(values, "--execute", cwd=invocation)
+    assert second.returncode == 0
+    assert second.stderr == ""
+    assert values[-1].read_bytes() == first_bytes
+    assert {
+        path: (path.read_bytes(), path.stat().st_mode) for path in inputs
+    } == before
+    assert list(invocation.iterdir()) == []

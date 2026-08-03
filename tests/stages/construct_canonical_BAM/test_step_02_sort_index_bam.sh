@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_02_sort_index_bam.sh"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
@@ -233,6 +233,11 @@ printf '%s\\n' "\$@" >> "$mv_log"
 
 src="\${1:-}"
 dest="\${2:-}"
+
+if [[ -n "\${FAKE_MV_ALWAYS_FAIL_SOURCE:-}" && "\$src" == "\$FAKE_MV_ALWAYS_FAIL_SOURCE" ]]; then
+    printf 'fake mv forced persistent failure for source: %s\n' "\$src" >&2
+    exit 66
+fi
 
 fail_marker="${tmp_dir}/fake_mv_failed.\${FAKE_MV_FAIL_DEST_MATCH:-none}"
 # Forced mv failures are one-shot so rollback moves can still restore files.
@@ -489,6 +494,35 @@ assert_file_equals "$publish_output_dir/sample_publish.sorted.bam" "previous bam
 assert_file_equals "$publish_output_dir/sample_publish.sorted.bam.bai" "previous bai"
 assert_not_exists "$publish_output_dir/.sample_publish.step02.lock"
 assert_no_step02_scratch "$publish_output_dir"
+
+printf 'Running failure-inside-rollback characterization check...\n'
+restore_failure_output_dir="$tmp_dir/results/restore_failure"
+mkdir -p "$restore_failure_output_dir"
+printf 'previous bam\n' >"$restore_failure_output_dir/sample_restore.sorted.bam"
+printf 'previous bai\n' >"$restore_failure_output_dir/sample_restore.sorted.bam.bai"
+restore_failure_output="$tmp_dir/restore_failure.out"
+restore_failure_backup_bam="$restore_failure_output_dir/.sample_restore.step02.restore001.previous.bam"
+# Fail final BAI publication, then fail only restoration of the prior BAM.
+assert_fails "$restore_failure_output" env \
+    FAKE_SAMPLE_ID=sample_restore \
+    FAKE_MV_FAIL_DEST_MATCH="sample_restore.sorted.bam.bai" \
+    FAKE_MV_ALWAYS_FAIL_SOURCE="$restore_failure_backup_bam" \
+    SLURM_JOB_ID=restore001 \
+    bash "$SCRIPT" \
+    --sample-id sample_restore \
+    --input-alignment "$input_sam" \
+    --output-dir "$restore_failure_output_dir" \
+    --threads 1 \
+    --execute
+assert_contains "$restore_failure_output" "fake mv forced failure for destination"
+assert_contains "$restore_failure_output" "Rolling back Step 02 canonical outputs"
+assert_contains "$restore_failure_output" "fake mv forced persistent failure for source"
+assert_not_exists "$restore_failure_output_dir/sample_restore.sorted.bam"
+assert_file_equals "$restore_failure_output_dir/sample_restore.sorted.bam.bai" "previous bai"
+assert_not_exists "$restore_failure_backup_bam"
+assert_not_exists "$restore_failure_backup_bam.bai"
+assert_not_exists "$restore_failure_output_dir/.sample_restore.step02.lock"
+assert_no_step02_scratch "$restore_failure_output_dir"
 
 printf 'Running publish failure rollback check with no previous pair...\n'
 no_previous_output_dir="$tmp_dir/results/no_previous_publish_failure"

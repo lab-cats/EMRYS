@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.750000",
-      "covered_branches": 21,
-      "covered_lines": 105,
-      "line_rate": "0.913043",
-      "num_branches": 28,
-      "num_statements": 115,
-      "path": "scripts/validate_step_02_canonical_bam.py"
-    },
-    {
       "branch_rate": "0.766667",
       "covered_branches": 23,
       "covered_lines": 102,
@@ -173,20 +164,20 @@
     },
     {
       "branch_rate": "0.785714",
-      "covered_branches": 22,
-      "covered_lines": 105,
-      "line_rate": "0.921053",
-      "num_branches": 28,
-      "num_statements": 114,
+      "covered_branches": 33,
+      "covered_lines": 144,
+      "line_rate": "0.929032",
+      "num_branches": 42,
+      "num_statements": 155,
       "path": "scripts/validate_step_04_mark_duplicates.py"
     },
     {
-      "branch_rate": "0.791667",
-      "covered_branches": 19,
-      "covered_lines": 98,
-      "line_rate": "0.907407",
-      "num_branches": 24,
-      "num_statements": 108,
+      "branch_rate": "0.815789",
+      "covered_branches": 31,
+      "covered_lines": 138,
+      "line_rate": "0.926174",
+      "num_branches": 38,
+      "num_statements": 149,
       "path": "scripts/validate_step_05_split_ncigar.py"
     },
     {
@@ -226,6 +217,15 @@
       "path": "scripts/validate_step_09_cmh_outputs.py"
     },
     {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 12,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 12,
+      "path": "src/norad/libraries/bam_validation.py"
+    },
+    {
       "branch_rate": "0.972222",
       "covered_branches": 35,
       "covered_lines": 108,
@@ -260,6 +260,15 @@
       "num_branches": 60,
       "num_statements": 189,
       "path": "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
+    },
+    {
+      "branch_rate": "0.761905",
+      "covered_branches": 32,
+      "covered_lines": 137,
+      "line_rate": "0.919463",
+      "num_branches": 42,
+      "num_statements": 149,
+      "path": "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
     },
     {
       "branch_rate": "0.785714",
@@ -313,11 +322,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.698557",
-    "covered_branches": 3293,
-    "covered_lines": 9381,
-    "line_rate": "0.812278",
-    "num_branches": 4714,
-    "num_statements": 11549
+    "branch_rate": "0.699537",
+    "covered_branches": 3327,
+    "covered_lines": 9504,
+    "line_rate": "0.813908",
+    "num_branches": 4756,
+    "num_statements": 11677
   }
 }

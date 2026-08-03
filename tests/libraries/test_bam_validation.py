@@ -24,7 +24,11 @@ class Caller:
 
 
 CALLERS = (
-    Caller("step02", ROOT / "scripts/validate_step_02_canonical_bam.py"),
+    Caller(
+        "step02",
+        ROOT
+        / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py",
+    ),
     Caller("step04", ROOT / "scripts/validate_step_04_mark_duplicates.py"),
     Caller("step05", ROOT / "scripts/validate_step_05_split_ncigar.py"),
 )
@@ -104,6 +108,19 @@ def inject_bam_loader_failure(
     ):
         if module_name == BAM_MODULE_NAME:
             return importlib.util.spec_from_loader(module_name, FailingLoader(error))
+        return original(module_name, path, *args, **kwargs)
+
+    monkeypatch.setattr(importlib.util, "spec_from_file_location", controlled_spec)
+
+
+def inject_bam_spec_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = importlib.util.spec_from_file_location
+
+    def controlled_spec(
+        module_name: str, path: object, *args: object, **kwargs: object
+    ):
+        if module_name == BAM_MODULE_NAME:
+            return None
         return original(module_name, path, *args, **kwargs)
 
     monkeypatch.setattr(importlib.util, "spec_from_file_location", controlled_spec)
@@ -219,6 +236,43 @@ def test_each_caller_preserves_foreign_wrong_path_cache(
             f"{foreign_path}, expected {HELPER}",
         )
         assert sys.modules[BAM_MODULE_NAME] is foreign
+
+
+@pytest.mark.parametrize("caller", CALLERS, ids=lambda caller: caller.name)
+def test_each_caller_preserves_cache_without_file_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    caller: Caller,
+):
+    monkeypatch.chdir(tmp_path)
+    foreign = types.ModuleType(BAM_MODULE_NAME)
+    with isolated_module_cache():
+        sys.modules[BAM_MODULE_NAME] = foreign
+        assert_loader_failure(
+            caller,
+            capsys,
+            "ImportError",
+            "cached BAM-validation owner has no valid file path",
+        )
+        assert sys.modules[BAM_MODULE_NAME] is foreign
+
+
+def test_step05_fails_closed_when_exact_file_spec_is_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    monkeypatch.chdir(tmp_path)
+    inject_bam_spec_failure(monkeypatch)
+    with isolated_module_cache():
+        assert_loader_failure(
+            CALLERS[2],
+            capsys,
+            "ImportError",
+            "unable to create an exact-file module specification",
+        )
+        assert BAM_MODULE_NAME not in sys.modules
 
 
 @pytest.mark.parametrize("caller", CALLERS, ids=lambda caller: caller.name)

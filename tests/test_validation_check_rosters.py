@@ -33,7 +33,10 @@ VALIDATOR_PATHS = {
         "src/norad/stages/align_RNA_reads_with_STAR/"
         "validate_step_01_star_alignment.py"
     ),
-    "02": Path("scripts/validate_step_02_canonical_bam.py"),
+    "02": Path(
+        "src/norad/stages/construct_canonical_BAM/"
+        "validate_step_02_canonical_bam.py"
+    ),
     "02b": Path("scripts/validate_step_02b_bam_qc.py"),
     "03": Path("scripts/validate_step_03_rseqc_orientation.py"),
     "04": Path("scripts/validate_step_04_mark_duplicates.py"),

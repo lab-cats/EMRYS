@@ -28,7 +28,9 @@ JOB_PATHS = {
     "step_01_star_align.slurm": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm"
     ),
-    "step_02_sort_index_bam.slurm": Path("jobs/step_02_sort_index_bam.slurm"),
+    "step_02_sort_index_bam.slurm": Path(
+        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm"
+    ),
     "step_02b_bam_qc.slurm": Path("jobs/step_02b_bam_qc.slurm"),
     "step_03_infer_strandedness_and_orientation.slurm": Path(
         "jobs/step_03_infer_strandedness_and_orientation.slurm"
@@ -127,7 +129,10 @@ CONTRACTS = {
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="caller",
-        delegation="scripts/step_02_sort_index_bam.sh",
+        delegation=(
+            "src/norad/stages/construct_canonical_BAM/"
+            "step_02_sort_index_bam.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),
