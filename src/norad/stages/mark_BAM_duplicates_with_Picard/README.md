@@ -149,7 +149,9 @@ Before retry, cleanup, or same-name reuse, preserve the exact BAM/BAI/metrics
 bytes and metadata, canonical input pair, producer and scheduler streams,
 scheduler job/accounting and logs, Picard jar, selected Java and actual version,
 samtools path/version, `TMPDIR`, checkout, and unrelated directory files. Rule
-out active downstream Step `05` or other readers. There are no producer lock,
+out the active downstream
+[`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
+owner or other readers. There are no producer lock,
 stage, backup, receipt, or recovery artifacts whose absence proves clean state.
 Use an isolated output/metrics destination for a separately authorized retry;
 do not delete or adopt a mixed or stale final triplet as recovery. Follow the

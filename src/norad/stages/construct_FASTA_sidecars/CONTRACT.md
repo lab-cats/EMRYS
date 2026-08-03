@@ -120,8 +120,9 @@ approve a library extraction.
 
 ## Consumers
 
-- Historical Step `05` consumes the FASTA and both sidecars before GATK
-  `SplitNCigarReads` through explicit input paths.
+- The final [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
+  owner consumes the FASTA and both sidecars before GATK `SplitNCigarReads`
+  through explicit input paths.
 - Reference-provenance configuration names the `FAI` and `DICT` for hashing
   and contig reconciliation.
 - The artifact inventory registers the FASTA, `FAI`, `DICT`, and validation

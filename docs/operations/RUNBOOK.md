@@ -152,8 +152,8 @@ grep -n "SplitNCigarReads\|No space left on device\|tmp-dir\|java.io.tmpdir" \
 
 ```bash
 grep -n "EXECUTE\|--execute\|dry-run" \
-  jobs/step_05_split_n_cigar_reads.slurm \
-  scripts/step_05_split_n_cigar_reads.sh | head -60
+  src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm \
+  src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh | head -60
 ```
 
 Use the current [`HANDOFF.md` evidence boundary](HANDOFF.md#evidence-boundary)
@@ -2713,7 +2713,7 @@ bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
   tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py \
   tests/libraries/test_bam_validation.py \
   tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py \
-  tests/test_validate_step_05_split_ncigar.py \
+  tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py \
   tests/test_slurm_wrapper_contracts.py
 ```
 
@@ -3336,14 +3336,19 @@ Expected tool:
 GATK SplitNCigarReads
 ```
 
-GATK availability is confirmed on compute node `node002`: OpenJDK `17.0.14`, GATK `4.6.1.0`, path `/cm/shared/apps/gatk/gatk-4.6.1.0/gatk`; the tool probe completed successfully with exit code `0:0`.
+Historical cluster evidence records OpenJDK `17.0.14` and GATK `4.6.1.0` at
+`/cm/shared/apps/gatk/gatk-4.6.1.0/gatk` on `node002`, with tool-probe exit
+`0:0`. The MIG-03J relocation did not rerun that probe or create new cluster
+evidence.
 
 Entry points:
 
 ```text
-jobs/step_05_split_n_cigar_reads.slurm
-scripts/step_05_split_n_cigar_reads.sh
-tests/shell/test_step_05_split_n_cigar_reads.sh
+src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm
+src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh
+src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py
+tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh
+tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py
 ```
 
 Inputs:
@@ -3356,11 +3361,20 @@ refs/novogene_ref/genome.fa.fai
 refs/novogene_ref/genome.dict
 ```
 
+The adjacent
+[`owner README`](../../src/norad/stages/split_N_cigar_reads_with_GATK/README.md)
+owns the full root/arbitrary-CWD journeys, tool precedence, dry-run effects,
+transaction defects, recovery evidence, and migration ceiling. These final
+paths replace the former flat entry points directly; there is no installed
+command, package import, wrapper, alias, symlink, or ambient `PYTHONPATH`
+route.
+
 The structured Step `05` validator consumes one exact output pair, the three
 exact reference inputs, and one explicit samtools executable:
 
 ```bash
-.venv/bin/python scripts/validate_step_05_split_ncigar.py \
+.venv/bin/python \
+  src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py \
   --scope-id ABE_EV_2 \
   --bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
   --bai results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam.bai \
@@ -3377,7 +3391,8 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/05
-.venv/bin/python scripts/validate_step_05_split_ncigar.py \
+.venv/bin/python \
+  src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py \
   --scope-id ABE_EV_2 \
   --bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
   --bai results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam.bai \
@@ -3389,10 +3404,36 @@ mkdir -p results/qc/validation/05
   --execute
 ```
 
+From another CWD, use absolute interpreter, validator, BAM, BAI, FASTA, FAI,
+DICT, samtools, and report paths. Omitting `--execute` still performs the five
+checks, prints their TSV rows and completion line, writes no report, and leaves
+no invocation-directory residue:
+
+```bash
+/absolute/path/to/norad/.venv/bin/python \
+  /absolute/path/to/norad/src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py \
+  --scope-id ABE_EV_2 \
+  --bam /absolute/results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
+  --bai /absolute/results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam.bai \
+  --reference-fasta /absolute/refs/novogene_ref/genome.fa \
+  --reference-fai /absolute/refs/novogene_ref/genome.fa.fai \
+  --reference-dict /absolute/refs/novogene_ref/genome.dict \
+  --samtools-bin /absolute/path/to/samtools \
+  --output /absolute/results/qc/validation/05/ABE_EV_2.validation.tsv
+```
+
+An `ERROR: unable to load NORAD validation-report`, `BAM-validation`, or
+`reference-provenance` owner is a checkout-integrity failure. Inspect the exact
+named file and checkout; do not add `PYTHONPATH`, install a package, invoke a
+helper as a CLI, or restore a legacy Step `05` path.
+
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_05_split_ncigar.py
+bash tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py
+.venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k step_05
 ```
 
 Outputs:
@@ -3405,13 +3446,19 @@ results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai
 Dry-run:
 
 ```bash
-sbatch jobs/step_05_split_n_cigar_reads.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0 \
+  src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm
 ```
 
 Execute:
 
 ```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_05_split_n_cigar_reads.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 \
+  src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm
 ```
 
 Step `05` still follows the normal dry-run/execute submission pattern, but the GATK process must use a per-run project-storage temp directory. The hardened script passes that directory through:
@@ -3426,33 +3473,58 @@ If a supported Java 17 executable is known, pass it explicitly:
 
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
-  jobs/step_05_split_n_cigar_reads.slurm
+  src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm
 ```
 
 Direct script dry-run with explicit cluster tools:
 
 ```bash
-bash scripts/step_05_split_n_cigar_reads.sh \
-  --sample-id ABE_EV_2 \
-  --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
-  --reference-fasta refs/novogene_ref/genome.fa \
-  --output-dir results/split_ncigar/ABE_EV_2 \
-  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
-  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools
-```
-
-Direct script execute with explicit cluster tools:
-
-```bash
-bash scripts/step_05_split_n_cigar_reads.sh \
+bash src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --reference-fasta refs/novogene_ref/genome.fa \
   --output-dir results/split_ncigar/ABE_EV_2 \
   --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
   --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --java-bin /absolute/path/to/java17
+```
+
+Direct script execute with explicit cluster tools:
+
+```bash
+bash src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --output-dir results/split_ncigar/ABE_EV_2 \
+  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
+  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
+  --java-bin /absolute/path/to/java17 \
   --execute
 ```
+
+From another working directory, make the producer, BAM, reference FASTA,
+output directory, GATK, samtools, and Java paths absolute:
+
+```bash
+bash /absolute/path/to/norad/src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam /absolute/results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
+  --reference-fasta /absolute/refs/novogene_ref/genome.fa \
+  --output-dir /absolute/results/split_ncigar/ABE_EV_2 \
+  --gatk-bin /absolute/path/to/gatk \
+  --samtools-bin /absolute/path/to/samtools \
+  --java-bin /absolute/path/to/java17
+```
+
+Direct producer dry-run validates existing input/reference files and
+executable paths, prints scratch/backup/lock/GATK-temp plans, invokes no
+version or data tool, and writes nothing. Scheduler dry-run is different: the
+operator creates `logs/`, SLURM opens log files before the body, and the body
+invokes Java/GATK/samtools version probes before delegation. Bash `3.2` can
+abort on the empty dry-run argument array. Execute-mode wrapper success can
+also rediscover a stale nonempty output pair after a zero-output child; it is
+not current-attempt or validator-pass proof.
 
 Validation checklist for promotion of each sample:
 
@@ -3467,7 +3539,15 @@ samtools view -H "$bam" | grep '^@RG'
 ls -lh "$bam" "$bam.bai"
 ```
 
-Step `05` requires the Step `00c` sidecars, fails clearly if they are missing, and must not create shared reference sidecars inside per-sample jobs. It is dry-run by default, writes GATK output to run-token temporary paths in execute mode, validates the temporary BAM/BAI pair before publication, and rolls back an existing final pair if publication fails after backups begin.
+Step `05` requires the Step `00c` sidecars, fails clearly if they are missing,
+and must not create shared reference sidecars inside per-sample jobs. It is
+dry-run by default, writes GATK output to run-token temporary paths in execute
+mode, validates the temporary BAM/BAI pair before publication, and attempts to
+roll back an existing final pair if publication fails after backups begin.
+Restoration is best-effort and can lose a predecessor while cleanup erases
+recovery evidence; follow the
+[`Step 05` recovery route](TROUBLESHOOTING.md#step-05-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-pair)
+before cleanup or retry.
 
 The six-sample Step `05` output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
 

@@ -16,7 +16,8 @@ Current public workflow entry points use a mixed physical layout. The neutral
 validation-report and BAM-validation libraries, the `construct_STAR_index` job
 and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
 `align_RNA_reads_with_STAR`, `construct_canonical_BAM`,
-`mark_BAM_duplicates_with_Picard`, `collect_canonical_BAM_QC_evidence`, and
+`mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`,
+`collect_canonical_BAM_QC_evidence`, and
 `collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
 now live under `src/norad/`; remaining workflow entry points stay under
 `scripts/` and `jobs/`. Other colocated functional-owner documents under
@@ -54,17 +55,18 @@ publication protocol used by all thirteen validator entry points. The final
 `construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`,
 `construct_canonical_BAM`, `collect_canonical_BAM_QC_evidence`,
 `collect_RSeQC_paired_orientation_evidence`, and
-`mark_BAM_duplicates_with_Picard` validators and five remaining
+`mark_BAM_duplicates_with_Picard` and `split_N_cigar_reads_with_GATK`
+validators and four remaining
 `scripts/` validators resolve that exact file through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The FASTA-sidecar validator also privately exact-loads the unchanged
-public flat reference-provenance owner. Stage-specific parsing and check
-rosters remain with their functional owners.
+interface. The FASTA-sidecar and split-N-cigar validators also privately
+exact-load the unchanged public flat reference-provenance owner. Stage-specific
+parsing and check rosters remain with their functional owners.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
-shared `run_tool` and `parse_header` behavior used by the final Step `02` and
-Step `04` validators and the remaining flat Step `05` validator. Those three
+shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step
+`04`, and Step `05` validators. Those three
 callers exact-load the private neutral file and validate its path,
 readiness, and callable API without package identity or `sys.path` mutation.
 Stage-specific checks and CLI behavior remain in each functional owner.

@@ -71,7 +71,10 @@ The validator privately exact-loads the unchanged public
 owner and the neutral validation-report library. An exact reference-loader
 failure is a checkout-integrity diagnostic; do not work around it by changing
 `PYTHONPATH`. This migration does not extract, package, or reassign the public
-reference-provenance owner.
+reference-provenance owner. The final
+[`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
+validator independently uses the same exact public owner; neither consumer
+owns or wraps it.
 
 ## Scheduler entry point
 

@@ -216,7 +216,7 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03J](../COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03J](REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -438,3 +438,56 @@ Roll back documentation first, the atomic cutover second, then scheduler,
 validator, producer admission/signal, and producer transaction baselines in
 reverse order. Git rollback never deletes or changes runtime evidence,
 production data, locks, logs, or recovery artifacts.
+
+### Completed execution and acceptance
+
+- Published producer transaction `42bf851`, producer admission/signal
+  `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` baselines changed
+  only the reviewed old-path test owners. They froze lone-final and final-
+  revalidation preservation, publication/restoration failure, admitted-input
+  mutation, TERM cleanup, validator repeat/failure/publication behavior, and
+  Java/GATK/samtools/submit-CWD/log/stale-pair scheduler states without fixing
+  or approving them.
+- Published executable/test checkpoint
+  `ef4cad7b5eeb54e1e7fd963faea427afdbfce0a2` applied exactly five moves and
+  the ten reviewed integration-owner updates. Final producer, validator, and
+  job hashes exactly match the architecture projections; all remain mode
+  `0644`. No legacy executable/test owner, wrapper, compatibility copy, alias,
+  symlink, package marker, descriptor, schema, helper move, transaction,
+  receipt, recovery marker, dependency action, or later-owner preload entered
+  the cutover.
+- Minimal final-path acceptance passed producer/job/test shell syntax, the
+  complete producer shell suite, `14` moved-validator tests, `24` selected
+  Step `05` scheduler tests with `118` unrelated cases deselected, and `392`
+  affected public-CLI/Make, roster/report/BAM-helper, artifact, and path-map
+  integration tests.
+- The single pre-aggregate coverage measurement passed `1,159` tests with
+  `17` skips and one explicit documentation-validator deselection. The moved
+  validator measured `178/192` lines and `45/54` branches; global coverage
+  measured `9550/11720` lines and `3347/4772` branches. Every non-target row
+  remained exact and the standalone policy comparison passed.
+- The exact aggregate command completed with status `2`, not green. Static
+  preflight, shell contracts, guarded R, and report runtime passed. Python ran
+  `1,159` passes and `17` skips before its sole documentation assertion listed
+  exactly ten deliberately deferred Step `05` migration links plus the nine
+  inherited `UNREFINED` locations. No dependency changed and no scheduler,
+  cluster, production, scientific-review, or biological work ran.
+- This separate close adds only the canonical documentation roster, owner
+  README, directly impacted neutral/reference/predecessor routes, exact
+  commands, current topology/status/evidence, lifecycle move/link repairs, and
+  dated audit evidence. The documentation-only gate has no migration-caused
+  finding and retains only the nine inherited `UNREFINED` card-location
+  findings. That expected-only result remains nonpassing and is never called
+  green.
+- Retained defects include admitted-input-mutation blindness, an output-
+  directory-wide lock, no success receipt, best-effort restoration, cleanup
+  erasure after rollback failure, producer/validator transform-evidence
+  asymmetry, validator exit-`0` failed rows, scheduler Bash `3.2` dry-run/log/
+  warning-only-tool/version/stale-pair states, and absence of current-attempt
+  proof. Historical cluster observations remain historical rather than
+  migration evidence.
+- Rollback reverts this documentation close, executable checkpoint `ef4cad7`,
+  scheduler baseline `ec240ae`, validator baseline `8eb3a0b`, admission/signal
+  baseline `3913215`, then transaction baseline `42bf851`. Git rollback never
+  changes runtime BAM/BAI, input/reference, temp/backup/lock, scheduler log, or
+  recovery evidence.

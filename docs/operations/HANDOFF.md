@@ -11,26 +11,26 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published migration-selection
-  checkpoint `5415538fcaad581e76b13d061251da060dd8e8a9`.
-- Recorded package state: `MIG-03I` executable/test checkpoint `803fcc4` and
-  documentation/lifecycle close `c6814e0` are published and local/upstream/
+  exact SHA from live Git. Its frozen parent is published executable/test
+  checkpoint `ef4cad7b5eeb54e1e7fd963faea427afdbfce0a2`.
+- Recorded package state: MIG-03J transaction `42bf851`, admission/signal
+  `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines plus
+  executable/test checkpoint `ef4cad7` are published and local/upstream/
   live-remote-equal.
-- Current package: active [`MIG-03J`](../tasks/IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md),
+- Current package: completed [`MIG-03J`](../tasks/COMPLETED/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
   after completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md),
   [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md),
   and [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
-  Only Step `05` is live-DAG-eligible; Step `06` and later cards remain
-  uncreated.
-- Package type at this checkpoint: documentation-only task-specific execution
-  plan. It freezes four one-test-file baselines, one atomic cutover/card gate,
-  and one separate documentation close while changing no executable, test,
-  configuration, dependency, schema, fixture, or report-template behavior and
-  running no computational work.
-- Remote publication and upstream equality: migration selection parent
-  `5415538` is verified local/upstream/live-remote-equal. Publish and prove this
-  plan checkpoint equal before changing only the old-path direct shell test's
-  producer-transaction slice.
+  Step `06` and later cards remain uncreated; refresh the live DAG from the
+  published documentation close before defining another unit.
+- Package type at this checkpoint: documentation/lifecycle close. It adds the
+  adjacent owner route, repairs canonical paths/commands/current evidence and
+  lifecycle links, and records the aggregate ceiling without changing
+  executable, test, configuration, dependency, schema, fixture, report-
+  template, scheduler, production, or scientific behavior.
+- Remote publication and upstream equality: executable parent `ef4cad7` is
+  verified local/upstream/live-remote-equal. Resolve and prove the exact
+  documentation-close SHA from live Git before selecting another owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -42,13 +42,14 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/construct_FASTA_sidecars/`, and
 `src/norad/stages/construct_canonical_BAM/`, and
 `src/norad/stages/mark_BAM_duplicates_with_Picard/`, and
+`src/norad/stages/split_N_cigar_reads_with_GATK/`, and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
-`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their eight
-validators and the five remaining flat validators load the neutral report file
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their nine
+validators and the four remaining flat validators load the neutral report file
 without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
-validator also uses a private exact-file bridge to unchanged public
-`scripts/reference_provenance.py`. The final Step `02`/`04` validators and flat
-Step `05` validator exact-load private neutral
+and Step `05` validators also use private exact-file bridges to unchanged
+public `scripts/reference_provenance.py`. The final Step `02`/`04`/`05`
+validators exact-load private neutral
 `src/norad/libraries/bam_validation.py`; no peer-stage implementation import
 remains.
 
@@ -300,23 +301,64 @@ only the final producer path and hash above. Historical Step `04` cluster and
 metrics observations remain historical, not migration proof. No real Picard,
 Java, samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created. `MIG-03I` is complete at published and equal
-documentation close `c6814e0`. The refreshed DAG leaves only
-`split_N_cigar_reads_with_GATK` eligible because both direct predecessors are
-migrated. Published definition checkpoint `f88f56e` created only unselected
-[`MIG-03J`](../tasks/IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
+documentation close `c6814e0`.
+
+The refreshed DAG left only `split_N_cigar_reads_with_GATK` eligible because
+both direct predecessors were migrated. Definition checkpoint `f88f56e`
+created only [`MIG-03J`](../tasks/COMPLETED/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
 and its sequential
 [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
-Architecture is complete with the exact private reference bridge, neutral-
-loader depths, five-move/ten-update ceiling, moved-test roots, projected native
-hashes, artifact/coverage ownership, and reverse rollback recorded. Reliability
-is complete with exactly four bounded old-path test-only checkpoints and exact
-fault/parity/scheduler dispositions. Usability is complete with exact final-
-command, dry-run, recovery, ownership, provenance, and evidence-ceiling
-decisions. Migration alone is selected; no executable/test path changed or
-computational check ran in planning. Its six-slice execution plan is frozen in
-the commit containing this handoff, and no Step `06` or later card is preloaded.
+Architecture completed at `e40fb3b`, reliability at `daa7ec4`, usability at
+`0328fbe`, selection at `5415538`, and task-specific planning at `d9bdf21`.
+
+Published transaction `42bf851`, admission/signal `3913215`, validator
+`8eb3a0b`, and scheduler `ec240ae` baselines were each one bounded old-path
+test-only checkpoint. Published executable/test checkpoint `ef4cad7` then
+moved exactly five files, updated the ten reviewed integration owners, and
+left no legacy executable/test owner, wrapper, alias, symlink, package marker,
+descriptor, schema, receipt, recovery marker, or later-owner preload.
+
+Final producer mode/bytes/lines/SHA-256 is `0644` / `18,920` / `596` /
+`e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`;
+validator is `0644` / `12,584` / `334` /
+`f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`;
+and the mode-`0644` job is `5,383` bytes / `167` lines /
+`3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
+The final shell suite, `14` validator tests, `24` selected scheduler tests with
+`118` unrelated cases deselected, and `392` focused integration tests passed.
+
+Coverage passed `1,159` tests with `17` skips and one explicit documentation-
+validator deselection. The moved validator measured `178/192` lines and
+`45/54` branches; global coverage measured `9550/11720` lines and `3347/4772`
+branches. Every non-target row remained exact and the standalone policy
+comparison passed.
+
+The aggregate gate was not fully green. Static preflight passed in `0.176s`,
+shell contracts in `87.205s`, guarded R in `351.324s`, and report runtime in
+`287.051s`. Python ran `1,159` passes and `17` skips before its sole
+documentation assertion failed; the aggregate ended at `406.739s`. That
+assertion listed exactly ten deliberately deferred Step `05` migration links
+plus nine inherited `UNREFINED` card-location findings. This close repairs the
+ten links; the inherited nine remain an expected-only nonpassing condition,
+never a passing-gate claim. The existing pinned environments were used and no
+dependency changed.
+
+The producer's admitted-input-mutation blindness, output-directory-wide lock,
+missing receipt, best-effort restoration, and cleanup erasure after rollback
+failure remain characterized defects. So do the scheduler's Bash `3.2`
+dry-run failure, log mutation, warning-only tool preflight, version-command
+failures, and stale-pair false success. The worst controlled rollback state
+returns publication exit `67` after restoration exit `68`, leaves only the
+prior BAI, and erases backup/lock/scratch/recovery evidence. It is not
+approved. Artifact evidence changes only the final producer path and hash
+above. Historical GATK/Java/samtools and six-sample cluster observations remain
+historical, not migration proof. No real tool, scheduler, cluster, production,
+scientific-review, or biological evidence was created. MIG-03J is complete in
+the documentation/lifecycle commit containing this handoff. No Step `06` or
+later card is preloaded; refresh the live DAG only after that commit is
+published and equality is proved.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -875,13 +917,17 @@ were defined at published checkpoint `86419d3`; architecture is complete at
 complete at published producer `de52e93`, validator `3d73d52`, and scheduler
 `3e805ac` test baselines, published executable/test checkpoint `803fcc4`, and
 published documentation/lifecycle close `c6814e0`. The fresh live-DAG check
-supports only selected [`MIG-03J`](../tasks/IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
+supported only [`MIG-03J`](../tasks/COMPLETED/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
 and its sequential reviews, defined at published checkpoint `f88f56e`.
 [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 is complete at published checkpoint `e40fb3b`;
 [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-and [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-are complete. Migration alone is selected in the commit containing this
-handoff. Step `06` and later cards remain uncreated. The
+is complete at `daa7ec4`, and
+[`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+at `0328fbe`. MIG-03J is complete at published transaction `42bf851`,
+admission/signal `3913215`, validator `8eb3a0b`, and scheduler `ec240ae`
+baselines plus published executable/test checkpoint `ef4cad7`; documentation/
+lifecycle closure is the commit containing this handoff. Step `06` and later
+cards remain uncreated pending a fresh post-publication live-DAG check. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

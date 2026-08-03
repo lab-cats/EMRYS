@@ -3875,3 +3875,119 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validation rule, no computational suite or complete documentation validator
   ran in this planning slice; the complete documentation gate remains owned by
   the separate card close.
+
+## 2026-08-03T08:02:16-0400 — MIG-03J executable and documentation lifecycle completed
+
+- **Verified bounded sequence:** from published planning checkpoint `d9bdf21`,
+  publish four sequential old-path test-only checkpoints: transaction
+  `42bf851`, admission/signal `3913215`, validator `8eb3a0b`, and scheduler
+  `ec240ae`. Each checkpoint was clean, upstream-equal, and live-remote-equal
+  before the next slice. No production, fixture, coverage-baseline,
+  documentation batch, dependency, or later-owner file entered those slices.
+- **Transaction decisions and retained risk:** the direct producer suite now
+  proves lone-final rejection preserves exact bytes, a final-path
+  revalidation failure restores a complete predecessor, and injected BAI-
+  publication exit `67` followed by injected prior-BAM-restoration exit `68`
+  propagates `67`. That state leaves the prior BAM missing and prior BAI
+  restored, preserves unrelated bytes, and erases backups, lock, scratch, and
+  recovery evidence. This is an ambiguous/data-loss defect, not successful
+  rollback, cleanup proof, or retry authority. Transaction checkpoint shell-
+  test SHA-256 was
+  `85f66da868632995979a16cbba4febcb5cd0e24fd7a9e5577baa46679afdc119`.
+- **Admission, mutation, and signal decisions:** missing explicit samtools is
+  rejected before output-directory creation. Controlled GATK-time mutation of
+  the admitted BAM, BAI, FASTA, FAI, and DICT remains undetected and the
+  producer exits `0`; inputs are not stable-snapshot bound. Controlled TERM
+  exits `143`, preserves predecessor/unrelated bytes, removes the owned lock/
+  scratch, and leaves no receipt or recovery marker. Their absence proves no
+  attempt identity or clean recovery. Admission/signal checkpoint shell-test
+  SHA-256 was
+  `2074e0c1201f44e376e903418f86e1c92d9c2dc50eb8d755e7dc33c2c557e104`.
+- **Validator decisions:** the old-path direct suite passed `9` tests and
+  froze arbitrary-CWD dry-run/execute/repeat byte identity with unchanged
+  inputs, quickcheck nonzero as exit-`0` failed evidence, header failure as
+  exit-`2` nonpublication, and post-build mutation as exit `2` preserving a
+  valid report predecessor. Checkpoint test SHA-256 was
+  `1abaf9e93151d68d10fa36f7631b38dfe5bdd8ffd9fce3816621fa0754ae13db`.
+  Cutover added exactly five owner-local reference-bridge cache/path/failure
+  cases. Validator exit `0` still may contain failed rows and does not prove
+  the GATK transform.
+- **Scheduler decisions:** the Step `05` selection passed `24` tests with
+  `118` unrelated cases deselected and froze Java override/`JAVA_HOME`/PATH
+  selection, unusable home fallback, missing/unusable override, Java command/
+  parse/version failures, GATK/samtools version failures, warning-only missing
+  tools with unchanged delegation, absent-submit-directory fallback, body-
+  level `logs/` mutation, and stale-pair false success. Central suite SHA-256
+  was `61d51dc607d6bfae35385677cc241e14e54cf2fb4b3b06a417555437a215a1f0`.
+  Submit-CWD fallback, exported `/tmp`, tolerated module diagnostics, Bash
+  `3.2`, warning-only probe, version-command, and file-only post-check states
+  remain defects, not scheduler proof.
+- **Atomic owner cutover:** published executable/test checkpoint
+  `ef4cad7b5eeb54e1e7fd963faea427afdbfce0a2` applied exactly five reviewed
+  moves and ten integration-owner updates. Final owner is
+  `src/norad/stages/split_N_cigar_reads_with_GATK/`; direct tests are under
+  `tests/stages/split_N_cigar_reads_with_GATK/`. No legacy owner, wrapper,
+  alias, symlink, compatibility copy, package marker, descriptor, schema,
+  second owner, helper move, reference redesign, transaction/receipt/recovery
+  mechanism, dependency action, or later-card preload was added.
+- **Native and private-owner evidence:** final producer is mode `0644`,
+  `18,920` bytes, `596` lines, SHA-256
+  `e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`;
+  validator is mode `0644`, `12,584` bytes, `334` lines,
+  `f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`;
+  job is mode `0644`, `5,383` bytes, `167` lines,
+  `3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
+  All exactly match architecture projections. The validator exact-loads
+  neutral report/BAM owners and unchanged public reference provenance under
+  private identities, validates exact paths/APIs, preserves foreign or
+  incomplete caches, removes only its owned failed partial, and mutates no
+  `sys.path`.
+- **Focused final-path evidence:** producer/job/direct-test shell syntax and
+  the complete producer shell suite passed. The moved validator passed `14`
+  tests, the Step `05` scheduler selection passed `24` with `118` deselected,
+  and the explicit public-CLI/Make, roster/report/BAM-helper, artifact, and
+  path-map surface passed `392` tests. All are local fixture/fake-tool evidence.
+- **Coverage decision and result:** one serial pre-aggregate measurement with
+  only the intentionally stale documentation assertion deselected passed
+  `1,159` tests with `17` skips in `411.68s`. Step `05` moved to its final path
+  at `178/192` covered lines and `45/54` branches; global coverage is
+  `9550/11720` lines and `3347/4772` branches. All `31` non-target rows stayed
+  exact, target/global rates increased, and the standalone policy comparison
+  passed. The baseline edit is only the moved target row, canonical sorting,
+  and mechanically reconciled totals.
+- **Aggregate result, not green:** the exact card-boundary command wrote
+  `/private/tmp/norad-validation-mig-03j.json` and ended status `2` in
+  `406.739s`. Static preflight passed in `0.176s`, shell contracts in `87.205s`,
+  guarded R in `351.324s`, and report runtime in `287.051s`. Python ran
+  `1,159` passes and `17` skips before its sole documentation assertion listed
+  exactly ten intentionally stale Step `05` links—five in the functional-
+  owner inventory and five in the colocated contract—plus the nine inherited
+  `UNREFINED` card-location findings. No other lane, test, coverage, tool, or
+  dependency fault occurred. Existing pinned environments were used; nothing
+  was installed, restored, deleted, or updated.
+- **Documentation and lifecycle decisions:** add one adjacent owner README;
+  correct the contract from unimplemented/flat and stale peer-stage helper
+  attribution; update current architecture, inventory, coverage, ownership,
+  roadmap, handoff, runbook, troubleshooting, neutral library, public
+  reference, FASTA-sidecar, canonical-BAM, and Step `04` predecessor routes;
+  repair every final path/command and inbound lifecycle link; move only
+  `MIG-03J` from `IN_PROGRESS` to `COMPLETED`; and retain all historical
+  cluster observations explicitly as historical. No diagram changes because
+  semantic identities, direct DAG edges, and public data flow did not change.
+- **Recovery and evidence ceiling:** before cleanup/retry, preserve all final,
+  temp, alternate-index, backup, GATK-temp, lock/owner, input/reference,
+  unrelated, stream, scheduler job/log, checkout, and tool/version evidence;
+  rule out lock owner, producer, and Step `06` readers; never combine attempts,
+  infer identity from timestamps, remove a foreign lock, or adopt stale
+  wrapper success. Only an isolated destination is eligible for a separately
+  authorized diagnostic retry. Historical GATK/Java/samtools and six-sample
+  cluster observations are not migration proof. MIG-03J creates no real tool,
+  scheduler, cluster, production, scientific-review, or biological evidence.
+- **Documentation gate and rollback:** `git diff --check` passes. The exact
+  RUNBOOK documentation validator has no MIG-03J path, anchor, lifecycle,
+  dependency, cycle, orphan, or diagram finding and retains only the nine
+  inherited `UNREFINED` locations. That expected-only result remains
+  nonpassing, not green. Roll back this documentation close, executable
+  `ef4cad7`, scheduler `ec240ae`, validator `8eb3a0b`, admission/signal
+  `3913215`, then transaction `42bf851`; Git rollback never changes runtime or
+  recovery evidence.

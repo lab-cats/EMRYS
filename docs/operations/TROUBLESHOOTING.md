@@ -966,6 +966,104 @@ before any same-name retry. Duplicate marking or BAM repair belongs to
 separately authorized Step `04`. Validator exit `0` may publish failed evidence
 rows; exit `2` publishes nothing new and is not a failed-row synonym.
 
+## Step 05 producer or wrapper leaves a partial rollback failure or stale pair
+
+### Symptom
+
+Step `05` returns nonzero after staging, backup, publication, final
+revalidation, restoration, signal handling, or cleanup, and the final BAM/BAI
+pair is absent, partial, mixed, or ambiguous. A particularly severe state has
+the prior BAM missing and the prior BAI restored while no backup, lock,
+scratch, or recovery marker remains. Alternatively, the scheduler exits zero
+even though the delegated child created nothing and two stale nonempty final
+files were already present.
+
+### Cause
+
+The producer validates a staged pair, moves a complete predecessor to two
+run-token backups, publishes BAM and BAI sequentially, and revalidates the
+final paths. Its restoration moves are best-effort. Cleanup can then erase the
+backups, output-directory lock, run-token scratch, GATK temp directory, and all
+recovery evidence after a restoration failure. Inputs are not snapshot-
+rechecked, the lock covers the whole output directory, and successful
+publication has no receipt. The characterized injected BAI-publication exit
+`67` followed by prior-BAM-restoration exit `68` propagates `67`, leaves only
+the prior BAI at its final name, preserves unrelated bytes, and erases the
+remaining owned recovery paths. This is an ambiguous/data-loss defect, not a
+successful rollback.
+
+The wrapper checks only that both final names are nonempty after a zero-exit
+child, so unchanged stale files can satisfy it. Its Bash `3.2` empty-array
+dry-run defect, submit-CWD fallback, body-level `logs/` mutation, tolerated
+module diagnostics, warning-only GATK/samtools preflight, and Java/GATK/
+samtools version-command failures are separate preserved states. The delegated
+producer still rejects unusable tools. None of these paths proves that a final
+pair belongs to the current job.
+
+### Fix
+
+Stop same-name retries, the lock owner, and downstream Step `06` reads. Before
+cleanup or recovery, preserve every surviving final BAM/BAI, run-token BAM/
+BAI, alternate GATK index, predecessor backup, GATK-temp directory, lock and
+owner file, all five input/reference files, unrelated directory entries,
+producer stdout/stderr, scheduler stdout/stderr, job ID/accounting and logs,
+checkout, submit CWD, environment overrides, selected GATK/Java/samtools
+paths, and exact version diagnostics. Record which expected recovery paths are
+absent; absence is not proof of cleanliness.
+
+Do not combine pair members from different attempts, infer ownership from
+timestamps, remove a foreign lock, reconstruct a missing BAM, adopt stale
+wrapper success, or rerun into the questioned output directory. Rule out every
+active producer and reader first. Any separately authorized diagnostic retry
+uses an isolated output directory so the questioned evidence remains
+unchanged. Git rollback changes tracked implementation only and cannot recover,
+remove, or authenticate runtime artifacts.
+
+Use the final validator in dry-run mode to inspect a complete surviving pair;
+this may print `status=fail` rows and does not establish attempt identity or
+repair anything:
+
+```bash
+.venv/bin/python \
+  src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py \
+  --scope-id <sample_id> \
+  --bam results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam \
+  --bai results/split_ncigar/<sample_id>/<sample_id>.split_ncigar.bam.bai \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --reference-fai refs/novogene_ref/genome.fa.fai \
+  --reference-dict refs/novogene_ref/genome.dict \
+  --samtools-bin /absolute/path/to/samtools \
+  --output results/qc/validation/05/<sample_id>.validation.tsv
+```
+
+## Step 00c or Step 05 reference-provenance owner cannot load
+
+### Symptom
+
+The final Step `00c` or Step `05` validator exits `2` before publication with:
+
+```text
+ERROR: unable to load NORAD reference-provenance owner at <path>: <type>: <reason>
+```
+
+### Cause
+
+The caller could not exact-load or validate unchanged public
+`scripts/reference_provenance.py`. The file may be missing, resolve to a
+foreign cached path, be partially initialized, expose an invalid
+`ProvenanceError`, or lack callable `parse_fasta`, `parse_fai`, or `parse_dict`.
+This is a checkout-integrity failure, not a reference-content mismatch and not
+authority to move or package the public owner.
+
+### Fix
+
+Inspect the exact named file, Git checkout, and process module-cache context.
+Use the final owner-local validator tests and public
+`tests/test_reference_provenance.py`. Do not add `PYTHONPATH`, install a
+package, replace the private module cache, copy the parser into a stage, or
+restore a legacy validator path. Content disagreement after a successful load
+belongs to the structured-validation route below.
+
 ## Step 05 structured validation reports output or reference disagreement
 
 ### Symptom
@@ -983,7 +1081,11 @@ reference sidecar may not match the explicit FASTA.
 Follow the [common response](#structured-validation-response). Inspect the
 exact output pair, reference triplet, samtools path/version, and producing
 job/log. Reference repair belongs to Step `00c`; split-output regeneration
-belongs to Step `05`.
+belongs to Step `05`. Use only the final commands in the
+[Step `05` runbook](RUNBOOK.md#step-05-splitncigarreads), and follow the
+[partial/rollback/stale-pair route](#step-05-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-pair)
+before any same-name retry. Validator exit `0` may publish failed evidence;
+exit `2` publishes nothing new and is not a failed-row synonym.
 
 ## Step 06 structured validation reports output or count disagreement
 

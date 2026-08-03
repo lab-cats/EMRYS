@@ -1,10 +1,12 @@
 # `split_N_cigar_reads_with_GATK` stage contract
 
-This is the observed contract of historical Step `05` for `ARCH-02A`. The
-exact public identity and historical alias are owned by the
+This is the observed contract of historical Step `05`, now implemented in this
+native owner directory. The exact public identity and historical alias are
+owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and owns the producer, validator, and scheduler assets.
+Supported journeys and migration evidence are in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
@@ -39,7 +41,7 @@ that CIGAR-N transformation semantics occurred.
 
 ## Current execution surfaces
 
-[`step_05_split_n_cigar_reads.sh`](../../../../scripts/step_05_split_n_cigar_reads.sh)
+[`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
 is side-effect-free in dry-run. Execute mode uses run-token BAM, BAI, GATK temp,
 and backup paths; an owned output-directory lock; pre-publication validation;
 complete-pair predecessor checks; sequential final moves; final revalidation;
@@ -52,17 +54,17 @@ can remove backups and the lock. Ordinary backup/publication rollback is
 tested, but a failure inside restoration can lose predecessor and recovery
 evidence. The lock is output-directory-wide rather than sample-scoped.
 
-[`step_05_split_n_cigar_reads.slurm`](../../../../jobs/step_05_split_n_cigar_reads.slurm)
+[`step_05_split_n_cigar_reads.slurm`](step_05_split_n_cigar_reads.slurm)
 owns cluster defaults, module/tool/Java resolution, delegation, and final
 existence checks. The shell entrypoint is currently interpreter-only, and the
 wrapper has the characterized Bash 3.2 empty-array dry-run defect.
 
 ## Validation interface
 
-[`validate_step_05_split_ncigar.py`](../../../../scripts/validate_step_05_split_ncigar.py)
+[`validate_step_05_split_ncigar.py`](validate_step_05_split_ncigar.py)
 accepts explicit BAM, BAI, FASTA, FAI, DICT, samtools, scope, and report paths.
 Dry-run prints the common TSV; `--execute` snapshot-rechecks inputs and uses the
-shared Step `00a` report publisher.
+neutral validation-report publisher.
 
 Exact checks are:
 
@@ -75,9 +77,14 @@ Exact checks are:
 The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
 matching `ID`/`SM` read group, and exact ordered FASTA/FAI/DICT contig/length
 agreement. It does not prove BAM/BAI correspondence, output relation to the
-marked input, or GATK split-N-cigar semantics. It imports reference parsers and
-Step `02` BAM helpers as well as Step `00a` publication, exposing three neutral
-concerns through stage-named modules.
+marked input, or GATK split-N-cigar semantics. It privately exact-loads
+report/BAM helpers from neutral
+[`validation_report.py`](../../libraries/validation_report.py) and
+[`bam_validation.py`](../../libraries/bam_validation.py), and reference parsers
+from unchanged public
+[`reference_provenance.py`](../../../../scripts/reference_provenance.py). No
+package identity, `PYTHONPATH`, wrapper, compatibility import, or peer-stage
+implementation dependency is supported.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.
@@ -88,22 +95,23 @@ failures, and report-publication failures exit `2`.
 - Artifact adapters register `step05_split_bam_v1`, `step05_split_bai_v1`, and
   `step05_validation_report_v1`; summary/report code consumes them without
   rerunning GATK.
-- [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/shell/test_step_05_split_n_cigar_reads.sh)
+- [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh)
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
   staged validation, complete-pair rules, and ordinary rollback fault paths.
-- [`test_validate_step_05_split_ncigar.py`](../../../../tests/test_validate_step_05_split_ncigar.py),
+- [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.
 
 This is local fixture/mock characterization, not new runtime, cluster,
 scientific-review, or biological evidence.
 
-## Ownership gaps and deferred decisions
+## Current ownership boundaries and retained defects
 
-- Reference validation, BAM validation, report publication, scheduler binding,
-  and transformation ownership span several stage-named modules.
+- Reference provenance remains a public cross-cutting owner; BAM validation and
+  report publication remain neutral private libraries. This stage owns its
+  three exact-file bridges, check roster, CLI, and transformation journey.
 - The native pair transaction lacks stable-input identity, receipt, and robust
   rollback-failure recovery evidence.
 - Producer and validator prove structure but not the GATK-specific transform.
-- Target files, helper ownership, transaction policy, and
-  migration mechanics remain deferred.
+- Scheduler Bash `3.2`, warning-only tool preflight, dry-run log mutation, and
+  stale-pair success remain characterized defects rather than guarantees.
