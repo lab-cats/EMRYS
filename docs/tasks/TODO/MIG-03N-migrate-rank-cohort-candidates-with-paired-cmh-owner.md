@@ -221,6 +221,26 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   mutation; and stale-six-output false success after an exit-`0`, no-output
   child. The job has no Rscript version probe, package activation, or submitted-
   job evidence; do not add or imply any.
+- Usability-reviewed final journeys: from the repository root invoke the final
+  mode-`0755` shell directly and the final mode-`0644` validator with
+  `.venv/bin/python`; the adjacent R implementation is selected by the shell,
+  while direct Rscript is maintainer/fixture diagnostics only. Submit the final
+  mode-`0755` job with `sbatch` from the checkout after `mkdir -p logs`;
+  explicit Bash is only a local wrapper diagnostic. Arbitrary-CWD shell/
+  validator use requires absolute code/interpreter/Rscript/R-program,
+  manifest, Step `08`, output/native/report paths. Support no installed
+  command, public package/import, legacy alias, wrapper, symlink, ambient
+  `PYTHONPATH`, or global `sys.path` route.
+- Usability-reviewed effects: shell dry-run validates all declared input,
+  pairing, threshold, and R choices while creating no output/lock/scratch/
+  final and invoking no R. Validator dry-run snapshots ten inputs, prints seven
+  rows, invokes no R, and writes no report; execute requires the report parent
+  and may exit `0` with failed rows. Guarded-real-R and independent-oracle
+  runs are separate local semantic fixtures. Scheduler dry-run changes to the
+  submit/fallback CWD, creates body-level `logs/`, tolerates module diagnostics,
+  performs no R version/package activation, and delegates shell dry-run; SLURM
+  log paths must exist before the body. Preserve stale-six-output false success
+  and do not promote scheduler exit `0` to current-attempt proof.
 - `STEP_PRODUCERS["09"]` changes only to the final shell producer path.
   Preserve artifact IDs, schemas, Step `09` native/report identities, ordering,
   reconciliation, consumers, and scientific meaning. Step `09c` remains the
@@ -244,6 +264,25 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   checkpoint. Add no fixture, fourth test owner, production change, coverage
   change, documentation batch, dependency action, or future-card content in
   those slices.
+- Usability-reviewed recovery: before any cleanup/retry preserve the complete
+  six-file set, all matching temps/backups, lock/owner, four admitted upstream
+  inputs, selected Rscript/R program/startup state, unrelated bytes, all
+  streams, scheduler identity/accounting/logs/CWD, and environment overrides.
+  A visible summary before final checks remains incomplete; failed restoration
+  may retain the lock and backup with one final absent. Never combine attempts,
+  manufacture a member/summary, delete a foreign or recovery lock, discard a
+  backup, trust names/hashes/timestamps or stale scheduler success, or reuse
+  the same output root. Rule out every writer/consumer first; an authorized
+  nonproduction diagnostic retry uses a fresh absolute output root. Git
+  rollback does not change or authenticate runtime state.
+- Usability-reviewed focused final routes are the owner-local shell, validator,
+  guarded-R runner, and independent-oracle tests plus central Step `09`
+  scheduler selection. The exact complete executable card-boundary gate is
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks`; the separate
+  documentation close uses the documentation-only gate. Preserve fake-R,
+  guarded-real-R, independent-oracle, scheduler, cluster, production,
+  scientific-review, editing-site, and biological-readiness evidence levels as
+  distinct states.
 - Use only minimal old/final focused checks inside executable slices. Run the
   complete applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, migration links, small
@@ -261,7 +300,7 @@ defines Step `09` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03N](../IN_PROGRESS/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03N](../COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

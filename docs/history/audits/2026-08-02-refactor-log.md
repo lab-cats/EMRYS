@@ -5869,3 +5869,69 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   only validation rule, the complete documentation gate belongs to usability-
   review completion. Publish and prove this selection checkpoint clean/
   upstream/live-remote-equal before beginning the review.
+
+## 2026-08-03T17:02:32-0400 — REVIEW-UX-03N completed
+
+- **Verified review parent:** usability selection
+  `cd8930c1bc6e43d43e0966df4e773ce03c85168b` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Complete only the read-only usability pass;
+  MIG-03N, Step `09c`, and all executable/test files remain unselected.
+- **Supported-journey decision:** root shell use moves to the mode-`0755`
+  owner-local producer with its sibling R default; direct Rscript remains a
+  maintainer/fixture diagnostic. The mode-`0644` validator uses an explicit
+  interpreter. Submit the mode-`0755` owner-local job from the checkout after
+  creating `logs/`; explicit Bash is only a wrapper diagnostic. Arbitrary-CWD
+  use requires absolute code/interpreter/Rscript/R-program, manifest, Step
+  `08`, output/native/report paths. No installed command, alias, wrapper,
+  symlink, public import, `PYTHONPATH`, or global-`sys.path` route is justified.
+- **Side-effect and scheduler decision:** shell dry-run validates all declared
+  inputs and R choices, invokes no R, and creates no output/lock/scratch/final.
+  Validator dry-run snapshots ten inputs, prints seven rows, invokes no R, and
+  writes no report; execute needs the report parent and can exit `0` with
+  failed rows. Guarded real-R and the independent oracle remain distinct local
+  semantic fixtures. Scheduler dry-run changes CWD, creates body-level logs,
+  tolerates module diagnostics, performs no R version/package activation, and
+  delegates shell dry-run; SLURM opens log paths before the body, so `logs/`
+  must already exist. Preserve
+  stale-six-output false success as a defect, not current-attempt proof.
+- **Recovery decision:** before action preserve the six finals, every matching
+  temp/backup, lock/owner, both manifests and Step `08` inputs, selected R and
+  startup state, unrelated bytes, all streams, scheduler job/accounting/logs/
+  CWD, and environment overrides. Summary visibility precedes final checks;
+  incomplete restoration may retain the lock and backup with one final absent.
+  Never combine attempts, manufacture a member/summary, delete a foreign or
+  recovery lock, discard a backup, trust timestamps/hashes or stale scheduler
+  success, or retry the same root. Rule out all writers/readers first; an
+  authorized diagnostic retry uses an isolated absolute output root.
+- **Scientific and validation-language decision:** pairing comes only from
+  identical control/treatment replicate labels with at least two strata.
+  Outputs are CMH-ranked candidates under provisional orientation metadata,
+  not validated RNA-editing sites, strand interpretation, completed review, or
+  biological readiness. Producer success omits R/runtime/package, attempt, and
+  sibling identity. Validator success may contain failed rows and does not
+  independently recompute table estimability, statistic, p-value, or odds
+  ratio despite its overclaiming expected text. Fake-R, guarded-real-R,
+  independent-oracle, scheduler, artifact, cluster, production, scientific-
+  review, and biological evidence remain distinct.
+- **Findability, command, documentation, and rollback decision:** add the one
+  adjacent owner README and correct the contract's unimplemented/flat wording,
+  every final code/test/helper path, runbook/troubleshooting journey, impacted
+  architecture/inventory/test/ownership/predecessor/consumer/artifact/local-R
+  route, current status, lifecycle, and audit only at migration close. No
+  diagram changes because semantic identity, DAG edges, and public flow remain
+  fixed. Focused final routes are owner-local shell, validator, guarded-R, and
+  oracle plus central Step `09` scheduler selection; the exact full executable
+  boundary is `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks`.
+  Reverse documentation, cutover, scheduler, validator, signal/concurrency,
+  publication-order, then runtime/input checkpoints. Git rollback cannot alter
+  or authenticate runtime recovery state.
+- **Evidence boundary:** this was a same-agent committed-time read-only pass;
+  independent authorship is not claimed. No source, test, harness, dependency,
+  R runtime/package, scheduler, cluster, production, scientific-review,
+  editing-site, or biological evidence changed or ran.
+- **Card-boundary gate:** after lifecycle movement and all direct-link repairs,
+  `git diff --check` passes and the exact RUNBOOK documentation validator
+  reports `PASS documentation structure (208 Markdown documents, 129 task
+  cards, 6 Mermaid sources)`. No usability-review path, lifecycle, dependency,
+  cycle, orphan, schema, anchor, or diagram finding remains.
