@@ -1813,6 +1813,186 @@ def test_step_05_split_n_cigar_reads_stale_pair_masks_missing_child_outputs(
     assert "Validated Step 05 SplitNCigarReads outputs:" in result.stdout
 
 
+def test_step_06_split_bam_by_read_orientation_propagates_samtools_version_failure(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": "samtools", "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+    assert read_lines(tmp_path / "tool.log") == ("samtools\t--version",)
+
+
+@pytest.mark.parametrize("tool_state", ("missing", "nonexecutable"))
+def test_step_06_split_bam_by_read_orientation_warns_and_delegates_unusable_samtools(
+    tmp_path: Path,
+    tool_state: str,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+    samtools_path = tmp_path / f"{tool_state}-samtools"
+    if tool_state == "nonexecutable":
+        touch(samtools_path, "not executable\n")
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--samtools-bin") + 1] = str(samtools_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"SAMTOOLS_BIN_OVERRIDE": str(samtools_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (
+        "WARNING: samtools path is not executable before script validation: "
+        f"{samtools_path}"
+    ) in result.stdout
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n"
+        for output in prepared.outputs
+    )
+
+
+def test_step_06_split_bam_by_read_orientation_forwards_path_basename(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--samtools-bin") + 1] = "samtools"
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"SAMTOOLS_BIN_OVERRIDE": "samtools"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (
+        "WARNING: samtools path is not executable before script validation: "
+        "samtools"
+    ) in result.stdout
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert "samtools\t--version" not in read_lines(tmp_path / "tool.log")
+
+
+def test_step_06_split_bam_by_read_orientation_uses_dynamic_cwd_without_submit_directory(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_removals=("SLURM_SUBMIT_DIR",),
+        cwd=prepared.launch,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
+        prepared.launch
+    )
+    assert (prepared.launch / "logs").is_dir()
+
+
+def test_step_06_split_bam_by_read_orientation_dry_run_creates_logs_only(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+
+    result = run_prepared(prepared)
+
+    assert (prepared.submit / "logs").is_dir()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
+    if local_bash_major() < 4:
+        assert result.returncode != 0
+        assert "execute_args[@]: unbound variable" in result.stderr
+        assert not prepared.delegate_log.exists()
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert read_nul_args(prepared.delegate_log) == prepared.expected_args
+
+
+def test_step_06_split_bam_by_read_orientation_threads_are_independent_of_one_cpu(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--threads") + 1] = "9"
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"SLURM_CPUS_PER_TASK": "1", "THREADS": "9"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "#SBATCH --cpus-per-task=1" in job_path(prepared.name).read_text(
+        encoding="utf-8"
+    )
+    assert "Threads: 9" in result.stdout
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+
+
+def test_step_06_split_bam_by_read_orientation_stale_five_mask_missing_child_outputs(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_06_split_bam_by_read_orientation.slurm", tmp_path
+    )
+    stale_bytes = (
+        b"stale FWD_like BAM\n",
+        b"stale FWD_like BAI\n",
+        b"stale REV_like BAM\n",
+        b"stale REV_like BAI\n",
+        b"stale orientation counts\n",
+    )
+    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
+    assert "Validated Step 06 read-orientation outputs:" in result.stdout
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_module_failure_policy_is_observable(
     name: str,
