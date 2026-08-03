@@ -850,3 +850,17 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   claimed. Corrections are planning documentation only. No executable/test
   mutation or computational, runtime, scheduler, production, scientific-review,
   or biological evidence was created.
+
+## 2026-08-02T20:41:49-0400 — REVIEW-REL-03C selected
+
+- **Selection:** move only `REVIEW-REL-03C` to `IN_PROGRESS` and repair its
+  dependency/status links after architecture checkpoint `aed342d` was clean,
+  published, and local/upstream-equal. `REVIEW-UX-03C` and `MIG-03C` remain
+  unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time
+  adversarial pass over converter writes/replacement, validator coupling and
+  publication, scheduler side effects/failures/residue, artifact evidence,
+  coverage rename, and rollback. The same campaign agent performs the pass, so
+  independent authorship is not claimed. Executable/test mutation and
+  computational, runtime, scheduler, production, scientific-review, and
+  biological evidence remain out of scope.

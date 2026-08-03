@@ -24,7 +24,7 @@ or an undiscoverable owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03C](REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03C](../IN_PROGRESS/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

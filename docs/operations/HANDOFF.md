@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `MIG-03C` JIT-definition checkpoint
-  `44e3393ed09eb6fac70b3bf28667181fb4b92da6` is clean, published, and
-  local/upstream-equal; all four cards were unselected there.
-- Current package: completed read-only
-  [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md).
-  `MIG-03C` and the reliability/usability reviews remain unselected in `TODO`.
+- Recorded package state: completed architecture-review checkpoint
+  `aed342d9878825b25c1ed866db1985ab4bb09942` is clean, published, and
+  local/upstream-equal with its corrections incorporated into `MIG-03C`.
+- Current package: selected read-only
+  [`REVIEW-REL-03C`](../tasks/IN_PROGRESS/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md).
+  `MIG-03C` and usability remain unselected in `TODO`.
 - Package type at this checkpoint: behavior/architecture planning with
   documentation-only/non-consuming mutation; no executable or test file has
   changed.
-- Remote publication and upstream equality: architecture-selection parent
-  `17ef13d` is verified local/upstream-equal. The commit containing the review
-  findings must be published and proved equal before reliability selection.
+- Remote publication and upstream equality: architecture-review parent
+  `aed342d` is verified local/upstream-equal. The reliability-selection commit
+  must be published and proved equal before recording review findings.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -514,10 +514,10 @@ and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
 are complete. MIG-03C and
 [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
-[`REVIEW-REL-03C`](../tasks/TODO/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
+[`REVIEW-REL-03C`](../tasks/IN_PROGRESS/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/TODO/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are defined; only the architecture review is complete. After its findings
-checkpoint is clean, published, and equal, select only reliability for the next
-read-only pass. No later card is pre-created. The unsliced `PROGRAM-01`
-remainder and unrelated roadmap remain preserved and out of scope.
+are defined; architecture is complete and only reliability is selected. After
+this selection checkpoint is clean, published, and equal, complete reliability
+before selecting usability. No later card is pre-created. The unsliced
+`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
