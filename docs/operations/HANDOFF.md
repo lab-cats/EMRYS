@@ -12,18 +12,21 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: old helper baseline checkpoint
-  `9a2517bb94adefae862f2635d8288716ee479e74` is clean, published, and
-  local/upstream/live-remote-equal; task-specific plan is `d8638a0`.
-- Current package: old native-owner baseline for
-  [`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
-  records syntax, direct producer/validator, Step `02` scheduler, arbitrary-CWD
-  repeat, and exact mode/hash evidence. Helper preparation remains next.
-- Package type at this checkpoint: local fixture/mock baseline evidence plus
-  documentation; no executable/test file or coverage baseline changed.
-- Remote publication and upstream equality: parent `9a2517b` is verified
-  local/upstream/live-remote-equal. The commit containing this evidence must be
-  published and proved equal before helper preparation.
+- Recorded package state: neutral-helper checkpoint `4726ad1` and final owner/
+  executable-test checkpoint
+  `13a2748bcf43507e18ed07a0d3486f3d85c18fc0` are clean, published, and
+  local/upstream/live-remote-equal.
+- Current package: the separate documentation/lifecycle close for completed
+  [`MIG-03F`](../tasks/COMPLETED/MIG-03F-migrate-construct-canonical-bam-owner.md),
+  including the adjacent owner README, final commands and recovery routes,
+  canonical status/evidence owners, ten batched migration-link repairs, inbound
+  lifecycle repair, and the dated risk ledger.
+- Package type at this checkpoint: documentation and lifecycle only. The final
+  executable/test tree is already published at `13a2748`; no dependency,
+  scheduler, production, schema, or later-owner card changes in this close.
+- Remote publication and upstream equality: parent `13a2748` is verified
+  local/upstream/live-remote-equal. Publish and prove the commit containing this
+  handoff equal before refreshing the live DAG for another owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -32,10 +35,15 @@ integrated canonical tip. The neutral publication owner lives at
 at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/convert_GTF_to_BED12/`, and
 `src/norad/stages/align_RNA_reads_with_STAR/`, and
-`src/norad/stages/construct_FASTA_sidecars/`. Their four validators and the nine
-remaining flat validators load the neutral file without package identity, a
-wrapper, or `sys.path` mutation. The FASTA-sidecar validator also uses a private
-exact-file bridge to unchanged public `scripts/reference_provenance.py`.
+`src/norad/stages/construct_FASTA_sidecars/`, and
+`src/norad/stages/construct_canonical_BAM/`. Their five validators and the eight
+remaining flat validators load the neutral report file without package
+identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar validator also
+uses a private exact-file bridge to unchanged public
+`scripts/reference_provenance.py`. The final Step `02` validator and flat Step
+`04`/`05` validators exact-load private neutral
+`src/norad/libraries/bam_validation.py`; no peer-stage implementation import
+remains.
 
 The `MIG-03C` focused suites and reviewed final-path coverage passed before the
 executable commit. The recorded final-path measurement retained the producer at
@@ -99,15 +107,51 @@ bounded mixed-layout debt, not extraction or package approval. No real
 samtools/GATK/Java, scheduler, cluster, production, scientific-review, or
 biological evidence was created.
 
-The refreshed live DAG exposes exactly one next functional owner:
-`construct_canonical_BAM`, whose sole hard predecessor is the migrated
-`align_RNA_reads_with_STAR`. Every other remaining functional owner still has
-an unmigrated hard predecessor. The Step `02` producer, validator, and job total
-`23,743` bytes and `746` lines, but Step `04` and Step `05` currently import
-`run_tool` and `parse_header` from the Step `02` validator. `MIG-03F` therefore
-requires architecture review of one bounded two-function neutral-helper
-preparation slice before the native owner move. Neither downstream stage is
-selected or migrated, and no later card is preloaded.
+`MIG-03F` first extracted only `run_tool` and `parse_header` into private
+neutral `src/norad/libraries/bam_validation.py` in published checkpoint
+`4726ad1`. Its exact three-caller loader matrix and the unchanged direct Step
+`02`/`04`/`05` regressions passed `40` tests. The helper has no package identity,
+public CLI, validation-report dependency, or stage-specific check logic.
+
+Published executable/test checkpoint `13a2748` moved the Step `02` producer,
+validator, intentionally mode-`0644` job, and two direct tests to their final
+owner/mirrored-test homes and changed only the ten reviewed callers and
+harnesses. Minimal final-path acceptance passed the shell suite, including the
+persistent failure-inside-rollback oracle; the validator/helper set passed
+`31` tests; and the exact scheduler subset passed `9` with `102` unrelated
+cases deselected. No wrapper, duplicate, symlink, package marker, descriptor,
+schema, receipt, recovery marker, or downstream-owner move was added.
+
+Deterministic serial coverage passed `1,109` tests with `17` skips and one
+explicit documentation-validator deselection. Step `02` measured `137/149`
+lines and `32/42` branches, Step `04` `144/155` and `33/42`, Step `05`
+`138/149` and `31/38`, neutral BAM validation `12/12`, and the global surface
+`9504/11677` lines and `3327/4756` branches. Every non-target row remained
+exact and the standalone policy comparison passed.
+
+The aggregate gate was not fully green. Static preflight, shell contracts,
+guarded R, and report runtime passed. The first sandboxed guarded-R attempt was
+blocked by DNS access to Bioconductor metadata; the exact network-enabled rerun
+used the existing project library and changed no dependency. Python executed
+`1,109` passes and `17` skips before its sole failure reported exactly ten
+MIG-03F stale links plus the same nine inherited `UNREFINED` card-location
+findings. This documentation close repairs the ten migration links; the nine
+inherited findings remain an expected-only nonpassing condition.
+
+The producer's best-effort rollback remains a characterized ambiguous/data-
+loss defect: failed final BAI publication followed by failed prior-BAM
+restoration can leave only the prior BAI, with canonical BAM, backups, lock,
+and scratch absent. The producer/validator contract asymmetries and scheduler's
+caller-CWD, forced `/tmp`, Bash `3.2`, module, dry-run-directory, and file-only
+post-check defects also remain characterized, not approved. The artifact index
+changes only the producer path and reviewed SHA-256
+`602c9b6f71d7fb38533e29e294fcdd3685339614daa6efa264ba413669dd0cd3`.
+No real samtools, scheduler, cluster, production, scientific-review, or
+biological evidence was created.
+
+No later owner or review card is selected or preloaded. Refresh the live
+semantic DAG only after this documentation/lifecycle close is committed,
+published, and proved equal.
 
 ## Active concurrent lanes
 
@@ -572,17 +616,16 @@ documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
 [`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
 is complete at published executable/test checkpoint `cd3b547` and
 documentation/lifecycle checkpoint `fa79883`. The sixth JIT unit,
-[`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md), and
-its architecture, reliability, and usability review cards are JIT-defined; all
-four were unselected at definition checkpoint `ee25492`. Only
+[`MIG-03F`](../tasks/COMPLETED/MIG-03F-migrate-construct-canonical-bam-owner.md),
+and its architecture, reliability, and usability review cards are complete.
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
-is complete, and
+→
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
-is complete, and
+→
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. `MIG-03F` alone is selected; its exact write sets and both old-path
-baseline slices are recorded in the active card. Helper preparation is next. No
-downstream or later migration card is created.
+closed before helper checkpoint `4726ad1` and executable/test checkpoint
+`13a2748`. The commit containing this handoff is the separate documentation/
+lifecycle close. No downstream or later migration card is created or selected.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -613,14 +656,15 @@ and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
 are complete. `MIG-03E` is complete at published executable/test checkpoint
 `cd3b547` and documentation/lifecycle checkpoint `fa79883`.
-[`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
-alone is selected;
+[`MIG-03F`](../tasks/COMPLETED/MIG-03F-migrate-construct-canonical-bam-owner.md)
+and its reviews
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
-and
+→
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
-are complete, and
+→
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. Publish the native-evidence checkpoint containing this paragraph
-before helper preparation; downstream and later owners remain unselected. The
+are complete. `MIG-03F` is complete at published helper checkpoint `4726ad1`,
+executable/test checkpoint `13a2748`, and the documentation/lifecycle close
+containing this paragraph. Downstream and later owners remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

@@ -659,6 +659,62 @@ direct-final artifacts and follow the final-path
 the characterized producer and scheduler residue is not authority to clean or
 rerun automatically.
 
+## Step 02 canonical BAM rollback leaves a prior-BAI-only lockless pair
+
+### Symptom
+
+Step `02` returns nonzero after a publication fault and reports both rollback
+and restoration failure. The canonical BAM is absent, the prior BAI remains,
+and no owned lock, backup, run-token scratch, receipt, or recovery marker is
+present.
+
+### Cause
+
+The producer moves the prior pair to run-token backups, then publishes the new
+BAM and BAI separately. Restoration moves are best-effort and their failures
+are ignored before cleanup removes the backup paths. The characterized oracle
+fails final BAI publication and then restoration of the prior BAM, producing
+exactly this prior-BAI-only state and losing the prior BAM bytes. Relocation
+preserves this ambiguous/data-loss defect; it does not approve or repair it.
+
+### Fix
+
+Stop retries. Preserve the complete pair directory, producer and scheduler
+stdout/stderr, any still-visible run-token temporary and backup paths, and the
+exact bytes and metadata of every final or backup path. Record the checkout,
+job/run token, tool identity, and filesystem context. Absence of a lock,
+backup, receipt, or marker does not prove clean state and does not authorize
+deletion, adoption, reconstruction, or retry. Make a separately reviewed and
+authorized recovery decision only after ownership and available evidence are
+established; the characterization test is not recovery authority.
+
+## Step 02 BAM-validation helper cannot load
+
+### Symptom
+
+The Step `02`, Step `04`, or Step `05` validator exits `2` before report
+publication with:
+
+```text
+ERROR: unable to load NORAD BAM-validation owner at <path>: <type>: <reason>
+```
+
+### Cause
+
+The caller could not exact-load or validate private
+`src/norad/libraries/bam_validation.py`. The file may be missing, resolve to a
+foreign cached path, be only partially initialized, or lack callable
+`run_tool`/`parse_header`. This is a checkout-integrity failure, not a tool or
+input mismatch.
+
+### Fix
+
+Inspect the exact named file, Git checkout, and process module-cache context.
+Use the focused helper suite in the
+[Step `02` runbook](RUNBOOK.md#step-02-canonical-sort-read-group-tagging-and-bam-indexing).
+Do not add `PYTHONPATH`, install a package, invoke a public helper CLI, copy the
+helper into a stage, or restore a legacy Step `02` validator path.
+
 ## Step 02 structured validation reports canonical BAM disagreement
 
 ### Symptom
@@ -678,7 +734,8 @@ file in the current runtime context.
 Follow the [common response](#structured-validation-response). Inspect the
 exact BAM/BAI, samtools path/version, header, and count evidence; any sorting,
 indexing, or read-group regeneration belongs to separately authorized Step
-`02` execution.
+`02` execution. Use only the final producer/validator paths in the
+[Step `02` runbook](RUNBOOK.md#step-02-canonical-sort-read-group-tagging-and-bam-indexing).
 
 ## Step 02b structured validation reports BAM-QC disagreement
 

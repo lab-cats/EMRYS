@@ -42,14 +42,20 @@ Coverage uses branch and subprocess measurement over exactly `scripts` and
 is not by itself proof of a user-visible defect or authority to change
 behavior.
 
-The tracked Step `00c` validator row now resolves to
+The tracked Step `00c` validator row resolves to
 `src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py`.
 Its measured `128/139` line and `35/42` branch counts include the reviewed
-private reference-owner loader. The deterministic serial measurement covered
-`9381/11549` global lines and `3293/4714` global branches, above the frozen
-covered-count floor; the standalone policy comparison passed. The tracked Step
-`01` validator remains at its final path with `125/140` measured lines and
-`34/44` measured branches.
+private reference-owner loader. The tracked Step `01` validator remains at its
+final path with `125/140` measured lines and `34/44` measured branches.
+
+The final MIG-03F serial measurement moved Step `02` to
+`src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py`
+at `137/149` covered lines and `32/42` branches. The reviewed private-loader
+changes measure Step `04` at `144/155` and `33/42`, Step `05` at `138/149` and
+`31/38`, and neutral `src/norad/libraries/bam_validation.py` at `12/12` lines
+with no branches. Every non-target row remained exact; global measurement is
+`9504/11677` lines and `3327/4756` branches, above the frozen covered-count
+floors, and the standalone policy comparison passed.
 
 ## Current evidence vocabulary
 
@@ -79,9 +85,9 @@ surface reachable without copying the dated row-by-row matrices:
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; Step `00a` and Step `00b` mocked producer behavior and Step `01` direct tests live under their mirrored homes in `tests/stages/` |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-owner tests through Step `02` live under their mirrored homes in `tests/stages/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
-| Validation publication and recovery faults | `tests/libraries/test_validation_report.py` plus producer-specific transaction suites |
+| Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/test_step_09_cmh_oracle.py`, its fixed corpus, and guarded real-R comparison |
 | Python non-regression measurement | the tracked coverage snapshot and coverage tests |

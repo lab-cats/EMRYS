@@ -483,3 +483,82 @@ Frozen owner/test rollback evidence is:
 Git remained tracked/untracked clean. All results are local synthetic fixture/
 mock evidence; no real samtools work, scheduler submission, dependency action,
 production data, scientific review, or biological evidence occurred.
+
+### Delivered state and acceptance evidence
+
+- Published helper checkpoint `4726ad1` added only mode-`0644` neutral
+  `src/norad/libraries/bam_validation.py` and its direct suite and modified only
+  the three reviewed validators. The helper is `905` bytes and `30` lines with
+  SHA-256
+  `c98c301c4dbc80f8a7ee7689005be85f513101764e806099654ac0d9d03e02bc`.
+  It contains only behavior-preserving `run_tool` and `parse_header` plus its
+  readiness marker. The neutral and unchanged Step `02`/`04`/`05` direct suites
+  passed `40` tests in `2.63s`; no direct test, artifact evidence, Make entry,
+  coverage baseline, or canonical documentation changed in that slice.
+- Published executable/test checkpoint `13a2748` applied exactly the reviewed
+  five moves and ten updates. Final producer mode/bytes/lines/hash is `0755` /
+  `13,703` / `442` /
+  `602c9b6f71d7fb38533e29e294fcdd3685339614daa6efa264ba413669dd0cd3`;
+  validator `0644` / `9,414` / `253` /
+  `bcda016ad0a2c3b414a1eb1cc545af1cf49c1e53887efa6e85a0cdb8543b522b`;
+  and intentionally mode-`0644` job `2,420` / `97` /
+  `d5b68d303c81ecdff6badd3b20c5cdf16fadd0bde49b4c71bd30d9803be48723`.
+  Production changes are only the producer help self-path, validator owner
+  depths/helper ownership, and job child path.
+- The moved mode-`0755` shell test is `22,404` bytes and `562` lines with
+  SHA-256
+  `01806301844e4243a122c480c3cf462ff53c24b4aadc7b77853ba600246ff9de`;
+  the moved mode-`0644` validator test is `4,987` bytes and `142` lines with
+  SHA-256
+  `daefea7259306201f7d08f8f8269eecfe02cdefb04c9153db27ec0046b44ec32`.
+  Final-path syntax and the complete shell suite passed, including the
+  persistent restore-failure oracle. The moved validator plus neutral helper
+  passed `31` tests, and the exact Step `02` scheduler subset passed `9` with
+  `102` unrelated cases deselected.
+- The failure-inside-rollback oracle returned nonzero with both publication and
+  restoration diagnostics, retained only the prior BAI at its canonical path,
+  and left canonical BAM, both backups, owned lock, and run-token scratch
+  absent. This lockless partial pair and lost prior BAM remain an ambiguous/
+  data-loss defect; passing characterization neither repairs nor blesses it.
+- Deterministic serial coverage passed `1,109` tests with `17` skips and one
+  explicit deselection of the already-observed documentation-validator
+  assertion reserved for this close. It measured final Step `02` at `137/149`
+  covered lines and `32/42` branches, Step `04` at `144/155` and `33/42`, Step
+  `05` at `138/149` and `31/38`, and the neutral helper at `12/12` lines with no
+  branches. Global coverage is `9504/11677` lines and `3327/4756` branches.
+  Every non-target row matched the prior baseline exactly; old per-row,
+  combined targeted, global covered-count, and new-shared-module floors all
+  passed the standalone policy comparison.
+- The complete aggregate gate was not fully green. The first sandboxed attempt
+  passed static preflight and then stopped because guarded R could not resolve
+  Bioconductor metadata. The exact network-enabled rerun used the existing
+  project library and installed, restored, deleted, and updated nothing. Static
+  preflight, shell contracts, guarded R, and report runtime passed. Python
+  executed `1,109` passes and `17` skips before its sole failure reported
+  exactly ten migration-caused stale links in the owner contract and functional
+  inventory plus the nine inherited `invalid card location` findings under
+  `docs/tasks/UNREFINED/`. This documentation close repairs the ten links; the
+  nine inherited findings remain an expected-only nonpassing condition and are
+  never called a passing gate.
+- Exact inspection found one final owner for every moved basename and no live
+  non-documentation legacy path, peer-stage implementation import, wrapper,
+  compatibility copy, symlink, package marker, descriptor, schema, receipt, or
+  recovery marker. Artifact evidence changes only the producer path and
+  reviewed hash without changing public artifact identities, contents,
+  ordering, schemas, reconciliation, or consumers.
+- Producer/validator zero-record, read-group, quickcheck, and BAI-identity
+  asymmetries remain characterized. So do best-effort restoration and missing
+  recovery evidence; the scheduler's caller-CWD, forced `/tmp`, Bash `3.2`
+  empty-array dry-run, strict samtools load, tolerated module-list diagnostics,
+  dry-run directory creation, and file-only post-check behavior. Relocation
+  fixes or approves none of them.
+- Published rollback points are pre-card close `fa79883`, helper checkpoint
+  `4726ad1`, executable/test checkpoint `13a2748`, and the commit containing
+  this completion record. Reverse documentation first, owner cutover second,
+  and helper preparation third; preserve runtime artifacts and restore no
+  duplicate legacy source.
+
+No real samtools work, scheduler submission, cluster or production input,
+dependency change, scientific review, or biological-readiness evidence was
+created. The public DAG and artifact flow did not change, so no diagram edit
+was warranted.

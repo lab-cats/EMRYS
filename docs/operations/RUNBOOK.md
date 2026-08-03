@@ -2587,16 +2587,52 @@ owns diagnostics, recovery, rollback, and the local-only evidence ceiling.
 
 ## Step 02: Canonical Sort, Read-Group Tagging, And BAM Indexing
 
-Script:
+The producer resolves `samtools` only from `PATH`. From the repository root,
+run its no-write dry plan directly or through explicit Bash:
 
 ```bash
-scripts/step_02_sort_index_bam.sh
+src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  --sample-id ABE_EV_2 \
+  --input-alignment results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --output-dir results/bam/ABE_EV_2 \
+  --threads 8
+
+bash src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  --sample-id ABE_EV_2 \
+  --input-alignment results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --output-dir results/bam/ABE_EV_2 \
+  --threads 8
 ```
 
-Job:
+Dry-run verifies the input and that samtools is on `PATH`, but invokes no
+samtools command and creates no output directory, lock, scratch path, backup,
+BAM, or BAI. After inspecting the plan, execute through either form:
 
 ```bash
-jobs/step_02_sort_index_bam.slurm
+src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  --sample-id ABE_EV_2 \
+  --input-alignment results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --output-dir results/bam/ABE_EV_2 \
+  --threads 8 \
+  --execute
+
+bash src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  --sample-id ABE_EV_2 \
+  --input-alignment results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --output-dir results/bam/ABE_EV_2 \
+  --threads 8 \
+  --execute
+```
+
+From another CWD, use absolute producer, input, and output paths. Samtools
+still resolves only from that process's `PATH`:
+
+```bash
+/absolute/path/to/norad/src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  --sample-id ABE_EV_2 \
+  --input-alignment /absolute/results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+  --output-dir /absolute/results/bam/ABE_EV_2 \
+  --threads 8
 ```
 
 Canonical outputs:
@@ -2621,7 +2657,7 @@ The structured Step `02` validator consumes one exact BAM/BAI pair and one
 explicit samtools executable:
 
 ```bash
-.venv/bin/python scripts/validate_step_02_canonical_bam.py \
+.venv/bin/python src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py \
   --scope-id ABE_EV_2 \
   --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
@@ -2635,7 +2671,7 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/02
-.venv/bin/python scripts/validate_step_02_canonical_bam.py \
+.venv/bin/python src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py \
   --scope-id ABE_EV_2 \
   --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
@@ -2644,24 +2680,72 @@ mkdir -p results/qc/validation/02
   --execute
 ```
 
+Repeat the same execute command to replace the owned report deterministically
+after stable-input revalidation. From another CWD, make the interpreter,
+validator, BAM, BAI, samtools executable, and output paths absolute; omitting
+`--execute` remains the no-write journey:
+
+```bash
+/absolute/path/to/norad/.venv/bin/python \
+  /absolute/path/to/norad/src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py \
+  --scope-id ABE_EV_2 \
+  --bam /absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bai /absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
+  --samtools-bin /absolute/path/to/samtools \
+  --output /absolute/results/qc/validation/02/ABE_EV_2.validation.tsv
+```
+
+An `ERROR: unable to load NORAD BAM-validation owner at ...` diagnostic is a
+checkout-integrity failure. Inspect private
+`src/norad/libraries/bam_validation.py`; do not add `PYTHONPATH`, install a
+package, invoke a helper CLI, or restore a legacy Step `02` path.
+
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_02_canonical_bam.py
+bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py \
+  tests/libraries/test_bam_validation.py \
+  tests/test_validate_step_04_mark_duplicates.py \
+  tests/test_validate_step_05_split_ncigar.py \
+  tests/test_slurm_wrapper_contracts.py
 ```
 
-Dry-run:
+The wrapper delegates relative to the caller's CWD and ignores
+`SLURM_SUBMIT_DIR`. Change to the intended checkout and create `logs/` before
+submission. Dry-run exposes every binding explicitly:
 
 ```bash
-sbatch jobs/step_02_sort_index_bam.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+SAMPLE_ID=ABE_EV_2 \
+INPUT_ALIGNMENT=/absolute/results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+OUTPUT_DIR=/absolute/results/bam/ABE_EV_2 \
+THREADS=8 \
+EXECUTE=0 \
+  sbatch src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm
 ```
 
 Execute:
 
 ```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 \
-  jobs/step_02_sort_index_bam.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+SAMPLE_ID=ABE_EV_2 \
+INPUT_ALIGNMENT=/absolute/results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
+OUTPUT_DIR=/absolute/results/bam/ABE_EV_2 \
+THREADS=8 \
+EXECUTE=1 \
+  sbatch src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm
 ```
+
+The wrapper forces `TMPDIR=/tmp`, creates `logs/` and `OUTPUT_DIR` even in
+dry-run, strictly loads samtools `1.19.2`, and tolerates diagnostics only from
+its two `module list` calls. Bash `3.2` can fail while expanding the empty
+dry-run argument array before producer delegation. Its execute-mode post-check
+only requires the BAM and BAI paths to be files. Mocked local tests do not prove
+real scheduler, module, cluster, or samtools behavior.
 
 Hardened execution flow:
 
@@ -2680,7 +2764,16 @@ Hardened execution flow:
 11. Remove backups and the owned lock only after successful final validation.
 ```
 
-Publication uses rollback protection, but the BAM/BAI pair is not a single indivisible atomic operation. If a failure occurs after backups begin, Step `02` restores the previous complete canonical pair. If no prior pair existed, it removes any partially published canonical outputs.
+Publication uses backup and rollback attempts, but the BAM/BAI pair is not one
+indivisible atomic operation and complete restoration is not guaranteed. The
+characterized failure-inside-rollback case fails final BAI publication and then
+prior-BAM restoration. It returns nonzero and can leave only the prior BAI at
+the canonical path while the BAM, both backups, owned lock, and run-token
+scratch are absent. Preserve the pair directory, producer and scheduler
+streams, every run-token temporary/backup path, and exact final/backup bytes
+before a separately authorized recovery decision. Absence of a lock, backup,
+receipt, or marker does not authorize deletion, adoption, or retry. Follow the
+[Step `02` recovery route](TROUBLESHOOTING.md#step-02-canonical-bam-rollback-leaves-a-prior-bai-only-lockless-pair).
 
 Validation checklist for each final canonical BAM:
 

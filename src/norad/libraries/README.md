@@ -12,6 +12,17 @@ private identity `_norad_validation_report`. Those loaders leave with each
 validator during its later functional-owner migration; they do not establish a
 generic loader or packaging convention.
 
+`bam_validation.py` owns only the behavior-preserving `run_tool` and
+`parse_header` primitives used by the final `construct_canonical_BAM`
+validator and the flat Step `04` and Step `05` validators. Those three callers
+exact-load the file under private identity `_norad_bam_validation`, verify its
+path, readiness marker, and two-callable API, preserve foreign module-cache
+state and `sys.path`, and remove only a loader-owned partial after execution
+failure. The file has no public CLI, package identity, stage-specific check
+logic, or validation-report dependency. Loader failure is a checkout-integrity
+diagnostic, not authority to add `PYTHONPATH`, install a package, or restore a
+legacy Step `02` path.
+
 This extraction preserves, rather than fixes, the characterized same-size and
 restored-mtime snapshot blindness, unordered-report acceptance, late-foreign
 final deletion, incomplete rollback without a retained recovery marker,
@@ -20,4 +31,5 @@ post-publication lock cleanup behavior. See the direct library fault tests and
 the dated refactor audit for the exact evidence boundary:
 
 - [`tests/libraries/test_validation_report.py`](../../../tests/libraries/test_validation_report.py)
+- [`tests/libraries/test_bam_validation.py`](../../../tests/libraries/test_bam_validation.py)
 - [`2026-08-02 refactor log`](../../../docs/history/audits/2026-08-02-refactor-log.md)

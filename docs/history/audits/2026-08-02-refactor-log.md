@@ -2211,3 +2211,114 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   Git stayed tracked/untracked clean. Evidence is local synthetic fixture/mock
   only; no real samtools, scheduler, dependency, production, scientific-review,
   or biological action occurred.
+
+## 2026-08-03T02:23:00-0400 — MIG-03F executable campaign accepted and documentation close prepared
+
+- **Published sequencing and exact scope:** helper preparation began only after
+  clean, published, live-remote-equal native baseline `6a716b1`; it changed the
+  exact five reviewed files and was published as `4726ad1`. Owner assembly then
+  moved exactly the producer, validator, mode-`0644` job, shell test, and
+  validator test and modified only the ten reviewed Make, artifact, public-CLI,
+  scheduler, roster, shared-loader, coverage, and literal-fixture paths.
+  Published executable/test checkpoint is `13a2748`; both checkpoints were
+  proved clean and equal across local `HEAD`, configured upstream, and the live
+  remote before this close.
+- **Neutral-helper decision:** private mode-`0644`
+  `src/norad/libraries/bam_validation.py` is `905` bytes and `30` lines with
+  SHA-256
+  `c98c301c4dbc80f8a7ee7689005be85f513101764e806099654ac0d9d03e02bc`.
+  It owns exactly `run_tool`, `parse_header`, and readiness state. Final Step
+  `02` and flat Step `04`/`05` exact-load it under private identity, verify
+  path/readiness/callables, preserve foreign cache and `sys.path`, and remove
+  only loader-owned partial state. This resolves the peer-stage import without
+  package identity, public CLI, installation, `PYTHONPATH`, wrapper, duplicate,
+  or later-owner migration.
+- **Final native identity:** producer mode/bytes/lines/hash is `0755` / `13,703`
+  / `442` /
+  `602c9b6f71d7fb38533e29e294fcdd3685339614daa6efa264ba413669dd0cd3`;
+  validator `0644` / `9,414` / `253` /
+  `bcda016ad0a2c3b414a1eb1cc545af1cf49c1e53887efa6e85a0cdb8543b522b`;
+  and job `0644` / `2,420` / `97` /
+  `d5b68d303c81ecdff6badd3b20c5cdf16fadd0bde49b4c71bd30d9803be48723`.
+  Direct shell/Python tests are `0755` / `22,404` / `562` /
+  `01806301844e4243a122c480c3cf462ff53c24b4aadc7b77853ba600246ff9de`
+  and `0644` / `4,987` / `142` /
+  `daefea7259306201f7d08f8f8269eecfe02cdefb04c9153db27ec0046b44ec32`.
+  Production changes remain limited to producer help, validator depths/helper
+  ownership, and job child path.
+- **Focused final-path acceptance:** the helper boundary passed `40` affected
+  validator tests in `2.63s`. After the owner move, producer/job syntax and the
+  complete moved shell suite passed, including the persistent failure-inside-
+  rollback oracle. The moved validator plus neutral helper passed `31` tests;
+  the exact Step `02` scheduler subset passed `9` with `102` unrelated cases
+  deselected. Arbitrary-CWD dry-run/execute/repeat retained the frozen `542`-
+  byte report hash, empty stderr, unchanged inputs/modes, and empty invocation
+  directory.
+- **Reliability risk preserved:** controlled final-BAI publication failure
+  followed by prior-BAM restoration failure returned nonzero with both
+  diagnostics, retained only the prior BAI, and left canonical BAM, both
+  backups, owned lock, and run-token scratch absent. This is a characterized
+  lockless partial-pair and prior-BAM data-loss defect. It is neither fixed nor
+  blessed and supplies no deletion, adoption, retry, or recovery authority.
+- **Coverage decision:** deterministic serial coverage passed `1,109` tests,
+  skipped `17`, and deselected only the already-observed documentation-
+  validator assertion reserved for this close. Step `02` measured `137/149`
+  lines and `32/42` branches; Step `04` `144/155` and `33/42`; Step `05`
+  `138/149` and `31/38`; helper `12/12`; global `9504/11677` and `3327/4756`.
+  Every non-target row remained exact. Old per-row rates, combined targeted
+  counts, global covered-count floors, and the helper threshold passed the
+  standalone policy comparison; coverage policy was not weakened.
+- **Aggregate-gate truth:** the first exact sandboxed gate passed static
+  preflight and then stopped when guarded R could not resolve Bioconductor
+  metadata. The exact network-enabled rerun used the existing project library
+  and installed, restored, deleted, and updated nothing. Static preflight,
+  shell contracts, guarded R, and report runtime passed. Python executed
+  `1,109` passes and `17` skips before the sole documentation-validator failure
+  reported exactly ten migration-caused links in the owner contract and
+  functional inventory plus the nine inherited `UNREFINED` location findings.
+  The aggregate gate was not green and is not represented as green.
+- **Preserved behavior and evidence boundaries:** retain producer/validator
+  empty-BAM, read-group, quickcheck, and BAI-identity asymmetries; best-effort
+  rollback without receipt/recovery marker; scheduler caller CWD, ignored
+  `SLURM_SUBMIT_DIR`, forced `/tmp`, Bash `3.2` dry-run failure, strict samtools
+  load, tolerated module-list diagnostics, dry-run directory creation, and
+  file-only post-checks. Passing local fixtures/mocks, guarded local R, pinned
+  report runtime, and coverage do not establish real samtools, scheduler,
+  cluster, production, scientific-review, or biological evidence.
+- **Documentation and lifecycle decision:** batch the adjacent owner README,
+  final commands, current topology/coverage/ownership status, helper route,
+  ambiguous-recovery route, all ten migration links, every inbound lifecycle
+  link, completed-card move, and this risk ledger into one documentation-only
+  close. The public DAG and artifact flow did not change, so no diagram edit is
+  warranted. Select or create no later owner until this close is committed,
+  pushed, and proved equal.
+- **Rollback:** reverse the documentation close before executable/test
+  checkpoint `13a2748`, then helper checkpoint `4726ad1`, then published pre-
+  card parent `fa79883`. Preserve runtime artifacts and restore no duplicate
+  legacy source. The nine inherited `UNREFINED` findings remain a nonpassing
+  documentation ceiling, not authority for unrelated lifecycle work.
+
+## 2026-08-03T02:25:13-0400 — MIG-03F documentation/lifecycle acceptance
+
+- **Canonical close:** added the adjacent implemented-owner README; updated the
+  contract and neutral-library README; repaired architecture, functional
+  inventory, coverage, documentation ownership, roadmap, handoff, complete
+  Step `02` commands, and both troubleshooting routes; moved `MIG-03F` to
+  `COMPLETED`; repaired every inbound lifecycle link; and recorded the complete
+  executable evidence and risk ledger above. No executable, test, dependency,
+  diagram, schema, or later-owner card changed in this close.
+- **Exact migration-link result:** nonhistorical current-owner searches found
+  no remaining active-card link or legacy Step `02` producer, validator, job,
+  or direct-test path. Historical old-path planning/baseline text remains
+  immutable evidence in the completed card and dated history rather than being
+  rewritten as current topology.
+- **Documentation gate:** the exact RUNBOOK documentation-only sequence ran.
+  `git diff --check` passed. The documentation validator reported only the nine
+  inherited `invalid card location` findings under `docs/tasks/UNREFINED/`;
+  all ten MIG-03F-caused missing links are repaired. This is an expected-only
+  nonpassing documentation result, not a green gate and not authority to change
+  those inherited files.
+- **Publication boundary:** stage only this impact-directed documentation and
+  lifecycle close, commit it separately from executable/test checkpoint
+  `13a2748`, push normally, and prove local `HEAD`, configured upstream, and
+  live remote equality before selecting the next dependency-valid owner.

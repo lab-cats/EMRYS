@@ -3,11 +3,10 @@
 This document records the observed current contract of historical Step `02`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
-
-Only this contract is colocated here. The current executable files remain in
-`jobs/` and `scripts/` until a separately approved migration.
+uses that public slug and is now the implemented native source owner. It is not
+a Python package. The adjacent [owner README](README.md) routes supported
+commands, diagnostics, migration evidence, and rollback; this contract remains
+the detailed behavior owner.
 
 ## Responsibility
 
@@ -69,12 +68,12 @@ identifier and `PL:ILLUMINA`, declares coordinate sort order, contains at least
 one alignment, and tags every alignment with that read-group identifier. The
 BAI must be nonempty.
 
-The two files are published as a rollback-protected pair but no receipt or
-summary marks transaction completion.
+The two files are published through backup and rollback attempts, but no
+receipt or summary marks transaction completion.
 
 ## Current execution surfaces
 
-[`step_02_sort_index_bam.sh`](../../../../scripts/step_02_sort_index_bam.sh) is
+[`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is
 the public producer entrypoint. It:
 
 - is dry-run by default and keeps its own dry-run side-effect-free;
@@ -85,8 +84,8 @@ the public producer entrypoint. It:
 - requires an existing canonical state to contain both BAM and BAI or neither;
 - backs up a prior pair, publishes the replacement files, and revalidates the
   final pair; and
-- restores the prior pair, or removes a newly introduced partial pair, when a
-  protected execution or publication step fails.
+- attempts to restore the prior pair, or remove a newly introduced partial
+  pair, when a protected execution or publication step fails.
 
 Existing complete outputs are intentionally replaceable after the replacement
 passes validation. Temporary, backup, and lock paths carry the run token and
@@ -94,12 +93,14 @@ live with the canonical outputs.
 
 Rollback restoration commands are best-effort and their failures are ignored;
 cleanup can subsequently remove backup paths without publishing a recovery
-marker. The characterized tests prove ordinary backup, publication, and final-
-validation rollback faults, but not a failure inside rollback itself. This is
-an unresolved recovery boundary rather than a claim of failure-atomicity under
-every filesystem fault.
+marker. The characterized persistent-restore-failure oracle fails final BAI
+publication and then prior-BAM restoration. It returns nonzero with both
+diagnostics but leaves only the prior BAI at its canonical path: the canonical
+BAM, both backups, owned lock, and run-token scratch are absent. This lockless
+partial pair and lost prior BAM are an unresolved ambiguous/data-loss defect,
+not failure-atomicity, successful rollback, or authority to clean or retry.
 
-[`step_02_sort_index_bam.slurm`](../../../../jobs/step_02_sort_index_bam.slurm)
+[`step_02_sort_index_bam.slurm`](step_02_sort_index_bam.slurm)
 delegates to the shell producer, maps `EXECUTE=0` to dry-run and `EXECUTE=1` to
 `--execute`, rejects other values, and checks the pair after execution. The
 wrapper creates its log and output directories even in dry-run mode. On Bash
@@ -110,7 +111,7 @@ preserved current contracts, not target behavior.
 
 ## Validation interface
 
-[`validate_step_02_canonical_bam.py`](../../../../scripts/validate_step_02_canonical_bam.py)
+[`validate_step_02_canonical_bam.py`](validate_step_02_canonical_bam.py)
 accepts an explicit scope, BAM, BAI, samtools executable, and output path.
 Validation is dry-run by default; `--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
@@ -141,11 +142,16 @@ the canonical pair. Missing, unreadable, or unsafe input, a failed tool call
 needed to construct evidence, an invalid CLI/output contract, or unsafe
 publication state exits with code `2` without publishing a new report.
 
-The validator imports general report rendering, snapshot, validation, locking,
-and publication functions from the Step `00a` validator. Step `04` and Step
-`05` validators in turn import samtools execution and BAM-header parsing
-helpers from this Step `02` validator. Both directions expose shared validation
-ownership inside stage-named modules.
+The validator privately exact-loads neutral
+[`validation_report.py`](../../libraries/validation_report.py) for report
+rendering, snapshots, locking, and publication, and neutral
+[`bam_validation.py`](../../libraries/bam_validation.py) for `run_tool` and
+`parse_header`. The flat Step `04` and Step `05` validators exact-load the same
+BAM helper rather than importing this owner. Each BAM-helper loader verifies
+the cached path, readiness, and callable API, preserves foreign cache state and
+`sys.path`, removes only a loader-owned partial after execution failure, and
+fails closed before report publication. Neither neutral file is a package or
+public CLI; stage-specific checks stay here.
 
 ## Consumers
 
@@ -164,16 +170,17 @@ ownership inside stage-named modules.
 - Artifact indexing, canonical summaries, and reports consume those registered
   artifacts and validation evidence without rebuilding the pair.
 
-No downstream stage should depend on this stage's implementation module; the
-current validator-helper imports above are an observed violation to resolve.
+No downstream stage depends on this stage's implementation module. The neutral
+BAM helper removes the former Step `04`/`05` peer-stage import without changing
+their functional ownership.
 
 ## Protected behavior and evidence
 
-- [`test_step_02_sort_index_bam.sh`](../../../../tests/shell/test_step_02_sort_index_bam.sh)
+- [`test_step_02_sort_index_bam.sh`](../../../../tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh)
   protects the explicit CLI, side-effect-free producer dry-run, read-group and
   sort contract, locking, inconsistent-pair rejection, staged validation,
   cleanup, and rollback after backup, publication, and final-validation faults.
-- [`test_validate_step_02_canonical_bam.py`](../../../../tests/test_validate_step_02_canonical_bam.py)
+- [`test_validate_step_02_canonical_bam.py`](../../../../tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py)
   protects dry-run, the five checks, mismatch evidence, fail-closed missing
   input, publication, and foreign-lock preservation.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
@@ -183,6 +190,8 @@ current validator-helper imports above are an observed violation to resolve.
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes the imported shared validation-report publication behavior.
+- [`test_bam_validation.py`](../../../../tests/libraries/test_bam_validation.py)
+  protects exact helper behavior and the three-caller loader matrix.
 - [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
@@ -201,8 +210,8 @@ roadmap and handoff.
   row and is used in filenames and read-group metadata.
 - The producer and validator disagree on zero-record, library, and platform
   requirements.
-- Cross-cutting BAM parsing and validation-publication helpers live in
-  historical step-named validator modules.
+- Cross-cutting BAM parsing and validation-publication helpers live in neutral
+  exact-loaded source owners without package identity.
 - The scheduler wrapper owns cluster module loading and dry-run directory side
   effects around a side-effect-free producer.
 
@@ -217,5 +226,5 @@ changing behavior.
 - One authoritative producer/validator contract for empty BAMs and read-group
   fields.
 - Receipt and recovery-marker requirements for the BAM/BAI transaction.
-- Final ownership of shared BAM and validation-publication helpers.
-- Migration order, compatibility wrappers, and scheduler-asset ownership.
+- Whether either private neutral helper later receives a reviewed package or
+  public import identity.
