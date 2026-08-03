@@ -2649,3 +2649,53 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   recovery state and never restores a duplicate flat owner.
   No real samtools run, scheduler submission, cluster/production input,
   dependency action, scientific review, or biological evidence was created.
+
+## 2026-08-03T03:53:26-0400 — MIG-03H JIT unit defined
+
+- **Verified parent:** definition began only after `MIG-03G` documentation
+  checkpoint `eafec29` was clean, tracked/untracked empty, published, and equal
+  across local `HEAD`, configured upstream, and the live remote branch. No
+  index/recovery lock, card-ID/path collision, or mutable-lane overlap was
+  found.
+- **Live-DAG decision:** both direct prerequisites for
+  `collect_RSeQC_paired_orientation_evidence` are migrated, and
+  `mark_BAM_duplicates_with_Picard` is independently eligible. Define only the
+  first identity in the canonical map, historical Step `03`, because it is the
+  smallest deterministic dependency-valid unit. This is not a claim that it is
+  uniquely eligible. Step `04` and later owner/review cards remain uncreated
+  and unselected.
+- **Frozen identity and surface:** Step `03` is evidence key
+  `norad.evidence.collect_RSeQC_paired_orientation_evidence.v1`, with final
+  source/test homes under `src/norad/evidence/` and `tests/evidence/`.
+  Producer/validator/job are each mode `0644`, lines `209`/`183`/`123`, bytes
+  `6,804`/`6,888`/`4,068`, and hashes `9bcb3ddf...`, `b4ade297...`, and
+  `d1a21a63...`; the migration card records full hashes. Direct shell/Python
+  tests are each mode `0644`, lines `250`/`79`, bytes `9,254`/`2,615`, with
+  full hashes frozen in the card.
+- **Proposed bounded cutover:** five native/direct-test moves plus nine explicit
+  Make, artifact, public-CLI, SLURM, roster, shared-report, coverage, and
+  literal-fixture updates. Proposed production edits are producer usage self-
+  path, validator neutral-report depth, and job child path only. Architecture
+  review must confirm this exact ceiling, both demo targets, test-local roster
+  loading, and the producer artifact path/hash transition before planning.
+- **Risks reserved for sequential review:** retain CWD-sensitive `.venv`/PATH
+  RSeQC selection, shallow unused BAI admission, sample/input nonbinding,
+  direct-final silent replacement, partial or empty predecessor truncation,
+  nonempty-only producer success, no lock/stage/no-clobber/stable-input recheck/
+  receipt/rollback, and the producer/validator semantic boundary. Scheduler
+  review must retain submit-CWD fallback, exported `/tmp`, optional virtualenv,
+  tolerated module listing, Bash `3.2` dry-run failure, dry-run log mutation,
+  and stale-nonempty-file false success. Mechanical orientation fractions must
+  not be promoted into biological strandedness or manifest policy.
+- **Review and evidence boundary:** create only `MIG-03H` and dedicated
+  `REVIEW-ARCH-03H` → `REVIEW-REL-03H` → `REVIEW-UX-03H`, all unselected in
+  `TODO`. Reviews remain sequential and read-only; task-specific planning,
+  baseline, executable cutover, full gate, and documentation close remain later
+  bounded slices. No executable/test file, dependency, runtime tool, scheduler,
+  production input, scientific-review state, or biological evidence changed or
+  ran in this definition slice.
+- **Definition gate:** `git diff --check` passed and the documentation validator
+  reported only the nine inherited `UNREFINED` card-location findings. This is
+  an expected-only nonpassing documentation ceiling, not a green gate or
+  authority for unrelated lifecycle changes. Publish this definition checkpoint
+  and prove live remote equality before selecting the architecture review.

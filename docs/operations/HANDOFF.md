@@ -12,17 +12,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `2f186dde1d7e22aeffe2bd52e8d1dcbbda2211c1` is clean, published, and
-  local/upstream/live-remote-equal; test-only baseline is `0904faf`.
-- Current package: completed
-  [`MIG-03G`](../tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-  documentation/lifecycle close.
-- Package type at this checkpoint: impact-directed documentation only;
-  executable/test state remains exactly published checkpoint `2f186dd`.
-- Remote publication and upstream equality: parent `2f186dd` is verified
-  local/upstream/live-remote-equal. The commit containing this close must be
-  published and proved equal before selecting another owner.
+- Recorded package state: completed `MIG-03G` documentation/lifecycle checkpoint
+  `eafec29c1aaddf30c87cb9139897de81883af123` is clean, published, and
+  local/upstream/live-remote-equal; executable/test checkpoint is `2f186dd`.
+- Current package: define only
+  [`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
+  and its architecture, reliability, and usability review cards. Historical
+  Step `03` is the first canonical identity among two live-DAG-eligible owners;
+  all four cards remain unselected in `TODO`.
+- Package type at this checkpoint: documentation/card definition only. No
+  executable/test, coverage-baseline, dependency, scheduler, production,
+  schema, or evidence-state change; Step `04` and later cards are not created.
+- Remote publication and upstream equality: parent `eafec29` is verified
+  local/upstream/live-remote-equal. Publish and prove the definition checkpoint
+  equal before selecting `REVIEW-ARCH-03H`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -179,8 +182,11 @@ false success. Artifact evidence changes only the final producer path and hash
 No real samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created.
 
-After `2f186dd` was published and proved equal, `MIG-03G` closed without
-selecting another owner.
+After `eafec29` was published and proved equal, the refreshed live DAG exposed
+two eligible owners. Only the first canonical identity,
+`collect_RSeQC_paired_orientation_evidence`, now has the four unselected `03H`
+cards. Step `04` and every later owner/review card remain uncreated and
+unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -188,8 +194,7 @@ is complete and
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`MIG-03G`](../tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-is complete. No Step `03`, Step `04`, or later owner/review card is created or
-selected.
+is complete.
 
 ## Active concurrent lanes
 
@@ -662,10 +667,10 @@ and its architecture, reliability, and usability review cards are complete.
 →
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
 closed before helper checkpoint `4726ad1` and executable/test checkpoint
-`13a2748`; documentation/lifecycle close is `543eb8f`. The commit containing
-this handoff records completed `MIG-03G` baseline `0904faf`, executable/test
-checkpoint `2f186dd`, and documentation/lifecycle close. No downstream or later
-migration card is created or selected.
+`13a2748`; documentation/lifecycle close is `543eb8f`. `MIG-03G` completed at
+baseline `0904faf`, executable/test checkpoint `2f186dd`, and documentation/
+lifecycle close `eafec29`. The commit containing this handoff defines only the
+four unselected Step `03` cards. Step `04` and later cards remain uncreated.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -714,8 +719,16 @@ and its reviews
 →
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 are complete. `MIG-03G` is complete at published test-only baseline `0904faf`,
-published executable/test checkpoint `2f186dd`, and the documentation/lifecycle
-close containing this paragraph. Step `03`, Step `04`, and all later owner
-cards remain unselected and uncreated. The
+published executable/test checkpoint `2f186dd`, and documentation/lifecycle
+close `eafec29`. The next migration card,
+[`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
+and its reviews
+[`REVIEW-ARCH-03H`](../tasks/TODO/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+→
+[`REVIEW-REL-03H`](../tasks/TODO/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+→
+[`REVIEW-UX-03H`](../tasks/TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+are defined and unselected in `TODO`. Step `04` and all later owner cards remain
+uncreated and unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.
