@@ -12,18 +12,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `e19f28162a84f674cf910b38665e3c8ee85f0c45` is clean, published, and
-  local/upstream-equal; the documentation/lifecycle close is the commit
-  containing this handoff.
-- Current package: completed
-  [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md).
-- Package type at this checkpoint: impact-directed documentation-only close
-  after the separately published executable/test cutover.
-- Remote publication and upstream equality: executable checkpoint `e19f281` is
-  verified equal. Resolve the exact commit containing this handoff from live
-  Git and prove that documentation checkpoint published and equal before
-  selecting another owner.
+- Recorded package state: [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md)
+  documentation/lifecycle checkpoint
+  `f9d638199c6d60cbe81c992fde6a1090cb364302` is clean, published, and
+  local/upstream-equal. Its executable/test checkpoint is `e19f281`.
+- Current package: JIT definition of
+  [`MIG-03D`](../tasks/TODO/MIG-03D-migrate-align-rna-reads-with-star-owner.md)
+  and its dedicated architecture, reliability, and usability reviews. All four
+  cards remain unselected in `TODO` at this checkpoint.
+- Package type at this checkpoint: behavior/architecture planning with
+  documentation-only/non-consuming mutation; no executable or test file has
+  changed.
+- Remote publication and upstream equality: parent `f9d6381` is verified
+  local/upstream-equal. The commit containing this JIT definition must be
+  published and proved equal before the architecture review is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -50,9 +52,15 @@ package.
 their final homes and cut over every reviewed repository caller without a
 wrapper, compatibility copy, package identity, descriptor, schema, or DAG
 change. Its characterized silent replacement and nontransactional scheduler
-residue remain defects. No next owner is preselected. Only after this close is
-published and upstream-equal may the integration owner use the live DAG to
-create and review one next migration unit just in time.
+residue remain defects.
+
+The next unit is `align_RNA_reads_with_STAR`. Its sole hard predecessor,
+`construct_STAR_index`, is already migrated, its three native assets form the
+smaller currently eligible surface, and its validator uses only the migrated
+neutral validation-report owner. `construct_FASTA_sidecars` remains dependency-
+valid but is not selected because its validator still imports the separate flat
+`reference_provenance` implementation. Historical alias order did not determine
+the selection.
 
 ## Active concurrent lanes
 
@@ -509,8 +517,10 @@ complete. The second JIT unit,
 is complete at executable/test checkpoint `4f9c863` and documentation close
 `1b82e4f`. The third JIT unit,
 [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md),
-is complete at published executable/test checkpoint `e19f281`; its
-documentation/lifecycle close is the commit containing this handoff.
+is complete at published executable/test checkpoint `e19f281` and
+documentation/lifecycle close `f9d6381`. The next JIT card is
+[`MIG-03D`](../tasks/TODO/MIG-03D-migrate-align-rna-reads-with-star-owner.md);
+its definition checkpoint must be published and equal before review selection.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -526,7 +536,12 @@ are complete. MIG-03C and its dedicated
 [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are complete. No later card is pre-created or selected. Prove the current
-documentation tip published/equal, then select only one next dependency-valid
-unit from live DAG evidence. The unsliced `PROGRAM-01` remainder and unrelated
-roadmap remain preserved and out of scope.
+are complete. MIG-03D and
+[`REVIEW-ARCH-03D`](../tasks/TODO/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md),
+[`REVIEW-REL-03D`](../tasks/TODO/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
+and
+[`REVIEW-UX-03D`](../tasks/TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
+are defined and unselected. After this checkpoint is clean, published, and
+equal, select only the architecture review for its read-only pass. No later
+card is pre-created. The unsliced `PROGRAM-01` remainder and unrelated roadmap
+remain preserved and out of scope.

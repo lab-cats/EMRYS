@@ -1078,3 +1078,75 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   complete applicable gate only at that boundary. No later card or owner is
   preloaded. Select one next dependency-valid unit from live DAG evidence only
   after this close is clean, published, and upstream-equal.
+
+## 2026-08-02T22:19:35-0400 — MIG-03D JIT unit defined
+
+- **Git and predecessor:** inspected clean campaign tip
+  `f9d638199c6d60cbe81c992fde6a1090cb364302` and proved configured-upstream and
+  live-remote equality with ahead/behind `0 0`. Recent history is linear through
+  the separate `MIG-03C` executable and documentation commits; no merge, rebase,
+  cherry-pick, revert, bisect, sequencer, index lock, recovery state, untracked
+  file, or overlapping mutable lane was present.
+- **Selection decision:** the live semantic map exposes two dependency-valid
+  candidates. Select only `align_RNA_reads_with_STAR`: its sole hard predecessor
+  `construct_STAR_index` is migrated; its three native assets total 17,454
+  bytes and 538 lines; and its validator loads only the migrated neutral
+  validation-report owner. `construct_FASTA_sidecars` remains eligible but its
+  three assets total 24,954 bytes and 827 lines and its validator still imports
+  the separate flat `reference_provenance` implementation. The selected unit is
+  therefore the smaller, less-coupled live surface; historical aliases did not
+  determine order and the unselected owner was not preloaded further.
+- **Frozen native surface:** producer `scripts/step_01_star_align.sh` is mode
+  `0755`, 5,600 bytes, 195 lines, SHA-256
+  `25e2120ca9843ea25f2e1f3b4084aced6261976ab46f7cb25c33d7911f82d0ba`;
+  validator `scripts/validate_step_01_star_alignment.py` is mode `0644`, 8,506
+  bytes, 229 lines, SHA-256
+  `40b878493949b3d095379aae1413999f1cbfca5954c31299c2a1a34ba89d2aed`;
+  job `jobs/step_01_star_align.slurm` is intentionally mode `0644`, 3,348
+  bytes, 114 lines, SHA-256
+  `1b75457580d294a7a4e06017c80aea36b3a9abd68794b8047f47172be3706aa4`.
+  Direct shell and Python tests are the initial mirrored-test surface; Step
+  `01`-specific setup and default-fixture behavior also live in the independent
+  scheduler suite and require an architecture disposition before extraction.
+- **Direct graph and path changes:** the scheduler delegates to the producer;
+  the validator exact-loads `src/norad/libraries/validation_report.py`; and
+  artifact implementation evidence names and hashes the producer. Final
+  placement necessarily changes the producer's displayed usage path, the
+  validator's owner-relative neutral-library lookup, the job's child path, and
+  explicit public-CLI, SLURM, validator-roster, shared-loader, Make, literal-
+  expansion, coverage, artifact, test, runbook, inventory, and contract path
+  consumers. The contract's statement that Step `01` still imports Step `00a`
+  is stale; batch that repair with all other migration links at card close.
+- **Wrapper and topology decision:** every named path caller is repository-
+  owned and can move atomically with the three assets. No legacy wrapper,
+  re-export, package marker, symlink, compatibility copy, global path mutation,
+  descriptor, or schema is justified. The public semantic DAG and artifact flow
+  do not change, so no diagram edit is warranted unless final inspection finds
+  contrary evidence. The old producer and job hashes are rollback evidence
+  because their self/delegation path text must change; the final producer path
+  and reviewed final hash replace only implementation provenance for Step `01`.
+- **Coverage and Make boundary:** the validator baseline is `125/140` covered
+  lines and `34/44` branches; the committed global floor is `9343/11506` lines
+  and `3281/4698` branches. Stable roots already include `src/norad`; inspect a
+  final-path measurement before renaming the row. Because both shell assets
+  leave flat wildcards, exact final producer and job paths must enter
+  `validation-static`, `smoke`, and their literal Make oracle; direct shell and
+  validator test recipe paths must move without discovery or inventory
+  weakening.
+- **Risk boundary:** preserve producer dry-run directory creation, direct final-
+  path STAR writes, suffix-only compression choice, lack of sample-ID/content
+  validation, lack of receipt/lock/staging/no-clobber/post-validation, and child
+  failure residue. Preserve scheduler caller-CWD dependence, mutable placeholder
+  FASTQ/index creation in default dry-run, execution refusal with those defaults,
+  strict STAR module load, allocation-derived threads, TMPDIR mutation, mode
+  `0644`, and delegate-only output validation. Preserve validator structural-
+  only evidence, exact five checks, deterministic report/publication behavior,
+  and inherited neutral-publisher defects. Reviews must identify any missing
+  old/new oracle; none of these defects is fixed or blessed by relocation.
+- **Review, validation, and evidence boundary:** create only `MIG-03D` and
+  dedicated `REVIEW-ARCH-03D`, `REVIEW-REL-03D`, and `REVIEW-UX-03D` cards. All
+  remain unselected in `TODO`. This definition is documentation-only and uses
+  only documentation validation at its boundary; no computational test, real
+  STAR run, scheduler submission, dependency action, runtime, production,
+  scientific-review, or biological evidence was created. Full applicable
+  validation and batched migration documentation remain card-boundary work.
