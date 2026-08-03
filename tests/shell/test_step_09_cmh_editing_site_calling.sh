@@ -113,6 +113,19 @@ assert_arg_pair() {
     ' "$log" || fail "fake R arguments omitted $option $expected"
 }
 
+assert_header_omits() {
+    local path="$1"
+    shift
+    local header
+    local field
+    IFS= read -r header < "$path"
+    for field in "$@"; do
+        if printf '%s\n' "$header" | tr '\t' '\n' | grep -Fqx "$field"; then
+            fail "header unexpectedly records $field: $path"
+        fi
+    done
+}
+
 mkdir -p "$tmp/bin" "$tmp/step08/cohort" "$tmp/output"
 sample_manifest="$tmp/samples.tsv"
 partition_manifest="$tmp/partitions.tsv"
@@ -196,6 +209,7 @@ set -euo pipefail
 if [[ -n "${FAKE_R_ARGS_LOG:-}" ]]; then
     printf '%s\n' "$@" > "$FAKE_R_ARGS_LOG"
 fi
+r_script_path="$1"
 shift
 control_condition="EV"
 treatment_condition="PUM1"
@@ -437,7 +451,13 @@ case "${FAKE_R_MODE:-success}" in
     success) ;;
     omit_summary) rm -f "$summary_output" ;;
     bad_pdf) printf 'not a PDF\n' > "$mutation_pdf" ;;
+    mutate_sample) printf '\n' >> "$sample_manifest" ;;
+    mutate_partition) printf '\n' >> "$partition_manifest" ;;
     mutate_sites) printf '\n' >> "$step08_sites" ;;
+    mutate_inputs) printf '\n' >> "$step08_inputs" ;;
+    mutate_r_script)
+        printf '\n# changed while fake R was running\n' >> "$r_script_path"
+        ;;
     tamper_background_max)
         awk -F '\t' -v OFS='\t' '
             NR == 2 { $37 = "0.04" }
@@ -508,6 +528,120 @@ base=(
     --rscript-bin "$fake_r"
     --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R"
 )
+
+assert_preflight_preserved() {
+    local fixture="$1"
+    local analysis="$2"
+    assert_file_equals "$fixture/output/unrelated.txt" "preflight sentinel"
+    [[ ! -e "$fixture/output/$analysis" ]] ||
+        fail "runtime preflight mutated the analysis output: $fixture/output/$analysis"
+    [[ "$(find "$fixture/output" -mindepth 1 -print | wc -l | tr -d ' ')" == "1" ]] ||
+        fail "runtime preflight mutated the output root: $fixture/output"
+}
+
+run_input_mutation_case() {
+    local mode="$1"
+    local analysis="$2"
+    local diagnostic="$3"
+    local fixture="$tmp/$analysis"
+    local marker="$fixture/fake-r.invoked"
+    copy_fixture "$fixture"
+    mkdir -p "$fixture/output/$analysis"
+    printf 'unrelated bytes\n' > "$fixture/output/$analysis/unrelated.txt"
+    expect_fail "$diagnostic" \
+        env \
+        FAKE_R_MARKER="$marker" \
+        FAKE_R_MODE="$mode" \
+        "$script" --analysis-id "$analysis" --cohort-id cohort \
+        --sample-manifest "$fixture/samples.tsv" \
+        --partition-manifest "$fixture/partitions.tsv" \
+        --step08-root "$fixture/step08" \
+        --output-root "$fixture/output" \
+        --rscript-bin "$fake_r" \
+        --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+        --execute
+    [[ -e "$marker" ]] || fail "$mode did not invoke fake R"
+    assert_no_finals "$fixture/output" "$analysis"
+    assert_no_scratch "$fixture/output" "$analysis"
+    assert_file_equals "$fixture/output/$analysis/unrelated.txt" "unrelated bytes"
+}
+
+missing_rscript="$tmp/missing-rscript"
+copy_fixture "$missing_rscript"
+printf 'preflight sentinel\n' > "$missing_rscript/output/unrelated.txt"
+expect_fail "Rscript does not exist: $missing_rscript/bin/missing-rscript" \
+    "$script" --analysis-id missing-rscript --cohort-id cohort \
+    --sample-manifest "$missing_rscript/samples.tsv" \
+    --partition-manifest "$missing_rscript/partitions.tsv" \
+    --step08-root "$missing_rscript/step08" \
+    --output-root "$missing_rscript/output" \
+    --rscript-bin "$missing_rscript/bin/missing-rscript" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R"
+assert_preflight_preserved "$missing_rscript" missing-rscript
+
+nonexecutable_rscript="$tmp/nonexecutable-rscript"
+copy_fixture "$nonexecutable_rscript"
+mkdir -p "$nonexecutable_rscript/bin"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$nonexecutable_rscript/bin/nonexecutable-rscript"
+chmod 0644 "$nonexecutable_rscript/bin/nonexecutable-rscript"
+printf 'preflight sentinel\n' > "$nonexecutable_rscript/output/unrelated.txt"
+expect_fail "Rscript exists but is not executable: $nonexecutable_rscript/bin/nonexecutable-rscript" \
+    "$script" --analysis-id nonexecutable-rscript --cohort-id cohort \
+    --sample-manifest "$nonexecutable_rscript/samples.tsv" \
+    --partition-manifest "$nonexecutable_rscript/partitions.tsv" \
+    --step08-root "$nonexecutable_rscript/step08" \
+    --output-root "$nonexecutable_rscript/output" \
+    --rscript-bin "$nonexecutable_rscript/bin/nonexecutable-rscript" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R"
+assert_preflight_preserved "$nonexecutable_rscript" nonexecutable-rscript
+
+missing_r_program="$tmp/missing-r-program"
+copy_fixture "$missing_r_program"
+printf 'preflight sentinel\n' > "$missing_r_program/output/unrelated.txt"
+expect_fail "Step 09 R script does not exist or is empty: $missing_r_program/missing.R" \
+    "$script" --analysis-id missing-r-program --cohort-id cohort \
+    --sample-manifest "$missing_r_program/samples.tsv" \
+    --partition-manifest "$missing_r_program/partitions.tsv" \
+    --step08-root "$missing_r_program/step08" \
+    --output-root "$missing_r_program/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$missing_r_program/missing.R"
+assert_preflight_preserved "$missing_r_program" missing-r-program
+
+basename_rscript="$tmp/basename-rscript"
+copy_fixture "$basename_rscript"
+mkdir -p "$basename_rscript/bin" "$basename_rscript/cwd"
+cp "$fake_r" "$basename_rscript/bin/fake-r-basename"
+basename_marker="$basename_rscript/fake-r.invoked"
+(
+    cd "$basename_rscript/cwd"
+    env \
+        PATH="$basename_rscript/bin:$PATH" \
+        FAKE_R_MARKER="$basename_marker" \
+        "$script" --analysis-id basename-rscript --cohort-id cohort \
+        --sample-manifest "$basename_rscript/samples.tsv" \
+        --partition-manifest "$basename_rscript/partitions.tsv" \
+        --step08-root "$basename_rscript/step08" \
+        --output-root "$basename_rscript/output" \
+        --rscript-bin fake-r-basename \
+        --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+        --execute > "$basename_rscript/execute.out"
+)
+[[ -e "$basename_marker" ]] || fail "PATH-basename Rscript was not invoked"
+for suffix in \
+    cmh_all_sites.tsv \
+    cmh_significant_sites.tsv \
+    cmh_summary.tsv \
+    mutation_spectrum.tsv \
+    mutation_spectrum.pdf \
+    depth_delta.pdf
+do
+    [[ -s "$basename_rscript/output/basename-rscript/basename-rscript.$suffix" ]] ||
+        fail "PATH-basename Rscript output is missing: $suffix"
+done
+assert_no_scratch "$basename_rscript/output" basename-rscript
+[[ -z "$(find "$basename_rscript/cwd" -mindepth 1 -print -quit)" ]] ||
+    fail "PATH-basename execution mutated the arbitrary working directory"
 
 rm -f "$apply_marker"
 FAKE_R_MARKER="$apply_marker" "${base[@]}" > "$tmp/dry.out"
@@ -981,23 +1115,68 @@ expect_fail "Step 09 mutation-spectrum PDF is missing a PDF signature" \
 assert_no_finals "$malformed_pdf/output" malformed-pdf
 assert_no_scratch "$malformed_pdf/output" malformed-pdf
 
-input_mutation="$tmp/input-mutation"
-copy_fixture "$input_mutation"
-input_mutation_marker="$input_mutation/fake-r.invoked"
-expect_fail "Step 08 sites table changed during Step 09" \
-    env \
-    FAKE_R_MARKER="$input_mutation_marker" \
-    FAKE_R_MODE=mutate_sites \
-    "$script" --analysis-id input-mutation --cohort-id cohort \
-    --sample-manifest "$input_mutation/samples.tsv" \
-    --partition-manifest "$input_mutation/partitions.tsv" \
-    --step08-root "$input_mutation/step08" \
-    --output-root "$input_mutation/output" \
+run_input_mutation_case \
+    mutate_sample sample-manifest-mutation \
+    "Sample manifest changed during Step 09"
+run_input_mutation_case \
+    mutate_partition partition-manifest-mutation \
+    "Partition manifest changed during Step 09"
+run_input_mutation_case \
+    mutate_sites step08-sites-mutation \
+    "Step 08 sites table changed during Step 09"
+run_input_mutation_case \
+    mutate_inputs step08-inputs-mutation \
+    "Step 08 input receipt changed during Step 09"
+
+r_script_mutation="$tmp/r-script-mutation"
+copy_fixture "$r_script_mutation"
+cp "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+    "$r_script_mutation/step09_impl.R"
+mkdir -p "$r_script_mutation/output/r-script-mutation"
+printf 'unrelated bytes\n' > \
+    "$r_script_mutation/output/r-script-mutation/unrelated.txt"
+FAKE_R_MARKER="$r_script_mutation/fake-r.invoked" \
+FAKE_R_MODE=mutate_r_script \
+"$script" --analysis-id r-script-mutation --cohort-id cohort \
+    --sample-manifest "$r_script_mutation/samples.tsv" \
+    --partition-manifest "$r_script_mutation/partitions.tsv" \
+    --step08-root "$r_script_mutation/step08" \
+    --output-root "$r_script_mutation/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
-    --execute
-assert_no_finals "$input_mutation/output" input-mutation
-assert_no_scratch "$input_mutation/output" input-mutation
+    --r-script "$r_script_mutation/step09_impl.R" \
+    --execute > "$r_script_mutation/execute.out"
+grep -q 'changed while fake R was running' "$r_script_mutation/step09_impl.R" ||
+    fail "selected R program was not mutated while Step 09 was running"
+for suffix in \
+    cmh_all_sites.tsv \
+    cmh_significant_sites.tsv \
+    cmh_summary.tsv \
+    mutation_spectrum.tsv \
+    mutation_spectrum.pdf \
+    depth_delta.pdf
+do
+    [[ -s "$r_script_mutation/output/r-script-mutation/r-script-mutation.$suffix" ]] ||
+        fail "R-program mutation did not publish $suffix"
+done
+assert_no_scratch "$r_script_mutation/output" r-script-mutation
+assert_file_equals \
+    "$r_script_mutation/output/r-script-mutation/unrelated.txt" \
+    "unrelated bytes"
+assert_header_omits \
+    "$r_script_mutation/output/r-script-mutation/r-script-mutation.cmh_summary.tsv" \
+    rscript_path \
+    rscript_version \
+    r_script_path \
+    r_script_sha256 \
+    r_version \
+    r_package_state \
+    run_token \
+    attempt_id \
+    all_sites_sha256 \
+    significant_sites_sha256 \
+    mutation_spectrum_sha256 \
+    mutation_spectrum_pdf_sha256 \
+    depth_delta_pdf_sha256
 
 foreign_lock="$tmp/foreign-lock"
 copy_fixture "$foreign_lock"
