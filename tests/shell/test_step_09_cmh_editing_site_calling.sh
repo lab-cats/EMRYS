@@ -257,6 +257,12 @@ while [[ "$#" -gt 0 ]]; do
     shift 2
 done
 printf invoked > "${FAKE_R_MARKER:?}"
+if [[ -n "${FAKE_R_BARRIER_MARKER:-}" ]]; then
+    : > "$FAKE_R_BARRIER_MARKER"
+    while [[ ! -e "${FAKE_R_BARRIER_RELEASE:?}" ]]; do
+        sleep 0.01
+    done
+fi
 if [[ "${FAKE_R_MODE:-success}" == "fail" ]]; then
     exit 73
 fi
@@ -1348,6 +1354,162 @@ expected_publication_moves="$(printf '%s\t%s\n' \
     fail "Step 09 final publication order changed"
 assert_file_equals "$publication_order_dir/unrelated.txt" "unrelated bytes"
 assert_no_scratch "$publication_order/output" publication-order
+
+signal_replacement="$tmp/signal-replacement"
+copy_fixture "$signal_replacement"
+seed_prior_outputs \
+    "$signal_replacement/output" signal-replacement "prior signal replacement"
+signal_replacement_dir="$signal_replacement/output/signal-replacement"
+printf 'unrelated bytes\n' > "$signal_replacement_dir/unrelated.txt"
+signal_replacement_marker="$signal_replacement/summary-visible"
+signal_replacement_release="$signal_replacement/release"
+env \
+    PATH="$tmp/bin:$PATH" \
+    SLURM_JOB_ID=signalreplace09 \
+    FAKE_R_MARKER="$signal_replacement/fake-r.invoked" \
+    FAKE_MV_BARRIER_DEST="$signal_replacement_dir/signal-replacement.cmh_summary.tsv" \
+    FAKE_MV_BARRIER_MARKER="$signal_replacement_marker" \
+    FAKE_MV_BARRIER_RELEASE="$signal_replacement_release" \
+    "$script" --analysis-id signal-replacement --cohort-id cohort \
+    --sample-manifest "$signal_replacement/samples.tsv" \
+    --partition-manifest "$signal_replacement/partitions.tsv" \
+    --step08-root "$signal_replacement/step08" \
+    --output-root "$signal_replacement/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+    --execute > "$signal_replacement/execute.out" \
+    2> "$signal_replacement/execute.err" &
+signal_replacement_pid=$!
+signal_replacement_seen=false
+for _ in {1..500}; do
+    if [[ -e "$signal_replacement_marker" ]]; then
+        signal_replacement_seen=true
+        break
+    fi
+    if ! kill -0 "$signal_replacement_pid" 2>/dev/null; then
+        break
+    fi
+    sleep 0.01
+done
+if [[ "$signal_replacement_seen" != true ]]; then
+    : > "$signal_replacement_release"
+    kill -TERM "$signal_replacement_pid" 2>/dev/null || true
+    wait "$signal_replacement_pid" 2>/dev/null || true
+    fail "signal-replacement summary barrier was not reached"
+fi
+[[ -s "$signal_replacement_dir/signal-replacement.cmh_summary.tsv" ]] ||
+    fail "replacement summary was not visible before TERM"
+if grep -q "prior signal replacement" \
+    "$signal_replacement_dir/signal-replacement.cmh_summary.tsv"; then
+    fail "prior summary remained visible before TERM"
+fi
+kill -TERM "$signal_replacement_pid"
+: > "$signal_replacement_release"
+set +e
+wait "$signal_replacement_pid"
+signal_replacement_status=$?
+set -e
+[[ "$signal_replacement_status" -eq 143 ]] ||
+    fail "expected TERM exit 143; got $signal_replacement_status"
+for suffix in \
+    cmh_all_sites.tsv \
+    cmh_significant_sites.tsv \
+    cmh_summary.tsv \
+    mutation_spectrum.tsv \
+    mutation_spectrum.pdf \
+    depth_delta.pdf
+do
+    assert_file_equals \
+        "$signal_replacement_dir/signal-replacement.$suffix" \
+        "prior signal replacement $suffix"
+done
+assert_file_equals "$signal_replacement_dir/unrelated.txt" "unrelated bytes"
+assert_no_scratch "$signal_replacement/output" signal-replacement
+
+concurrency="$tmp/concurrency"
+copy_fixture "$concurrency"
+concurrency_marker="$concurrency/winner-at-r"
+concurrency_release="$concurrency/release"
+env \
+    SLURM_JOB_ID=concurrencywinner09 \
+    FAKE_R_MARKER="$concurrency/winner-r.invoked" \
+    FAKE_R_BARRIER_MARKER="$concurrency_marker" \
+    FAKE_R_BARRIER_RELEASE="$concurrency_release" \
+    "$script" --analysis-id concurrency --cohort-id cohort \
+    --sample-manifest "$concurrency/samples.tsv" \
+    --partition-manifest "$concurrency/partitions.tsv" \
+    --step08-root "$concurrency/step08" \
+    --output-root "$concurrency/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+    --execute > "$concurrency/winner.out" \
+    2> "$concurrency/winner.err" &
+concurrency_winner_pid=$!
+concurrency_seen=false
+for _ in {1..500}; do
+    if [[ -e "$concurrency_marker" ]]; then
+        concurrency_seen=true
+        break
+    fi
+    if ! kill -0 "$concurrency_winner_pid" 2>/dev/null; then
+        break
+    fi
+    sleep 0.01
+done
+if [[ "$concurrency_seen" != true ]]; then
+    : > "$concurrency_release"
+    kill -TERM "$concurrency_winner_pid" 2>/dev/null || true
+    wait "$concurrency_winner_pid" 2>/dev/null || true
+    fail "same-analysis winner did not reach the fake-R barrier"
+fi
+concurrency_dir="$concurrency/output/concurrency"
+concurrency_lock="$concurrency_dir/.concurrency.step09.lock"
+[[ -d "$concurrency_lock" ]] ||
+    fail "same-analysis winner did not hold the analysis lock"
+grep -Fqx $'run_token\tconcurrencywinner09' "$concurrency_lock/owner" ||
+    fail "same-analysis winner lock recorded the wrong run token"
+assert_no_finals "$concurrency/output" concurrency
+set +e
+env \
+    SLURM_JOB_ID=concurrencyloser09 \
+    FAKE_R_MARKER="$concurrency/loser-r.invoked" \
+    "$script" --analysis-id concurrency --cohort-id cohort \
+    --sample-manifest "$concurrency/samples.tsv" \
+    --partition-manifest "$concurrency/partitions.tsv" \
+    --step08-root "$concurrency/step08" \
+    --output-root "$concurrency/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+    --execute > "$concurrency/loser.out" \
+    2> "$concurrency/loser.err"
+concurrency_loser_status=$?
+set -e
+[[ "$concurrency_loser_status" -eq 1 ]] ||
+    fail "expected competing same-analysis execution to exit 1; got $concurrency_loser_status"
+grep -Fqx "ERROR: Step 09 lock already exists: $concurrency_lock" \
+    "$concurrency/loser.err" ||
+    fail "competing same-analysis execution reported the wrong lock failure"
+[[ ! -e "$concurrency/loser-r.invoked" ]] ||
+    fail "competing same-analysis execution invoked fake R"
+grep -Fqx $'run_token\tconcurrencywinner09' "$concurrency_lock/owner" ||
+    fail "competing execution changed the winner lock owner"
+: > "$concurrency_release"
+wait "$concurrency_winner_pid" ||
+    fail "admitted same-analysis execution failed: $(cat "$concurrency/winner.err")"
+for suffix in \
+    cmh_all_sites.tsv \
+    cmh_significant_sites.tsv \
+    cmh_summary.tsv \
+    mutation_spectrum.tsv \
+    mutation_spectrum.pdf \
+    depth_delta.pdf
+do
+    [[ -s "$concurrency_dir/concurrency.$suffix" ]] ||
+        fail "same-analysis winner did not publish $suffix"
+done
+[[ "$(find "$concurrency_dir" -maxdepth 1 -type f | wc -l | tr -d ' ')" == "6" ]] ||
+    fail "same-analysis executions left more than one final output set"
+assert_no_scratch "$concurrency/output" concurrency
 
 move_failure="$tmp/move-failure"
 copy_fixture "$move_failure"
