@@ -3991,3 +3991,73 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   `ef4cad7`, scheduler `ec240ae`, validator `8eb3a0b`, admission/signal
   `3913215`, then transaction `42bf851`; Git rollback never changes runtime or
   recovery evidence.
+
+## 2026-08-03T08:15:45-0400 — MIG-03K and sequential reviews defined
+
+- **Verified parent and live-DAG choice:** published MIG-03J documentation
+  close `db60dfa965f4c878aacfe3221dfc50d30644cb74` was clean, tracked/untracked-
+  empty, free of recovery/index locks, and equal across local `HEAD`, configured
+  upstream, and the live remote branch before definition work. The canonical
+  direct-edge map leaves exactly one eligible unmigrated owner:
+  `partition_BAM_by_mechanical_read_orientation`. Its sole direct predecessor,
+  `split_N_cigar_reads_with_GATK`, is migrated. Step `07` remains blocked and
+  no Step `07` or later card is created.
+- **Frozen native boundary:** define only semantic stage
+  `norad.stage.partition_BAM_by_mechanical_read_orientation.v1`, historical
+  alias `06`, final source home
+  `src/norad/stages/partition_BAM_by_mechanical_read_orientation/`, and mirrored
+  test home
+  `tests/stages/partition_BAM_by_mechanical_read_orientation/`. Candidate moves
+  are the mode-`0755` producer, mode-`0644` validator, mode-`0755` job, mode-
+  `0755` direct shell test, and mode-`0644` direct validator test. Three native
+  assets total `37,398` bytes and `1,136` lines with frozen hashes
+  `bb0ebbaea9158c0dfceb3a0cd2e083c99e8f63913859c10df93ec85314de2275`,
+  `7b39b8fc27b9992c8ca4b2b4111e5ae872b15806e520c4ca9d595b81e6cc7c69`,
+  and `3c0bf399187cb7624350d9896fd2e0228daaf61a7fa71e89c5ba4ce22b7a1419`.
+- **Proposed cutover and review question:** the evidence-backed hypothesis is
+  five moves plus nine integration owners: Make, artifact producer mapping and
+  exact migrated-producer evidence, public CLI maps, SLURM map/delegation,
+  validation roster, neutral report-loader matrix, coverage baseline, and the
+  literal Make expansion. Architecture review must prove that ceiling, exact
+  final hashes/root depths/test-helper bridge, executable-mode continuity, and
+  the disposition of obsolete documentation-only
+  `tests/pending/test_step_06_split_bam_by_read_orientation.sh`. The scaffold
+  may not become a second active test owner.
+- **Mechanical and evidence decisions:** preserve `FWD_like` as `-f 99` plus
+  `-f 147` and `REV_like` as `-f 83` plus `-f 163`, including additional-bit
+  acceptance and non-exhaustive assignment. These labels remain mechanical;
+  they are not biological strand, strandedness, sense, or antisense. Preserve
+  six Step `06` artifact identities and the eleven-column counts TSV without a
+  schema or orientation-policy change.
+- **Transaction and validation risks:** preserve but do not approve absent
+  input snapshot recheck, absent attempt receipt, best-effort five-file
+  restoration, cleanup erasure after rollback failure, and an output-directory
+  lock that does not independently serialize a separately chosen QC path. The
+  producer quickchecks merged BAMs and enforces nonempty groups plus assigned/
+  input bounds but does not explicitly reconcile each pair of flag subcounts
+  to its merged count. The independent validator checks container magic and
+  counts arithmetic without samtools, BAM recount, flag inspection, BAM/BAI
+  correspondence, sort/read-group metadata, or biological/current-attempt
+  proof; exit `0` may publish failed rows. Reliability review must assign safe
+  old/final-path oracles rather than fix or bless these states.
+- **Scheduler risks:** preserve submit-CWD fallback, exported `/tmp`, tolerated
+  samtools module diagnostics, fixed default tool plus override, version
+  command, one requested CPU with operator-controlled `THREADS`, body-level
+  `logs/` mutation, Bash `3.2` empty-array dry-run failure, five-file wrapper
+  post-check, and stale-complete-set false success. These are review inputs, not
+  scheduler, current-attempt, production, scientific, or biological proof.
+- **Coverage and evidence ceiling:** frozen validator coverage is `107/119`
+  lines and `23/30` branches; global coverage is `9550/11720` lines and
+  `3347/4772` branches. Any later final measurement must keep non-target rows
+  exact and preserve target/global rates and covered-count floors. Definition
+  adds no real samtools, scheduler, cluster, production, scientific-review,
+  biological-orientation, or biological-readiness evidence.
+- **Bounded lifecycle decision:** create only unselected `MIG-03K` and
+  unselected sequential `REVIEW-ARCH-03K` → `REVIEW-REL-03K` →
+  `REVIEW-UX-03K`. No card is selected; no executable, test, harness,
+  configuration, dependency, schema, fixture, report-template, runtime,
+  scheduler, cluster, production, or future-owner file changes or runs.
+- **Minimal slice check:** `git diff --check` passed. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  ran in this definition slice; the complete documentation gate belongs to the
+  architecture-review card boundary.

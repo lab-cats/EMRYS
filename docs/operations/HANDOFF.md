@@ -11,26 +11,29 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published executable/test
-  checkpoint `ef4cad7b5eeb54e1e7fd963faea427afdbfce0a2`.
+  exact SHA from live Git. Its frozen parent is published MIG-03J
+  documentation/lifecycle close
+  `db60dfa965f4c878aacfe3221dfc50d30644cb74`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
-  `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines plus
-  executable/test checkpoint `ef4cad7` are published and local/upstream/
-  live-remote-equal.
-- Current package: completed [`MIG-03J`](../tasks/COMPLETED/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-  after completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  and [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
-  Step `06` and later cards remain uncreated; refresh the live DAG from the
-  published documentation close before defining another unit.
-- Package type at this checkpoint: documentation/lifecycle close. It adds the
-  adjacent owner route, repairs canonical paths/commands/current evidence and
-  lifecycle links, and records the aggregate ceiling without changing
-  executable, test, configuration, dependency, schema, fixture, report-
-  template, scheduler, production, or scientific behavior.
-- Remote publication and upstream equality: executable parent `ef4cad7` is
-  verified local/upstream/live-remote-equal. Resolve and prove the exact
-  documentation-close SHA from live Git before selecting another owner.
+  `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
+  executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
+  published and local/upstream/live-remote-equal.
+- Current package: unselected
+  [`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+  with unselected sequential
+  [`REVIEW-ARCH-03K`](../tasks/TODO/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
+  [`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
+  and [`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
+  Only architecture review is dependency-unblocked. Step `07` and later cards
+  remain uncreated.
+- Package type at this checkpoint: documentation-only JIT definition. It
+  freezes one Step `06` owner, three native assets, two active direct tests,
+  explicit callers, a pending-scaffold question, and three sequential reviews
+  without changing or running executable/test/configuration/dependency/schema/
+  fixture/report-template behavior.
+- Remote publication and upstream equality: definition parent `db60dfa` is
+  verified local/upstream/live-remote-equal. Publish and prove this definition
+  checkpoint equal before selecting only `REVIEW-ARCH-03K`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -356,9 +359,23 @@ approved. Artifact evidence changes only the final producer path and hash
 above. Historical GATK/Java/samtools and six-sample cluster observations remain
 historical, not migration proof. No real tool, scheduler, cluster, production,
 scientific-review, or biological evidence was created. MIG-03J is complete in
-the documentation/lifecycle commit containing this handoff. No Step `06` or
-later card is preloaded; refresh the live DAG only after that commit is
-published and equality is proved.
+published documentation/lifecycle checkpoint `db60dfa`.
+
+That clean, upstream-equal, live-remote-equal checkpoint supported a fresh DAG
+refresh. Only `partition_BAM_by_mechanical_read_orientation` is eligible: its
+sole direct predecessor is migrated, while Step `07` still depends on Step
+`06`. The definition checkpoint containing this handoff creates only
+unselected
+[`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+and sequential
+[`REVIEW-ARCH-03K`](../tasks/TODO/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+→ [`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+→ [`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
+The frozen candidate is three native assets, two active direct tests, nine
+proposed integration owners, and one pending-scaffold disposition question.
+No card is selected, no executable/test file changed or ran, and no Step `07`
+or later owner/review card is preloaded.
+
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -927,7 +944,15 @@ is complete at `daa7ec4`, and
 at `0328fbe`. MIG-03J is complete at published transaction `42bf851`,
 admission/signal `3913215`, validator `8eb3a0b`, and scheduler `ec240ae`
 baselines plus published executable/test checkpoint `ef4cad7`; documentation/
-lifecycle closure is the commit containing this handoff. Step `06` and later
-cards remain uncreated pending a fresh post-publication live-DAG check. The
-unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
-of scope.
+lifecycle close is published at `db60dfa`. A fresh live-DAG check then
+supported only unselected
+[`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+and its unselected sequential reviews
+[`REVIEW-ARCH-03K`](../tasks/TODO/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+→
+[`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+→
+[`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
+defined in the checkpoint containing this handoff. Step `07` and later cards
+remain uncreated. The unsliced `PROGRAM-01` remainder and unrelated roadmap
+remain preserved and out of scope.
