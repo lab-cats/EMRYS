@@ -1614,3 +1614,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, harness, dependency, runtime, scheduler, production, scientific-review,
   or biological evidence changed or ran.
+
+## 2026-08-02T23:43:45-0400 — REVIEW-REL-03E selected
+
+- **Selection:** move only `REVIEW-REL-03E` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after architecture completion checkpoint
+  `494889f` was clean, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch. `REVIEW-UX-03E` and `MIG-03E` remain
+  unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time pass over
+  producer dry-run/execute/reuse/failure states, partial two-output publication,
+  validator parsing/publication and both private loaders, scheduler Bash `3.2`/
+  tool/module/output states, artifact provenance, coverage rename, residue,
+  and rollback. The same campaign agent performs the pass, so independent
+  authorship is not claimed. No executable/test mutation, computational test,
+  runtime tool, scheduler submission, production input, dependency action,
+  scientific review, or biological evidence is in scope.
