@@ -35,7 +35,7 @@ extraction, or second functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03L](REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03L](../TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -109,5 +109,8 @@ extraction, or second functional-owner migration.
 
 ## Completion record
 
-Not selected. Defined with `MIG-03L` from clean, published, local/upstream/
-live-remote-equal parent `b73b12b`; no executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal definition checkpoint
+`8dc61287819d7ea10ca4bcc38934a0819161d24a`. No architecture finding is
+recorded yet, no later review or migration card is selected, and no
+executable/test file changed or ran.

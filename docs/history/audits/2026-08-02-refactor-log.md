@@ -4540,3 +4540,21 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   cycle, orphan, anchor, or diagram finding remains. This expected-only result
   is nonpassing, not green and not authority to alter inherited lifecycle
   state.
+
+## 2026-08-03T09:52:46-0400 — REVIEW-ARCH-03L selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  definition checkpoint `8dc61287819d7ea10ca4bcc38934a0819161d24a`, move only
+  `REVIEW-ARCH-03L` to `IN_PROGRESS` and repair its direct reliability-review
+  lifecycle link. `MIG-03L`, `REVIEW-REL-03L`, and `REVIEW-UX-03L` remain
+  unselected in `TODO`; Step `08` and every later owner/review card remain
+  uncreated.
+- **Boundary:** this checkpoint selects read-only architecture review but
+  records no finding. No executable, test, harness, configuration, dependency,
+  schema, fixture, report-template, runtime, scheduler, cluster, production,
+  scientific-review, variant/editing-site, or biological state changes or
+  runs.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete documentation gate belongs to architecture-
+  review completion.

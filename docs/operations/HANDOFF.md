@@ -11,9 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published MIG-03K
-  documentation/lifecycle close
-  `b73b12bfb7d5af02f9e2c5bb7749a91cfb030f6d`.
+  exact SHA from live Git. Its frozen parent is published MIG-03L definition
+  `8dc61287819d7ea10ca4bcc38934a0819161d24a`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -24,23 +23,24 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   published and equal. MIG-03K child/count `3ae6e3e`, transaction `dafcd18`,
   stability/collision `66e41fe`, validator `1332529`, and scheduler `e871d5c`
   test baselines, executable/test checkpoint `1d5b76a`, and documentation
-  close `b73b12b` are published and local/upstream/live-remote-equal.
+  close `b73b12b` are published and local/upstream/live-remote-equal. MIG-03L
+  definition `8dc6128` is also published and equal.
 - Current package: unselected
   [`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
-  with unselected sequential
-  [`REVIEW-ARCH-03L`](../tasks/TODO/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
+  with active
+  [`REVIEW-ARCH-03L`](../tasks/IN_PROGRESS/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
+  followed by unselected
   [`REVIEW-REL-03L`](../tasks/TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
   and [`REVIEW-UX-03L`](../tasks/TODO/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
-  Only architecture review is dependency-unblocked. Step `08` and later cards
-  remain uncreated.
-- Package type at this checkpoint: documentation-only JIT definition. It
-  freezes one Step `07` owner, three native assets, two active direct tests,
-  explicit callers, and three sequential reviews without changing or running
-  executable/test/configuration/dependency/schema/fixture/report-template
+  Architecture review alone is selected. Step `08` and later cards remain
+  uncreated.
+- Package type at this checkpoint: documentation-only architecture-review
+  selection. It records no finding yet and changes or runs no executable,
+  test, configuration, dependency, schema, fixture, or report-template
   behavior.
-- Remote publication and upstream equality: definition parent `b73b12b` is
-  verified local/upstream/live-remote-equal. Publish and prove this definition
-  checkpoint equal before selecting only `REVIEW-ARCH-03L`.
+- Remote publication and upstream equality: definition parent `8dc6128` is
+  verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before recording architecture findings.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -440,16 +440,18 @@ created. MIG-03K is complete in published documentation/lifecycle checkpoint
 That clean, upstream-equal, live-remote-equal checkpoint supported a fresh DAG
 refresh. Only `generate_partitioned_cohort_mpileup_VCFs` is eligible: its
 declared-sample Step `06` BAM/BAI and reference-FAI predecessors are migrated,
-while Step `08` still depends on Step `07`. The definition checkpoint
-containing this handoff creates only unselected
+while Step `08` still depends on Step `07`. Published/equal definition
+checkpoint `8dc6128` created only unselected
 [`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and sequential
-[`REVIEW-ARCH-03L`](../tasks/TODO/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
+[`REVIEW-ARCH-03L`](../tasks/IN_PROGRESS/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [`REVIEW-REL-03L`](../tasks/TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [`REVIEW-UX-03L`](../tasks/TODO/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
 The frozen candidate is three native assets, two active direct tests, and nine
-proposed integration owners. No card is selected, no executable/test file
-changed or ran, and no Step `08` or later owner/review card is preloaded.
+proposed integration owners. Architecture review alone is selected in the
+checkpoint containing this handoff; no finding is recorded yet. Reliability,
+usability, and migration remain unselected, no executable/test file changed or
+ran, and no Step `08` or later owner/review card is preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1036,11 +1038,11 @@ published executable/test checkpoint `1d5b76a`; documentation/lifecycle close
 is published at `b73b12b`. A fresh live-DAG check then supported only
 unselected
 [`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
-and its unselected sequential reviews
-[`REVIEW-ARCH-03L`](../tasks/TODO/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-→ [`REVIEW-REL-03L`](../tasks/TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-→ [`REVIEW-UX-03L`](../tasks/TODO/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
-defined in the checkpoint containing this handoff. Step `08` and later cards
-remain uncreated.
+and its sequential reviews, defined at published checkpoint `8dc6128`.
+[`REVIEW-ARCH-03L`](../tasks/IN_PROGRESS/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
+alone is active;
+[`REVIEW-REL-03L`](../tasks/TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
+[`REVIEW-UX-03L`](../tasks/TODO/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
+and migration remain unselected. Step `08` and later cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.
