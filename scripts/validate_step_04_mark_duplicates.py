@@ -72,7 +72,74 @@ except Exception as exc:
     )
     raise SystemExit(2) from None
 
-import validate_step_02_canonical_bam as bam_report
+
+_BAM_MODULE_NAME = "_norad_bam_validation"
+_BAM_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "libraries"
+    / "bam_validation.py"
+).resolve(strict=False)
+_BAM_READY_ATTRIBUTE = "_NORAD_BAM_VALIDATION_READY"
+_BAM_REQUIRED_CALLABLES = ("run_tool", "parse_header")
+
+
+def _validated_bam_validation(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (AttributeError, OSError, TypeError) as exc:
+        raise ImportError("cached BAM-validation owner has no valid file path") from exc
+    if module_path != _BAM_MODULE_PATH:
+        raise ImportError(
+            f"cached BAM-validation owner resolves to {module_path}, "
+            f"expected {_BAM_MODULE_PATH}"
+        )
+    if getattr(module, _BAM_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached BAM-validation owner is partially initialized")
+    incomplete = [
+        name
+        for name in _BAM_REQUIRED_CALLABLES
+        if not callable(getattr(module, name, None))
+    ]
+    if incomplete:
+        raise ImportError(
+            "cached BAM-validation owner has incomplete API: " + ", ".join(incomplete)
+        )
+    return module
+
+
+def _load_bam_validation() -> object:
+    cached = sys.modules.get(_BAM_MODULE_NAME)
+    if cached is not None:
+        return _validated_bam_validation(cached)
+    spec = importlib.util.spec_from_file_location(_BAM_MODULE_NAME, _BAM_MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise ImportError("unable to create an exact-file module specification")
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_BAM_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_bam_validation(existing)
+    try:
+        spec.loader.exec_module(module)
+        _validated_bam_validation(module)
+    except BaseException:
+        if sys.modules.get(_BAM_MODULE_NAME) is module:
+            del sys.modules[_BAM_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    bam_report = _load_bam_validation()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load NORAD BAM-validation owner at "
+        f"{_BAM_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
 
 
 CHECK_IDS = {

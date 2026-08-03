@@ -73,6 +73,75 @@ except Exception as exc:
     raise SystemExit(2) from None
 
 
+_BAM_MODULE_NAME = "_norad_bam_validation"
+_BAM_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "libraries"
+    / "bam_validation.py"
+).resolve(strict=False)
+_BAM_READY_ATTRIBUTE = "_NORAD_BAM_VALIDATION_READY"
+_BAM_REQUIRED_CALLABLES = ("run_tool", "parse_header")
+
+
+def _validated_bam_validation(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (AttributeError, OSError, TypeError) as exc:
+        raise ImportError("cached BAM-validation owner has no valid file path") from exc
+    if module_path != _BAM_MODULE_PATH:
+        raise ImportError(
+            f"cached BAM-validation owner resolves to {module_path}, "
+            f"expected {_BAM_MODULE_PATH}"
+        )
+    if getattr(module, _BAM_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached BAM-validation owner is partially initialized")
+    incomplete = [
+        name
+        for name in _BAM_REQUIRED_CALLABLES
+        if not callable(getattr(module, name, None))
+    ]
+    if incomplete:
+        raise ImportError(
+            "cached BAM-validation owner has incomplete API: " + ", ".join(incomplete)
+        )
+    return module
+
+
+def _load_bam_validation() -> object:
+    cached = sys.modules.get(_BAM_MODULE_NAME)
+    if cached is not None:
+        return _validated_bam_validation(cached)
+    spec = importlib.util.spec_from_file_location(_BAM_MODULE_NAME, _BAM_MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise ImportError("unable to create an exact-file module specification")
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_BAM_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_bam_validation(existing)
+    try:
+        spec.loader.exec_module(module)
+        _validated_bam_validation(module)
+    except BaseException:
+        if sys.modules.get(_BAM_MODULE_NAME) is module:
+            del sys.modules[_BAM_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    bam_report = _load_bam_validation()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load NORAD BAM-validation owner at "
+        f"{_BAM_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
 
 CHECK_IDS = {
     "bam_bai_structure",
@@ -92,27 +161,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
-
-
-def run_tool(tool: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [str(tool), *arguments],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-
-def parse_header(text: str, scope_id: str) -> tuple[bool, bool, str]:
-    hd = [line for line in text.splitlines() if line.startswith("@HD\t")]
-    rg = [line for line in text.splitlines() if line.startswith("@RG\t")]
-    coordinate = len(hd) == 1 and "SO:coordinate" in hd[0].split("\t")
-    matching = (
-        len(rg) == 1
-        and f"ID:{scope_id}" in rg[0].split("\t")
-        and f"SM:{scope_id}" in rg[0].split("\t")
-    )
-    return coordinate, matching, f"HD={len(hd)} RG={len(rg)}"
 
 
 def integer_stdout(result: subprocess.CompletedProcess[str], label: str) -> int:
@@ -147,14 +195,20 @@ def build(args: argparse.Namespace):
         bam_magic in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
         and bai_magic in {b"BAI\x01", b"CSI\x01"}
     )
-    quickcheck = run_tool(tool, "quickcheck", "-v", str(bam))
-    header = run_tool(tool, "view", "-H", str(bam))
+    quickcheck = bam_report.run_tool(tool, "quickcheck", "-v", str(bam))
+    header = bam_report.run_tool(tool, "view", "-H", str(bam))
     if header.returncode != 0:
         report.fail(f"samtools view -H failed: {report.clean(header.stderr)}")
-    coordinate, matching_rg, header_detail = parse_header(header.stdout, args.scope_id)
-    total = integer_stdout(run_tool(tool, "view", "-c", str(bam)), "alignment count")
+    coordinate, matching_rg, header_detail = bam_report.parse_header(
+        header.stdout, args.scope_id
+    )
+    total = integer_stdout(
+        bam_report.run_tool(tool, "view", "-c", str(bam)), "alignment count"
+    )
     tagged = integer_stdout(
-        run_tool(tool, "view", "-c", "-d", f"RG:{args.scope_id}", str(bam)),
+        bam_report.run_tool(
+            tool, "view", "-c", "-d", f"RG:{args.scope_id}", str(bam)
+        ),
         "read-group alignment count",
     )
 
