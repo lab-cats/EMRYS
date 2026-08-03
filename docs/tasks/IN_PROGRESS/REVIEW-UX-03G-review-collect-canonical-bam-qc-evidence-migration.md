@@ -29,7 +29,7 @@ undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03G](MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03G](../TODO/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -91,5 +91,8 @@ undiscoverable final owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal reliability-
+review checkpoint `56bac4242478e95376aa6721431d1339769b1ffc`. This is a
+read-only independent-in-time adversarial pass by the same campaign agent;
+independent authorship is not claimed. No executable/test mutation or
+computational test is part of review selection.

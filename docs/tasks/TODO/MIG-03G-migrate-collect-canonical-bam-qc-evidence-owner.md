@@ -165,7 +165,7 @@ uncreated and unselected.
 
 ## Blocked by
 
-- [REVIEW-UX-03G](REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03G](../IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
