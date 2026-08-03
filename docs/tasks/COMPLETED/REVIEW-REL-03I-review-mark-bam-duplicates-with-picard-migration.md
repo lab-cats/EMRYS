@@ -31,7 +31,7 @@ characterize them without approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03I](../IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03I](REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

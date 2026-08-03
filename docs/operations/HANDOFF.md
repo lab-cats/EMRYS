@@ -12,19 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: reliability-review completion checkpoint
-  `fae9bae69a44f72ea974bd34e4e7a89aa7c8d3ee` is clean, published, and
-  local/upstream/live-remote-equal; architecture completion is `403fdf5`.
-- Current package: selected
-  [`REVIEW-UX-03I`](../tasks/IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
-  for bounded operator, maintainer, automation, recovery, and evidence-
-  continuity review.
+- Recorded package state: usability-review selection checkpoint
+  `8a85fb3b09f584d3b888f4b12505e3a625a6434a` is clean, published, and
+  local/upstream/live-remote-equal; reliability completion is `fae9bae`.
+- Current package: completed
+  [`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
+  with exact final-path commands, dry-run effects, tool diagnostics, mixed-
+  output preservation, provenance, findability, evidence, and rollback routes.
 - Package type at this checkpoint: documentation-only usability-review
-  selection; no usability finding is recorded, no executable/test path changed,
-  and no computational test ran.
-- Remote publication and upstream equality: selection parent `fae9bae` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before completing `REVIEW-UX-03I`.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: selection parent `8a85fb3` is
+  verified local/upstream/live-remote-equal. Publish and prove this completion
+  checkpoint equal before selecting `MIG-03I`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -245,11 +244,11 @@ and reviews
 →
 [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
-[`REVIEW-UX-03I`](../tasks/IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
+[`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
 are defined at published checkpoint `86419d3`. Architecture is complete at
-published checkpoint `403fdf5` and reliability at `fae9bae`; usability alone
-is selected in the commit containing this handoff. Migration, Step `05`, and
-every later owner/review card remain unselected.
+published checkpoint `403fdf5`, reliability at `fae9bae`, and usability
+completes in the commit containing this handoff. Migration, Step `05`, and every
+later owner/review card remain unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -802,11 +801,11 @@ and its reviews
 →
 [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
-[`REVIEW-UX-03I`](../tasks/IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
+[`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
 are defined at published checkpoint `86419d3`. Step `04` is the only eligible
 unmigrated live-DAG owner; architecture is complete at published checkpoint
-`403fdf5`, reliability at `fae9bae`, and usability alone is selected in the
-commit containing this handoff. Migration, Step `05`, and all later cards
-remain unselected. The
+`403fdf5`, reliability at `fae9bae`, and usability completes in the commit
+containing this handoff. Migration, Step `05`, and all later cards remain
+unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

@@ -153,13 +153,22 @@ it.
   run effects, Picard/Java/samtools/`TMPDIR` selection, partial/mixed/stale
   output preservation, focused tests, provenance, rollback, and the local-only
   evidence ceiling.
+- Usability review freezes those journeys as explicit-path surfaces. Root use
+  invokes the mode-`0644` producer through Bash, the mode-`0644` validator
+  through an explicit Python interpreter, and the mode-`0644` job through
+  `sbatch` after creating `logs/`; arbitrary-CWD use makes every executable,
+  input, output, metrics, jar, and temp path absolute. The docs must distinguish
+  producer no-write dry-run, validator stdout-only dry-run, and wrapper/log/
+  Bash-`3.2` effects; name the unguarded unset-`JAVA_HOME` abort; route isolated
+  retry only after preserving the exact triplet and ruling out downstream
+  readers; and state that Git rollback cannot recover runtime artifacts.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction, receipt, recovery marker, scheduler abstraction,
   duplicate-classification policy, manifest mutation, or public library API.
 
 ## Blocked by
 
-- [REVIEW-UX-03I](../IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03I](../COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

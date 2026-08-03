@@ -3243,3 +3243,55 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   findings. No usability-selection path, lifecycle, dependency, cycle, orphan,
   or anchor finding remains. This expected-only ceiling remains nonpassing, not
   green and not authority to alter inherited lifecycle state.
+
+## 2026-08-03T05:45:20-0400 — REVIEW-UX-03I completed
+
+- **Verified parent:** usability-selection checkpoint `8a85fb3` was clean,
+  tracked/untracked empty, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch before this read-only pass.
+- **High decision — final journeys are explicit path surfaces:** documentation
+  close must replace every active producer, validator, job, focused-test,
+  helper, artifact, and coverage path. Root use invokes the mode-`0644` final
+  producer through Bash and validator through an explicit interpreter;
+  arbitrary-CWD use makes producer/interpreter, inputs, outputs, metrics,
+  Picard, Java, samtools, and `TMPDIR` paths absolute. The job is submitted from
+  the checkout by its final mode-`0644` path after `logs/` exists. No alias,
+  wrapper, symlink, package, installed command, or ambient `PYTHONPATH` is
+  supported.
+- **High decision — dry-run effects and scheduler diagnostics stay distinct:**
+  producer dry-run creates no output/metrics directories; validator dry-run
+  emits five TSV rows but no report. The wrapper retains submit-CWD fallback,
+  exported `/tmp`, defaults, strict Picard/samtools loads, `PICARD`, Java
+  override/home/PATH resolution and version floor, PATH samtools, tolerated
+  lists, body-level logs, three-file postcheck, and Bash `3.2` defect. A truly
+  unset `JAVA_HOME` still aborts at the later unguarded diagnostic even with a
+  valid override; docs must name, not fix or bless, that defect.
+- **High decision — recovery never combines or silently retries a triplet:**
+  preserve BAM, BAI, metrics, canonical input pair, unrelated files, directories,
+  streams, scheduler logs/job identity, and tool paths/versions. Do not infer
+  one attempt from timestamps, delete residue, or reuse same names while a
+  downstream reader may exist. Only after preservation and reader exclusion is
+  an isolated output/metrics destination the safe diagnostic retry route. Git
+  rollback never restores runtime artifacts.
+- **Medium decision — status, helper ownership, and provenance need correction:**
+  producer success does not prove duplicate flags, cross-file correspondence,
+  or metadata binding; validator exit `0` may publish failed rows and exit `2`
+  publishes nothing new. The contract must stop calling the final home
+  unimplemented and route neutral validation-report and BAM-helper ownership,
+  not Step `00a`/`02`. Artifact evidence changes only implementation path/hash;
+  historical cluster observations stay historical and are not migration proof.
+- **Accepted findability and rollback:** one adjacent README and the exact
+  canonical documentation roster own commands, focused direct/central tests,
+  diagnostics, preservation, provenance, evidence ceiling, and rollback. Revert
+  docs first, atomic five-move/ten-update cutover second, then scheduler,
+  validator, and producer test slices in reverse. No compatibility surface is
+  warranted.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent, so independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the complete
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. No usability-review path, lifecycle, dependency, cycle,
+  orphan, or anchor finding remains. This expected-only ceiling remains
+  nonpassing, not green and not authority to alter inherited lifecycle state.
