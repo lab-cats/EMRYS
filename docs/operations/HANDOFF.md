@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03H` definition checkpoint
   `0cd872e6a46f0b6310caf857bde5cd7fb1e8e086` is clean, published, and
   local/upstream/live-remote-equal; completed `MIG-03G` close is `eafec29`.
-- Current package: selected
-  [`REVIEW-ARCH-03H`](../tasks/IN_PROGRESS/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-  for the Step `03` evidence-owner architecture pass. All later `03H` cards
-  remain unselected.
+- Current package: completed
+  [`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+  for the Step `03` evidence-owner architecture. Reliability, usability, and
+  migration remain unselected.
 - Package type at this checkpoint: documentation-only architecture-review
-  selection; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: definition parent `0cd872e` is
-  verified local/upstream/live-remote-equal. Publish and prove the selection
-  checkpoint equal before review completion.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: selection parent `12eca35` is
+  verified local/upstream/live-remote-equal. The commit containing this handoff
+  must be published and proved equal before reliability-review selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -183,9 +183,10 @@ biological evidence was created.
 After `eafec29` was published and proved equal, the refreshed live DAG exposed
 two eligible owners. Only first canonical identity
 `collect_RSeQC_paired_orientation_evidence` has `03H` cards, defined at
-published and equal checkpoint `0cd872e`. Only `REVIEW-ARCH-03H` is now
-selected. Step `04` and every later owner/review card remain uncreated and
-unselected.
+published and equal checkpoint `0cd872e`.
+[`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+is now complete. Step `04` and every later owner/review card remain uncreated
+and unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -722,13 +723,14 @@ published executable/test checkpoint `2f186dd`, and documentation/lifecycle
 close `eafec29`. The next migration card,
 [`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
 and its reviews
-[`REVIEW-ARCH-03H`](../tasks/IN_PROGRESS/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+[`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-REL-03H`](../tasks/TODO/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-UX-03H`](../tasks/TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 are defined at published checkpoint `0cd872e`; only `REVIEW-ARCH-03H` is
-selected. Reliability, usability, migration, Step `04`, and all later owner
+complete. Publish and prove this architecture-review checkpoint equal before
+selecting reliability; usability, migration, Step `04`, and all later owner
 cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

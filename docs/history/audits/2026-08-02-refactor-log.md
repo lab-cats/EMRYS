@@ -2031,6 +2031,10 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, harness, dependency, runtime, scheduler, production, scientific-review,
   or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. That expected-only result is not a green gate; no architecture-
+  review-caused finding remains.
 
 ## 2026-08-03T00:59:32-0400 — REVIEW-REL-03F selected
 
@@ -2716,3 +2720,36 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   The same campaign agent performs the pass, so independent authorship is not
   claimed. Executable/test mutation and computational, runtime, scheduler,
   production, scientific-review, and biological evidence remain out of scope.
+
+## 2026-08-03T04:01:14-0400 — REVIEW-ARCH-03H completed
+
+- **High finding — moved-test loading needed an explicit boundary:** freeze the
+  producer usage path, validator report-owner depth `parents[4]`, scheduler
+  child, shell-test root `SCRIPT_DIR/../../..`, and Python-test root
+  `parents[3]`. The moved Python test must exact-load the unchanged root roster
+  oracle by repository path; package creation or `PYTHONPATH` mutation is not
+  warranted. Any other moved-file edit reopens architecture review.
+- **High finding — exact cutover ceiling confirmed:** one atomic direct cutover
+  is fourteen logical files: five moves plus Make, artifact producer, artifact
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  coverage row, and literal Make fixture. Make adds exact final producer/job
+  syntax inputs and moves direct-test and both demo paths. A sixth move or tenth
+  update reopens architecture review.
+- **Medium finding — test and artifact ownership confirmed:** move the two
+  direct suites with the evidence owner. Central scheduler, public-CLI,
+  validation-roster, validation-report, artifact, coverage, and Make suites stay
+  independent cross-owner consumers. Change only Step `03` artifact producer
+  path and reviewed post-usage hash, with an exact existing-test assertion;
+  public evidence and artifact identities, schemas, contents, ordering,
+  scientific meaning, and consumers remain unchanged.
+- **Accepted architecture and rollback:** Step `03` is first deterministic
+  among two eligible owners, not uniquely eligible, and both direct
+  prerequisites are migrated. Every known executable caller fits the atomic
+  cutover, so no wrapper, duplicate, package, descriptor, schema, alias,
+  symlink, or second owner is warranted. Roll back documentation, then owner/
+  caller/coverage cutover, then old-path test baseline; keep Make/oracle and
+  artifact path/hash/assertion changes together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

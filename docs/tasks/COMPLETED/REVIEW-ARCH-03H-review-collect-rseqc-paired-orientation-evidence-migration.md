@@ -31,7 +31,7 @@ break the frozen topology.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03H](REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03H](../TODO/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -96,8 +96,35 @@ break the frozen topology.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal definition
-checkpoint `0cd872e6a46f0b6310caf857bde5cd7fb1e8e086`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `12eca35fa7be1d89ba16cca7e176b342b27089d4`.
+
+- **High — moved-test loading needed an explicit boundary:** the moved shell
+  test changes only repository depth and producer path. The moved Python test
+  changes repository depth and validator path and exact-loads the unchanged
+  root test-roster oracle by repository path. A direct import will not resolve
+  from the deeper owner directory; a package or `PYTHONPATH` change is rejected.
+- **High — exact cutover ceiling confirmed:** one atomic direct cutover contains
+  exactly five moves plus nine updates: Make, artifact producer, artifact
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  coverage row, and literal Make fixture. Both final shell assets become exact
+  static/smoke inputs, and both demo targets use the final job. A sixth move or
+  tenth update reopens this review.
+- **Medium — test and artifact ownership confirmed:** direct shell and validator
+  suites move with the evidence owner. Central scheduler, public-CLI,
+  validation-roster, validation-report, artifact, coverage, and Make suites
+  remain independent cross-owner consumers. Artifact evidence changes only the
+  Step `03` implementation path and reviewed producer hash; evidence ID,
+  artifact identities, schemas, contents, ordering, scientific meaning, and
+  consumers do not change.
+- **Accepted architecture and rollback:** Step `03` is first deterministic
+  among two eligible owners, not uniquely eligible. Both dependencies already
+  have final owners. Every known executable caller fits the atomic cutover, so
+  no wrapper, duplicate, package, descriptor, schema, alias, symlink, or second
+  owner is warranted. Roll back documentation, then owner/caller/coverage
+  cutover, then old-path test baseline; keep Make/oracle and artifact path/hash/
+  assertion changes together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

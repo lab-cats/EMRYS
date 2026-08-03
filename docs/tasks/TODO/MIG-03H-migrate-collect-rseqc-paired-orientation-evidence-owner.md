@@ -51,15 +51,29 @@ eligible owner remains uncreated and unselected.
   `f4337355c08f4e6a0601d33edb91f16e26e51bf0ea70f28674d27b38cf0872bb`
   and validator
   `152447fbd85c8122f360373273d8fe1b99aff3139a325d6c16d615ca414c596a`.
-- Proposed owner cutover is exactly five moves plus nine explicit updates:
+- Architecture-reviewed owner cutover is exactly five moves plus nine explicit
+  updates:
   `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
   `tests/test_validation_check_rosters.py`,
   `tests/libraries/test_validation_report.py`,
   `tests/baselines/python_coverage.json`, and
-  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. Dedicated
-  architecture review must confirm this ceiling before execution planning.
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. This is a
+  fourteen-logical-file ceiling. A sixth move or tenth update reopens
+  architecture review.
+- Freeze each moved file's path-only adjustments. The producer changes its
+  usage self-path to
+  `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh`;
+  the validator resolves the neutral report from `Path(__file__).parents[4]`;
+  the job delegates to the final producer path; and the moved shell test
+  resolves the repository root through `SCRIPT_DIR/../../..` and the final
+  producer. The moved Python test resolves `ROOT` through `parents[3]`, uses the
+  final validator, and exact-loads unchanged
+  `tests/validation_roster_expectations.py` by repository path within that same
+  test because its direct flat-test import will not resolve from the deeper
+  owner home. This creates no package, `PYTHONPATH`, new logical file, or
+  production change. No other moved-file edit is architecture-authorized.
 - Production bytes may change only for the producer usage self-path, validator
   exact neutral-report depth, and scheduler child path. The projected producer
   hash after only its usage-path change is
@@ -107,6 +121,14 @@ eligible owner remains uncreated and unselected.
   validator recipes plus both Step `03` demo-job paths; keep public CLI, SLURM,
   validation, artifact, and coverage maps explicit rather than introducing
   recursive discovery.
+- Direct shell and validator tests move with the evidence owner. Central public
+  CLI, scheduler, validation-roster, validation-report, artifact, coverage, and
+  Make suites remain independent cross-owner consumers; no test framework or
+  contract is duplicated under the owner.
+- All known executable callers are repository-owned and fit the same atomic
+  cutover, so no legacy wrapper, alias, symlink, or compatibility path is
+  warranted. Documentation paths are deferred to the separate close and do not
+  justify an executable compatibility owner.
 - Run only minimal old/final focused checks inside executable slices. Run the
   full applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, migration links, small
@@ -120,6 +142,10 @@ eligible owner remains uncreated and unselected.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction, receipt, recovery marker, scheduler abstraction,
   strandedness classifier, manifest mutation, or public library API.
+- Roll back the documentation close first, the final owner/caller/coverage
+  cutover second, and the old-path test-baseline checkpoint third before
+  returning to the frozen parent. Keep Make and its literal oracle together and
+  artifact producer path/hash plus its assertion together during rollback.
 
 ## Blocked by
 
@@ -229,6 +255,6 @@ eligible owner remains uncreated and unselected.
 ## Completion record
 
 Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03G` documentation checkpoint `eafec29`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no later owner is preloaded.
+`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H` is complete;
+reliability and usability reviews remain unselected in `TODO`. No executable/
+test path changed, no computational test ran, and no later owner is preloaded.
