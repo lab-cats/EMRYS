@@ -950,3 +950,15 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   Corrections affect planning documentation only. No executable/test mutation
   or computational, runtime, scheduler, production, scientific-review, or
   biological evidence was created.
+
+## 2026-08-02T20:53:11-0400 — MIG-03C selected
+
+- **Selection:** move only `MIG-03C` to `IN_PROGRESS` after usability-review
+  checkpoint `784073e` was clean, published, and local/upstream-equal. Its three
+  dedicated reviews are complete; no later migration card or review is created
+  or selected.
+- **Boundary and next action:** this status-only checkpoint authorizes task-
+  specific read-only execution planning. Publish and prove it upstream-equal
+  before running old-path computational baselines. No executable/test file,
+  production data, scheduler state, dependency, runtime artifact, scientific-
+  review state, or biological evidence changes here.

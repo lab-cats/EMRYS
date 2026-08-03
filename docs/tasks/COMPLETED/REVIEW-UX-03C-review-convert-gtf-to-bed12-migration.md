@@ -28,7 +28,7 @@ or an undiscoverable owner.
 
 ## Completion unblocks
 
-- [MIG-03C](../TODO/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03C](../IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 

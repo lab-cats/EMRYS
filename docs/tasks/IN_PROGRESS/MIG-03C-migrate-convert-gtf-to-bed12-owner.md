@@ -297,7 +297,9 @@ alias order.
 
 ## Completion record
 
-Not started. JIT-carded from clean published parent
-`1b82e4f04b926ac12e6306e40d03fee7840f3fa6`. Architecture, reliability, and
-usability reviews must close sequentially before selection. This definition is
-documentation-only; no executable or test path has moved.
+Selected for task-specific read-only execution planning after architecture,
+reliability, and usability reviews completed sequentially and their final
+checkpoint `784073e9f0897bbd880555fae1768c3ec3dc2e0d` was clean, published, and
+local/upstream-equal. The frozen rollback parent remains
+`1b82e4f04b926ac12e6306e40d03fee7840f3fa6`. No executable or test path has
+moved, and no computational baseline has run at this selection checkpoint.

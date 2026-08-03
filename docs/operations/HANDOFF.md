@@ -12,19 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: usability-selection checkpoint
-  `b01b6f199fcc6eaa726fd5564a794b79902ad6f2` is clean, published, and
-  local/upstream-equal.
-- Current package: completed read-only
-  [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md).
-  Its corrections are incorporated into `MIG-03C`, which remains unselected in
-  `TODO`.
+- Recorded package state: completed usability-review checkpoint
+  `784073e9f0897bbd880555fae1768c3ec3dc2e0d` is clean, published, and
+  local/upstream-equal with all review corrections incorporated.
+- Current package: selected
+  [`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md)
+  for task-specific read-only execution planning.
 - Package type at this checkpoint: behavior/architecture planning with
   documentation-only/non-consuming mutation; no executable or test file has
   changed.
-- Remote publication and upstream equality: usability-selection parent
-  `b01b6f1` is verified local/upstream-equal. The commit containing usability
-  findings must be published and proved equal before migration selection.
+- Remote publication and upstream equality: usability-review parent `784073e`
+  is verified local/upstream-equal. The migration-selection commit must be
+  published and proved equal before computational baselining.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -501,9 +500,9 @@ complete. The second JIT unit,
 [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md),
 is complete at executable/test checkpoint `4f9c863` and documentation close
 `1b82e4f`. The next JIT card is
-[`MIG-03C`](../tasks/TODO/MIG-03C-migrate-convert-gtf-to-bed12-owner.md); its
-three dedicated reviews are complete, and the review-completion checkpoint must
-be published and equal before migration selection.
+[`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md);
+its three dedicated reviews are complete and it alone is selected for task-
+specific read-only planning.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -514,12 +513,11 @@ and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. MIG-03C and
+are complete. MIG-03C is selected, while
 [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
 [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are complete. After the usability-findings checkpoint is clean, published, and
-equal, select only the migration for task-specific read-only planning. No later
-card is pre-created. The unsliced
+are complete. Publish and prove the migration-selection checkpoint equal before
+computational baselining; no later card is pre-created. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
