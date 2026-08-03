@@ -32,7 +32,7 @@ are bounded first.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03F](../TODO/REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Fully: reliability review requires an architecture-corrected helper, owner, caller, test, and rollback boundary.
+- [REVIEW-REL-03F](../IN_PROGRESS/REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Fully: reliability review requires an architecture-corrected helper, owner, caller, test, and rollback boundary.
 
 ## Prerequisites
 
