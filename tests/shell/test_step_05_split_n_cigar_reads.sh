@@ -105,6 +105,19 @@ assert_no_step05_recovery() {
     fi
 }
 
+assert_no_step05_attempt_marker() {
+    local dir="$1"
+
+    if [[ ! -d "$dir" ]]; then
+        return
+    fi
+
+    if find "$dir" \( -iname '*receipt*' -o -iname '*recovery*' \) -print | grep -q .; then
+        find "$dir" \( -iname '*receipt*' -o -iname '*recovery*' \) -print >&2
+        fail "Step 05 receipt or recovery marker remains in $dir"
+    fi
+}
+
 write_reference() {
     local fasta="$1"
 
@@ -250,6 +263,17 @@ case "\$subcommand" in
         if [[ "\${TMPDIR:-}" != "\$tmp_dir" ]]; then
             printf 'fake gatk TMPDIR did not match --tmp-dir\\n' >&2
             exit 64
+        fi
+        if [[ "\${FAKE_GATK_TERM_PARENT:-0}" == "1" ]]; then
+            kill -TERM "\$PPID"
+            kill -TERM "\$\$"
+        fi
+        if [[ "\${FAKE_MUTATE_ADMITTED_INPUTS:-0}" == "1" ]]; then
+            printf 'mutated input bam\\n' >> "\$input"
+            printf 'mutated input bai\\n' >> "\$input.bai"
+            printf 'mutated reference fasta\\n' >> "\$reference"
+            printf 'mutated reference fai\\n' >> "\$reference.fai"
+            printf 'mutated reference dict\\n' >> "\${reference%.*}.dict"
         fi
         {
             printf '@HD\\tVN:1.6\\tSO:%s\\n' "\${FAKE_SORT_ORDER:-coordinate}"
@@ -455,6 +479,22 @@ assert_contains "$missing_dict_output" "Run Step 00c before Step 05"
 assert_contains "$missing_dict_output" "does not create reference sidecars"
 assert_not_exists "$missing_dict_dir/genome.dict"
 
+printf 'Running missing explicit samtools admission check...\n'
+missing_samtools_dir="$tmp_dir/results/missing_samtools"
+missing_samtools_output="$tmp_dir/missing_samtools.out"
+assert_fails "$missing_samtools_output" bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$missing_samtools_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$tmp_dir/missing-explicit-samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$missing_samtools_output" "samtools does not exist"
+assert_not_exists "$missing_samtools_dir"
+assert_no_step05_attempt_marker "$missing_samtools_dir"
+
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/split_ncigar/ABE_EV_2"
@@ -527,6 +567,30 @@ assert_contains "$execute_output" "GATK SplitNCigarReads output details:"
 assert_not_exists "$execute_output_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$execute_output_dir"
 
+printf 'Running admitted input mutation success check...\n'
+mutation_input_bam="$fixture_dir/mutation/markdup/ABE_EV_2.markdup.bam"
+mutation_reference_fasta="$fixture_dir/mutation/ref/genome.fa"
+mutation_output_dir="$tmp_dir/results/mutation"
+write_input_bam_pair "$mutation_input_bam"
+write_reference "$mutation_reference_fasta"
+mkdir -p "$mutation_output_dir"
+printf 'unrelated mutation bytes' >"$mutation_output_dir/unrelated.txt"
+mutation_output="$tmp_dir/mutation.out"
+FAKE_MUTATE_ADMITTED_INPUTS=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=mutation001 \
+    run_step05 ABE_EV_2 "$mutation_input_bam" "$mutation_reference_fasta" "$mutation_output_dir" --execute >"$mutation_output"
+assert_file_equals "$mutation_input_bam" $'fake step04 markdup bam\nmutated input bam'
+assert_file_equals "$mutation_input_bam.bai" $'fake step04 markdup bai\nmutated input bai'
+assert_file_equals "$mutation_reference_fasta" $'>chrA\nACGTAC\n>chrB\nTTAA\nmutated reference fasta'
+assert_file_equals "$mutation_reference_fasta.fai" $'chrA\t6\t0\t0\t0\nchrB\t4\t0\t0\t0\nmutated reference fai'
+assert_file_equals "$(dirname "$mutation_reference_fasta")/genome.dict" $'@HD\tVN:1.6\n@SQ\tSN:chrA\tLN:6\n@SQ\tSN:chrB\tLN:4\nmutated reference dict'
+[[ -s "$mutation_output_dir/ABE_EV_2.split_ncigar.bam" ]] || fail "input-mutation run did not publish BAM"
+[[ -s "$mutation_output_dir/ABE_EV_2.split_ncigar.bam.bai" ]] || fail "input-mutation run did not publish BAI"
+assert_file_equals "$mutation_output_dir/unrelated.txt" "unrelated mutation bytes"
+assert_contains "$mutation_output" "GATK SplitNCigarReads output details:"
+assert_not_exists "$mutation_output_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$mutation_output_dir"
+assert_no_step05_attempt_marker "$mutation_output_dir"
+
 printf 'Running Java version failure check...\n'
 java_fail_output="$tmp_dir/java_fail.out"
 java_fail_dir="$tmp_dir/results/java_fail"
@@ -565,6 +629,33 @@ assert_contains "$lock_output" "run_token=other-job"
 assert_not_exists "$lock_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$lock_dir/ABE_EV_2.split_ncigar.bam.bai"
 assert_no_step05_scratch "$lock_dir"
+
+printf 'Running controlled TERM cleanup check...\n'
+signal_dir="$tmp_dir/results/signal"
+mkdir -p "$signal_dir"
+printf 'previous signal bam' >"$signal_dir/ABE_EV_2.split_ncigar.bam"
+printf 'previous signal bai' >"$signal_dir/ABE_EV_2.split_ncigar.bam.bai"
+printf 'unrelated signal bytes' >"$signal_dir/unrelated.txt"
+signal_output="$tmp_dir/signal.out"
+assert_exits 143 "$signal_output" env \
+    FAKE_GATK_TERM_PARENT=1 \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID=signal001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$signal_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_file_equals "$signal_dir/ABE_EV_2.split_ncigar.bam" "previous signal bam"
+assert_file_equals "$signal_dir/ABE_EV_2.split_ncigar.bam.bai" "previous signal bai"
+assert_file_equals "$signal_dir/unrelated.txt" "unrelated signal bytes"
+assert_not_exists "$signal_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$signal_dir"
+assert_no_step05_attempt_marker "$signal_dir"
 
 printf 'Running GATK failure cleanup check...\n'
 gatk_fail_output="$tmp_dir/gatk_fail.out"
