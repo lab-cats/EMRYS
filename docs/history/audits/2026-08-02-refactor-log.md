@@ -2519,3 +2519,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, harness, dependency, runtime, scheduler, production, scientific-review,
   or biological evidence changed or ran.
+
+## 2026-08-03T03:01:01-0400 — MIG-03G selected
+
+- **Selection:** move only `MIG-03G` to `IN_PROGRESS` after usability-review
+  checkpoint `7b86a5e` was clean, tracked/untracked empty, published, and equal
+  across local `HEAD`, configured upstream, and the live remote branch. All
+  three dedicated reviews are complete. Step `03`, Step `04`, and later owner
+  cards remain uncreated and unselected; no recovery/index lock or mutable-lane
+  overlap was found.
+- **Execution boundary:** selection changes documentation/lifecycle state only.
+  Task-specific planning must publish before the exact three-test old-path
+  baseline begins; final owner cutover and full card-boundary validation remain
+  later slices, followed by a separate documentation close. No executable/test
+  path, harness, fixture, coverage baseline, dependency, runtime tool,
+  scheduler, production input, scientific-review state, or biological evidence
+  changed or ran.

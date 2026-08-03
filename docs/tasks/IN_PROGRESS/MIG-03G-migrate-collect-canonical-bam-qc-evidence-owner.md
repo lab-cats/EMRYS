@@ -291,7 +291,10 @@ uncreated and unselected.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03F` documentation checkpoint `543eb8f`. All three dedicated reviews are
-complete; no executable/test path changed, no computational test ran, and no
-later owner is preloaded.
+Selected after all three dedicated reviews completed and their published
+usability-review checkpoint
+`7b86a5eae77585a8edc7cdf962918cf241851b4f` was clean, tracked/untracked
+empty, and equal across local `HEAD`, configured upstream, and the live remote
+branch. No executable/test path changed, no computational test ran, and no
+later owner is preloaded. Task-specific planning must publish before the
+three-test old-path baseline begins.
