@@ -66,6 +66,16 @@ the semantic DAG and live coupling, not historical alias order.
   Preserve all seven directives, caller-CWD behavior, module policy, defaults,
   `EXECUTE` handling, thread binding, mutable default fixtures, streams, exits,
   and lack of independent output validation.
+- Final public instructions must use complete commands, never bare path labels.
+  From repository root, document both direct and explicit-`bash` producer forms
+  with every required argument. From another CWD, require an absolute checkout
+  path for the producer plus explicit input/output paths. Document the validator
+  only through an explicit interpreter and exact final path.
+- The supported scheduler journey starts with `cd <checkout>` and submits the
+  exact final job path. State that `EXECUTE=0` is default but mutates placeholder
+  FASTQs/index under default bindings, `EXECUTE=1` refuses those bindings, the
+  five input/output overrides are required for real work, threads come from the
+  allocation, and the wrapper performs no independent output validation.
 - No legacy wrapper is required. Every named source-path caller is repository-
   owned and can cut over in one atomic executable/test commit; a wrapper would
   preserve accidental flat placement without an unmovable consumer.
@@ -82,6 +92,8 @@ the semantic DAG and live coupling, not historical alias order.
 - Once both shell assets leave the flat wildcards, add their exact final paths
   to `validation-static` and `smoke` shell-syntax commands and to the literal
   Make expansion oracle. Move the shell-test and validator-test recipe paths.
+  Publish a focused validation block that runs the moved shell suite, moved
+  validator suite, and independent central scheduler suite by exact path.
 - Existing public-CLI, SLURM, validator, loader, artifact, coverage, and Make
   inventories must retain explicit basename or semantic-ID path maps and exact
   one-owner equality. Do not introduce recursive runtime discovery, alias-
@@ -93,13 +105,16 @@ the semantic DAG and live coupling, not historical alias order.
   resolve paths through that map.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Its stale
   Step-00a publication dependency is repaired only in the documentation close.
-  Add one concise owner `README.md` only at that card boundary. Do not add the
-  target descriptor/schema, scheduler abstraction, new CLI, transaction, or
-  scientific alignment policy.
+  Add one concise owner `README.md` only at that card boundary. It must route
+  final commands, STAR-native and scheduler diagnostics, five expected outputs,
+  validation evidence, dry-run mutations, partial-output preservation,
+  rollback, implementation-provenance transition, and the local-only migration
+  evidence ceiling. Do not add the target descriptor/schema, scheduler
+  abstraction, new CLI, transaction, or scientific alignment policy.
 
 ## Blocked by
 
-- [REVIEW-UX-03D](../IN_PROGRESS/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03D](../COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -235,6 +250,12 @@ the semantic DAG and live coupling, not historical alias order.
   all five overrides plus `EXECUTE`, default dry-run fixture mutation, execute-
   with-default refusal, TMPDIR behavior, exact final child path, streams, child
   and module failures, and no independent output validation.
+- The runbook and owner README provide complete final producer direct/`bash`,
+  validator dry-run/execute, exact scheduler submission, and three-suite focused
+  validation commands. They distinguish repository-root and arbitrary-CWD use,
+  warn that producer and scheduler dry-runs mutate different paths, and name
+  diagnostics, partial-artifact preservation, rollback, and the next safe
+  validation action without claiming new STAR or cluster proof.
 - Artifact evidence records the final producer path and reviewed final source
   hash while public Step `01` artifact IDs, schemas, contents, ordering, and
   report consumers remain unchanged.

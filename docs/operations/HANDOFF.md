@@ -12,17 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: reliability-review completion checkpoint
-  `f11dc9f7209f9bd3aeedc07a8fd8e80e30543f8a` is clean, published, and
-  local/upstream-equal. Its selection checkpoint is `b961274`.
-- Current package: selection of
-  [`REVIEW-UX-03D`](../tasks/IN_PROGRESS/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-  for one read-only usability pass. `MIG-03D` remains unselected in `TODO`.
-- Package type at this checkpoint: lifecycle/status documentation only; no
-  executable or test file changed and no usability finding is claimed yet.
-- Remote publication and upstream equality: parent `f11dc9f` is verified
-  local/upstream-equal. The commit containing this review selection must be
-  published and proved equal before the usability pass begins.
+- Recorded package state: usability-review selection checkpoint
+  `be9e459512edabc1e5e4461885a2b43cc691bcbb` is clean, published, and
+  local/upstream-equal. Its reliability completion checkpoint is `f11dc9f`.
+- Current package: completed read-only
+  [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md).
+  All three dedicated reviews are complete; `MIG-03D` remains unselected in
+  `TODO`.
+- Package type at this checkpoint: usability-review documentation only; no
+  executable or test file changed and no computational evidence was created.
+- Remote publication and upstream equality: parent `be9e459` is verified
+  local/upstream-equal. The commit containing this review completion must be
+  published and proved equal before `MIG-03D` is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -537,9 +538,8 @@ are complete. MIG-03D and
 [`REVIEW-ARCH-03D`](../tasks/COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md),
 [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
-[`REVIEW-UX-03D`](../tasks/IN_PROGRESS/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are defined; architecture and reliability reviews are complete and only the
-usability review is selected. After this checkpoint is clean, published, and
-equal, perform only that read-only pass. Migration execution and any later owner
-remain unselected. The unsliced `PROGRAM-01` remainder and unrelated roadmap
-remain preserved and out of scope.
+[`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
+are complete. After this checkpoint is clean, published, and equal, select only
+`MIG-03D` for task-specific read-only planning and old-path baselines. No
+executable mutation or later owner is selected here. The unsliced `PROGRAM-01`
+remainder and unrelated roadmap remain preserved and out of scope.

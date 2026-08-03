@@ -85,5 +85,24 @@ or an undiscoverable owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+usability-selection checkpoint `be9e459` after reliability checkpoint
+`f11dc9f`. One high finding replaces the runbook's bare producer and job paths
+with complete final-path commands: repository-root direct and explicit-`bash`
+producer forms, arbitrary-CWD absolute paths, explicit-interpreter validator
+dry-run/execute, and `cd <checkout>` before exact `sbatch`. A second high finding
+requires both dry-run mutations to be explicit: the producer creates its output
+directory, while the scheduler's default bindings create placeholder FASTQs and
+an index; `EXECUTE=1` refuses those defaults, real submission supplies all five
+path/identity overrides, and threads come from the allocation. One medium
+finding adds both moved shell assets to Make static/smoke and the literal oracle,
+moves both direct test recipes, and publishes a focused block for the moved
+shell suite, moved validator suite, and central scheduler suite. Another medium
+finding requires an owner README and Step `01` troubleshooting route that name
+the five outputs, STAR-native/scheduler diagnostics, partial-artifact
+preservation, validation, recovery, rollback, provenance path/hash transition,
+and local-only migration evidence ceiling. Every known caller can cut over, so
+no compatibility alias is justified. The same campaign agent performed the
+pass; independent authorship is not claimed. No executable/test file changed
+and no computational, real STAR, runtime, scheduler, production, scientific-
+review, or biological evidence was created.

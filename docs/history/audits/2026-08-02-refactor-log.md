@@ -1268,3 +1268,38 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   performs the pass, so independent authorship is not claimed; executable/test
   mutation and computational, runtime, scheduler, production, scientific-
   review, and biological evidence remain out of scope.
+
+## 2026-08-02T22:56:00-0400 — REVIEW-UX-03D completed
+
+- **High finding — bare paths are not supported final commands:** replace the
+  Step `01` runbook's producer and job path labels with complete final-path
+  commands. Distinguish repository-root direct and explicit-`bash` producer use
+  from arbitrary-CWD absolute paths; keep the validator interpreter-only with
+  dry-run and execute examples. The producer command includes every required
+  argument and explicitly warns that its dry-run creates the output directory.
+- **High finding — scheduler submission hides mutable defaults:** document
+  `cd <checkout>` before exact final-path `sbatch` because the job delegates by
+  caller CWD. `EXECUTE=0` is default but the default bindings create placeholder
+  FASTQs and an index directory; `EXECUTE=1` refuses them. Real work supplies
+  `SAMPLE_ID`, `R1_FASTQ`, `R2_FASTQ`, `STAR_INDEX`, and `OUTPUT_DIR`, while
+  threads come from the allocation. Submission and mocked tests do not prove
+  scheduler or cluster parity.
+- **Medium finding — Make and focused commands must follow both shell moves:**
+  add the exact final producer and job to `validation-static`, `smoke`, and the
+  literal Make oracle after both leave flat wildcards. Move the direct shell and
+  validator test recipe paths. Publish one focused block covering those moved
+  suites plus the independent central scheduler module; do not replace exact
+  paths with discovery.
+- **Findability, diagnostics, and recovery:** add one concise owner README and
+  update the Step `01` troubleshooting route during the batched documentation
+  close. Name the BAM, three logs, splice-junction table, validation report,
+  STAR-native and scheduler diagnostics, direct-final partial-output risk,
+  preservation-first recovery, rollback, implementation provenance path/hash
+  transition, next safe validation action, and local-only migration evidence
+  ceiling. No alias, wrapper, package, descriptor, schema, transaction, or
+  scientific-policy change is needed.
+- **Independence and evidence boundary:** this separate committed-time pass was
+  performed by the same campaign agent; independent authorship is not claimed.
+  Corrections affect planning documentation only. No executable/test mutation
+  or computational, real STAR, runtime, scheduler, production, scientific-
+  review, or biological evidence was created.
