@@ -91,8 +91,39 @@ undiscoverable final owner.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal reliability-
-review checkpoint `56bac4242478e95376aa6721431d1339769b1ffc`. This is a
-read-only independent-in-time adversarial pass by the same campaign agent;
-independent authorship is not claimed. No executable/test mutation or
-computational test is part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `5a491ebfe3e2eb9a9d03b30cb199d85669f2d1ad`.
+
+- **High — stale commands need complete final journeys:** at documentation
+  close, replace every active Step `02b` producer, validator, job, and focused-
+  test path. The runbook must own repository-root direct and explicit-Bash
+  producer dry-run/execute forms, an absolute-path arbitrary-CWD form, and
+  explicit-interpreter validator dry-run/execute/repeat and absolute-CWD forms.
+  Every producer form includes sample, BAM, and output directory and states that
+  samtools is PATH-only and dry-run still creates the output directory.
+- **High — scheduler and recovery guidance can overpromise:** submission must
+  first change to the checkout and use the final mode-`0644` job path. Document
+  defaults plus `SAMPLE_ID`, `BAM`, `OUTPUT_DIR`, and `EXECUTE`; required
+  `SLURM_SUBMIT_DIR`; exported `/tmp`; strict samtools `1.19.2` load; tolerated
+  module listing; Bash `3.2` dry-run failure; and file-existence-only postchecks.
+  A successful wrapper can merely rediscover stale files. Recovery preserves
+  both evidence files, unrelated files, and job/producer streams; it authorizes
+  neither cleanup nor same-name retry before ownership and attempt provenance
+  are established.
+- **Medium — status and provenance need explicit ceilings:** producer exit `0`
+  does not imply validator pass; validator exit `0` can publish failed rows; and
+  Step `02b` remains a non-gating evidence branch. The owner README must route
+  direct and central tests, exact producer path/hash provenance, rollback, and
+  the fixture/mock local-only ceiling. No real samtools, scheduler, cluster,
+  production, scientific-review, or biological evidence is created by the
+  migration.
+- **Accepted findability and rollback:** one adjacent README plus the updated
+  contract, runbook, troubleshooting, inventory, baseline, ownership map,
+  architecture, roadmap, handoff, lifecycle links, and audit provide complete
+  navigation. Troubleshooting owns separate PATH and partial/mixed-attempt
+  routes. Roll back documentation first, executable cutover second, and the
+  old-path test baseline third; no alias or compatibility path is justified.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

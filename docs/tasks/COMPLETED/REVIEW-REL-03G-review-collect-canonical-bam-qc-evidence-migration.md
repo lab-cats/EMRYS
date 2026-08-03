@@ -30,7 +30,7 @@ approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03G](../IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03G](REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

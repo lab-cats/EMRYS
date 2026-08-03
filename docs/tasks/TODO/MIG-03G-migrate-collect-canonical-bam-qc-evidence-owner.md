@@ -155,6 +155,27 @@ uncreated and unselected.
   directory effects, mixed-attempt evidence preservation, non-gating evidence
   semantics, focused tests, implementation provenance, rollback, and the local-
   only evidence ceiling.
+- `RUNBOOK.md` owns the complete final commands: repository-root direct and
+  explicit-Bash producer dry-run/execute, absolute-path arbitrary-CWD producer,
+  explicit-interpreter validator dry-run/execute/repeat and absolute-CWD use,
+  final focused tests, and checkout-root `sbatch`. Every producer journey names
+  sample, BAM, and output directory; samtools remains PATH-only; dry-run still
+  creates the output directory.
+- Scheduler guidance must expose defaults plus `SAMPLE_ID`, `BAM`,
+  `OUTPUT_DIR`, and `EXECUTE`; required `SLURM_SUBMIT_DIR`; forced `/tmp`;
+  strict samtools `1.19.2` loading; tolerated module-list diagnostics; the Bash
+  `3.2` dry-run defect; and file-existence-only postchecks. Never equate wrapper
+  exit `0` with fresh evidence because two stale named files can satisfy it.
+- `TROUBLESHOOTING.md` owns separate final-path PATH and partial/mixed-attempt
+  routes. Preserve both evidence files, unrelated files, producer/job streams,
+  and exact path state. Do not authorize deletion, recombination, or same-name
+  retry until ownership and attempt provenance are established; there is no
+  lock, receipt, recovery token, or automatic rollback to inspect.
+- Documentation must state that producer exit `0` does not imply validator
+  pass, validator exit `0` can publish failed evidence rows, and Step `02b`
+  remains non-gating. Artifact provenance changes only to the reviewed final
+  producer path/hash; local fixture/mock parity is not real samtools, scheduler,
+  cluster, production, scientific-review, or biological evidence.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction, receipt, recovery marker, scheduler abstraction,
   manifest policy, or public library API.
@@ -165,7 +186,7 @@ uncreated and unselected.
 
 ## Blocked by
 
-- [REVIEW-UX-03G](../IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03G](../COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -271,6 +292,6 @@ uncreated and unselected.
 ## Completion record
 
 Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03F` documentation checkpoint `543eb8f`. `REVIEW-ARCH-03G` is complete;
-reliability and usability reviews remain unselected in `TODO`. No executable/
-test path changed, no computational test ran, and no later owner is preloaded.
+`MIG-03F` documentation checkpoint `543eb8f`. All three dedicated reviews are
+complete; no executable/test path changed, no computational test ran, and no
+later owner is preloaded.

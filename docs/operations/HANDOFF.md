@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03G` definition checkpoint
   `417a2a50084c7a10ee54d9ac045bbed72e4388d4` is clean, published, and
   local/upstream/live-remote-equal; completed `MIG-03F` close is `543eb8f`.
-- Current package: selected
-  [`REVIEW-UX-03G`](../tasks/IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
-  for the final Step `02b` public and maintainer continuity pass. Migration
+- Current package: completed
+  [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+  for the final Step `02b` public and maintainer continuity boundary. Migration
   remains unselected.
 - Package type at this checkpoint: documentation-only usability-review
-  selection; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: reliability-review parent
-  `56bac42` is verified local/upstream/live-remote-equal. The commit containing
-  this handoff must be published and proved equal before review completion.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: usability-selection parent
+  `5a491eb` is verified local/upstream/live-remote-equal. The commit containing
+  this handoff must be published and proved equal before migration selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -154,9 +154,9 @@ equal checkpoint `417a2a5`.
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
-[`REVIEW-UX-03G`](../tasks/IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
-alone is selected. No Step `03`, Step `04`, or later owner/review card is
-created or selected.
+[`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+is now complete. No Step `03`, Step `04`, or later owner/review card is created
+or selected.
 
 ## Active concurrent lanes
 
@@ -678,10 +678,10 @@ and its reviews
 →
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 →
-[`REVIEW-UX-03G`](../tasks/IN_PROGRESS/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+[`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 are defined at published checkpoint `417a2a5`; architecture and reliability are
-complete and only usability is selected. Publish and prove this usability-
-selection checkpoint equal before its read-only review completes; migration,
-Step `03`, Step `04`, and all later owner cards remain unselected. The
+complete and usability is now complete. Publish and prove this usability-review
+checkpoint equal before selecting migration; Step `03`, Step `04`, and all
+later owner cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

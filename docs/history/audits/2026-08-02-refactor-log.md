@@ -2487,3 +2487,35 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   independent authorship is not claimed. Executable/test mutation and
   computational, runtime, scheduler, production, scientific-review, and
   biological evidence remain out of scope.
+
+## 2026-08-03T02:57:02-0400 — REVIEW-UX-03G completed
+
+- **High finding — active commands need complete final journeys:** at
+  documentation close, replace every Step `02b` producer, validator, job, and
+  focused-test path. The runbook must own root direct/explicit-Bash and absolute-
+  CWD producer dry-run/execute forms plus explicit-interpreter validator dry-
+  run/execute/repeat and absolute-CWD forms. Every producer command names
+  sample, BAM, and output directory; samtools is PATH-only and dry-run creates
+  the output directory.
+- **High finding — scheduler and recovery guidance can overpromise:** submit
+  the final mode-`0644` job from the checkout and expose defaults plus
+  `SAMPLE_ID`, `BAM`, `OUTPUT_DIR`, `EXECUTE`, required `SLURM_SUBMIT_DIR`,
+  forced `/tmp`, strict samtools load, tolerated module list, Bash `3.2` dry-run,
+  and file-existence-only checks. Exit `0` can rediscover stale files. Preserve
+  evidence files, unrelated files, and producer/job streams; authorize neither
+  cleanup nor same-name retry before ownership and attempt provenance are known.
+- **Medium finding — status and provenance need explicit ceilings:** producer
+  exit `0` is not validator pass, validator exit `0` can publish failed rows,
+  and Step `02b` remains non-gating. The README routes direct/central tests,
+  final producer path/hash provenance, rollback, and the local fixture/mock
+  ceiling; no real samtools, scheduler, cluster, production, scientific-review,
+  or biological evidence is created.
+- **Accepted findability:** one adjacent README plus contract, runbook,
+  troubleshooting PATH and mixed-attempt routes, inventory, baseline, ownership
+  map, architecture, roadmap, handoff, lifecycle, and audit updates provide
+  complete navigation. Roll back docs, cutover, then old-path test baseline. No
+  alias, wrapper, package, or compatibility path is justified.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
