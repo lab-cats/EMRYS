@@ -350,3 +350,79 @@ planning, old-path baselines, neutral-helper preparation, native-owner cutover,
 card-boundary validation, and documentation/lifecycle close remain sequential
 bounded slices. No executable/test path changed and no computational test ran
 at selection; no downstream or later owner is preloaded.
+
+### Task-specific execution plan
+
+Selection checkpoint `679aba96c0402d7a90a9e41b12988d0085ad96d4` is the
+clean, published, local/upstream/live-remote-equal planning parent. Keep each
+slice independently revertible and publish/equality-check it before the next:
+
+1. capture the old helper result baseline without a tracked executable edit;
+2. capture the old native owner and direct-caller baseline without mutation;
+3. prepare the exact five-file neutral helper and run only its affected tests;
+4. apply the exact five moves plus ten caller/harness updates;
+5. run minimal moved-path checks, then the complete applicable gate once at the
+   assembled executable card boundary and commit the accepted executable state;
+6. batch canonical commands, migration links, and lifecycle repair in the
+   separate documentation close.
+
+The helper-preparation write set is exactly five tracked files. Add mode-`0644`
+`src/norad/libraries/bam_validation.py` and
+`tests/libraries/test_bam_validation.py`; modify only the flat Step `02`, `04`,
+and `05` validators. The private module contains exactly behavior-preserving
+`run_tool` and `parse_header`, then sets `_NORAD_BAM_VALIDATION_READY = True`.
+Each caller loads the exact neutral path under `_norad_bam_validation`, verifies
+the cached `__file__`, readiness, and both callables, preserves foreign cache
+objects and `sys.path`, deletes only a loader-owned partial after execution
+failure, and emits the reviewed path/type/reason exit-`2` diagnostic before any
+report publication. Step `02` uses its flat depth in this slice; Step `04` and
+`05` remain flat. Change no stage-specific checks, CLI, report behavior, direct
+test, artifact evidence, Make entry, coverage baseline, or documentation.
+
+The later owner cutover is exactly five moves plus ten updates. Move the
+producer, validator, and intentionally mode-`0644` job into
+`src/norad/stages/construct_canonical_BAM/`, and move only their direct shell
+and validator tests into `tests/stages/construct_canonical_BAM/`. Update only
+`Makefile`, `scripts/build_artifact_index.py`,
+`tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
+`tests/test_slurm_wrapper_contracts.py`,
+`tests/test_validation_check_rosters.py`,
+`tests/libraries/test_validation_report.py`,
+`tests/libraries/test_bam_validation.py`,
+`tests/baselines/python_coverage.json`, and
+`tests/fixtures/public_cli_contracts/make_target_expansions.json`. Change
+production bytes only for the producer help self-path, validator report/helper
+depths, helper call ownership, and job child path. Add no wrapper, duplicate,
+alias, package marker, descriptor, schema, receipt, recovery marker, or later-
+owner move.
+
+The old-helper baseline exact-loads the current Step `02` validator from a
+temporary non-repository harness and records `run_tool` argv/stdout/stderr/
+return code plus its missing-tool exception and `parse_header` valid, missing,
+multiple, and mismatched results. The separate old-native baseline runs shell
+syntax, the direct producer suite, the direct Step `02`/`04`/`05` validator
+suites, and only the Step `02` cases from the central scheduler matrix. Record
+counts, streams, exits, deterministic report bytes, modes, sizes, lines, hashes,
+and residue in this card and the dated audit log. Neither baseline updates
+tracked coverage, invokes real samtools, submits a job, touches production data,
+or installs/restores a dependency.
+
+At the helper boundary, run only the neutral suite and unchanged direct Step
+`02`/`04`/`05` validator suites. At the owner-move boundary, run shell syntax,
+the moved producer shell suite including the persistent restore-failure oracle,
+the moved validator suite, the neutral helper suite, and Step `02` scheduler
+cases. These are minimal slice checks, not the card gate. Then measure final
+coverage, update only the three validator rows plus new-helper row after
+inspection, and run the exact applicable complete local gate from `RUNBOOK.md`
+once. Preserve every characterized producer/validator/scheduler defect and
+report the documentation component truthfully if only the nine inherited
+`UNREFINED` location findings remain.
+
+The executable checkpoint includes both published executable slices and final
+card-boundary evidence. Documentation close follows in a new commit with the
+owner README, contract and canonical-owner updates, final runbook/
+troubleshooting commands, implementation path/hash, batched stale-link repair,
+this card's move to `COMPLETED`, all inbound lifecycle links, and the audit.
+Rollback reverts documentation first, then owner cutover, then helper
+preparation; the old-path evidence checkpoints remain immutable. Runtime
+artifacts are preserved during Git rollback.

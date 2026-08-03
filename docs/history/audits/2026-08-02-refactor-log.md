@@ -2139,3 +2139,35 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   computational test, dependency action, runtime tool, scheduler submission,
   production input, scientific review, or biological evidence occurred at
   selection.
+
+## 2026-08-03T01:15:58-0400 — MIG-03F task-specific plan frozen
+
+- **Git and slicing:** planning began from clean, published,
+  local/upstream/live-remote-equal selection `679aba9`, with no untracked file,
+  recovery marker, index lock, or mutable-lane collision. Publish two small old-
+  path evidence slices, an exact five-file helper checkpoint, and an exact five-
+  move/ten-update owner checkpoint. Run the complete local gate only at the
+  assembled executable card boundary; batch canonical documentation and links
+  into the separate close.
+- **Helper slice:** add only private mode-`0644`
+  `src/norad/libraries/bam_validation.py` and its neutral suite; modify only the
+  Step `02`, `04`, and `05` validators. Extract exactly `run_tool` and
+  `parse_header`; freeze private identity/readiness/API, exact path/cache
+  validation, foreign state and `sys.path` preservation, owned-partial cleanup,
+  and the reviewed exit-`2` diagnostic. Run only the neutral and three affected
+  direct validator suites at this boundary.
+- **Owner slice:** move only the producer, validator, mode-`0644` job, and two
+  direct tests. Update only Make, artifact producer/assertion, public CLI,
+  SLURM, validation roster, validation-report map, BAM-helper suite, coverage
+  baseline, and literal Make fixture. Production edits are confined to help,
+  two validator depths, and job delegation. The moved tests add the persistent
+  rollback-restore fault and non-repository-CWD repeat journey.
+- **Baseline, gate, and rollback:** first freeze old helper results, then native
+  shell/validator/scheduler behavior, without tracked executable mutation, real
+  samtools, submission, production data, or dependency action. Minimal checks
+  guard executable slice boundaries. Final coverage measurement and the exact
+  `RUNBOOK.md` complete gate run once before the executable commit. Rollback is
+  documentation, owner cutover, then helper preparation; runtime artifacts are
+  never deleted by Git rollback. No executable/test mutation or computational,
+  scheduler, production, scientific-review, or biological evidence changed or
+  ran in this planning slice.

@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `MIG-03E` documentation/lifecycle checkpoint
-  `fa79883683b37559dfa90880a3f04a978bbfb530` is clean, published, and
-  local/upstream/live-remote-equal; its executable checkpoint is `cd3b547`.
-- Current package: selected
+- Recorded package state: migration-selection checkpoint
+  `679aba96c0402d7a90a9e41b12988d0085ad96d4` is clean, published, and
+  local/upstream/live-remote-equal; three-review completion is `a8d760b`.
+- Current package: task-specific plan for
   [`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
-  for task-specific planning followed by bounded helper preparation, native
-  owner cutover, card-boundary validation, and documentation close.
-- Package type at this checkpoint: documentation-only migration selection; no
-  executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: three-review-complete parent
-  `a8d760b` is verified local/upstream/live-remote-equal. The commit containing
-  this handoff must be published and proved equal before task-specific planning.
+  with exact five-file helper and five-move/ten-update owner write sets, two
+  baseline slices, one executable card gate, and a separate documentation close.
+- Package type at this checkpoint: execution-planning documentation only; no
+  baseline ran and no executable/test file changed.
+- Remote publication and upstream equality: parent `679aba9` is verified
+  local/upstream/live-remote-equal. The commit containing this plan must be
+  published and proved equal before old-path helper evidence.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -580,8 +580,9 @@ is complete, and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 is complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. `MIG-03F` alone is selected; no downstream or later migration card
-is created.
+is complete. `MIG-03F` alone is selected; its exact write sets and baseline
+slices are frozen in the active card. No downstream or later migration card is
+created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -619,6 +620,7 @@ and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 are complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. Publish and prove this selection checkpoint equal before task-
-specific planning; downstream and later owners remain unselected. The unsliced
-`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
+is complete. The plan in the commit containing this paragraph must be published
+before old-path helper evidence; downstream and later owners remain unselected.
+The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
+out of scope.
