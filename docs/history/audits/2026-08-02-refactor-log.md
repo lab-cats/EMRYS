@@ -4374,6 +4374,23 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   result is nonpassing, not green. Publish and prove this definition clean/
   upstream/live-remote-equal before selecting architecture review alone.
 
+## 2026-08-03T11:26:56-0400 — REVIEW-ARCH-03M selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  definition checkpoint `546538cb74f3ea6edc1a48f5290c2d557f1d2675`, move only
+  `REVIEW-ARCH-03M` to `IN_PROGRESS` and repair its direct reliability-review
+  lifecycle link. `MIG-03M`, `REVIEW-REL-03M`, and `REVIEW-UX-03M` remain
+  unselected in `TODO`; Step `09` and every later owner/review card remain
+  uncreated.
+- **Boundary:** this checkpoint selects read-only architecture review but
+  records no finding. No executable, test, harness, configuration, dependency,
+  schema, fixture, report-template, runtime, scheduler, cluster, production,
+  scientific-review, provisional-policy, or biological state changes or runs.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete documentation gate belongs to architecture-
+  review completion.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection

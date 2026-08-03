@@ -35,7 +35,7 @@ R dependencies, duplicating schemas, or leaving a compatibility owner.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03M](REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03M](../TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -107,5 +107,8 @@ R dependencies, duplicating schemas, or leaving a compatibility owner.
 
 ## Completion record
 
-Not selected. Defined from clean, published MIG-03L close `4562ec3`; no
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal definition checkpoint
+`546538cb74f3ea6edc1a48f5290c2d557f1d2675`. No architecture finding is
+recorded yet, no later review or migration card is selected, and no
 executable/test file changed or ran.
