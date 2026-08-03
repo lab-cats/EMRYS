@@ -7,12 +7,12 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/post-mig-03m-completion`
+  `codex/mig-03n-rank-cohort-candidates-with-paired-cmh`
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen executable/test parent is published
-  recursive-Make fixture checkpoint `10be692`.
+  exact SHA from live Git. Its frozen parent is published repository-health
+  documentation close `57d7ea4f84d117dcca3586c9e5e4a32a6e69b63e`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -55,17 +55,23 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   are also published and equal. Lifecycle documentation close `776dad3` and
   recursive-Make fixture correction `10be692` are published and local/
   upstream/live-remote-equal.
-- Current package: repository-health campaign complete. Completed
-  [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-  remains the last selected card; no follow-on card is selected. `PROGRAM-01`
-  remains in progress as the frozen program owner.
-- Package type at this checkpoint: documentation-only health close after one
-  recoverable ignored-local-environment quarantine and one test-only fixture
-  correction. No dependency byte, workflow behavior, card status, migration
-  owner, cluster/production state, or default branch changed.
-- Remote publication and upstream equality: correction checkpoint `10be692`
-  is verified local/upstream/live-remote-equal; publish and verify this health
-  close from live Git. The configured `origin` is
+- Current package: unselected
+  [`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+  and sequential unselected
+  [`REVIEW-ARCH-03N`](../tasks/TODO/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+  → [`REVIEW-REL-03N`](../tasks/TODO/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+  → [`REVIEW-UX-03N`](../tasks/TODO/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md).
+  No card is selected. Step `09c` and every later migration/review card remain
+  uncreated.
+- Package type at this checkpoint: documentation-only MIG-03N and sequential-
+  review definition. It records the refreshed live-DAG choice, frozen paths/
+  modes/hashes, candidate move/caller ceiling, known transaction/R/validator/
+  scheduler risks, review questions, and rollback boundary without changing
+  or running an executable, test, configuration, dependency, schema, fixture,
+  report template, scheduler, cluster, or production surface.
+- Remote publication and upstream equality: definition parent `57d7ea4` is
+  verified local/upstream/live-remote-equal. Publish and prove this definition
+  checkpoint equal before selecting architecture review alone. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -577,6 +583,28 @@ later closed those findings. No dependency action, scheduler, cluster,
 production, scientific-review, variant/editing-site, or biological evidence
 occurred. No Step `09` or later card is created or preloaded.
 
+Published repository-health documentation close `57d7ea4` was then verified
+clean, tracked/untracked-empty, recovery/index-lock-free, and equal across
+local `HEAD`, configured upstream, and the live remote. The refreshed direct
+required-artifact DAG leaves exactly one eligible unmigrated owner:
+`rank_cohort_candidates_with_paired_CMH`. Its required Step `08` sites table
+and input receipt predecessor is migrated. Step `09c` remains blocked on the
+complete six-output Step `09` transaction.
+
+The checkpoint containing this handoff defines only unselected
+[`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+and sequential unselected
+[`REVIEW-ARCH-03N`](../tasks/TODO/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+→ [`REVIEW-REL-03N`](../tasks/TODO/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+→ [`REVIEW-UX-03N`](../tasks/TODO/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md).
+The evidence-backed cutover hypothesis is four native and seven owner-specific
+test/oracle/corpus moves plus ten integration owners. Architecture must prove
+that ceiling, final hashes/modes, private neutral-report and flat-Step-`09c`
+bridges, artifact/coverage ownership, and exact rollback before reliability
+review. No executable/test file changed or ran, no R dependency action
+occurred, no review finding is claimed, and no Step `09c` migration or later
+owner is created or preloaded.
+
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -1011,7 +1039,9 @@ Python-environment symlink remains removed.
 
 ## Immediate resume point
 
-No repository-health package or newly selected card is active. Standalone
+No migration card is selected. The repository-health package is complete, and
+this checkpoint defines only MIG-03N plus its three sequential review cards.
+Standalone
 guarded-R validation first failed only under sandboxed DNS, then passed with
 metadata access and reported a consistent R `4.6.1`/Bioconductor `3.23`
 project environment. The first exact full gate on
@@ -1028,9 +1058,10 @@ exact network-enabled rerun
 `0.120s`, shell `53.922s`, guarded R `163.293s`, report runtime `128.434s`,
 Python coverage `198.164s`, and overall parallel summary status `0` in
 `198.291s`. This is local repository evidence, not cluster, production,
-scientific-review, or biological-readiness proof. Do not select
-`CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the frozen program
-remainder without a new JIT selection.
+scientific-review, or biological-readiness proof. After this definition is
+published and proven equal, select only `REVIEW-ARCH-03N`; do not select
+`CONCURRENCY-03`, `TASK-EPIC-01`, MIG-03N execution, Step `09c`, or the frozen
+program remainder in that slice.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
@@ -1057,9 +1088,10 @@ and its architecture, reliability, and usability review cards are complete.
 closed before helper checkpoint `4726ad1` and executable/test checkpoint
 `13a2748`; documentation/lifecycle close is `543eb8f`. `MIG-03G` completed at
 baseline `0904faf`, executable/test checkpoint `2f186dd`, and documentation/
-lifecycle close `eafec29`. The commit containing this handoff defines only the
-completed MIG-03L documentation/lifecycle state. No successor migration or
-review card is selected or preloaded.
+lifecycle close `eafec29`. The commit containing this handoff defines only
+unselected MIG-03N and its sequential review chain from the clean published
+health close. No review or migration card is selected, and no Step `09c`
+migration or later owner is preloaded.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -1186,7 +1218,15 @@ published/equal `7740584`; reliability is published/equal at `fd00094`.
 Usability is published/equal at `a8e7f0a`. MIG-03M is complete through
 published test checkpoints `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
 `7a667ee`, published/equal executable checkpoint `5e51496`, and the
-documentation/lifecycle close containing this handoff. Step `09` and later
-cards remain uncreated and unselected.
+published documentation/lifecycle close `3f91fce`. Repository-health close
+`57d7ea4` then supported the live-DAG refresh that leaves only unselected
+[`MIG-03N`](../tasks/TODO/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+eligible, with sequential unselected
+[`REVIEW-ARCH-03N`](../tasks/TODO/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+→ [`REVIEW-REL-03N`](../tasks/TODO/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+→ [`REVIEW-UX-03N`](../tasks/TODO/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
+defined in the checkpoint containing this handoff. All four cards remain in
+`TODO`; select architecture review alone after publication/equality proof.
+Step `09c` migration and later owner cards remain uncreated and unselected.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

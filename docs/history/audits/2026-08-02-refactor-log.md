@@ -5592,3 +5592,89 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   CONCURRENCY-03, TASK-EPIC-01, program remainder, or default-branch action is
   selected. Publish this documentation close and stop with a clean upstream-
   equal branch.
+
+## 2026-08-03T16:28:55-0400 — MIG-03N and sequential reviews defined
+
+- **Verified parent and live-DAG choice:** repository-health documentation
+  close `57d7ea4f84d117dcca3586c9e5e4a32a6e69b63e` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, and equal across local
+  `HEAD`, configured upstream, and the live remote. A fresh branch
+  `codex/mig-03n-rank-cohort-candidates-with-paired-cmh` starts at that exact
+  checkpoint. The canonical direct required-artifact edge from migrated
+  `preprocess_and_annotate_cohort_candidates` leaves exactly one eligible
+  unmigrated owner: `rank_cohort_candidates_with_paired_CMH`. Step `09c`
+  remains blocked on the complete six-output Step `09` transaction. No Step
+  `09c` migration or later owner card is created.
+- **Frozen native boundary:** define only semantic analysis
+  `norad.analysis.rank_cohort_candidates_with_paired_CMH.v1`, historical alias
+  `09`, final source home
+  `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/`, and mirrored
+  test home `tests/analyses/rank_cohort_candidates_with_paired_CMH/`.
+  Candidate native moves are the mode-`0755` shell, mode-`0644` R program,
+  mode-`0644` validator, and mode-`0755` job. Their `127,393` bytes / `3,081`
+  lines and hashes
+  `87efee38a716270584827be87066891bfb0c12e0fd27959dfe3787aa0b2200f5`,
+  `8c422a2e93adb35f0fd48e554293ba01ec7497b04eeab27a20f750bd3016641c`,
+  `1b24184273a33b9e0389de12816b78ce396d408319556141dad6b66a0c5957ba`,
+  and `5d78f88bc0eed7e48821d7abaf7986c9f38c49ebbb7191b90729a08ea9124049`
+  are frozen for architecture review.
+- **Proposed test/cutover boundary:** candidate owner-specific protection moves
+  are the shell test, guarded-R runner, R semantic test, validator test,
+  independent-oracle test, independent Python oracle, and golden TSV corpus.
+  Their `125,573` bytes / `3,111` lines and seven exact hashes are frozen in
+  MIG-03N. The evidence-backed hypothesis is eleven moves plus ten integration
+  owners: Make, artifact mapping/evidence, public CLI, scheduler contracts,
+  validation roster, neutral report-loader matrix, guarded local-R oracle,
+  coverage baseline, and literal Make expansion. Architecture must prove all
+  counts, exact final roots/hashes/modes, and the absence of a hidden scaffold,
+  config, import, wrapper, duplicate, or shared test owner before execution.
+- **Dependency-direction decision:** keep the shell/R implementation siblings.
+  The moved validator continues to private exact-load neutral
+  `src/norad/libraries/validation_report.py` and must replace its ambient
+  sibling import of still-flat `scripts/step_09c_scientific_validation.py`
+  with a private exact-file bridge. Moved tests must preserve the root roster
+  and Step `09c` fixture/helper dependencies without root `sys.path` mutation.
+  No Step `09c` source, shared schema/helper, public API, package identity,
+  `PYTHONPATH`, descriptor, or schema moves with Step `09`.
+- **Statistical and R decisions:** preserve sample-manifest pairing authority,
+  at least two complete paired strata, target substitution, minimum depth,
+  continuity-corrected two-sided `stats::mantelhaen.test`, degenerate/failure
+  characterization, one global Benjamini-Hochberg family, strict thresholds,
+  statuses, all-sites order, significant subset, summaries, mutation spectrum,
+  and plots. Outputs remain CMH-ranked candidates, not validated RNA-editing
+  sites, completed scientific review, or biological readiness. No R dependency
+  is installed, restored, updated, or removed.
+- **Transaction and provenance risks:** preserve the analysis lock, run-token
+  scratch/backups, all-six-or-none predecessor, repeated manifest/Step `08`
+  input checks, temporary validation, six-file publication, summary-last
+  marker, final validation/hash checks, predecessor replacement, retained lock
+  and recovery evidence after incomplete restoration, cleanup, and traps.
+  Reliability review must characterize child/publication/restore failure,
+  summary visibility, input mutation, signals, concurrency, residue, sibling-
+  output binding, runtime/package identity, and attempt identity without
+  repairing or blessing them.
+- **Validator, oracle, scheduler, and coverage risks:** preserve seven exact
+  validator rows and exit-`0` failed evidence. Production validation derives BH
+  from reported p-values but does not independently recompute count-table
+  estimability, CMH statistic, p-value, or common odds ratio; its current
+  `status_semantics` text overstates recomputation. Keep that defect named and
+  separate from the independent count-derived Python oracle and guarded real-R
+  corpus. Preserve scheduler directives, submit-CWD fallback, module/R
+  diagnostics, `logs/` effects, explicit mode, delegation, six-file checks,
+  and possible stale-complete false success. Frozen validator coverage is
+  `154/158` lines and `34/40` branches with global floors `9601/11758` lines
+  and `3367/4784` branches.
+- **Bounded lifecycle decision:** create only unselected `MIG-03N` and
+  unselected sequential `REVIEW-ARCH-03N` → `REVIEW-REL-03N` →
+  `REVIEW-UX-03N`. No card is selected; no executable, test, harness,
+  configuration, dependency, schema, fixture, report-template, runtime,
+  scheduler, cluster, production, scientific-review, or future-owner file
+  changes or runs.
+- **Definition rollback and gate:** rollback removes only the four new cards,
+  the fresh branch reference, and their current roadmap/handoff/audit
+  references. `git diff --check` passes and the exact RUNBOOK
+  `make -s documentation-check` reports `PASS documentation structure (208
+  Markdown documents, 129 task cards, 6 Mermaid sources)`. No path, anchor,
+  lifecycle, dependency, cycle, orphan, schema, or diagram finding remains.
+  Publish and prove the definition clean/upstream/live-remote-equal before
+  selecting architecture review alone.
