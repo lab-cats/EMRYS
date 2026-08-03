@@ -83,15 +83,30 @@ target dependency direction, not historical alias order or raw file size.
   version validation, `EXECUTE` handling, logs, output checks, streams, exits,
   executable mode, and the Bash `3.2` empty-array dry-run defect.
 - Final public instructions must use complete commands. From repository root,
-  document direct and explicit-`bash` producer forms with the reference and
-  explicit tool paths. From another CWD, require an absolute checkout path and
-  explicit absolute reference/tool paths. Document the mode-`0644` validator
-  only through an explicit interpreter and exact final path.
+  document direct and explicit-`bash` producer forms with the reference plus
+  explicit samtools, GATK, and Java paths. Use `--execute` only after the
+  resolved dry-run command has been inspected. From another CWD, require an
+  absolute checkout path and explicit absolute reference/tool paths. State
+  that dry-run resolves tools but invokes no tool version or generation
+  command and creates no directory, lock, temporary path, FAI, or DICT.
+  Document the mode-`0644` validator only through an explicit interpreter and
+  exact final path.
 - The supported scheduler journey creates `logs/`, changes to the intended
-  checkout, and submits the exact final job. State that `EXECUTE=0` is default,
-  Bash `3.2` can stop before delegation, `EXECUTE=1` is required to publish,
-  current CSU tool defaults are site bindings, modules are tolerated, and the
-  wrapper checks only that the two declared output files are nonempty.
+  checkout, and submits the exact final job. The real-work form must export
+  `REFERENCE_FASTA`, `SAMTOOLS_BIN_OVERRIDE`, `GATK_BIN_OVERRIDE`,
+  `JAVA_BIN_OVERRIDE`, `TMPDIR`, and `EXECUTE=1`; omission of `EXECUTE` keeps
+  the default dry-run. State that Bash `3.2` can stop before delegation,
+  current CSU tool defaults are site bindings rather than portable defaults,
+  module setup is tolerated, and the wrapper checks only that the two declared
+  output files are nonempty.
+- At documentation close, replace the runbook's bare source-path labels,
+  missing Java override, missing scheduler log preflight and portable
+  overrides, and stale ad hoc/BAM evidence language. Route both Step `00c`
+  troubleshooting entries to final producer and validator commands. Distinguish
+  malformed or mismatched sidecars from the characterized FAI-only partial-
+  publication state; preserve producer context, scheduler stdout/stderr, the
+  lock state, run-token temporaries, and final FAI/DICT state before any
+  separately authorized rerun or cleanup decision.
 - No legacy wrapper is required. Every named source-path caller is repository-
   owned and can cut over in one atomic executable/test commit; a wrapper would
   preserve accidental flat placement without an unmovable consumer.
@@ -124,14 +139,18 @@ target dependency direction, not historical alias order or raw file size.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Add one
   concise owner `README.md` only at the documentation close. It must route
   final commands, FAI/DICT diagnostics, dry-run guarantees, partial-publication
-  preservation, scheduler caveats, validation evidence, rollback,
-  implementation-provenance transition, and the local-only migration evidence
-  ceiling. Do not add a descriptor/schema, scheduler abstraction, transaction,
-  receipt, recovery marker, or reference-provenance extraction.
+  preservation, scheduler stdout/stderr and residue inspection, separately
+  authorized recovery, validation evidence, rollback, implementation-
+  provenance transition, and the local-only migration evidence ceiling. It
+  must explain that exact reference-loader failure is a checkout-integrity
+  diagnostic, not a `PYTHONPATH` workaround, and that the public flat
+  `reference_provenance.py` owner remains separate. Do not add a descriptor/
+  schema, scheduler abstraction, transaction, receipt, recovery marker, or
+  reference-provenance extraction.
 
 ## Blocked by
 
-- [REVIEW-UX-03E](../IN_PROGRESS/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03E](../COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -290,10 +309,9 @@ target dependency direction, not historical alias order or raw file size.
 - Owner `README.md`; owner `CONTRACT.md`; `ARCHITECTURE.md` only where mixed
   placement changes; `FUNCTIONAL_OWNER_INVENTORY.md`; `TEST_BASELINE.md`;
   `DOCUMENTATION_OWNERSHIP.md`; `PIPELINE_PLAN.md`; `HANDOFF.md`; Step `00c`
-  commands in `RUNBOOK.md`; the Step `00c` troubleshooting route if final
-  inspection finds one; this card; review lifecycle links; and the dated
-  refactor log. Update diagrams only if final inspection finds a material DAG
-  or public-flow change.
+  commands in `RUNBOOK.md`; both Step `00c` routes in `TROUBLESHOOTING.md`;
+  this card; review lifecycle links; and the dated refactor log. Update diagrams
+  only if final inspection finds a material DAG or public-flow change.
 
 ## Escalation conditions
 

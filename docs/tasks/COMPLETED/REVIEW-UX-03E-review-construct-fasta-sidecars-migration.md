@@ -90,5 +90,38 @@ recovery guidance, or an undiscoverable owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `4750161` and the reliability-corrected migration card.
+
+One high finding requires replacement of the stale and incomplete Step `00c`
+runbook journey at the migration documentation close. Final instructions must
+use the final producer, validator, and job paths; include direct and explicit-
+`bash` producer forms plus explicit samtools, GATK, and Java paths; create
+`logs/` before submission; expose every portable scheduler override; and remove
+the stale ad hoc/BAM evidence text. Dry-run documentation must state that tool
+paths are resolved but no version or generation command runs and no directory,
+lock, temporary path, FAI, or DICT is created. The mode-`0644` validator remains
+an explicit-interpreter journey.
+
+A second high finding assigns an operator-safe route to the characterized
+FAI-only partial-publication state without fixing or blessing it. Both Step
+`00c` troubleshooting entries and the owner README must distinguish malformed
+or mismatched sidecars from an incomplete attempt that retained a nonempty FAI
+but no DICT. Preserve producer context, scheduler stdout/stderr, lock and run-
+token temporary state, and both final paths before deciding on cleanup. A
+separately authorized rerun may generate a missing DICT only after provenance
+and ownership inspection; the migration does not authorize deletion or call
+the retained FAI successful transaction output.
+
+Medium findings require the adjacent owner README to route root and arbitrary-
+CWD producer forms, validator dry-run/execute/repeat, scheduler defaults and
+overrides, focused owner tests plus the independent central scheduler suite,
+rollback in documentation-then-executable order, and the local-only evidence
+ceiling. It must explain that failure to exact-load the still-flat public
+`reference_provenance.py` owner is a checkout-integrity diagnostic, not a
+`PYTHONPATH` workaround or approval to move that owner.
+
+The same campaign agent performed this separate committed-time pass, so
+independent authorship is not claimed. No executable, test, dependency,
+runtime-tool, scheduler, production, scientific-review, or biological evidence
+changed or ran.

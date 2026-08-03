@@ -1678,3 +1678,38 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the pass, so independent authorship is not claimed. No executable/test
   mutation, computational test, dependency action, scheduler submission,
   runtime, production, scientific-review, or biological evidence is in scope.
+
+## 2026-08-02T23:53:33-0400 — REVIEW-UX-03E completed
+
+- **High finding — supported Step `00c` instructions are stale and
+  incomplete:** the current runbook still names flat producer, validator, and
+  job paths; omits the Java path from direct commands and portable scheduler
+  overrides from submission; does not require `logs/` before `sbatch`; and
+  repeats ad hoc/BAM evidence that is not the Step `00c` structured evidence
+  contract. The MIG-03E documentation close must replace that block with exact
+  final paths, direct and explicit-`bash` forms, explicit samtools/GATK/Java
+  paths, root and arbitrary-CWD distinctions, dry-run side-effect guarantees,
+  interpreter-only validation, scheduler preflight/default/override behavior,
+  and a local-only migration evidence ceiling.
+- **High finding — partial publication needs an operator-safe preservation
+  route:** both Step `00c` troubleshooting entries and the owner README must
+  distinguish malformed or mismatched sidecars from the characterized state
+  where final FAI publication succeeds and final DICT publication fails.
+  Preserve producer context, scheduler stdout/stderr, lock state, run-token
+  temporary paths, and final FAI/DICT state before cleanup or a separately
+  authorized rerun. The retained FAI remains evidence of an incomplete attempt,
+  not successful transaction output; this review neither fixes nor blesses the
+  defect.
+- **Medium findings — owner discovery and recovery boundaries:** the adjacent
+  README must route final producer, validator, scheduler, focused-test, central
+  scheduler-test, diagnostic, documentation-first rollback, and evidence
+  journeys. It must keep the public flat `reference_provenance.py` owner
+  separate and explain that a private exact-loader failure is a checkout-
+  integrity diagnostic, not a `PYTHONPATH` workaround or extraction approval.
+  Exact command and migration-link repairs remain batched for the migration
+  documentation close rather than expanding this review slice.
+- **Evidence boundary:** this was a read-only independent-in-time pass against
+  clean, published, local/upstream/live-remote-equal selection checkpoint
+  `4750161`, performed by the same campaign agent; independent authorship is
+  not claimed. No executable, test, dependency, runtime-tool, scheduler,
+  production, scientific-review, or biological evidence changed or ran.

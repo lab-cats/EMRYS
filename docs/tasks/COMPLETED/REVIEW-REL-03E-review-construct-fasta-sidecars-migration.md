@@ -30,7 +30,7 @@ Relocation must preserve and characterize every state without approving it.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03E](../IN_PROGRESS/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
+- [REVIEW-UX-03E](REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
 
 ## Prerequisites
 
