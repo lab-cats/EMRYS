@@ -407,3 +407,50 @@ oracles, inspect modes/hashes and exact legacy-path searches, then run the
 complete applicable local gate once at the executable card boundary. Commit and
 publish executable/test state before the separate batched documentation and
 lifecycle close.
+
+### Old-path fixture/mock baseline
+
+The baseline ran from clean, published, local/upstream/live-remote-equal plan
+checkpoint `d7c29ada72486855efda0f603badf6adfe658349`, with no tracked or
+untracked file, recovery marker, index lock, or mutable-lane collision. It is
+local fixture/mock evidence only:
+
+- `bash -n` passed for the producer and job. The unchanged direct shell suite
+  passed syntax, help, missing-argument/input, side-effect-free dry-run,
+  execute, valid reuse, one-missing generation, mismatch, Java-version, foreign-
+  lock, and stale-Step-`05` cases.
+- The exact seven-module affected Python surface passed `555` tests in
+  `61.43s`: direct validator, public CLI, central SLURM wrapper, validation
+  roster, shared validation-report, artifact adapter, and coverage policy.
+  This targeted run is not the complete card gate.
+- A temporary fake `mv` returned `73` only for final DICT publication after
+  final FAI publication. The producer propagated `73`, retained a nonempty
+  `26`-byte final FAI with SHA-256
+  `a5c1d01825f0a3c585991b63efa4d0cccb96007c8ece00d78eb4c72096c82068`,
+  left final DICT absent, removed its owned lock, and left no run-token
+  temporary path. The FAI is incomplete-attempt evidence, not a successful
+  transaction or cleanup authority.
+- From a temporary non-repository CWD, the validator returned `0` for dry-run,
+  first execute, and repeat execute. Dry-run wrote no report; both executions
+  produced five ordered all-pass rows and byte-identical `493`-byte reports
+  with SHA-256
+  `b8fb138d7c0087eb02e8b217d11ff1b9ecb4d326869f10a0db67272f2597a6d4`.
+  Stderr, invocation-CWD residue, publisher residue, and input changes were
+  empty.
+- Frozen rollback evidence is producer mode/bytes/lines/hash `0755` / `14,477`
+  / `515` /
+  `f041c55a0e9a3b36c14dcc9b929cfa56190e1c00d23a5a62fa72ac3669f0c478`;
+  validator `0644` / `5,945` / `161` /
+  `5aa6358412a56b5ddb8ce963a6d7431cfb07c1bbd9fbb37c8237fc3cbebe15fd`;
+  job `0755` / `4,532` / `151` /
+  `78b00abb7751e78264bae30d6b3dbfb7792ca5532850f192b1b2098cbf8e85d0`;
+  direct shell test `0755` / `12,698` / `414` /
+  `a477786e5f331c7ecc91ef338b89abc8cc209aae14c62dac2877f684e18fc7d5`;
+  and direct validator test `0644` / `2,545` / `73` /
+  `7ec48d7394268e451a2087a2892a6435a02f5216d08b692fce6a3cc2094c6d48`.
+- No tracked coverage measurement, real samtools/GATK/Java generation,
+  scheduler submission, dependency action, production input, cluster state,
+  scientific-review state, or biological evidence was created. The committed
+  floor remains validator `90/96` lines and `23/26` branches and global
+  `9343/11506` lines and `3281/4698` branches. Publish this documentation-only
+  checkpoint and prove live remote equality before the fourteen-file cutover.

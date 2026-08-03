@@ -1763,3 +1763,44 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   applicable local gate runs once after final-path cutover. No real samtools,
   GATK, or Java work, scheduler submission, dependency action, production data,
   scientific-review state, or biological evidence is authorized or created.
+
+## 2026-08-03T00:06:51-0400 — MIG-03E old-path baseline captured
+
+- **Published parent and clean scope:** the baseline began from clean,
+  published, local/upstream/live-remote-equal plan checkpoint `d7c29ad`, with no
+  tracked or untracked file, recovery marker, index lock, or mutable-lane
+  collision. Temporary probes were removed after execution; no tracked
+  executable/test file changed and no later owner was preloaded.
+- **Targeted suites:** syntax passed for the producer and executable job, and
+  the unchanged direct shell suite passed all existing cases. The exact seven-
+  module affected Python surface passed `555` tests in `61.43s`, covering the
+  direct validator, public CLI, central scheduler, validation roster, shared
+  report publisher, artifact adapter, and coverage policy. This is not the
+  complete card gate.
+- **Reviewed missing oracles:** a fake `mv` failed only final DICT publication
+  with exit `73` after final FAI publication. The producer propagated `73`,
+  retained a nonempty `26`-byte FAI with SHA-256
+  `a5c1d01825f0a3c585991b63efa4d0cccb96007c8ece00d78eb4c72096c82068`,
+  left DICT absent, removed the owned lock, and left no run-token temporary
+  path. From a non-repository CWD, validator dry-run, execute, and repeat all
+  returned `0`; execute/repeat produced the same five ordered pass rows and
+  byte-identical `493`-byte report with SHA-256
+  `b8fb138d7c0087eb02e8b217d11ff1b9ecb4d326869f10a0db67272f2597a6d4`,
+  empty stderr, unchanged inputs, and no invocation or publisher residue.
+- **Frozen rollback evidence:** producer mode/hash is `0755` /
+  `f041c55a0e9a3b36c14dcc9b929cfa56190e1c00d23a5a62fa72ac3669f0c478`;
+  validator `0644` /
+  `5aa6358412a56b5ddb8ce963a6d7431cfb07c1bbd9fbb37c8237fc3cbebe15fd`;
+  job `0755` /
+  `78b00abb7751e78264bae30d6b3dbfb7792ca5532850f192b1b2098cbf8e85d0`;
+  direct shell test `0755` /
+  `a477786e5f331c7ecc91ef338b89abc8cc209aae14c62dac2877f684e18fc7d5`;
+  and direct validator test `0644` /
+  `7ec48d7394268e451a2087a2892a6435a02f5216d08b692fce6a3cc2094c6d48`.
+- **Evidence ceiling and next action:** no tracked coverage run, real samtools/
+  GATK/Java generation, scheduler submission, dependency action, production
+  input, cluster state, scientific review, or biological evidence was created.
+  The committed floor remains validator `90/96` lines and `23/26` branches and
+  global `9343/11506` lines and `3281/4698` branches. Publish this baseline
+  checkpoint, prove live remote equality, then apply only the reviewed fourteen-
+  file atomic cutover.

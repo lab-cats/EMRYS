@@ -96,7 +96,7 @@ a completed production review.
 | Fourth JIT-tranche reviews | [`REVIEW-ARCH-03D`](../tasks/COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, Make, diagnostics, recovery, and provenance journeys, and independent authorship is not claimed |
 | Phase `03` fourth bounded package | Move `align_RNA_reads_with_STAR` through [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md) | complete in published executable/test checkpoint `12f9be5`; the final owner contains the path-adjusted producer, validator, and job plus mirrored direct tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
 | Fifth JIT-tranche reviews | [`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-REL-03E`](../tasks/COMPLETED/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, recovery, and evidence journeys, and independent authorship is not claimed |
-| Phase `03` fifth bounded package | Move `construct_FASTA_sidecars` through [`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md) | exact fourteen-file atomic cutover and targeted old-path baseline tranche are frozen; no computational baseline or executable/test mutation has begun and no later owner is preloaded |
+| Phase `03` fifth bounded package | Move `construct_FASTA_sidecars` through [`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md) | exact fourteen-file atomic cutover is frozen; targeted old-path baseline passed `555` Python tests, the direct shell suite, and both missing oracles; no executable/test mutation has begun and no later owner is preloaded |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -153,8 +153,9 @@ published and equal, `REVIEW-REL-03E` is complete at `522a4b4`, and usability
 selection checkpoint `4750161` and completion checkpoint `9ae3b12` are published
 and equal. All three `03E` reviews are complete, and migration selection
 checkpoint `177a912` is published and equal. The exact write set and old-path
-baseline tranche are frozen in the commit containing this paragraph; publish it
-before running those baselines. Any later owner remains unselected.
+baseline tranche are frozen in published and equal plan checkpoint `d7c29ad`.
+The targeted baseline is recorded in the commit containing this paragraph;
+publish it before the atomic cutover. Any later owner remains unselected.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 
