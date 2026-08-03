@@ -93,5 +93,37 @@ Relocation must preserve and characterize every state without approving it.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `e39f4b2` and architecture-corrected checkpoint `494889f`.
+
+One high finding assigns an exact oracle to the characterized two-output
+publication defect. A fake `mv` fails only the final DICT move after the final
+FAI move. Old and final paths must both return nonzero, retain a nonempty final
+FAI, leave the final DICT absent, remove the owned lock, and leave no run-token
+temporary files. The retained FAI is preserved evidence of an incomplete
+attempt, not a successful transaction or authority for cleanup.
+
+A second high finding makes the new private-loader fault matrix independent of
+the public reference-provenance tests. The moved validator suite exact-loads
+the validator in process and proves healthy reuse, missing owner, foreign wrong-
+path cache, correct-path incomplete API, and injected loader-owned execution
+failure. `ProvenanceError` must be an exception type and every parser callable;
+preexisting cache objects survive, only the loader-created partial is removed,
+`sys.path` is unchanged, and no report or invocation-CWD residue appears.
+
+One medium finding requires a single non-repository-CWD validator dry-run,
+execute, and repeat parity journey with exact five-row deterministic bytes,
+stable replacement, and unchanged inputs. Another retains the existing central
+scheduler matrix as sufficient for directives, executable mode, fallback submit
+CWD, tolerated modules, site defaults, Java selection/version, explicit mode,
+Bash `3.2`, child exit, output checks, and streams; duplicating that harness is
+not justified.
+
+Coverage moves only after final measurement. The old row supplies minimum
+covered counts `90/96` lines and `23/26` branches, not permission to hide new
+loader branches; the global `9343/11506` and `3281/4698` floor remains binding.
+Artifact IDs, schemas, reconciliation, public reference-provenance behavior,
+and Step `05` stay unchanged. The same campaign agent performed this separate
+committed-time pass, so independent authorship is not claimed. No executable,
+test, dependency, runtime, scheduler, production, scientific-review, or
+biological evidence changed or ran.

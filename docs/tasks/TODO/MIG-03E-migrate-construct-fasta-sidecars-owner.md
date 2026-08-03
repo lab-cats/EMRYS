@@ -55,9 +55,10 @@ target dependency direction, not historical alias order or raw file size.
   module identity as `_norad_reference_provenance`, resolve the exact repository
   path independently of caller CWD, and treat `ProvenanceError`, `parse_fasta`,
   `parse_fai`, and `parse_dict` as the complete required API. The bridge verifies
-  cached `__file__` plus that API, rejects wrong or partial cache state, removes
-  only its owned partial state on execution failure, preserves foreign state,
-  leaves `sys.path` unchanged, and fails before report publication with
+  cached `__file__`, requires `ProvenanceError` to be an exception type and the
+  three parser symbols to be callable, rejects wrong or partial cache state,
+  removes only its owned partial state on execution failure, preserves foreign
+  state, leaves `sys.path` unchanged, and fails before report publication with
   `ERROR: unable to load NORAD reference-provenance owner at <path>: <type>: <reason>`.
   No readiness sentinel may be added to the separate owner merely for this move.
 - Keep the public reference-provenance CLI, its direct test and coverage row,
@@ -69,6 +70,13 @@ target dependency direction, not historical alias order or raw file size.
   Freeze exit/stream parity, five ordered rows, deterministic bytes, stable
   repeat replacement, no invocation-directory residue, and fail-closed missing,
   wrong-cache, and partial-load states identified by review.
+- The owner-local validator suite must exact-load the validator in process to
+  exercise the private reference loader. Cover healthy exact-path reuse,
+  missing owner, foreign wrong-path cache, correct-path incomplete API, and an
+  injected owned execution failure; preserve every preexisting cache object,
+  remove only the loader-created partial, prove `sys.path` equality, and prove
+  no report or invocation-CWD residue. The public reference-provenance suite is
+  not reused as this expectation and remains unchanged.
 - Change the scheduler's delegated producer argument to the exact final path.
   Preserve all seven directives, fallback `SLURM_SUBMIT_DIR` behavior, strict
   mode, tolerated module calls, CSU defaults and overrides, Java discovery and
@@ -195,6 +203,12 @@ target dependency direction, not historical alias order or raw file size.
 - Extend old/final parity only where sequential reviews identify a missing
   named behavior. Measure coverage and run the complete applicable local gate
   once on final executable state at the card boundary.
+- Before cutover, use a temporary old-path fake-`mv` probe that fails only the
+  final DICT publication after the final FAI publication. Freeze a nonzero exit,
+  nonempty final FAI, absent final DICT, removed owned lock, and no run-token
+  temporary paths. Add the equivalent case to the moved shell suite and rerun
+  it on the final path; do not delete or relabel the retained FAI as successful
+  transaction output.
 - After executable state is fixed, batch the owner README, migration path/link
   repairs, topology/status/evidence owners, lifecycle links, and dated audit
   updates into one separate documentation-close commit.
@@ -251,6 +265,10 @@ target dependency direction, not historical alias order or raw file size.
   fallback submit CWD, tolerated samtools module policy, CSU defaults and
   overrides, Java selection/version, `EXECUTE`, logs, exact final child path,
   streams, failures, wrapper file checks, and the Bash `3.2` dry-run defect.
+- The partial-publication oracle proves the exact FAI-only residue and owned
+  cleanup state on both paths. The loader matrix independently proves healthy,
+  missing, wrong-path, incomplete-API, and owned-execution-failure outcomes;
+  neither oracle is replaced by the broad suite or treated as approval.
 - Artifact evidence records the final producer path and reviewed final source
   hash while public Step `00c` artifact IDs, schemas, contents, ordering,
   reconciliation, and report consumers remain unchanged.

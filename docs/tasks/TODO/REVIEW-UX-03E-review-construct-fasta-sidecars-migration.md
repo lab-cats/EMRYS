@@ -25,7 +25,7 @@ recovery guidance, or an undiscoverable owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03E](../IN_PROGRESS/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03E](../COMPLETED/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

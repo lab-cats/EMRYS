@@ -1630,3 +1630,36 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   authorship is not claimed. No executable/test mutation, computational test,
   runtime tool, scheduler submission, production input, dependency action,
   scientific review, or biological evidence is in scope.
+
+## 2026-08-02T23:46:12-0400 — REVIEW-REL-03E completed
+
+- **High finding — partial two-output publication lacked an exact oracle:** add
+  one controlled fake-`mv` case that fails only the final DICT publication
+  after the FAI reaches its final path. Run a temporary equivalent on the old
+  path and the tracked case on the final path. Both must return nonzero, retain
+  a nonempty final FAI, leave the final DICT absent, remove the owned lock, and
+  leave no run-token temporary paths. Preserve the FAI as incomplete-attempt
+  evidence; do not call the state successful or authorize deletion.
+- **High finding — private loader failures need owner-local independent tests:**
+  exact-load the validator in its moved direct suite and exercise healthy exact
+  reuse, missing owner, foreign wrong-path cache, correct-path incomplete API,
+  and injected loader-owned execution failure. Require `ProvenanceError` to be
+  an exception type and all three parsers callable. Preserve all preexisting
+  cache objects and `sys.path`, remove only the loader-created partial, publish
+  no report, and leave no invocation-CWD residue.
+- **Medium findings — parity and independent scheduler coverage:** add one full
+  non-repository-CWD validator dry-run/execute/repeat journey with five ordered
+  deterministic rows and stable replacement. Retain the central scheduler
+  matrix rather than duplicate it: it already owns directives, executable mode,
+  fallback submit CWD, tolerated modules, site defaults, Java choice/version,
+  mode handling, Bash `3.2`, child exit, output validation, and streams.
+- **Coverage and artifact decision:** final measurement must retain at least the
+  old validator's `90/96` covered lines and `23/26` covered branches while
+  exposing, not hiding, new loader branches. Global `9343/11506` line and
+  `3281/4698` branch counts remain the rollback floor. Only the implementation
+  producer path/hash changes; artifact identities, schemas, reconciliation,
+  public reference provenance, and Step `05` remain unchanged.
+- **Evidence boundary:** this was a read-only committed-time pass by the same
+  campaign agent; independent authorship is not claimed. No executable, test,
+  harness, dependency, runtime, scheduler, production, scientific-review, or
+  biological evidence changed or ran.
