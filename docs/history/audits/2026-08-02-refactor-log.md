@@ -2374,3 +2374,20 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   green gate or authority for unrelated lifecycle changes. Publish this
   definition checkpoint and prove live remote equality before selecting the
   architecture review.
+
+## 2026-08-03T02:38:01-0400 — REVIEW-ARCH-03G selected
+
+- **Selection:** move only `REVIEW-ARCH-03G` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after definition checkpoint `417a2a5` was
+  clean, tracked/untracked empty, published, and equal across local `HEAD`,
+  configured upstream, and the live remote branch. `REVIEW-REL-03G`,
+  `REVIEW-UX-03G`, and `MIG-03G` remain unselected in `TODO`; Step `03`, Step
+  `04`, and later owner cards remain uncreated.
+- **Review boundary:** this begins one read-only independent-in-time adversarial
+  pass over live-DAG non-uniqueness, evidence-owner placement, exact five-move/
+  nine-update ceiling, artifact path/hash continuity, direct and cross-owner
+  test placement, explicit caller maps, wrapper necessity, cutover atomicity,
+  coverage ownership, and reverse-order rollback. The same campaign agent
+  performs the pass, so independent authorship is not claimed. Executable/test
+  mutation and computational, runtime, scheduler, production, scientific-
+  review, and biological evidence remain out of scope.

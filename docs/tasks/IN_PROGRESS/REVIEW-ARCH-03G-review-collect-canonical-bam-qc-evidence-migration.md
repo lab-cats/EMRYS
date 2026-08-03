@@ -31,7 +31,7 @@ the frozen topology.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03G](REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03G](../TODO/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -96,5 +96,8 @@ the frozen topology.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal definition
+checkpoint `417a2a50084c7a10ee54d9ac045bbed72e4388d4`. This is a read-only
+independent-in-time adversarial pass by the same campaign agent; independent
+authorship is not claimed. No executable/test mutation or computational test is
+part of review selection.

@@ -26,7 +26,7 @@ approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03G](REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, artifact, and cutover boundary.
+- [REVIEW-ARCH-03G](../IN_PROGRESS/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, artifact, and cutover boundary.
 
 ## Completion unblocks
 
