@@ -94,7 +94,7 @@ a completed production review.
 | Third JIT-tranche reviews | [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md) → [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) → [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, Make, documentation, recovery, and provenance journeys, and independent authorship is not claimed |
 | Phase `03` third bounded package | Move `convert_GTF_to_BED12` through [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) | complete in published executable/test checkpoint `e19f281`; the final owner contains the byte-identical producer, path-adjusted validator and job, and mirrored tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
 | Fourth JIT-tranche reviews | [`REVIEW-ARCH-03D`](../tasks/COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, Make, diagnostics, recovery, and provenance journeys, and independent authorship is not claimed |
-| Phase `03` fourth bounded package | Move `align_RNA_reads_with_STAR` through [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md) | selected after three completed reviews for task-specific read-only planning and old-path baselines; executable/test mutation has not begun and no later unit is preloaded |
+| Phase `03` fourth bounded package | Move `align_RNA_reads_with_STAR` through [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md) | exact fourteen-file atomic cutover and targeted old-path baseline tranche are frozen from published selection `d6abed1`; no computational baseline or executable/test mutation has begun and no later unit is preloaded |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -140,12 +140,12 @@ campaign branch. `MIG-03C` documentation/lifecycle close `f9d6381` and the
 `8fd0063`, architecture completion checkpoint `cd3f3d4`, and reliability
 selection checkpoint `b961274` are published and upstream-equal.
 `REVIEW-ARCH-03D` and `REVIEW-REL-03D` are complete and usability selection
-checkpoint `be9e459` is published and upstream-equal. All three reviews are now
-complete; `MIG-03D` remains unselected. The user has separately authorized this
-branch to continue autonomously through only one dependency-valid, evidence-
-supported migration unit at a time: publish this `MIG-03D` selection checkpoint,
-then freeze the exact execution plan and old-path baseline before any executable
-or test mutation.
+checkpoint `be9e459`, usability completion checkpoint `7d31459`, and migration
+selection checkpoint `d6abed1` are published and upstream-equal. All three
+reviews are complete and `MIG-03D` is selected. Its exact fourteen-file cutover
+and targeted old-path baseline tranche are frozen in the commit containing this
+paragraph; publish it before running those baselines. No executable/test
+mutation or later-owner preload has begun.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 

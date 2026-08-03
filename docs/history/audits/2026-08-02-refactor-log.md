@@ -1316,3 +1316,38 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   equal before those baselines. No executable/test file, real STAR process,
   production data, scheduler state, dependency, runtime artifact, scientific-
   review state, or biological evidence changes here.
+
+## 2026-08-02T23:04:00-0400 — MIG-03D task-specific plan frozen
+
+- **Git and scope:** planning began from clean, published, upstream-equal
+  selection tip `d6abed12a303dabc9b8166c511969b87f8c41ff2`, with no recovery
+  marker, index lock, untracked file, or mutable lane overlap. The executable
+  commit is exactly fourteen tracked files: five moves and nine explicit caller/
+  harness updates. Documentation remains a separate later card-boundary close.
+- **Moves and production diff:** move the shell producer, Python validator, and
+  nonexecutable SLURM job to
+  `src/norad/stages/align_RNA_reads_with_STAR/`; move the direct shell and
+  validator tests to the mirrored test home. Production text changes only the
+  producer usage self-path, validator neutral-library owner depth, and job
+  delegated producer path. Preserve modes `0755`, `0644`, and `0644`; add no
+  legacy wrapper, duplicate, package marker, descriptor, or schema.
+- **Caller and test cutover:** update only `Makefile`, artifact producer mapping
+  and focused evidence assertion, explicit public-shell path inventory, SLURM
+  job/delegation map, validator roster, shared non-flat validator exact-loader,
+  coverage baseline row, and literal Make fixture. The two moved tests receive
+  only required root/path corrections plus the reviewed controlled child-
+  failure and arbitrary-CWD validator repeat cases. The central scheduler
+  adapter/default-placeholder test remains independent and in place.
+- **Baseline tranche:** after this planning checkpoint is published/equal, run
+  syntax for the two shell assets; the current direct shell suite; direct
+  validator, public CLI, SLURM, validation roster, shared publisher, artifact,
+  and coverage-policy modules; and two temporary untracked-free parity probes
+  for producer child-failure residue and validator non-repository-CWD dry-run/
+  execute/repeat behavior. Record modes, hashes, counts, streams/exits,
+  deterministic report hash, and residue without updating tracked coverage.
+- **Validation boundary:** these are targeted old-path fixture/mock baselines,
+  not the complete card gate. Run the complete applicable local gate once only
+  after the final-path cutover, before the executable checkpoint commit. Do not
+  run real STAR, submit a job, install/restore dependencies, touch production
+  data, or claim runtime, scheduler, production, scientific-review, or
+  biological evidence.

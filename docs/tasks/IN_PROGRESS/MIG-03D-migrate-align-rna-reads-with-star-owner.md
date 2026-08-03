@@ -296,5 +296,67 @@ the semantic DAG and live coupling, not historical alias order.
 Selected for task-specific read-only planning after published usability-review
 checkpoint `7d31459ceea981fa4a809afcdc1c8e24dd599874`. The frozen migration parent
 remains `f9d638199c6d60cbe81c992fde6a1090cb364302`; all three sequential reviews
-are complete. No old-path baseline has run and no executable or test path has
-moved at this selection checkpoint.
+are complete. Selection checkpoint
+`d6abed12a303dabc9b8166c511969b87f8c41ff2` is the clean, published,
+upstream-equal planning parent. No old-path baseline has run and no executable
+or test path has moved at this planning checkpoint.
+
+### Task-specific execution plan
+
+The executable/test write set is exactly fourteen tracked files:
+
+- move `scripts/step_01_star_align.sh`,
+  `scripts/validate_step_01_star_alignment.py`, and
+  `jobs/step_01_star_align.slurm` into
+  `src/norad/stages/align_RNA_reads_with_STAR/` without basename or mode
+  changes;
+- move `tests/shell/test_step_01_star_align.sh` and
+  `tests/test_validate_step_01_star_alignment.py` into
+  `tests/stages/align_RNA_reads_with_STAR/` without basename or mode changes;
+- update `Makefile`, `scripts/build_artifact_index.py`,
+  `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
+  `tests/test_slurm_wrapper_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/baselines/python_coverage.json`, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`; and
+- change no `.coveragerc`, coverage tool/policy test, package marker,
+  descriptor, schema, unrelated owner, or documentation file in the executable
+  commit.
+
+The production source diff is limited to three path strings: the producer help
+self-path becomes its final path; the validator neutral owner resolves from
+`Path(__file__).parents[2] / "libraries" / "validation_report.py"`; and the job
+delegates through `bash` to the exact final producer path. The producer retains
+mode `0755`, the validator mode `0644`, and the job its characterized mode
+`0644`. No wrapper or duplicate exists at the legacy paths.
+
+The moved shell test changes only its repository-root depth and producer path,
+then makes the fake STAR exit controllable and adds the reviewed child-failure/
+output-directory-residue case. The moved Python test changes only its
+repository-root depth and validator path, adds an optional subprocess CWD, and
+adds the reviewed non-repository-CWD dry-run/execute/repeat case. The central
+scheduler suite keeps its Step `01` adapter and placeholder test while updating
+the explicit job/delegation paths.
+
+Caller cutover remains literal. Public shell tests gain an explicit path map and
+helper parallel to the Python inventory; the validation-report matrix exact-
+loads declared non-flat validators with its existing helper; artifact evidence
+records the final producer path/hash; validator roster and coverage baseline
+rename the exact path; Make static/smoke name both final shell assets; and Make
+test recipes and their literal oracle name the moved direct tests.
+
+Old-path baseline is a targeted local fixture/mock tranche, not the full card
+gate. It runs syntax on the two shell assets; the existing direct shell suite;
+the direct validator, public CLI, SLURM, validation-roster, shared publisher,
+artifact-adapter, and coverage-policy test modules; plus temporary untracked-
+free probes for the controlled producer child failure and full arbitrary-CWD
+validator repeat journey. Record exact counts, streams/exits, deterministic
+report hash, residue, modes, and source hashes. Do not run real STAR, submit a
+job, restore/install a dependency, or update the coverage baseline.
+
+After that baseline checkpoint is published/equal, apply the fourteen-file
+atomic cutover, run the same focused probes at final paths, inspect the final
+producer/job diff and hash, then run the complete applicable local gate once at
+the `MIG-03D` executable card boundary. Documentation and lifecycle closure
+remain a separate batched commit after executable state is fixed.

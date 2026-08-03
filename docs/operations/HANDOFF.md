@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: usability-review completion checkpoint
-  `7d31459ceea981fa4a809afcdc1c8e24dd599874` is clean, published, and
-  local/upstream-equal. Its selection checkpoint is `be9e459`.
-- Current package: selection of
+- Recorded package state: migration-selection checkpoint
+  `d6abed12a303dabc9b8166c511969b87f8c41ff2` is clean, published, and
+  local/upstream-equal. Its usability completion checkpoint is `7d31459`.
+- Current package: task-specific plan for
   [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md)
-  for task-specific read-only planning and frozen old-path baselines. All three
-  dedicated reviews are complete.
-- Package type at this checkpoint: lifecycle/status documentation only; no
-  executable or test file changed and no baseline evidence is claimed yet.
-- Remote publication and upstream equality: parent `7d31459` is verified
-  local/upstream-equal. The commit containing this migration selection must be
-  published and proved equal before old-path computational baselines begin.
+  with an exact fourteen-file atomic write set and targeted old-path baseline
+  tranche. All three dedicated reviews are complete.
+- Package type at this checkpoint: execution planning documentation only; no
+  computational baseline ran and no executable or test file changed.
+- Remote publication and upstream equality: parent `d6abed1` is verified
+  local/upstream-equal. The commit containing this plan must be published and
+  proved equal before old-path computational baselines begin.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -519,6 +519,8 @@ is complete at published executable/test checkpoint `e19f281` and
 documentation/lifecycle close `f9d6381`. The next JIT card is
 [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md);
 its three reviews are complete and it is selected for task-specific planning.
+The exact atomic write set and old-path baseline tranche are now frozen in its
+card; baseline execution remains the next bounded slice.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -539,8 +541,8 @@ are complete. The MIG-03D reviews
 [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are complete. `MIG-03D` is selected only for task-specific read-only planning
-and old-path baselines. After this checkpoint is clean, published, and equal,
-freeze that evidence before any executable/test cutover. No later owner is
-selected. The unsliced `PROGRAM-01` remainder and unrelated roadmap remain
-preserved and out of scope.
+are complete. `MIG-03D` is selected and its exact task-specific plan is frozen.
+After this checkpoint is clean, published, and equal, run only the targeted
+old-path fixture/mock baselines; publish their evidence before the atomic
+executable/test cutover. No later owner is selected. The unsliced `PROGRAM-01`
+remainder and unrelated roadmap remain preserved and out of scope.
