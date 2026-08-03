@@ -80,6 +80,15 @@ assert_no_step08_scratch() {
     [[ -z "$found" ]] || fail "Step 08 scratch path remains: $found"
 }
 
+assert_no_step08_recovery_marker() {
+    local output_root="$1"
+    local qc_root="$2"
+    local found=""
+
+    found="$(find "$output_root" "$qc_root" -name '*step08*recovery*' -print -quit 2>/dev/null || true)"
+    [[ -z "$found" ]] || fail "Unexpected Step 08 recovery marker: $found"
+}
+
 fake_bin="$test_root/fake-bin"
 mkdir -p "$fake_bin"
 
@@ -344,6 +353,7 @@ destination=""
 for argument in "$@"; do
     destination="$argument"
 done
+source="${1:-}"
 
 if [[ -n "${FAKE_MV_LOG:-}" ]]; then
     printf '%q ' "$@" >>"$FAKE_MV_LOG"
@@ -363,6 +373,32 @@ if [[ -n "${FAKE_MV_CORRUPT_ONCE_DEST_MATCH:-}" &&
     /bin/mv "$@"
     : >"$FAKE_MV_CORRUPT_MARKER"
     printf 'corrupt after publication\n' >"$destination"
+    exit 0
+fi
+
+if [[ -n "${FAKE_MV_RECEIPT_FAIL_DEST_MATCH:-}" &&
+      "$destination" == *"$FAKE_MV_RECEIPT_FAIL_DEST_MATCH"* &&
+      ! -e "${FAKE_MV_RECEIPT_FAIL_MARKER:?}" ]]; then
+    : >"$FAKE_MV_RECEIPT_FAIL_MARKER"
+    exit 67
+fi
+
+if [[ -n "${FAKE_MV_SITES_RESTORE_FAIL_DEST_MATCH:-}" &&
+      -e "${FAKE_MV_RECEIPT_FAIL_MARKER:?}" &&
+      "$source" == *'.previous.sites.tsv' &&
+      "$destination" == *"$FAKE_MV_SITES_RESTORE_FAIL_DEST_MATCH"* &&
+      ! -e "${FAKE_MV_SITES_RESTORE_FAIL_MARKER:?}" ]]; then
+    : >"$FAKE_MV_SITES_RESTORE_FAIL_MARKER"
+    exit 68
+fi
+
+if [[ -n "${FAKE_MV_BARRIER_DEST_MATCH:-}" &&
+      "$destination" == *"$FAKE_MV_BARRIER_DEST_MATCH"* ]]; then
+    /bin/mv "$@"
+    : >"${FAKE_MV_BARRIER_MARKER:?}"
+    while [[ ! -e "${FAKE_MV_BARRIER_RELEASE:?}" ]]; do
+        sleep 0.01
+    done
     exit 0
 fi
 
@@ -775,6 +811,63 @@ assert_contains "$publish_move_1" "step08_sites.tsv"
 assert_contains "$publish_move_2" "step08_summary.tsv"
 assert_contains "$publish_move_3" "step08_inputs.tsv"
 
+printf 'Running receipt-visible pre-commit transaction barrier check...\n'
+barrier_fixture="$test_root/receipt-barrier"
+barrier_marker="$test_root/receipt-barrier.marker"
+barrier_release="$test_root/receipt-barrier.release"
+create_fixture "$barrier_fixture" cohort_barrier
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=barrier08 \
+    FAKE_MV_BARRIER_DEST_MATCH="cohort_barrier.step08_inputs.tsv" \
+    FAKE_MV_BARRIER_MARKER="$barrier_marker" \
+    FAKE_MV_BARRIER_RELEASE="$barrier_release" \
+    bash "$script" \
+    --cohort-id cohort_barrier \
+    --sample-manifest "$barrier_fixture/samples.tsv" \
+    --partition-manifest "$barrier_fixture/partitions.tsv" \
+    --step07-root "$barrier_fixture/step07" \
+    --annotation-gtf "$barrier_fixture/annotation.gtf" \
+    --output-root "$barrier_fixture/output" \
+    --qc-root "$barrier_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$barrier_fixture/step08_impl.R" \
+    --execute >"$test_root/receipt-barrier.out" \
+    2>"$test_root/receipt-barrier.err" &
+barrier_pid=$!
+barrier_seen=false
+for _ in {1..500}; do
+    if [[ -e "$barrier_marker" ]]; then
+        barrier_seen=true
+        break
+    fi
+    if ! kill -0 "$barrier_pid" 2>/dev/null; then
+        break
+    fi
+    sleep 0.01
+done
+if [[ "$barrier_seen" != true ]]; then
+    : >"$barrier_release"
+    wait "$barrier_pid" 2>/dev/null || true
+    fail "Receipt-publication barrier was not reached"
+fi
+barrier_state_error=""
+[[ -s "$barrier_fixture/output/cohort_barrier/cohort_barrier.step08_sites.tsv" ]] ||
+    barrier_state_error="sites table was not visible at receipt barrier"
+[[ -s "$barrier_fixture/qc/cohort_barrier.step08_summary.tsv" ]] ||
+    barrier_state_error="summary was not visible at receipt barrier"
+[[ -s "$barrier_fixture/output/cohort_barrier/cohort_barrier.step08_inputs.tsv" ]] ||
+    barrier_state_error="input receipt was not visible at receipt barrier"
+[[ -d "$barrier_fixture/output/cohort_barrier/.cohort_barrier.step08.lock" ]] ||
+    barrier_state_error="cohort lock was not held at receipt barrier"
+: >"$barrier_release"
+wait "$barrier_pid" || fail "Barrier-controlled Step 08 execution failed"
+[[ -z "$barrier_state_error" ]] || fail "$barrier_state_error"
+assert_contains "$test_root/receipt-barrier.out" "Step 08 execute complete"
+assert_not_exists \
+    "$barrier_fixture/output/cohort_barrier/.cohort_barrier.step08.lock"
+assert_no_step08_scratch "$barrier_fixture/output" "$barrier_fixture/qc"
+
 printf 'Running header-only candidate-table success check...\n'
 header_fixture="$test_root/header-only"
 create_fixture "$header_fixture" cohort_header
@@ -1061,6 +1154,88 @@ assert_file_equals "$rollback_dir/cohort_rollback.step08_inputs.tsv" "previous i
 assert_file_equals "$rollback_qc/cohort_rollback.step08_summary.tsv" "previous summary"
 assert_not_exists "$rollback_dir/.cohort_rollback.step08.lock"
 assert_no_step08_scratch "$rollback_fixture/output" "$rollback_fixture/qc"
+
+printf 'Running receipt-publication plus sites-restoration failure check...\n'
+restore_failure_fixture="$test_root/restore-failure"
+create_fixture "$restore_failure_fixture" cohort_restore_failure
+restore_failure_dir="$restore_failure_fixture/output/cohort_restore_failure"
+restore_failure_qc="$restore_failure_fixture/qc"
+restore_failure_token=restorefail08
+restore_failure_receipt_marker="$test_root/restore-failure-receipt.marker"
+restore_failure_sites_marker="$test_root/restore-failure-sites.marker"
+mkdir -p "$restore_failure_dir" "$restore_failure_qc"
+printf 'previous sites\n' >"$restore_failure_dir/cohort_restore_failure.step08_sites.tsv"
+printf 'previous inputs\n' >"$restore_failure_dir/cohort_restore_failure.step08_inputs.tsv"
+printf 'previous summary\n' >"$restore_failure_qc/cohort_restore_failure.step08_summary.tsv"
+printf 'unrelated output bytes\n' >"$restore_failure_fixture/output/unrelated.txt"
+printf 'unrelated QC bytes\n' >"$restore_failure_qc/unrelated.txt"
+set +e
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID="$restore_failure_token" \
+    FAKE_MV_RECEIPT_FAIL_DEST_MATCH="cohort_restore_failure.step08_inputs.tsv" \
+    FAKE_MV_RECEIPT_FAIL_MARKER="$restore_failure_receipt_marker" \
+    FAKE_MV_SITES_RESTORE_FAIL_DEST_MATCH="cohort_restore_failure.step08_sites.tsv" \
+    FAKE_MV_SITES_RESTORE_FAIL_MARKER="$restore_failure_sites_marker" \
+    bash "$script" \
+    --cohort-id cohort_restore_failure \
+    --sample-manifest "$restore_failure_fixture/samples.tsv" \
+    --partition-manifest "$restore_failure_fixture/partitions.tsv" \
+    --step07-root "$restore_failure_fixture/step07" \
+    --annotation-gtf "$restore_failure_fixture/annotation.gtf" \
+    --output-root "$restore_failure_fixture/output" \
+    --qc-root "$restore_failure_qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$restore_failure_fixture/step08_impl.R" \
+    --execute >"$test_root/restore-failure.out" \
+    2>"$test_root/restore-failure.err"
+restore_failure_status=$?
+set -e
+[[ "$restore_failure_status" -eq 67 ]] ||
+    fail "Expected receipt publication exit 67; got $restore_failure_status"
+[[ -e "$restore_failure_receipt_marker" ]] ||
+    fail "Receipt-publication failure marker was not created"
+[[ -e "$restore_failure_sites_marker" ]] ||
+    fail "Sites-restoration failure marker was not created"
+assert_not_exists \
+    "$restore_failure_dir/cohort_restore_failure.step08_sites.tsv"
+assert_file_equals \
+    "$restore_failure_dir/cohort_restore_failure.step08_inputs.tsv" \
+    "previous inputs"
+assert_file_equals \
+    "$restore_failure_qc/cohort_restore_failure.step08_summary.tsv" \
+    "previous summary"
+restore_failure_sites_backup="$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.previous.sites.tsv"
+assert_file_equals "$restore_failure_sites_backup" "previous sites"
+assert_not_exists \
+    "$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.previous.inputs.tsv"
+assert_not_exists \
+    "$restore_failure_qc/.cohort_restore_failure.step08.$restore_failure_token.previous.summary.tsv"
+assert_not_exists \
+    "$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.sites.tmp.tsv"
+assert_not_exists \
+    "$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.inputs.tmp.tsv"
+assert_not_exists \
+    "$restore_failure_qc/.cohort_restore_failure.step08.$restore_failure_token.summary.tmp.tsv"
+assert_not_exists \
+    "$restore_failure_dir/.cohort_restore_failure.step08.lock"
+assert_file_equals \
+    "$restore_failure_fixture/output/unrelated.txt" \
+    "unrelated output bytes"
+assert_file_equals \
+    "$restore_failure_qc/unrelated.txt" \
+    "unrelated QC bytes"
+unexpected_restore_scratch="$(
+    find "$restore_failure_fixture/output" "$restore_failure_qc" \
+        -name '.*.step08.*' \
+        ! -path "$restore_failure_sites_backup" \
+        -print -quit
+)"
+[[ -z "$unexpected_restore_scratch" ]] ||
+    fail "Unexpected Step 08 residue after restoration failure: $unexpected_restore_scratch"
+assert_no_step08_recovery_marker \
+    "$restore_failure_fixture/output" \
+    "$restore_failure_qc"
 
 printf 'Running successful replacement of a previous complete output set...\n'
 replace_fixture="$test_root/replace"
