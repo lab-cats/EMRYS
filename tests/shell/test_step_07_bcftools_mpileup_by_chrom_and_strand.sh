@@ -110,6 +110,13 @@ case "$command_name" in
               "${FAKE_BCFTOOLS_MUTATE_ORIENTATION:-FWD_like}" == "$orientation" ]]; then
             printf '# controlled mutation\n' >>"$FAKE_BCFTOOLS_MUTATE_PATH"
         fi
+        if [[ -n "${FAKE_BCFTOOLS_BARRIER_READY:-}" &&
+              "$orientation" == "FWD_like" ]]; then
+            printf 'ready\n' >"$FAKE_BCFTOOLS_BARRIER_READY"
+            while [[ ! -e "${FAKE_BCFTOOLS_BARRIER_RELEASE:-}" ]]; do
+                sleep 0.02
+            done
+        fi
         printf 'ORIENTATION=%s\n' "$orientation"
         ;;
     filter)
@@ -218,6 +225,12 @@ fi
 if [[ "${FAKE_MV_FAIL_RECEIPT_PUBLICATION:-0}" == "1" &&
       "$source_path" == *.outputs.tmp.tsv ]]; then
     exit 67
+fi
+if [[ "${FAKE_MV_SEND_TERM_AFTER_RECEIPT:-0}" == "1" &&
+      "$source_path" == *.outputs.tmp.tsv ]]; then
+    "$REAL_MV" "$@"
+    kill -TERM "$PPID"
+    exit 0
 fi
 if [[ "${FAKE_MV_FAIL_FWD_RESTORE:-0}" == "1" &&
       "$source_path" == *.previous.FWD_like.vcf ]]; then
@@ -673,6 +686,64 @@ for manifest_kind in sample partition; do
         '.cohort_mutation.1.step07.*'
 done
 
+for stability_input in bam bai fasta fai regions_file; do
+    stability_fixture="$test_root/stability-$stability_input"
+    cp -R "$fixture" "$stability_fixture"
+    rm -rf "$stability_fixture/output"
+    printf '1\t0\t4\n' >"$stability_fixture/target.bed"
+    printf 'partition_id\tselector_type\tselector_value\ntarget\tregions_file\ttarget.bed\n' \
+        >"$stability_fixture/partitions.tsv"
+    case "$stability_input" in
+        bam)
+            stability_mutation_path="$stability_fixture/orientation/sample_A/sample_A.FWD_like.bam"
+            ;;
+        bai)
+            stability_mutation_path="$stability_fixture/orientation/sample_A/sample_A.FWD_like.bam.bai"
+            ;;
+        fasta) stability_mutation_path="$stability_fixture/reference.fa" ;;
+        fai) stability_mutation_path="$stability_fixture/reference.fa.fai" ;;
+        regions_file) stability_mutation_path="$stability_fixture/target.bed" ;;
+        *) fail "Unhandled stability input: $stability_input" ;;
+    esac
+    stability_args=(
+        --cohort-id cohort_stability
+        --sample-manifest "$stability_fixture/samples.tsv"
+        --partition-manifest "$stability_fixture/partitions.tsv"
+        --partition-id target
+        --orientation-root "$stability_fixture/orientation"
+        --reference-fasta "$stability_fixture/reference.fa"
+        --output-root "$stability_fixture/output"
+        --bcftools-bin "$fake_bcftools"
+    )
+    FAKE_BCFTOOLS_MUTATE_PATH="$stability_mutation_path" \
+    FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
+        bash "$script" "${stability_args[@]}" --execute >/dev/null
+    stability_output="$stability_fixture/output/cohort_stability/target"
+    stability_receipt="$stability_output/cohort_stability.target.step07_outputs.tsv"
+    assert_exists "$stability_output/cohort_stability.target.FWD_like.mpileup.vcf"
+    assert_exists "$stability_output/cohort_stability.target.REV_like.mpileup.vcf"
+    assert_exists "$stability_receipt"
+    assert_contains "$stability_mutation_path" "# controlled mutation"
+    assert_not_exists "$stability_output/.cohort_stability.target.step07.lock"
+done
+
+IFS= read -r stability_receipt_header <"$stability_receipt"
+expected_stability_receipt_header=$'cohort_id\tpartition_id\tselector_type\tselector_value\torientation\tvcf_path\tsample_manifest_sha256\tpartition_manifest_sha256\tsample_count\tvcf_record_count'
+[[ "$stability_receipt_header" == "$expected_stability_receipt_header" ]] ||
+    fail "Step 07 receipt provenance fields changed unexpectedly"
+for absent_identity in \
+    run_token bam_sha256 bai_sha256 reference_sha256 regions_sha256 \
+    bcftools maximum_depth filter_expression vcf_sha256
+do
+    [[ "$stability_receipt_header" != *"$absent_identity"* ]] ||
+        fail "Step 07 receipt unexpectedly binds $absent_identity"
+done
+if grep -Fq "$fake_bcftools" "$stability_receipt" ||
+   grep -Fq "$stability_fixture/reference.fa" "$stability_receipt" ||
+   grep -Fq "$stability_fixture/orientation" "$stability_receipt"; then
+    fail "Step 07 receipt unexpectedly records tool, reference, or BAM identity"
+fi
+
 mismatch_fixture="$test_root/mismatch"
 cp -R "$fixture" "$mismatch_fixture"
 rm -rf "$mismatch_fixture/output"
@@ -833,6 +904,110 @@ if find "$restore_failure_dir" -maxdepth 1 -iname '*recover*' -print -quit |
     grep -q .; then
     fail "Restoration failure must not be represented as a durable recovery marker"
 fi
+
+term_fixture="$test_root/term-signal"
+cp -R "$fixture" "$term_fixture"
+rm -rf "$term_fixture/output"
+term_args=(
+    --cohort-id cohort_term
+    --sample-manifest "$term_fixture/samples.tsv"
+    --partition-manifest "$term_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$term_fixture/orientation"
+    --reference-fasta "$term_fixture/reference.fa"
+    --output-root "$term_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
+    bash "$script" "${term_args[@]}" --execute >/dev/null
+term_dir="$term_fixture/output/cohort_term/1"
+term_fwd="$term_dir/cohort_term.1.FWD_like.mpileup.vcf"
+term_rev="$term_dir/cohort_term.1.REV_like.mpileup.vcf"
+term_receipt="$term_dir/cohort_term.1.step07_outputs.tsv"
+printf 'term prior fwd\n' >"$term_fwd"
+printf 'term prior rev\n' >"$term_rev"
+printf 'term prior receipt\n' >"$term_receipt"
+term_unrelated="$term_dir/unrelated.txt"
+printf 'preserve term neighbor\n' >"$term_unrelated"
+term_token="term143"
+term_move_log="$test_root/term-moves.tsv"
+run_expect_status 143 "$test_root/term.out" "$test_root/term.err" \
+    env \
+    PATH="$transaction_bin:$PATH" \
+    REAL_MV="$real_mv" \
+    FAKE_MV_LOG="$term_move_log" \
+    FAKE_MV_SEND_TERM_AFTER_RECEIPT=1 \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    SLURM_JOB_ID="$term_token" \
+    bash "$script" "${term_args[@]}" --execute
+assert_text_equals "$term_fwd" "term prior fwd"
+assert_text_equals "$term_rev" "term prior rev"
+assert_text_equals "$term_receipt" "term prior receipt"
+assert_text_equals "$term_unrelated" "preserve term neighbor"
+assert_not_exists "$term_dir/.cohort_term.1.step07.lock"
+assert_no_owned_step07_paths "$term_dir" \
+    ".cohort_term.1.step07.$term_token.*"
+assert_contains "$term_move_log" \
+    "$term_dir/.cohort_term.1.step07.$term_token.outputs.tmp.tsv"$'\t'"$term_receipt"
+if find "$term_dir" -maxdepth 1 -iname '*recover*' -print -quit | grep -q .; then
+    fail "TERM restoration must not invent a recovery marker"
+fi
+
+concurrency_fixture="$test_root/concurrency"
+cp -R "$fixture" "$concurrency_fixture"
+rm -rf "$concurrency_fixture/output"
+concurrency_args=(
+    --cohort-id cohort_concurrent
+    --sample-manifest "$concurrency_fixture/samples.tsv"
+    --partition-manifest "$concurrency_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$concurrency_fixture/orientation"
+    --reference-fasta "$concurrency_fixture/reference.fa"
+    --output-root "$concurrency_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+concurrency_ready="$test_root/concurrency.ready"
+concurrency_release="$test_root/concurrency.release"
+env \
+    FAKE_BCFTOOLS_BARRIER_READY="$concurrency_ready" \
+    FAKE_BCFTOOLS_BARRIER_RELEASE="$concurrency_release" \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    bash "$script" "${concurrency_args[@]}" --execute \
+    >"$test_root/concurrency-first.out" 2>"$test_root/concurrency-first.err" &
+concurrency_first_pid=$!
+concurrency_barrier_seen=false
+for _ in $(seq 1 200); do
+    if [[ -e "$concurrency_ready" ]]; then
+        concurrency_barrier_seen=true
+        break
+    fi
+    sleep 0.02
+done
+if [[ "$concurrency_barrier_seen" != true ]]; then
+    : >"$concurrency_release"
+    wait "$concurrency_first_pid" || true
+    fail "First same-scope producer did not reach the controlled barrier"
+fi
+run_expect_status 1 "$test_root/concurrency-second.out" \
+    "$test_root/concurrency-second.err" \
+    env FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    bash "$script" "${concurrency_args[@]}" --execute
+concurrency_lock="$concurrency_fixture/output/cohort_concurrent/1/.cohort_concurrent.1.step07.lock"
+assert_text_equals "$test_root/concurrency-second.err" \
+    "ERROR: Step 07 lock already exists: $concurrency_lock"
+: >"$concurrency_release"
+if wait "$concurrency_first_pid"; then
+    concurrency_first_status=0
+else
+    concurrency_first_status=$?
+fi
+[[ "$concurrency_first_status" == "0" ]] ||
+    fail "Admitted same-scope producer exited $concurrency_first_status"
+concurrency_dir="$concurrency_fixture/output/cohort_concurrent/1"
+assert_exists "$concurrency_dir/cohort_concurrent.1.FWD_like.mpileup.vcf"
+assert_exists "$concurrency_dir/cohort_concurrent.1.REV_like.mpileup.vcf"
+assert_exists "$concurrency_dir/cohort_concurrent.1.step07_outputs.tsv"
+assert_not_exists "$concurrency_lock"
 
 rollback_fixture="$test_root/rollback"
 cp -R "$fixture" "$rollback_fixture"
