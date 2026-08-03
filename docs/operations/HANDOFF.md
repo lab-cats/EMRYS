@@ -12,17 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: usability-review completion checkpoint
-  `9ae3b12d45080c9b7d9132174dc01a7594050b84` is clean, published, and
-  local/upstream/live-remote-equal; its selection checkpoint is `4750161`.
-- Current package:
+- Recorded package state: migration-selection checkpoint
+  `177a912f1c171155f01f1d35708c0ccfebbc5021` is clean, published, and
+  local/upstream/live-remote-equal; usability completion is `9ae3b12`.
+- Current package: task-specific plan for
   [`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md)
-  is selected after all three reviews completed.
-- Package type at this checkpoint: lifecycle/status documentation only; task-
-  specific planning and executable/test movement have not begun.
-- Remote publication and upstream equality: parent `9ae3b12` is verified
-  local/upstream/live-remote-equal. The commit containing this selection must
-  be published and proved equal before task-specific planning.
+  with an exact fourteen-file atomic write set and targeted old-path baseline
+  tranche. All three reviews are complete.
+- Package type at this checkpoint: execution-planning documentation only; no
+  computational baseline ran and no executable/test file changed.
+- Remote publication and upstream equality: parent `177a912` is verified
+  local/upstream/live-remote-equal. The commit containing this plan must be
+  published and proved equal before old-path baselines.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -542,7 +543,9 @@ is complete at published executable/test checkpoint `12f9be5` and
 documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
 [`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
 is selected after its architecture, reliability, and usability reviews all
-completed. No later migration or review card is created.
+completed. Its exact write set and old-path baseline tranche are frozen in the
+active card; baseline execution is next. No later migration or review card is
+created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -572,5 +575,7 @@ is selected, and its reviews
 and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
 are complete. Publish this migration-selection checkpoint before task-specific
-planning; any later owner remains unselected. The unsliced `PROGRAM-01`
-remainder and unrelated roadmap remain preserved and out of scope.
+planning; the plan in the commit containing this paragraph must then be
+published before targeted old-path baselines. Any later owner remains
+unselected. The unsliced `PROGRAM-01` remainder and unrelated roadmap remain
+preserved and out of scope.

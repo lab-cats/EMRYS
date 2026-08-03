@@ -331,3 +331,79 @@ completion checkpoint `9ae3b12d45080c9b7d9132174dc01a7594050b84`. Architecture,
 reliability, and usability reviews are complete. Task-specific planning and
 baseline evidence follow in separate bounded slices; no executable or test path
 has moved at this selection checkpoint.
+
+### Task-specific execution plan
+
+Selection checkpoint `177a912f1c171155f01f1d35708c0ccfebbc5021` is the
+clean, published, local/upstream/live-remote-equal planning parent. The atomic
+executable/test write set is exactly fourteen tracked files:
+
+- move `scripts/step_00c_prepare_gatk_reference.sh`,
+  `scripts/validate_step_00c_reference_sidecars.py`, and
+  `jobs/step_00c_prepare_gatk_reference.slurm` into
+  `src/norad/stages/construct_FASTA_sidecars/` without basename or mode
+  changes;
+- move `tests/shell/test_step_00c_prepare_gatk_reference.sh` and
+  `tests/test_validate_step_00c_reference_sidecars.py` into
+  `tests/stages/construct_FASTA_sidecars/` without basename or mode changes;
+- update `Makefile`, `scripts/build_artifact_index.py`,
+  `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
+  `tests/test_slurm_wrapper_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/baselines/python_coverage.json`, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`; and
+- change no public `reference_provenance.py` owner or test, Step `05` consumer,
+  `.coveragerc`, coverage tool/policy test, package marker, descriptor, schema,
+  unrelated owner, or documentation file in the executable commit.
+
+Production edits are path/loading-only. The producer usage literal becomes its
+exact final path. The validator resolves the report owner from
+`Path(__file__).resolve().parents[2] / "libraries" /
+"validation_report.py"` and adds one
+private `_norad_reference_provenance` exact-file bridge to unchanged
+`Path(__file__).resolve().parents[4] / "scripts" /
+"reference_provenance.py"`. That
+bridge verifies exact `__file__`, requires `ProvenanceError` to be an exception
+type and all three parsers callable, preserves foreign cache state and
+`sys.path`, removes only its own partial module after execution failure, and
+uses the reviewed path-bearing exit-`2` diagnostic. The job delegates to the
+exact final producer. Preserve producer, validator, and job modes `0755`,
+`0644`, and `0755`; add no readiness sentinel, wrapper, duplicate, or alias.
+
+The moved shell test changes only its repository-root depth and producer/job
+paths, then adds the reviewed fake-`mv` case that fails only final DICT
+publication after final FAI publication. It requires nonzero exit, nonempty
+final FAI, absent final DICT, removed owned lock, and no run-token temporary
+paths while preserving the FAI as incomplete-attempt evidence. The moved Python
+test changes only its root/validator paths and subprocess-CWD helper, adds one
+non-repository-CWD dry-run/execute/repeat parity journey, and exact-loads the
+validator for the healthy, missing-owner, foreign-wrong-cache, correct-path-
+incomplete-API, and owned-execution-failure matrix. Every case proves cache
+ownership, unchanged `sys.path`, and no report or invocation-CWD residue.
+
+Caller cutover remains literal. Public CLI, SLURM, validation-roster, and shared
+validation-report maps receive exact final paths; the shared report suite uses
+its existing path-validating loader for the now-non-flat validator. Artifact
+evidence receives only the final Step `00c` producer path and reviewed hash.
+Coverage renames the validator row only after final measurement. Make moves the
+two direct recipes, adds both final shell assets to static/smoke syntax, and
+updates only the matching literal-expansion entries. The independent central
+scheduler matrix remains the sole owner of wrapper behavior.
+
+The old-path baseline is a targeted local fixture/mock tranche, not the full
+card gate. Run syntax for the producer and job; the current direct shell suite;
+the direct validator, public CLI, SLURM, validation-roster, shared publisher,
+artifact-adapter, and coverage-policy modules; plus temporary untracked-free
+probes for final-DICT `mv` failure and non-repository-CWD validator dry-run/
+execute/repeat. Record exact counts, streams/exits, deterministic report hash,
+residue, modes, sizes, lines, and source hashes. Do not alter tracked coverage,
+run real samtools/GATK/Java work, submit a job, install/restore a dependency, or
+touch production inputs.
+
+After that baseline checkpoint is published and equal, apply only the fourteen-
+file atomic cutover. Run the smallest final-path focused suites and reviewed
+oracles, inspect modes/hashes and exact legacy-path searches, then run the
+complete applicable local gate once at the executable card boundary. Commit and
+publish executable/test state before the separate batched documentation and
+lifecycle close.

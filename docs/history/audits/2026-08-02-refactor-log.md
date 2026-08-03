@@ -1727,3 +1727,39 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   canonical documentation remain separate bounded slices. No executable, test,
   harness, dependency, runtime-tool, scheduler, production, scientific-review,
   or biological evidence changed or ran at selection.
+
+## 2026-08-03T00:01:02-0400 — MIG-03E task-specific plan frozen
+
+- **Git and scope:** planning began from clean, published,
+  local/upstream/live-remote-equal selection tip `177a912`, with no untracked
+  file, recovery marker, index lock, or mutable-lane collision. The executable
+  commit is exactly fourteen tracked files: five moves and nine explicit caller/
+  harness updates. Canonical command, migration-link, and lifecycle repairs
+  remain one separate later card-boundary close.
+- **Moves and production diff:** move the producer, validator, and executable
+  job to `src/norad/stages/construct_FASTA_sidecars/`; move only their two
+  direct tests to the mirrored test home. Preserve modes `0755`, `0644`, and
+  `0755`. Production changes are limited to the producer usage self-path, the
+  validator's final report-owner path plus private exact-file bridge to the
+  unchanged flat reference-provenance owner, and the job's final child path.
+  Add no wrapper, duplicate, package marker, descriptor, schema, alias, global
+  path mutation, or reference-provenance readiness sentinel.
+- **Caller and test cutover:** update only Make, artifact producer mapping and
+  focused evidence, public CLI map, SLURM map, validator roster, shared non-flat
+  validator loader, coverage row, and literal Make fixture. Add the reviewed
+  final-DICT `mv` failure case to the moved shell suite and the arbitrary-CWD
+  repeat plus exact reference-loader fault matrix to the moved validator suite.
+  Keep scheduler behavior in its independent central matrix and the public
+  reference-provenance owner/test plus Step `05` consumer unchanged.
+- **Baseline tranche:** after this planning checkpoint is published and equal,
+  run syntax for both shell assets, the current direct shell suite, and the
+  exact directly affected Python modules. Add only temporary untracked-free
+  probes for FAI-only partial publication and non-repository-CWD validator dry-
+  run/execute/repeat parity. Record modes, sizes, lines, hashes, counts, streams,
+  exits, deterministic report hash, and residue without updating tracked
+  coverage.
+- **Validation and evidence boundary:** this is planning documentation only.
+  The temporary old-path tranche is not the full card gate; the complete
+  applicable local gate runs once after final-path cutover. No real samtools,
+  GATK, or Java work, scheduler submission, dependency action, production data,
+  scientific-review state, or biological evidence is authorized or created.
