@@ -150,6 +150,31 @@ defines Step `08` as the smallest next JIT unit but does not select it.
   attempt identity. Reliability review owns exact child/publication/restore
   failure, receipt visibility, signal, lock/concurrency, residue, input-mutation,
   and absent-attempt-identity oracles without fixing or blessing these states.
+- Publish one old-path runtime/input-provenance checkpoint in the direct shell
+  test. Freeze pre-mutation rejection of missing/nonexecutable explicit
+  Rscript and missing R program, plus PATH-basename resolution from arbitrary
+  CWD. Mutations of the sample manifest, partition manifest, annotation GTF,
+  Step `07` receipt, and Step `07` VCF must each fail before publication with
+  preserved unrelated bytes and clean owned residue. A controlled mutation of
+  the selected R program remains undetected and permits publication; assert
+  the input receipt records no R program/runtime/package or attempt identity
+  and no sibling sites/summary hashes. Preserve that provenance ceiling.
+- Publish one old-path transaction/recovery checkpoint in the direct shell
+  test. Freeze the final move order as sites, cross-root QC summary, then input
+  receipt, and barrier-observe all three finals after receipt visibility but
+  before final validation/commit. Inject receipt-publication exit `67` followed
+  by prior-sites restoration exit `68`: propagate `67`, leave the prior sites
+  final absent while retaining its output-root backup, restore prior input
+  receipt and QC summary byte-exactly, clean owned temps/lock, preserve
+  unrelated bytes in both roots, and create no recovery marker. This is
+  ambiguous manual recovery, not successful rollback or retry authority.
+- Publish one separate old-path signal/concurrency checkpoint in the direct
+  shell test. Controlled `TERM` after receipt visibility exits `143`, restores
+  a complete predecessor across both roots, preserves unrelated bytes, cleans
+  owned scratch/lock, and creates no marker. A fake-R barrier proves one
+  same-cohort lock winner and one exit-`1` loser, followed by one complete
+  winner set and no owned residue. Do not add attempt identity or recovery
+  behavior.
 - Preserve the exact three-output transaction: sites and input receipt under
   `<output-root>/<cohort>/`, summary under the separate QC root. Preserve exact
   headers, partition/orientation ordering, manifest/annotation and Step `07`
@@ -170,12 +195,32 @@ defines Step `08` as the smallest next JIT unit but does not select it.
   bytes; stable-input recheck; report publication; streams; and exits. Shared
   Step `08` schema/validation functions remain physically owned by flat Step
   `09c`; this migration does not extract, redesign, or reassign them.
+- Publish one old-path direct-validator checkpoint. Add arbitrary-CWD dry-run/
+  execute/repeat byte parity; make each exact check ID independently observable
+  as exit-`0` failed evidence; and mutate each of the six snapshotted inputs
+  after build as exit `2` while preserving a valid predecessor report. Freeze
+  equivalent annotation-path spelling as failed identity evidence and
+  arbitrary unique candidate IDs plus reversed site rows as current false-pass
+  ceilings. Common report loading/publication faults remain centrally owned.
+  At atomic cutover, replace the test's ambient imports with private exact-file
+  loaders and add final-path direct tests for the new production Step `09c`
+  bridge's exact/foreign/partial cache, specification/loader, execution,
+  cleanup, sanitized-exit, and `sys.path` behavior.
 - Preserve scheduler mode/directives, submit-directory fallback, cohort/input/
   annotation/output/QC/R defaults, tolerated module diagnostics, optional
   repository-local R environment, explicit execute gate, delegation, streams/
   exits, three-file post-check, and body-level `logs/` behavior. Reliability
   review must disposition missing/unusable Rscript or R program, module/renv,
   child, stale-complete-output, and submitted-job states without hardening them.
+- Publish one old-path central-scheduler checkpoint for tolerated Rscript
+  version-probe failure; warning-only missing/nonexecutable Rscript;
+  PATH-basename and selected R-program forwarding; absent-submit-directory
+  launch-CWD fallback; dry-run `logs/`-only mutation; and stale three-file
+  false success across output/QC roots after a zero-output child. Generic tests
+  retain mode/directives, the tolerated `module list`, arguments, invalid mode,
+  child exit, and missing outputs. The wrapper inherits caller R startup state
+  and neither activates nor validates `renv`; the central local-R suite owns
+  the guarded opt-in environment contract.
 - `STEP_PRODUCERS["08"]` changes only to final shell producer path
   `src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh`
   with projected hash
@@ -189,6 +234,15 @@ defines Step `08` as the smallest next JIT unit but does not select it.
   branches with global floors `9561/11720` lines and `3351/4772` branches.
   Final measurement must retain target rates, keep every non-target row exact,
   and preserve global covered-count floors after the path move.
+- The existing guarded-real-R suite is sufficient for semantic relocation
+  parity and receives no test-only behavior slice. Existing artifact tests own
+  native input-receipt versus `step08_summary_v1` reconciliation; only final
+  path/hash evidence changes at cutover. Publish exactly five sequential
+  test-only checkpoints—runtime/input provenance, transaction/recovery,
+  signal/concurrency, validator, then scheduler—before atomic cutover. Only the
+  existing direct shell, direct validator, and central scheduler test owners
+  may change; add no fixture file, fourth owner, production edit, coverage
+  baseline, documentation batch, dependency, or future card in those slices.
 - Once shell/job leave flat wildcards, add exact final paths to
   `validation-static`/`smoke` and the literal Make oracle. Move shell, validator,
   and guarded-R recipes; preserve the exact guarded environment and update the

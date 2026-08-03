@@ -4472,6 +4472,72 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to reliability-
   review completion.
 
+## 2026-08-03T11:43:07-0400 — REVIEW-REL-03M completed
+
+- **Reviewed boundary:** clean, published, local/upstream/live-remote-equal
+  selection `88eef71e30737ede8165b60a30211312f407ab91` remained the read-only
+  parent. The review changed only cards, current status, and this audit; no
+  executable/test file changed or ran, no R dependency action occurred, and no
+  Step `09` or later card was created or selected.
+- **Runtime/input-provenance disposition:** require one direct-shell old-path
+  checkpoint for missing/nonexecutable Rscript, missing R program, arbitrary-
+  CWD PATH resolution, and mutation of every hash-bound input class: sample and
+  partition manifests, annotation GTF, Step `07` receipt, and Step `07` VCF.
+  Preserve rejection before publication, exact residue/unrelated-byte states,
+  and current blindness to selected-R-program mutation. The native receipt
+  remains without R runtime/package, attempt, or sibling-output hash identity;
+  this is a provenance ceiling, not approval.
+- **Transaction/recovery disposition:** require one direct-shell checkpoint
+  fixing cross-root final order as sites, summary, receipt and barrier-observing
+  the receipt-visible/pre-final-validation window. Controlled receipt-
+  publication exit `67` plus prior-sites restoration exit `68` must propagate
+  `67`, leave the prior sites final absent with its backup surviving, restore
+  prior receipt/summary bytes, remove owned temp/lock state, preserve unrelated
+  bytes in both roots, and create no recovery marker. This is ambiguous manual
+  recovery, never a successful rollback or retry signal.
+- **Signal/concurrency disposition:** require a separate small direct-shell
+  checkpoint. TERM after receipt visibility exits `143`, restores the complete
+  split-root predecessor, preserves unrelated bytes, removes owned residue, and
+  invents no marker. A fake-R barrier admits one same-cohort run and rejects a
+  second on the lock; the winner alone publishes a complete set. No receipt
+  property establishes durable attempt identity.
+- **Validator disposition:** require one direct-validator old-path checkpoint
+  with arbitrary-CWD dry-run/execute/repeat parity, all five exit-`0` failed-
+  evidence rows, and mutation of all six snapshotted inputs as exit `2`
+  preserving a predecessor report. Preserve
+  equivalent annotation spelling as failed identity evidence and arbitrary
+  unique candidate IDs/reversed rows as current false-pass ceilings. Common
+  report loader/publication faults remain centrally owned; atomic cutover must
+  replace the test's ambient imports with private exact-file helpers and add
+  the new production Step `09c` bridge's exact/foreign/partial cache, spec/
+  loader, execution, cleanup, sanitized-exit, and `sys.path` tests.
+- **Scheduler/R/artifact disposition:** require one central Step `08`
+  scheduler checkpoint for tolerated Rscript version failure, warning-only
+  missing/unusable Rscript, PATH and R-program forwarding, dynamic CWD,
+  logs-only dry-run mutation, and stale-three-file false success across split
+  roots. The job inherits R startup state and does not activate or verify
+  `renv`; central local-R evidence remains separate. Existing guarded-real-R
+  semantics are sufficient and receive no new test-only slice. Existing
+  artifact reconciliation owns the native-receipt versus
+  `step08_summary_v1` distinction; cutover changes only producer path/hash
+  evidence.
+- **Accepted sequencing and coverage:** publish exactly five small old-path
+  test-only checkpoints—runtime/input provenance, transaction/recovery,
+  signal/concurrency, validator, scheduler—using only the direct shell,
+  direct validator, and central scheduler test owners. Add no fixture file,
+  fourth owner, production mutation, coverage baseline, documentation batch,
+  dependency, or future card. Then apply the frozen atomic eight-move/
+  ten-update cutover. Final measurement must retain Step `08` validator rates
+  at or above `122/129` lines and `26/36` branches, every non-target row exact,
+  and global floors `9561/11720` lines and `3351/4772` branches.
+- **Evidence and gate:** this same-agent committed-time review supplies no
+  independent authorship, R runtime/package, scheduler, cluster, production,
+  scientific-review, provisional-policy, variant/editing-site, or biological
+  evidence. `git diff --check` passes and exact documentation validation
+  retains only the nine inherited `UNREFINED` location findings. The result is
+  status `1`, nonpassing, and not green. Publish and prove this completion
+  equal before selecting usability review alone.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection

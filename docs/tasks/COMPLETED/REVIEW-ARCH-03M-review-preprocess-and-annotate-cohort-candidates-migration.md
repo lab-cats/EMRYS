@@ -35,7 +35,7 @@ R dependencies, duplicating schemas, or leaving a compatibility owner.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03M](../IN_PROGRESS/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03M](REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: reliability review completed against the architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

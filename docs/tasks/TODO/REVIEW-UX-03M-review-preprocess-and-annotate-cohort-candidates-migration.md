@@ -27,7 +27,7 @@ retry guidance, biological overclaim, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03M](../IN_PROGRESS/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03M](../COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: completed reliability review supplies the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 
@@ -98,5 +98,6 @@ retry guidance, biological overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-REL-03M`; no executable/test file
-changed or ran.
+Not selected. Architecture and reliability reviews are complete; no
+executable/test file changed or ran under either review, and usability remains
+the sole unselected prerequisite before migration selection.
