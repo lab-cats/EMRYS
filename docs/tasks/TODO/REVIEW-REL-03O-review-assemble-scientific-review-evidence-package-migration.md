@@ -29,7 +29,7 @@ focused oracles without redesigning those concerns.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03O](../IN_PROGRESS/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: reliability review needs the architecture-corrected cutover and import/asset boundary.
+- [REVIEW-ARCH-03O](../COMPLETED/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: completed architecture review supplies the corrected cutover and import/asset boundary.
 
 ## Completion unblocks
 
@@ -106,5 +106,6 @@ focused oracles without redesigning those concerns.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-ARCH-03O`; no executable/test/
-configuration file changed or ran.
+Not selected. Architecture review is complete; select this card alone only
+after that completion checkpoint is published and proven equal. No executable,
+test, or configuration file changed or ran.

@@ -30,7 +30,7 @@ smallest next JIT unit but does not select it.
   `src/norad/evidence/assemble_scientific_review_evidence_package/`, and
   mirrored test home
   `tests/evidence/assemble_scientific_review_evidence_package/`.
-- Candidate native moves are mode-`0644`
+- Architecture-reviewed native moves are mode-`0644`
   `scripts/step_09c_scientific_validation.py` (`159,620` bytes, `4,533` lines,
   SHA-256
   `7b6b48b71c07249cb791ceb818bd4aef5c30015724cb2406127159815c1e09f8`)
@@ -38,8 +38,12 @@ smallest next JIT unit but does not select it.
   `200` lines, SHA-256
   `127a12c87beb9d93745997224917a95f8784f6e5a51503359dde596a4b6f9340`).
   Preserve explicit-interpreter Python use, direct/Bash launcher use, sibling
-  delegation, basenames, modes, streams, and exits.
-- Candidate owner-local protection moves are mode-`0644`
+  delegation, basenames, modes, streams, and exits. Final Python remains
+  byte-identical at hash `7b6b48b71c07249cb791ceb818bd4aef5c30015724cb2406127159815c1e09f8`;
+  the shell changes only its displayed usage path and projects to `5,458`
+  bytes, `200` lines, hash
+  `275b4598bac35a794b746973aa667cfe4b91ed14b4833635a8f24a4560ff2037`.
+- Architecture-reviewed owner-local protection moves are mode-`0644`
   `tests/test_step_09c_scientific_validation.py` (`37,179` bytes, `1,195`
   lines, SHA-256
   `8de501596a0f074c608ae6b0e995c2a1caf9147062d00d15384bcf4538f08262`),
@@ -49,29 +53,57 @@ smallest next JIT unit but does not select it.
   and mode-`0644` `tests/fixtures/step09c/build_fixture.py` (`55,034` bytes,
   `1,525` lines, SHA-256
   `c5dd65a479d4d441da0b88606c9a5d5b1abd57dbebef907326ca198cae68b072`).
-  Architecture review must prove the exact owner-local test/fixture boundary.
-- Candidate evidence-local support assets are the two public example TSVs
-  `configs/step_09c_review_plan.example.tsv` and
-  `configs/step_09c_evidence_manifest.example.tsv` plus the thirteen one-line
-  `configs/step_09c_evidence_schemas/*.schema.tsv` files. Architecture review
-  owns whether each moves with this evidence owner or remains a separately
-  justified public configuration surface, the final relative paths, exact
-  hashes, every consumer, and the move ceiling. Relocation may not alter a
-  header, example row, evidence category, schema meaning, or public version.
-- The caller/import hypothesis includes `Makefile`, the public CLI and literal
-  expansion owners, `scripts/build_artifact_index.py`,
-  `scripts/_run_summary_science.py`, Step `08` and Step `09` validators and
-  their private-loader tests, artifact/run-summary fixtures and tests,
-  independent contract goldens, the Step `09c` fixture builder, the coverage
-  row, and documentation commands. Architecture review must prove the exact
-  full set and reject both omitted consumers and unrelated broad edits.
+  Final path-only corrections project the Python test to `37,326` bytes /
+  `1,206` lines /
+  `4e6da67232873679fc0844982e70602f9a43c68eeaedc71a477bd59fe523e118`,
+  the shell test to `5,668` / `170` /
+  `fe2c6637e2eb3da167725d4c6a9682695088159e47029b53067c7183f241ec0c`,
+  and the fixture builder to `55,129` / `1,532` /
+  `a4df19f681956934244331688260ae6074e378cbca08426edfb83bccee74ac4f`.
+- Retain the two public examples and all thirteen evidence-schema TSVs at
+  their current `configs/` paths. They are public configuration/reference
+  surfaces, not production-native assets; the direct owner test is their only
+  executable consumer and production does not resolve their paths. Preserve
+  mode `0644`, bytes, headers, rows, versions, meanings, and exact hashes:
+  review plan `e3d1e00f6020a95f93db1960631c1e62c5905675f1f50f2e48c0a9feb2208482`;
+  evidence manifest `fd9c59bc3404419ab0b5f15b3ceeb45b722bccc5ac5770b7a4fee920c42436fb`;
+  annotation audit `8e2be4ad8f09b5c8fb04f6558c1c858c8adefcca7d3a01a02604d66cefa6caac`;
+  candidate adjudication `49e4f71de3c07da9e5614fb16235380ac681ddebc605014d09c9a2a5f984c99e`;
+  candidate selection `1da371e4af0f90931e19309825189cb22f33d7a0832cbc9eafe4e7fcdfc31445`;
+  computational validation `65bca4099c52fae0b9fe18ee5a2978fc059ef3f14d377dc515b3384622ae2f7b`;
+  decisions `be3ab84df7ce560cfed1e9bbefe8d9ee7976f433cd752eac237b8bd92aa2eec4`;
+  evidence index `0c88ff0e67bbe7a6c799f5fd4288075a3aa3299e18d1bccd1f1caa779d1a1f35`;
+  leave-one-pair-out `bb952669b737e65096c88ec3378d2a61e67ed7e60d21a70a4a111ba49840362d`;
+  limitations `422e3ea1d3ce0074d28022184028d40e2aed307eb42c18785ad5fb4a935937b8`;
+  orientation-locus audit `774436d3b7879df3218b164c62a0ebc694820360a0fd28781b1ed922df2190d0`;
+  QC funnel `668a2dd52d4db3ef4f8243d655d816917627134032d5f8774006124c30893e5c`;
+  replicate effects `f16b01450ca5cf77d992f08b157aa08fc11283184d8b940f6f6f8d3f9ca4ff41`;
+  review summary `cee0257425e069f5d21512ee2124f683c95e560b8d059f477b980c4247a470d2`;
+  and sensitivity matrix `4371f211bfb98906a82b37b9d5842ae7b1d61c1bfec4fefabb597f4d918813e5`.
+- Update exactly fourteen integration owners: `Makefile`;
+  `scripts/build_artifact_index.py`; `scripts/_run_summary_science.py`; both
+  migrated Step `08`/`09` validators and their tests;
+  `tests/fixtures/artifact_run_summary_v1/build_fixture.py`;
+  `tests/test_artifact_adapters.py`; `tests/test_artifact_run_summary.py`;
+  `tests/test_public_cli_contracts.py`;
+  `tests/test_independent_contract_goldens.py`;
+  `tests/baselines/python_coverage.json`; and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. The moved
+  files own their own final-root/path corrections. No artifact schema fixture,
+  inventory, report approval, artifact-adapter fixture, build-run-summary
+  entry point, or semantic-only `step09c` string changes.
 - The moved implementation is currently an import-time contract owner for
   migrated Step `08`/`09` validators and flat artifact/run-summary code.
-  Preserve exact constants, schemas, functions, import initialization, and
-  failure behavior without a package marker, installed identity, ambient
-  `PYTHONPATH`, global `sys.path` mutation, compatibility copy, or public
-  re-export. Architecture review owns the narrow private exact-file loading or
-  atomic caller solution and its cache/path/readiness/failure oracles.
+  Preserve exact constants, schemas, functions, and import initialization.
+  All four production consumers use private identity
+  `_norad_step_09c_scientific_validation_contracts`, the exact final path,
+  cached-file/readiness checks, pre-execution cache insertion, owned partial-
+  cache cleanup, sanitized one-line exit `2`, and unchanged `sys.path`. The
+  migrated validators resolve the repository through `parents[4]`; artifact
+  indexing and run-summary science use `parents[1]`. Independent goldens use
+  the artifact loader's exact module while retaining the historical golden
+  key. Add no package marker, installed identity, ambient `PYTHONPATH`, global
+  `sys.path` mutation, compatibility copy, or public re-export.
 - Preserve the shell CLI/help, required review and upstream arguments,
   `PYTHON_BIN_OVERRIDE`, side-effect-free dry-run, delegated command rendering,
   arbitrary-CWD behavior, direct Python interface, streams, and exits.
@@ -98,10 +130,20 @@ smallest next JIT unit but does not select it.
   normalization, report authorization, schema versions, ordering,
   reconciliation, and downstream evidence ceilings except for reviewed source
   path/hash transitions.
-- Frozen starting coverage is `1,262/1,534` covered statements and `561/788`
-  branches for `scripts/step_09c_scientific_validation.py`; architecture and
-  reliability reviews must bind the exact global floors and non-target rows
-  from the frozen parent before executable mutation.
+- Frozen coverage has 32 rows and baseline hash
+  `68f85331c2ef7f33e192995b36f893bf67f35c587c502748b7dea45a61c6aeb7`.
+  Move the Step `09c` row to its final path with at least `1,262/1,534`
+  covered statements and `561/788` branches. Loader additions must retain at
+  least frozen line/branch rates `0.798522`/`0.709446` for artifact indexing
+  and `0.779614`/`0.631250` for run-summary science. Keep the other 29 rows
+  exact and preserve global ratios at or above `9601/11758` lines and
+  `3367/4784` branches.
+- After only reliability-reviewed test baselines, apply exactly five moves and
+  fourteen integrations atomically. Old/final executable and direct-test paths
+  may not coexist. No wrapper is justified because every known caller is
+  repository-owned and can cut over coherently. Reverse rollback restores the
+  documentation close, atomic cutover, and test-only checkpoints in that
+  order; it never changes runtime evidence, outputs, locks, or backups.
 - Use only minimal focused checks inside executable slices. Run the complete
   applicable gate at the assembled executable card boundary, then batch the
   owner README, canonical paths/commands, migration links, lifecycle movement,
@@ -226,6 +268,8 @@ smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published MIG-03N close `68fd2a9`; no
-executable/test/configuration file changed or ran, and no later owner or audit
-card was created or selected.
+Not selected. Architecture review is complete against published/equal
+selection `a46f94b` with the exact five-move/fourteen-integration, retained-
+configuration, private-loader, artifact/coverage, atomicity, and rollback
+boundary above. Reliability and usability remain unselected; no executable,
+test, configuration, dependency, later owner, or audit package changed or ran.

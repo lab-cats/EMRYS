@@ -6138,3 +6138,86 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal selection validation:** run `git diff --check` only. Publish and
   prove this selection checkpoint clean/upstream/live-remote-equal before the
   review begins.
+
+## 2026-08-03T18:17:11-0400 — REVIEW-ARCH-03O completed
+
+- **Verified review base:** architecture selection
+  `a46f94bd1b22831ec9407594a14d0a58c800b7a0` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. No overlapping
+  mutable lane, merge, rebase, sidecar, dependency action, scheduler, cluster,
+  production, scientific-review, or biological work entered this pass.
+- **DAG and topology decision:** migrated Step `08` provides its complete
+  three-output transaction and migrated Step `09` provides its complete six-
+  output transaction. `assemble_scientific_review_evidence_package` is the
+  sole dependency-valid unmigrated functional owner and the last unit in the
+  frozen fourteen-owner topology. No later owner or final-audit package is
+  created, selected, or preloaded.
+- **Five-move decision:** move exactly the Python implementation, sibling shell
+  launcher, direct Python test, direct shell test, and Step `09c` fixture
+  builder to the frozen evidence/test homes. Preserve basenames and modes. The
+  final source home currently contains only `CONTRACT.md`; the final test home
+  is absent. Neither is a competing owner or scaffold.
+- **Configuration decision:** retain the two public example TSVs and thirteen
+  evidence-schema TSVs byte-identical at `configs/`. Production does not
+  resolve them, and the direct owner test is their only executable consumer;
+  they are public configuration/reference surfaces rather than native
+  implementation assets. Their fifteen exact hashes are frozen in MIG-03O.
+  Moving them would add fifteen public path changes without an owner need.
+- **Fourteen-integration ceiling:** update exactly Make; artifact indexing;
+  run-summary science; both migrated Step `08`/`09` validators and their tests;
+  the artifact-run-summary fixture; artifact-adapter and artifact-run-summary
+  tests; public CLI; independent goldens; coverage; and the literal Make
+  expansion. Exact filename/path/import searches found no fifteenth owner.
+  Artifact schemas, inventory, report approvals, artifact-adapter fixture,
+  build-run-summary entry point, and semantic-only `step09c` strings remain
+  unchanged.
+- **Private-loader decision:** the four production consumers share private
+  module identity `_norad_step_09c_scientific_validation_contracts`, exact
+  final path, cached-path/readiness validation, insertion before dataclass
+  execution, owned partial-cache cleanup, sanitized one-line exit `2`, and
+  unchanged `sys.path`. Migrated validators resolve through `parents[4]`;
+  flat artifact/run-summary consumers resolve through `parents[1]`.
+  Independent goldens use the artifact loader's exact module while retaining
+  their historical golden key. No public package, import, `PYTHONPATH`, or
+  global search-path mutation is introduced.
+- **Projected moved identities:** temporary path-only copies project final
+  Python as `0644` / `159,620` bytes / `4,533` lines /
+  `7b6b48b71c07249cb791ceb818bd4aef5c30015724cb2406127159815c1e09f8`;
+  shell as `0755` / `5,458` / `200` /
+  `275b4598bac35a794b746973aa667cfe4b91ed14b4833635a8f24a4560ff2037`;
+  Python test as `0644` / `37,326` / `1,206` /
+  `4e6da67232873679fc0844982e70602f9a43c68eeaedc71a477bd59fe523e118`;
+  shell test as `0755` / `5,668` / `170` /
+  `fe2c6637e2eb3da167725d4c6a9682695088159e47029b53067c7183f241ec0c`;
+  and fixture as `0644` / `55,129` / `1,532` /
+  `a4df19f681956934244331688260ae6074e378cbca08426edfb83bccee74ac4f`.
+- **Artifact and coverage decision:** `STEP_PRODUCERS["09c"]` becomes only the
+  final Python path with unchanged implementation hash `7b6b48b...e09f8`.
+  The 32-row coverage snapshot moves the target row while retaining at least
+  `1262/1534` lines and `561/788` branches. Artifact indexing and run-summary
+  science retain at least frozen line/branch rates `0.798522`/`0.709446` and
+  `0.779614`/`0.631250`; the other 29 rows remain exact and global ratios stay
+  at least `9601/11758` lines and `3367/4784` branches.
+- **Atomicity and rollback:** after only reliability-reviewed test baselines,
+  apply five moves plus fourteen integrations in one executable cutover; old
+  and final implementation/test paths never coexist. No wrapper, alias,
+  symlink, compatibility copy, package marker, descriptor, or schema move is
+  justified. Reverse documentation, cutover, then test checkpoints. Git
+  rollback does not authenticate, delete, or restore runtime outputs, locks,
+  backups, evidence, or review state.
+- **Risks preserved, not blessed:** a summary can become visible before final
+  checks; failed restoration can retain a lock/backup with a final missing;
+  the summary lacks sibling hashes; admitted-input mutation gaps and recorded
+  relative-path sensitivity remain; provisional scientific state is not
+  biological readiness; artifact/run-summary/report consumption is not
+  committed-attempt, scheduler, cluster, production, completed-review, or
+  biological proof. Reliability must characterize high-risk gaps without
+  transaction, recovery, schema, state, artifact, or report redesign.
+- **Read-only evidence and card gate:** no repository executable, test,
+  configuration, dependency, runtime, scheduler, cluster, production,
+  scientific-review, or biological file changed or ran. `git diff --check`
+  passes, and the exact RUNBOOK `make -s documentation-check` reports `PASS
+  documentation structure (213 Markdown documents, 133 task cards, 6 Mermaid
+  sources)`. Architecture moves to `COMPLETED`; MIG-03O, reliability, and
+  usability remain unselected.

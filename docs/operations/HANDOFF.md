@@ -61,22 +61,24 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   local/upstream/live-remote-equal.
 - Current package: unselected
   [`MIG-03O`](../tasks/TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
-  with selected
-  [`REVIEW-ARCH-03O`](../tasks/IN_PROGRESS/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md),
+  with completed
+  [`REVIEW-ARCH-03O`](../tasks/COMPLETED/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md),
   followed by unselected
   [`REVIEW-REL-03O`](../tasks/TODO/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md)
   → [`REVIEW-UX-03O`](../tasks/TODO/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md).
-  Architecture is the only bounded selected card. No later owner or final-
-  audit package is created or preloaded; the active program remainder stays
-  frozen.
+  No card is selected. No later owner or final-audit package is created or
+  preloaded; the active program remainder stays frozen.
 - Package type at this checkpoint: documentation-only architecture-review
-  selection after read-only definition. No executable, test, configuration,
-  dependency, schema, fixture, report template, scheduler, cluster, production,
-  scientific-review, or biological surface changed or ran.
-- Remote publication and upstream equality: definition `86b8888` is verified
-  local/upstream/live-remote-equal. Publish and prove the architecture-selection
-  tip containing this handoff equal before beginning the read-only review. The
-  configured `origin` is
+  completion after read-only definition and selection. It fixes the exact five-
+  move/fourteen-integration, retained-configuration, private-loader, artifact/
+  coverage, atomicity, and rollback boundary. No executable, test,
+  configuration, dependency, schema, fixture, report template, scheduler,
+  cluster, production, scientific-review, or biological surface changed or
+  ran.
+- Remote publication and upstream equality: architecture selection `a46f94b`
+  is verified local/upstream/live-remote-equal. Publish and prove the
+  architecture-completion tip containing this handoff equal before selecting
+  reliability review alone. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -1092,10 +1094,12 @@ all lanes with summary status `0` in `197.374s`; it does not relabel the
 earlier run.
 
 MIG-03O and its architecture, reliability, and usability reviews were defined
-at published/equal `86b8888`. Architecture alone is now selected. Publish and
-prove this selection clean and equal across local `HEAD`, configured upstream,
-and live remote, then perform only the read-only architecture review. Do not
-run executable/test/configuration work or select reliability, usability,
+at published/equal `86b8888`; architecture selection `a46f94b` is also
+published/equal. Architecture is complete in the checkpoint containing this
+handoff and no card is selected. Publish and prove that completion clean and
+equal across local `HEAD`, configured upstream, and live remote, then select
+only reliability review. Do not run executable/test/configuration work or
+select usability,
 migration, `CONCURRENCY-03`, `TASK-EPIC-01`, the frozen program remainder, or
 a final-audit package.
 
@@ -1267,8 +1271,8 @@ reliability review is complete at `f0160c4`; usability is complete at
 `3828496`, `7aced51`, `1ba3001`, and `d35b674`, published/equal executable
 checkpoint `50e1bb3`, and the documentation/lifecycle close containing this
 handoff. That close left Step `09c` migration and later owner cards uncreated.
-The fresh live-DAG refresh now defines only unselected MIG-03O with its
-sequential architecture, reliability, and usability reviews; no later owner or
-final-audit package is created or preloaded.
+The fresh live-DAG refresh defines only unselected MIG-03O with completed
+architecture and unselected sequential reliability/usability reviews; no later
+owner or final-audit package is created or preloaded.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.
