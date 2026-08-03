@@ -204,7 +204,7 @@ smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03O](REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03O](../IN_PROGRESS/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: selected usability review must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -312,8 +312,8 @@ smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture and reliability reviews are complete; reliability
-completed against published/equal selection `1c950fd` with the exact five
-old-path test-only checkpoints and cutover-loader obligations above. Usability
-remains unselected. No executable, test, configuration, dependency, later
-owner, or audit package changed or ran.
+Not selected. Architecture and reliability reviews are complete at published/
+equal `d9ad4da` and `b89f53c`; usability alone is selected from the latter
+checkpoint. The exact five old-path test-only checkpoints and cutover-loader
+obligations remain fixed. No executable, test, configuration, dependency,
+later owner, or audit package changed or ran.

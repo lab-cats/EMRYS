@@ -30,7 +30,7 @@ unsafe retry guidance, status overclaim, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03O](MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03O](../TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -96,6 +96,7 @@ unsafe retry guidance, status overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Architecture and reliability reviews are complete; select this
-card alone only after reliability completion is published and proven equal.
-No executable, test, or configuration file changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+reliability-completion checkpoint
+`b89f53c495e96c6e0d8b1beeb1cfc99765f97dcf`. Review remains read-only; no
+executable, test, or configuration file changed or ran.

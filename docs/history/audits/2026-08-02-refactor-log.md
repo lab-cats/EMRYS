@@ -6322,3 +6322,23 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   `make -s documentation-check` reports `PASS documentation structure (213
   Markdown documents, 133 task cards, 6 Mermaid sources)`. Reliability moves
   to `COMPLETED`; MIG-03O and usability remain unselected.
+
+## 2026-08-03T18:36:06-0400 — REVIEW-UX-03O selected
+
+- **Selection:** reliability completion
+  `b89f53c495e96c6e0d8b1beeb1cfc99765f97dcf` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. Move only
+  REVIEW-UX-03O from `TODO` to `IN_PROGRESS` and repair its direct lifecycle/
+  status links. MIG-03O, later packages, and final audit remain unselected.
+- **Read-only plan:** bind final root/arbitrary-CWD shell and Python commands;
+  interpreter, manifest, Step `08`/`09`, plan/evidence, retained example/schema,
+  output/lock/summary choices; test/import/artifact/run-summary/report routes;
+  healthy, partial, incomplete-restoration, TERM, and KeyboardInterrupt
+  preservation; rollback; findability; provisional language; and synthetic-
+  only evidence ceilings. Change or run no executable, test, configuration,
+  dependency, scheduler, cluster, production, scientific-review, or biological
+  workload under this review.
+- **Minimal selection validation:** run `git diff --check` only. Publish and
+  prove the usability-selection checkpoint clean/upstream/live-remote-equal
+  before the review begins.
