@@ -158,6 +158,13 @@ case "$command_name" in
         mode="${1:-}"
         path="${2:-}"
         [[ -s "$path" ]] || exit 44
+        if [[ -n "${FAKE_OBSERVE_PUBLISHED_FWD:-}" &&
+              "$mode" == "-h" && "$path" == "$FAKE_OBSERVE_PUBLISHED_FWD" ]]; then
+            [[ -s "${FAKE_OBSERVE_PUBLISHED_REV:-}" ]] || exit 50
+            [[ -s "${FAKE_OBSERVE_PUBLISHED_RECEIPT:-}" ]] || exit 51
+            printf 'fwd-rev-receipt-visible-before-commit\n' \
+                >"${FAKE_PUBLICATION_OBSERVATION:-/dev/null}"
+        fi
         if [[ "${FAKE_FAIL_FINAL_VALIDATION:-0}" == "1" &&
               "$path" != *".tmp.vcf" ]]; then
             exit 45
@@ -194,6 +201,31 @@ cat >"$fake_bin/module" <<'FAKE_MODULE'
 exit 0
 FAKE_MODULE
 chmod +x "$fake_bin/module"
+
+transaction_bin="$test_root/transaction-bin"
+real_mv="$(command -v mv)"
+mkdir -p "$transaction_bin"
+cat >"$transaction_bin/mv" <<'FAKE_MV'
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_path="${1:-}"
+destination_path="${2:-}"
+[[ -n "$source_path" && -n "$destination_path" ]] || exit 64
+if [[ -n "${FAKE_MV_LOG:-}" ]]; then
+    printf '%s\t%s\n' "$source_path" "$destination_path" >>"$FAKE_MV_LOG"
+fi
+if [[ "${FAKE_MV_FAIL_RECEIPT_PUBLICATION:-0}" == "1" &&
+      "$source_path" == *.outputs.tmp.tsv ]]; then
+    exit 67
+fi
+if [[ "${FAKE_MV_FAIL_FWD_RESTORE:-0}" == "1" &&
+      "$source_path" == *.previous.FWD_like.vcf ]]; then
+    exit 68
+fi
+exec "$REAL_MV" "$@"
+FAKE_MV
+chmod +x "$transaction_bin/mv"
 
 fixture="$test_root/fixture"
 mkdir -p "$fixture/orientation/sample_A" "$fixture/orientation/sample_B"
@@ -702,6 +734,105 @@ run_expect_failure "$test_root/lock.out" "$test_root/lock.err" \
     --execute
 assert_contains "$test_root/lock.err" "lock already exists"
 assert_exists "$lock_dir/owner"
+
+transaction_fixture="$test_root/transaction-order"
+cp -R "$fixture" "$transaction_fixture"
+rm -rf "$transaction_fixture/output"
+transaction_args=(
+    --cohort-id cohort_transaction
+    --sample-manifest "$transaction_fixture/samples.tsv"
+    --partition-manifest "$transaction_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$transaction_fixture/orientation"
+    --reference-fasta "$transaction_fixture/reference.fa"
+    --output-root "$transaction_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+transaction_dir="$transaction_fixture/output/cohort_transaction/1"
+transaction_fwd="$transaction_dir/cohort_transaction.1.FWD_like.mpileup.vcf"
+transaction_rev="$transaction_dir/cohort_transaction.1.REV_like.mpileup.vcf"
+transaction_receipt="$transaction_dir/cohort_transaction.1.step07_outputs.tsv"
+transaction_move_log="$test_root/transaction-moves.tsv"
+transaction_observation="$test_root/transaction-observation.txt"
+env \
+    PATH="$transaction_bin:$PATH" \
+    REAL_MV="$real_mv" \
+    FAKE_MV_LOG="$transaction_move_log" \
+    FAKE_OBSERVE_PUBLISHED_FWD="$transaction_fwd" \
+    FAKE_OBSERVE_PUBLISHED_REV="$transaction_rev" \
+    FAKE_OBSERVE_PUBLISHED_RECEIPT="$transaction_receipt" \
+    FAKE_PUBLICATION_OBSERVATION="$transaction_observation" \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    bash "$script" "${transaction_args[@]}" --execute >/dev/null
+[[ "$(awk 'END { print NR }' "$transaction_move_log")" == "3" ]] ||
+    fail "Fresh Step 07 publication must make exactly three final moves"
+transaction_destinations="$(awk -F '\t' '{ print $2 }' "$transaction_move_log")"
+expected_transaction_destinations="$(printf '%s\n%s\n%s' \
+    "$transaction_fwd" "$transaction_rev" "$transaction_receipt")"
+[[ "$transaction_destinations" == "$expected_transaction_destinations" ]] ||
+    fail "Step 07 final move order must be FWD, REV, receipt"
+assert_text_equals "$transaction_observation" \
+    "fwd-rev-receipt-visible-before-commit"
+
+restore_failure_fixture="$test_root/restore-failure"
+cp -R "$fixture" "$restore_failure_fixture"
+rm -rf "$restore_failure_fixture/output"
+restore_failure_args=(
+    --cohort-id cohort_restore
+    --sample-manifest "$restore_failure_fixture/samples.tsv"
+    --partition-manifest "$restore_failure_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$restore_failure_fixture/orientation"
+    --reference-fasta "$restore_failure_fixture/reference.fa"
+    --output-root "$restore_failure_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
+    bash "$script" "${restore_failure_args[@]}" --execute >/dev/null
+restore_failure_dir="$restore_failure_fixture/output/cohort_restore/1"
+restore_failure_fwd="$restore_failure_dir/cohort_restore.1.FWD_like.mpileup.vcf"
+restore_failure_rev="$restore_failure_dir/cohort_restore.1.REV_like.mpileup.vcf"
+restore_failure_receipt="$restore_failure_dir/cohort_restore.1.step07_outputs.tsv"
+printf 'prior fwd bytes\n' >"$restore_failure_fwd"
+printf 'prior rev bytes\n' >"$restore_failure_rev"
+printf 'prior receipt bytes\n' >"$restore_failure_receipt"
+restore_failure_unrelated="$restore_failure_dir/unrelated.txt"
+printf 'preserve restore neighbor\n' >"$restore_failure_unrelated"
+restore_token="restore67"
+restore_failure_log="$test_root/restore-failure-moves.tsv"
+run_expect_status 67 "$test_root/restore-failure.out" \
+    "$test_root/restore-failure.err" \
+    env \
+    PATH="$transaction_bin:$PATH" \
+    REAL_MV="$real_mv" \
+    FAKE_MV_LOG="$restore_failure_log" \
+    FAKE_MV_FAIL_RECEIPT_PUBLICATION=1 \
+    FAKE_MV_FAIL_FWD_RESTORE=1 \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    SLURM_JOB_ID="$restore_token" \
+    bash "$script" "${restore_failure_args[@]}" --execute
+restore_failure_fwd_backup="$restore_failure_dir/.cohort_restore.1.step07.$restore_token.previous.FWD_like.vcf"
+restore_failure_rev_backup="$restore_failure_dir/.cohort_restore.1.step07.$restore_token.previous.REV_like.vcf"
+restore_failure_receipt_backup="$restore_failure_dir/.cohort_restore.1.step07.$restore_token.previous.outputs.tsv"
+assert_not_exists "$restore_failure_fwd"
+assert_text_equals "$restore_failure_fwd_backup" "prior fwd bytes"
+assert_text_equals "$restore_failure_rev" "prior rev bytes"
+assert_text_equals "$restore_failure_receipt" "prior receipt bytes"
+assert_not_exists "$restore_failure_rev_backup"
+assert_not_exists "$restore_failure_receipt_backup"
+assert_text_equals "$restore_failure_unrelated" "preserve restore neighbor"
+assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.lock"
+assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.FWD_like.tmp.vcf"
+assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.REV_like.tmp.vcf"
+assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.outputs.tmp.tsv"
+assert_contains "$restore_failure_log" \
+    "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.outputs.tmp.tsv"$'\t'"$restore_failure_receipt"
+assert_contains "$restore_failure_log" \
+    "$restore_failure_fwd_backup"$'\t'"$restore_failure_fwd"
+if find "$restore_failure_dir" -maxdepth 1 -iname '*recover*' -print -quit |
+    grep -q .; then
+    fail "Restoration failure must not be represented as a durable recovery marker"
+fi
 
 rollback_fixture="$test_root/rollback"
 cp -R "$fixture" "$rollback_fixture"
