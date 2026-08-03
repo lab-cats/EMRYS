@@ -168,6 +168,33 @@ eligible owner remains uncreated and unselected.
   effects, tool-selection ambiguity, partial/stale evidence preservation,
   non-gating mechanical-orientation semantics, focused tests, provenance,
   rollback, and the local-only evidence ceiling.
+- At documentation close, the repository-root producer forms must use
+  `bash src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh`
+  with explicit sample, BAM, BED12, output directory, and selected RSeQC
+  binary. The arbitrary-CWD form must use absolute producer, BAM, BED12,
+  output, and `--infer-experiment-bin` paths; do not imply that the CWD-relative
+  `.venv` preference follows the checkout from another directory. State that
+  dry-run validates inputs and the executable without creating the output
+  directory or native report.
+- Route validator dry-run, execute, repeat, and arbitrary-CWD forms through an
+  explicit interpreter and the final validator path. Create its output parent
+  before execute. Preserve the distinction between exit `0` with rendered or
+  published failed rows and exit `2` with no new publication, including stable-
+  input recheck behavior and prior valid-report preservation.
+- Route scheduler submission from the checkout through final
+  `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm`.
+  Document `SLURM_SUBMIT_DIR`, exported `/tmp`, all six public overrides,
+  optional virtual-environment activation, `.venv` preference/PATH fallback,
+  tolerated module listing, dry-run `logs/` mutation, Bash `3.2` dry-run
+  failure, and stale-nonempty-report false success. The two Make demo targets
+  use local mocks and may create logs; they are not scheduler or cluster proof.
+- Troubleshooting must preserve the native report, unrelated files, producer
+  stdout/stderr, scheduler job identity/logs, selected tool/path, BAM/BAI, and
+  BED12 before retry or cleanup. It must state that Git rollback does not
+  recover runtime evidence and that no lock, stage, backup, receipt, or
+  recovery artifact exists. Historical operational observations must remain
+  separate from migration evidence and may not turn paired-orientation
+  fractions into validated biological strandedness or manifest policy.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction, receipt, recovery marker, scheduler abstraction,
   strandedness classifier, manifest mutation, or public library API.
@@ -178,7 +205,7 @@ eligible owner remains uncreated and unselected.
 
 ## Blocked by
 
-- [REVIEW-UX-03H](../IN_PROGRESS/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03H](../COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -284,7 +311,7 @@ eligible owner remains uncreated and unselected.
 ## Completion record
 
 Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H` and
-`REVIEW-REL-03H` are complete; usability remains unselected in `TODO`. No
-executable/test path changed, no computational test ran, and no later owner is
-preloaded.
+`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H`,
+`REVIEW-REL-03H`, and `REVIEW-UX-03H` are complete; the migration remains in
+`TODO` pending its own selection and task-specific plan. No executable/test
+path changed, no computational test ran, and no later owner is preloaded.

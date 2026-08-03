@@ -2823,3 +2823,49 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   The same campaign agent performs the pass, so independent authorship is not
   claimed. Executable/test mutation and computational, real-RSeQC, scheduler,
   production, scientific-review, and biological evidence remain out of scope.
+
+## 2026-08-03T04:18:23-0400 — REVIEW-UX-03H completed
+
+- **Verified parent:** selection checkpoint `c0c60da` was clean, tracked/
+  untracked empty, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch before the read-only journey pass.
+- **High finding — final commands need explicit execution context:** batch all
+  active producer, validator, job, demo, and focused-test path repairs into the
+  documentation close. Root producer forms invoke the mode-`0644` final file
+  through Bash with explicit sample, BAM, BED12, output, and RSeQC binary.
+  Arbitrary-CWD use requires absolute producer, input, output, and binary paths
+  because default `.venv` lookup is CWD-relative. Dry-run validates those
+  inputs but creates neither output directory nor report.
+- **High finding — validator and scheduler effects must remain distinct:** use
+  an explicit interpreter for validator dry-run, execute, repeat, and absolute-
+  CWD forms; create its output parent before execute; and distinguish exit `0`
+  with failed rows from exit `2` without new publication. Submit the final job
+  from the checkout and document `SLURM_SUBMIT_DIR`, `/tmp`, six overrides,
+  venv activation, `.venv`/PATH choice, tolerated module listing, dry-run log
+  creation, Bash `3.2` failure, and stale-report false success. Local mock demo
+  targets can create logs but prove no scheduler or cluster behavior.
+- **High finding — recovery must preserve rather than bless direct-final
+  defects:** no producer lock, stage, backup, receipt, input recheck, or rollback
+  exists. Partial/empty replacement and wrapper rediscovery of stale nonempty
+  output remain characterized defects. Preserve native report bytes, unrelated
+  files, both streams, job identity/logs, selected tool/path, BAM/BAI, and BED12
+  before retry or cleanup; Git rollback does not recover runtime artifacts.
+- **Medium finding — evidence and provenance require a hard ceiling:** producer
+  exit `0` proves only nonempty output; validator exit `0` can publish failed
+  rows. Fractions remain non-gating mechanical paired-read orientations, not
+  transcript strand, biological sense/antisense, approved strandedness policy,
+  or manifest mutation. The README must route exact implementation path/hash,
+  focused direct and central tests, reverse-order rollback, and fixture/mock
+  local-only evidence. Existing operational observations are not migration,
+  scheduler, cluster, production, scientific-review, or biological proof.
+- **Disposition and boundary:** the reviewed corrections fit the frozen owner,
+  public interfaces, five-move/nine-update ceiling, and separate documentation
+  close. No alias, compatibility copy, package, dependency action, or escalation
+  is required. This was an independent-in-time pass by the same campaign agent;
+  independent authorship is not claimed. No executable/test mutation or
+  computational, real-RSeQC, scheduler, production, scientific-review, or
+  biological run occurred.
+- **Card-boundary gate:** run `git diff --check` and the complete documentation
+  validator on the assembled review close. Report the inherited nine
+  `UNREFINED` card-location findings as a nonpassing expected-only ceiling, not
+  a green gate, and leave them unchanged.
