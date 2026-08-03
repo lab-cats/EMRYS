@@ -30,7 +30,7 @@ approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03G](REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03G](../TODO/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 
@@ -98,5 +98,8 @@ approving them.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal architecture-
+review checkpoint `06a69c7b30071d51b1653b5c008abdc4aaa1592d`. This is a
+read-only independent-in-time adversarial pass by the same campaign agent;
+independent authorship is not claimed. No executable/test mutation or
+computational test is part of review selection.
