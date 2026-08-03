@@ -507,7 +507,12 @@ def install_module_fake(fake_bin: Path) -> None:
         """#!/bin/bash
 set -euo pipefail
 printf '%s\n' "$*" >> "${FAKE_MODULE_LOG:?}"
-exit "${FAKE_MODULE_EXIT:-0}"
+exit_code="${FAKE_MODULE_EXIT:-0}"
+case "${1:-}" in
+    list) exit_code="${FAKE_MODULE_LIST_EXIT:-$exit_code}" ;;
+    load) exit_code="${FAKE_MODULE_LOAD_EXIT:-$exit_code}" ;;
+esac
+exit "$exit_code"
 """,
     )
 
@@ -529,7 +534,11 @@ if [[ "$tool" == "java" && "${1:-}" == "-jar" && "${FAKE_FAIL_JAVA_JAR:-0}" == "
 fi
 case "$tool" in
     java)
-        printf 'openjdk version "17.0.14"\n' >&2
+        if [[ -n "${FAKE_JAVA_VERSION_OUTPUT:-}" ]]; then
+            printf '%s\n' "$FAKE_JAVA_VERSION_OUTPUT" >&2
+        else
+            printf 'openjdk version "17.0.14"\n' >&2
+        fi
         ;;
     STAR)
         printf 'STAR_2.7.11b\n'
@@ -1090,6 +1099,7 @@ def run_prepared(
     *,
     execute: str | None = None,
     environment_updates: dict[str, str] | None = None,
+    environment_removals: tuple[str, ...] = (),
     cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = prepared.environment.copy()
@@ -1099,6 +1109,8 @@ def run_prepared(
         environment["EXECUTE"] = execute
     if environment_updates:
         environment.update(environment_updates)
+    for key in environment_removals:
+        environment.pop(key, None)
     contract = CONTRACTS[prepared.name]
     if cwd is None:
         cwd = prepared.submit if contract.submit_cwd == "caller" else prepared.launch
@@ -1393,6 +1405,184 @@ def test_step_03_stale_named_report_masks_missing_child_output(
     assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
     assert prepared.outputs[0].read_bytes() == stale_bytes
     assert "Validated Step 03 strandedness output:" in result.stdout
+
+
+def test_step_04_mark_duplicates_selects_java_home_executable(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+    java_home = tmp_path / "java-home"
+    home_java = java_home / "bin" / "java"
+    write_executable(
+        home_java,
+        "#!/bin/bash\nprintf 'openjdk version \\\"17.0.99\\\"\\n' >&2\n",
+    )
+    prepared.environment.pop("JAVA_BIN_OVERRIDE")
+    prepared.environment["JAVA_HOME"] = str(java_home)
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == (
+        prepared.expected_args[:-1] + (str(home_java), "--execute")
+    )
+    assert f"Java: {home_java}" in result.stdout
+
+
+def test_step_04_mark_duplicates_falls_back_to_path_after_unusable_java_home(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+    prepared.environment.pop("JAVA_BIN_OVERRIDE")
+    prepared.environment["JAVA_HOME"] = str(tmp_path / "missing-java-home")
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert f"Java: {prepared.expected_args[-1]}" in result.stdout
+
+
+def test_step_04_mark_duplicates_propagates_java_version_command_failure(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": "java", "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize(
+    ("version_output", "diagnostic"),
+    (
+        ('openjdk version "11.0.24"', "Picard requires Java 17 or newer"),
+        ("unparseable java output", "Could not determine Java version"),
+    ),
+)
+def test_step_04_mark_duplicates_rejects_unsupported_java_version_output(
+    tmp_path: Path,
+    version_output: str,
+    diagnostic: str,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_JAVA_VERSION_OUTPUT": version_output},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert diagnostic in result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+def test_step_04_mark_duplicates_rejects_missing_picard_after_module_load(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"PICARD": ""},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "PICARD is not set after loading picard/3.1.1" in result.stderr
+    assert read_lines(prepared.module_log) == ("list", "load picard/3.1.1")
+    assert not prepared.delegate_log.exists()
+
+
+def test_step_04_mark_duplicates_tolerates_list_only_module_failures(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={
+            "FAKE_MODULE_LIST_EXIT": "23",
+            "FAKE_MODULE_LOAD_EXIT": "0",
+        },
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_lines(prepared.module_log) == CONTRACTS[prepared.name].module_calls
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+
+
+def test_step_04_mark_duplicates_dry_run_creates_logs_only(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(prepared)
+
+    assert (prepared.submit / "logs").is_dir()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
+    if local_bash_major() < 4:
+        assert result.returncode != 0
+        assert "execute_args[@]: unbound variable" in result.stderr
+        assert not prepared.delegate_log.exists()
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert read_nul_args(prepared.delegate_log) == prepared.expected_args
+
+
+def test_step_04_mark_duplicates_stale_triplet_masks_missing_child_outputs(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+    stale_bytes = (
+        b"stale duplicate-marked BAM\n",
+        b"stale duplicate-marked BAI\n",
+        b"stale Picard metrics\n",
+    )
+    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
+    assert "Validated Step 04 MarkDuplicates outputs:" in result.stdout
+
+
+def test_step_04_mark_duplicates_unset_java_home_aborts_before_delegation(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_04_mark_duplicates.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_removals=("JAVA_HOME",),
+    )
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "JAVA_HOME: unbound variable" in result.stderr
+    assert not prepared.delegate_log.exists()
 
 
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
