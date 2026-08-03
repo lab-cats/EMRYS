@@ -4722,8 +4722,10 @@ editing-site, or biological proof.
 Status:
 
 ```text
-implemented locally at b674a31
-Python and shell synthetic-fixture suites pass
+implemented at the final evidence owner in executable checkpoint d1cce50
+focused final-path Python, shell, loader, artifact, run-summary, and CLI suites pass
+the pre-documentation aggregate attempt was not green because of eight stale links
+the post-documentation exact aggregate passes all local lanes
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
 ```
@@ -4731,21 +4733,22 @@ not a rerun of CMH and not a biological interpretation engine
 Implemented files:
 
 ```text
-scripts/step_09c_scientific_validation.sh
-scripts/step_09c_scientific_validation.py
+src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
+src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py
 configs/step_09c_review_plan.example.tsv
 configs/step_09c_evidence_manifest.example.tsv
 configs/step_09c_evidence_schemas/
-tests/fixtures/step09c/build_fixture.py
-tests/test_step_09c_scientific_validation.py
-tests/shell/test_step_09c_scientific_validation.sh
+tests/evidence/assemble_scientific_review_evidence_package/build_fixture.py
+tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
+tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 ```
 
 The local dry-run-first Python/shell evidence package has this public
 interface:
 
 ```bash
-scripts/step_09c_scientific_validation.sh \
+PYTHON_BIN_OVERRIDE=.venv/bin/python \
+src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh \
   --review-id REVIEW_ID \
   --sample-manifest SAMPLE_MANIFEST \
   --partition-manifest PARTITION_MANIFEST \
@@ -4760,10 +4763,38 @@ scripts/step_09c_scientific_validation.sh \
 # add --execute only to publish validated evidence records
 ```
 
+Direct Python use invokes the mode-`0644` sibling through the selected
+interpreter with the same arguments and effects:
+
+```bash
+.venv/bin/python \
+  src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py \
+  --review-id REVIEW_ID \
+  --sample-manifest SAMPLE_MANIFEST \
+  --partition-manifest PARTITION_MANIFEST \
+  --step08-sites STEP08_SITES \
+  --step08-inputs STEP08_INPUTS \
+  --step08-summary STEP08_SUMMARY \
+  --step09-analysis-dir STEP09_ANALYSIS_DIR \
+  --review-plan REVIEW_PLAN \
+  --evidence-manifest EVIDENCE_MANIFEST \
+  --output-root OUTPUT_ROOT
+```
+
 Dry-run validates the complete explicit input contract and prints the
 resolved review, inputs, evidence, and output names. It does not create the
 output directory, acquire a lock, write scratch paths, or publish stable
 files. The tool has no SLURM wrapper and is not a production compute stage.
+From another CWD, make the launcher or Python file, interpreter, both
+manifests, all three Step `08` inputs, Step `09` analysis directory, review
+plan, evidence manifest and every declared payload, and output root absolute.
+Use a unique review ID and fresh absolute output root for the safest first run.
+
+The tracked review-plan and evidence-manifest examples plus all thirteen TSVs
+under `configs/step_09c_evidence_schemas/` are structural references only.
+They are not selected automatically and are not production evidence. Correct
+the owned source or declaration and repeat dry-run; never edit a hash, row
+count, status, category, or decision merely to force acceptance.
 
 Execute mode publishes atomically under
 `results/scientific_validation/<review_id>/`:
@@ -4813,6 +4844,22 @@ results/scientific_validation/<review_id>/.<review_id>.step09c.<run_token>.RECOV
 A cleanup failure is reported with the owned paths that could not be removed;
 it does not guarantee that the lock or any other recovery path remains. Never
 infer a clean transaction from either error.
+
+Summary visibility is not committed-attempt proof. The summary appears before
+final table/hash validation and the second check of all 32 bound inputs, and it
+does not hash its twelve siblings. Preserve all thirteen finals, every matching
+run-token temporary/backup/recovery path, the lock, all 32 inputs, streams,
+environment, process/signal evidence, and unrelated bytes before diagnosis or
+retry.
+
+Two severe signal defects are characterized rather than approved. `TERM`
+after summary visibility has no handler and can leave thirteen unvalidated new
+finals, thirteen predecessor backups, the lock, and an empty transaction
+directory without a recovery notice. `KeyboardInterrupt` can bypass rollback
+but run `finally`, leaving new finals while deleting predecessor backups, the
+transaction directory, and the lock. Never clean, restore, or retry either
+state by inference. Use the
+[Step `09c` troubleshooting routes](TROUBLESHOOTING.md#step-09c-finds-a-lock-partial-output-set-changed-input-or-incomplete-rollback).
 
 Keep these status dimensions independent:
 
@@ -4903,15 +4950,25 @@ biological result snapshots by default.
 Local fixture gate:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_step_09c_scientific_validation.py
-bash tests/shell/test_step_09c_scientific_validation.sh
+bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
+.venv/bin/python -m pytest -q \
+  tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
+.venv/bin/python -m pytest -q \
+  tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
+  tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
+.venv/bin/python -m pytest -q \
+  tests/test_artifact_adapters.py tests/test_artifact_run_summary.py \
+  tests/test_independent_contract_goldens.py tests/test_public_cli_contracts.py
 ```
 
 The active fixtures cover exact 13-file publication, side-effect-free dry-run,
 incomplete and exploratory evidence, reserved-state rejection, unrelated-file
-immunity, hash mutation, locks, cleanup, and rollback. A local fixture pass
-means implemented and fixture-tested only. It does not establish a production
-review, scheduler/runtime evidence, cluster proof, or biological readiness.
+immunity, the 32-input identity ceiling, ordered publication, hash mutation,
+locks, cleanup, restoration, signals, and concurrency. The cross-consumer
+suites protect final private-loader, artifact, run-summary, and public-command
+routes. A local pass means implemented and fixture-tested only. It does not
+establish a production review, scheduler/runtime evidence, cluster proof,
+validated editing sites, or biological readiness.
 
 Rerun matrix:
 

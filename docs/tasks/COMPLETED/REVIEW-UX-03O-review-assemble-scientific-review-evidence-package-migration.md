@@ -30,7 +30,7 @@ unsafe retry guidance, status overclaim, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03O](../IN_PROGRESS/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) — Fully: selected migration consumes all three completed reviews.
+- [MIG-03O](MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) — Fully: completed migration consumed all three completed reviews.
 
 ## Prerequisites
 

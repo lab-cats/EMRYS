@@ -141,10 +141,9 @@ separate real-R fixture and independent oracle protect that boundary; neither
 turns the production validator into independent statistical proof.
 
 The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and unchanged
-flat [`step_09c_scientific_validation.py`](../../../../scripts/step_09c_scientific_validation.py)
-contracts. The latter remains a private ownership inversion, not a package API
-or authority to migrate Step `09c`.
+[`validation_report.py`](../../libraries/validation_report.py) and final
+[`step_09c_scientific_validation.py`](../../evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py)
+contracts. The latter remains a private ownership inversion, not a package API.
 
 ## Guarded R and scheduler
 

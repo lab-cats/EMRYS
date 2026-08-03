@@ -116,6 +116,19 @@ Python run had the same `1,219` passes and `17` skips before its sole failure
 listed twelve deferred MIG-03M links plus nine inherited `UNREFINED` locations.
 Neither result makes the aggregate gate green.
 
+The final MIG-03O measurement moved Step `09c` to
+`src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
+at `1279/1534` covered lines and `568/788` branches. Artifact indexing retained
+`1658/2069` lines and `701/986` branches, and run-summary science retained
+`321/403` lines and `111/172` branches, above their frozen rate floors. The
+policy measurement passed `1,323` tests with `17` skips and one explicit
+deselection of the documentation assertion reserved for this close; global
+measurement is `9937/11916` lines and `3527/4842` branches, and the standalone
+comparison passed. The untouched aggregate Python lane reached the same
+`1,323` passes and `17` skips before its sole failure listed eight intentionally
+deferred MIG-03O documentation links; coverage therefore did not run in that
+aggregate attempt. Neither result makes that earlier aggregate gate green.
+
 DOC-GATE-01 independently freezes the extracted documentation validator with a
 hard-coded legacy heading oracle, isolated valid/invalid repositories, exact
 ordered diagnostics, explicit-root and fail-closed Git inventory scenarios,
@@ -191,12 +204,13 @@ surface reachable without copying the dated row-by-row matrices:
 
 | Surface or risk | Current regression route |
 | --- | --- |
-| Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `08` live under `tests/stages/`, while migrated Step `02b` and Step `03` evidence tests live under their owner directories in `tests/evidence/` |
+| Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover final migrated-owner paths plus intentionally retained cross-cutting flat owners |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `08` live under `tests/stages/`, Step `09` under `tests/analyses/`, and migrated Step `02b`, Step `03`, and Step `09c` evidence tests under their owner directories in `tests/evidence/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py`, its owner-local fixed corpus, and guarded real-R comparison |
+| Step `09c` evidence, state, input, publication, signal, concurrency, and recovery behavior | `tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py` plus its adjacent shell contract and fixture builder; characterized signal defects remain defects |
 | Python non-regression measurement | the tracked coverage snapshot and coverage tests |
 | Full dated entry-point matrices and regression dispositions | [historical Python matrix](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md#python-entry-points) and adjacent shell, R, SLURM, and Make sections |
 

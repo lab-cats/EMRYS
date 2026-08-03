@@ -53,9 +53,9 @@ analysis dependencies.
 ## Repository map
 
 ```text
-scripts/        legacy workflow, validation, artifact, and report entry points
+scripts/        retained cross-cutting validation, artifact, and report entry points
 jobs/           SLURM jobs and wrapper interfaces
-src/norad/      implemented neutral libraries plus colocated contracts/descriptors
+src/norad/      implemented migrated owners, neutral libraries, and contracts
 tests/          active Python, shell, R, and fixture tests
 tests/pending/  non-runnable future test plans
 configs/        example manifests and explicit contracts

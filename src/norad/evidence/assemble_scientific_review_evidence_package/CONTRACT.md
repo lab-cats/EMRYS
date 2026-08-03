@@ -5,8 +5,7 @@ scientific-evidence governance and review operation, not a computational
 transformation or analysis rerun. The exact public identity and historical
 alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/`.
+uses that public slug and is now the implemented source location.
 
 ## Responsibility and execution dependencies
 
@@ -91,7 +90,7 @@ for every primary input. It is published last as the native commit marker.
 `computational_validation` is retained through the evidence index and its
 external source; it has no dedicated normalized table among the 13 outputs.
 
-[`step_09c_scientific_validation.py`](../../../../scripts/step_09c_scientific_validation.py)
+[`step_09c_scientific_validation.py`](step_09c_scientific_validation.py)
 owns all validation, normalization, state gating, locking, and publication.
 Dry-run validates fully but creates no output directory. Execute mode acquires
 an exclusive review lock, requires all 13 previous outputs or none, stages and
@@ -105,7 +104,7 @@ recovery paths and writes a recovery notice. The summary still becomes visible
 before final post-publication checks and does not hash its 12 siblings; later
 consumers must validate the entire package rather than trust marker presence.
 
-[`step_09c_scientific_validation.sh`](../../../../scripts/step_09c_scientific_validation.sh)
+[`step_09c_scientific_validation.sh`](step_09c_scientific_validation.sh)
 is a thin public launcher. It validates CLI shape, resolves Python, delegates
 all behavior, and preserves the implementation's exit status.
 
@@ -133,9 +132,9 @@ interpretation readiness is established in this checkout.
 
 - The 4,500-line implementation also owns reusable Step `08`/`09` schemas and
   validators, ten evidence domains, state policy, and transaction machinery;
-  the final Step `08` and Step `09` validators exact-load it under private
-  identities as a contract library, reversing ownership without creating a
-  package API.
+  the final Step `08` and Step `09` validators, artifact index, and run-summary
+  science helper exact-load it under one private identity as a contract
+  library, reversing ownership without creating a package API.
 - Headers exist in Python and tracked schema TSVs; parity is tested, but the
   canonical schema owner and versioning boundary are not explicit.
 - State/evidence rules are duplicated across publication, artifact indexing,

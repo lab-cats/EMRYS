@@ -2346,6 +2346,13 @@ manifest, and header schemas at
 `configs/step_09c_evidence_schemas/` as structural references. Preserve
 production evidence under approved ignored results storage.
 
+When invoking from another CWD, make the launcher or Python file, interpreter,
+both manifests, all three Step `08` files, Step `09` analysis directory, review
+plan, evidence manifest and every payload it declares, and output root absolute.
+Relative producer-recorded paths can later resolve from a consumer's CWD;
+preserve the original CWD and resolved identities rather than editing a
+published table into agreement.
+
 These checks are implemented and synthetic-fixture-tested locally. A fixture
 pass is not proof that a production review is complete.
 
@@ -2377,24 +2384,67 @@ only when rollback is incomplete, so it may be absent even when the error
 reports retained recovery state.
 
 The 13 stable TSVs must be all present or all absent. The review summary is
-published last. A concurrent writer, interrupted/manual copy, changed input,
-publication/rollback failure, or cleanup error can leave evidence that must be
-inspected before another writer proceeds.
+published last, but becomes visible before final table/hash validation and the
+second check of all 32 inputs. It does not hash its twelve siblings. A
+concurrent writer, interrupted/manual copy, changed input, publication/rollback
+failure, or cleanup error can leave evidence that must be inspected before
+another writer proceeds.
+
+`TERM` after summary visibility has no handler and can leave thirteen
+unvalidated new finals, thirteen predecessor backups, the lock, and an empty
+transaction directory without a recovery notice. `KeyboardInterrupt` can
+bypass rollback but run `finally`, leaving new finals while deleting the
+predecessor backups, transaction directory, and lock. These are severe
+characterized defects, not approved cleanup or retry behavior.
 
 ### Fix
 
-Inspect any remaining lock metadata, all 13 stable outputs, the named input
-hashes, matching run-token temporary/previous paths, and any best-effort
-recovery marker. Do not delete a foreign lock, combine files from different
-attempts, manufacture the summary, or discard a retained backup. Wait for an
-active owner or perform an explicit, evidence-preserving recovery to either the
-complete previous 13-file set or no set, validate the result, record the
-operator action, and only then remove the owned lock when appropriate. For a
-cleanup-only error, inspect exactly the paths named in the error because the
-lock may already have been removed.
+Inspect any remaining lock metadata, all 13 stable outputs, all 32 bound
+inputs, matching run-token temporary/previous paths, any best-effort recovery
+marker, streams, environment, process/signal evidence, and unrelated bytes.
+Do not delete a foreign lock, combine files from different attempts,
+manufacture the summary, or discard a retained backup. Do not treat a visible
+summary or an absent lock as committed-attempt proof. Wait for an active owner
+or perform an explicit, evidence-preserving recovery to either the complete
+previous 13-file set or no set, validate the result, record the operator
+action, and only then remove the owned lock when appropriate. If one restore
+failed, retain the absent final's backup, the lock, empty transaction directory,
+backup directory, and recovery notice exactly as found. For a cleanup-only
+error, inspect exactly the paths named in the error because the lock may already
+have been removed. A separately authorized nonproduction diagnostic retry uses
+a new isolated absolute output root after every writer and reader is ruled out.
 
 Lock, mutation, rollback, and cleanup paths are synthetic-fixture-tested only;
 no production Step `09c` recovery incident has been observed.
+
+## A Step 08, Step 09, artifact, or run-summary consumer cannot load Step 09c
+
+### Symptom
+
+The final Step `08` or Step `09` validator, artifact index, or run-summary
+science normalization exits `2` with a sanitized one-line message that the
+Step `09c` contract module is missing, unreadable, incomplete, or failed to
+load.
+
+### Cause
+
+All four consumers privately exact-load
+`src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
+under `_norad_step_09c_scientific_validation_contracts`. They require that
+exact cached-file identity and callable/schema readiness, insert the module
+before execution, clean only an owned partial cache entry, and do not search
+`PYTHONPATH` or mutate `sys.path`. A missing final file, foreign cache entry,
+partial module, unreadable path, or execution error fails closed.
+
+### Fix
+
+Preserve the diagnostic and inspect the final tracked file, current Git state,
+cached module identity when debugging in-process, and the invoking consumer.
+Restore the reviewed final owner through Git if the tracked file is missing or
+changed. Do not recreate `scripts/step_09c_scientific_validation.py`, add a
+wrapper, copy the module, install a package, alter `PYTHONPATH`, or inject a
+search path. Use the final owner and consumer-focused commands in the
+[Step `09c` runbook](RUNBOOK.md#post-step-09-scientific-validation-gate).
 
 ## Step 09c fixture output is mistaken for a completed scientific review
 

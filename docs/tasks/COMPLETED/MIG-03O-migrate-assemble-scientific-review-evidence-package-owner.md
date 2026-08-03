@@ -320,3 +320,57 @@ only checkpoints, one atomic five-move/fourteen-integration cutover with the
 complete computational card gate, and one separate documentation/lifecycle
 close. No executable, test, configuration, dependency, later owner, or final-
 audit package changed or ran at selection.
+
+Execution completed in exactly seven sequential published boundaries. The
+five old-path test-only checkpoints are wrapper resolution
+`0dea4da1e5ab6c76500d824196f41fac071248fd`, input identity
+`bd680b667e26d08857e44df1629fa80ed468a2b6`, publication order
+`d9b0ce8b6ce90c5bf0ec35e3924ddc06efd83311`, recovery
+`3fa06995e9c24fb1e4b8c5c3994ec3a45268329c`, and signal/concurrency
+`d45944080e83bbc2695456ed515debd8e1b5d385`. Each changed only its reviewed
+existing direct test owner and ran the smallest focused check.
+
+Atomic executable checkpoint
+`d1cce502e2e6b04fbe015772c9dff97d82f2fb6e` moved exactly the Python
+implementation, shell launcher, direct Python test, direct shell test, and
+fixture builder; updated exactly fourteen integration owners; removed every
+legacy executable/direct-test path; and preserved the reviewed final modes,
+Python bytes/hash, shell path-only usage correction, retained configuration
+hashes, private loaders, artifact/run-summary/report meanings, and coverage
+route. Focused final evidence passed the shell suite, `65` direct Python tests,
+`53` Step `08`/`09` loader tests, `16` selected artifact/run-summary loader and
+provenance tests, and the independent-golden/public-CLI surfaces.
+
+The first sandboxed exact
+`RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` stopped only on
+Bioconductor metadata DNS during guarded R; no dependency action occurred. The
+exact network-enabled rerun was not green. Static, shell, guarded-R, and
+report-runtime lanes passed; Python reached `1,323` passes and `17` skips
+before its sole failure,
+`test_documentation_validator_accepts_implemented_unrefined_state`, listed the
+eight intentionally deferred old Step `09c` documentation links. Coverage did
+not run after that failure. Separately passing lanes do not relabel either
+aggregate attempt.
+
+The coverage measurement deselecting only that known documentation assertion
+passed `1,323` tests with `17` skips and one deselection. Its standalone policy
+check passed at global `9937/11916` lines and `3527/4842` branches. Final Step
+`09c` measured `1279/1534` lines and `568/788` branches; artifact indexing
+measured `1658/2069` and `701/986`; run-summary science measured `321/403` and
+`111/172`. This is local synthetic-fixture and coverage evidence only.
+
+The separate documentation/lifecycle close adds the adjacent owner README,
+repairs all final code/test/command and lifecycle links, updates current
+topology/status/evidence, predecessor/consumer/provenance, configuration/schema,
+and recovery routes, records every reviewed risk and decision in the dated
+audit log, and moves this card to `COMPLETED`. Semantic identity, DAG edges,
+and public flow did not change, so no diagram changed. No later owner or final-
+audit package is created or selected by this close.
+
+`git diff --check` and the exact documentation gate pass for `214` Markdown
+documents, `133` task cards, and `6` Mermaid sources. The final exact network-
+enabled aggregate rerun passes static in `0.116s`, shell in `56.637s`, guarded
+R in `160.950s`, report runtime in `130.200s`, and Python coverage in
+`199.997s`, with summary status `0` in `200.121s`. This later green result does
+not relabel either earlier non-green attempt or establish scheduler, cluster,
+production, completed scientific-review, editing-site, or biological proof.

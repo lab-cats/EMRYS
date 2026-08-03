@@ -124,11 +124,11 @@ annotation spellings can fail identity evidence; arbitrary unique candidate
 IDs and reversed site rows can pass.
 
 It privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and the unchanged
-flat [`step_09c_scientific_validation.py`](../../../../scripts/step_09c_scientific_validation.py)
+[`validation_report.py`](../../libraries/validation_report.py) and the final
+[`step_09c_scientific_validation.py`](../../evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py)
 contract owner under separate private identities. The Step `09c` bridge exists
-for shared schemas and validators and is a retained ownership inversion, not a
-public package API or authority to move Step `09c`.
+for shared schemas and validators and remains an ownership inversion, not a
+public package API.
 
 ## Guarded R and scheduler
 

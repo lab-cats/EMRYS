@@ -6431,3 +6431,107 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal slice check:** run `git diff --check` only. Publish and prove this
   selection checkpoint clean/upstream/live-remote-equal before the first
   wrapper-resolution test-only slice.
+
+## 2026-08-03T19:15:32-0400 — MIG-03O executable/test checkpoint published
+
+- **Sequential test-only boundaries:** wrapper resolution
+  `0dea4da1e5ab6c76500d824196f41fac071248fd`, input identity
+  `bd680b667e26d08857e44df1629fa80ed468a2b6`, publication order
+  `d9b0ce8b6ce90c5bf0ec35e3924ddc06efd83311`, recovery
+  `3fa06995e9c24fb1e4b8c5c3994ec3a45268329c`, and signal/concurrency
+  `d45944080e83bbc2695456ed515debd8e1b5d385` were published and proved
+  local/upstream/live-remote-equal in order. Each changed only its reviewed
+  existing direct test owner and used the smallest focused check.
+- **Wrapper decision and ceiling:** final direct/Bash arbitrary-CWD paths,
+  slash-path and PATH-basename Python resolution, exact sibling delegation,
+  child streams/status, dry-run nonmutation, and thirteen-file execution are
+  protected. Interpreter path/version/environment and executable identity
+  remain unrecorded provenance ceilings.
+- **Input-identity decision and ceiling:** exactly 32 fixture inputs are bound
+  for disappearance and byte mutation before publication. Identical-byte
+  replacement remains undetected; inode, metadata, writer, directory,
+  interpreter/code, durable attempt, and filesystem durability are not bound.
+  The summary does not hash its twelve siblings.
+- **Publication decision and ceiling:** twelve payloads precede the summary;
+  replacement backs up the predecessor summary first, then its other twelve,
+  and publishes the new summary last. Summary visibility precedes final table/
+  hash validation and the second 32-input check, so it is not committed-attempt
+  proof.
+- **Recovery decision:** final-check failure removes a partial first
+  publication or restores all thirteen predecessor files with the summary
+  last. One failed restore retains the absent final's backup, the other twelve
+  restored finals, lock, empty transaction directory, backup directory, and
+  recovery notice. That state is preservation evidence, not cleanup or retry
+  authority.
+- **Signal/concurrency defects preserved:** post-summary `TERM` has no handler
+  and leaves thirteen unvalidated new finals, thirteen predecessor backups,
+  lock, and empty transaction directory without notice. Post-summary
+  `KeyboardInterrupt` bypasses rollback but runs `finally`, leaving new finals
+  while deleting backups, transaction directory, and lock. A same-review
+  contender fails while the admitted winner owns the lock. These severe
+  defects are characterized, not fixed, approved, or blessed.
+- **Atomic cutover:** executable checkpoint
+  `d1cce502e2e6b04fbe015772c9dff97d82f2fb6e` moved exactly the Python
+  implementation, shell launcher, two direct tests, and fixture builder to the
+  final evidence/test owner. Exactly fourteen integration owners changed. Old
+  and final executable/direct-test paths do not coexist; all retained
+  `configs/` examples and schema TSVs remain byte-identical.
+- **Private-loader decision:** Step `08`, Step `09`, artifact indexing, and run-
+  summary science exact-load the final Python file under
+  `_norad_step_09c_scientific_validation_contracts`, with cached-file/readiness
+  checks, insertion before execution, owned partial-cache cleanup, sanitized
+  exit `2`, and unchanged `sys.path`. No package marker, public import,
+  `PYTHONPATH`, compatibility copy, wrapper, or installed identity was added.
+- **Focused acceptance:** the final shell suite passed; `65` direct Python
+  tests passed; Step `08`/`09` loader suites passed `53`; selected artifact and
+  run-summary loader/provenance cases passed `16`; and independent-golden plus
+  public-CLI surfaces passed. No scheduler, cluster, production, scientific-
+  review, editing-site, or biological evidence was created.
+- **Aggregate evidence:** the sandboxed exact gate stopped only on
+  Bioconductor metadata DNS; no dependency action occurred. The network-
+  enabled exact gate passed static, shell, guarded-R, and report-runtime lanes,
+  then reached `1,323` Python passes and `17` skips before its sole
+  documentation-validator failure listed eight intentionally deferred Step
+  `09c` links. Coverage did not run, so this aggregate result is not green.
+- **Coverage evidence:** with only that known documentation assertion
+  deselected, `1,323` tests passed with `17` skips and one deselection. The
+  standalone check passed at global `9937/11916` lines and `3527/4842`
+  branches, final Step `09c` `1279/1534` and `568/788`, artifact indexing
+  `1658/2069` and `701/986`, and run-summary science `321/403` and `111/172`.
+  This does not relabel the aggregate attempt or exceed local coverage evidence.
+- **Publication:** the executable checkpoint was clean, tracked/untracked-
+  empty, recovery/index-lock-free, and equal across local `HEAD`, configured
+  upstream, and live remote before documentation mutation.
+
+## 2026-08-03T19:27:50-0400 — MIG-03O documentation/lifecycle close
+
+- **Bounded close:** add one adjacent owner README; update the owner contract,
+  root repository map and current architecture/inventory/test/ownership/status/
+  command/recovery owners,
+  direct Step `08`/`09` predecessor and private-consumer routes, and this dated
+  audit; repair all eight current old-path links; move MIG-03O to `COMPLETED`;
+  and repair every inbound lifecycle link. No executable, configuration,
+  dependency, schema, fixture, report template, test-selection, scheduler,
+  cluster, production, scientific-review, or biological surface changes.
+- **Topology decision:** semantic identity, required-artifact DAG edges, and
+  public flow are unchanged, so no Mermaid source changes. All fourteen frozen
+  functional owners now occupy their final homes; no later owner or final-audit
+  package is created, selected, or preloaded.
+- **Recovery and evidence language:** canonical guidance preserves all
+  thirteen finals, 32 inputs, lock, temp/backup/notice paths, streams,
+  process/signal/environment evidence, and unrelated bytes before intervention.
+  It explicitly retains the severe signal/restore/provenance defects and keeps
+  `science_review_complete_exploratory` provisional while rejecting
+  `biological_interpretation_ready`.
+- **Rollback decision:** revert this documentation close first, executable
+  checkpoint `d1cce50` second, then signal/concurrency `d459440`, recovery
+  `3fa0699`, publication order `d9b0ce8`, input identity `bd680b6`, and wrapper
+  resolution `0dea4da`. Git does not authenticate, restore, delete, or alter
+  runtime evidence, finals, locks, backups, notices, or review state.
+- **Final card-boundary evidence:** `git diff --check` and the exact
+  documentation gate pass for `214` Markdown documents, `133` task cards, and
+  `6` Mermaid sources. The exact network-enabled aggregate rerun passes static
+  `0.116s`, shell `56.637s`, guarded R `160.950s`, report runtime `130.200s`,
+  and Python coverage `199.997s`, with summary status `0` in `200.121s`. This
+  later green result does not relabel the sandboxed DNS stop or the eight-link
+  aggregate failure and remains local engineering evidence only.

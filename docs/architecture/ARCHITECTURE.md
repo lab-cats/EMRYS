@@ -21,6 +21,7 @@ and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
 `generate_partitioned_cohort_mpileup_VCFs`,
 `preprocess_and_annotate_cohort_candidates`,
 `rank_cohort_candidates_with_paired_CMH`,
+`assemble_scientific_review_evidence_package`,
 `collect_canonical_BAM_QC_evidence`, and
 `collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
 now live under `src/norad/`; remaining workflow entry points stay under
@@ -67,10 +68,11 @@ publication protocol used by all thirteen validator entry points. The final
 through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The Step `08` and Step `09` validators separately exact-load the
-unchanged flat Step `09c` contract owner under private identities for shared
-schemas; this is a retained ownership inversion, not a package API. The FASTA-sidecar and
-split-N-cigar validators also privately
+interface. The Step `08` and Step `09` validators, artifact index, and run-
+summary science helper exact-load the final Step `09c` implementation under
+one private identity for shared schemas and policy; this is a retained
+ownership inversion, not a package API. The FASTA-sidecar and split-N-cigar
+validators also privately
 exact-load the unchanged public flat reference-provenance owner. Stage-specific
 parsing and check rosters remain with their functional owners.
 
