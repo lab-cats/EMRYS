@@ -79,6 +79,20 @@ assert_file_equals() {
     [[ "$actual" == "$expected" ]] || fail "unexpected contents for $path: $actual"
 }
 
+assert_line_before() {
+    local file="$1"
+    local first="$2"
+    local second="$3"
+    local first_line
+    local second_line
+
+    first_line="$(grep -nF -- "$first" "$file" | head -n 1 | cut -d: -f1)"
+    second_line="$(grep -nF -- "$second" "$file" | head -n 1 | cut -d: -f1)"
+    [[ -n "$first_line" ]] || fail "missing ordered line: $first"
+    [[ -n "$second_line" ]] || fail "missing ordered line: $second"
+    [[ "$first_line" -lt "$second_line" ]] || fail "expected '$first' before '$second' in $file"
+}
+
 assert_no_step06_scratch() {
     local output_dir="$1"
     local qc_dir="$2"
@@ -355,6 +369,10 @@ case "\$subcommand" in
     quickcheck)
         input_bam="\${1:-}"
         [[ -n "\$input_bam" ]] || { printf 'fake samtools quickcheck missing BAM\\n' >&2; exit 64; }
+        if [[ -n "\${FAKE_FINAL_QUICKCHECK_FAIL_PATH:-}" && "\$input_bam" == "\$FAKE_FINAL_QUICKCHECK_FAIL_PATH" ]]; then
+            printf 'fake final-path quickcheck forced failure for %s\\n' "\$input_bam" >&2
+            exit 66
+        fi
         if [[ -n "\${FAKE_QUICKCHECK_FAIL_MATCH:-}" && "\$input_bam" == *"\$FAKE_QUICKCHECK_FAIL_MATCH"* ]]; then
             printf 'fake quickcheck forced failure for %s\\n' "\$input_bam" >&2
             exit 66
@@ -381,13 +399,20 @@ for arg in "\$@"; do
     dest="\$arg"
 done
 
-fail_marker="$tmp_dir/fake_mv_failed_once"
+source="\${1:-}"
+
+fail_marker="\${FAKE_MV_FAIL_MARKER:-$tmp_dir/fake_mv_failed_once}"
 # Force only the first matching publish move to fail so rollback moves can still
 # restore the previous final output set.
 if [[ -n "\${FAKE_MV_FAIL_ONCE_DEST_MATCH:-}" && "\$dest" == *"\$FAKE_MV_FAIL_ONCE_DEST_MATCH"* && ! -e "\$fail_marker" ]]; then
     : > "\$fail_marker"
     printf 'fake mv forced failure for destination: %s\\n' "\$dest" >&2
     exit 67
+fi
+
+if [[ -n "\${FAKE_MV_RESTORE_FAIL_SOURCE:-}" && "\$source" == "\$FAKE_MV_RESTORE_FAIL_SOURCE" ]]; then
+    printf 'fake mv forced restore failure for source: %s\\n' "\$source" >&2
+    exit "\${FAKE_MV_RESTORE_FAIL_STATUS:-68}"
 fi
 
 /bin/mv "\$@"
@@ -809,6 +834,129 @@ assert_file_equals "$rollback_dir/ABE_EV_2.REV_like.bam.bai" "previous rev bai"
 assert_file_equals "$rollback_qc/ABE_EV_2.orientation_counts.tsv" "previous counts"
 assert_not_exists "$rollback_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$rollback_dir" "$rollback_qc"
+
+printf 'Running counts-last final publication order check...\n'
+publish_order_output="$tmp_dir/publish_order.out"
+publish_order_dir="$tmp_dir/results/publish_order/orientation/ABE_EV_2"
+publish_order_qc="$tmp_dir/results/publish_order/qc/orientation"
+rm -f "$mv_log"
+SLURM_JOB_ID=order001 run_step06 ABE_EV_2 "$input_bam" "$publish_order_dir" "$publish_order_qc" --execute >"$publish_order_output"
+publish_order_fwd_bam="$publish_order_dir/ABE_EV_2.FWD_like.bam"
+publish_order_fwd_bai="$publish_order_fwd_bam.bai"
+publish_order_rev_bam="$publish_order_dir/ABE_EV_2.REV_like.bam"
+publish_order_rev_bai="$publish_order_rev_bam.bai"
+publish_order_counts="$publish_order_qc/ABE_EV_2.orientation_counts.tsv"
+assert_line_before "$mv_log" "$publish_order_fwd_bam" "$publish_order_fwd_bai"
+assert_line_before "$mv_log" "$publish_order_fwd_bai" "$publish_order_rev_bam"
+assert_line_before "$mv_log" "$publish_order_rev_bam" "$publish_order_rev_bai"
+assert_line_before "$mv_log" "$publish_order_rev_bai" "$publish_order_counts"
+[[ -s "$publish_order_counts" ]] || fail "counts-last run did not publish counts TSV"
+assert_not_exists "$publish_order_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$publish_order_dir" "$publish_order_qc"
+
+printf 'Running incomplete final-set rejection preservation check...\n'
+incomplete_dir="$tmp_dir/results/incomplete/orientation/ABE_EV_2"
+incomplete_qc="$tmp_dir/results/incomplete/qc/orientation"
+mkdir -p "$incomplete_dir" "$incomplete_qc"
+printf 'lone prior FWD BAM bytes\n' >"$incomplete_dir/ABE_EV_2.FWD_like.bam"
+printf 'unrelated incomplete output bytes\n' >"$incomplete_dir/unrelated.txt"
+printf 'unrelated incomplete qc bytes\n' >"$incomplete_qc/unrelated.txt"
+incomplete_output="$tmp_dir/incomplete.out"
+assert_fails "$incomplete_output" env SLURM_JOB_ID=incomplete001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$incomplete_dir" \
+    --qc-dir "$incomplete_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$incomplete_output" "Step 06 final outputs are inconsistent"
+assert_file_equals "$incomplete_dir/ABE_EV_2.FWD_like.bam" "lone prior FWD BAM bytes"
+assert_not_exists "$incomplete_dir/ABE_EV_2.FWD_like.bam.bai"
+assert_not_exists "$incomplete_dir/ABE_EV_2.REV_like.bam"
+assert_not_exists "$incomplete_dir/ABE_EV_2.REV_like.bam.bai"
+assert_not_exists "$incomplete_qc/ABE_EV_2.orientation_counts.tsv"
+assert_file_equals "$incomplete_dir/unrelated.txt" "unrelated incomplete output bytes"
+assert_file_equals "$incomplete_qc/unrelated.txt" "unrelated incomplete qc bytes"
+assert_not_exists "$incomplete_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$incomplete_dir" "$incomplete_qc"
+assert_no_step06_attempt_marker "$incomplete_dir" "$incomplete_qc"
+
+printf 'Running final-path quickcheck five-file restoration check...\n'
+final_revalidation_dir="$tmp_dir/results/final_revalidation/orientation/ABE_EV_2"
+final_revalidation_qc="$tmp_dir/results/final_revalidation/qc/orientation"
+mkdir -p "$final_revalidation_dir" "$final_revalidation_qc"
+printf 'prior final-check FWD BAM bytes\n' >"$final_revalidation_dir/ABE_EV_2.FWD_like.bam"
+printf 'prior final-check FWD BAI bytes\n' >"$final_revalidation_dir/ABE_EV_2.FWD_like.bam.bai"
+printf 'prior final-check REV BAM bytes\n' >"$final_revalidation_dir/ABE_EV_2.REV_like.bam"
+printf 'prior final-check REV BAI bytes\n' >"$final_revalidation_dir/ABE_EV_2.REV_like.bam.bai"
+printf 'prior final-check counts bytes\n' >"$final_revalidation_qc/ABE_EV_2.orientation_counts.tsv"
+printf 'unrelated final-check output bytes\n' >"$final_revalidation_dir/unrelated.txt"
+printf 'unrelated final-check qc bytes\n' >"$final_revalidation_qc/unrelated.txt"
+final_revalidation_output="$tmp_dir/final_revalidation.out"
+assert_fails "$final_revalidation_output" env \
+    FAKE_FINAL_QUICKCHECK_FAIL_PATH="$final_revalidation_dir/ABE_EV_2.FWD_like.bam" \
+    SLURM_JOB_ID=finalcheck001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$final_revalidation_dir" \
+    --qc-dir "$final_revalidation_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$final_revalidation_output" "fake final-path quickcheck forced failure"
+assert_contains "$final_revalidation_output" "Rolling back Step 06"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam" "prior final-check FWD BAM bytes"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam.bai" "prior final-check FWD BAI bytes"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam" "prior final-check REV BAM bytes"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam.bai" "prior final-check REV BAI bytes"
+assert_file_equals "$final_revalidation_qc/ABE_EV_2.orientation_counts.tsv" "prior final-check counts bytes"
+assert_file_equals "$final_revalidation_dir/unrelated.txt" "unrelated final-check output bytes"
+assert_file_equals "$final_revalidation_qc/unrelated.txt" "unrelated final-check qc bytes"
+assert_not_exists "$final_revalidation_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$final_revalidation_dir" "$final_revalidation_qc"
+assert_no_step06_attempt_marker "$final_revalidation_dir" "$final_revalidation_qc"
+
+printf 'Running publication-plus-restoration failure erasure check...\n'
+restore_failure_dir="$tmp_dir/results/restore_failure/orientation/ABE_EV_2"
+restore_failure_qc="$tmp_dir/results/restore_failure/qc/orientation"
+mkdir -p "$restore_failure_dir" "$restore_failure_qc"
+printf 'prior restore-failure FWD BAM bytes\n' >"$restore_failure_dir/ABE_EV_2.FWD_like.bam"
+printf 'prior restore-failure FWD BAI bytes\n' >"$restore_failure_dir/ABE_EV_2.FWD_like.bam.bai"
+printf 'prior restore-failure REV BAM bytes\n' >"$restore_failure_dir/ABE_EV_2.REV_like.bam"
+printf 'prior restore-failure REV BAI bytes\n' >"$restore_failure_dir/ABE_EV_2.REV_like.bam.bai"
+printf 'prior restore-failure counts bytes\n' >"$restore_failure_qc/ABE_EV_2.orientation_counts.tsv"
+printf 'unrelated restore-failure output bytes\n' >"$restore_failure_dir/unrelated.txt"
+printf 'unrelated restore-failure qc bytes\n' >"$restore_failure_qc/unrelated.txt"
+restore_failure_output="$tmp_dir/restore_failure.out"
+assert_exits 67 "$restore_failure_output" env \
+    FAKE_MV_FAIL_ONCE_DEST_MATCH="$restore_failure_dir/ABE_EV_2.REV_like.bam" \
+    FAKE_MV_FAIL_MARKER="$tmp_dir/restore_failure_publish_failed_once" \
+    FAKE_MV_RESTORE_FAIL_SOURCE="$restore_failure_dir/.ABE_EV_2.step06.restore068.previous.FWD_like.bam" \
+    FAKE_MV_RESTORE_FAIL_STATUS=68 \
+    SLURM_JOB_ID=restore068 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$restore_failure_dir" \
+    --qc-dir "$restore_failure_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$restore_failure_output" "fake mv forced failure for destination"
+assert_contains "$restore_failure_output" "Rolling back Step 06"
+assert_contains "$restore_failure_output" "fake mv forced restore failure for source"
+assert_not_exists "$restore_failure_dir/ABE_EV_2.FWD_like.bam"
+assert_file_equals "$restore_failure_dir/ABE_EV_2.FWD_like.bam.bai" "prior restore-failure FWD BAI bytes"
+assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam" "prior restore-failure REV BAM bytes"
+assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam.bai" "prior restore-failure REV BAI bytes"
+assert_file_equals "$restore_failure_qc/ABE_EV_2.orientation_counts.tsv" "prior restore-failure counts bytes"
+assert_file_equals "$restore_failure_dir/unrelated.txt" "unrelated restore-failure output bytes"
+assert_file_equals "$restore_failure_qc/unrelated.txt" "unrelated restore-failure qc bytes"
+assert_not_exists "$restore_failure_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$restore_failure_dir" "$restore_failure_qc"
+assert_no_step06_attempt_marker "$restore_failure_dir" "$restore_failure_qc"
 
 printf 'Running stale Step 05 path checks...\n'
 stale_path_output="$tmp_dir/stale_paths.out"
