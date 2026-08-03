@@ -53,6 +53,22 @@ assert_fails() {
     fi
 }
 
+assert_exits() {
+    local expected_status="$1"
+    local output_file="$2"
+    local status
+    shift 2
+
+    set +e
+    "$@" >"$output_file" 2>&1
+    status=$?
+    set -e
+    [[ "$status" -eq "$expected_status" ]] || {
+        cat "$output_file" >&2
+        fail "expected exit $expected_status, got $status: $*"
+    }
+}
+
 assert_file_equals() {
     local path="$1"
     local expected="$2"
@@ -73,6 +89,19 @@ assert_no_step05_scratch() {
     if find "$dir" -name '*.step05.*' -print | grep -q .; then
         find "$dir" -name '*.step05.*' -print >&2
         fail "Step 05 scratch files remain in $dir"
+    fi
+}
+
+assert_no_step05_recovery() {
+    local dir="$1"
+
+    if [[ ! -d "$dir" ]]; then
+        return
+    fi
+
+    if find "$dir" -iname '*recovery*' -print | grep -q .; then
+        find "$dir" -iname '*recovery*' -print >&2
+        fail "Step 05 recovery evidence remains in $dir"
     fi
 }
 
@@ -281,6 +310,10 @@ case "\$subcommand" in
             printf 'fake quickcheck forced failure\\n' >&2
             exit 66
         fi
+        if [[ "\${FAKE_QUICKCHECK_FAIL_FINAL:-0}" == "1" && "\$input_bam" != *.step05.* ]]; then
+            printf 'fake final-path quickcheck forced failure\\n' >&2
+            exit 69
+        fi
         [[ -s "\$input_bam" ]]
         ;;
     view)
@@ -320,8 +353,12 @@ set -euo pipefail
 printf 'mv invoked\\n' >> "$mv_log"
 printf '%s\\n' "\$@" >> "$mv_log"
 
+source=""
 dest=""
 for arg in "\$@"; do
+    if [[ -z "\$source" ]]; then
+        source="\$arg"
+    fi
     dest="\$arg"
 done
 
@@ -331,6 +368,11 @@ if [[ -n "\${FAKE_MV_FAIL_ONCE_DEST_MATCH:-}" && "\$dest" == *"\$FAKE_MV_FAIL_ON
     : > "\$fail_marker"
     printf 'fake mv forced failure for destination: %s\\n' "\$dest" >&2
     exit 67
+fi
+
+if [[ -n "\${FAKE_MV_FAIL_SOURCE_MATCH:-}" && "\$source" == *"\$FAKE_MV_FAIL_SOURCE_MATCH" ]]; then
+    printf 'fake mv forced restore failure for source: %s\\n' "\$source" >&2
+    exit 68
 fi
 
 /bin/mv "\$@"
@@ -599,6 +641,54 @@ assert_file_equals "$rollback_dir/ABE_EV_2.split_ncigar.bam.bai" "previous bai"
 assert_not_exists "$rollback_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$rollback_dir"
 
+printf 'Running lone-final rejection preservation check...\n'
+lone_final_dir="$tmp_dir/results/lone_final"
+mkdir -p "$lone_final_dir"
+printf 'lone final bam bytes' >"$lone_final_dir/ABE_EV_2.split_ncigar.bam"
+printf 'unrelated lone-final bytes' >"$lone_final_dir/unrelated.txt"
+lone_final_output="$tmp_dir/lone_final.out"
+assert_fails "$lone_final_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=lone001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$lone_final_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$lone_final_output" "Step 05 final outputs are inconsistent"
+assert_file_equals "$lone_final_dir/ABE_EV_2.split_ncigar.bam" "lone final bam bytes"
+assert_not_exists "$lone_final_dir/ABE_EV_2.split_ncigar.bam.bai"
+assert_file_equals "$lone_final_dir/unrelated.txt" "unrelated lone-final bytes"
+assert_not_exists "$lone_final_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$lone_final_dir"
+assert_no_step05_recovery "$lone_final_dir"
+
+printf 'Running final-path revalidation rollback check...\n'
+final_revalidation_dir="$tmp_dir/results/final_revalidation"
+mkdir -p "$final_revalidation_dir"
+printf 'previous final-revalidation bam' >"$final_revalidation_dir/ABE_EV_2.split_ncigar.bam"
+printf 'previous final-revalidation bai' >"$final_revalidation_dir/ABE_EV_2.split_ncigar.bam.bai"
+printf 'unrelated final-revalidation bytes' >"$final_revalidation_dir/unrelated.txt"
+final_revalidation_output="$tmp_dir/final_revalidation.out"
+assert_fails "$final_revalidation_output" env FAKE_QUICKCHECK_FAIL_FINAL=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=finalcheck001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$final_revalidation_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$final_revalidation_output" "Published BAM failed samtools quickcheck"
+assert_contains "$final_revalidation_output" "Rolling back Step 05"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.split_ncigar.bam" "previous final-revalidation bam"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.split_ncigar.bam.bai" "previous final-revalidation bai"
+assert_file_equals "$final_revalidation_dir/unrelated.txt" "unrelated final-revalidation bytes"
+assert_not_exists "$final_revalidation_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$final_revalidation_dir"
+assert_no_step05_recovery "$final_revalidation_dir"
+
 printf 'Running post-backup rollback check...\n'
 post_backup_dir="$tmp_dir/results/post_backup"
 mkdir -p "$post_backup_dir"
@@ -620,6 +710,38 @@ assert_file_equals "$post_backup_dir/ABE_EV_2.split_ncigar.bam" "previous post-b
 assert_file_equals "$post_backup_dir/ABE_EV_2.split_ncigar.bam.bai" "previous post-backup bai"
 assert_not_exists "$post_backup_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$post_backup_dir"
+
+printf 'Running failure-inside-rollback residue check...\n'
+restore_failure_dir="$tmp_dir/results/restore_failure"
+mkdir -p "$restore_failure_dir"
+printf 'previous restore-failure bam' >"$restore_failure_dir/ABE_EV_2.split_ncigar.bam"
+printf 'previous restore-failure bai' >"$restore_failure_dir/ABE_EV_2.split_ncigar.bam.bai"
+printf 'unrelated restore-failure bytes' >"$restore_failure_dir/unrelated.txt"
+restore_failure_output="$tmp_dir/restore_failure.out"
+rm -f "$tmp_dir/fake_mv_failed_once"
+assert_exits 67 "$restore_failure_output" env \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    FAKE_MV_FAIL_ONCE_DEST_MATCH="ABE_EV_2.split_ncigar.bam.bai" \
+    FAKE_MV_FAIL_SOURCE_MATCH=".previous.bam" \
+    SLURM_JOB_ID=restorefail001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$restore_failure_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$restore_failure_output" "fake mv forced failure"
+assert_contains "$restore_failure_output" "Rolling back Step 05"
+assert_contains "$restore_failure_output" "fake mv forced restore failure"
+assert_not_exists "$restore_failure_dir/ABE_EV_2.split_ncigar.bam"
+assert_file_equals "$restore_failure_dir/ABE_EV_2.split_ncigar.bam.bai" "previous restore-failure bai"
+assert_file_equals "$restore_failure_dir/unrelated.txt" "unrelated restore-failure bytes"
+assert_not_exists "$restore_failure_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$restore_failure_dir"
+assert_no_step05_recovery "$restore_failure_dir"
 
 printf 'Running stale path and sidecar non-creation checks...\n'
 stale_output="$tmp_dir/stale.out"
