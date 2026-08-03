@@ -59,24 +59,25 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   scheduler `d35b674` test baselines plus atomic executable/test checkpoint
   `50e1bb3` and documentation/lifecycle close `68fd2a9` are published and
   local/upstream/live-remote-equal.
-- Current package: unselected
-  [`MIG-03O`](../tasks/TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
-  with completed
+- Current package: selected
+  [`MIG-03O`](../tasks/IN_PROGRESS/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
+  after completed
   [`REVIEW-ARCH-03O`](../tasks/COMPLETED/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md),
   completed
   [`REVIEW-REL-03O`](../tasks/COMPLETED/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md),
   and completed
   [`REVIEW-UX-03O`](../tasks/COMPLETED/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md).
-  No card is selected. No later owner or final-audit package is created or
-  preloaded; the active program remainder stays frozen.
-- Package type at this checkpoint: documentation-only usability-review
-  completion after published selection `35ba583`. No executable, test,
-  configuration, dependency, schema, fixture, report template, scheduler,
-  cluster, production, scientific-review, or biological surface changed or
-  ran.
-- Remote publication and upstream equality: usability selection `35ba583` is
-  verified local/upstream/live-remote-equal. Publish and prove the usability-
-  completion tip containing this handoff equal before selecting MIG-03O. The
+  No other card is selected. No later owner or final-audit package is created
+  or preloaded; the active program remainder stays frozen.
+- Package type at this checkpoint: documentation-only MIG-03O selection. It
+  fixes five ordered test-only checkpoints, one atomic cutover/full-gate
+  boundary, and one separate documentation close without changing or running
+  an executable, test, configuration, dependency, schema, fixture, report
+  template, scheduler, cluster, production, scientific-review, or biological
+  surface.
+- Remote publication and upstream equality: usability completion `ba2aa1e` is
+  verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before the first wrapper-resolution test-only slice. The
   configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
@@ -1094,11 +1095,11 @@ earlier run.
 
 MIG-03O and its architecture, reliability, and usability reviews were defined
 at published/equal `86b8888`; architecture is complete at published/equal
-`d9ad4da`, reliability is complete at published/equal `b89f53c`, and
-usability is complete in the checkpoint containing this handoff. Publish and
-prove that completion clean and equal across local `HEAD`, configured
-upstream, and live remote, then select MIG-03O alone. Do not run
-executable/test/configuration work before that selection or select
+`d9ad4da`, reliability at published/equal `b89f53c`, and usability at
+published/equal `ba2aa1e`. MIG-03O alone is selected in the checkpoint
+containing this handoff. Publish and prove it clean/equal, then execute only
+its five test-only, atomic-cutover/full-gate, and documentation-close
+boundaries. Do not select
 migration, `CONCURRENCY-03`, `TASK-EPIC-01`, the frozen program remainder, or
 a final-audit package.
 
@@ -1270,8 +1271,8 @@ reliability review is complete at `f0160c4`; usability is complete at
 `3828496`, `7aced51`, `1ba3001`, and `d35b674`, published/equal executable
 checkpoint `50e1bb3`, and the documentation/lifecycle close containing this
 handoff. That close left Step `09c` migration and later owner cards uncreated.
-The fresh live-DAG refresh defines only unselected MIG-03O with completed
-architecture, reliability, and usability reviews; no later owner or final-
-audit package is created or preloaded.
+The fresh live-DAG refresh selects only MIG-03O after completed architecture,
+reliability, and usability reviews; its first test-only slice has not begun.
+No later owner or final-audit package is created or preloaded.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

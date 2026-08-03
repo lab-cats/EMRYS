@@ -312,9 +312,11 @@ smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture, reliability, and usability reviews are complete at
-published/equal `d9ad4da`, `b89f53c`, and the commit containing the completed
-usability card. The exact five old-path test-only checkpoints, atomic cutover,
-final command/choice, preservation, private-loader, provenance, and evidence-
-language obligations are fixed. No executable, test, configuration,
-dependency, later owner, or audit package changed or ran during review.
+Selected alone from clean, published, local/upstream/live-remote-equal
+usability-completion checkpoint
+`ba2aa1e6f1321e7860091820e47dcec2f16400e7`. Architecture, reliability,
+and usability reviews are complete. Execute exactly five small old-path test-
+only checkpoints, one atomic five-move/fourteen-integration cutover with the
+complete computational card gate, and one separate documentation/lifecycle
+close. No executable, test, configuration, dependency, later owner, or final-
+audit package changed or ran at selection.

@@ -6403,3 +6403,31 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   `make -s documentation-check` reports `PASS documentation structure (213
   Markdown documents, 133 task cards, 6 Mermaid sources)`. Usability moves to
   `COMPLETED`; MIG-03O remains unselected.
+
+## 2026-08-03T18:44:28-0400 — MIG-03O selected
+
+- **Selection:** usability completion
+  `ba2aa1e6f1321e7860091820e47dcec2f16400e7` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. Move only
+  MIG-03O from `TODO` to `IN_PROGRESS` and repair its completed-usability
+  lifecycle link. No later owner, final-audit package, or frozen program
+  remainder is created or selected.
+- **Reviewed execution order:** publish exactly five small old-path test-only
+  checkpoints—wrapper resolution, input identity, publication order, recovery,
+  then signals/concurrency—changing only the two named existing direct-test
+  owners and running each slice's smallest focused check. Then apply the
+  reviewed five moves and fourteen integration updates atomically, run the
+  exact complete computational card gate once, and publish an executable
+  checkpoint. Finish with one separate impact-directed documentation/lifecycle
+  close and documentation-only gate. Do not batch canonical path/link/README/
+  runbook updates into executable slices or preload another package.
+- **Preserved defects and evidence ceiling:** post-summary `TERM`,
+  `KeyboardInterrupt`, incomplete restoration, missing durability binding,
+  sparse lock ownership, identical-byte replacement, and summary/attempt
+  provenance gaps remain characterized, not repaired or approved. No local
+  fixture pass may be promoted to production execution, completed scientific
+  review, cluster proof, validated editing sites, or biological readiness.
+- **Minimal slice check:** run `git diff --check` only. Publish and prove this
+  selection checkpoint clean/upstream/live-remote-equal before the first
+  wrapper-resolution test-only slice.
