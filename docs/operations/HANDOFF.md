@@ -12,20 +12,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md)
-  documentation/lifecycle checkpoint
-  `f9d638199c6d60cbe81c992fde6a1090cb364302` is clean, published, and
-  local/upstream-equal. Its executable/test checkpoint is `e19f281`.
-- Current package: JIT definition of
-  [`MIG-03D`](../tasks/TODO/MIG-03D-migrate-align-rna-reads-with-star-owner.md)
-  and its dedicated architecture, reliability, and usability reviews. All four
-  cards remain unselected in `TODO` at this checkpoint.
-- Package type at this checkpoint: behavior/architecture planning with
-  documentation-only/non-consuming mutation; no executable or test file has
-  changed.
-- Remote publication and upstream equality: parent `f9d6381` is verified
-  local/upstream-equal. The commit containing this JIT definition must be
-  published and proved equal before the architecture review is selected.
+- Recorded package state: `MIG-03D` definition checkpoint
+  `5ef6c6abf2f15b5a0d596db634ba216aaba6412f` is clean, published, and
+  local/upstream-equal. Its frozen migration parent is the completed `MIG-03C`
+  documentation close `f9d6381`.
+- Current package: selection of
+  [`REVIEW-ARCH-03D`](../tasks/IN_PROGRESS/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md)
+  for one read-only architecture pass. `REVIEW-REL-03D`, `REVIEW-UX-03D`, and
+  `MIG-03D` remain unselected in `TODO`.
+- Package type at this checkpoint: lifecycle/status documentation only; no
+  executable or test file has changed and no review finding is claimed yet.
+- Remote publication and upstream equality: parent `5ef6c6a` is verified
+  local/upstream-equal. The commit containing this review selection must be
+  published and proved equal before the architecture pass begins.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -537,11 +536,12 @@ are complete. MIG-03C and its dedicated
 and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
 are complete. MIG-03D and
-[`REVIEW-ARCH-03D`](../tasks/TODO/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md),
+[`REVIEW-ARCH-03D`](../tasks/IN_PROGRESS/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md),
 [`REVIEW-REL-03D`](../tasks/TODO/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
 [`REVIEW-UX-03D`](../tasks/TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are defined and unselected. After this checkpoint is clean, published, and
-equal, select only the architecture review for its read-only pass. No later
-card is pre-created. The unsliced `PROGRAM-01` remainder and unrelated roadmap
-remain preserved and out of scope.
+are defined; only the architecture review is selected. After this checkpoint
+is clean, published, and equal, perform only that read-only pass. Reliability,
+usability, migration execution, and any later owner remain unselected. The
+unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
+of scope.

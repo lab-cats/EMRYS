@@ -1150,3 +1150,18 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   STAR run, scheduler submission, dependency action, runtime, production,
   scientific-review, or biological evidence was created. Full applicable
   validation and batched migration documentation remain card-boundary work.
+
+## 2026-08-02T22:25:00-0400 — REVIEW-ARCH-03D selected
+
+- **Selection:** move only `REVIEW-ARCH-03D` to `IN_PROGRESS` and repair its
+  dependency/status links after JIT-definition checkpoint `5ef6c6a` was clean,
+  published, and local/upstream-equal. `REVIEW-REL-03D`, `REVIEW-UX-03D`, and
+  `MIG-03D` remain unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time
+  adversarial pass over DAG eligibility, final-owner placement, exact path
+  changes, job delegation, neutral-library loading, artifact provenance,
+  explicit caller inventories, test ownership, wrapper necessity, atomicity,
+  and rollback. The same campaign agent performs the pass, so independent
+  authorship is not claimed. Executable/test mutation and computational,
+  runtime, scheduler, production, scientific-review, and biological evidence
+  remain out of scope.

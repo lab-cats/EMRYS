@@ -30,7 +30,7 @@ owner, or lose scheduler-specific test behavior.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03D](REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, and rollback boundary.
+- [REVIEW-REL-03D](../TODO/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, and rollback boundary.
 
 ## Prerequisites
 

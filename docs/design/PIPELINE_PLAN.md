@@ -93,7 +93,7 @@ a completed production review.
 | Phase `03` second bounded package | Move `construct_STAR_index` through [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md) | complete in published executable/test checkpoint `4f9c863`; the final owner contains the byte-identical job, path-adjusted validator, and mirrored tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
 | Third JIT-tranche reviews | [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md) → [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) → [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, Make, documentation, recovery, and provenance journeys, and independent authorship is not claimed |
 | Phase `03` third bounded package | Move `convert_GTF_to_BED12` through [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) | complete in published executable/test checkpoint `e19f281`; the final owner contains the byte-identical producer, path-adjusted validator and job, and mirrored tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
-| Fourth JIT-tranche reviews | [`REVIEW-ARCH-03D`](../tasks/TODO/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-REL-03D`](../tasks/TODO/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-UX-03D`](../tasks/TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) | defined but unselected; each will be a separate committed independent-in-time adversarial pass by the same campaign agent, without an independent-authorship claim |
+| Fourth JIT-tranche reviews | [`REVIEW-ARCH-03D`](../tasks/IN_PROGRESS/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-REL-03D`](../tasks/TODO/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-UX-03D`](../tasks/TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) | architecture review selected for one read-only pass; reliability, usability, and migration remain unselected; independent authorship will not be claimed |
 | Phase `03` fourth bounded package | Move `align_RNA_reads_with_STAR` through [`MIG-03D`](../tasks/TODO/MIG-03D-migrate-align-rna-reads-with-star-owner.md) | JIT-defined from published `MIG-03C` close `f9d6381`; selected because its sole hard predecessor is migrated and its live native/caller surface is smaller and less coupled than the other eligible owner; no executable/test mutation or later-unit preload |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
@@ -135,13 +135,15 @@ decision points without selecting them. `PLAN-02Z` is complete and defines
 only `MIG-03A` and its tranche-specific review chain. That checkpoint selected
 no review or migration; all three dedicated reviews later completed, and
 `MIG-03A`, `MIG-03B`, and `MIG-03C` are complete on the one physical-migration
-campaign branch. `MIG-03C` documentation/lifecycle close `f9d6381` is
-published and upstream-equal. `MIG-03D` and its three reviews are now defined
-but unselected. The user has separately authorized this branch to continue
-autonomously through only one dependency-valid, evidence-supported migration
-unit at a time: publish this definition checkpoint, select and perform its
-three reviews sequentially, then select, plan, execute, validate, document, and
-close only `MIG-03D` before inspecting the following unit.
+campaign branch. `MIG-03C` documentation/lifecycle close `f9d6381` and the
+`MIG-03D` definition checkpoint `5ef6c6a` are published and upstream-equal.
+Only `REVIEW-ARCH-03D` is selected; the reliability review, usability review,
+and migration remain unselected. The user has separately authorized this
+branch to continue autonomously through only one dependency-valid,
+evidence-supported migration unit at a time: publish this selection checkpoint,
+perform only the architecture review, and continue the reviewed chain
+sequentially before selecting, planning, executing, validating, documenting,
+and closing `MIG-03D`.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 
