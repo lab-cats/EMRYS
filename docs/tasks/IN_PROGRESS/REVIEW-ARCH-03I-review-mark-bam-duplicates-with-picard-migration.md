@@ -30,7 +30,7 @@ frozen topology and migration boundary.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03I](REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, helper, artifact, test, and rollback boundary.
+- [REVIEW-REL-03I](../TODO/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, helper, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -94,5 +94,8 @@ frozen topology and migration boundary.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal definition
+checkpoint `86419d36eb623887f86f7d99cba8af09afe9f005`. This is a read-only
+independent-in-time adversarial pass by the same campaign agent; independent
+authorship is not claimed. No executable/test mutation or computational test is
+part of review selection.
