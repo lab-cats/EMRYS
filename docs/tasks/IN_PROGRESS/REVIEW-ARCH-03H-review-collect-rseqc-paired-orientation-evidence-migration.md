@@ -96,5 +96,8 @@ break the frozen topology.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal definition
+checkpoint `0cd872e6a46f0b6310caf857bde5cd7fb1e8e086`. This is a read-only
+independent-in-time adversarial pass by the same campaign agent; independent
+authorship is not claimed. No executable/test mutation or computational test is
+part of review selection.

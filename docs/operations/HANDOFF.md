@@ -12,20 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: completed `MIG-03G` documentation/lifecycle checkpoint
-  `eafec29c1aaddf30c87cb9139897de81883af123` is clean, published, and
-  local/upstream/live-remote-equal; executable/test checkpoint is `2f186dd`.
-- Current package: define only
-  [`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
-  and its architecture, reliability, and usability review cards. Historical
-  Step `03` is the first canonical identity among two live-DAG-eligible owners;
-  all four cards remain unselected in `TODO`.
-- Package type at this checkpoint: documentation/card definition only. No
-  executable/test, coverage-baseline, dependency, scheduler, production,
-  schema, or evidence-state change; Step `04` and later cards are not created.
-- Remote publication and upstream equality: parent `eafec29` is verified
-  local/upstream/live-remote-equal. Publish and prove the definition checkpoint
-  equal before selecting `REVIEW-ARCH-03H`.
+- Recorded package state: `MIG-03H` definition checkpoint
+  `0cd872e6a46f0b6310caf857bde5cd7fb1e8e086` is clean, published, and
+  local/upstream/live-remote-equal; completed `MIG-03G` close is `eafec29`.
+- Current package: selected
+  [`REVIEW-ARCH-03H`](../tasks/IN_PROGRESS/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+  for the Step `03` evidence-owner architecture pass. All later `03H` cards
+  remain unselected.
+- Package type at this checkpoint: documentation-only architecture-review
+  selection; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: definition parent `0cd872e` is
+  verified local/upstream/live-remote-equal. Publish and prove the selection
+  checkpoint equal before review completion.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -183,9 +181,10 @@ No real samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created.
 
 After `eafec29` was published and proved equal, the refreshed live DAG exposed
-two eligible owners. Only the first canonical identity,
-`collect_RSeQC_paired_orientation_evidence`, now has the four unselected `03H`
-cards. Step `04` and every later owner/review card remain uncreated and
+two eligible owners. Only first canonical identity
+`collect_RSeQC_paired_orientation_evidence` has `03H` cards, defined at
+published and equal checkpoint `0cd872e`. Only `REVIEW-ARCH-03H` is now
+selected. Step `04` and every later owner/review card remain uncreated and
 unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -723,12 +722,13 @@ published executable/test checkpoint `2f186dd`, and documentation/lifecycle
 close `eafec29`. The next migration card,
 [`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
 and its reviews
-[`REVIEW-ARCH-03H`](../tasks/TODO/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
+[`REVIEW-ARCH-03H`](../tasks/IN_PROGRESS/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-REL-03H`](../tasks/TODO/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-UX-03H`](../tasks/TODO/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-are defined and unselected in `TODO`. Step `04` and all later owner cards remain
-uncreated and unselected. The
+are defined at published checkpoint `0cd872e`; only `REVIEW-ARCH-03H` is
+selected. Reliability, usability, migration, Step `04`, and all later owner
+cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

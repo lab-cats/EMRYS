@@ -26,7 +26,7 @@ without approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03H](REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, artifact, and cutover boundary.
+- [REVIEW-ARCH-03H](../IN_PROGRESS/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: reliability review needs the architecture-corrected owner, caller, artifact, and cutover boundary.
 
 ## Completion unblocks
 
