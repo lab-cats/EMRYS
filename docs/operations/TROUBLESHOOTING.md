@@ -637,7 +637,12 @@ contract.
 Follow the [common response](#structured-validation-response). Inspect the
 exact BAM, three STAR logs, SJ table, scheduler evidence, and native logs before
 deciding whether a separately authorized alignment rerun is required. Local
-validation does not replace historical cluster evidence.
+validation does not replace historical cluster evidence. Preserve partial
+direct-final artifacts and follow the final-path
+[Step `01` commands](RUNBOOK.md#step-01-star-alignment) and
+[owner diagnostics](../../src/norad/stages/align_RNA_reads_with_STAR/README.md#diagnostics-recovery-and-evidence);
+the characterized producer and scheduler residue is not authority to clean or
+rerun automatically.
 
 ## Step 02 structured validation reports canonical BAM disagreement
 

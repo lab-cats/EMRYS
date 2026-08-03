@@ -114,7 +114,7 @@ the semantic DAG and live coupling, not historical alias order.
 
 ## Blocked by
 
-- [REVIEW-UX-03D](../COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03D](REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -293,15 +293,11 @@ the semantic DAG and live coupling, not historical alias order.
 
 ## Completion record
 
-Selected for task-specific read-only planning after published usability-review
-checkpoint `7d31459ceea981fa4a809afcdc1c8e24dd599874`. The frozen migration parent
-remains `f9d638199c6d60cbe81c992fde6a1090cb364302`; all three sequential reviews
-are complete. Selection checkpoint
-`d6abed12a303dabc9b8166c511969b87f8c41ff2` is the clean, published,
-upstream-equal planning parent. Task-specific plan checkpoint
-`03cbc97be2fd58944c8f19eb0fb2672416648cce` is also clean, published, and
-upstream-equal. The targeted old-path fixture/mock baseline below has run; no
-executable or test path has moved.
+Completed in published executable/test checkpoint
+`12f9be514e849ebf3d9b01cd2eabb65677e298c3`. The architecture, reliability,
+and usability reviews, task-specific plan, and old-path baseline below remain
+the decision record. The documentation/lifecycle close is the commit containing
+this completion record; resolve and verify its exact SHA from live Git.
 
 ### Task-specific execution plan
 
@@ -403,4 +399,64 @@ fixture/mock evidence only:
 
 No real STAR process, scheduler submission, production input, dependency
 action, cluster state, scientific review, or biological-readiness evidence was
-created. The next slice is the reviewed fourteen-file atomic cutover only.
+created by the baseline.
+
+### Delivered state and acceptance evidence
+
+- The mode-`0755` producer now lives at its final owner with only the reviewed
+  help self-path change and SHA-256
+  `718625e101a700b4da56b8e30249b1b42f8dea81546a763fc9db246be9a3edaf`.
+  The mode-`0644` validator changed only its neutral-library owner depth and has
+  SHA-256
+  `6d33a05de2d802ffc7e80a5e744d597ef82d7aa11e784cc65257de2be187e4d7`.
+  The intentionally mode-`0644` job changed only its final child path and
+  adjacent path comment and has SHA-256
+  `6e2af7994b36efe6c55f5799a8350e3530e699c7dc2e1570b76b4d2b02879900`.
+- The two direct suites moved to
+  `tests/stages/align_RNA_reads_with_STAR/`. Final-path shell acceptance passed,
+  including controlled child exit `37` and retained empty output-directory
+  residue. The planned direct/caller Python surface passed `556` tests in
+  `62.76s`, including deterministic arbitrary-CWD validator repeatability.
+- Final-path coverage retained the validator at `125/140` lines and `34/44`
+  branches. Global measurement was `9474/11506` lines and `3354/4698` branches
+  (`0.823396`/`0.713921`), above the frozen `9343/11506` and `3281/4698`
+  rollback floor. The standalone policy comparison passed after moving only the
+  lexically sorted validator path row.
+- Static preflight, shell contracts, guarded R, and report runtime passed in the
+  complete aggregate gate. Guarded R used the existing project library and
+  read-only Bioconductor metadata access; it installed, restored, deleted, and
+  updated nothing. The ignored malformed `macos` directory warning remains
+  characterized local recovery state.
+- The aggregate gate was not fully green. Python coverage executed `1,073`
+  passes and `17` skips before its documentation-validator test reported
+  exactly ten migration-caused stale links plus the nine inherited, authorized
+  `invalid card location` findings under `docs/tasks/UNREFINED/`. This separate
+  documentation close repairs the ten migration links; the nine inherited
+  findings remain an expected-only nonpassing condition and are never called a
+  passing gate.
+- Exact inspection found one final owner for every moved basename, no live
+  non-documentation legacy path, wrapper, compatibility copy, symlink, package
+  marker, descriptor, schema, or stage-to-stage implementation import. Artifact
+  implementation evidence names and hashes the final producer without changing
+  public artifact identities, contents, ordering, schemas, or consumers.
+- Producer dry-run directory creation, direct-final output and child-failure
+  residue, suffix-only compression selection, and lack of content validation,
+  receipt, lock, staging, no-clobber, cleanup, or post-validation remain
+  characterized defects. Scheduler caller-CWD dependence, placeholder mutation,
+  strict module policy, allocation-derived threads, TMPDIR behavior,
+  nonexecutable mode, and delegate-only output validation likewise remain
+  defects; relocation neither fixes nor blesses them.
+- One explicit staging command named absent legacy paths after `git mv`, so Git
+  rejected that add while the already-staged pure moves formed an unpublished
+  local commit. That commit was immediately amended with all fourteen reviewed
+  files before any push. Remote history contains only atomic checkpoint
+  `12f9be5`; no partial cutover was published.
+- Rollback points are published old-path baseline `1ceeda0`, published
+  executable checkpoint `12f9be5` before documentation close, and the commit
+  containing this completion record before the next JIT unit. Reverse the
+  documentation close before reverting the executable cutover; preserve runtime
+  artifacts and do not restore duplicate source files.
+
+No real STAR process, scheduler submission, cluster or production input,
+scientific review, or biological-readiness evidence was created. The public DAG
+and artifact flow did not change, so no diagram edit was warranted.

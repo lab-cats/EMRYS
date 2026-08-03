@@ -2431,17 +2431,68 @@ Focused validation:
 
 ## Step 01: STAR Alignment
 
-Script:
+From the repository root, run the final producer directly or through Bash with
+all required arguments. Both forms are dry-run by default:
 
 ```bash
-scripts/step_01_star_align.sh
+src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh \
+  --sample-id ABE_EV_2 \
+  --r1-fastq data/ABE_EV_2_R1.fastq.gz \
+  --r2-fastq data/ABE_EV_2_R2.fastq.gz \
+  --star-index refs/novogene_star_index \
+  --output-dir results/star/ABE_EV_2 \
+  --threads 8
+
+bash src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh \
+  --sample-id ABE_EV_2 \
+  --r1-fastq data/ABE_EV_2_R1.fastq.gz \
+  --r2-fastq data/ABE_EV_2_R2.fastq.gz \
+  --star-index refs/novogene_star_index \
+  --output-dir results/star/ABE_EV_2 \
+  --threads 8
 ```
 
-Job:
+Dry-run still requires `STAR` on `PATH` and creates the declared output
+directory. Inspect the printed command before adding `--execute`. From another
+working directory, use the absolute checkout path plus absolute input and
+output paths:
 
 ```bash
-jobs/step_01_star_align.slurm
+bash /absolute/path/to/norad/src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh \
+  --sample-id ABE_EV_2 \
+  --r1-fastq /absolute/data/ABE_EV_2_R1.fastq.gz \
+  --r2-fastq /absolute/data/ABE_EV_2_R2.fastq.gz \
+  --star-index /absolute/refs/novogene_star_index \
+  --output-dir /absolute/results/star/ABE_EV_2 \
+  --threads 8
 ```
+
+Submit the scheduler entry point only from the intended checkout because it
+delegates through caller-relative paths:
+
+```bash
+cd <checkout>
+sbatch src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm
+```
+
+`EXECUTE=0` is the default, but its default bindings create placeholder FASTQ
+files and an index directory. `EXECUTE=1` refuses those bindings. Real work
+supplies all five overrides; threads come from `SLURM_CPUS_PER_TASK`:
+
+```bash
+cd <checkout>
+SAMPLE_ID=ABE_EV_2 \
+R1_FASTQ=/absolute/data/ABE_EV_2_R1.fastq.gz \
+R2_FASTQ=/absolute/data/ABE_EV_2_R2.fastq.gz \
+STAR_INDEX=/absolute/refs/novogene_star_index \
+OUTPUT_DIR=/absolute/results/star/ABE_EV_2 \
+EXECUTE=1 \
+  sbatch src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm
+```
+
+The wrapper loads STAR `2.7.11b`, derives threads from the allocation, and
+performs no independent output validation. Submission and mocked tests do not
+prove scheduler, module, or cluster behavior.
 
 Purpose:
 
@@ -2479,7 +2530,7 @@ The structured Step `01` validator consumes the five exact output paths for
 one sample:
 
 ```bash
-.venv/bin/python scripts/validate_step_01_star_alignment.py \
+.venv/bin/python src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py \
   --scope-id ABE_EV_2 \
   --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
   --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \
@@ -2495,7 +2546,7 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/01
-.venv/bin/python scripts/validate_step_01_star_alignment.py \
+.venv/bin/python src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py \
   --scope-id ABE_EV_2 \
   --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
   --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \
@@ -2509,8 +2560,16 @@ mkdir -p results/qc/validation/01
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_01_star_alignment.py
+bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py \
+  tests/test_slurm_wrapper_contracts.py
 ```
+
+Inspect the BAM, all three STAR logs, splice-junction table, scheduler logs, and
+any partial direct-final output before deciding on a rerun. The
+[`align_RNA_reads_with_STAR` owner README](../../src/norad/stages/align_RNA_reads_with_STAR/README.md)
+owns diagnostics, recovery, rollback, and the local-only evidence ceiling.
 
 ## Step 02: Canonical Sort, Read-Group Tagging, And BAM Indexing
 

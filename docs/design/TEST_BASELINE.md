@@ -42,6 +42,11 @@ Coverage uses branch and subprocess measurement over exactly `scripts` and
 is not by itself proof of a user-visible defect or authority to change
 behavior.
 
+The tracked Step `01` validator row now resolves to
+`src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py`.
+Its measured `125/140` line and `34/44` branch counts were unchanged by
+relocation; that path transition did not lower the global accepted floor.
+
 ## Current evidence vocabulary
 
 - `preserved contract` means independent regression evidence protects the
@@ -70,7 +75,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; Step `00a` and Step `00b` mocked producer behavior lives under their mirrored homes in `tests/stages/` |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; Step `00a` and Step `00b` mocked producer behavior and Step `01` direct tests live under their mirrored homes in `tests/stages/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication and recovery faults | `tests/libraries/test_validation_report.py` plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |

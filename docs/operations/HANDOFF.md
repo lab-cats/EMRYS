@@ -12,40 +12,41 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: task-specific plan checkpoint
-  `03cbc97be2fd58944c8f19eb0fb2672416648cce` is clean, published, and
-  local/upstream-equal. Its migration-selection checkpoint is `d6abed1`.
-- Current package: old-path fixture/mock baseline for
-  [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md)
-  with an exact fourteen-file atomic write set. All three dedicated reviews and
-  the targeted old-path baseline are complete.
-- Package type at this checkpoint: targeted local fixture/mock baseline
-  evidence recorded in documentation only; no tracked executable or test file
-  changed.
-- Remote publication and upstream equality: parent `03cbc97` is verified
-  local/upstream-equal. The commit containing this baseline must be published
-  and proved equal before the atomic executable/test cutover begins.
+- Recorded package state: executable/test checkpoint
+  `12f9be514e849ebf3d9b01cd2eabb65677e298c3` is clean, published, and
+  local/upstream-equal. Its old-path baseline checkpoint is `1ceeda0`.
+- Current package: documentation/lifecycle close for completed
+  [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md).
+  All three dedicated reviews, the baseline, cutover, and executable acceptance
+  are complete; no later owner is selected.
+- Package type at this checkpoint: impact-directed documentation and lifecycle
+  closure only; executable/test state remains fixed at `12f9be5`.
+- Remote publication and upstream equality: parent `12f9be5` is verified
+  local/upstream-equal. The commit containing this handoff is the separate
+  documentation/lifecycle checkpoint and must be published before another
+  owner is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
 integrated canonical tip. The neutral publication owner lives at
 `src/norad/libraries/validation_report.py`; migrated functional owners now live
 at `src/norad/stages/construct_STAR_index/` and
-`src/norad/stages/convert_GTF_to_BED12/`. Their two validators and the eleven
-remaining legacy-path validators load the neutral file without package
+`src/norad/stages/convert_GTF_to_BED12/`, and
+`src/norad/stages/align_RNA_reads_with_STAR/`. Their three validators and the
+ten remaining legacy-path validators load the neutral file without package
 identity, a wrapper, or `sys.path` mutation.
 
 The `MIG-03C` focused suites and reviewed final-path coverage passed before the
 executable commit. The recorded final-path measurement retained the producer at
 `151/167` lines and `44/56` branches and the validator at `127/140` lines and
 `29/36` branches; global measurement was `9474/11506` lines and `3354/4698`
-branches, above the committed non-regression floor. The aggregate gate was not
+branches, above the committed non-regression floor. Its aggregate gate was not
 fully green: canonical documentation validation reported exactly ten
 migration-caused stale links plus the nine inherited, authorized `UNREFINED`
-card-location findings. This close repairs the ten migration links. The nine
-inherited findings remain an expected-only nonpassing evidence ceiling, not a
-passing gate and not authority to change task-lifecycle behavior in this
-package.
+card-location findings. The published `MIG-03C` documentation close repaired
+those ten links. The nine inherited findings remain an expected-only nonpassing
+evidence ceiling, not a passing gate and not authority to change task-lifecycle
+behavior in this package.
 
 `MIG-03C` moved the producer, validator, scheduler job, and owner-local tests to
 their final homes and cut over every reviewed repository caller without a
@@ -53,21 +54,22 @@ wrapper, compatibility copy, package identity, descriptor, schema, or DAG
 change. Its characterized silent replacement and nontransactional scheduler
 residue remain defects.
 
-The next unit is `align_RNA_reads_with_STAR`. Its sole hard predecessor,
-`construct_STAR_index`, is already migrated, its three native assets form the
-smaller currently eligible surface, and its validator uses only the migrated
-neutral validation-report owner. `construct_FASTA_sidecars` remains dependency-
-valid but is not selected because its validator still imports the separate flat
-`reference_provenance` implementation. Historical alias order did not determine
-the selection.
+`MIG-03D` moved the Step `01` producer, validator, scheduler job, and two direct
+tests to their final owner and cut over all nine reviewed callers in published
+checkpoint `12f9be5`. Focused final-path acceptance passed the shell suite and
+`556` Python tests in `62.76s`. Coverage retained the validator at `125/140`
+lines and `34/44` branches; global measurement was `9474/11506` lines and
+`3354/4698` branches, above the frozen floor.
 
-The old-path baseline passed shell syntax and the direct shell suite, plus
-`555` targeted Python tests in `62.65s`. Temporary fixture/mock probes preserved
-the characterized producer child exit `37` and empty output-directory residue,
-and proved byte-identical five-row validator publication across two executions
-from a non-repository CWD with no invocation or publisher residue. This is not
-real STAR, scheduler, production, scientific-review, or biological evidence;
-the complete applicable gate remains deferred to the final-path card boundary.
+The aggregate gate was not fully green. Static preflight, shell contracts,
+guarded R, and report runtime passed; Python coverage executed `1,073` passes
+and `17` skips before the repository documentation-validator test reported
+exactly ten migration-caused stale links plus the same nine inherited
+`UNREFINED` location findings. This close repairs the ten links. The producer's
+dry-run directory creation/direct-final child residue and the scheduler's
+caller-CWD, placeholder mutation, strict module, and delegate-only validation
+defects remain characterized, not approved. No real STAR, scheduler, cluster,
+production, scientific-review, or biological evidence was created.
 
 ## Active concurrent lanes
 
@@ -525,12 +527,11 @@ is complete at executable/test checkpoint `4f9c863` and documentation close
 `1b82e4f`. The third JIT unit,
 [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md),
 is complete at published executable/test checkpoint `e19f281` and
-documentation/lifecycle close `f9d6381`. The next JIT card is
-[`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md);
-its three reviews are complete and it is selected for task-specific planning.
-The exact atomic write set is frozen in its card and the targeted old-path
-fixture/mock baseline is complete. The reviewed fourteen-file atomic cutover is
-the next bounded slice.
+documentation/lifecycle close `f9d6381`. The fourth JIT card,
+[`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md),
+is complete at published executable/test checkpoint `12f9be5`. Its separate
+documentation/lifecycle close is the commit containing this handoff. No later
+migration or review card is created or selected.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -551,8 +552,8 @@ are complete. The MIG-03D reviews
 [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are complete. `MIG-03D` is selected, its exact task-specific plan is frozen,
-and its targeted old-path fixture/mock baseline is complete. Publish and prove
-this evidence checkpoint equal before the reviewed fourteen-file atomic
-executable/test cutover. No later owner is selected. The unsliced `PROGRAM-01`
+are complete. `MIG-03D` is complete at published executable/test checkpoint
+`12f9be5`; publish and prove this separate documentation/lifecycle close equal
+before selecting another dependency-valid owner. No later owner is selected.
+The unsliced `PROGRAM-01`
 remainder and unrelated roadmap remain preserved and out of scope.

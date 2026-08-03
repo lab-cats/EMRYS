@@ -1389,3 +1389,87 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   branches and global `9343/11506` lines and `3281/4698` branches. Publish this
   documentation-only baseline checkpoint, prove live remote equality, then
   apply only the reviewed fourteen-file atomic cutover.
+
+## 2026-08-02T23:24:00-0400 — MIG-03D executable cutover and documentation close
+
+- **Published execution parent and atomic scope:** cutover began only after
+  old-path baseline checkpoint `1ceeda0` was clean, published, and live-remote
+  equal. Executable checkpoint
+  `12f9be514e849ebf3d9b01cd2eabb65677e298c3` contains exactly the reviewed
+  fourteen tracked files: three native-asset moves, two direct-test moves, and
+  nine explicit caller/harness updates. It is published and upstream-equal.
+- **Final owner and production changes:** the mode-`0755` producer now has
+  SHA-256
+  `718625e101a700b4da56b8e30249b1b42f8dea81546a763fc9db246be9a3edaf`;
+  production logic changed only its displayed self-path. The mode-`0644`
+  validator has SHA-256
+  `6d33a05de2d802ffc7e80a5e744d597ef82d7aa11e784cc65257de2be187e4d7`
+  after only the reviewed neutral-owner depth change. The intentionally
+  mode-`0644` job has SHA-256
+  `6e2af7994b36efe6c55f5799a8350e3530e699c7dc2e1570b76b4d2b02879900`
+  after its child path and adjacent stale path comment changed; its original
+  no-final-newline byte shape was restored before commit.
+- **Caller, evidence, and test decisions:** Make static/smoke and direct-test
+  recipes name the final assets; the literal expansion oracle matches. Public
+  shell entry points now use an explicit basename/path map parallel to Python.
+  The shared publisher suite exact-loads every declared non-flat validator and
+  imports only still-flat validators. SLURM and validation rosters use final
+  paths; the central Step `01` scheduler adapter/default-placeholder assertion
+  remains independent. Artifact implementation evidence preserves identity and
+  records the final producer path/hash. No wrapper, compatibility copy, package
+  marker, descriptor, schema, or runtime discovery was added.
+- **Final-path parity:** shell syntax and the owner shell suite passed,
+  including exact fake-STAR exit `37`, invocation, empty retained output
+  directory, and empty stderr. The direct/caller Python surface passed `556`
+  tests in `62.76s`, including arbitrary-CWD validator dry-run, execute, repeat,
+  deterministic five-row bytes, and empty invocation/publisher residue.
+- **Coverage decision:** a completed final-path measurement retained validator
+  coverage at `125/140` lines and `34/44` branches and measured global coverage
+  at `9474/11506` lines and `3354/4698` branches
+  (`0.823396`/`0.713921`). This exceeds the committed `9343/11506` and
+  `3281/4698` rollback floor. Only the validator row moved to its lexically
+  sorted final path; the standalone policy comparison passed and no coverage
+  tool, policy, or configuration changed.
+- **Aggregate-gate result:** the complete local gate was not fully green.
+  Static preflight, shell contracts, guarded R, and pinned report runtime
+  passed. Python coverage executed `1,073` passes and `17` skips before the
+  repository documentation-validator test reported exactly ten MIG-03D stale
+  links plus the nine inherited `UNREFINED` card-location findings. The ten
+  migration links are batched into this documentation close; the nine inherited
+  findings remain expected-only nonpassing evidence and are never called a
+  passing gate.
+- **Guarded-R environment decision:** the first sandboxed aggregate attempt
+  stopped on unavailable Bioconductor DNS metadata after warning about the
+  preserved ignored nested `macos` directory. The recorded
+  `RENV_PATHS_LIBRARY` route reproduced that warning. A read-only network-
+  metadata rerun then proved R `4.6.1`, Bioconductor `3.23`, synchronized renv
+  state, required packages, and PDF output. No package was installed, restored,
+  removed, or updated, and the ignored malformed-directory warning remains
+  preserved recovery state.
+- **Preserved risk boundary:** producer dry-run directory creation,
+  direct-final writes, child-failure residue, suffix-only compression choice,
+  and lack of sample/content validation, receipt, lock, staging, no-clobber,
+  cleanup, and post-validation remain defects. Scheduler caller-CWD dependence,
+  default placeholder mutation, default-execute refusal, strict STAR module,
+  allocation threads, TMPDIR mutation, nonexecutable mode, and delegate-only
+  validation remain defects. Validator evidence remains structural-only and
+  inherited neutral-publisher gaps remain owned by their existing fault matrix.
+  Relocation neither fixes nor blesses any of them.
+- **Unpublished staging recovery:** an explicit `git add` path list included
+  legacy paths already absent after `git mv`; Git rejected that add while the
+  previously staged pure moves still formed local commit `7f963e3`. Before any
+  push, that unpublished commit was immediately amended with all fourteen
+  reviewed changes. The remote contains only atomic checkpoint `12f9be5`.
+- **Documentation and lifecycle decision:** add the adjacent owner README;
+  repair current contract, architecture, inventory, test-baseline,
+  documentation-ownership, runbook, troubleshooting, roadmap, and handoff
+  routes; move `MIG-03D` to `COMPLETED`; repair every inbound lifecycle link;
+  and leave dated old-path evidence immutable. The public DAG and artifact flow
+  did not change, so no diagram edit is warranted. Rollback reverts this
+  documentation close before `12f9be5`; preserve runtime artifacts and use Git
+  history rather than duplicate legacy files.
+- **Evidence ceiling and continuation:** no real STAR process, scheduler
+  submission, cluster/production input, scientific review, or biological-
+  readiness evidence was created. Publish and prove this separate
+  documentation/lifecycle checkpoint equal before selecting exactly one next
+  dependency-valid owner; no future card is preloaded here.

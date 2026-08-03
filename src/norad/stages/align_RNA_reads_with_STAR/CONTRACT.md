@@ -3,11 +3,9 @@
 This document records the observed current contract of historical Step `01`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
-
-Only this contract is colocated here. The current executable files remain in
-`jobs/` and `scripts/` until a separately approved migration.
+is now the implemented native owner; it remains an exact file-path surface, not
+a Python package or installed command namespace. Supported commands and
+diagnostics are adjacent in the [owner README](README.md).
 
 ## Responsibility
 
@@ -76,7 +74,7 @@ post-execution output validation.
 
 ## Current execution surfaces
 
-[`step_01_star_align.sh`](../../../../scripts/step_01_star_align.sh) is the
+[`step_01_star_align.sh`](step_01_star_align.sh) is the
 public producer entrypoint. It:
 
 - validates explicit arguments and executable availability;
@@ -91,7 +89,7 @@ public producer entrypoint. It:
 The output-directory creation is a protected current dry-run side effect, not
 an endorsement of the target dry-run contract.
 
-[`step_01_star_align.slurm`](../../../../jobs/step_01_star_align.slurm) is the
+[`step_01_star_align.slurm`](step_01_star_align.slurm) is the
 scheduler entrypoint. It delegates to the shell producer, maps `EXECUTE=0` to
 dry-run and `EXECUTE=1` to `--execute`, rejects other values, loads the STAR
 module, and derives threads from the allocation. Its default dry-run mode
@@ -102,7 +100,7 @@ output validation after delegation.
 
 ## Validation interface
 
-[`validate_step_01_star_alignment.py`](../../../../scripts/validate_step_01_star_alignment.py)
+[`validate_step_01_star_alignment.py`](validate_step_01_star_alignment.py)
 accepts an explicit scope, BAM, three STAR log paths, splice-junction table,
 and output path. Validation is dry-run by default; `--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
@@ -127,9 +125,10 @@ the STAR outputs. Missing, unreadable, or unsafe input, an invalid CLI/output
 contract, or unsafe publication state exits with code `2` without publishing a
 new report.
 
-The validator imports general report rendering, snapshot, validation, locking,
-and publication functions from the Step `00a` validator. That dependency is
-observed current cross-stage ownership, not target placement.
+The validator exact-loads general report rendering, snapshot, validation,
+locking, and publication functions from the neutral
+[`validation_report.py`](../../libraries/validation_report.py) owner. It adds no
+package identity or `sys.path` mutation.
 
 ## Consumers
 
@@ -147,14 +146,16 @@ No downstream stage should depend on this stage's implementation module.
 
 ## Protected behavior and evidence
 
-- [`test_step_01_star_align.sh`](../../../../tests/shell/test_step_01_star_align.sh)
+- [`test_step_01_star_align.sh`](../../../../tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh)
   protects the public CLI, command construction, current dry-run directory
   side effect, execute invocation, compression handling, thread validation,
-  and missing-input failures with local tool mocks.
-- [`test_validate_step_01_star_alignment.py`](../../../../tests/test_validate_step_01_star_alignment.py)
+  missing-input failures, and exact child-exit/output-directory residue with
+  local tool mocks.
+- [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock
-  preservation.
+  preservation, including deterministic execute/repeat behavior from a
+  non-repository CWD.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects wrapper delegation, execution control, module behavior, current
   default-fixture mutation, and exit propagation with local mocks.
@@ -179,13 +180,12 @@ roadmap and handoff.
   the only explicit structural output checks.
 - Coordinate sorting occurs in STAR and again inside the canonical-BAM stage,
   where the second operation is coupled to read-group tagging and publication.
-- Cross-cutting validation-publication code remains owned by the Step `00a`
-  module.
+- Cross-cutting validation-publication code is owned by the neutral exact-file
+  library under `src/norad/libraries/`.
 - The scheduler wrapper owns cluster module loading and mutable local fixture
   setup around the parameterized producer.
 
-This inventory records those boundaries without choosing a target owner or
-changing behavior.
+This inventory records those current boundaries without changing behavior.
 
 ## Deferred decisions
 
@@ -194,5 +194,5 @@ changing behavior.
 - Whether STAR output publication requires an atomic receipt or staging layer.
 - Whether canonical-BAM construction can avoid redundant sorting while
   retaining read-group, validation, and recovery guarantees.
-- Final ownership of validation-publication code and scheduler assets.
-- Migration order, compatibility wrappers, and shared-code extraction.
+- Whether a later scheduler package changes caller-CWD dependence, mutable
+  placeholder setup, module policy, or delegate-only output validation.
