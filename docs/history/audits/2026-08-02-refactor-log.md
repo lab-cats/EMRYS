@@ -2322,3 +2322,55 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   lifecycle close, commit it separately from executable/test checkpoint
   `13a2748`, push normally, and prove local `HEAD`, configured upstream, and
   live remote equality before selecting the next dependency-valid owner.
+
+## 2026-08-03T02:33:30-0400 — MIG-03G JIT unit defined
+
+- **Verified parent:** definition began only after `MIG-03F` documentation
+  checkpoint `543eb8f` was clean, tracked/untracked empty, published, and equal
+  across local `HEAD`, configured upstream, and the live remote branch. No
+  index/recovery lock, card-ID/path collision, or mutable-lane overlap was
+  found.
+- **Live-DAG decision:** migrated `construct_canonical_BAM` now makes three
+  identities eligible: `collect_canonical_BAM_QC_evidence`,
+  `collect_RSeQC_paired_orientation_evidence`, and
+  `mark_BAM_duplicates_with_Picard`. Define only the first identity in the
+  canonical map, historical Step `02b`, because it is the smallest deterministic
+  dependency-valid unit. This is not a claim that it is uniquely eligible.
+  Step `03`, Step `04`, and later owner/review cards remain uncreated and
+  unselected.
+- **Frozen identity and surface:** `collect_canonical_BAM_QC_evidence` is
+  evidence key `norad.evidence.collect_canonical_BAM_QC_evidence.v1`, alias
+  `02b`, with final source/test homes under `src/norad/evidence/` and
+  `tests/evidence/`. Producer/validator/job modes are `0755`/`0644`/`0644`,
+  lines `163`/`186`/`87`, bytes `4,017`/`6,934`/`2,094`, and hashes
+  `64221013...`, `b1f5ff7b...`, and `44e1573b...`; the migration card records
+  full hashes. Direct shell/Python tests are modes `0755`/`0644`, lines
+  `231`/`81`, bytes `7,628`/`2,617`, with full hashes frozen in the card.
+- **Proposed bounded cutover:** five native/direct-test moves plus nine explicit
+  Make, artifact, public-CLI, SLURM, roster, shared-report, coverage, and literal-
+  fixture updates. Proposed production edits are producer help self-path,
+  validator neutral-report depth, and job child path only. Architecture review
+  must confirm this exact ceiling and the producer artifact path/hash
+  transition before any execution planning.
+- **Risks reserved for sequential review:** retain direct-final silent
+  replacement, dry-run output-directory creation, shallow unused BAI admission,
+  sample/path nonbinding, nonempty-success marker disagreement, no stable-input
+  recheck, and absence of lock/stage/no-clobber/rollback/receipt/set validation.
+  Reliability must decide predecessor-bearing quickcheck and flagstat fault
+  oracles for partial or mixed-attempt bytes. Scheduler review must retain
+  required `SLURM_SUBMIT_DIR`, exported `/tmp`, strict samtools load, tolerated
+  module list, Bash `3.2` dry-run failure, and file-existence-only post-checks.
+  These are characterized risks, not approved behavior or repair authority.
+- **Review and evidence boundary:** create only `MIG-03G` and dedicated
+  `REVIEW-ARCH-03G` → `REVIEW-REL-03G` → `REVIEW-UX-03G`, all unselected in
+  `TODO`. Reviews remain sequential and read-only; task-specific planning,
+  baseline, executable cutover, full gate, and documentation close remain later
+  bounded slices. No executable/test file, dependency, runtime tool, scheduler,
+  production input, scientific-review state, or biological evidence changed or
+  ran in this definition slice.
+- **Definition gate:** `git diff --check` passed and the exact documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. This is an expected-only nonpassing documentation ceiling, not a
+  green gate or authority for unrelated lifecycle changes. Publish this
+  definition checkpoint and prove live remote equality before selecting the
+  architecture review.

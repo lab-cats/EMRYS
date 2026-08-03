@@ -12,21 +12,21 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: neutral-helper checkpoint `4726ad1` and final owner/
-  executable-test checkpoint
-  `13a2748bcf43507e18ed07a0d3486f3d85c18fc0` are clean, published, and
-  local/upstream/live-remote-equal.
-- Current package: the separate documentation/lifecycle close for completed
-  [`MIG-03F`](../tasks/COMPLETED/MIG-03F-migrate-construct-canonical-bam-owner.md),
-  including the adjacent owner README, final commands and recovery routes,
-  canonical status/evidence owners, ten batched migration-link repairs, inbound
-  lifecycle repair, and the dated risk ledger.
-- Package type at this checkpoint: documentation and lifecycle only. The final
-  executable/test tree is already published at `13a2748`; no dependency,
-  scheduler, production, schema, or later-owner card changes in this close.
-- Remote publication and upstream equality: parent `13a2748` is verified
-  local/upstream/live-remote-equal. Publish and prove the commit containing this
-  handoff equal before refreshing the live DAG for another owner.
+- Recorded package state: completed `MIG-03F` documentation/lifecycle checkpoint
+  `543eb8fe28385f5da077ca45c2d35d17fd5bc7c6` is clean, published, and
+  local/upstream/live-remote-equal; executable/test checkpoint is `13a2748`.
+- Current package: define only
+  [`MIG-03G`](../tasks/TODO/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
+  and its architecture, reliability, and usability review cards. Historical
+  Step `02b` is the first canonical identity among three live-DAG-eligible
+  owners; all four cards remain unselected in `TODO`.
+- Package type at this checkpoint: documentation/card definition only. No
+  executable/test, coverage baseline, dependency, scheduler, production,
+  schema, or evidence-state change; Step `03`, Step `04`, and later cards are
+  not created.
+- Remote publication and upstream equality: parent `543eb8f` is verified
+  local/upstream/live-remote-equal. Publish and prove the definition checkpoint
+  equal before selecting `REVIEW-ARCH-03G`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -149,9 +149,10 @@ changes only the producer path and reviewed SHA-256
 No real samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created.
 
-No later owner or review card is selected or preloaded. Refresh the live
-semantic DAG only after this documentation/lifecycle close is committed,
-published, and proved equal.
+After `543eb8f` was published and proved equal, the refreshed live DAG exposed
+three eligible owners. Only the first canonical identity,
+`collect_canonical_BAM_QC_evidence`, now has the four unselected `03G` cards.
+No Step `03`, Step `04`, or later owner/review card is created or selected.
 
 ## Active concurrent lanes
 
@@ -624,8 +625,9 @@ and its architecture, reliability, and usability review cards are complete.
 →
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
 closed before helper checkpoint `4726ad1` and executable/test checkpoint
-`13a2748`. The commit containing this handoff is the separate documentation/
-lifecycle close. No downstream or later migration card is created or selected.
+`13a2748`; documentation/lifecycle close is `543eb8f`. The commit containing
+this handoff defines only the four unselected Step `02b` cards. No other
+downstream or later migration card is created or selected.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -664,7 +666,16 @@ and its reviews
 →
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
 are complete. `MIG-03F` is complete at published helper checkpoint `4726ad1`,
-executable/test checkpoint `13a2748`, and the documentation/lifecycle close
-containing this paragraph. Downstream and later owners remain unselected. The
+executable/test checkpoint `13a2748`, and documentation/lifecycle close
+`543eb8f`. The next migration card,
+[`MIG-03G`](../tasks/TODO/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md),
+and its reviews
+[`REVIEW-ARCH-03G`](../tasks/TODO/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+→
+[`REVIEW-REL-03G`](../tasks/TODO/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+→
+[`REVIEW-UX-03G`](../tasks/TODO/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+are defined and unselected in `TODO`. Step `03`, Step `04`, and all later owner
+cards remain uncreated and unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.
