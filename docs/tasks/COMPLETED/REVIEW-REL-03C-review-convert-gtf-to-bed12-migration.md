@@ -26,7 +26,7 @@ must preserve rather than normalize every success, failure, and residue state.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03C](../TODO/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
+- [REVIEW-UX-03C](../IN_PROGRESS/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
 
 ## Prerequisites
 

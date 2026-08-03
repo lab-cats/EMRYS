@@ -73,7 +73,7 @@ alias order.
 
 ## Blocked by
 
-- [REVIEW-UX-03C](REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03C](../IN_PROGRESS/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
