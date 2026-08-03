@@ -69,7 +69,8 @@ VALIDATOR_PATHS = {
         "validate_step_07_mpileup_outputs.py"
     ),
     "validate_step_08_preprocessing_outputs": Path(
-        "scripts/validate_step_08_preprocessing_outputs.py"
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "validate_step_08_preprocessing_outputs.py"
     ),
     "validate_step_09_cmh_outputs": Path(
         "scripts/validate_step_09_cmh_outputs.py"

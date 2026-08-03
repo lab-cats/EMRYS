@@ -740,7 +740,14 @@ test_rscript_bin <- if (length(arguments) >= 1L) {
 engine <- if (length(arguments) >= 2L) {
     arguments[[2L]]
 } else {
-    file.path(repo_root, "scripts", "step_08_vcf_preprocessing.R")
+    file.path(
+        repo_root,
+        "src",
+        "norad",
+        "stages",
+        "preprocess_and_annotate_cohort_candidates",
+        "step_08_vcf_preprocessing.R"
+    )
 }
 assert_true(
     file.exists(test_rscript_bin) &&

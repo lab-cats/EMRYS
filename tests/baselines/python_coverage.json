@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.722222",
-      "covered_branches": 26,
-      "covered_lines": 122,
-      "line_rate": "0.945736",
-      "num_branches": 36,
-      "num_statements": 129,
-      "path": "scripts/validate_step_08_preprocessing_outputs.py"
-    },
-    {
       "branch_rate": "0.850000",
       "covered_branches": 34,
       "covered_lines": 154,
@@ -280,6 +271,15 @@
       "path": "src/norad/stages/partition_BAM_by_mechanical_read_orientation/validate_step_06_orientation_outputs.py"
     },
     {
+      "branch_rate": "0.875000",
+      "covered_branches": 42,
+      "covered_lines": 162,
+      "line_rate": "0.970060",
+      "num_branches": 48,
+      "num_statements": 167,
+      "path": "src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py"
+    },
+    {
       "branch_rate": "0.833333",
       "covered_branches": 45,
       "covered_lines": 178,
@@ -322,11 +322,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.702221",
-    "covered_branches": 3351,
-    "covered_lines": 9561,
-    "line_rate": "0.815785",
-    "num_branches": 4772,
-    "num_statements": 11720
+    "branch_rate": "0.703804",
+    "covered_branches": 3367,
+    "covered_lines": 9601,
+    "line_rate": "0.816550",
+    "num_branches": 4784,
+    "num_statements": 11758
   }
 }

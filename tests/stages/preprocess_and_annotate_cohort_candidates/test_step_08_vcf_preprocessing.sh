@@ -4,9 +4,10 @@ set -euo pipefail
 # Mocked-R coverage for Step 08 shell orchestration. Semantic VCF/GTF behavior
 # belongs to the separate real-R fixture suite when an R runtime is available.
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-script="$repo_root/scripts/step_08_vcf_preprocessing.sh"
-job="$repo_root/jobs/step_08_vcf_preprocessing.slurm"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+owner_path="src/norad/stages/preprocess_and_annotate_cohort_candidates"
+script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
+job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
@@ -1507,8 +1508,8 @@ assert_no_step08_scratch "$first_failure_fixture/output" "$first_failure_fixture
 
 printf 'Running Step 08 SLURM wrapper checks...\n'
 wrapper_dry="$test_root/wrapper-dry"
-mkdir -p "$wrapper_dry/scripts"
-cp "$script" "$wrapper_dry/scripts/"
+mkdir -p "$wrapper_dry/$owner_path"
+cp "$script" "$wrapper_dry/$owner_path/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_dry" \
@@ -1529,8 +1530,8 @@ assert_not_exists "$wrapper_dry/output"
 assert_not_exists "$wrapper_dry/qc"
 
 wrapper_execute="$test_root/wrapper-execute"
-mkdir -p "$wrapper_execute/scripts"
-cp "$script" "$wrapper_execute/scripts/"
+mkdir -p "$wrapper_execute/$owner_path"
+cp "$script" "$wrapper_execute/$owner_path/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_execute" \
@@ -1563,8 +1564,8 @@ assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper/logs"
 
 wrapper_missing="$test_root/wrapper-missing"
-mkdir -p "$wrapper_missing/scripts"
-cat >"$wrapper_missing/scripts/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB'
+mkdir -p "$wrapper_missing/$owner_path"
+cat >"$wrapper_missing/$owner_path/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB'
 #!/usr/bin/env bash
 exit 0
 WRAPPER_STUB

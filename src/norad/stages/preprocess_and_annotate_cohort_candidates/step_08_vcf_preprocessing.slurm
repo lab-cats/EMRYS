@@ -36,7 +36,7 @@ ANNOTATION_GTF="${ANNOTATION_GTF:-refs/novogene_ref/genome.gtf}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-results/vcf_preprocessed}"
 QC_ROOT="${QC_ROOT:-results/qc/vcf_preprocessing}"
 RSCRIPT_BIN="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
-R_SCRIPT="${STEP08_R_SCRIPT:-scripts/step_08_vcf_preprocessing.R}"
+R_SCRIPT="${STEP08_R_SCRIPT:-src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R}"
 EXECUTE="${EXECUTE:-0}"
 
 case "$EXECUTE" in
@@ -95,7 +95,7 @@ fi
 
 cmd=(
     bash
-    scripts/step_08_vcf_preprocessing.sh
+    src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh
     --cohort-id "$COHORT_ID"
     --sample-manifest "$SAMPLE_MANIFEST"
     --partition-manifest "$PARTITION_MANIFEST"

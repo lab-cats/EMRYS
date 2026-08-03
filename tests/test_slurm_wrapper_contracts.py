@@ -55,7 +55,10 @@ JOB_PATHS = {
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
     ),
-    "step_08_vcf_preprocessing.slurm": Path("jobs/step_08_vcf_preprocessing.slurm"),
+    "step_08_vcf_preprocessing.slurm": Path(
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "step_08_vcf_preprocessing.slurm"
+    ),
     "step_09_cmh_editing_site_calling.slurm": Path(
         "jobs/step_09_cmh_editing_site_calling.slurm"
     ),
@@ -242,7 +245,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list",),
         submit_cwd="fallback",
-        delegation="scripts/step_08_vcf_preprocessing.sh",
+        delegation=(
+            "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+            "step_08_vcf_preprocessing.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

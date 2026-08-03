@@ -1,22 +1,54 @@
 import csv
 import hashlib
 import importlib.util
+import os
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
-from validation_roster_expectations import assert_exact_check_roster
+import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
 
-from step_09c_scientific_validation import (
-    STEP08_INPUTS_HEADER,
-    STEP08_METADATA_HEADER,
-    STEP08_SUMMARY_HEADER,
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "preprocess_and_annotate_cohort_candidates_validation_roster_oracle",
+    ROSTER_ORACLE,
 )
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 
-SCRIPT = ROOT / "scripts/validate_step_08_preprocessing_outputs.py"
+CONTRACTS_PATH = ROOT / "scripts" / "step_09c_scientific_validation.py"
+CONTRACTS_TEST_MODULE_NAME = "_norad_test_step09c_contracts_for_step08_validator"
+CONTRACTS_SPEC = importlib.util.spec_from_file_location(
+    CONTRACTS_TEST_MODULE_NAME,
+    CONTRACTS_PATH,
+)
+assert CONTRACTS_SPEC is not None and CONTRACTS_SPEC.loader is not None
+CONTRACTS_MODULE = importlib.util.module_from_spec(CONTRACTS_SPEC)
+sys.modules[CONTRACTS_TEST_MODULE_NAME] = CONTRACTS_MODULE
+try:
+    CONTRACTS_SPEC.loader.exec_module(CONTRACTS_MODULE)
+except BaseException:
+    if sys.modules.get(CONTRACTS_TEST_MODULE_NAME) is CONTRACTS_MODULE:
+        sys.modules.pop(CONTRACTS_TEST_MODULE_NAME, None)
+    raise
+STEP08_INPUTS_HEADER = CONTRACTS_MODULE.STEP08_INPUTS_HEADER
+STEP08_METADATA_HEADER = CONTRACTS_MODULE.STEP08_METADATA_HEADER
+STEP08_SUMMARY_HEADER = CONTRACTS_MODULE.STEP08_SUMMARY_HEADER
+
+SCRIPT = (
+    ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "preprocess_and_annotate_cohort_candidates"
+    / "validate_step_08_preprocessing_outputs.py"
+)
 
 
 def write_tsv(path, header, rows):
@@ -297,3 +329,143 @@ def test_foreign_lock_is_preserved(tmp_path):
     lock.write_text("foreign\n")
     assert run(values, "--execute").returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_step09c_loader_reuses_exact_owner_without_sys_path_change():
+    validator = load_validator()
+    before_sys_path = list(sys.path)
+    cached = sys.modules[validator._CONTRACTS_MODULE_NAME]
+
+    assert validator._load_step09c_contracts() is cached
+    assert Path(cached.__file__).resolve() == CONTRACTS_PATH.resolve()
+    assert getattr(cached, validator._CONTRACTS_READY_ATTRIBUTE) is True
+    assert sys.path == before_sys_path
+
+
+def test_step09c_loader_rejects_and_preserves_foreign_cache(
+    tmp_path, monkeypatch
+):
+    validator = load_validator()
+    name = validator._CONTRACTS_MODULE_NAME
+    foreign = ModuleType(name)
+    foreign.__file__ = str(tmp_path / "foreign_step09c.py")
+    setattr(foreign, validator._CONTRACTS_READY_ATTRIBUTE, True)
+    before_sys_path = list(sys.path)
+    monkeypatch.setitem(sys.modules, name, foreign)
+
+    with pytest.raises(ImportError, match="resolves to"):
+        validator._load_step09c_contracts()
+
+    assert sys.modules[name] is foreign
+    assert sys.path == before_sys_path
+
+
+def test_step09c_loader_rejects_and_preserves_partial_exact_cache(monkeypatch):
+    validator = load_validator()
+    name = validator._CONTRACTS_MODULE_NAME
+    partial = ModuleType(name)
+    partial.__file__ = str(CONTRACTS_PATH)
+    before_sys_path = list(sys.path)
+    monkeypatch.setitem(sys.modules, name, partial)
+
+    with pytest.raises(ImportError, match="partially initialized"):
+        validator._load_step09c_contracts()
+
+    assert sys.modules[name] is partial
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_step09c_loader_fails_closed_without_usable_specification(
+    specification, monkeypatch
+):
+    validator = load_validator()
+    name = validator._CONTRACTS_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        validator.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        validator._load_step09c_contracts()
+
+    assert name not in sys.modules
+
+
+def test_step09c_loader_cleans_up_owned_partial_after_execution_failure(
+    tmp_path, monkeypatch
+):
+    validator = load_validator()
+    name = validator._CONTRACTS_MODULE_NAME
+    failing_owner = tmp_path / "step_09c_scientific_validation.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 09c execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(validator, "_CONTRACTS_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 09c execution failure"):
+        validator._load_step09c_contracts()
+
+    assert name not in sys.modules
+
+
+def test_step09c_public_loader_failure_is_sanitized_one_line(tmp_path):
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError("injected\\n" + chr(0) + " Step 09c path")
+
+        cached = ModuleType("_norad_step_09c_scientific_validation_contracts")
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load Step 09c contract owner at "
+        f"{CONTRACTS_PATH}: RuntimeError: injected Step 09c path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
+
+
+def test_step09c_exact_initialization_does_not_mutate_sys_path(monkeypatch):
+    validator = load_validator()
+    name = validator._CONTRACTS_MODULE_NAME
+    before_sys_path = list(sys.path)
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+    loaded = validator._load_step09c_contracts()
+
+    assert Path(loaded.__file__).resolve() == CONTRACTS_PATH.resolve()
+    assert getattr(loaded, validator._CONTRACTS_READY_ATTRIBUTE) is True
+    assert sys.modules[name] is loaded
+    assert sys.path == before_sys_path

@@ -396,6 +396,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["08"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_08",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+                    "step_08_vcf_preprocessing.sh"
+                ),
+                "sha256": (
+                    "578542fefa02aa23667bb40e582cbab21"
+                    "5e6d3efec0a7c2fbb002290f1cfc1f3"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

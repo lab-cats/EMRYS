@@ -987,7 +987,10 @@ STEP_PRODUCERS = {
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
-    "08": "scripts/step_08_vcf_preprocessing.sh",
+    "08": (
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "step_08_vcf_preprocessing.sh"
+    ),
     "09": "scripts/step_09_cmh_editing_site_calling.sh",
     "09c": "scripts/step_09c_scientific_validation.py",
 }

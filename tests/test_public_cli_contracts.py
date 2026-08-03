@@ -84,7 +84,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_07_mpileup_outputs.py"
     ),
     "validate_step_08_preprocessing_outputs.py": Path(
-        "scripts/validate_step_08_preprocessing_outputs.py"
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "validate_step_08_preprocessing_outputs.py"
     ),
     "validate_step_09_cmh_outputs.py": Path(
         "scripts/validate_step_09_cmh_outputs.py"
@@ -143,7 +144,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(
-        "scripts/step_08_vcf_preprocessing.sh"
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
         "scripts/step_09_cmh_editing_site_calling.sh"
@@ -162,14 +164,18 @@ INTERPRETER_ONLY_SHELL_DEFECTS = frozenset(
 )
 DIRECT_SHELL_ENTRYPOINTS = SHELL_ENTRYPOINTS - INTERPRETER_ONLY_SHELL_DEFECTS
 
-R_ENTRYPOINTS = frozenset(
-    {
-        "check_r_environment.R",
-        "restore_r_environment.R",
-        "step_08_vcf_preprocessing.R",
-        "step_09_cmh_editing_site_calling.R",
-    }
-)
+R_ENTRYPOINT_PATHS = {
+    "check_r_environment.R": Path("scripts/check_r_environment.R"),
+    "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
+    "step_08_vcf_preprocessing.R": Path(
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "step_08_vcf_preprocessing.R"
+    ),
+    "step_09_cmh_editing_site_calling.R": Path(
+        "scripts/step_09_cmh_editing_site_calling.R"
+    ),
+}
+R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
 DIRECT_R_ENTRYPOINTS = frozenset(
     {"check_r_environment.R", "restore_r_environment.R"}
 )
@@ -256,6 +262,10 @@ def python_entrypoint_path(entrypoint: str) -> Path:
 
 def shell_entrypoint_path(entrypoint: str) -> Path:
     return REPO_ROOT / SHELL_ENTRYPOINT_PATHS[entrypoint]
+
+
+def r_entrypoint_path(entrypoint: str) -> Path:
+    return REPO_ROOT / R_ENTRYPOINT_PATHS[entrypoint]
 
 
 def relative_snapshot(root: Path) -> tuple[str, ...]:
@@ -392,7 +402,14 @@ def test_inventory_classifies_every_live_public_script() -> None:
     assert live_shell == flat_shell_entrypoints
     assert all(shell_entrypoint_path(name).is_file() for name in SHELL_ENTRYPOINTS)
     assert len(set(SHELL_ENTRYPOINT_PATHS.values())) == len(SHELL_ENTRYPOINTS)
-    assert live_r == R_ENTRYPOINTS
+    flat_r_entrypoints = {
+        path.name
+        for path in R_ENTRYPOINT_PATHS.values()
+        if path.parent == Path("scripts")
+    }
+    assert live_r == flat_r_entrypoints
+    assert all(r_entrypoint_path(name).is_file() for name in R_ENTRYPOINTS)
+    assert len(set(R_ENTRYPOINT_PATHS.values())) == len(R_ENTRYPOINTS)
     assert DIRECT_PYTHON_ENTRYPOINTS | INTERPRETER_ONLY_PYTHON_ENTRYPOINTS == (
         PYTHON_ENTRYPOINTS
     )
@@ -549,12 +566,12 @@ def test_nonexecutable_public_shell_modes_are_characterized_defects(
 
 @pytest.mark.parametrize("entrypoint", sorted(DIRECT_R_ENTRYPOINTS))
 def test_direct_r_entrypoint_modes_are_explicit(entrypoint: str) -> None:
-    assert mode_is_executable(SCRIPTS_ROOT / entrypoint)
+    assert mode_is_executable(r_entrypoint_path(entrypoint))
 
 
 @pytest.mark.parametrize("entrypoint", sorted(RSCRIPT_ONLY_ENTRYPOINTS))
 def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
-    assert not mode_is_executable(SCRIPTS_ROOT / entrypoint)
+    assert not mode_is_executable(r_entrypoint_path(entrypoint))
 
 
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:

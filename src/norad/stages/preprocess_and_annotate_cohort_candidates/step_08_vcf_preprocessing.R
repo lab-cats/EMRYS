@@ -3,7 +3,7 @@
 # Step 08: validate the complete declared Step 07 VCF set, expand alternate
 # alleles, apply the provisional legacy orientation policy, annotate candidates,
 # and write deterministic cohort-level TSVs. Publication and locking belong to
-# scripts/step_08_vcf_preprocessing.sh; this program writes only its three
+# src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh; this program writes only its three
 # explicitly supplied output paths.
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
@@ -54,7 +54,7 @@ ARGUMENT_NAMES <- c(
 usage <- function() {
     cat(paste0(
         "Usage:\n",
-        "  Rscript scripts/step_08_vcf_preprocessing.R \\\n",
+        "  Rscript src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R \\\n",
         "    --cohort-id COHORT_ID \\\n",
         "    --sample-manifest SAMPLE_MANIFEST \\\n",
         "    --partition-manifest PARTITION_MANIFEST \\\n",
