@@ -146,8 +146,8 @@ The validator privately exact-loads neutral
 [`validation_report.py`](../../libraries/validation_report.py) for report
 rendering, snapshots, locking, and publication, and neutral
 [`bam_validation.py`](../../libraries/bam_validation.py) for `run_tool` and
-`parse_header`. The flat Step `04` and Step `05` validators exact-load the same
-BAM helper rather than importing this owner. Each BAM-helper loader verifies
+`parse_header`. The final Step `04` and flat Step `05` validators exact-load
+the same BAM helper rather than importing this owner. Each BAM-helper loader verifies
 the cached path, readiness, and callable API, preserves foreign cache state and
 `sys.path`, removes only a loader-owned partial after execution failure, and
 fails closed before report publication. Neither neutral file is a package or

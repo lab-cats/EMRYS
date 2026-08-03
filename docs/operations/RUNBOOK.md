@@ -2712,7 +2712,7 @@ bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
 .venv/bin/python -m pytest -q \
   tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py \
   tests/libraries/test_bam_validation.py \
-  tests/test_validate_step_04_mark_duplicates.py \
+  tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py \
   tests/test_validate_step_05_split_ncigar.py \
   tests/test_slurm_wrapper_contracts.py
 ```
@@ -3130,17 +3130,42 @@ strandedness option, or manifest policy.
 
 ## Step 04: MarkDuplicates
 
-Script:
+The mode-`0644` producer is an explicit Bash surface. From the repository root,
+run a complete no-write dry run with exact tool and temp selections:
 
 ```bash
-bash scripts/step_04_mark_duplicates.sh
+TMPDIR=/tmp \
+bash src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/markdup/ABE_EV_2 \
+  --metrics-dir results/qc/markdup \
+  --picard-jar /absolute/path/to/picard.jar \
+  --java-bin /absolute/path/to/java \
+  --samtools-bin /absolute/path/to/samtools
 ```
 
-Job:
+Dry-run validates the exact `<bam>.bai`, readable Picard jar, Java, samtools,
+and existing writable `TMPDIR`, then prints Picard, quickcheck, and index
+commands. It creates neither output directory. Add only `--execute` after
+inspection:
 
 ```bash
-jobs/step_04_mark_duplicates.slurm
+TMPDIR=/tmp \
+bash src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/markdup/ABE_EV_2 \
+  --metrics-dir results/qc/markdup \
+  --picard-jar /absolute/path/to/picard.jar \
+  --java-bin /absolute/path/to/java \
+  --samtools-bin /absolute/path/to/samtools \
+  --execute
 ```
+
+From another CWD, make `TMPDIR`, producer, BAM, output, metrics, Picard, Java,
+and samtools paths absolute. Values without `/` are command names resolved
+through `PATH`; explicit paths must exist and be executable.
 
 Inputs:
 
@@ -3161,7 +3186,8 @@ The structured Step `04` validator reads the exact output triplet plus one
 explicit samtools executable:
 
 ```bash
-.venv/bin/python scripts/validate_step_04_mark_duplicates.py \
+.venv/bin/python \
+  src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py \
   --scope-id ABE_EV_2 \
   --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \
@@ -3176,7 +3202,8 @@ then create the output parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/04
-.venv/bin/python scripts/validate_step_04_mark_duplicates.py \
+.venv/bin/python \
+  src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py \
   --scope-id ABE_EV_2 \
   --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \
@@ -3186,30 +3213,67 @@ mkdir -p results/qc/validation/04
   --execute
 ```
 
-Focused validation:
+Repeat the execute command to replace a valid owned report only after stable-
+input revalidation. Validator exit `0` can still publish `status=fail` rows;
+unsafe input, tool failure while building evidence, stable-input mismatch, or
+unsafe publication exits `2` without a new report. From another CWD, make the
+interpreter, validator, BAM, BAI, metrics, samtools, and output paths absolute.
+An exact-loader error routes to private
+`src/norad/libraries/validation_report.py` or
+`src/norad/libraries/bam_validation.py`; do not add `PYTHONPATH`, install a
+package, invoke a helper CLI, or restore a legacy Step `04` path.
+
+Focused local validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_04_mark_duplicates.py
+bash tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py
+.venv/bin/python -m pytest -q \
+  tests/test_slurm_wrapper_contracts.py -k step_04_mark_duplicates
 ```
 
-Dry-run:
+SLURM opens the configured log paths before the body runs. Start at the
+checkout, create `logs/`, and submit the exact final mode-`0644` job. Dry-run:
 
 ```bash
-sbatch jobs/step_04_mark_duplicates.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,OUTPUT_DIR=/absolute/results/markdup/ABE_EV_2,METRICS_DIR=/absolute/results/qc/markdup \
+  src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm
 ```
 
 Execute:
 
 ```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_04_mark_duplicates.slurm
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,OUTPUT_DIR=/absolute/results/markdup/ABE_EV_2,METRICS_DIR=/absolute/results/qc/markdup \
+  src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm
 ```
 
 If a supported Java 17 executable is known, pass it explicitly:
 
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
-  jobs/step_04_mark_duplicates.slurm
+  src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm
 ```
+
+The wrapper changes to `SLURM_SUBMIT_DIR` with a current-CWD fallback, exports
+`/tmp`, loads Picard `3.1.1` and samtools `1.19.2`, requires `PICARD`, selects
+Java from the override, usable `$JAVA_HOME/bin/java`, then `PATH`, and rejects
+an actual version below 17. The delegated producer resolves samtools through
+`PATH`; module-list diagnostics are tolerated. Scheduler dry-run can create
+`logs/` in the body, Bash `3.2` can fail on its empty argument array, and an
+unset `JAVA_HOME` can abort at the characterized later unguarded diagnostic.
+
+The producer writes BAM, metrics, and then BAI directly to final names without
+a lock, stage, backup, receipt, stable-input recheck, or rollback. Child or
+final-check failure can leave partial or cross-attempt bytes; a zero-exit
+scheduler child can rediscover a stale nonempty triplet and report success.
+Before retry or same-name reuse, preserve the exact triplet, input pair, tool
+identity, temp path, streams, scheduler evidence, and unrelated files and rule
+out downstream readers. Follow the
+[partial/mixed/stale output route](TROUBLESHOOTING.md#step-04-producer-or-wrapper-leaves-a-partial-mixed-or-stale-output-triplet).
+Git rollback never restores runtime evidence.
 
 Validation checklist for promotion of each sample:
 

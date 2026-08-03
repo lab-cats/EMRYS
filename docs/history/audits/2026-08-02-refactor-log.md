@@ -3357,3 +3357,151 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   and dated audit. Per the card-boundary-only validation rule, no computational
   suite or complete documentation validator ran in this planning slice; the
   complete documentation gate remains owned by the separate card close.
+
+## 2026-08-03T05:57:11-0400 — MIG-03I producer reliability baseline
+
+- **Bounded mutation:** starting from clean, published, upstream/live-remote-
+  equal plan `44e1db4`, change only
+  `tests/shell/test_step_04_mark_duplicates.sh`. No production, validator,
+  scheduler, harness, fixture, coverage, documentation, dependency, or later-
+  owner file enters this slice.
+- **Accepted characterization:** add tokenized Picard exit `42`, quickcheck
+  exit `43`, index exit `44`, empty-metrics final-check, arbitrary-CWD explicit-
+  tool, missing explicit samtools before directory creation, and controlled
+  admitted-input-mutation states. Preserve exact new/partial/prior BAM/BAI/
+  metrics bytes, unrelated-file immunity, and absence of recovery artifacts.
+  These states prove direct-final multi-output defects; they do not bless,
+  repair, or authorize cleanup/retry.
+- **Evidence:** shell syntax and the complete direct shell suite passed. Final
+  baseline mode/bytes/lines/SHA-256 is `0644` / `20,753` / `573` /
+  `eac7b5ef42c6d050a64223975d443698b54d7542317244c8f65a58f8abf39796`.
+  Published checkpoint is `de52e93243aa8c95644924f41dc1a25da4b4f600`.
+  No broad or complete gate ran at this slice boundary.
+
+## 2026-08-03T05:58:50-0400 — MIG-03I validator reliability baseline
+
+- **Bounded mutation:** from clean, published, equal producer checkpoint
+  `de52e93`, change only `tests/test_validate_step_04_mark_duplicates.py`.
+  No other test owner, production, harness, fixture, coverage, documentation,
+  dependency, or later-owner path changes.
+- **Accepted characterization:** freeze arbitrary-CWD dry-run/execute/repeat
+  exact bytes; quickcheck nonzero as exit-`0` failed evidence; header-tool
+  failure as exit `2` with no new publication; and post-build input mutation
+  with valid-predecessor report preservation. Exit `0` is publication/render
+  success, not proof all rows pass; exit `2` is not a failed-row synonym.
+- **Evidence:** all `9` direct validator tests passed. Final baseline mode/
+  bytes/lines/SHA-256 is `0644` / `6,345` / `179` /
+  `b8220905f12afef057d4fa357390c9268924b5923e05acb093f2b31ee12f9aa1`.
+  Published checkpoint is `3d73d5285b023899967338c30bad29a7629c5187`.
+  No shell, scheduler, coverage, or complete gate ran.
+
+## 2026-08-03T06:01:35-0400 — MIG-03I scheduler reliability baseline
+
+- **Bounded mutation:** from clean, published, equal validator checkpoint
+  `3d73d52`, change only `tests/test_slurm_wrapper_contracts.py`. No fourth
+  test, production, harness, fixture, coverage, documentation, dependency, or
+  future-owner file enters the assembled old-path baseline.
+- **Accepted characterization:** freeze `JAVA_HOME` executable selection and
+  unusable-home PATH fallback, Java `-version` failure, unparseable and below-
+  17 output, missing `PICARD`, tolerated list-only module failures, dry-run
+  logs, stale-three-file false success, and the unguarded unset-`JAVA_HOME`
+  abort. The first focused attempt exposed only a new test-stub quoting error;
+  correcting that stub within the same file made the final reviewed oracle
+  faithful without changing production behavior.
+- **Evidence:** the Step `04` scheduler selection passed `18` tests with `108`
+  unrelated cases deselected. Final baseline mode/bytes/lines/SHA-256 is `0644`
+  / `59,691` / `1,758` /
+  `bff47b60b8563924bb2a30ce13e3d81efb5e80853e90f7f6ac2ae2c28b527d65`.
+  Published checkpoint is `3e805ac3c02692c0f2d22682f9ec038776dc4a62`.
+  Passing characterization does not approve scheduler defects; no broad gate
+  ran at this test-slice boundary.
+
+## 2026-08-03T06:24:58-0400 — MIG-03I executable cutover and card boundary
+
+- **Exact cutover decision:** from clean, published, equal scheduler baseline
+  `3e805ac`, move only producer, validator, mode-`0644` job, direct shell test,
+  and direct validator test to the reviewed stage-owner homes. Update exactly
+  `Makefile`, artifact producer mapping/assertion, public CLI, scheduler,
+  validation-roster/report/BAM-helper maps, coverage baseline, and literal Make
+  oracle. No wrapper, alias, symlink, package, descriptor, schema, transaction,
+  receipt, recovery marker, dependency action, documentation path, or later
+  owner enters the cutover.
+- **Production and test byte boundary:** change only producer usage self-path,
+  two validator neutral-library root depths, job child path, moved-test roots/
+  targets/private roster load, and reviewed integration paths. Final producer,
+  validator, and job SHA-256 values are respectively
+  `b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`,
+  `17a541e7b9d9822df5de0721747187621035f0dae7aaa0f1a35995f727bfb178`,
+  and `4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`;
+  all remain mode `0644`. Artifact evidence changes only final producer path
+  and reviewed hash; identities, schemas, contents, ordering, consumers, and
+  scientific meaning remain unchanged.
+- **Focused acceptance:** producer/job/moved-test syntax and the complete shell
+  suite passed; the moved validator passed `9`; Step `04` scheduler selection
+  passed `18` with `108` deselected; and targeted artifact, public-CLI/Make,
+  roster, validation-report, BAM-helper, and coverage-wiring checks passed `68`
+  assertions. Exact non-documentation search found no legacy executable/test
+  path or undeclared compatibility owner.
+- **Coverage:** measurement with only the intentionally stale documentation
+  assertion deselected passed `1,134` tests with `17` skips. Step `04` improved
+  from `144/155` lines and `33/42` branches to `146/155` and `35/42`; global
+  counts improved from `9508/11677` lines and `3331/4756` branches to
+  `9510/11677` and `3333/4756`. Every non-target row stayed exact; the tracked
+  snapshot exactly matched measured current data and standalone policy passed
+  at line `0.814422`, branch `0.700799`, `32` files.
+- **Complete-gate evidence:** the aggregate was not fully green. The sandboxed
+  attempt passed static preflight in `0.176s`, then guarded R stopped on
+  Bioconductor DNS in `8.849s` and retained the inherited malformed `macos`
+  warning. The network-enabled exact rerun used the existing locked library and
+  changed no dependency. Static passed in `0.116s`, shell in `131.070s`,
+  guarded R in `459.450s`, and report runtime in `339.823s`. Python ran `1,134`
+  passes and `17` skips before its sole documentation assertion listed exactly
+  five stale inventory links, five stale owner-contract links, and nine
+  inherited `UNREFINED` locations; aggregate elapsed was `482.874s`. Result is
+  `/private/tmp/norad-mig03i-validation.json`, retained Python log
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-g4l9kajd.log`.
+  This expected-only documentation ceiling is nonpassing, never green.
+- **Preserved risks and publication:** partial/mixed direct finals, silent
+  replacement, admitted-input-mutation blindness, missing recovery controls,
+  validator status/exit distinctions, Bash `3.2`, dry-run logs, unset
+  `JAVA_HOME`, tolerated module listing, and stale-triplet false success remain
+  defects. No real Picard/Java/samtools, scheduler, cluster, production,
+  scientific-review, or biological evidence was created. Exact cutover
+  checkpoint `803fcc479390273ba2dd5eba9907d739dbfdbb2f` is published and equal
+  across local `HEAD`, upstream, and live remote before documentation close.
+
+## 2026-08-03T06:28:25-0400 — MIG-03I documentation and lifecycle close
+
+- **Documentation boundary:** from clean, published, equal executable parent
+  `803fcc4`, add one adjacent owner README; repair the owner contract, current
+  architecture/inventory/test/documentation ownership, Step `04` runbook and
+  troubleshooting routes, impacted neutral-library and canonical-BAM helper/
+  test routes, roadmap and handoff; append complete evidence here; move only
+  `MIG-03I` to `COMPLETED`; and repair every inbound lifecycle link. No
+  executable, configuration,
+  dependency, schema, fixture, report template, test behavior, or later card
+  changes.
+- **Truthful operator decisions:** route mode-`0644` producer through Bash,
+  validator through the explicit interpreter, and job through `sbatch` after
+  creating `logs/`; distinguish producer no-write, validator stdout-only, and
+  scheduler log/Bash effects; expose Picard/Java/samtools/`TMPDIR` selection;
+  require preservation and reader exclusion before isolated retry; and state
+  that Git rollback cannot recover runtime artifacts.
+- **Risk and evidence disposition:** preserve rather than approve every
+  producer, validator, and scheduler defect above. Keep historical cluster and
+  Picard observations historical. The evidence ceiling is local fixture/mock,
+  guarded local R, pinned report runtime, and local coverage only. No diagram
+  changes because physical placement changes neither semantic DAG edges nor
+  public data flow. No next owner/review card is created or selected; refresh
+  the live DAG only after this close is published and proved equal.
+- **Documentation gate:** `git diff --check` passes. The complete RUNBOOK
+  documentation validator reports exactly the nine inherited `UNREFINED`
+  card-location findings and no migration-caused path, lifecycle, dependency,
+  cycle, orphan, anchor, or diagram finding. This remains a nonpassing
+  expected-only ceiling, not green and not authority to alter inherited
+  lifecycle state.
+- **Rollback and stop:** revert this documentation close, executable checkpoint
+  `803fcc4`, scheduler baseline `3e805ac`, validator baseline `3d73d52`, then
+  producer baseline `de52e93`. Git rollback never deletes or authenticates
+  runtime/production evidence, locks, logs, or recovery artifacts. Publish the
+  close, prove clean local/upstream/live-remote equality, then refresh the DAG.

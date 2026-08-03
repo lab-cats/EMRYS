@@ -117,8 +117,8 @@ location; validation creates no invocation-directory residue.
 The validator privately exact-loads neutral
 [`validation_report.py`](../../libraries/validation_report.py) and
 [`bam_validation.py`](../../libraries/bam_validation.py). The latter owns only
-`run_tool` and `parse_header` and is shared with the flat Step `04` and Step
-`05` validators. An exact-loader diagnostic is a checkout-integrity failure:
+`run_tool` and `parse_header` and is shared with the final Step `04` and flat
+Step `05` validators. An exact-loader diagnostic is a checkout-integrity failure:
 inspect the named private file and checkout. Do not add `PYTHONPATH`, install a
 package, invoke the helper as a CLI, or restore a legacy Step `02` path.
 
@@ -176,7 +176,7 @@ bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
 .venv/bin/python -m pytest -q \
   tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py \
   tests/libraries/test_bam_validation.py \
-  tests/test_validate_step_04_mark_duplicates.py \
+  tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py \
   tests/test_validate_step_05_split_ncigar.py \
   tests/test_slurm_wrapper_contracts.py
 ```

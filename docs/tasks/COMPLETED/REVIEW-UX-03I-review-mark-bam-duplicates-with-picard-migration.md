@@ -30,7 +30,7 @@ undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03I](../IN_PROGRESS/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03I](MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 

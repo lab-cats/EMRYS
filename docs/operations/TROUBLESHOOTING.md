@@ -157,6 +157,13 @@ Step `04` resolves Java in this order:
 The wrapper then fails before Picard starts if the selected runtime is below
 Java 17.
 
+The wrapper also has a characterized unguarded later `JAVA_HOME` diagnostic.
+If `JAVA_HOME` is completely unset, a usable `JAVA_BIN_OVERRIDE` or `PATH`
+selection can still be followed by an unbound-variable abort before producer
+delegation. Preserve the job streams and environment; do not interpret that
+abort as a Picard, samtools, or input failure and do not repair it during the
+physical migration.
+
 If CSU HPC provides a supported Java 17 executable, use the exact
 [Step `04` override command](RUNBOOK.md#step-04-markduplicates).
 
@@ -776,7 +783,7 @@ Inspect the exact named file, Git checkout, and process module-cache context.
 Use the focused helper suite in the
 [Step `02` runbook](RUNBOOK.md#step-02-canonical-sort-read-group-tagging-and-bam-indexing).
 Do not add `PYTHONPATH`, install a package, invoke a public helper CLI, copy the
-helper into a stage, or restore a legacy Step `02` validator path.
+helper into a stage, or restore a legacy validator path.
 
 ## Step 02 structured validation reports canonical BAM disagreement
 
@@ -895,6 +902,46 @@ and follow the
 before same-name reuse. Validator exit `0` may publish failed evidence rows;
 exit `2` publishes nothing new and is not a failed-row synonym.
 
+## Step 04 producer or wrapper leaves a partial, mixed, or stale output triplet
+
+### Symptom
+
+Step `04` exits nonzero after Picard, quickcheck, index, or final checks and
+the final BAM, BAI, and metrics do not share one attempt. Or the scheduler exits
+zero even though the delegated child created no current output. There may be a
+partial new BAM or BAI, empty/new metrics, predecessor bytes, or an entirely
+stale nonempty triplet. No lock, stage, backup, receipt, or recovery marker is
+present.
+
+### Cause
+
+The producer writes Picard BAM and metrics directly to final paths, then
+quickchecks and indexes the BAM directly at the final BAI path. It has no lock,
+stage, no-clobber rule, stable-input recheck, rollback, or all-or-none
+transaction. Characterized failures include Picard exit `42`, quickcheck exit
+`43`, index exit `44`, and a final empty-metrics rejection; each can leave a
+different new/partial/prior triplet. Controlled admitted-input mutation also
+goes undetected. The wrapper only checks that all three final names are
+nonempty after a zero-exit child, so an unchanged stale triplet can satisfy its
+post-check. These are preserved defects, not valid recovery states.
+
+### Fix
+
+Stop same-name retries and downstream Step `05` reads. Preserve exact BAM/BAI/
+metrics bytes and metadata, the canonical input pair, unrelated files,
+producer and scheduler stdout/stderr, job ID/accounting and logs, checkout,
+Picard jar, selected Java path and actual version, samtools path/version, and
+`TMPDIR`. Absence of a lock or recovery artifact does not prove clean state and
+does not authorize deleting, adopting, or reconstructing any final.
+
+Rule out every downstream reader before a separately reviewed retry. Use an
+isolated output and metrics destination so the questioned triplet remains
+unchanged, then validate the new explicit triplet with the final command in the
+[Step `04` runbook](RUNBOOK.md#step-04-markduplicates). Validator exit `0`
+may still contain `status=fail`; exit `2` publishes nothing new and is not a
+failed-row synonym. Git rollback changes tracked implementation only and
+cannot recover or authenticate runtime artifacts.
+
 ## Step 04 structured validation reports BAM or duplication-metrics disagreement
 
 ### Symptom
@@ -912,7 +959,12 @@ the required single data row or contain inconsistent counts/fraction.
 
 Follow the [common response](#structured-validation-response). Inspect the
 exact BAM/BAI/metrics triplet, samtools path/version, producing job, and logs.
-Duplicate marking or BAM repair belongs to separately authorized Step `04`.
+Use only the final validator and commands in the
+[Step `04` runbook](RUNBOOK.md#step-04-markduplicates), and follow the
+[partial/mixed/stale triplet route](#step-04-producer-or-wrapper-leaves-a-partial-mixed-or-stale-output-triplet)
+before any same-name retry. Duplicate marking or BAM repair belongs to
+separately authorized Step `04`. Validator exit `0` may publish failed evidence
+rows; exit `2` publishes nothing new and is not a failed-row synonym.
 
 ## Step 05 structured validation reports output or reference disagreement
 

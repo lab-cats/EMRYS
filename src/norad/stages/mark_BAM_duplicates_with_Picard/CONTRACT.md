@@ -1,10 +1,12 @@
 # `mark_BAM_duplicates_with_Picard` stage contract
 
-This is the observed contract of historical Step `04` for `ARCH-02A`. The
+This is the observed contract of historical Step `04`, now implemented in this
+native owner directory. The
 exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and owns the producer, validator, and scheduler assets.
+Supported journeys and migration evidence are in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
@@ -16,7 +18,7 @@ The hard input is the explicit `<bam>.bai` canonical pair normally produced by
 Step `02`. Step `04` does not consume Step `02b` or Step `03` evidence and may
 run alongside them once the pair is stable. Step `05` consumes the marked
 BAM/BAI, so successful Step `04` publication is its data prerequisite. Current
-readers do not share the producer's lock or a pinned snapshot; replacement must
+readers do not share a lock or a pinned snapshot; replacement must
 not overlap downstream reads.
 
 ## Inputs and outputs
@@ -43,7 +45,7 @@ attempt.
 
 ## Current execution surfaces
 
-[`step_04_mark_duplicates.sh`](../../../../scripts/step_04_mark_duplicates.sh)
+[`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
 is dry-run by default and creates no output directories in dry-run. In execute
 mode it writes Picard BAM and metrics directly to final paths, quickchecks the
 BAM, indexes it at the final path, then checks all three files for nonemptiness.
@@ -51,18 +53,21 @@ There is no lock, staging, no-clobber rule, stable-input recheck, rollback, or
 all-or-none transaction. Re-execution replaces outputs, and a failure may leave
 a partial or cross-attempt set.
 
-[`step_04_mark_duplicates.slurm`](../../../../jobs/step_04_mark_duplicates.slurm)
+[`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
 resolves submit-directory defaults, modules, Picard, Java, and samtools before
 delegation and checks the three outputs after execute. It creates `logs/` in
 dry-run. Its empty execution-argument array has the characterized Bash 3.2
-dry-run defect.
+dry-run defect; an unset `JAVA_HOME` can abort at the later unguarded
+diagnostic, and a stale nonempty output triplet can mask a zero-exit child that
+created nothing.
 
 ## Validation interface
 
-[`validate_step_04_mark_duplicates.py`](../../../../scripts/validate_step_04_mark_duplicates.py)
+[`validate_step_04_mark_duplicates.py`](validate_step_04_mark_duplicates.py)
 accepts explicit BAM, BAI, metrics, samtools, scope, and report paths. Dry-run
 prints the common seven-column TSV; `--execute` snapshot-rechecks inputs and
-publishes it through Step `00a`'s shared report machinery.
+publishes it through neutral private
+[`validation_report.py`](../../libraries/validation_report.py).
 
 Exact checks are:
 
@@ -82,8 +87,9 @@ diagnostics are nonempty.
 
 Content mismatches publish `status=fail` rows; unsafe inputs, evidence-building
 tool failures, and publication-contract failures exit `2`. BAM tool/header
-helpers are imported from the Step `02` validator, exposing cross-stage helper
-ownership.
+helpers are privately exact-loaded from neutral
+[`bam_validation.py`](../../libraries/bam_validation.py); neither helper has a
+public package or CLI identity.
 
 ## Consumers and protected evidence
 
@@ -92,10 +98,10 @@ ownership.
   `step04_markdup_bai_v1`, `step04_markdup_metrics_v1`, and
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
-- [`test_step_04_mark_duplicates.sh`](../../../../tests/shell/test_step_04_mark_duplicates.sh)
+- [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.sh)
   protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
   output presence, missing inputs, and temp-directory failure with mocks.
-- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/test_validate_step_04_mark_duplicates.py),
+- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded validation and projection boundaries.
 
@@ -109,6 +115,7 @@ scientific-review, or biological evidence.
 - Final-path multi-output publication lacks transactional ownership.
 - Sample/library/platform metadata is hardcoded or scope-derived rather than
   manifest-bound.
-- Step-named validators own reusable BAM and publication helpers.
-- Target filenames, receipt/recovery policy, shared-helper
-  ownership, and migration mechanics remain deferred.
+- The neutral BAM and report helpers remain private exact-file owners rather
+  than installed or public package APIs.
+- Receipt/recovery policy, sample/tool identity binding, and safe multi-output
+  publication remain deferred.

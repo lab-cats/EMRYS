@@ -375,3 +375,106 @@ must contain no migration-caused finding. Roll back documentation first, the
 atomic cutover second, then scheduler, validator, and producer baseline slices
 in reverse order. Git rollback never deletes or changes runtime evidence,
 production data, locks, logs, or recovery artifacts.
+
+### Completion evidence
+
+- **Producer reliability baseline:** published checkpoint
+  `de52e93243aa8c95644924f41dc1a25da4b4f600` changed only the old-path
+  direct shell test. Final baseline mode/bytes/lines/SHA-256 was `0644` /
+  `20,753` / `573` /
+  `eac7b5ef42c6d050a64223975d443698b54d7542317244c8f65a58f8abf39796`.
+  Shell syntax and the complete suite passed with Picard exit `42`, quickcheck
+  exit `43`, index exit `44`, empty metrics, arbitrary-CWD explicit tools,
+  missing explicit samtools before directory creation, admitted-input
+  mutation, unrelated-file preservation, and absent-recovery states. The
+  resulting partial/new/prior triplets are defects, not approved recovery.
+- **Validator reliability baseline:** published checkpoint
+  `3d73d5285b023899967338c30bad29a7629c5187` changed only the old-path
+  direct validator test. Mode/bytes/lines/SHA-256 was `0644` / `6,345` / `179`
+  / `b8220905f12afef057d4fa357390c9268924b5923e05acb093f2b31ee12f9aa1`.
+  All `9` tests passed, including arbitrary-CWD dry-run/execute/repeat exact
+  bytes, quickcheck failure as exit-`0` failed evidence, header-tool exit `2`
+  with predecessor preservation, and post-build input mutation with
+  predecessor preservation.
+- **Scheduler reliability baseline:** published checkpoint
+  `3e805ac3c02692c0f2d22682f9ec038776dc4a62` changed only the central
+  scheduler suite. Mode/bytes/lines/SHA-256 was `0644` / `59,691` / `1,758` /
+  `bff47b60b8563924bb2a30ce13e3d81efb5e80853e90f7f6ac2ae2c28b527d65`.
+  The Step `04` selection passed `18` tests with `108` unrelated cases
+  deselected after correcting only the new test stub's quoted version output
+  inside the same slice. Java-home/PATH/version states, missing `PICARD`,
+  tolerated list-only module errors, dry-run logs, stale-triplet false success,
+  and the unguarded unset-`JAVA_HOME` abort remain characterized and unapproved.
+- **Exact executable cutover:** published checkpoint
+  `803fcc479390273ba2dd5eba9907d739dbfdbb2f` contains exactly the five
+  reviewed moves and ten reviewed integration-owner updates. Final producer
+  mode/bytes/lines/SHA-256 is `0644` / `7,232` / `241` /
+  `b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`;
+  validator is `0644` / `10,275` / `277` /
+  `17a541e7b9d9822df5de0721747187621035f0dae7aaa0f1a35995f727bfb178`;
+  and the mode-`0644` job is `4,911` bytes / `161` lines /
+  `4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`.
+  Final shell test is mode `0644`, `20,797` bytes, `573` lines, SHA-256
+  `14f98c61582abcec3e8ad9dba9fb2254f9477d284bc995c5d2e1eebc42df3aaf`;
+  final validator test is `0644`, `6,790` bytes, `191` lines, SHA-256
+  `bef9130366d2261393e0a05f12a3f4338dcc1c94e3b1d20e1c2d0ead7f6755c7`.
+  Exact non-documentation search found no live legacy executable/test path,
+  wrapper, alias, duplicate, package marker, descriptor, schema, transaction,
+  receipt, recovery marker, or later-owner preload.
+- **Focused final-path acceptance:** producer, job, and moved-shell-test syntax
+  passed; the complete moved shell suite passed; the moved validator passed
+  `9`; and the Step `04` scheduler subset passed `18` with `108` deselected.
+  Targeted artifact, public-CLI/Make, roster, validation-report, BAM-helper, and
+  coverage-wiring checks passed `68` assertions.
+- **Coverage:** measurement passed `1,134` tests with `17` skips and one
+  explicit deselection of only
+  `tests/git_orchestration/test_validators.py::test_documentation_validator_accepts_repository_from_arbitrary_cwd`.
+  The final validator improved from `144/155` lines and `33/42` branches to
+  `146/155` and `35/42`; global coverage improved from `9508/11677` lines and
+  `3331/4756` branches to `9510/11677` and `3333/4756`. Every non-target row
+  remained exact, the tracked snapshot exactly matched the measured current
+  snapshot, and the standalone policy comparison passed at line rate
+  `0.814422` and branch rate `0.700799` across `32` files.
+- **Complete computational gate:** the aggregate was not fully green. The
+  first sandboxed attempt passed static preflight in `0.176s`, then guarded R
+  stopped on Bioconductor DNS in `8.849s` while retaining the inherited
+  malformed `macos` warning. The exact network-enabled rerun used the existing
+  project library and installed, restored, deleted, and updated nothing.
+  Static preflight passed in `0.116s`, shell contracts in `131.070s`, guarded R
+  in `459.450s`, and report runtime in `339.823s`. Python ran `1,134` passes
+  and `17` skips before its sole documentation assertion failed; the aggregate
+  ended at `482.874s`. That assertion contained exactly five stale inventory
+  links, five stale owner-contract links, and nine inherited `UNREFINED` card-
+  location findings. Result JSON is
+  `/private/tmp/norad-mig03i-validation.json`; the retained Python log is
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-g4l9kajd.log`.
+  This is an expected-only documentation ceiling, not a green gate.
+- **Preserved behavior and evidence ceiling:** direct-final partial/mixed
+  triplets, silent replacement, admitted-input-mutation blindness, absence of
+  lock/stage/no-clobber/stable-input recheck/receipt/rollback, validator exit
+  `0` with failed rows, validator exit `2` without new publication, Bash `3.2`
+  dry-run failure, dry-run log mutation, unguarded unset-`JAVA_HOME` abort,
+  tolerated module listing, and stale-triplet false success remain
+  characterized and unapproved. Historical cluster/Picard metrics remain
+  historical. No real Picard, Java, samtools, scheduler, cluster, production,
+  scientific-review, or biological evidence was created.
+- **Rollback:** revert the documentation/lifecycle close containing this
+  record, then executable/test checkpoint `803fcc4`, scheduler baseline
+  `3e805ac`, validator baseline `3d73d52`, and producer baseline `de52e93`;
+  task-specific planning is `44e1db4`. Keep Make with its literal oracle and
+  artifact path/hash with its assertion. Git rollback never deletes, restores,
+  or authenticates runtime evidence, production data, locks, logs, or recovery
+  artifacts.
+- **Documentation/lifecycle close:** added the adjacent owner README, updated
+  the owner contract and impact-directed canonical topology/status/test/
+  command/troubleshooting owners and the directly impacted neutral-library and
+  canonical-BAM helper routes, repaired the five inventory and five contract
+  links, moved this card to `COMPLETED`, and repaired every inbound lifecycle
+  link. No diagram changed because implementation placement did not change
+  semantic DAG edges or public data flow. `git diff --check` passes.
+  The complete documentation validator reports exactly the nine inherited
+  `UNREFINED` card-location findings and no migration-caused finding. That
+  remains a nonpassing expected-only documentation ceiling, not a green gate.
+  The close is the commit containing this record; publish it and prove local/
+  upstream/live-remote equality before refreshing the DAG or defining another
+  owner.

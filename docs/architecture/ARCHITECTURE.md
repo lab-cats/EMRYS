@@ -15,8 +15,8 @@ Canonical diagrams:
 Current public workflow entry points use a mixed physical layout. The neutral
 validation-report and BAM-validation libraries, the `construct_STAR_index` job
 and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
-`align_RNA_reads_with_STAR`, `construct_canonical_BAM`, and
-`collect_canonical_BAM_QC_evidence` and
+`align_RNA_reads_with_STAR`, `construct_canonical_BAM`,
+`mark_BAM_duplicates_with_Picard`, `collect_canonical_BAM_QC_evidence`, and
 `collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
 now live under `src/norad/`; remaining workflow entry points stay under
 `scripts/` and `jobs/`. Other colocated functional-owner documents under
@@ -51,9 +51,10 @@ not in this implemented-current-topology document.
 the shared snapshot, seven-column rendering/validation, and transactional
 publication protocol used by all thirteen validator entry points. The final
 `construct_STAR_index`, `convert_GTF_to_BED12`,
-`construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`, and
-`construct_canonical_BAM`, `collect_canonical_BAM_QC_evidence`, and
-`collect_RSeQC_paired_orientation_evidence` validators and six remaining
+`construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`,
+`construct_canonical_BAM`, `collect_canonical_BAM_QC_evidence`,
+`collect_RSeQC_paired_orientation_evidence`, and
+`mark_BAM_duplicates_with_Picard` validators and five remaining
 `scripts/` validators resolve that exact file through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
@@ -62,9 +63,9 @@ public flat reference-provenance owner. Stage-specific parsing and check
 rosters remain with their functional owners.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
-shared `run_tool` and `parse_header` behavior used by the final Step `02`
-validator and the remaining flat Step `04` and Step `05` validators. Those
-three callers exact-load the private neutral file and validate its path,
+shared `run_tool` and `parse_header` behavior used by the final Step `02` and
+Step `04` validators and the remaining flat Step `05` validator. Those three
+callers exact-load the private neutral file and validate its path,
 readiness, and callable API without package identity or `sys.path` mutation.
 Stage-specific checks and CLI behavior remain in each functional owner.
 

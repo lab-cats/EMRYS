@@ -12,19 +12,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: usability-review completion checkpoint
-  `beee633f6671662cc0cb1d9acdfba82f40cce233` is clean, published, and
-  local/upstream/live-remote-equal; reliability completion is `fae9bae`.
-- Current package: selected
-  [`MIG-03I`](../tasks/IN_PROGRESS/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
-  after all three reviews; task-specific execution planning is next and no
-  executable/test mutation has started.
-- Package type at this checkpoint: documentation-only migration selection; no
-  source, test, harness, fixture, Make, coverage, or artifact path changed and
-  no computational test ran.
-- Remote publication and upstream equality: selection parent `beee633` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before task-specific execution planning.
+- Recorded package state: executable/test checkpoint
+  `803fcc479390273ba2dd5eba9907d739dbfdbb2f` is clean, published, and
+  local/upstream/live-remote-equal after three published test-only baselines.
+- Current package: completed
+  [`MIG-03I`](../tasks/COMPLETED/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
+  documentation/lifecycle close. No next owner or review card is preloaded;
+  refresh the live DAG before defining one dependency-valid unit.
+- Package type at this checkpoint: documentation-only close following the
+  published executable/test checkpoint; it changes no executable,
+  configuration, dependency, schema, fixture, report template, or test
+  behavior and runs no computational, scheduler, cluster, or production work.
+- Remote publication and upstream equality: executable parent `803fcc4` is
+  verified local/upstream/live-remote-equal. Publish and prove the close
+  containing this handoff equal before refreshing the DAG.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -35,13 +36,14 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/align_RNA_reads_with_STAR/`, and
 `src/norad/stages/construct_FASTA_sidecars/`, and
 `src/norad/stages/construct_canonical_BAM/`, and
+`src/norad/stages/mark_BAM_duplicates_with_Picard/`, and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
-`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their seven
-validators and the six remaining flat validators load the neutral report file
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their eight
+validators and the five remaining flat validators load the neutral report file
 without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
 validator also uses a private exact-file bridge to unchanged public
-`scripts/reference_provenance.py`. The final Step `02` validator and flat Step
-`04`/`05` validators exact-load private neutral
+`scripts/reference_provenance.py`. The final Step `02`/`04` validators and flat
+Step `05` validator exact-load private neutral
 `src/norad/libraries/bam_validation.py`; no peer-stage implementation import
 remains.
 
@@ -236,21 +238,65 @@ created.
 
 [`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
 and its three reviews are complete at documentation/lifecycle close `ef990c8`.
-The refreshed live DAG leaves only `mark_BAM_duplicates_with_Picard` eligible:
-its sole direct predecessor, `construct_canonical_BAM`, is migrated, while
-Step `05` remains blocked on Step `04`. Only
-[`MIG-03I`](../tasks/IN_PROGRESS/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
-and reviews
+The refreshed live DAG left only `mark_BAM_duplicates_with_Picard` eligible:
+its sole direct predecessor, `construct_canonical_BAM`, was migrated, while
+Step `05` remained blocked on Step `04`. Reviews
 [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
-are defined at published checkpoint `86419d3`. Architecture is complete at
-published checkpoint `403fdf5`, reliability at `fae9bae`, and usability at
-`beee633`; migration alone is selected in the commit containing this handoff
-with execution unstarted. Step `05` and every later owner/review card remain
-unselected.
+completed at published checkpoints `403fdf5`, `fae9bae`, and `beee633` before
+migration selection `0c88390` and task-specific plan `44e1db4`.
+
+[`MIG-03I`](../tasks/COMPLETED/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
+published its producer, validator, and scheduler test-only baselines at
+`de52e93`, `3d73d52`, and `3e805ac`, then the exact five-move/ten-update
+executable/test cutover at `803fcc4`. The final owner is
+`src/norad/stages/mark_BAM_duplicates_with_Picard/`; no legacy executable/test
+owner, wrapper, alias, package marker, descriptor, schema, transaction,
+receipt, recovery marker, or later-owner preload remains.
+
+Final producer mode/bytes/lines/SHA-256 is `0644` / `7,232` / `241` /
+`b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`;
+validator is `0644` / `10,275` / `277` /
+`17a541e7b9d9822df5de0721747187621035f0dae7aaa0f1a35995f727bfb178`;
+and the mode-`0644` job is `4,911` bytes / `161` lines /
+`4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`.
+The direct shell suite, `9` validator tests, `18` selected scheduler tests with
+`108` unrelated cases deselected, and `68` focused integration assertions
+passed.
+
+Coverage passed `1,134` tests with `17` skips and one explicit documentation-
+validator deselection. The moved validator measured `146/155` lines and
+`35/42` branches; global coverage measured `9510/11677` lines and `3333/4756`
+branches. Every non-target row remained exact and the standalone policy
+comparison passed.
+
+The aggregate gate was not fully green. Its first sandboxed attempt passed
+static preflight in `0.176s` and guarded R stopped on Bioconductor DNS in
+`8.849s`, retaining the inherited malformed `macos` warning. The exact
+network-enabled rerun used the existing library and installed, restored,
+deleted, and updated no dependency. Static preflight passed in `0.116s`, shell
+contracts in `131.070s`, guarded R in `459.450s`, and report runtime in
+`339.823s`. Python ran `1,134` passes and `17` skips before its sole
+documentation assertion failed; the aggregate ended at `482.874s`. That
+assertion listed exactly ten deliberately deferred migration links plus nine
+inherited `UNREFINED` card-location findings. This close repairs the ten links;
+the inherited nine remain an expected-only nonpassing condition, never a
+passing-gate claim.
+
+The producer's direct-final partial/mixed triplets, admitted-input-mutation
+blindness, and absence of lock/stage/no-clobber/stable-input recheck/receipt/
+rollback remain characterized defects. So do the scheduler's Bash `3.2`
+dry-run failure, log mutation, unguarded unset-`JAVA_HOME` abort, tolerated
+module listing, and stale-triplet false success. Artifact evidence changes
+only the final producer path and hash above. Historical Step `04` cluster and
+metrics observations remain historical, not migration proof. No real Picard,
+Java, samtools, scheduler, cluster, production, scientific-review, or
+biological evidence was created. `MIG-03I` is complete in the commit containing
+this handoff. No next owner/review card is created or selected; refresh the
+live DAG before defining the next dependency-valid unit.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -797,17 +843,18 @@ were defined at published checkpoint `0cd872e`; architecture is complete at
 complete at published test-only baseline `88f4994`, published executable/test
 checkpoint `24ed9b1`, and documentation/lifecycle close in the commit
 `ef990c8`. The ninth migration card,
-[`MIG-03I`](../tasks/IN_PROGRESS/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md),
+[`MIG-03I`](../tasks/COMPLETED/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md),
 and its reviews
 [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
-are defined at published checkpoint `86419d3`. Step `04` is the only eligible
-unmigrated live-DAG owner; architecture is complete at published checkpoint
-`403fdf5`, reliability at `fae9bae`, usability at `beee633`, and migration alone
-is selected in the commit containing this handoff with execution unstarted.
-Step `05` and all later cards remain unselected. The
+were defined at published checkpoint `86419d3`; architecture is complete at
+`403fdf5`, reliability at `fae9bae`, and usability at `beee633`. `MIG-03I` is
+complete at published producer `de52e93`, validator `3d73d52`, and scheduler
+`3e805ac` test baselines, published executable/test checkpoint `803fcc4`, and
+the documentation/lifecycle close containing this handoff. No next migration
+or review card is created or selected; refresh the live DAG first. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.
