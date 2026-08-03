@@ -3316,3 +3316,44 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   findings. No migration-selection path, lifecycle, dependency, cycle, orphan,
   or anchor finding remains. This expected-only ceiling is nonpassing, not
   green and not authority to alter inherited lifecycle state.
+
+## 2026-08-03T05:50:56-0400 — MIG-03I task-specific plan frozen
+
+- **Git and slice boundary:** planning began from clean, tracked/untracked-
+  empty, published, local/upstream/live-remote-equal selection `0c88390`, with
+  no recovery/index lock or mutable-lane collision. Publish three single-test-
+  file reliability slices, one atomic fifteen-logical-file cutover/executable
+  card boundary, and one separate documentation close. Batch migration links
+  and small canonical docs only in that close; no later owner is preloaded.
+- **Producer baseline:** change only the direct Step `04` shell test for exact
+  Picard `42`, quickcheck `43`, index `44`, empty-metrics final-check,
+  arbitrary-CWD/tool admission, input-mutation, unrelated-file, and absent-
+  recovery oracles. Run only shell syntax and that complete direct test.
+- **Validator baseline:** change only the direct validator test for arbitrary-
+  CWD dry-run/execute/repeat bytes, exit-`0` failed evidence, exit-`2`
+  nonpublication, and stable-input/predecessor preservation. Run only that
+  direct pytest file.
+- **Scheduler baseline:** change only the central SLURM suite for Java-home/
+  PATH/version, `PICARD`, list-only failure, logs, stale triplet, and unset-
+  `JAVA_HOME` states. Run only the Step `04` scheduler selection. The assembled
+  tip adds no fourth test, production, fixture, baseline, documentation,
+  dependency, or future-owner file.
+- **Cutover and card-boundary gate:** move exactly five files and update exactly
+  ten callers/harness owners. After minimal final-path checks, measure coverage
+  with only the intentionally stale documentation assertion deselected, then
+  run the exact RUNBOOK aggregate once with an explicit result JSON. Only the
+  exact migration-caused documentation paths plus nine inherited `UNREFINED`
+  locations may remain, as a nonpassing expected-only ceiling. Any other fault
+  must be understood before commit.
+- **Close and rollback:** the separate close adds the owner README, repairs the
+  contract and full canonical/current/lifecycle roster, records exact evidence,
+  and runs the documentation-only gate. It may retain only nine inherited
+  findings. Roll back docs, cutover, scheduler test, validator test, then
+  producer test. Git rollback never alters runtime/production evidence, locks,
+  logs, or recovery artifacts. No executable/test mutation or computational,
+  scheduler, cluster, production, scientific-review, or biological evidence
+  changed or ran in this plan slice.
+- **Minimal slice check:** `git diff --check` passed for exactly the active card
+  and dated audit. Per the card-boundary-only validation rule, no computational
+  suite or complete documentation validator ran in this planning slice; the
+  complete documentation gate remains owned by the separate card close.
