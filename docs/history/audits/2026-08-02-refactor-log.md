@@ -4462,3 +4462,81 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   count `3ae6e3e`; Git rollback never changes runtime or recovery evidence.
   Publish and prove this close clean/upstream/live-remote-equal, then pause at
   MIG-03K completion without selecting another owner.
+
+## 2026-08-03T09:44:00-0400 — MIG-03L and sequential reviews defined
+
+- **Verified parent and live-DAG choice:** published MIG-03K documentation
+  close `b73b12bfb7d5af02f9e2c5bb7749a91cfb030f6d` was clean, tracked/
+  untracked-empty, free of recovery/index locks, and equal across local
+  `HEAD`, configured upstream, and the live remote branch before definition
+  work. The canonical direct-edge map leaves exactly one eligible unmigrated
+  owner: `generate_partitioned_cohort_mpileup_VCFs`. Every declared-sample
+  Step `06` BAM/BAI pair and the reference FAI predecessors are migrated.
+  Step `08` remains blocked and no Step `08` or later card is created.
+- **Frozen native boundary:** define only semantic stage
+  `norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1`, historical alias
+  `07`, final source home
+  `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/`, and mirrored
+  test home `tests/stages/generate_partitioned_cohort_mpileup_VCFs/`.
+  Candidate moves are the mode-`0755` producer, mode-`0644` validator, mode-
+  `0644` job, mode-`0755` direct shell test, and mode-`0644` direct validator
+  test. Three native assets total `49,371` bytes and `1,360` lines with
+  frozen hashes
+  `e790946db19ad26f8f8e75a325ced9035fcc69d58819ca3b43a1032131fac858`,
+  `4171442377c9c115d54baf9dc303cf22e37f2094b89daec9a982ad3c2704a85a`,
+  and `a2c64ceaebbf367f1c3f4c01cce663d16e958252a5a9dbd49ad26990b42d7659`.
+- **Proposed cutover and review question:** the evidence-backed hypothesis is
+  five moves plus nine integration owners: Make, artifact producer mapping
+  and exact migrated-producer evidence, public CLI maps, SLURM map/delegation,
+  validation roster, neutral report-loader matrix, coverage baseline, and the
+  literal Make expansion. Architecture review must prove that ceiling, exact
+  final hashes/root depths/test-helper bridge, mode continuity, and absence of
+  any hidden config, scaffold, wrapper, or duplicate owner.
+- **Pipeline and evidence decisions:** preserve exact manifest order, FAI-
+  bounded `region` and `regions_file` selectors, relative selector-file
+  resolution, reference and orientation-BAM paths, depth and filter defaults,
+  mechanical `FWD_like`/`REV_like` labels, and the two `mpileup`-to-`filter`
+  pipelines. This is pileup/filtering, not `bcftools call`, variant calling,
+  RNA-editing-site identification, transcript-strand assignment, or
+  biological/scientific readiness.
+- **Transaction and provenance risks:** preserve but do not approve receipt
+  visibility before final validation/commit, manifest-only hash and stability
+  binding, unhashed BAM/BAI/reference/FAI/regions/tool/policy/VCF inputs and
+  outputs, best-effort restoration, absent durable recovery/attempt identity,
+  and relative-output-root versus resolved-validator-path disagreement. The
+  cohort/partition lock, run-token scratch/backups, all-three-or-none
+  predecessor admission, receipt-last rename, final validation, cleanup, and
+  signal behavior remain review inputs rather than successful-recovery or
+  immutable-computation proof.
+- **Validation risks:** preserve exact five-row reporting and exit-`0` failed
+  evidence. The validator checks receipt/VCF shape, numeric positions,
+  selector declarations against the FAI, manifest hashes/sample order, VCF
+  paths, and counts without bcftools. It does not prove selector-bound data
+  coordinates, REF/ALT or FORMAT annotations, filter compliance, input/output
+  hashes, tool/policy identity, calling, biological meaning, or current-
+  attempt identity. Producer/validator `regions_file` detail remains
+  asymmetric. Reliability review must assign safe old/final-path oracles
+  rather than fix or bless these states.
+- **Scheduler risks:** preserve submit-CWD fallback, exported `/tmp`, tolerated
+  bcftools module diagnostics, fixed default tool plus override, version
+  command, one requested CPU, explicit execute gate, body-level `logs/`
+  mutation, three-file wrapper post-check, and possible stale-complete-set
+  false success. These are review inputs, not scheduler, current-attempt,
+  production, scientific, or biological proof.
+- **Coverage and evidence ceiling:** frozen validator coverage is `167/198`
+  lines and `48/72` branches; global coverage is `9551/11720` lines and
+  `3348/4772` branches. Any later final measurement must keep non-target rows
+  exact and preserve target/global rates and covered-count floors. Definition
+  adds no real bcftools, scheduler, cluster, production, scientific-review,
+  variant/editing-site, or biological evidence.
+- **Bounded lifecycle decision:** create only unselected `MIG-03L` and
+  unselected sequential `REVIEW-ARCH-03L` → `REVIEW-REL-03L` →
+  `REVIEW-UX-03L`. No card is selected; no executable, test, harness,
+  configuration, dependency, schema, fixture, report-template, runtime,
+  scheduler, cluster, production, or future-owner file changes or runs.
+- **Card-boundary documentation gate:** `git diff --check` passes and the
+  exact RUNBOOK documentation validator reports only the nine inherited
+  `UNREFINED` card-location findings. No MIG-03L path, lifecycle, dependency,
+  cycle, orphan, anchor, or diagram finding remains. This expected-only result
+  is nonpassing, not green and not authority to alter inherited lifecycle
+  state.
