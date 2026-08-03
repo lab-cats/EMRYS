@@ -106,6 +106,7 @@ focused oracles without redesigning those concerns.
 
 ## Completion record
 
-Not selected. Architecture review is complete; select this card alone only
-after that completion checkpoint is published and proven equal. No executable,
-test, or configuration file changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+architecture-completion checkpoint
+`d9ad4da717ac367c54854a85974d1a2725537a35`. Review remains read-only; no
+executable, test, or configuration file changed or ran.

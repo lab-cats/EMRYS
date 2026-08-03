@@ -268,8 +268,9 @@ smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture review is complete against published/equal
-selection `a46f94b` with the exact five-move/fourteen-integration, retained-
-configuration, private-loader, artifact/coverage, atomicity, and rollback
-boundary above. Reliability and usability remain unselected; no executable,
-test, configuration, dependency, later owner, or audit package changed or ran.
+Not selected. Architecture review is complete at published/equal `d9ad4da`;
+reliability alone is selected from that checkpoint, and usability remains
+unselected. The five-move/fourteen-integration, retained-configuration,
+private-loader, artifact/coverage, atomicity, and rollback boundary remains
+fixed. No executable, test, configuration, dependency, later owner, or audit
+package changed or ran.

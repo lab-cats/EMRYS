@@ -6221,3 +6221,24 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   documentation structure (213 Markdown documents, 133 task cards, 6 Mermaid
   sources)`. Architecture moves to `COMPLETED`; MIG-03O, reliability, and
   usability remain unselected.
+
+## 2026-08-03T18:26:26-0400 — REVIEW-REL-03O selected
+
+- **Selection:** architecture completion
+  `d9ad4da717ac367c54854a85974d1a2725537a35` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. Move only
+  REVIEW-REL-03O from `TODO` to `IN_PROGRESS` and repair its direct lifecycle/
+  status links. MIG-03O, usability, later packages, and final audit remain
+  unselected.
+- **Read-only plan:** inventory existing and missing safe local oracles for
+  admission/input stability, thirteen-output publication/replacement,
+  rollback/incomplete restoration, signals/locks/concurrency, schema/state/
+  decision gates, all four production private loaders, artifact/run-summary/
+  report meaning, and coverage. Record only the smallest required old-path
+  test checkpoints; run or change no executable, test, configuration,
+  dependency, scheduler, cluster, production, scientific-review, or biological
+  workload under the review card.
+- **Minimal selection validation:** run `git diff --check` only. Publish and
+  prove the reliability-selection checkpoint clean/upstream/live-remote-equal
+  before the review begins.
