@@ -14,10 +14,12 @@ manifest order, then publish the two VCFs and receipt as one transaction.
 This is pileup generation and filtering, not a `bcftools call` operation or a
 claim that variants or RNA-editing sites have been identified.
 
-Step `07` requires the complete Step `06` BAM/BAI pair for both mechanical
-orientation groups of every declared sample, but only checks those files'
-presence and nonemptiness; it does not require Step `06` counts, validation
-evidence, or a native completion marker. Distinct partitions may run
+Step `07` requires the complete BAM/BAI pair for both mechanical orientation
+groups of every declared sample from the final
+[`partition_BAM_by_mechanical_read_orientation`](../partition_BAM_by_mechanical_read_orientation/README.md)
+owner, but only checks those files' presence and nonemptiness; it does not
+require Step `06` counts, validation evidence, or a native completion marker.
+Distinct partitions may run
 independently when they use distinct output locks and immutable shared inputs.
 Step `08` is the cohort barrier and consumes the complete declared
 partition-by-orientation result set regardless of partition completion order.

@@ -6,11 +6,12 @@ public Python import API; there is intentionally no `__init__.py`.
 
 `validation_report.py` owns `ValidationError`, `Snapshot`, `fail`, `clean`,
 `regular_snapshot`, `stable_text`, `render`, `validate_report`, and `publish`,
-plus internal `HEADER`. The thirteen validator entry points resolve
-that exact file through repeated caller-local loaders cached only as the
-private identity `_norad_validation_report`. Those loaders leave with each
-validator during its later functional-owner migration; they do not establish a
-generic loader or packaging convention.
+plus internal `HEADER`. The thirteen validator entry points resolve that exact
+file through repeated caller-local loaders cached only as the private identity
+`_norad_validation_report`. Ten loaders now live with final functional owners
+through `partition_BAM_by_mechanical_read_orientation`; three remain with flat
+validators. The loaders do not establish a generic loader or packaging
+convention.
 
 `bam_validation.py` owns only the behavior-preserving `run_tool` and
 `parse_header` primitives used by the final `construct_canonical_BAM`, Step

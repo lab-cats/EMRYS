@@ -16,8 +16,10 @@ index the result, and publish a rollback-protected BAM/BAI pair.
 Two independent branches converge here: Step `04` normally supplies the marked
 `<bam>.bai` pair, while Step `00c` supplies the explicit FASTA, `<fasta>.fai`,
 and `<stem>.dict`. Step `05` neither creates nor repairs reference sidecars.
-Step `06` consumes the published split BAM/BAI. Historical numbering is
-provenance; these data edges define required order.
+The final
+[`partition_BAM_by_mechanical_read_orientation`](../partition_BAM_by_mechanical_read_orientation/README.md)
+owner consumes the published split BAM/BAI. Historical numbering is provenance;
+these data edges define required order.
 
 ## Inputs and outputs
 
@@ -91,7 +93,9 @@ failures, and report-publication failures exit `2`.
 
 ## Consumers and protected evidence
 
-- Step `06` consumes the split BAM/BAI.
+- The final
+  [`partition_BAM_by_mechanical_read_orientation`](../partition_BAM_by_mechanical_read_orientation/README.md)
+  owner consumes the split BAM/BAI.
 - Artifact adapters register `step05_split_bam_v1`, `step05_split_bai_v1`, and
   `step05_validation_report_v1`; summary/report code consumes them without
   rerunning GATK.

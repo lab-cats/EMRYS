@@ -1,10 +1,12 @@
 # `partition_BAM_by_mechanical_read_orientation` stage contract
 
-This is the observed contract of historical Step `06` for `ARCH-02A`. The
-exact public identity and historical alias are owned by the
+This is the observed contract of historical Step `06`, now implemented in this
+native owner directory. The exact public identity and historical alias are
+owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and owns the producer, validator, and scheduler assets.
+Supported journeys and migration evidence are in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
@@ -49,7 +51,7 @@ both merged groups must be nonzero; assigned may not exceed input.
 
 ## Current execution surfaces
 
-[`step_06_split_bam_by_read_orientation.sh`](../../../../scripts/step_06_split_bam_by_read_orientation.sh)
+[`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
 is side-effect-free in dry-run. Execute mode uses a per-sample owned lock,
 run-token temporary and backup paths, rejects stale owned-path candidates,
 validates both temporary pairs and arithmetic, requires an existing final set
@@ -63,17 +65,17 @@ receipt. Rollback restore moves are best-effort and cleanup can delete backups
 after a failed restoration, leaving the same unprotected recovery boundary as
 other BAM transactions.
 
-[`step_06_split_bam_by_read_orientation.slurm`](../../../../jobs/step_06_split_bam_by_read_orientation.slurm)
+[`step_06_split_bam_by_read_orientation.slurm`](step_06_split_bam_by_read_orientation.slurm)
 owns cluster defaults, samtools loading, execution gating, delegation, and
 post-execute path checks. It has the characterized Bash 3.2 empty-array dry-run
 defect.
 
 ## Validation interface
 
-[`validate_step_06_orientation_outputs.py`](../../../../scripts/validate_step_06_orientation_outputs.py)
+[`validate_step_06_orientation_outputs.py`](validate_step_06_orientation_outputs.py)
 accepts the four explicit BAM/BAI paths, counts TSV, scope, and report output.
 It does not invoke samtools. Dry-run prints the common TSV; `--execute`
-snapshot-rechecks inputs and uses Step `00a`'s shared publisher.
+snapshot-rechecks inputs and uses the neutral validation-report publisher.
 
 Exact checks are:
 
@@ -100,21 +102,30 @@ failures exit `2`.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.
-- [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/shell/test_step_06_split_bam_by_read_orientation.sh)
+- [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/partition_BAM_by_mechanical_read_orientation/test_step_06_split_bam_by_read_orientation.sh)
   protects flags, counts, dry-run, locks, stale paths, validation, zero-group
   failures, cleanup, complete-set replacement, and ordinary rollback.
-- [`test_validate_step_06_orientation_outputs.py`](../../../../tests/test_validate_step_06_orientation_outputs.py),
+- [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/partition_BAM_by_mechanical_read_orientation/test_validate_step_06_orientation_outputs.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
 
 This is local fixture/mock characterization, not new runtime, cluster,
 scientific-review, or biological evidence.
 
-## Ownership gaps and deferred decisions
+## Current ownership boundaries and retained defects
 
-- Counts schema/arithmetic is repeated in producer, validator, and artifact
-  reconciliation code.
-- Shared report publication remains owned by the Step `00a` validator.
+- Counts schema/arithmetic remains repeated in producer, validator, and artifact
+  reconciliation code; this stage owns its native schema and check roster.
+- Shared report publication remains in neutral
+  [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
+  under a private identity without package or `PYTHONPATH` support.
 - Native completion and transaction semantics lack attempt and input identity.
-- Target files, policy ownership, recovery design, shared
-  schema/reconciliation ownership, and migration mechanics remain deferred.
+  Restoration is best-effort, cleanup can erase recovery evidence, and the
+  output-directory lock does not serialize writers to a shared QC directory.
+- The producer does not reconcile flag-subcounts against merged-BAM counts;
+  the independent validator may publish failed rows with exit `0` and neither
+  quickchecks nor recounts BAM records.
+- Scheduler Bash `3.2`, warning-only samtools preflight, one-CPU versus
+  independently configured threads, dry-run log mutation, version-command,
+  and stale-five-file success remain characterized defects rather than
+  guarantees.

@@ -17,6 +17,7 @@ validation-report and BAM-validation libraries, the `construct_STAR_index` job
 and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
 `align_RNA_reads_with_STAR`, `construct_canonical_BAM`,
 `mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`,
+`partition_BAM_by_mechanical_read_orientation`,
 `collect_canonical_BAM_QC_evidence`, and
 `collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
 now live under `src/norad/`; remaining workflow entry points stay under
@@ -55,8 +56,8 @@ publication protocol used by all thirteen validator entry points. The final
 `construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`,
 `construct_canonical_BAM`, `collect_canonical_BAM_QC_evidence`,
 `collect_RSeQC_paired_orientation_evidence`, and
-`mark_BAM_duplicates_with_Picard` and `split_N_cigar_reads_with_GATK`
-validators and four remaining
+`mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`, and
+`partition_BAM_by_mechanical_read_orientation` validators and three remaining
 `scripts/` validators resolve that exact file through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current

@@ -3580,23 +3580,36 @@ The [functional contract](../../src/norad/stages/partition_BAM_by_mechanical_rea
 owns the entry points, Step `05` inputs, five-file output set, flag grouping,
 count reconciliation, and validator checks. `FWD_like` and `REV_like` are
 mechanical read-orientation labels, not biological sense/antisense claims.
+The adjacent
+[`owner README`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/README.md)
+owns the complete root/arbitrary-CWD journeys, samtools/thread/output-QC/lock
+selection, dry-run distinctions, recovery preservation, migration evidence,
+and rollback ceiling. These final paths replace the flat entry points directly;
+there is no installed command, package import, wrapper, alias, symlink, or
+ambient `PYTHONPATH` route.
 
 Dry-run:
 
 ```bash
-sbatch jobs/step_06_split_bam_by_read_orientation.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0 \
+  src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm
 ```
 
 Execute:
 
 ```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_06_split_bam_by_read_orientation.slurm
+cd /absolute/path/to/norad
+mkdir -p logs
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 \
+  src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm
 ```
 
 Direct script dry-run with explicit cluster samtools:
 
 ```bash
-scripts/step_06_split_bam_by_read_orientation.sh \
+src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
   --output-dir results/orientation/ABE_EV_2 \
@@ -3608,7 +3621,7 @@ scripts/step_06_split_bam_by_read_orientation.sh \
 Direct script execute with explicit cluster samtools:
 
 ```bash
-scripts/step_06_split_bam_by_read_orientation.sh \
+src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
   --output-dir results/orientation/ABE_EV_2 \
@@ -3617,6 +3630,28 @@ scripts/step_06_split_bam_by_read_orientation.sh \
   --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
   --execute
 ```
+
+From another working directory, make the producer, BAM, output directory, QC
+directory, and samtools paths absolute:
+
+```bash
+/absolute/path/to/norad/src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam /absolute/results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
+  --output-dir /absolute/results/orientation/ABE_EV_2 \
+  --qc-dir /absolute/results/qc/orientation \
+  --threads 1 \
+  --samtools-bin /absolute/path/to/samtools
+```
+
+Direct dry-run validates input/BAI, threads, and samtools resolution; prints
+both-directory transaction plans; invokes no samtools; and creates no
+directory. Validator dry-run reads five explicit inputs, prints five rows plus
+its completion line, invokes no samtools, and writes no report. Scheduler dry-
+run is different: `logs/` must exist before `sbatch`, SLURM opens its logs, and
+the body runs module/version probes and creates `logs/` before delegation. The
+wrapper's one CPU is independent of `THREADS`; Bash `3.2`, warning-only tool
+preflight, version-command failure, and stale-five-file success remain defects.
 
 Validation checklist for rerun or spot inspection:
 
@@ -3636,7 +3671,8 @@ cat "$counts"
 Structured validation is explicit-input and dry-run-first:
 
 ```bash
-.venv/bin/python scripts/validate_step_06_orientation_outputs.py \
+.venv/bin/python \
+  src/norad/stages/partition_BAM_by_mechanical_read_orientation/validate_step_06_orientation_outputs.py \
   --scope-id "$sample" \
   --fwd-bam "$fwd" \
   --fwd-bai "$fwd.bai" \
@@ -3649,7 +3685,29 @@ Structured validation is explicit-input and dry-run-first:
 After inspecting the five printed checks, rerun the same command with
 `--execute`. Exact checks and limits remain in the linked contract.
 
-All six Step `06` jobs completed `0:0`; `FWD_like` / `REV_like` BAM+BAI outputs were published for all six samples; `samtools quickcheck` passed silently; orientation counts TSVs were present; `assigned_fraction = 1.000000` and `unassigned_records = 0` for all six samples; and no Step `06` scratch files remained.
+Focused local protection is:
+
+```bash
+bash tests/stages/partition_BAM_by_mechanical_read_orientation/test_step_06_split_bam_by_read_orientation.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/partition_BAM_by_mechanical_read_orientation/test_validate_step_06_orientation_outputs.py
+.venv/bin/python -m pytest -q \
+  tests/test_slurm_wrapper_contracts.py -k step_06_split_bam_by_read_orientation
+```
+
+The producer's flag-subcount/merged-count mismatch, admitted-input mutation,
+best-effort restoration and cleanup erasure, shared-QC collision, and absent
+receipt/current-attempt identity remain characterized defects. Preserve both-
+directory runtime evidence and follow the
+[`Step 06` recovery route](TROUBLESHOOTING.md#step-06-producer-or-wrapper-leaves-a-partial-rollback-failure-collision-or-stale-set)
+before cleanup or retry. The independent validator may publish failed rows with
+exit `0` and does not quickcheck or recount BAMs.
+
+Historical cluster inspection recorded six Step `06` jobs completing `0:0`,
+both BAM/BAI pairs for all samples, silent quickcheck passes, counts TSVs,
+`assigned_fraction = 1.000000`, `unassigned_records = 0`, and no observed
+scratch. MIG-03K did not rerun those jobs or create new real-samtools,
+scheduler, cluster, production, scientific-review, or biological evidence.
 
 ## Step 07: bcftools mpileup
 

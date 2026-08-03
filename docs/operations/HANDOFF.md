@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published usability-review
-  completion checkpoint `5653ce25a6f5f442b8136691a58030c831180f88`.
+  exact SHA from live Git. Its frozen parent is published executable/test
+  checkpoint `1d5b76a9345d585a079b22b4ffd8c13566f9e177`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -20,23 +20,30 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `0bc12ac`, architecture selection `efdec11`, architecture completion
   `2452332`, reliability selection `7ca503d`, reliability completion `1d5406a`,
   usability selection `3f71f87`, and usability completion `5653ce2` are also
-  published and equal.
-- Current package: active
-  [`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+  published and equal. MIG-03K child/count `3ae6e3e`, transaction `dafcd18`,
+  stability/collision `66e41fe`, validator `1332529`, and scheduler `e871d5c`
+  test baselines plus executable/test checkpoint `1d5b76a` are published and
+  local/upstream/live-remote-equal.
+- Current package: completed
+  [`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
   after completed
   [`REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   and completed
   [`REVIEW-REL-03K`](../tasks/COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   followed by completed
   [`REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
-  All reviews are complete; migration selection fixes seven bounded remaining
-  slices. Step `07` and later cards remain uncreated.
-- Package type at this checkpoint: documentation-only migration selection and
-  task-specific execution plan. It changes or runs no executable, test,
-  configuration, dependency, schema, fixture, or report-template behavior.
-- Remote publication and upstream equality: usability-completion parent
-  `5653ce2` is verified local/upstream/live-remote-equal. Publish and prove this
-  selection checkpoint equal before the first test-only baseline.
+  All reviews and bounded migration slices are complete. Step `07` and later
+  owner/review cards remain unselected and uncreated.
+- Package type at this checkpoint: documentation/lifecycle close. It adds the
+  adjacent owner route, repairs canonical paths/commands/current evidence and
+  lifecycle links, deletes the obsolete pending scaffold, and records the
+  aggregate ceiling without changing executable, test, configuration,
+  dependency, schema, fixture, report-template, scheduler, production, or
+  scientific behavior.
+- Remote publication and upstream equality: executable parent `1d5b76a` is
+  verified local/upstream/live-remote-equal. Resolve and prove the exact
+  documentation-close SHA from live Git, then pause without selecting another
+  owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -49,9 +56,10 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/construct_canonical_BAM/`, and
 `src/norad/stages/mark_BAM_duplicates_with_Picard/`, and
 `src/norad/stages/split_N_cigar_reads_with_GATK/`, and
+`src/norad/stages/partition_BAM_by_mechanical_read_orientation/`, and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
-`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their nine
-validators and the four remaining flat validators load the neutral report file
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their ten
+validators and the three remaining flat validators load the neutral report file
 without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
 and Step `05` validators also use private exact-file bridges to unchanged
 public `scripts/reference_provenance.py`. The final Step `02`/`04`/`05`
@@ -365,31 +373,73 @@ scientific-review, or biological evidence was created. MIG-03J is complete in
 published documentation/lifecycle checkpoint `db60dfa`.
 
 That clean, upstream-equal, live-remote-equal checkpoint supported a fresh DAG
-refresh. Only `partition_BAM_by_mechanical_read_orientation` is eligible: its
-sole direct predecessor is migrated, while Step `07` still depends on Step
+refresh. Only `partition_BAM_by_mechanical_read_orientation` was eligible: its
+sole direct predecessor was migrated, while Step `07` still depended on Step
 `06`. Published/equal definition checkpoint `0bc12ac` created only
-[`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and sequential
 [completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 → [completed `REVIEW-REL-03K`](../tasks/COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 → [completed `REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
-Architecture confirms exactly five moves, nine integration owners, unchanged
-native modes, one private moved-test roster bridge, final native hashes, one
-documentation-close deletion of the obsolete pending scaffold, unchanged
-artifact/coverage ownership, and reverse rollback. Reliability fixes five
-small old-path test-only checkpoints for producer child/count, transaction,
-stability/collision, validator, and scheduler behavior. It preserves the
-flag-count disagreement, admitted-input mutation, best-effort restoration,
-erased recovery evidence, shared-QC collision, absent receipt, validator exit-
-`0` failed rows, one-CPU/thread mismatch, warning-only tool probe, Bash `3.2`,
-and stale-five-file defects without approving them.
 Architecture is published/equal at `2452332`; reliability completion is
 published/equal at `1d5406a`; usability completion is published/equal at
-`5653ce2`. MIG-03K is the sole active migration and has seven bounded remaining
-slices: five old-path test-only baselines, one atomic executable/test cutover
-with the complete computational card-boundary gate, and one separate
-documentation/lifecycle close. Selection changes or runs no executable/test
-file, and no Step `07` or later owner/review card is preloaded.
+`5653ce2`; selection is `cd5d8e9`.
+
+Published child/count `3ae6e3e`, transaction `dafcd18`, stability/collision
+`66e41fe`, validator `1332529`, and scheduler `e871d5c` baselines were each one
+bounded old-path test-only checkpoint. Published executable/test checkpoint
+`1d5b76a` then moved exactly five files, updated nine reviewed integration
+owners, and left no legacy executable/test owner, wrapper, alias, symlink,
+package marker, descriptor, schema, transaction, receipt, recovery marker, or
+later-owner preload.
+
+Final producer mode/bytes/lines/SHA-256 is `0755` / `24,542` / `784` /
+`74399ceb42cb081b213256977b03137d7ae8513c07f98fb4cd06b2f7ee6a2730`;
+validator is `0644` / `8,892` / `227` /
+`96385f8988219a486094c05d490acc8d2b228001d241ee29af784ec269460b33`;
+and the mode-`0755` job is `4,072` bytes / `125` lines /
+`fc1ddbce861293fac9dcbd9e87571d8b4f955ae602f4f2daa6afa7908d5251af`.
+The complete final shell suite, `15` validator tests, `16` selected scheduler
+tests with `134` unrelated cases deselected, and `432` focused integration
+tests passed.
+
+Coverage passed `1,177` tests with `17` skips and one explicit documentation-
+validator deselection. The moved validator measured `108/119` lines and
+`24/30` branches; global coverage measured `9551/11720` lines and `3348/4772`
+branches. Every non-target row remained exact and the standalone policy
+comparison passed.
+
+The aggregate gate was not fully green. The first sandboxed attempt stopped
+only when guarded R could not resolve Bioconductor metadata; it also preserved
+the inherited ignored malformed `macos` warning. The exact network-enabled
+rerun used the existing project library and changed no dependency. Static
+preflight passed in `0.166s`, shell contracts in `42.813s`, report runtime in
+`129.807s`, and guarded R in `177.640s`. Python ran `1,177` passes and `17`
+skips before its sole documentation assertion failed; the aggregate ended
+status `2` in `183.791s`. That assertion listed exactly ten deliberately
+deferred Step `06` migration links plus nine inherited `UNREFINED` card-
+location findings. This close repairs the ten links; the inherited nine remain
+an expected-only nonpassing condition, never a passing-gate claim.
+
+The producer's flag-subcount/merged-count disagreement, admitted-input-
+mutation blindness, best-effort restoration, cleanup erasure after rollback
+failure, shared-QC collision, and missing receipt/current-attempt identity
+remain characterized defects. So do the validator's exit-`0` failed rows and
+lack of quickcheck/recount, and the scheduler's one-CPU/thread split, Bash
+`3.2` dry-run failure, log mutation, warning-only tool preflight, version-
+command failures, and stale-five-file false success. The worst controlled
+rollback state propagates publication exit `67` after restoration exit `68`,
+leaves the prior FWD BAM missing while restoring the other four prior files,
+and erases backup/lock/scratch/recovery evidence. It is not approved.
+
+Artifact evidence changes only the final producer path and reviewed hash;
+public identities, schemas, contents, ordering, reconciliation, consumers, and
+scientific meaning remain unchanged. Historical six-sample samtools and
+cluster observations remain historical, not migration proof. No real tool,
+scheduler, cluster, production, scientific-review, or biological evidence was
+created. MIG-03K is complete in the documentation/lifecycle commit containing
+this handoff. No Step `07` or later owner/review card is selected or preloaded;
+pause at this clean published boundary.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -961,7 +1011,7 @@ admission/signal `3913215`, validator `8eb3a0b`, and scheduler `ec240ae`
 baselines plus published executable/test checkpoint `ef4cad7`; documentation/
 lifecycle close is published at `db60dfa`. A fresh live-DAG check then
 supported only
-[`MIG-03K`](../tasks/IN_PROGRESS/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
+[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and its sequential reviews, defined at published checkpoint `0bc12ac`.
 [completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 is published/equal at `2452332`;
@@ -969,8 +1019,11 @@ is published/equal at `2452332`;
 is complete from published/equal selection `7ca503d` in the checkpoint
 containing this handoff;
 [`REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
-is complete at published/equal checkpoint `5653ce2`; MIG-03K is selected with
-seven bounded remaining slices and no executable/test mutation yet. Step `07`
-and later cards remain uncreated.
+is complete at published/equal checkpoint `5653ce2`. MIG-03K is complete at
+published child/count `3ae6e3e`, transaction `dafcd18`, stability/collision
+`66e41fe`, validator `1332529`, and scheduler `e871d5c` test baselines plus
+published executable/test checkpoint `1d5b76a`; documentation/lifecycle
+closure is the commit containing this handoff. Step `07` and later cards remain
+unselected and uncreated at the requested pause boundary.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

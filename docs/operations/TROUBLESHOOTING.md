@@ -1087,6 +1087,81 @@ belongs to Step `05`. Use only the final commands in the
 before any same-name retry. Validator exit `0` may publish failed evidence;
 exit `2` publishes nothing new and is not a failed-row synonym.
 
+## Step 06 producer or wrapper leaves a partial rollback failure, collision, or stale set
+
+### Symptom
+
+Step `06` returns nonzero after filtering, merging, indexing, counting,
+publication, final revalidation, restoration, signal handling, or cleanup, and
+the two BAM/BAI pairs plus counts TSV are absent, partial, mixed, or ambiguous.
+A severe controlled state leaves the prior FWD BAM missing while the other
+four predecessor files are restored and no backup, scratch, lock, or recovery
+marker remains. Alternatively, two same-sample attempts with distinct output
+directories both succeed but one shared QC counts path contains only the last
+writer, or the scheduler exits zero after a zero-output child rediscovered five
+stale nonempty files.
+
+### Cause
+
+The producer stages four filter BAMs, two merged BAM/BAI pairs, and a counts
+TSV across the selected output and QC directories. It locks only the selected
+output directory, backs up an all-five predecessor, publishes four BAM/BAI
+members sequentially and counts last, then revalidates the final paths.
+Restoration moves are best-effort and cleanup can erase the remaining backups,
+scratch, lock, and recovery evidence after a restoration failure. The
+characterized injected counts-publication exit `67` followed by prior-FWD-BAM
+restoration exit `68` propagates `67`, leaves that predecessor BAM missing,
+restores the other four prior files, preserves unrelated bytes, and erases all
+owned recovery paths. This is an ambiguous/data-loss defect, not successful
+rollback.
+
+The input BAM/BAI is not snapshot-rechecked. The count row is not an attempt
+receipt, and producer success does not require each flag-subcount sum to equal
+the corresponding merged-BAM count. Distinct output-directory locks do not
+serialize a shared QC path; the last successful writer replaces its counts
+TSV. The wrapper checks only that five final names are nonempty after a zero-
+exit child. Its submit-CWD fallback, body-level `logs/` mutation, tolerated
+module calls, warning-only samtools probe, version-command behavior, one CPU
+independent of `THREADS`, Bash `3.2` empty-array failure, and stale-five-file
+success are separate preserved states. None proves current-attempt identity.
+
+### Fix
+
+Stop same-name retries, every relevant lock owner and producer, and downstream
+Step `07` reads. Before cleanup or recovery, preserve all five surviving
+finals; four flag-filter BAMs; merged BAM/BAI and counts scratch; all five
+predecessor backups across both directories; every output-directory lock and
+owner file; the input BAM/BAI; unrelated directory entries; producer stdout/
+stderr; scheduler stdout/stderr, job ID/accounting and logs; checkout and
+submit CWD; environment overrides; selected thread count; and exact samtools
+path/version diagnostics. Record expected paths that are absent; absence is
+not proof of clean state.
+
+Do not combine members from different attempts, infer attempt identity from
+counts or timestamps, remove a foreign lock, reconstruct a missing BAM or TSV,
+or adopt stale wrapper success. Rule out every active producer and Step `07`
+reader first. Any separately authorized diagnostic retry uses both an isolated
+output directory and an isolated QC directory so the questioned evidence
+remains unchanged. Git rollback changes tracked implementation only and cannot
+recover, remove, or authenticate runtime artifacts.
+
+Use the final validator in dry-run mode only to inspect one complete surviving
+five-file set. It may print `status=fail` rows with exit `0`; it does not
+quickcheck, recount, inspect flags, prove BAM/BAI correspondence, establish
+attempt identity, or repair anything:
+
+```bash
+.venv/bin/python \
+  src/norad/stages/partition_BAM_by_mechanical_read_orientation/validate_step_06_orientation_outputs.py \
+  --scope-id <sample_id> \
+  --fwd-bam results/orientation/<sample_id>/<sample_id>.FWD_like.bam \
+  --fwd-bai results/orientation/<sample_id>/<sample_id>.FWD_like.bam.bai \
+  --rev-bam results/orientation/<sample_id>/<sample_id>.REV_like.bam \
+  --rev-bai results/orientation/<sample_id>/<sample_id>.REV_like.bam.bai \
+  --counts results/qc/orientation/<sample_id>.orientation_counts.tsv \
+  --output results/qc/validation/06/<sample_id>.validation.tsv
+```
+
 ## Step 06 structured validation reports output or count disagreement
 
 ### Symptom
@@ -1105,8 +1180,16 @@ values may not reconcile.
 ### Fix
 
 Follow the [common response](#structured-validation-response). Confirm that
-the two BAM/BAI pairs and counts row came from one Step `06` transaction.
-Preserve `FWD_like` and `REV_like` as mechanical, not biological, labels.
+the two BAM/BAI pairs and counts row are declared as one Step `06` set, but do
+not infer that fact from filenames, counts, timestamps, or validator exit `0`.
+Inspect the final producer/validator paths, input pair, samtools selection,
+producing job, logs, output/QC directories, and locks. Use only the final
+commands in the [Step `06` runbook](RUNBOOK.md#step-06-split-bam-by-read-orientation),
+and follow the
+[partial/rollback/collision/stale-set route](#step-06-producer-or-wrapper-leaves-a-partial-rollback-failure-collision-or-stale-set)
+before any same-name retry. Preserve `FWD_like` and `REV_like` as mechanical,
+not biological, labels. Validator exit `0` may publish failed evidence; exit
+`2` publishes nothing new and is not a failed-row synonym.
 
 ## Step 07 structured validation reports transaction disagreement
 

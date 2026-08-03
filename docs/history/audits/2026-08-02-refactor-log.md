@@ -4331,3 +4331,134 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
   validation rule, no computational suite or complete documentation validator
   runs at selection; those checks remain assigned to their recorded boundaries.
+
+## 2026-08-03T09:35:04-0400 — MIG-03K executable and documentation lifecycle completed
+
+- **Verified bounded sequence:** from published selection checkpoint `cd5d8e9`,
+  publish five sequential old-path test-only checkpoints: child/count
+  `3ae6e3e`, transaction `dafcd18`, stability/collision `66e41fe`, validator
+  `1332529`, and scheduler `e871d5c`. Each checkpoint was clean, upstream-
+  equal, and live-remote-equal before the next slice. No production, fixture,
+  coverage-baseline, documentation batch, dependency, or later-owner file
+  entered those baseline slices.
+- **Child/count decisions and retained risk:** exact filter, merge, index, and
+  count-command failures propagate exits `71`–`74`, publish no final, clean
+  owned scratch/lock, preserve unrelated bytes, and emit the expected stderr.
+  Missing explicit samtools is rejected before directory creation; a basename
+  resolves through `PATH` from arbitrary CWD; and assigned greater than input
+  is rejected. The producer still exits `0` and publishes when flag `99 + 147`
+  counts disagree with the merged FWD count. This is a characterized defect,
+  not arithmetic approval. Baseline shell-test SHA-256 was
+  `824ee5adec0509088e410b5a34fae2538278dced7f18081aef65c736b3813754`.
+- **Transaction decisions and retained risk:** counts is published last; an
+  incomplete predecessor set is rejected with exact preservation; and final-
+  path quickcheck failure restores all five predecessor files byte-exactly.
+  Injected counts-publication exit `67` followed by prior-FWD-BAM restoration
+  exit `68` propagates `67`, leaves that prior BAM missing, restores the other
+  four prior files, preserves unrelated bytes, and erases backup/lock/scratch/
+  recovery evidence. This is ambiguous data loss, not successful rollback or
+  retry authority. Transaction shell-test SHA-256 was
+  `ee9128d572713aee2ba9b4d7f1706ffa59a4c1a8a8d93e7586cc85146da83fd3`.
+- **Stability, signal, and collision decisions:** controlled BAM/BAI mutation
+  during filtering remains undetected and the producer exits `0`; admitted
+  inputs are not stable-snapshot bound. Controlled TERM exits `143`, preserves
+  predecessor/unrelated bytes, and removes owned lock/scratch. Barrier-
+  controlled same-sample runs with distinct output directories and shared QC
+  both exit `0`, retain both BAM/BAI quartets, and leave last-writer counts from
+  one attempt beside the other attempt's outputs. No receipt or durable
+  recovery marker identifies the attempt. Stability/collision shell-test SHA-
+  256 was
+  `ca97c0bc7b781a56457eaed88980f28f1fb875871ab8173863e738219294944f`.
+- **Validator decisions:** the old-path direct suite passed `15` tests and
+  froze arbitrary-CWD dry-run/execute/repeat byte parity with unchanged inputs
+  and no invocation-CWD residue; four invalid BAM/BAI container cases as exit-
+  `0` failed evidence; and post-build mutation of each of five inputs as exit
+  `2` preserving a valid predecessor report. The validator still invokes no
+  samtools, quickcheck, record recount, flag inspection, BAM/BAI correspondence,
+  or sort/read-group validation. Baseline test SHA-256 was
+  `5f39f8157c27a01d516725c22c26b90a6ea421d0bfebaa29dd9c981369aef140`.
+- **Scheduler decisions:** the old-path Step `06` selection passed `16` tests
+  with `134` unrelated cases deselected. It freezes samtools version-command
+  failure before delegation; warning-only missing/nonexecutable paths with
+  unchanged delegation; PATH-basename forwarding; dynamic absent-submit-CWD
+  fallback; body-level `logs/`-only dry-run mutation; `THREADS` independent of
+  the one-CPU request; and a zero-output child falsely succeeding against five
+  stale nonempty files. Generic cases retain directives/mode, tolerated module
+  calls, override arguments, invalid mode, child exit, missing outputs, and
+  Bash `3.2`. Central-suite SHA-256 was
+  `11f27ddfb51d0497e2ef53e254d00d18c56eb9757a8d9d093bf25bb69a3cf924`.
+- **Atomic owner cutover:** published executable/test checkpoint
+  `1d5b76a9345d585a079b22b4ffd8c13566f9e177` applied exactly five reviewed
+  moves and nine integration-owner updates. Final owner is
+  `src/norad/stages/partition_BAM_by_mechanical_read_orientation/`; direct
+  tests are under the mirrored stage test directory. No legacy owner, wrapper,
+  alias, symlink, compatibility copy, package marker, descriptor, schema,
+  second owner, transaction/receipt/recovery mechanism, dependency action, or
+  later-card preload was added.
+- **Native and private-owner evidence:** final producer is mode `0755`,
+  `24,542` bytes, `784` lines, SHA-256
+  `74399ceb42cb081b213256977b03137d7ae8513c07f98fb4cd06b2f7ee6a2730`;
+  validator is mode `0644`, `8,892` bytes, `227` lines,
+  `96385f8988219a486094c05d490acc8d2b228001d241ee29af784ec269460b33`;
+  job is mode `0755`, `4,072` bytes, `125` lines,
+  `fc1ddbce861293fac9dcbd9e87571d8b4f955ae602f4f2daa6afa7908d5251af`.
+  All exactly match architecture projections. The validator exact-loads the
+  neutral report owner under private identity, validates its path/readiness,
+  preserves foreign cache and `sys.path`, and adds no package or wrapper.
+- **Focused final-path evidence:** producer/job/direct-test shell syntax and
+  the complete producer shell suite passed. The moved validator passed `15`
+  tests, the Step `06` scheduler selection passed `16` with `134` deselected,
+  and the explicit public-CLI/Make, roster/report, artifact, and path-map
+  surface passed `432` tests. All are local fixture/fake-tool evidence.
+- **Coverage decision and result:** one pre-aggregate measurement with only the
+  intentionally stale documentation assertion deselected passed `1,177` tests
+  with `17` skips in `290.88s`. Step `06` moved to its final path at `108/119`
+  covered lines and `24/30` branches; global coverage is `9551/11720` lines and
+  `3348/4772` branches. Every non-target row stayed exact, target/global rates
+  increased, and the standalone policy comparison passed. The baseline edit
+  is only the moved target row, canonical sorting, and mechanically reconciled
+  totals.
+- **Aggregate result, not green:** the first exact sandboxed command passed
+  static preflight and stopped only when guarded R could not resolve
+  Bioconductor metadata; it retained the inherited ignored malformed `macos`
+  warning, ended status `2` in `5.343s`, and changed no dependency. The exact
+  network-enabled rerun used the existing project library, wrote
+  `/private/tmp/norad-validation-mig-03k.json`, and ended status `2` in
+  `183.791s`. Static preflight passed in `0.166s`, shell contracts in `42.813s`,
+  report runtime in `129.807s`, and guarded R in `177.640s`. Python ran `1,177`
+  passes and `17` skips before its sole documentation assertion listed exactly
+  ten intentionally stale Step `06` links—five in the functional-owner
+  inventory and five in the colocated contract—plus the nine inherited
+  `UNREFINED` card-location findings. No other lane, test, coverage, tool, or
+  dependency fault occurred.
+- **Documentation and lifecycle decisions:** add one adjacent owner README;
+  correct the contract from unimplemented/flat, stale-test, Step-`00a`
+  publisher, and deferred-migration wording; update current architecture,
+  inventory, coverage, ownership, roadmap, handoff, runbook, troubleshooting,
+  neutral-library, Step `05` predecessor, Step `07` consumer, artifact-
+  provenance, and pending-test routes; repair every final path/command and
+  inbound lifecycle link; delete only the obsolete documentation scaffold;
+  and move only `MIG-03K` from `IN_PROGRESS` to `COMPLETED`. No diagram changes
+  because semantic identities, direct DAG edges, and public data flow did not
+  change. No Step `07` or later owner/review card is selected or created.
+- **Recovery and evidence ceiling:** before cleanup/retry, preserve all five
+  finals, two-directory temp/backups, every relevant lock/owner, input pair,
+  unrelated bytes, streams, scheduler job/accounting/log, checkout/submit CWD,
+  overrides, threads, and samtools path/version. Rule out every producer and
+  Step `07` reader; never combine attempts, infer identity from counts or
+  timestamps, remove a foreign lock, reconstruct a missing file, or adopt
+  stale wrapper success. Only isolated output and QC directories are eligible
+  for a separately authorized diagnostic retry. Historical six-sample
+  samtools/cluster observations are not migration proof. MIG-03K creates no
+  real tool, scheduler, cluster, production, scientific-review, or biological
+  evidence.
+- **Documentation gate, rollback, and pause:** `git diff --check` passes. The
+  exact RUNBOOK documentation validator has no MIG-03K path, anchor, lifecycle,
+  dependency, cycle, orphan, or diagram finding and retains only the nine
+  inherited `UNREFINED` locations. That expected-only result remains
+  nonpassing, not green. Roll back this documentation close and pending-
+  scaffold deletion, executable `1d5b76a`, scheduler `e871d5c`, validator
+  `1332529`, stability/collision `66e41fe`, transaction `dafcd18`, then child/
+  count `3ae6e3e`; Git rollback never changes runtime or recovery evidence.
+  Publish and prove this close clean/upstream/live-remote-equal, then pause at
+  MIG-03K completion without selecting another owner.

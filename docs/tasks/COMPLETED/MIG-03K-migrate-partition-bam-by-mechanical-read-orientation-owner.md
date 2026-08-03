@@ -492,3 +492,59 @@ pending-scaffold deletion first, the atomic cutover second, then scheduler,
 validator, producer stability/collision, producer transaction, and producer
 child/count baselines in reverse order. Git rollback never deletes or changes
 runtime evidence, production data, locks, logs, or recovery artifacts.
+
+### Completed execution and acceptance
+
+- Published producer child/count `3ae6e3e`, transaction `dafcd18`, stability/
+  collision `66e41fe`, validator `1332529`, and scheduler `e871d5c` baselines
+  changed only the reviewed old-path test owners. They froze child/count exits,
+  transaction ordering and failed restoration, input mutation, signals,
+  shared-QC collisions, validator parity/failure publication, and scheduler
+  tool/CWD/log/thread/stale-set states without fixing or approving them.
+- Published executable/test checkpoint
+  `1d5b76a9345d585a079b22b4ffd8c13566f9e177` applied exactly five moves and
+  nine reviewed integration-owner updates. Final producer, validator, and job
+  hashes exactly match the architecture projections; producer and job remain
+  mode `0755`, validator remains mode `0644`. No legacy executable/test owner,
+  wrapper, compatibility copy, alias, symlink, package marker, descriptor,
+  schema, transaction, receipt, recovery marker, dependency action, or later-
+  owner preload entered the cutover.
+- Minimal final-path acceptance passed producer/job/test shell syntax, the
+  complete producer shell suite, `15` moved-validator tests, `16` selected Step
+  `06` scheduler tests with `134` unrelated cases deselected, and `432`
+  affected public-CLI/Make, roster/report, artifact, and path-map integration
+  tests.
+- The single pre-aggregate coverage measurement passed `1,177` tests with
+  `17` skips and one explicit documentation-validator deselection. The moved
+  validator measured `108/119` lines and `24/30` branches; global coverage
+  measured `9551/11720` lines and `3348/4772` branches. Every non-target row
+  remained exact and the standalone policy comparison passed.
+- The first sandboxed aggregate attempt stopped only when guarded R could not
+  resolve Bioconductor metadata and retained the inherited ignored malformed
+  `macos` warning. The exact network-enabled rerun used the existing project
+  library and changed no dependency. It completed status `2`, not green:
+  static preflight, shell contracts, report runtime, and guarded R passed;
+  Python ran `1,177` passes and `17` skips before its sole documentation
+  assertion listed exactly ten deliberately deferred Step `06` migration
+  links plus the nine inherited `UNREFINED` locations. No scheduler, cluster,
+  production, scientific-review, or biological work ran.
+- This separate close adds only the canonical documentation roster, owner
+  README, directly impacted neutral/predecessor/consumer/artifact routes, exact
+  commands, current topology/status/evidence, lifecycle move/link repairs,
+  pending-scaffold deletion, and dated audit evidence. The documentation-only
+  gate has no migration-caused finding and retains only the nine inherited
+  `UNREFINED` card-location findings. That expected-only result remains
+  nonpassing and is never called green.
+- Retained defects include flag-subcount/merged-count disagreement, admitted-
+  input-mutation blindness, best-effort restoration and cleanup erasure,
+  shared-QC collision, absent receipt/current-attempt identity, validator
+  exit-`0` failed rows without quickcheck/recount, and scheduler one-CPU/thread,
+  Bash `3.2`, submit-CWD, log, warning-only-tool, version, and stale-five-file
+  states. Historical six-sample cluster observations remain historical rather
+  than migration evidence.
+- Rollback reverts this documentation close and pending-scaffold deletion,
+  executable checkpoint `1d5b76a`, scheduler baseline `e871d5c`, validator
+  baseline `1332529`, stability/collision baseline `66e41fe`, transaction
+  baseline `dafcd18`, then child/count baseline `3ae6e3e`. Git rollback never
+  changes runtime BAM/BAI/counts, input, temp/backup/lock, scheduler log, or
+  recovery evidence.
