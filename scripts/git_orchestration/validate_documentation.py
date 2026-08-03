@@ -28,8 +28,19 @@ CARD_SECTIONS = (
     "Escalation conditions",
     "Completion record",
 )
+UNREFINED_SECTIONS = (
+    "Proposal",
+    "Why preserve it",
+    "Settled boundaries",
+    "Questions before refinement",
+    "Promotion conditions",
+)
 CARD_STATUSES = frozenset({"TODO", "IN_PROGRESS", "COMPLETED"})
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "data:")
+TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$")
+UNREFINED_STATE_PATTERN = re.compile(
+    r"State: \[`UNREFINED` proposal\]\(README\.md\)\.(?: .+)?"
+)
 
 
 class DocumentationError(RuntimeError):
@@ -145,6 +156,7 @@ def validate_cards(
         task_root / "TODO" / "README.md",
         task_root / "IN_PROGRESS" / "README.md",
         task_root / "COMPLETED" / "README.md",
+        task_root / "UNREFINED" / "README.md",
     }
     for readme in sorted(required_readmes):
         if not readme.is_file():
@@ -153,9 +165,75 @@ def validate_cards(
     cards: dict[str, Path] = {}
     blocked: dict[str, set[str]] = {}
     unblocks: dict[str, dict[str, str]] = {}
+    proposals: dict[str, Path] = {}
     structurally_valid_cards: set[str] = set()
     for path in sorted(task_root.rglob("*.md")):
         if path in required_readmes:
+            continue
+        if path.parent == task_root / "UNREFINED":
+            text = path.read_text(encoding="utf-8")
+            titles = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
+            title = (
+                TASK_H1_PATTERN.fullmatch(titles[0])
+                if len(titles) == 1
+                else None
+            )
+            if not title:
+                problems.append(f"invalid proposal H1: {path.relative_to(root)}")
+                continue
+            proposal_id = title.group(1)
+            if not path.name.startswith(f"{proposal_id}-"):
+                problems.append(
+                    f"proposal ID/filename mismatch: {path.relative_to(root)}"
+                )
+            if proposal_id in proposals or proposal_id in cards:
+                problems.append(f"duplicate proposal ID: {proposal_id}")
+            proposals[proposal_id] = path
+
+            state_lines = re.findall(r"^State: .+$", text, flags=re.MULTILINE)
+            if len(state_lines) != 1 or not UNREFINED_STATE_PATTERN.fullmatch(
+                state_lines[0]
+            ):
+                problems.append(
+                    "invalid proposal state declaration: "
+                    f"{path.relative_to(root)}"
+                )
+
+            headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
+            prior_index = -1
+            valid_heading_order = True
+            for required_heading in UNREFINED_SECTIONS:
+                if headings.count(required_heading) != 1:
+                    valid_heading_order = False
+                    break
+                heading_index = headings.index(required_heading)
+                if heading_index <= prior_index:
+                    valid_heading_order = False
+                    break
+                prior_index = heading_index
+            if not valid_heading_order:
+                problems.append(
+                    f"proposal heading order/count: {path.relative_to(root)}"
+                )
+
+            actionable_heading = next(
+                (heading for heading in headings if heading in CARD_SECTIONS),
+                None,
+            )
+            if actionable_heading is not None:
+                problems.append(
+                    "actionable card heading in proposal: "
+                    f"{path.relative_to(root)} -> {actionable_heading}"
+                )
+            if re.search(
+                r"^- \[[A-Z0-9-]+\]\([^)]+\.md\) — "
+                r"(?:Required|Fully|Partially): .+$",
+                text,
+                flags=re.MULTILINE,
+            ):
+                problems.append(
+                    f"dependency edge in proposal: {path.relative_to(root)}"
+                )
             continue
         if path.parent.name not in CARD_STATUSES or path.parent.parent != task_root:
             problems.append(f"invalid card location: {path.relative_to(root)}")
@@ -163,7 +241,7 @@ def validate_cards(
         text = path.read_text(encoding="utf-8")
         titles = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
         title = (
-            re.match(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$", titles[0])
+            TASK_H1_PATTERN.fullmatch(titles[0])
             if len(titles) == 1
             else None
         )

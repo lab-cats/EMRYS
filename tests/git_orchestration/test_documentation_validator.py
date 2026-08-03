@@ -31,6 +31,13 @@ CARD_SECTIONS = (
     "Escalation conditions",
     "Completion record",
 )
+UNREFINED_SECTIONS = (
+    "Proposal",
+    "Why preserve it",
+    "Settled boundaries",
+    "Questions before refinement",
+    "Promotion conditions",
+)
 
 
 def run(
@@ -60,6 +67,18 @@ def card_text(card_id: str = "TEST-01") -> str:
             sections.extend(("- None.", ""))
         else:
             sections.extend(("Fixture text.", ""))
+    return "\n".join(sections)
+
+
+def proposal_text(proposal_id: str = "TEST-02") -> str:
+    sections: list[str] = [
+        f"# {proposal_id} — Fixture proposal",
+        "",
+        "State: [`UNREFINED` proposal](README.md). Fixture only.",
+        "",
+    ]
+    for heading in UNREFINED_SECTIONS:
+        sections.extend((f"## {heading}", "", "Fixture text.", ""))
     return "\n".join(sections)
 
 
@@ -130,6 +149,7 @@ def write_fixture(root: Path) -> Path:
         "docs/tasks/TODO/README.md": "# TODO tasks\n",
         "docs/tasks/IN_PROGRESS/README.md": "# Active tasks\n",
         "docs/tasks/COMPLETED/README.md": "# Completed tasks\n",
+        "docs/tasks/UNREFINED/README.md": "# UNREFINED — Proposal intake\n",
         "docs/tasks/TODO/TEST-01-fixture-card.md": card_text(),
     }
     for relative, text in files.items():
@@ -171,7 +191,7 @@ def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(6 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(7 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
 
@@ -447,13 +467,13 @@ def test_requires_each_task_registry_readme(tmp_path: Path) -> None:
 
 def test_rejects_card_outside_current_lifecycle_locations(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    path = repository / "docs/tasks/UNREFINED/TEST-02-fixture-card.md"
+    path = repository / "docs/tasks/ARCHIVE/TEST-02-fixture-card.md"
     path.parent.mkdir()
     path.write_text(card_text("TEST-02"), encoding="utf-8")
     readme = repository / "README.md"
     readme.write_text(
         readme.read_text(encoding="utf-8")
-        + "\n[TEST-02](docs/tasks/UNREFINED/TEST-02-fixture-card.md)\n",
+        + "\n[TEST-02](docs/tasks/ARCHIVE/TEST-02-fixture-card.md)\n",
         encoding="utf-8",
     )
 
@@ -462,29 +482,47 @@ def test_rejects_card_outside_current_lifecycle_locations(tmp_path: Path) -> Non
         cwd=tmp_path,
         expected=[
             "invalid card location: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-card.md"
+            "docs/tasks/ARCHIVE/TEST-02-fixture-card.md"
         ],
     )
 
 
-def test_current_engine_rejects_unrefined_lifecycle_location(
+def test_accepts_unrefined_proposal_without_actionable_inbound_link(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
     proposal_root = repository / "docs/tasks/UNREFINED"
-    proposal_root.mkdir()
-    (proposal_root / "README.md").write_text(
-        "# UNREFINED — Proposal intake\n",
+    (proposal_root / "TEST-02-fixture-proposal.md").write_text(
+        proposal_text(),
         encoding="utf-8",
     )
-    (proposal_root / "TEST-02-fixture-proposal.md").write_text(
-        "# TEST-02 — Fixture proposal\n\n"
-        "State: [`UNREFINED` proposal](README.md). Fixture only.\n\n"
-        "## Proposal\n\nFixture.\n\n"
-        "## Why preserve it\n\nFixture.\n\n"
-        "## Settled boundaries\n\nFixture.\n\n"
-        "## Questions before refinement\n\nFixture.\n\n"
-        "## Promotion conditions\n\nFixture.\n",
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_requires_unrefined_registry_readme(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "docs/tasks/UNREFINED/README.md").unlink()
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "missing task-registry README: docs/tasks/UNREFINED/README.md"
+        ],
+    )
+
+
+def test_requires_canonical_proposal_h1(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text().replace(
+            "# TEST-02 — Fixture proposal", "# TEST-02 Fixture proposal"
+        ),
         encoding="utf-8",
     )
 
@@ -492,9 +530,112 @@ def test_current_engine_rejects_unrefined_lifecycle_location(
         repository,
         cwd=tmp_path,
         expected=[
-            "invalid card location: docs/tasks/UNREFINED/README.md",
-            "invalid card location: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md",
+            "invalid proposal H1: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+        ],
+    )
+
+
+def test_requires_proposal_id_to_match_filename(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/WRONG-02-fixture-proposal.md"
+    proposal.write_text(proposal_text(), encoding="utf-8")
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "proposal ID/filename mismatch: "
+            "docs/tasks/UNREFINED/WRONG-02-fixture-proposal.md"
+        ],
+    )
+
+
+def test_rejects_proposal_id_collision_with_actionable_card(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-01-fixture-proposal.md"
+    proposal.write_text(proposal_text("TEST-01"), encoding="utf-8")
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["duplicate proposal ID: TEST-01"],
+    )
+
+
+def test_requires_exact_unrefined_state_declaration(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text().replace("`UNREFINED` proposal", "`TODO` card"),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "invalid proposal state declaration: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+        ],
+    )
+
+
+def test_requires_ordered_unrefined_core_sections(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text().replace(
+            "## Questions before refinement", "## Open questions"
+        ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "proposal heading order/count: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+        ],
+    )
+
+
+def test_rejects_actionable_card_heading_in_proposal(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text() + "\n## Completion record\n\nNot complete.\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "actionable card heading in proposal: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md "
+            "-> Completion record"
+        ],
+    )
+
+
+def test_rejects_dependency_edge_in_proposal(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text()
+        + "\n- [TEST-01](../TODO/TEST-01-fixture-card.md) "
+        + "— Required: fixture.\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "dependency edge in proposal: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
         ],
     )
 
