@@ -3,13 +3,13 @@
 This document records the observed current contract of historical Step `03`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
+uses that public slug and is now the implemented source location. It remains a
+plain functional-owner directory, not a Python package or public import API.
 
 Step `03` is classified as an independently runnable scientific-evidence
 operation, not as a primary-data transformation or an implemented control-
-policy stage. Only this contract is colocated here. The current executable
-files remain in `jobs/` and `scripts/` until a separately approved migration.
+policy stage. The producer, validator, scheduler asset, owner README, and
+direct tests are colocated with this contract.
 
 ## Responsibility
 
@@ -73,7 +73,7 @@ tool failure or empty-success result can leave an empty or partial final file.
 
 ## Current execution surfaces
 
-[`step_03_infer_strandedness_and_orientation.sh`](../../../../scripts/step_03_infer_strandedness_and_orientation.sh)
+[`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh)
 is the public producer entrypoint. It:
 
 - validates explicit input paths and the selected executable;
@@ -87,7 +87,7 @@ is the public producer entrypoint. It:
 The file has a shell shebang but is not executable in the current tree; public
 tests and the scheduler invoke it explicitly through Bash.
 
-[`step_03_infer_strandedness_and_orientation.slurm`](../../../../jobs/step_03_infer_strandedness_and_orientation.slurm)
+[`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
 resolves repository-relative defaults from `SLURM_SUBMIT_DIR` with a current-
 directory fallback, optionally activates the repository virtual environment,
 selects the RSeQC executable, and delegates to the shell producer. It creates
@@ -97,7 +97,7 @@ argument array can prevent the default dry-run from reaching the producer.
 
 ## Validation interface
 
-[`validate_step_03_rseqc_orientation.py`](../../../../scripts/validate_step_03_rseqc_orientation.py)
+[`validate_step_03_rseqc_orientation.py`](validate_step_03_rseqc_orientation.py)
 accepts an explicit scope, native report, sum tolerance, and output path. It
 does not receive the BAM, index, BED12, RSeQC identity, or attempt receipt.
 Validation is dry-run by default; `--execute` publishes
@@ -133,7 +133,8 @@ A content mismatch is represented by a `status=fail` row and does not repair
 the native report. Missing, unreadable, or unsafe input, an invalid tolerance
 or CLI/output contract, or unsafe report publication exits with code `2`
 without publishing a new validation report. General rendering, snapshots,
-locking, and publication are imported from the Step `00a` validator.
+locking, and publication are privately exact-loaded from neutral
+[`validation_report.py`](../../libraries/validation_report.py).
 
 ## Consumers
 
@@ -149,11 +150,11 @@ own scientifically approved contract and evidence gate.
 
 ## Protected behavior and evidence
 
-- [`test_step_03_infer_strandedness_and_orientation.sh`](../../../../tests/shell/test_step_03_infer_strandedness_and_orientation.sh)
+- [`test_step_03_infer_strandedness_and_orientation.sh`](../../../../tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer_strandedness_and_orientation.sh)
   protects the public CLI, both executable-resolution paths, both BAI naming
   conventions, side-effect-free dry-run, exact RSeQC arguments, successful
   capture, missing-input failures, and empty-output rejection with local mocks.
-- [`test_validate_step_03_rseqc_orientation.py`](../../../../tests/test_validate_step_03_rseqc_orientation.py)
+- [`test_validate_step_03_rseqc_orientation.py`](../../../../tests/evidence/collect_RSeQC_paired_orientation_evidence/test_validate_step_03_rseqc_orientation.py)
   protects dry-run, the five checks, fraction/range/sum failures, fail-closed
   missing input, publication, and foreign-lock preservation.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
@@ -186,8 +187,9 @@ roadmap and handoff.
   producer checks only nonemptiness.
 - The manifest owns declared strandedness but no approved conversion owner
   connects this evidence to that field.
-- Cross-cutting validation-publication code remains owned by the Step `00a`
-  validator; scheduler environment selection remains in the wrapper.
+- Cross-cutting validation-publication code remains owned by neutral
+  `src/norad/libraries/validation_report.py`; scheduler environment selection
+  remains in the wrapper.
 
 This inventory preserves the neutral evidence boundary without selecting a
 biological interpretation policy or changing behavior.
@@ -203,4 +205,5 @@ biological interpretation policy or changing behavior.
 - Transaction, collision, and failure-artifact policy for the native report.
 - Whether this scientific-evidence operation remains separate from a future
   ingestion/manifest review workflow.
-- Migration order, compatibility wrappers, and scheduler-asset ownership.
+- Any future compatibility surface or scheduler abstraction; this migration
+  added neither.

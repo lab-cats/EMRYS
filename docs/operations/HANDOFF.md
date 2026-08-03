@@ -12,18 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: migration-selection checkpoint
-  `13b8a7e0da4c80ef99df1d03c30cbfd3811cd77e` is clean, published, and
-  local/upstream/live-remote-equal; three-review completion is `76923e1`.
-- Current package: task-specific plan for
-  [`MIG-03H`](../tasks/IN_PROGRESS/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
-  with exact three-test baseline, fourteen-file cutover, minimal-check, full-
-  gate, separate-close, and rollback boundaries.
-- Package type at this checkpoint: execution-planning documentation only; no
-  baseline ran and no executable/test file changed.
-- Remote publication and upstream equality: parent `13b8a7e` is verified
+- Recorded package state: executable/test checkpoint
+  `24ed9b1ec98f63944a963628907a4c310558a420` is clean, published, and
+  local/upstream/live-remote-equal; old-path baseline is `88f4994`.
+- Current package: completed
+  [`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
+  documentation/lifecycle close in the commit containing this handoff.
+- Package type at this checkpoint: canonical documentation, lifecycle, and
+  audit closure only; executable/test state remains checkpoint `24ed9b1`.
+- Remote publication and upstream equality: parent `24ed9b1` is verified
   local/upstream/live-remote-equal. Publish and prove the commit containing this
-  plan equal before the old-path test baseline.
+  handoff equal before refreshing the live DAG.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -34,10 +33,11 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/align_RNA_reads_with_STAR/`, and
 `src/norad/stages/construct_FASTA_sidecars/`, and
 `src/norad/stages/construct_canonical_BAM/`, and
-`src/norad/evidence/collect_canonical_BAM_QC_evidence/`. Their six validators
-and the seven remaining flat validators load the neutral report file without package
-identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar validator also
-uses a private exact-file bridge to unchanged public
+`src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their seven
+validators and the six remaining flat validators load the neutral report file
+without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
+validator also uses a private exact-file bridge to unchanged public
 `scripts/reference_provenance.py`. The final Step `02` validator and flat Step
 `04`/`05` validators exact-load private neutral
 `src/norad/libraries/bam_validation.py`; no peer-stage implementation import
@@ -182,16 +182,60 @@ biological evidence was created.
 
 After `eafec29` was published and proved equal, the refreshed live DAG exposed
 two eligible owners. Only first canonical identity
-`collect_RSeQC_paired_orientation_evidence` has `03H` cards, defined at
-published and equal checkpoint `0cd872e`.
-[`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-is complete at published checkpoint `350223f`.
-[`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-is complete at published checkpoint `1d1de19`, and
-[`REVIEW-UX-03H`](../tasks/COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-is complete at published checkpoint `76923e1`. `MIG-03H` alone is selected with
-its exact remaining slices frozen in the active card. Step `04` and every later
-owner/review card remain uncreated and unselected.
+`collect_RSeQC_paired_orientation_evidence` received `03H` cards. Its
+architecture, reliability, and usability reviews completed sequentially at
+`350223f`, `1d1de19`, and `76923e1`; migration selection `13b8a7e` and
+task-specific plan `3388466` followed.
+
+`MIG-03H` published its exact three-test old-path baseline at `88f4994` and its
+five-move/nine-update executable/test cutover at `24ed9b1`. The final owner is
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`; no legacy
+source, wrapper, alias, package marker, descriptor, schema, transaction,
+receipt, recovery marker, or later-owner preload remains. The moved shell suite,
+`8` validator tests, `8` Step `03` scheduler cases with `108` unrelated cases
+deselected, and `143` focused final-path wiring assertions passed.
+
+Final producer mode/bytes/lines/SHA-256 is `0644` / `6,857` / `209` /
+`01aa11cc60d9042ac541cfe445aec3e562a198a761c45449e82e96b7b9ab0784`;
+validator is `0644` / `6,888` / `183` /
+`d92eac61eeedec553b2541e446256836406f81c75e5fb8f6b12369f11bf58e67`;
+and the mode-`0644` job is `4,121` bytes / `123` lines /
+`d65fde6e7cb3d0ebccf76cb7101dffaf0ea42edfa49e1387d4cac3c3568d8c08`.
+Serial coverage passed `1,120` tests with `17` skips and one explicit
+documentation-validator deselection. The final validator measured `103/115`
+lines and `28/34` branches; global coverage measured `9508/11677` lines and
+`3331/4756` branches. Every non-target row remained exact and the standalone
+policy comparison passed.
+
+The aggregate gate was not fully green. Its first sandboxed attempt passed
+static preflight and stopped when guarded R could not resolve Bioconductor
+metadata, also retaining the inherited malformed `macos` warning. The exact
+network-enabled rerun used the existing project library and installed,
+restored, deleted, and updated no dependency. Static preflight passed in
+`0.118s`, shell contracts in `116.947s`, guarded R in `432.217s`, and report
+runtime in `325.043s`. Python ran `1,120` passes and `17` skips before its sole
+documentation assertion failed; the aggregate stopped at `455.541s`. That
+assertion listed exactly ten deliberately deferred migration links plus nine
+inherited `UNREFINED` card-location findings. This close repairs the ten links;
+the inherited nine remain an expected-only nonpassing condition, never a
+passing-gate claim.
+
+The producer's direct-final silent replacement, partial/empty predecessor
+truncation, nonempty-only success, and absence of a lock, stage, no-clobber,
+stable-input recheck, receipt, or rollback remain characterized defects. So do
+the scheduler's CWD fallback, exported `/tmp`, Bash `3.2` dry-run failure,
+dry-run log mutation, tolerated module listing, and stale-nonempty-report false
+success. Artifact evidence changes only the final producer path and hash
+`01aa11cc60d9042ac541cfe445aec3e562a198a761c45449e82e96b7b9ab0784`.
+The fractions remain non-gating mechanical paired-read orientations, not
+transcript-strand, biological, or manifest-policy proof. No real RSeQC,
+scheduler, cluster, production, scientific-review, or biological evidence was
+created.
+
+[`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
+and its three reviews are complete in the commit containing this handoff. No
+later owner or review card is selected; refresh the live DAG from this clean,
+published close before defining the next unit.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -725,19 +769,19 @@ and its reviews
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 are complete. `MIG-03G` is complete at published test-only baseline `0904faf`,
 published executable/test checkpoint `2f186dd`, and documentation/lifecycle
-close `eafec29`. The next migration card,
-[`MIG-03H`](../tasks/IN_PROGRESS/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
+close `eafec29`. The eighth migration card,
+[`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
 and its reviews
 [`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
 [`REVIEW-UX-03H`](../tasks/COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-are defined at published checkpoint `0cd872e`; architecture is complete at
-`350223f`, reliability is complete at `1d1de19`, and usability is complete at
-published checkpoint `76923e1`. Migration alone is selected at published
-checkpoint `13b8a7e`; publish and prove the plan in the commit containing this
-handoff equal before the exact three-test old-path baseline. Step `04` and all
-later owner cards remain unselected. The
+were defined at published checkpoint `0cd872e`; architecture is complete at
+`350223f`, reliability at `1d1de19`, and usability at `76923e1`. `MIG-03H` is
+complete at published test-only baseline `88f4994`, published executable/test
+checkpoint `24ed9b1`, and documentation/lifecycle close in the commit
+containing this handoff. No later owner or review card is selected; refresh the
+live DAG only after this close is published and equal. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

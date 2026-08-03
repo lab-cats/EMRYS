@@ -324,14 +324,19 @@ Step 03 fails because `infer_experiment.py` cannot be found.
 
 ### Cause
 
-RSeQC is not currently known as a global module; it is available through the project virtual environment.
+RSeQC is not currently known as a global module. Step `03` first looks for
+`.venv/bin/infer_experiment.py` relative to its invocation CWD and otherwise
+resolves the command name through `PATH`.
 
 ### Fix
 
 Use the project executable and fallback described in the
 [Python and RSeQC runbook section](RUNBOOK.md#python-and-rseqc).
 
-The SLURM wrapper should source `.venv/bin/activate` if available.
+The final SLURM wrapper optionally sources `.venv/bin/activate` from the
+checkout selected by `SLURM_SUBMIT_DIR`. For a direct invocation outside the
+checkout root, pass an explicit absolute `--infer-experiment-bin`; do not rely
+on the CWD-relative default to follow the repository.
 
 ## RSeQC `infer_experiment.py` path exists but is not executable
 
@@ -345,13 +350,14 @@ Path-style tool arguments are required to be executable.
 
 ### Fix
 
-Make it executable if appropriate:
+Inspect why the selected environment supplied a non-executable file. If that
+environment is intentionally operator-owned, make it executable there:
 
 ```bash
 chmod +x .venv/bin/infer_experiment.py
 ```
 
-or pass a valid executable path with:
+Otherwise preserve it and pass a separately established executable path with:
 
 ```bash
 --infer-experiment-bin <path>
@@ -390,7 +396,10 @@ Group 1: 0.0432
 Group 2: 0.8740
 ```
 
-This strongly supports reverse-stranded / first-strand behavior.
+These are historical mechanical paired-read orientation fractions. A prior
+operational note described the dominant second group as reverse/first-strand-
+style, but the current evidence contract does not validate that biological or
+tool-policy mapping.
 
 If another sample is ambiguous, compare:
 
@@ -398,7 +407,58 @@ If another sample is ambiguous, compare:
 cat results/qc/strandedness/<sample>.infer_experiment.txt
 ```
 
-and check that the BAM and BED12 paths are correct.
+and check that the BAM, either adjacent BAI, BED12, sample, selected RSeQC
+executable, job ID, and logs all belong to the same intended attempt. Preserve
+the three group labels as mechanical evidence. Do not update manifest
+`strandedness`, choose a downstream tool option, or call the sample biologically
+stranded from this route.
+
+## Step 03 producer or wrapper leaves a partial, empty, or stale report
+
+### Symptom
+
+The producer exits nonzero after changing the named native report, a zero-exit
+producer leaves structurally malformed nonempty bytes, or the scheduler exits
+zero even though the named report predates the apparent attempt. A failing
+RSeQC child can leave partial stdout; an empty successful child can leave a
+zero-byte report.
+
+### Cause
+
+The producer redirects RSeQC stdout directly to the final report before the
+child outcome is known. It has no lock, staging path, no-clobber rule, backup,
+receipt, stable-input recheck, rollback, or recovery marker, and it checks only
+that successful child output is nonempty. The wrapper's execute post-check
+also tests only that the named final report is nonempty, so an exit-`0` child
+that emits nothing can rediscover stale predecessor bytes and let the job
+succeed. These are characterized defects, not valid publication or recovery.
+
+### Fix
+
+Before retry, deletion, or same-name reuse, preserve the native report and its
+filesystem metadata, unrelated files in the output directory, producer stdout
+and stderr, scheduler stdout and stderr, job ID/accounting and logs, selected
+tool identity/path, BAM plus the admitted BAI, and BED12. Absence of a lock,
+stage, backup, receipt, or recovery artifact is not cleanup or adoption
+authority. Git rollback changes tracked implementation only and cannot restore
+runtime evidence.
+
+Inspect the persisted bytes with the final validator in dry-run mode; this does
+not rerun RSeQC or publish a report:
+
+```bash
+.venv/bin/python \
+  src/norad/evidence/collect_RSeQC_paired_orientation_evidence/validate_step_03_rseqc_orientation.py \
+  --scope-id <sample_id> \
+  --infer-report results/qc/strandedness/<sample_id>.infer_experiment.txt \
+  --output results/qc/validation/03/<sample_id>.validation.tsv
+```
+
+Producer or scheduler exit `0` proves neither current-attempt identity nor
+validator pass. Validator exit `0` can render `status=fail` rows. Validator
+exit `2` publishes nothing new for unreadable/unsafe input, invalid arguments,
+stable-input mismatch, or unsafe publication and preserves an existing valid
+report. Record an operator recovery decision before any rerun or cleanup.
 
 ## `module avail gatk` shows nothing
 
@@ -827,7 +887,13 @@ from an unexpected report version.
 
 Follow the [common response](#structured-validation-response). Inspect the
 exact RSeQC report and producing job/log. Preserve the paired-orientation
-groups as mechanical labels; do not rename them as biological strands.
+groups as mechanical labels; do not rename them as biological strands. Use
+only the final validator and commands in the
+[Step `03` runbook](RUNBOOK.md#step-03-rseqc-strandedness--orientation-inference),
+and follow the
+[partial/empty/stale route](#step-03-producer-or-wrapper-leaves-a-partial-empty-or-stale-report)
+before same-name reuse. Validator exit `0` may publish failed evidence rows;
+exit `2` publishes nothing new and is not a failed-row synonym.
 
 ## Step 04 structured validation reports BAM or duplication-metrics disagreement
 

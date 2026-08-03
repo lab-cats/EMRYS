@@ -2920,3 +2920,94 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   executable/test mutation or computational, real-RSeQC, scheduler,
   production, scientific-review, or biological evidence changed or ran in
   this plan slice.
+
+## 2026-08-03T05:10:28-0400 — MIG-03H executable evidence and documentation/lifecycle close
+
+- **Verified close parent and boundary:** documentation work began from clean,
+  tracked/untracked-empty, published, local/upstream/live-remote-equal
+  executable/test checkpoint
+  `24ed9b1ec98f63944a963628907a4c310558a420`, with no recovery/index lock or
+  overlapping mutable-lane collision. The close remains documentation and
+  lifecycle only. It adds no executable/test/configuration/fixture/schema/
+  dependency change and no later-owner card or review.
+- **Published baseline and cutover:** test-only reliability baseline
+  `88f499487ea69fb0b884bec3572af9808912e28a` changed exactly the direct shell
+  test, direct validator test, and central scheduler suite. Executable/test
+  checkpoint `24ed9b1` moved exactly producer, validator, mode-`0644` job, and
+  two direct tests, then updated exactly the nine reviewed callers/harnesses.
+  No legacy executable/test path, wrapper, alias, duplicate, package marker,
+  descriptor, schema, transaction, receipt, recovery marker, or later-owner
+  preload remains.
+- **Final provenance:** producer is mode `0644`, `6,857` bytes, `209` lines,
+  SHA-256
+  `01aa11cc60d9042ac541cfe445aec3e562a198a761c45449e82e96b7b9ab0784`;
+  validator is mode `0644`, `6,888` bytes, `183` lines, SHA-256
+  `d92eac61eeedec553b2541e446256836406f81c75e5fb8f6b12369f11bf58e67`;
+  and the job is mode `0644`, `4,121` bytes, `123` lines, SHA-256
+  `d65fde6e7cb3d0ebccf76cb7101dffaf0ea42edfa49e1387d4cac3c3568d8c08`.
+  Moved shell test is mode `0644`, `14,931` bytes, `400` lines, SHA-256
+  `123d464fa26d623aacacff5a5b7ebb316051bc8f984a26bdff630adeefd2bf80`;
+  moved validator test is mode `0644`, `6,493` bytes, `189` lines, SHA-256
+  `0b1b3802e65309856b5aa04f33682b6f4ce193453dde0a8440d7578cb98734a5`.
+- **Focused and coverage evidence:** producer/job/test syntax, the complete
+  moved shell suite, `8` validator cases, and `8` Step `03` scheduler cases
+  with `108` unrelated cases deselected passed. Artifact path/hash, public
+  CLI/Make, complete validation roster, and shared-report/inventory targeting
+  contributed `143` passing wiring assertions. Deterministic serial coverage
+  passed `1,120` tests with `17` skips and only the intentionally stale
+  documentation assertion deselected. The validator improved to `103/115`
+  lines and `28/34` branches; global measurement improved to `9508/11677`
+  lines and `3331/4756` branches. Every non-target row remained exact and the
+  standalone policy comparison passed.
+- **Aggregate gate was not fully green:** the first sandboxed exact gate passed
+  static preflight and stopped when guarded R could not resolve Bioconductor
+  metadata, while preserving the inherited malformed `macos` warning. The
+  network-enabled rerun used only the existing project R library and installed,
+  restored, deleted, and updated no dependency. Static preflight passed in
+  `0.118s`, shell contracts in `116.947s`, guarded R in `432.217s`, and report
+  runtime in `325.043s`. Python ran `1,120` passes and `17` skips before its
+  sole documentation assertion failed; aggregate elapsed time was `455.541s`.
+  That failure listed exactly five stale inventory links, five stale owner-
+  contract links, and nine inherited `UNREFINED` locations. Result JSON remains
+  `/private/tmp/norad-mig-03h-validation.json`; the retained Python log is
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-gqps7nta.log`.
+  This is an expected-only nonpassing ceiling, never a green-gate claim.
+- **Canonical documentation decisions:** add one adjacent README; make the
+  owner contract implemented-current; update current architecture, functional
+  inventory, test baseline, documentation ownership, roadmap, handoff, Step
+  `03` runbook commands, and troubleshooting routes; batch all ten migration
+  links here; move `MIG-03H` to `COMPLETED`; and repair every inbound lifecycle
+  link. The final paths require Bash for the producer, an explicit interpreter
+  for the validator, absolute paths outside the checkout, and explicit
+  scheduler overrides. No diagram changes because semantic DAG edges and
+  public data flow are unchanged.
+- **Preserved risks and evidence meaning:** the producer still writes directly
+  to the final report with silent replacement, partial/empty predecessor
+  truncation, nonempty-only success, and no lock, stage, no-clobber rule,
+  stable-input recheck, receipt, rollback, or recovery artifact. Validator exit
+  `0` may publish failed rows; exit `2` publishes nothing new. Scheduler CWD/
+  venv/PATH selection, exported `/tmp`, tolerated module listing, dry-run
+  `logs/` mutation, Bash `3.2` dry-run failure, and stale-nonempty-report false
+  success remain characterized defects, not approved behavior. Operators must
+  preserve report bytes, unrelated files, streams, job identity/logs, selected
+  tool/path, BAM/BAI, and BED12 before retry or cleanup.
+- **Scientific and environment ceiling:** the three fractions remain non-
+  gating mechanical paired-read orientations. They do not establish transcript
+  strand, biological sense/antisense, a forward/reverse tool option, approved
+  manifest policy, or manifest mutation. Historical cohort observations remain
+  operational history rather than migration evidence. No real RSeQC,
+  scheduler, cluster, production, scientific-review, or biological proof was
+  created.
+- **Documentation gate and lifecycle result:** `git diff --check` passed. The
+  complete documentation validator reported exactly the nine inherited
+  `UNREFINED` card-location findings and no migration-caused finding after all
+  ten final-path repairs and lifecycle links were assembled. This is still a
+  nonpassing expected-only result, not green and not authority to alter the
+  inherited cards. No later owner is selected; refresh the live DAG only after
+  this close is committed, published, and proved equal.
+- **Rollback decision:** revert this documentation/lifecycle close first,
+  executable/test checkpoint `24ed9b1` second, and test baseline `88f4994`
+  third; task-specific plan is `3388466`. Keep Make/oracle and artifact path/
+  hash/assertion changes together. Git rollback never deletes, restores, or
+  authenticates runtime evidence, production data, locks, logs, or recovery
+  artifacts.

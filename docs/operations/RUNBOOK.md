@@ -240,11 +240,16 @@ RSeQC is available through the project virtual environment on the cluster:
 .venv/bin/infer_experiment.py
 ```
 
-Step `03` prefers that project executable when present and otherwise resolves:
+Step `03` prefers that executable when it exists at `.venv/bin` relative to
+the invocation working directory and otherwise resolves:
 
 ```bash
 infer_experiment.py
 ```
+
+For use outside the checkout root, pass an explicit absolute
+`--infer-experiment-bin`; the default `.venv` lookup does not follow the
+checkout.
 
 ### GATK
 
@@ -3003,85 +3008,125 @@ This is a cluster environment/PATH inconsistency, not a BAM/QC failure.
 
 ## Step 03: RSeQC Strandedness / Orientation Inference
 
-Script:
+The implemented evidence owner is
+[`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/README.md).
+Its producer is mode `0644`, so invoke it through Bash with every input and the
+selected RSeQC executable explicit. From the repository root, dry-run is:
 
 ```bash
-bash scripts/step_03_infer_strandedness_and_orientation.sh
+bash src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bed12 refs/novogene_ref/genome.bed \
+  --output-dir results/qc/strandedness \
+  --infer-experiment-bin .venv/bin/infer_experiment.py
 ```
 
-Job:
+Dry-run validates the BAM, one admitted adjacent BAI, BED12, and executable and
+prints the exact `-r <BED12> -i <BAM>` command. It creates neither the output
+directory nor
+`results/qc/strandedness/ABE_EV_2.infer_experiment.txt`. Add `--execute` only
+after inspecting that context:
 
 ```bash
-jobs/step_03_infer_strandedness_and_orientation.slurm
+bash src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bed12 refs/novogene_ref/genome.bed \
+  --output-dir results/qc/strandedness \
+  --infer-experiment-bin .venv/bin/infer_experiment.py \
+  --execute
 ```
 
-Output:
+From another CWD, use absolute paths for the Bash script, BAM, BED12, output
+directory, and `--infer-experiment-bin`. The default `.venv` preference is
+CWD-relative and does not follow the checkout:
 
 ```bash
-results/qc/strandedness/<sample>.infer_experiment.txt
+bash /absolute/path/to/norad/src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+  --sample-id ABE_EV_2 \
+  --input-bam /absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --bed12 /absolute/refs/novogene_ref/genome.bed \
+  --output-dir /absolute/results/qc/strandedness \
+  --infer-experiment-bin /absolute/path/to/norad/.venv/bin/infer_experiment.py
 ```
 
-The structured Step `03` validator reads one exact persisted RSeQC report:
+The mode-`0644` validator also requires an explicit interpreter. Dry-run
+renders five evidence rows and writes no report:
 
 ```bash
-.venv/bin/python scripts/validate_step_03_rseqc_orientation.py \
+.venv/bin/python src/norad/evidence/collect_RSeQC_paired_orientation_evidence/validate_step_03_rseqc_orientation.py \
   --scope-id ABE_EV_2 \
   --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
   --output results/qc/validation/03/ABE_EV_2.validation.tsv
 ```
 
-Dry-run writes no report. Inspect the exact checks and neutral-orientation
-boundary in the
-[`collect_RSeQC_paired_orientation_evidence` contract](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md#validation-interface),
-then create the parent and add `--execute`:
+Inspect the exact checks and mechanical-orientation boundary in the
+[owner contract](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/CONTRACT.md#validation-interface),
+then create the parent and add `--execute`. Repeat the same command when an
+intentional deterministic replacement is required:
 
 ```bash
 mkdir -p results/qc/validation/03
-.venv/bin/python scripts/validate_step_03_rseqc_orientation.py \
+.venv/bin/python src/norad/evidence/collect_RSeQC_paired_orientation_evidence/validate_step_03_rseqc_orientation.py \
   --scope-id ABE_EV_2 \
   --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
   --output results/qc/validation/03/ABE_EV_2.validation.tsv \
   --execute
 ```
 
-Focused validation:
+For validator use from another CWD, make the interpreter, validator, input,
+and output paths absolute. Exit `0` means rows were validly rendered or
+published, not that every row passed. Exit `2` publishes nothing new for
+unsafe input, invalid arguments, a stable-input mismatch, or unsafe
+publication; a valid predecessor report remains preserved.
+
+Submit the exact final scheduler asset from the checkout with all six public
+overrides explicit:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_03_rseqc_orientation.py
+cd /absolute/path/to/norad
+sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,BED12=/absolute/refs/novogene_ref/genome.bed,OUTPUT_DIR=/absolute/results/qc/strandedness,INFER_EXPERIMENT_BIN=/absolute/path/to/norad/.venv/bin/infer_experiment.py \
+  src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm
 ```
 
-Dry-run:
+Change only `EXECUTE=1` for an accepted execution. The wrapper resolves from
+`SLURM_SUBMIT_DIR` with a current-CWD fallback, exports `/tmp`, optionally
+activates `.venv`, prefers its RSeQC executable and otherwise falls back to
+`PATH`, and tolerates `module list` diagnostics. Scheduler dry-run creates
+`logs/` but no scientific output; Bash `3.2` can fail on its empty argument
+array before delegation. Execute post-checks only the named report's
+nonemptiness, so an exit-`0` child can rediscover stale nonempty bytes and
+report success. Preserve the job ID, logs, streams, selected tool/path,
+BAM/BAI, BED12, native report, and unrelated files before retry or cleanup.
+
+The convenience targets `make demo-step03-dry-run` and `make demo-step03` may
+create `logs/` and use local mocks in tests; they do not establish submission,
+RSeQC, scheduler, or cluster proof.
+
+Focused local validation:
 
 ```bash
-sbatch jobs/step_03_infer_strandedness_and_orientation.slurm
+bash tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer_strandedness_and_orientation.sh
+.venv/bin/python -m pytest -q \
+  tests/evidence/collect_RSeQC_paired_orientation_evidence/test_validate_step_03_rseqc_orientation.py
+.venv/bin/python -m pytest -q \
+  tests/test_slurm_wrapper_contracts.py -k step_03_infer_strandedness_and_orientation
 ```
 
-Execute:
+The producer has no lock, stage, backup, receipt, stable-input recheck, or
+rollback. A failing or empty child may partially replace or truncate a prior
+report, and producer exit `0` proves only nonempty bytes. Follow the
+[partial/empty/stale report route](TROUBLESHOOTING.md#step-03-producer-or-wrapper-leaves-a-partial-empty-or-stale-report)
+before same-name reuse. Git rollback never restores runtime evidence.
 
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_03_infer_strandedness_and_orientation.slurm
-```
-
-Validation checklist:
-
-```bash
-sample=<sample_id>
-cat "results/qc/strandedness/$sample.infer_experiment.txt"
-```
-
-Confirmed result:
-
-```text
-All six Novogene Remora libraries are paired-end and reverse-stranded / first-strand-style.
-```
-
-Tool-specific examples:
-
-```text
-featureCounts -s 2
-HTSeq --stranded=reverse
-Salmon paired-end convention ISR
-```
+Historical operations recorded all six Novogene Remora libraries as paired-end
+with a dominant second RSeQC orientation group and described that observation
+as reverse/first-strand-style. That is historical operational context, not new
+migration evidence or an approved biological mapping. Current Step `03`
+outputs remain non-gating mechanical paired-read orientation fractions; they
+do not determine transcript strand, biological sense/antisense, a tool-specific
+strandedness option, or manifest policy.
 
 ## Step 04: MarkDuplicates
 

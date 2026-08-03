@@ -394,3 +394,94 @@ only sequence. The accepted close may still report only the nine inherited
 documentation first, cutover second, and baseline third. Git rollback never
 deletes or alters runtime evidence, production data, locks, logs, or recovery
 artifacts.
+
+### Completion evidence
+
+- **Old-path reliability baseline:** published checkpoint
+  `88f499487ea69fb0b884bec3572af9808912e28a` changed only the three reviewed
+  tests. The shell test was mode `0644`, `14,875` bytes, `400` lines, SHA-256
+  `82d757100d3e95dbdb92162b9cb5ab926230c48028970a2f631f0213e94725fa`;
+  the validator test was mode `0644`, `6,048` bytes, `178` lines, SHA-256
+  `2677bce92fcc32fc743fdff98131a4a3669f69a4973e225f08fbb629b459a324`;
+  and the central scheduler suite was mode `0644`, `53,153` bytes, `1,564`
+  lines, SHA-256
+  `de05bb939bbb409956cb0715257b701ee927608399d27bc54ffd37391f5b3d8b`.
+  Shell syntax and the complete direct shell suite passed; the validator suite
+  passed `8`; and Step `03` scheduler selection passed `8` with `108`
+  unrelated cases deselected. The partial exit-`42`, empty exit-`0`, malformed-
+  nonempty, arbitrary-CWD, input-mutation, venv/PATH, dry-run-log, and stale-
+  output states are characterized defects/evidence boundaries, not approvals.
+- **Exact executable cutover:** published checkpoint
+  `24ed9b1ec98f63944a963628907a4c310558a420` contains exactly the five reviewed
+  moves and nine reviewed caller/harness updates. Final producer mode/bytes/
+  lines/SHA-256 is `0644` / `6,857` / `209` /
+  `01aa11cc60d9042ac541cfe445aec3e562a198a761c45449e82e96b7b9ab0784`;
+  validator is `0644` / `6,888` / `183` /
+  `d92eac61eeedec553b2541e446256836406f81c75e5fb8f6b12369f11bf58e67`;
+  and the mode-`0644` job is `4,121` bytes / `123` lines /
+  `d65fde6e7cb3d0ebccf76cb7101dffaf0ea42edfa49e1387d4cac3c3568d8c08`.
+  Final shell test is mode `0644`, `14,931` bytes, `400` lines, SHA-256
+  `123d464fa26d623aacacff5a5b7ebb316051bc8f984a26bdff630adeefd2bf80`;
+  final validator test is mode `0644`, `6,493` bytes, `189` lines, SHA-256
+  `0b1b3802e65309856b5aa04f33682b6f4ce193453dde0a8440d7578cb98734a5`.
+  Exact inspection found no live legacy executable/test path, wrapper, alias,
+  duplicate, package marker, descriptor, schema, transaction, receipt,
+  recovery marker, or later-owner preload.
+- **Focused final-path acceptance:** producer, job, and moved-shell-test syntax
+  passed; the complete moved shell suite passed; the moved validator passed
+  `8`; and the Step `03` scheduler subset passed `8` with `108` deselected.
+  The exact artifact final-path/hash assertion passed `1` with `69` deselected;
+  public CLI/Make targeting passed `28` with `91` deselected; the complete
+  validation-roster suite passed `105`; and targeted shared-report/inventory
+  coverage passed `9` with `129` deselected. Those four wiring groups total
+  `143` passing assertions.
+- **Coverage:** deterministic serial measurement passed `1,120` tests with
+  `17` skips and one explicit deselection of only
+  `tests/git_orchestration/test_validators.py::test_documentation_validator_accepts_repository_from_arbitrary_cwd`.
+  The final validator improved from `100/115` lines and `25/34` branches to
+  `103/115` and `28/34`; global coverage improved from `9505/11677` lines and
+  `3328/4756` branches to `9508/11677` and `3331/4756`. Every non-target row
+  remained exact, the baseline was copied mechanically from the measured
+  current snapshot, and the standalone policy comparison passed at line rate
+  `0.814250` and branch rate `0.700378` across `32` tracked files.
+- **Complete computational gate:** the aggregate was not fully green. The
+  first sandboxed attempt passed static preflight, then guarded R stopped on
+  Bioconductor DNS while retaining the inherited malformed `macos` warning.
+  The exact network-enabled rerun used the existing project library and
+  installed, restored, deleted, and updated nothing. Static preflight passed in
+  `0.118s`, shell contracts in `116.947s`, guarded R in `432.217s`, and report
+  runtime in `325.043s`. Python ran `1,120` passes and `17` skips before its
+  sole documentation assertion failed; the aggregate ended at `455.541s`.
+  That assertion contained exactly five stale inventory links, five stale
+  owner-contract links, and nine inherited `UNREFINED` card-location findings.
+  The result JSON is `/private/tmp/norad-mig-03h-validation.json`; the retained
+  Python log is
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-gqps7nta.log`.
+  This is an expected-only documentation ceiling, not a green gate.
+- **Preserved behavior and evidence ceiling:** direct-final partial/empty
+  replacement, silent replacement, nonempty malformed success, absence of
+  lock/stage/no-clobber/stable-input recheck/receipt/rollback, validator exit
+  `0` with failed rows, validator exit `2` without new publication, Bash `3.2`
+  dry-run failure, dry-run log mutation, CWD-relative tool selection, and stale-
+  report false success remain characterized and unapproved. Fractions remain
+  non-gating mechanical paired-read orientations, not transcript strand,
+  biological sense/antisense, approved strandedness, or manifest policy. No
+  real RSeQC, scheduler, cluster, production, scientific-review, or biological
+  evidence was created.
+- **Rollback:** revert the documentation/lifecycle close containing this
+  record, then executable/test checkpoint `24ed9b1`, then test-only baseline
+  `88f4994`; task-specific planning is `3388466`. Keep Make with its literal
+  oracle and artifact path/hash with its assertion. Git rollback never deletes,
+  restores, or authenticates runtime evidence, production data, locks, logs,
+  or recovery artifacts.
+- **Documentation/lifecycle close:** added the adjacent owner README, updated
+  the owner contract and impact-directed canonical topology/status/test/command/
+  troubleshooting owners, repaired the five inventory and five contract links,
+  moved this card to `COMPLETED`, and repaired every inbound lifecycle link.
+  No diagram changed because implementation placement did not change semantic
+  DAG edges or public data flow. `git diff --check` passed. The complete
+  documentation validator reported exactly the nine inherited `UNREFINED`
+  card-location findings and no migration-caused finding. That remains a
+  nonpassing expected-only documentation ceiling, not a green gate. The close
+  is the commit containing this record; publish it and prove local/upstream/
+  live-remote equality before refreshing the DAG or defining another owner.
