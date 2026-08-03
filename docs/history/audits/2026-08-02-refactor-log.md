@@ -3221,3 +3221,25 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings. No reliability-review path, lifecycle, dependency, cycle,
   orphan, or anchor finding remains. This expected-only ceiling is nonpassing,
   not a green gate and not authority to alter inherited lifecycle state.
+
+## 2026-08-03T05:42:11-0400 — REVIEW-UX-03I selected
+
+- **Selection:** after reliability-completion checkpoint `fae9bae` was clean,
+  tracked/untracked empty, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch, move only `REVIEW-UX-03I` to
+  `IN_PROGRESS` and repair its reciprocal lifecycle links. `MIG-03I` remains
+  unselected in `TODO`; Step `05` and all later owner cards remain uncreated.
+- **Review boundary:** select one documentation-only independent-in-time pass
+  over final producer/validator/scheduler commands, arbitrary-CWD journeys,
+  Picard/Java/samtools/`TMPDIR` diagnostics, truthful dry-run effects, partial/
+  mixed/stale output preservation, focused tests, implementation provenance,
+  owner discovery, evidence ceiling, and reverse-order rollback. The same
+  campaign agent performs the pass, so independent authorship is not claimed.
+  Usability findings, executable/test edits, and computational, scheduler,
+  cluster, production, scientific-review, and biological evidence remain out
+  of this selection slice.
+- **Selection gate:** `git diff --check` passed and the complete documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. No usability-selection path, lifecycle, dependency, cycle, orphan,
+  or anchor finding remains. This expected-only ceiling remains nonpassing, not
+  green and not authority to alter inherited lifecycle state.

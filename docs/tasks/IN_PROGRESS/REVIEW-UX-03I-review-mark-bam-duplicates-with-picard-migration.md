@@ -30,7 +30,7 @@ undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03I](MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03I](../TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -94,5 +94,8 @@ undiscoverable final owner.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal reliability-
+completion checkpoint `fae9bae69a44f72ea974bd34e4e7a89aa7c8d3ee`.
+This is a read-only independent-in-time adversarial pass by the same campaign
+agent; independent authorship is not claimed. No executable/test mutation or
+computational test is part of review selection.

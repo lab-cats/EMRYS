@@ -159,7 +159,7 @@ it.
 
 ## Blocked by
 
-- [REVIEW-UX-03I](REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03I](../IN_PROGRESS/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
