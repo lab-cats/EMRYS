@@ -29,7 +29,7 @@ path text without restoring or changing dependencies.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03M](../IN_PROGRESS/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: reliability review needs the architecture-corrected cutover and loader boundary.
+- [REVIEW-ARCH-03M](../COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: architecture fixed the eight-move/ten-integration cutover, private loaders, artifact/coverage ownership, production hashes, and rollback boundary.
 
 ## Completion unblocks
 
@@ -107,5 +107,5 @@ path text without restoring or changing dependencies.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-ARCH-03M`; no executable/test file
-changed or ran.
+Not selected. The architecture prerequisite is complete; no executable/test
+file changed or ran.

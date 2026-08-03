@@ -4391,6 +4391,71 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T11:33:43-0400 — REVIEW-ARCH-03M completed
+
+- **Reviewed boundary:** clean, published, local/upstream/live-remote-equal
+  selection `a0d1af9422d47a22a6aa308b750e53e4c8506a1f` remained the frozen
+  read-only parent. Step `08` is the sole dependency-valid owner; Step `09` and
+  Step `09c` remain blocked/uncreated. The review changed only cards, current
+  status, and audit documentation; no executable/test file changed or ran.
+- **Exact move/caller disposition:** accept exactly eight moves: shell, R,
+  validator, job, shell test, guarded-R runner, R test, and validator test.
+  The runner is owner-specific; central Make/local-R owners remain central.
+  Accept exactly ten integrations: Make, artifact mapping/final evidence,
+  public Python/shell/R CLI, SLURM, validation roster, neutral report-loader
+  matrix, local-R oracle, coverage baseline, and literal Make expansion. Exact
+  path/basename/import/Make/job/artifact/test searches find no eleventh owner,
+  pending scaffold, config move, wrapper, or duplicate.
+- **Private dependency disposition:** keep shell/R siblings. Change the moved
+  neutral-report loader root only from `parents[1]` to `parents[4]`. Replace
+  validator ambient Step `09c` import with exact flat-file load under private
+  `_norad_step_09c_scientific_validation_contracts`, installing that identity
+  before execution for dataclass safety, validating path/readiness, cleaning a
+  partial cache entry, and failing with sanitized exit `2`. The moved test uses
+  `parents[3]` and private exact-file roster/Step-`09c` loaders. No global path,
+  public package/import, Step `09c` move, or schema/helper extraction is
+  permitted.
+- **Projected native identities:** path/root-only reviewed edits project shell
+  mode `0755`, `39,954` bytes / `1,024` lines /
+  `578542fefa02aa23667bb40e582cbab215e6d3efec0a7c2fbb002290f1cfc1f3`;
+  R mode `0644`, `69,505` / `1,939` /
+  `50cae0523ea68f87535866cbe9e86d38c3812f96a2c8a06ebd66a72177268699`;
+  validator mode `0644`, `12,918` / `346` /
+  `57a227c478c0caec60fe2ff8d84f7feb1fce28c5248338f1369b2a186284c78f`;
+  and job mode `0644`, `4,597` / `134` /
+  `e51d0df86609ca5d3d39b60f6036ee225bc17c11b6a83d68c683603842c57de6`.
+  Any production difference reopens architecture review.
+- **Test/R/Make disposition:** shell and guarded-R roots become `../../..`;
+  the runner invokes final R and owner-local R test; R test stays repository-
+  CWD-bound; Python test becomes `parents[3]`. Public CLI receives an explicit
+  R path map so final and flat R entry points remain exact. Make moves the
+  direct shell/validator/guarded-R recipes, adds exact final shell/job paths to
+  static/smoke, and updates only the local-R expected Step `08` test path and
+  literal expansions.
+- **Artifact/coverage disposition:** `STEP_PRODUCERS["08"]` changes only to
+  final shell path and projected hash above, with one exact migrated-
+  implementation assertion. Preserve all artifact IDs/schemas/reconciliation/
+  consumers and the intentional native input-receipt versus artifact
+  `step08_summary_v1` failure-marker distinction. Move the coverage row from
+  starting `122/129` lines and `26/36` branches; reliability must cover new
+  loader paths while retaining target rates, every non-target row, and global
+  floors `9561/11720` lines and `3351/4772` branches.
+- **Atomicity, documentation, and rollback:** old/final paths cannot coexist;
+  perform eight moves and ten integrations atomically after test-only
+  baselines. Documentation paths, owner README, status/lifecycle, recovery,
+  and evidence prose wait for the separate migration close. No diagram change
+  is expected because identity, direct DAG, and public flow are unchanged.
+  Roll back documentation, then cutover, then test-only baselines in reverse;
+  Git rollback cannot alter output/QC artifacts, locks, backups, logs, R state,
+  or evidence.
+- **Evidence and gate:** this committed-time review used the same campaign
+  agent; independent authorship is not claimed. No dependency, R runtime,
+  scheduler, cluster, production, scientific-review, provisional-policy, or
+  biological evidence changed or ran. `git diff --check` passes and exact
+  documentation validation retains only nine inherited `UNREFINED` location
+  findings. The result remains status `1` and nonpassing, not green. Publish
+  and prove completion equal before selecting reliability review alone.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection
