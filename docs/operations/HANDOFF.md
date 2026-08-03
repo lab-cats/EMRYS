@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03C` JIT-definition checkpoint
   `44e3393ed09eb6fac70b3bf28667181fb4b92da6` is clean, published, and
   local/upstream-equal; all four cards were unselected there.
-- Current package: selected read-only
-  [`REVIEW-ARCH-03C`](../tasks/IN_PROGRESS/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md).
-  `MIG-03C` and the reliability/usability reviews remain in `TODO`.
+- Current package: completed read-only
+  [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md).
+  `MIG-03C` and the reliability/usability reviews remain unselected in `TODO`.
 - Package type at this checkpoint: behavior/architecture planning with
   documentation-only/non-consuming mutation; no executable or test file has
   changed.
-- Remote publication and upstream equality: definition parent `44e3393` is
-  verified local/upstream-equal. The architecture-selection commit must be
-  published and proved equal before recording review findings.
+- Remote publication and upstream equality: architecture-selection parent
+  `17ef13d` is verified local/upstream-equal. The commit containing the review
+  findings must be published and proved equal before reliability selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -513,11 +513,11 @@ and
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
 are complete. MIG-03C and
-[`REVIEW-ARCH-03C`](../tasks/IN_PROGRESS/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
+[`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
 [`REVIEW-REL-03C`](../tasks/TODO/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/TODO/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are defined; only the architecture review is selected. After this selection
-checkpoint is clean, published, and equal, complete its read-only pass before
-selecting reliability. No later card is pre-created. The unsliced `PROGRAM-01`
+are defined; only the architecture review is complete. After its findings
+checkpoint is clean, published, and equal, select only reliability for the next
+read-only pass. No later card is pre-created. The unsliced `PROGRAM-01`
 remainder and unrelated roadmap remain preserved and out of scope.

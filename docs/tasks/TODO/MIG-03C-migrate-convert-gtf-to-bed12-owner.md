@@ -38,6 +38,13 @@ alias order.
   do not introduce a package marker, public import identity, global `sys.path`
   mutation, install step, or generic loader framework. Adjust only paths needed
   by exact-file test loading and by the validator's neutral publication owner.
+- Production retains the literal sibling `import gtf_to_bed12`. The independent
+  shared-loader suite must exact-load the final sibling producer under that
+  existing module identity before exact-loading the validator, reject a cached
+  producer from any other file, preserve `sys.path`, and restore only test-owned
+  cache state. Copied-validator missing/corrupt-neutral-owner fixtures recreate
+  the final relative layout and include the sibling producer rather than
+  flattening or silently importing a legacy path.
 - The scheduler job must change its delegated producer argument from the legacy
   path to the exact final producer path. Every directive, mode, environment
   override, submit-directory rule, command argument, stream, side effect,
@@ -53,6 +60,11 @@ alias order.
   tracked rows to their final paths, move the required-subprocess identity for
   `gtf_to_bed12.py`, and update the snapshot only after a separate reviewed
   final-path measurement proves exact counts and global non-regression.
+- Existing explicit path maps stay keyed by public basename or semantic ID.
+  They name the final producer, validator, and job literally, continue proving
+  every flat and owner-local surface exists exactly once, and do not infer
+  locations from aliases, recurse for runtime discovery, or weaken inventory
+  equality to accommodate the move.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Add one
   concise owner `README.md` only during documentation close. Do not add the
   target descriptor/schema, package identity, scheduler abstraction, new CLI,
@@ -112,6 +124,11 @@ alias order.
   fakes to the mirrored owner home. Keep independent cross-owner inventory,
   directive, mode, CLI, roster, loader, artifact, Make, and coverage suites as
   explicit path-aware consumers.
+- In the shared validation-report tests, exact-load and path-validate the final
+  sibling producer before the moved validator without mutating `sys.path`.
+  Rebuild copied Step `00b` fault fixtures at their actual final paths with the
+  sibling producer present, so tests do not exercise a flattened topology that
+  production will not have.
 - Cut over every named repository caller in the same atomic executable/test
   commit, including Make/static/smoke, literal expansions, artifact provenance,
   public CLI, SLURM roster, validator roster, shared loader, direct tests,
@@ -168,6 +185,11 @@ alias order.
   checks, dry-run/execute/repeat effects, streams/exits, deterministic report,
   stable-input recheck, locks, foreign state, rollback, cleanup, and exact
   neutral publication identity without global `sys.path` mutation.
+- Shared-loader evidence proves the final validator binds the exact final
+  producer file, uses the same neutral report object, preserves `sys.path`, and
+  does not accept a foreign cached producer during its test-owned exact-file
+  load. The remaining validators and producer imports retain their current
+  identities and behavior.
 - Scheduler parity preserves mode `0755`, seven directives, `/usr/bin/env bash`,
   strict mode, required `SLURM_SUBMIT_DIR`, all four environment overrides,
   preflight, directory/log creation timing, tolerant module lists, strict
@@ -188,6 +210,10 @@ alias order.
   duplicate basename, wrapper, package marker, stage-to-stage import, stale
   command, or stale active link. Final owner tests and independent caller
   suites pass without weakening exact inventories.
+- The accepted job diff changes its delegated producer path and nothing else;
+  the original job hash remains rollback evidence rather than an impossible
+  final-byte invariant. The producer itself remains byte-identical so artifact
+  implementation evidence retains its frozen source hash.
 - The complete applicable computational gate runs on final executable state.
   After documentation close, the documentation gate has no migration-caused
   finding. Any inherited nonpassing condition is recorded exactly and never

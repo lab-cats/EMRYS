@@ -85,5 +85,21 @@ roster, or permanent compatibility surface.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `17ef13d` and JIT-definition checkpoint `44e3393`. One
+high finding closes the sibling-import/test-loader gap: production retains its
+same-owner bare import, while the shared exact-file test loader must bind and
+path-validate the final producer module without `sys.path` mutation, reject a
+foreign cache, and reproduce both sibling files in copied fault layouts. One
+medium finding makes the job/producer atomicity explicit: the job's only source
+change is its delegated final producer path, so the old job hash is rollback
+evidence while the byte-identical producer hash remains artifact evidence.
+Another medium finding requires every mixed-layout inventory to retain literal
+basename/semantic-ID path maps and exact one-owner equality, and keeps Step
+`00b` mocked behavior owner-local while independent scheduler assertions remain
+cross-owner. The typed-external-input root selection, neutral-report dependency,
+artifact path transition, no-wrapper decision, final homes, reverse rollback,
+and no-package/descriptor/schema boundary otherwise pass. The DAG and public
+artifact flow do not change, so no diagram edit is justified. The same campaign
+agent authored/reconciled and reviewed the plan; independent authorship is not
+claimed. No executable/test file changed and no computational test ran.

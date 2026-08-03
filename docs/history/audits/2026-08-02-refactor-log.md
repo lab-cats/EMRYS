@@ -813,3 +813,40 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   performs the pass, so independent authorship is not claimed. No executable or
   test mutation and no computational, runtime, scheduler, production,
   scientific-review, or biological evidence is authorized by this selection.
+
+## 2026-08-02T20:39:37-0400 — REVIEW-ARCH-03C completed
+
+- **High finding — sibling import under exact-file tests:** production
+  `validate_step_00b_bed12.py` correctly imports its same-owner producer by the
+  existing `gtf_to_bed12` identity when invoked as a script. The shared loader
+  matrix currently exact-loads moved validators but has no corresponding final-
+  path producer binding. After movement it could fail, import the wrong cache,
+  or tempt global `sys.path` mutation. Preserve the production import; make the
+  test-owned loader exact-load and path-validate the final sibling producer,
+  reject a foreign cached module, preserve `sys.path`, and copy both sibling
+  files into final-layout missing/corrupt-neutral-owner fixtures.
+- **Medium finding — job/producer atomicity:** the scheduler must move with the
+  producer and validator because its embedded child argument changes to the
+  final path. Freeze the original job hash for rollback and require a diff that
+  changes only that delegated path; do not demand an impossible final job hash.
+  The producer remains byte-identical, so its frozen hash remains the artifact-
+  implementation evidence invariant.
+- **Medium finding — mixed-layout ownership:** keep explicit maps keyed by the
+  existing public basename or semantic ID in public Python, SLURM, validator,
+  loader, coverage, and artifact consumers. Each must prove every actual path
+  exists once; recursive discovery, alias-derived placement, and relaxed flat-
+  root equality are rejected. Move Step `00b` mocked behavior/fakes to the
+  mirrored owner while keeping cross-owner directives/modes/rosters independent.
+- **Accepted architecture:** `convert_GTF_to_BED12` is a typed-external-input DAG
+  root. Its producer-validator dependency remains inside one final owner, its
+  neutral report dependency remains exact-file and cross-cutting, all path
+  callers can cut over atomically, and no wrapper/package/descriptor/schema or
+  new neutral extraction is required. Reverse rollback is documentation close,
+  caller/job/validator cutover, then the move; repository history, never a
+  duplicate copy, performs restoration.
+- **Topology and evidence boundary:** public artifact flow and the semantic DAG
+  are unchanged, so no diagram edit is warranted. This separate committed-time
+  pass was performed by the same campaign agent; independent authorship is not
+  claimed. Corrections are planning documentation only. No executable/test
+  mutation or computational, runtime, scheduler, production, scientific-review,
+  or biological evidence was created.

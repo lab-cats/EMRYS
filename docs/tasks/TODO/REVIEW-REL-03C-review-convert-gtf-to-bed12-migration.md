@@ -22,7 +22,7 @@ must preserve rather than normalize every success, failure, and residue state.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03C](../IN_PROGRESS/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md) — Required: reliability review needs the architecture-corrected owner and caller boundary.
+- [REVIEW-ARCH-03C](../COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md) — Required: reliability review needs the architecture-corrected owner and caller boundary.
 
 ## Completion unblocks
 
