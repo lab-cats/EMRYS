@@ -467,6 +467,60 @@ def test_rejects_card_outside_current_lifecycle_locations(tmp_path: Path) -> Non
     )
 
 
+def test_current_engine_rejects_unrefined_lifecycle_location(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    proposal_root = repository / "docs/tasks/UNREFINED"
+    proposal_root.mkdir()
+    (proposal_root / "README.md").write_text(
+        "# UNREFINED — Proposal intake\n",
+        encoding="utf-8",
+    )
+    (proposal_root / "TEST-02-fixture-proposal.md").write_text(
+        "# TEST-02 — Fixture proposal\n\n"
+        "State: [`UNREFINED` proposal](README.md). Fixture only.\n\n"
+        "## Proposal\n\nFixture.\n\n"
+        "## Why preserve it\n\nFixture.\n\n"
+        "## Settled boundaries\n\nFixture.\n\n"
+        "## Questions before refinement\n\nFixture.\n\n"
+        "## Promotion conditions\n\nFixture.\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "invalid card location: docs/tasks/UNREFINED/README.md",
+            "invalid card location: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md",
+        ],
+    )
+
+
+def test_current_engine_rejects_integration_review_lifecycle_location(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    review = add_card(repository, "TEST-02", status="INTEGRATION_REVIEW")
+    (review.parent / "README.md").write_text(
+        "# Integration-review task cards\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "invalid card location: "
+            "docs/tasks/INTEGRATION_REVIEW/README.md",
+            "invalid card location: "
+            "docs/tasks/INTEGRATION_REVIEW/TEST-02-fixture-card.md",
+        ],
+    )
+
+
 def test_requires_one_canonical_card_h1(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     path = card_path(repository)
