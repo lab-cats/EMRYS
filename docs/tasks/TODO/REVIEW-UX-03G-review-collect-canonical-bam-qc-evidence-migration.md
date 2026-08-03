@@ -25,7 +25,7 @@ undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03G](../IN_PROGRESS/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03G](../COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

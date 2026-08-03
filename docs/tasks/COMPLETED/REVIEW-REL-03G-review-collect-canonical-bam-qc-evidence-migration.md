@@ -98,8 +98,36 @@ approving them.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal architecture-
-review checkpoint `06a69c7b30071d51b1653b5c008abdc4aaa1592d`. This is a
-read-only independent-in-time adversarial pass by the same campaign agent;
-independent authorship is not claimed. No executable/test mutation or
-computational test is part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `9b4b5a858c76785f23a9ba0fb6387b7db60575dd`.
+
+- **High — predecessor-bearing producer faults lacked exact oracles:** add one
+  test-only old-path baseline across exactly the direct shell test, direct
+  validator test, and central SLURM suite. Quickcheck exit `42` must become
+  producer exit `1`, replace only quickcheck with the combined diagnostic, and
+  retain prior flagstat. Flagstat exit `43` must follow a new PASS quickcheck,
+  replace prior flagstat with partial stdout, expose its stderr, and propagate
+  `43`. Both preserve one unrelated file and prove the absence of transactional
+  or recovery artifacts without approving the behavior.
+- **High — validator direct-path reliability was incomplete:** add an explicit
+  nonempty producer-success marker that becomes failed validator evidence; an
+  arbitrary-CWD dry-run/execute/repeat journey with exact bytes and no input or
+  invocation-directory mutation; and a post-build input mutation that exits `2`
+  while preserving one valid prior report. Keep shared publication fault
+  mechanics in the neutral validation-report suite.
+- **High — scheduler stale-file acceptance lacked a direct assertion:** when the
+  mocked child exits `0` without emitting outputs, two preexisting Step `02b`
+  files satisfy the wrapper's `-f` checks and remain byte-exact while the job
+  reports success. Preserve this false-success defect and the existing required
+  submit CWD, strict load/tolerated list, exported `/tmp`, Bash `3.2` dry-run,
+  and child-exit behavior.
+- **Accepted evidence and coverage boundary:** add a PATH-only missing-samtools
+  case before output-directory creation. Existing shared public-CLI, roster,
+  report, artifact, and coverage owners remain sufficient; the test-only
+  baseline adds no fourth file and the final cutover keeps the architecture-
+  reviewed five-move/nine-update ceiling. Coverage may increase but may not
+  regress below the frozen target rates or global covered-count floors.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

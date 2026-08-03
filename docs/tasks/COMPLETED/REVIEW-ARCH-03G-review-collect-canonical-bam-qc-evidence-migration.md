@@ -31,7 +31,7 @@ the frozen topology.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03G](../IN_PROGRESS/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03G](REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

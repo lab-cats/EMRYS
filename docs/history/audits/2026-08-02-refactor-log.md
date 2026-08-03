@@ -2439,3 +2439,34 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   The same campaign agent performs the pass, so independent authorship is not
   claimed. Executable/test mutation and computational, runtime, scheduler,
   production, scientific-review, and biological evidence remain out of scope.
+
+## 2026-08-03T02:50:45-0400 — REVIEW-REL-03G completed
+
+- **High finding — producer mixed-attempt faults lacked exact oracles:** create
+  one test-only old-path baseline across exactly the direct shell test, direct
+  validator test, and central SLURM suite. Quickcheck exit `42` becomes producer
+  exit `1`, replaces only quickcheck, and retains prior flagstat. Flagstat exit
+  `43` follows a new PASS quickcheck, replaces prior flagstat with partial
+  stdout, exposes child stderr, and propagates `43`. Both preserve an unrelated
+  file and prove the absence of transaction/recovery artifacts without
+  approving the behavior.
+- **High finding — validator direct-path coverage was incomplete:** add explicit
+  producer-success/validator-failure marker disagreement, arbitrary-CWD dry-run/
+  execute/repeat byte parity, and post-build input mutation that exits `2` while
+  preserving a valid predecessor report. Neutral publication mechanics remain
+  owned by the shared suite rather than being duplicated.
+- **High finding — scheduler stale-file false success lacked an oracle:** a
+  mocked exit-`0` child that emits nothing still lets the Step `02b` wrapper
+  succeed when both named files already exist; their stale bytes remain exact.
+  Preserve this alongside required submit CWD, strict load/tolerated list,
+  exported `/tmp`, Bash `3.2` dry-run, and child-exit behavior.
+- **Accepted boundary:** add the PATH-only missing-samtools failure before
+  output-directory creation. No fourth test file, production edit, harness,
+  fixture, coverage-baseline, or documentation change enters the old-path
+  baseline. The final five-move/nine-update architecture ceiling remains exact;
+  target coverage may increase but may not regress below frozen rates or global
+  covered-count floors.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

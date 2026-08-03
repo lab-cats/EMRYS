@@ -84,6 +84,32 @@ uncreated and unselected.
   partial or mixed-attempt final files, including when predecessors already
   exist. Reliability review owns the exact safe old/final-path fault oracles
   and evidence-preservation response; it may not repair the behavior.
+- Before movement, publish one test-only old-path baseline limited to
+  `tests/shell/test_step_02b_bam_qc.sh`,
+  `tests/test_validate_step_02b_bam_qc.py`, and
+  `tests/test_slurm_wrapper_contracts.py`. No production, harness, fixture,
+  coverage-baseline, or documentation file belongs in that checkpoint.
+- The shell baseline must freeze two predecessor-bearing faults with separated
+  stdout/stderr and exact statuses. Quickcheck exit `42` is normalized by the
+  producer to exit `1`, replaces the quickcheck predecessor with the combined
+  child diagnostic, and leaves the prior flagstat and unrelated file byte-
+  exact. Flagstat exit `43` follows a new exact quickcheck PASS marker, replaces
+  the flagstat predecessor with partial child stdout, exposes the child
+  diagnostic on stderr, and preserves the unrelated file. Both cases retain
+  the output directory and prove there is no lock, staging, backup, receipt, or
+  recovery artifact; these are characterized defects, not approved behavior.
+- The shell baseline also freezes the PATH-only missing-samtools failure before
+  output-directory creation. The validator baseline adds the explicit producer-
+  successful nonempty quickcheck marker as failed validation evidence; one
+  arbitrary-CWD dry-run/execute/repeat journey with exact input and report
+  bytes; and one post-build input mutation that exits `2` while preserving a
+  valid prior report. Shared report-publication faults remain in the neutral
+  suite rather than being duplicated.
+- The scheduler baseline adds one Step `02b`-specific stale-predecessor case:
+  an exit-`0` child that emits no outputs still lets the wrapper succeed when
+  both named final files already exist, and their stale bytes remain unchanged.
+  Preserve this file-existence-only false success without blessing or repairing
+  it.
 - Preserve the producer/validator mismatch: a nonempty zero-exit quickcheck
   stream is successful producer output but failed validator evidence. Preserve
   the unused and shallow BAI admission requirement, sample/path nonbinding,
