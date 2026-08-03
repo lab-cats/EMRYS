@@ -6242,3 +6242,83 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal selection validation:** run `git diff --check` only. Publish and
   prove the reliability-selection checkpoint clean/upstream/live-remote-equal
   before the review begins.
+
+## 2026-08-03T18:32:58-0400 — REVIEW-REL-03O completed
+
+- **Verified review base:** reliability selection
+  `1c950fd544ecbaecbf564ab3169b18949973dbf4` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. This remained a
+  read-only committed-time pass; no executable, test, configuration,
+  dependency, scheduler, cluster, production, scientific-review, or biological
+  workload changed or ran.
+- **Existing evidence disposition:** the 37-function direct Python suite plus
+  shell, artifact, run-summary, report, and independent-golden consumers
+  already bind the exact thirteen-output schema/order, state/category/
+  decision/adjudication/computational gates, reserved biological-state
+  rejection, tracked examples/schema headers, ordinary publication and
+  replacement, and Step `08`/`09` declared lineage. Add no schema/state-policy
+  slice. These remain synthetic declaration checks, not rerun CMH, reviewer
+  truth, production review, validated editing-site, or biological evidence.
+- **Checkpoint 1 — wrapper resolution:** change only the direct shell test.
+  Freeze slash-path missing/nonexecutable Python, PATH-basename missing/success,
+  direct and Bash arbitrary-CWD execution, exact sibling delegation, child
+  streams/status, dry-run nonmutation, thirteen-file execute publication, and
+  no invocation-CWD residue. Interpreter path/version/environment and code
+  hash remain unrecorded provenance ceilings.
+- **Checkpoint 2 — input identity:** change only the direct Python test. Bind
+  exactly 32 fixture files: thirteen primary inputs, eleven evidence payloads,
+  two nonprimary sensitivity summaries, and three leave-one-pair-out all-sites/
+  summary pairs. Detect representative disappearance/byte mutation before
+  publication with clean owned state and preserved unrelated bytes. Freeze
+  identical-byte replacement as undetected: inode, metadata, writer,
+  directory, interpreter/code, durable attempt, and filesystem durability are
+  not bound; the summary does not hash its twelve siblings.
+- **Checkpoint 3 — publication order:** change only the direct Python test.
+  Observe review plan, evidence index, ten category payloads, then summary. For
+  replacement, observe predecessor summary backup first, twelve other backups,
+  twelve new payloads, then summary. Barrier-observe all new finals, all
+  backups, and lock after summary but before final validation/hash and the
+  second input recheck. A late mutation restores the predecessor byte-for-byte;
+  summary visibility is not commit proof.
+- **Checkpoint 4 — recovery:** extend first-publication and replacement faults
+  beyond the summary barrier. Final-check failure removes all first-publication
+  finals/residue or restores all thirteen predecessors with summary last. One
+  failed restore leaves exactly one final absent with its backup retained,
+  restores the other twelve, and retains lock, empty transaction directory,
+  backup directory, and recovery notice while preserving unrelated bytes. It
+  is preservation evidence, not retry authority.
+- **Checkpoint 5 — signals/concurrency:** controlled `TERM` after summary has
+  no handler and leaves thirteen unvalidated new finals, thirteen predecessor
+  backups, lock, and empty transaction directory with no recovery notice.
+  Controlled `KeyboardInterrupt` bypasses rollback but runs `finally`, leaving
+  new finals while deleting backups, transaction directory, and lock. A held
+  same-review winner excludes a contender; only release of the winner yields a
+  clean complete transaction. These are severe characterized defects, not
+  accepted target semantics.
+- **Cutover loader and consumer boundary:** atomic cutover adds only the
+  reviewed artifact-index/run-summary-science exact-path/readiness/shared-cache,
+  foreign/partial cache, missing spec/loader, execution-cleanup, sanitized exit
+  `2`, and unchanged-`sys.path` oracles. Existing Step `08`/`09` loader tests
+  retain their matrix at the final path; independent goldens consume the
+  artifact private module; artifact provenance adds only the final Step `09c`
+  path/hash. Report/schema meaning does not change.
+- **Slices and coverage:** publish exactly five sequential old-path test-only
+  commits in the order above, changing only the two existing direct test
+  owners, before the atomic five-move/fourteen-integration cutover. Add no
+  fixture, third test owner, production edit, coverage baseline, documentation
+  batch, dependency, or future content. Final coverage retains target
+  `1262/1534` lines and `561/788` branches, both loader-owner frozen rates, the
+  other 29 rows exact, and global ratios at least `9601/11758` lines and
+  `3367/4784` branches.
+- **Additional preserved risks:** renames have no file/directory durability
+  fsync; lock metadata lacks host, heartbeat, executable, and verified owner;
+  cleanup trusts owned path names; a complete predecessor is hashed but not
+  semantically revalidated; and recovery-notice writing can fail. Preserve all
+  finals, locks, temp/backup paths, notices, 32 inputs, streams, signal/process
+  evidence, environment, and unrelated bytes before diagnosis or retry. No
+  migration fix or blessing is authorized.
+- **Card boundary:** `git diff --check` passes and the exact RUNBOOK
+  `make -s documentation-check` reports `PASS documentation structure (213
+  Markdown documents, 133 task cards, 6 Mermaid sources)`. Reliability moves
+  to `COMPLETED`; MIG-03O and usability remain unselected.

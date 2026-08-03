@@ -26,7 +26,7 @@ unsafe retry guidance, status overclaim, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03O](../IN_PROGRESS/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: usability review needs the selected reliability pass to complete its corrected obligations.
+- [REVIEW-REL-03O](../COMPLETED/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: completed reliability review supplies the corrected obligations.
 
 ## Completion unblocks
 
@@ -96,5 +96,6 @@ unsafe retry guidance, status overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-REL-03O`; no executable/test/
-configuration file changed or ran.
+Not selected. Architecture and reliability reviews are complete; select this
+card alone only after reliability completion is published and proven equal.
+No executable, test, or configuration file changed or ran.

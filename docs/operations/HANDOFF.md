@@ -63,21 +63,22 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   [`MIG-03O`](../tasks/TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
   with completed
   [`REVIEW-ARCH-03O`](../tasks/COMPLETED/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md),
-  selected
-  [`REVIEW-REL-03O`](../tasks/IN_PROGRESS/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md),
-  and unselected
+  completed
+  [`REVIEW-REL-03O`](../tasks/COMPLETED/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md),
+  followed by unselected
   [`REVIEW-UX-03O`](../tasks/TODO/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md).
-  Reliability is the only selected card. No later owner or final-audit package
-  is created or preloaded; the active program remainder stays frozen.
+  No card is selected. No later owner or final-audit package is created or
+  preloaded; the active program remainder stays frozen.
 - Package type at this checkpoint: documentation-only reliability-review
-  selection after published architecture completion. No executable, test,
+  completion after published architecture completion and read-only selection.
+  It fixes five ordered old-path test checkpoints plus cutover-loader and
+  coverage obligations without changing or running an executable, test,
   configuration, dependency, schema, fixture, report template, scheduler,
-  cluster, production, scientific-review, or biological surface changed or
-  ran.
-- Remote publication and upstream equality: architecture completion `d9ad4da`
+  cluster, production, scientific-review, or biological surface.
+- Remote publication and upstream equality: reliability selection `1c950fd`
   is verified local/upstream/live-remote-equal. Publish and prove the
-  reliability-selection tip containing this handoff equal before beginning the
-  read-only review. The configured `origin` is
+  reliability-completion tip containing this handoff equal before selecting
+  usability review alone. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -1094,11 +1095,11 @@ earlier run.
 
 MIG-03O and its architecture, reliability, and usability reviews were defined
 at published/equal `86b8888`; architecture is complete at published/equal
-`d9ad4da`. Reliability alone is selected in the checkpoint containing this
-handoff. Publish and prove that selection clean and equal across local `HEAD`,
-configured upstream, and live remote, then perform only the read-only
-reliability review. Do not run executable/test/configuration work or select
-usability,
+`d9ad4da` and reliability selection `1c950fd` is published/equal. Reliability
+is complete in the checkpoint containing this handoff and no card is selected.
+Publish and prove that completion clean and equal across local `HEAD`,
+configured upstream, and live remote, then select only usability review. Do
+not run executable/test/configuration work or select
 migration, `CONCURRENCY-03`, `TASK-EPIC-01`, the frozen program remainder, or
 a final-audit package.
 
@@ -1271,7 +1272,7 @@ reliability review is complete at `f0160c4`; usability is complete at
 checkpoint `50e1bb3`, and the documentation/lifecycle close containing this
 handoff. That close left Step `09c` migration and later owner cards uncreated.
 The fresh live-DAG refresh defines only unselected MIG-03O with completed
-architecture, selected reliability, and unselected usability review; no later
-owner or final-audit package is created or preloaded.
+architecture/reliability and unselected usability review; no later owner or
+final-audit package is created or preloaded.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

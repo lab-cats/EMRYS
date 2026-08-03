@@ -118,8 +118,44 @@ smallest next JIT unit but does not select it.
   stability rechecks, predecessor-summary removal, twelve payloads then
   summary-last publication, final validation/hash checks, rollback, recovery
   notice and retained lock on incomplete restoration, cleanup, and signals.
-  Reliability review must characterize high-risk gaps without fixing or
-  blessing them.
+  Reliability-reviewed old-path protection is exactly five sequential test-
+  only checkpoints: wrapper resolution; input identity; publication order;
+  recovery; then signals/concurrency. Only the existing direct shell and
+  direct Python tests may change; add no fixture, third test owner, production
+  edit, coverage baseline, or documentation batch in those slices.
+- Wrapper protection must freeze missing/nonexecutable slash-path Python,
+  missing and successful PATH-basename Python, direct/Bash arbitrary-CWD
+  journeys, exact sibling delegation, child streams/status, dry-run effects,
+  and thirteen-file publication. The interpreter/code path and version remain
+  unrecorded provenance ceilings.
+- Input protection must bind the exact 32-file fixture roster: thirteen primary
+  inputs, eleven evidence payloads, two nonprimary sensitivity summaries, and
+  three leave-one-pair-out all-sites/summary pairs. Byte changes/disappearance
+  are rejected before publication; identical-byte replacement remains
+  undetected because inode, metadata, writer, directory, code, interpreter,
+  attempt, and durability identity are not bound. The summary does not hash
+  its twelve siblings or identify a durable publication attempt.
+- Publication protection must observe the exact twelve-payload-then-summary
+  order and, for replacement, summary backup first, twelve other backups,
+  twelve new payloads, then summary. After the new summary is visible but
+  before final validation/hash and the second 32-input recheck, all thirteen
+  new finals, all thirteen predecessor backups, and the lock coexist. A late
+  mutation must restore the predecessor byte-for-byte; summary visibility is
+  not committed-attempt proof.
+- Recovery protection must extend existing pre-summary failures through final
+  checks. First-publication failure removes all new finals and owned residue;
+  ordinary replacement failure restores all thirteen predecessor files with
+  summary last. One failed backup restore retains exactly one absent final and
+  its backup, restores the other twelve, and retains lock, empty transaction
+  directory, backup directory, and recovery notice without touching unrelated
+  bytes. Preserve that state; do not clean or retry it by inference.
+- Signal/concurrency protection must freeze two distinct defects after summary
+  visibility. `TERM` receives no handler and leaves thirteen unvalidated new
+  finals, thirteen predecessor backups, lock, and empty transaction directory
+  with no recovery notice. `KeyboardInterrupt` bypasses the `Exception`
+  rollback but runs `finally`, leaving new finals while deleting predecessor
+  backups, transaction directory, and lock. A same-review contender fails on
+  an admitted winner's lock; only releasing the winner yields one clean set.
 - Preserve scientific language. The owner validates and packages declared
   evidence; it does not rerun CMH, infer reviewer decisions, prove production
   execution, complete a production scientific review, validate editing sites,
@@ -130,6 +166,14 @@ smallest next JIT unit but does not select it.
   normalization, report authorization, schema versions, ordering,
   reconciliation, and downstream evidence ceilings except for reviewed source
   path/hash transitions.
+- Existing schema/state, artifact, run-summary, report, and independent-golden
+  coverage is sufficient; add no semantic-policy checkpoint. During atomic
+  cutover only, artifact-index and run-summary-science tests add exact final-
+  path/readiness/shared-cache, foreign/partial cache, missing spec/loader,
+  execution cleanup, sanitized exit `2`, and unchanged-`sys.path` oracles.
+  Existing migrated Step `08`/`09` loader matrices continue at the final path;
+  independent goldens use the artifact loader's private module. Artifact
+  provenance adds only the final Step `09c` Python path/hash assertion.
 - Frozen coverage has 32 rows and baseline hash
   `68f85331c2ef7f33e192995b36f893bf67f35c587c502748b7dea45a61c6aeb7`.
   Move the Step `09c` row to its final path with at least `1,262/1,534`
@@ -268,9 +312,8 @@ smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture review is complete at published/equal `d9ad4da`;
-reliability alone is selected from that checkpoint, and usability remains
-unselected. The five-move/fourteen-integration, retained-configuration,
-private-loader, artifact/coverage, atomicity, and rollback boundary remains
-fixed. No executable, test, configuration, dependency, later owner, or audit
-package changed or ran.
+Not selected. Architecture and reliability reviews are complete; reliability
+completed against published/equal selection `1c950fd` with the exact five
+old-path test-only checkpoints and cutover-loader obligations above. Usability
+remains unselected. No executable, test, configuration, dependency, later
+owner, or audit package changed or ran.

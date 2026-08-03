@@ -34,7 +34,7 @@ package preload.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03O](../IN_PROGRESS/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: selected reliability review consumes this completed architecture-corrected owner, asset, loader, consumer, artifact, coverage, and rollback boundary.
+- [REVIEW-REL-03O](REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: completed reliability review consumed this architecture-corrected owner, asset, loader, consumer, artifact, coverage, and rollback boundary.
 
 ## Prerequisites
 
