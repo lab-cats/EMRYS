@@ -1473,3 +1473,90 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   readiness evidence was created. Publish and prove this separate
   documentation/lifecycle checkpoint equal before selecting exactly one next
   dependency-valid owner; no future card is preloaded here.
+
+## 2026-08-02T23:35:12-0400 — MIG-03E JIT unit defined
+
+- **Git and predecessor:** selection began only after `MIG-03D`
+  documentation/lifecycle checkpoint
+  `5259acbf3b717487e78eecfd938cc793665673f8` was committed, published, clean,
+  and proved equal across local `HEAD`, configured upstream, and the live remote
+  branch. Recent history is linear; no merge, rebase, cherry-pick, revert,
+  sequencer, index lock, recovery marker, untracked file, or overlapping mutable
+  lane was present.
+- **Selection decision:** the live semantic map exposes two data-DAG-eligible
+  candidates. Select only `construct_FASTA_sidecars`. It has no hard stage
+  predecessor, and no peer stage imports its implementation. Its three native
+  assets total `24,954` bytes and `827` lines. Do not select the slightly smaller
+  `construct_canonical_BAM` surface (`23,743` bytes, `746` lines): the Step `04`
+  and Step `05` validators still import helpers directly from its stage-named
+  validator, so moving it now would retain a prohibited peer-implementation
+  dependency. Historical aliases and raw file size did not override dependency
+  direction, and the unselected owner was not carded.
+- **Frozen native surface:** producer
+  `scripts/step_00c_prepare_gatk_reference.sh` is mode `0755`, `14,477` bytes,
+  `515` lines, SHA-256
+  `f041c55a0e9a3b36c14dcc9b929cfa56190e1c00d23a5a62fa72ac3669f0c478`;
+  validator `scripts/validate_step_00c_reference_sidecars.py` is mode `0644`,
+  `5,945` bytes, `161` lines, SHA-256
+  `5aa6358412a56b5ddb8ce963a6d7431cfb07c1bbd9fbb37c8237fc3cbebe15fd`;
+  and job `jobs/step_00c_prepare_gatk_reference.slurm` is mode `0755`, `4,532`
+  bytes, `151` lines, SHA-256
+  `78b00abb7751e78264bae30d6b3dbfb7792ca5532850f192b1b2098cbf8e85d0`.
+  Direct shell and validator tests are the mirrored-test candidates; Step `00c`
+  scheduler behavior remains in the independent parametrized wrapper suite.
+- **Import boundary:** the validator already exact-loads the migrated neutral
+  validation-report owner but ambient-imports the flat public
+  `scripts/reference_provenance.py`. This unit neither moves nor edits that
+  separate public CLI/implementation, its direct tests, coverage row, or its
+  Step `05` consumer. The proposed final validator instead uses a private
+  caller-local exact-file bridge back to the existing path, with exact cache
+  ownership, wrong/partial-state rejection, owned-partial cleanup, foreign-
+  state preservation, explicit failure diagnostics, and unchanged `sys.path`.
+  Architecture review must reject the unit if that bridge cannot remain private,
+  bounded, and reversible without approving the deferred neutral extraction.
+- **Direct graph and path changes:** the scheduler delegates to the producer;
+  the validator depends on the validation-report and reference-provenance
+  implementations; and artifact implementation evidence names and hashes the
+  producer. Final placement necessarily changes the producer's displayed usage
+  path, both validator owner-relative paths/import mechanics, the job's child
+  path, and explicit public-CLI, SLURM, validator-roster, shared-loader, Make,
+  literal-expansion, coverage, artifact, test, runbook, inventory, and contract
+  path consumers. Batch current documentation/path repairs at card close.
+- **Wrapper and topology decision:** every named public path caller is
+  repository-owned and can move atomically with the three native assets. No
+  legacy wrapper, re-export, package marker, symlink, compatibility copy,
+  descriptor, schema, or global path mutation is justified. The semantic DAG
+  and artifact flow do not change. The old producer hash remains rollback
+  evidence because its help path must change; only Step `00c` implementation
+  path/hash provenance may change.
+- **Coverage and Make boundary:** the validator baseline is `90/96` covered
+  lines and `23/26` branches; the committed global floor is `9343/11506` lines
+  and `3281/4698` branches. Stable roots already include `src/norad`; inspect
+  final-path measurement and any review-required loader branches before moving
+  the row. Because both shell assets leave flat wildcards, exact final producer
+  and job paths must enter `validation-static`, `smoke`, and their literal Make
+  oracle; direct shell and validator test recipes move without discovery or
+  inventory weakening.
+- **Preserved producer risks:** retain tool-resolution precedence, Java/GATK
+  probes, dry-run no-write behavior, conditional sidecar reuse/generation,
+  contig validation, lock ownership, run-token temps, and cleanup. The two-
+  output publication remains nontransactional: a successful final FAI move
+  followed by a failed final DICT move can leave only the FAI, without a receipt,
+  rollback restoration, or recovery marker. Reviews must name an old/final-path
+  oracle and preservation response; relocation cannot fix or bless this state.
+- **Preserved scheduler and validator risks:** retain the executable job mode,
+  seven directives, fallback submit CWD, tolerated samtools module calls, CSU
+  defaults, Java discovery/version policy, explicit execute control, file-only
+  output checks, and Bash `3.2` empty-array dry-run defect. Preserve the
+  validator's five structural checks, ordered parser comparison, deterministic
+  report/publication behavior, stable-input recheck, and inherited neutral-
+  publisher faults. A successful local fixture/mock run will not become real
+  samtools/GATK/Java, scheduler, cluster, production, scientific-review, or
+  biological evidence.
+- **Review and validation boundary:** create only `MIG-03E` and dedicated
+  `REVIEW-ARCH-03E`, `REVIEW-REL-03E`, and `REVIEW-UX-03E` cards. All remain
+  unselected in `TODO`. This definition is documentation-only and uses only Git
+  and documentation validation at its boundary; no computational test,
+  dependency action, scheduler submission, executable mutation, or future-owner
+  preload occurred. Full applicable validation and batched migration
+  documentation remain card-boundary work.

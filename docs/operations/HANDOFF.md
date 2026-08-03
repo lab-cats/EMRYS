@@ -12,19 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `12f9be514e849ebf3d9b01cd2eabb65677e298c3` is clean, published, and
-  local/upstream-equal. Its old-path baseline checkpoint is `1ceeda0`.
-- Current package: documentation/lifecycle close for completed
-  [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md).
-  All three dedicated reviews, the baseline, cutover, and executable acceptance
-  are complete; no later owner is selected.
-- Package type at this checkpoint: impact-directed documentation and lifecycle
-  closure only; executable/test state remains fixed at `12f9be5`.
-- Remote publication and upstream equality: parent `12f9be5` is verified
-  local/upstream-equal. The commit containing this handoff is the separate
-  documentation/lifecycle checkpoint and must be published before another
-  owner is selected.
+- Recorded package state: `MIG-03D` documentation/lifecycle checkpoint
+  `5259acbf3b717487e78eecfd938cc793665673f8` is clean, published, and
+  local/upstream/live-remote-equal; its executable checkpoint is `12f9be5`.
+- Current package: JIT definition of
+  [`MIG-03E`](../tasks/TODO/MIG-03E-migrate-construct-fasta-sidecars-owner.md)
+  and its three sequential review cards. All four cards remain unselected.
+- Package type at this checkpoint: documentation-only next-owner definition;
+  no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: parent `5259acb` is verified
+  local/upstream/live-remote-equal. The commit containing this handoff must be
+  published and proved equal before architecture-review selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -65,11 +63,22 @@ The aggregate gate was not fully green. Static preflight, shell contracts,
 guarded R, and report runtime passed; Python coverage executed `1,073` passes
 and `17` skips before the repository documentation-validator test reported
 exactly ten migration-caused stale links plus the same nine inherited
-`UNREFINED` location findings. This close repairs the ten links. The producer's
-dry-run directory creation/direct-final child residue and the scheduler's
-caller-CWD, placeholder mutation, strict module, and delegate-only validation
-defects remain characterized, not approved. No real STAR, scheduler, cluster,
-production, scientific-review, or biological evidence was created.
+`UNREFINED` location findings. Published documentation close `5259acb` repaired
+the ten links. The producer's dry-run directory creation/direct-final child
+residue and the scheduler's caller-CWD, placeholder mutation, strict module,
+and delegate-only validation defects remain characterized, not approved. No
+real STAR, scheduler, cluster, production, scientific-review, or biological
+evidence was created.
+
+The live semantic DAG makes `construct_FASTA_sidecars` and
+`construct_canonical_BAM` data-eligible. Only the former is selected for JIT
+definition: it has no hard stage predecessor and no peer imports its stage
+implementation. The latter remains unselected because Step `04` and Step `05`
+still import helpers directly from its stage-named validator, which violates
+the frozen target dependency direction. `MIG-03E` keeps the existing public
+`scripts/reference_provenance.py` owner in place and requires architecture
+review of a private exact-file bridge; it does not approve that deferred
+neutral extraction.
 
 ## Active concurrent lanes
 
@@ -529,9 +538,11 @@ is complete at executable/test checkpoint `4f9c863` and documentation close
 is complete at published executable/test checkpoint `e19f281` and
 documentation/lifecycle close `f9d6381`. The fourth JIT card,
 [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md),
-is complete at published executable/test checkpoint `12f9be5`. Its separate
-documentation/lifecycle close is the commit containing this handoff. No later
-migration or review card is created or selected.
+is complete at published executable/test checkpoint `12f9be5` and
+documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
+[`MIG-03E`](../tasks/TODO/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
+and its architecture, reliability, and usability review cards are defined but
+unselected in `TODO`. No later migration or review card is created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -553,7 +564,11 @@ are complete. The MIG-03D reviews
 and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
 are complete. `MIG-03D` is complete at published executable/test checkpoint
-`12f9be5`; publish and prove this separate documentation/lifecycle close equal
-before selecting another dependency-valid owner. No later owner is selected.
-The unsliced `PROGRAM-01`
+`12f9be5` and documentation/lifecycle checkpoint `5259acb`. `MIG-03E` and
+[`REVIEW-ARCH-03E`](../tasks/TODO/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md),
+[`REVIEW-REL-03E`](../tasks/TODO/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md),
+and
+[`REVIEW-UX-03E`](../tasks/TODO/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
+are JIT-defined and unselected; publish this definition checkpoint before
+selecting architecture review. No later owner is selected. The unsliced `PROGRAM-01`
 remainder and unrelated roadmap remain preserved and out of scope.
