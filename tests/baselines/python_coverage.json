@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.766667",
-      "covered_branches": 23,
-      "covered_lines": 102,
-      "line_rate": "0.927273",
-      "num_branches": 30,
-      "num_statements": 110,
-      "path": "scripts/validate_step_02b_bam_qc.py"
-    },
-    {
       "branch_rate": "0.735294",
       "covered_branches": 25,
       "covered_lines": 100,
@@ -215,6 +206,15 @@
       "num_branches": 40,
       "num_statements": 158,
       "path": "scripts/validate_step_09_cmh_outputs.py"
+    },
+    {
+      "branch_rate": "0.800000",
+      "covered_branches": 24,
+      "covered_lines": 103,
+      "line_rate": "0.936364",
+      "num_branches": 30,
+      "num_statements": 110,
+      "path": "src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py"
     },
     {
       "branch_rate": "1.000000",
@@ -322,10 +322,10 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.699537",
-    "covered_branches": 3327,
-    "covered_lines": 9504,
-    "line_rate": "0.813908",
+    "branch_rate": "0.699748",
+    "covered_branches": 3328,
+    "covered_lines": 9505,
+    "line_rate": "0.813993",
     "num_branches": 4756,
     "num_statements": 11677
   }

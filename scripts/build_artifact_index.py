@@ -963,7 +963,10 @@ STEP_PRODUCERS = {
         "src/norad/stages/construct_canonical_BAM/"
         "step_02_sort_index_bam.sh"
     ),
-    "02b": "scripts/step_02b_bam_qc.sh",
+    "02b": (
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
+        "step_02b_bam_qc.sh"
+    ),
     "03": "scripts/step_03_infer_strandedness_and_orientation.sh",
     "04": "scripts/step_04_mark_duplicates.sh",
     "05": "scripts/step_05_split_n_cigar_reads.sh",

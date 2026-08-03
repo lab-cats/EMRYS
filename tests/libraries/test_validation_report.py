@@ -44,7 +44,10 @@ VALIDATOR_PATHS = {
         "src/norad/stages/construct_canonical_BAM/"
         "validate_step_02_canonical_bam.py"
     ),
-    "validate_step_02b_bam_qc": Path("scripts/validate_step_02b_bam_qc.py"),
+    "validate_step_02b_bam_qc": Path(
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
+        "validate_step_02b_bam_qc.py"
+    ),
     "validate_step_03_rseqc_orientation": Path(
         "scripts/validate_step_03_rseqc_orientation.py"
     ),

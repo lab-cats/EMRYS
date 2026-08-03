@@ -59,7 +59,10 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/stages/construct_canonical_BAM/"
         "validate_step_02_canonical_bam.py"
     ),
-    "validate_step_02b_bam_qc.py": Path("scripts/validate_step_02b_bam_qc.py"),
+    "validate_step_02b_bam_qc.py": Path(
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
+        "validate_step_02b_bam_qc.py"
+    ),
     "validate_step_03_rseqc_orientation.py": Path(
         "scripts/validate_step_03_rseqc_orientation.py"
     ),
@@ -110,7 +113,10 @@ SHELL_ENTRYPOINT_PATHS = {
     "step_02_sort_index_bam.sh": Path(
         "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
     ),
-    "step_02b_bam_qc.sh": Path("scripts/step_02b_bam_qc.sh"),
+    "step_02b_bam_qc.sh": Path(
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
+        "step_02b_bam_qc.sh"
+    ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
         "scripts/step_03_infer_strandedness_and_orientation.sh"
     ),

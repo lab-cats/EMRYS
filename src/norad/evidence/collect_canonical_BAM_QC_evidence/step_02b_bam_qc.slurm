@@ -59,7 +59,7 @@ module list 2>&1 || true
 
 cmd=(
     bash
-    scripts/step_02b_bam_qc.sh
+    src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh
     --sample-id "$SAMPLE_ID"
     --bam "$BAM"
     --output-dir "$OUTPUT_DIR"
