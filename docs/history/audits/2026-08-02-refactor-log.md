@@ -5783,3 +5783,66 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   only validation rule, the complete documentation gate belongs to reliability-
   review completion. Publish and prove this selection checkpoint clean/
   upstream/live-remote-equal before beginning the review.
+
+## 2026-08-03T16:51:39-0400 — REVIEW-REL-03N completed
+
+- **Verified review parent:** reliability selection
+  `6fc186847c991a931471d5d7591be24a9524201d` was clean,
+  tracked/untracked-empty, published, and equal across local `HEAD`, configured
+  upstream, and live remote. Complete only the read-only reliability pass;
+  usability, MIG-03N, Step `09c`, and all executable/test files remain
+  unselected.
+- **Runtime/input and provenance decision:** require one old-path shell-test
+  checkpoint for explicit missing/nonexecutable Rscript, missing R program,
+  basename/PATH arbitrary-CWD use, and independent mutation of the sample
+  manifest, partition manifest, Step `08` sites, and Step `08` input receipt.
+  Preserve current undetected selected-R-program mutation and the summary's
+  absence of Rscript/R-program/package, completed-attempt, and sibling-output-
+  hash identities as named ceilings rather than hardening them.
+- **Publication/recovery decision:** require one checkpoint for the exact five
+  data/plot moves followed by summary last and barrier-observed all-six
+  visibility before final validation/hash commit, with lock, backups, and
+  unrelated bytes preserved. Existing tests already own ordinary and first-
+  publication rollback, postpublication hash rollback, and incomplete restore:
+  one absent final, its exact backup and owned lock retained, the other five
+  predecessors restored, and owned temps removed. A visible summary is not a
+  committed-attempt guarantee.
+- **Signal/concurrency decision:** require a separate small checkpoint in which
+  `TERM` after summary visibility exits `143` and restores the complete
+  predecessor byte-for-byte without residue, plus one held fake-R winner and
+  one same-analysis lock loser followed by exactly one complete publication.
+  Lock metadata and file timestamps remain nondurable attempt evidence.
+- **Validator decision:** require arbitrary-CWD dry-run/execute/repeat byte
+  parity, post-build mutation of all ten admitted files with exit `2` and
+  predecessor-report preservation, and one all-pass fabricated but internally
+  consistent CMH/statistic/p-value/BH/odds-ratio case. Existing cases already
+  expose all seven check IDs as exit-`0` failed evidence. Preserve the
+  overclaiming recomputed-CMH text; the validator does not independently
+  recompute table estimability, statistic, p-value, or common odds ratio.
+  Final-path coverage must own exact Step `09c` private-loader cache, readiness,
+  spec/loader/execution, cleanup, sanitization, and unchanged-`sys.path` states;
+  common report faults stay with the neutral report suite.
+- **Scheduler, R/oracle, and slice decision:** require one central Step `09`
+  checkpoint for unchanged child-owned Rscript/R-program forwarding, absent-
+  submit-directory fallback, logs-only dry-run, and stale-six-output false
+  success. The job has no Rscript version probe, package activation, or
+  submitted-job evidence. Existing guarded real-R and independent count-
+  derived oracle assets are sufficient and receive no new test-only slice or
+  dependency action. Publish exactly five small checkpoints—runtime/input,
+  publication order, signal/concurrency, validator, scheduler—then the atomic
+  eleven-move/ten-update cutover. Only the direct shell/validator and central
+  scheduler tests may change; add no fixture, fourth test owner, production or
+  coverage edit, documentation batch, dependency action, or future card.
+- **Artifact, coverage, rollback, and evidence boundary:** cutover adds only
+  the reviewed final producer path/hash assertion and moves the validator
+  coverage row while retaining at least `154/158` lines and `34/40` branches,
+  every non-target row exact, and global floors `9601/11758` lines and
+  `3367/4784` branches. Reverse documentation, cutover, then the five test
+  checkpoints. This same-agent committed-time review ran no executable, test,
+  R, dependency, scheduler, cluster, production, scientific-review, or
+  biological workload; independent authorship is not claimed.
+- **Card-boundary gate:** after lifecycle movement and all direct-link repairs,
+  `git diff --check` passes and the exact RUNBOOK documentation validator
+  reports `PASS documentation structure (208 Markdown documents, 129 task
+  cards, 6 Mermaid sources)`. No reliability-review path, lifecycle,
+  dependency, cycle, orphan, schema, anchor, or diagram finding remains.

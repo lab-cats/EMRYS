@@ -139,6 +139,15 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   Rscript/R-program resolution, side-effect-free shell dry-run, exact manifest
   pairing authority, repeated input stability checks, streams, exits, and
   current local fake-R evidence.
+- Reliability-reviewed runtime/input checkpoint: in the existing old-path
+  shell test only, freeze missing/nonexecutable explicit Rscript, missing R
+  program, basename/PATH resolution from arbitrary CWD, and separate mutation
+  of sample manifest, partition manifest, Step `08` sites, and Step `08` input
+  receipt. Each admitted-input mutation must fail without finals or owned
+  residue and preserve unrelated bytes. A selected-R-program mutation after
+  admission must retain the current exit-`0` publication, and the summary must
+  remain without Rscript/R-program/package, attempt, or five sibling-output
+  hash identity. These are defects/evidence ceilings, not new guarantees.
 - Preserve the R implementation's exact pairing validation, minimum two paired
   strata, count-table construction, two-sided continuity-corrected
   `stats::mantelhaen.test`, failed/degenerate characterization, one global
@@ -159,6 +168,16 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   summary visibility, signal, lock/concurrency, stale-path, unrelated-byte,
   residue, input-mutation, and absent-attempt/sibling-identity oracles without
   fixing or blessing any state.
+- Reliability-reviewed transaction checkpoints: the old-path shell test must
+  prove exact publication order—all-sites, significant-sites, mutation TSV,
+  mutation PDF, depth PDF, summary—then barrier-observe all six finals, the
+  lock, and six predecessor backups after summary publication but before final
+  validation/hash commit. A separate `TERM` case at that barrier must exit
+  `143` and restore all six predecessors, while a fake-R barrier must prove
+  one same-analysis contender loses on the lock and the released winner alone
+  publishes. Preserve existing incomplete-restoration evidence: one absent
+  final, its exact backup and owned lock retained, five exact restored finals,
+  no owned temps, and no claim that a visible summary is committed evidence.
 - Preserve the exact six-output transaction under
   `<output-root>/<analysis-id>/`: all-sites TSV, significant-sites TSV,
   mutation-spectrum TSV/PDF, depth/delta PDF, and summary TSV. Preserve exact
@@ -180,12 +199,28 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   stable-input recheck; report publication; streams; and exits. Shared Step
   `09` schema/validation functions remain physically owned by flat Step `09c`;
   this migration does not extract, redesign, or reassign them.
+- Reliability-reviewed validator checkpoint: add arbitrary-CWD dry-run/
+  execute/repeat byte parity, post-build mutation of each of the ten admitted
+  inputs as exit `2` with predecessor report preservation, and an all-pass
+  fabricated-but-self-consistent CMH statistic/p-value/BH/odds-ratio case that
+  freezes the non-recomputation ceiling. Existing cases already expose each of
+  the seven exact rows as exit-`0` failed evidence. At cutover, add exact Step
+  `09c` private-loader initialization/cache/spec/loader/execution/cleanup/
+  sanitization and unchanged-`sys.path` coverage; common report faults remain
+  owned by the neutral report suite.
 - Preserve scheduler mode/directives, submit-directory fallback, analysis/
   cohort/input/output/condition/threshold/R defaults, tolerated module
   diagnostics, explicit execute gate, delegation, streams/exits, six-file
   post-check, and body-level `logs/` behavior. Reliability review must
   disposition missing/unusable Rscript or R program, child, stale-complete-
   output, and submitted-job states without hardening them.
+- Reliability-reviewed scheduler checkpoint: in the central scheduler test
+  only, freeze child-owned handling/unchanged forwarding for missing,
+  nonexecutable, and PATH-basename Rscript selections plus a missing R
+  program; absent-`SLURM_SUBMIT_DIR` launch-CWD fallback; dry-run `logs/`-only
+  mutation; and stale-six-output false success after an exit-`0`, no-output
+  child. The job has no Rscript version probe, package activation, or submitted-
+  job evidence; do not add or imply any.
 - `STEP_PRODUCERS["09"]` changes only to the final shell producer path.
   Preserve artifact IDs, schemas, Step `09` native/report identities, ordering,
   reconciliation, consumers, and scientific meaning. Step `09c` remains the
@@ -201,6 +236,14 @@ defines Step `09` as the smallest next JIT unit but does not select it.
   then any test-only reliability checkpoints in reverse order. No wrapper,
   alias, symlink, compatibility copy, descriptor, schema, or future-owner
   preload is justified.
+- Publish exactly five small old-path test-only checkpoints in order: runtime/
+  input provenance, publication order, signal/concurrency, validator, and
+  scheduler. Only the existing direct shell test, direct validator test, and
+  central scheduler test may change. The guarded-real-R and independent-
+  oracle assets already cover the statistical path and receive no test-only
+  checkpoint. Add no fixture, fourth test owner, production change, coverage
+  change, documentation batch, dependency action, or future-card content in
+  those slices.
 - Use only minimal old/final focused checks inside executable slices. Run the
   complete applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, migration links, small
