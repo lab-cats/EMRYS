@@ -30,7 +30,7 @@ roster, or permanent compatibility surface.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03C](REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, and rollback boundary.
+- [REVIEW-REL-03C](../TODO/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, and rollback boundary.
 
 ## Prerequisites
 

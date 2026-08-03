@@ -799,3 +799,17 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   unselected in `TODO`. This is documentation-only behavior/architecture
   planning; no computational test ran and no executable, runtime, scheduler,
   production, scientific-review, or biological evidence was created.
+
+## 2026-08-02T20:37:08-0400 — REVIEW-ARCH-03C selected
+
+- **Selection:** move only `REVIEW-ARCH-03C` from `TODO` to `IN_PROGRESS` and
+  repair its dependency/status links after JIT-definition checkpoint `44e3393`
+  was clean, published, and local/upstream-equal. `REVIEW-REL-03C`,
+  `REVIEW-UX-03C`, and `MIG-03C` remain unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time
+  adversarial pass over final-owner placement, sibling producer import,
+  scheduler delegation, path-aware caller/test ownership, artifact evidence,
+  wrapper necessity, atomic cutover, and rollback. The same campaign agent
+  performs the pass, so independent authorship is not claimed. No executable or
+  test mutation and no computational, runtime, scheduler, production,
+  scientific-review, or biological evidence is authorized by this selection.
