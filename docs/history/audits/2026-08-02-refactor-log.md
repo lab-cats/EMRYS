@@ -3678,6 +3678,67 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to reliability-
   review completion.
 
+## 2026-08-03T10:05:41-0400 — REVIEW-REL-03L completed
+
+- **Review basis:** complete a separate read-only reliability pass from clean,
+  published, local/upstream/live-remote-equal selection
+  `3d2b9c0ada9b970bac533a72d910be010e74da3f`. Inspect exact producer, validator,
+  direct-test, shared neutral-report, central scheduler, artifact, coverage,
+  receipt, selector, mutation, signal, collision, publication, restoration,
+  cleanup, and residue behavior without modifying or running executable/test
+  files. Independent authorship is not claimed.
+- **Pipeline/selector decision:** one old-path direct-shell checkpoint must
+  freeze FWD/REV mpileup and filter failures as producer exit `1`; exact
+  diagnostics, no finals, owned cleanup, and unrelated preservation; explicit
+  unusable-tool rejection; PATH basename from arbitrary CWD; manifest-mutation
+  detection; compressed relative regions-file acceptance; and unchanged
+  command/sample/depth/filter/annotation/non-calling behavior. Existing tests
+  retain dry-run, success, header-only, selector/admission, sample mismatch,
+  stale path, lock, partial set, and basic child-failure ownership.
+- **Transaction/recovery decision:** one old-path direct-shell checkpoint must
+  prove FWD/REV/receipt final move order and barrier-observe the receipt-visible
+  pre-commit window. Inject receipt-publication exit `67` then prior-FWD
+  restoration exit `68`: propagate `67`, leave prior FWD final absent with its
+  backup preserved, restore prior REV and receipt, remove owned temps/lock,
+  preserve unrelated bytes, and create no recovery marker. This is ambiguous
+  manual recovery, not successful rollback or safe retry authority.
+- **Stability/provenance decision:** one old-path direct-shell checkpoint must
+  freeze undetected post-admission mutation of BAM/BAI, FASTA/FAI, and regions
+  bytes as exit-`0` publication; manifest mutation as rejection; TERM as exit
+  `143` with complete-predecessor restoration and cleanup; and same-scope lock
+  serialization as one admitted/one rejected run. The exact receipt remains
+  without attempt token, input/tool/policy identity, or VCF hashes and cannot
+  prove current-attempt or immutable computation.
+- **Validator decision:** one old-path direct-validator checkpoint must add
+  arbitrary-CWD dry-run/execute/repeat byte parity; an exit-`0` five-check
+  semantic-failure matrix; a six-input post-build mutation matrix preserving a
+  valid predecessor on exit `2`; compressed-regions selector failure; current
+  false passes for out-of-bounds BED detail and VCF coordinate/REF/ALT/FORMAT
+  semantics; and relative-receipt-path count failure. Shared neutral report and
+  roster suites retain loader/publication and exact-ID ownership.
+- **Scheduler decision:** one old-path central checkpoint must freeze bcftools
+  version-command failure before child; missing/nonexecutable warnings;
+  basename forwarding; launch-CWD fallback; dry-run `logs/`-only mutation; and
+  stale-three-file false success. Generic coverage retains exact mode,
+  directives, one CPU, module tolerance, arguments/depth/filter, invalid mode,
+  child exit, and missing outputs. Step `07` has no characterized Bash `3.2`
+  empty-array defect.
+- **Slice, coverage, and evidence decision:** publish exactly five sequential
+  test-only checkpoints—pipeline/selector, transaction/recovery, stability/
+  provenance, validator, scheduler—then the atomic cutover. Only existing
+  direct shell, direct validator, and central scheduler tests may change.
+  Add no fixture file, fourth owner, production edit, coverage baseline,
+  documentation batch, dependency, or future card. Coverage may rise but not
+  regress below `167/198` lines, `48/72` branches, or global covered-count
+  floors. All evidence remains local fake-tool/fixture evidence, not real
+  bcftools, scheduler, cluster, production, scientific-review, variant/editing-
+  site, or biological proof.
+- **Card-boundary gate:** `git diff --check` passed. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no reliability-review-caused path, lifecycle,
+  dependency, cycle, orphan, anchor, or diagram finding. The expected-only
+  result remains nonpassing and is not called green.
+
 ## 2026-08-03T06:59:46-0400 — REVIEW-REL-03J selected
 
 - **Selection:** from clean, published, local/upstream/live-remote-equal

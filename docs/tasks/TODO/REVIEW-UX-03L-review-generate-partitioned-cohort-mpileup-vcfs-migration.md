@@ -27,7 +27,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03L](../IN_PROGRESS/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03L](../COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: usability review uses the completed corrected architecture and fixed reliability obligations.
 
 ## Completion unblocks
 
@@ -98,5 +98,6 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-REL-03L`; no executable/test file
-changed or ran.
+Not selected. Reliability review is complete; usability review is now
+dependency-unblocked but remains in `TODO`. No executable/test file changed or
+ran.

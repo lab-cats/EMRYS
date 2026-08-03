@@ -124,6 +124,32 @@ but does not select it.
   successful immutable computation. Reliability review owns exact rollback-
   failure, residue, signal, mutation, receipt-visibility, and absent-attempt-
   identity oracles without repairing or blessing these states.
+- Publish one old-path producer pipeline/selector test-only baseline in the
+  existing direct shell owner. Freeze all four controlled FWD/REV mpileup and
+  filter child failures as normalized producer exit `1`, with exact diagnostic,
+  no final outputs, cleaned owned lock/scratch, and unrelated-file
+  preservation. Add missing/nonexecutable explicit bcftools rejection before
+  output creation, basename/PATH resolution from arbitrary CWD, manifest-
+  mutation rejection, compressed `regions_file` producer acceptance, and
+  unchanged exact command/depth/filter/sample-order/non-calling evidence.
+- Publish one old-path producer transaction/recovery test-only baseline. Fix
+  final move order as FWD VCF, REV VCF, then receipt; observe the receipt and
+  both VCFs during the post-publication/pre-commit validation window; retain
+  exact all-three-or-none predecessor and foreign-lock/stale-path behavior;
+  and inject receipt-publication exit `67` followed by prior-FWD restoration
+  exit `68`. The last state must propagate `67`, leave the prior FWD final
+  absent while preserving its backup, restore prior REV and receipt bytes,
+  remove owned temps/lock, preserve unrelated bytes, and create no recovery
+  marker. This is ambiguous manual recovery, not successful rollback.
+- Publish one old-path producer stability/provenance test-only baseline. A
+  controlled post-admission mutation of BAM/BAI, FASTA/FAI, and regions-file
+  inputs must remain undetected and permit exit `0`; manifest mutation remains
+  rejected. Controlled `TERM` exits `143`, restores a complete predecessor,
+  preserves unrelated bytes, and removes owned scratch/lock. A barrier-
+  controlled same-scope pair proves the cohort/partition lock admits one run
+  and rejects the other. Assert the receipt has no run token, BAM/reference/
+  tool/depth/filter identity, or VCF hash and cannot prove current-attempt or
+  immutable-input identity. Do not add those fields or a recovery marker.
 - Preserve the exact ten-column, two-row receipt, ordered `FWD_like` then
   `REV_like`, including declared selector value, explicit VCF paths, manifest
   hashes, sample count, and record counts. Preserve the relative-output-root
@@ -141,6 +167,17 @@ but does not select it.
   `vcf_structure`, `selector_reconciliation`,
   `manifest_identity_and_sample_order`, and `vcf_record_counts`; common report
   bytes; stable-input recheck; report publication; streams; and exits.
+- Publish one old-path direct-validator test-only baseline. Add arbitrary-CWD
+  dry-run/execute/repeat byte parity with unchanged inputs and no invocation-
+  CWD residue; a compact semantic-failure matrix owning all five check IDs as
+  exit-`0` failed evidence; and a compact post-build mutation matrix across all
+  six snapshotted inputs that exits `2` while preserving a valid predecessor
+  report. Characterize producer-valid compressed regions as exit-`0` selector
+  failure, out-of-bounds BED coordinates and VCF rows outside the declared
+  selector plus unchecked REF/ALT/FORMAT as current false-pass ceilings, and
+  relative receipt VCF paths versus resolved arguments as exit-`0`
+  `vcf_record_counts` failure. Neutral report-loader/publication-fault and
+  exact-roster suites remain shared owners; add no duplicate helper.
 - The validator continues to privately exact-load neutral
   `src/norad/libraries/validation_report.py`. Add no VCF/selector helper,
   package identity, wrapper, alias, ambient `PYTHONPATH`, public helper API,
@@ -153,6 +190,14 @@ but does not select it.
   level `logs/` mutation. Reliability review must disposition missing/
   unusable tool, module, version, child, stale complete output, and submitted-
   job states without hardening them.
+- Publish one old-path central-scheduler test-only baseline for Step `07`:
+  executable bcftools version-command failure before delegation; missing/
+  nonexecutable warning with unchanged delegation; PATH-basename forwarding;
+  dynamic absent-submit-directory fallback; dry-run `logs/`-only mutation; and
+  a zero-output child with three stale nonempty outputs falsely accepted byte-
+  exactly. Existing generic cases retain exact directives/mode, tolerated
+  module calls, override arguments, invalid execute mode, child exit, output-
+  missing rejection, and exact depth/filter forwarding.
 - `STEP_PRODUCERS["07"]` changes only to final path
   `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh`
   with projected hash
@@ -177,6 +222,13 @@ but does not select it.
   card boundary, then batch canonical paths, commands, migration links, small
   documentation updates, lifecycle repair, and audit evidence in a separate
   close.
+- Publish exactly five small sequential old-path test-only checkpoints—
+  producer pipeline/selector, producer transaction/recovery, producer
+  stability/provenance, validator, then scheduler—before the atomic five-move/
+  nine-update cutover. Only the existing direct shell, direct validator, and
+  central scheduler test owners may change. Add no separate fixture, fourth
+  test owner, production edit, coverage-baseline edit, documentation batch,
+  dependency, or future owner in those slices.
 - Add one adjacent owner `README.md` only at documentation close. It must
   route producer/validator/scheduler root and arbitrary-CWD journeys,
   mechanical-orientation and non-calling meaning, selector/depth/filter/tool
@@ -310,7 +362,7 @@ but does not select it.
 
 ## Completion record
 
-Not selected. Architecture review completed from published/equal selection
-checkpoint `e34edb55e93b9874830fcc66688e5ac3b0d3f9dd`; reliability and usability
-reviews remain unselected in `TODO`. No executable/test path changed, no
-computational test ran, and no Step `08` or later owner is preloaded.
+Not selected. Architecture and reliability reviews completed from published/
+equal checkpoints; usability remains unselected in `TODO`. No executable/test
+path changed, no computational test ran, and no Step `08` or later owner is
+preloaded.
