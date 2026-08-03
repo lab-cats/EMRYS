@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import runpy
 import shlex
 import shutil
 import stat
@@ -162,6 +163,12 @@ def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> 
         "(6 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
+
+
+def test_frozen_card_heading_oracle_matches_production() -> None:
+    production = runpy.run_path(str(VALIDATOR))
+
+    assert production["CARD_SECTIONS"] == CARD_SECTIONS
 
 
 def test_rejects_unavailable_root(tmp_path: Path) -> None:
@@ -703,31 +710,48 @@ def test_requires_external_inbound_reference_for_card(tmp_path: Path) -> None:
     )
 
 
-def test_active_card_requires_completed_blockers(tmp_path: Path) -> None:
+def assert_lifecycle_card_requires_completed_blockers(
+    tmp_path: Path,
+    *,
+    status: str,
+) -> None:
     repository = write_fixture(tmp_path)
     blocker = card_path(repository)
-    active = add_card(repository, "TEST-02", status="IN_PROGRESS")
+    lifecycle_card = add_card(repository, "TEST-02", status=status)
     replace_card_section(
         blocker,
         "Completion unblocks",
         [
-            "- [TEST-02](../IN_PROGRESS/TEST-02-fixture-card.md) "
+            f"- [TEST-02](../{status}/TEST-02-fixture-card.md) "
             "— Fully: fixture."
         ],
     )
     replace_card_section(
-        active,
+        lifecycle_card,
         "Blocked by",
         [
             "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
             "— Required: fixture."
         ],
     )
-
     assert_failures(
         repository,
         cwd=tmp_path,
         expected=[
             "active/completed card has incomplete blocker: TEST-02 <- TEST-01"
         ],
+    )
+
+
+def test_active_card_requires_completed_blockers(tmp_path: Path) -> None:
+    assert_lifecycle_card_requires_completed_blockers(
+        tmp_path,
+        status="IN_PROGRESS",
+    )
+
+
+def test_completed_card_requires_completed_blockers(tmp_path: Path) -> None:
+    assert_lifecycle_card_requires_completed_blockers(
+        tmp_path,
+        status="COMPLETED",
     )
