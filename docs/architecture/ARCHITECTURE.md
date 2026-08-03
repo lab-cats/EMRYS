@@ -15,10 +15,10 @@ Canonical diagrams:
 Current public workflow entry points use a mixed physical layout. The neutral
 validation-report library, the `construct_STAR_index` job and validator, and the
 `convert_GTF_to_BED12` and `align_RNA_reads_with_STAR` producers, validators,
-and jobs now live under `src/norad/`; remaining workflow entry points stay under
-`scripts/` and `jobs/`. Other colocated functional-owner documents under
-`src/norad/` remain contracts rather than claims that their implementations
-have migrated.
+and jobs, plus the `construct_FASTA_sidecars` producer, validator, and job now
+live under `src/norad/`; remaining workflow entry points stay under `scripts/`
+and `jobs/`. Other colocated functional-owner documents under `src/norad/`
+remain contracts rather than claims that their implementations have migrated.
 
 The supported workflow is a directed graph of shared reference inputs,
 per-sample alignment and BAM transformations, non-gating QC/orientation
@@ -47,12 +47,14 @@ not in this implemented-current-topology document.
 [`validation_report.py`](../../src/norad/libraries/validation_report.py) owns
 the shared snapshot, seven-column rendering/validation, and transactional
 publication protocol used by all thirteen validator entry points. The final
-`construct_STAR_index`, `convert_GTF_to_BED12`, and
-`align_RNA_reads_with_STAR` validators and ten remaining `scripts/` validators
-resolve that exact file through private caller-local loaders; no package marker,
-public Python import identity, install step, compatibility wrapper, or
-`sys.path` mutation is part of the current interface. Stage-specific parsing
-and check rosters remain with their functional owners.
+`construct_STAR_index`, `convert_GTF_to_BED12`,
+`construct_FASTA_sidecars`, and `align_RNA_reads_with_STAR` validators and nine
+remaining `scripts/` validators resolve that exact file through private
+caller-local loaders; no package marker, public Python import identity, install
+step, compatibility wrapper, or `sys.path` mutation is part of the current
+interface. The FASTA-sidecar validator also privately exact-loads the unchanged
+public flat reference-provenance owner. Stage-specific parsing and check rosters
+remain with their functional owners.
 
 This relocation preserved the characterized snapshot, ordering, collision,
 rollback, cleanup, descriptor, and lock defects. It did not correct them or

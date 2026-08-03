@@ -12,18 +12,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: task-specific plan checkpoint
-  `d7c29ada72486855efda0f603badf6adfe658349` is clean, published, and
-  local/upstream/live-remote-equal; migration selection is `177a912`.
-- Current package: old-path baseline for
-  [`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md)
-  captured the exact affected suites plus partial-publication and arbitrary-CWD
-  validator oracles. All three reviews and the execution plan are complete.
-- Package type at this checkpoint: local fixture/mock baseline evidence plus
-  documentation only; no executable/test file changed.
-- Remote publication and upstream equality: parent `d7c29ad` is verified
-  local/upstream/live-remote-equal. The commit containing this baseline must be
-  published and proved equal before the atomic cutover.
+- Recorded package state: executable/test checkpoint
+  `cd3b5479d64592563d4dd6a557efb52840f9edda` is clean, published, and
+  local/upstream/live-remote-equal; old-path baseline is `9850a8d`.
+- Current package: documentation/lifecycle close for completed
+  [`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md).
+  All three reviews, the baseline, cutover, and executable acceptance are
+  complete; no later owner is selected.
+- Package type at this checkpoint: impact-directed documentation and lifecycle
+  closure only; executable/test state remains fixed at `cd3b547`.
+- Remote publication and upstream equality: parent `cd3b547` is verified
+  local/upstream/live-remote-equal. The commit containing this handoff is the
+  separate documentation/lifecycle checkpoint and must be published before
+  another owner is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -31,9 +32,11 @@ integrated canonical tip. The neutral publication owner lives at
 `src/norad/libraries/validation_report.py`; migrated functional owners now live
 at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/convert_GTF_to_BED12/`, and
-`src/norad/stages/align_RNA_reads_with_STAR/`. Their three validators and the
-ten remaining legacy-path validators load the neutral file without package
-identity, a wrapper, or `sys.path` mutation.
+`src/norad/stages/align_RNA_reads_with_STAR/`, and
+`src/norad/stages/construct_FASTA_sidecars/`. Their four validators and the nine
+remaining flat validators load the neutral file without package identity, a
+wrapper, or `sys.path` mutation. The FASTA-sidecar validator also uses a private
+exact-file bridge to unchanged public `scripts/reference_provenance.py`.
 
 The `MIG-03C` focused suites and reviewed final-path coverage passed before the
 executable commit. The recorded final-path measurement retained the producer at
@@ -71,15 +74,33 @@ and delegate-only validation defects remain characterized, not approved. No
 real STAR, scheduler, cluster, production, scientific-review, or biological
 evidence was created.
 
-The live semantic DAG makes `construct_FASTA_sidecars` and
-`construct_canonical_BAM` data-eligible. Only the former is selected for JIT
-definition: it has no hard stage predecessor and no peer imports its stage
-implementation. The latter remains unselected because Step `04` and Step `05`
-still import helpers directly from its stage-named validator, which violates
-the frozen target dependency direction. `MIG-03E` keeps the existing public
-`scripts/reference_provenance.py` owner in place and requires architecture
-review of a private exact-file bridge; it does not approve that deferred
-neutral extraction.
+`MIG-03E` moved the Step `00c` producer, validator, scheduler job, and two direct
+tests to their final owner in published checkpoint `cd3b547`. Final-path shell
+acceptance passed, including the retained-FAI partial-publication oracle, and
+the exact affected Python surface passed `561` tests in `62.92s`. Deterministic
+serial coverage measured the validator at `128/139` lines and `35/42` branches
+and the global surface at `9381/11549` lines and `3293/4714` branches, above the
+frozen covered-count floor; the standalone coverage policy comparison passed.
+
+The aggregate gate was not fully green. Static preflight, shell contracts,
+guarded R, and report runtime passed. The first sandboxed guarded-R attempt was
+blocked only by DNS access to Bioconductor metadata; the exact network-enabled
+rerun used the existing project library and installed, restored, deleted, and
+updated nothing. The ignored malformed `macos` directory warning remains
+characterized local state. Python executed `1,079` passes and `17` skips before
+its documentation-validator test reported exactly ten migration-caused stale
+links plus the nine inherited `UNREFINED` card-location findings. This close
+repairs the ten links; the nine inherited findings remain an expected-only
+nonpassing condition.
+
+The producer's FAI-first nontransactional publication and the scheduler's Bash
+`3.2` dry-run, site-default, tolerated-module, and file-only output-check defects
+remain characterized, not approved. The exact reference-provenance bridge is
+bounded mixed-layout debt, not extraction or package approval. No real
+samtools/GATK/Java, scheduler, cluster, production, scientific-review, or
+biological evidence was created. No later owner is selected at this checkpoint;
+the next JIT choice must be refreshed from the live DAG only after this close is
+published and equal.
 
 ## Active concurrent lanes
 
@@ -541,12 +562,10 @@ documentation/lifecycle close `f9d6381`. The fourth JIT card,
 [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md),
 is complete at published executable/test checkpoint `12f9be5` and
 documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
-[`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
-is selected after its architecture, reliability, and usability reviews all
-completed. Its exact write set and old-path baseline tranche are frozen in the
-active card, and the targeted baseline passed `555` Python tests, the direct
-shell suite, and both missing temporary oracles. Publish that evidence before
-cutover. No later migration or review card is created.
+[`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
+is complete at published executable/test checkpoint `cd3b547`; its separate
+documentation/lifecycle close is the commit containing this handoff. No later
+migration or review card is created or selected.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -569,15 +588,14 @@ and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
 are complete. `MIG-03D` is complete at published executable/test checkpoint
 `12f9be5` and documentation/lifecycle checkpoint `5259acb`.
-[`MIG-03E`](../tasks/IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md)
-is selected, and its reviews
+[`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md)
+and its reviews
 [`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md),
 [`REVIEW-REL-03E`](../tasks/COMPLETED/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md),
 and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
-are complete. Publish this migration-selection checkpoint before task-specific
-planning; the plan in the commit containing this paragraph must then be
-published before targeted old-path baselines. Those baselines are now recorded;
-publish their checkpoint before the fourteen-file cutover. Any later owner
-remains unselected. The unsliced `PROGRAM-01` remainder and unrelated roadmap
-remain preserved and out of scope.
+are complete. `MIG-03E` is complete at published executable/test checkpoint
+`cd3b547`; publish and prove this separate documentation/lifecycle close equal
+before selecting another dependency-valid owner. No later owner is selected.
+The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
+out of scope.

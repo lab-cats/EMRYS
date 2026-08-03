@@ -42,10 +42,14 @@ Coverage uses branch and subprocess measurement over exactly `scripts` and
 is not by itself proof of a user-visible defect or authority to change
 behavior.
 
-The tracked Step `01` validator row now resolves to
-`src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py`.
-Its measured `125/140` line and `34/44` branch counts were unchanged by
-relocation; that path transition did not lower the global accepted floor.
+The tracked Step `00c` validator row now resolves to
+`src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py`.
+Its measured `128/139` line and `35/42` branch counts include the reviewed
+private reference-owner loader. The deterministic serial measurement covered
+`9381/11549` global lines and `3293/4714` global branches, above the frozen
+covered-count floor; the standalone policy comparison passed. The tracked Step
+`01` validator remains at its final path with `125/140` measured lines and
+`34/44` measured branches.
 
 ## Current evidence vocabulary
 

@@ -586,17 +586,29 @@ final BED together when failure residue or ownership is ambiguous.
 
 ### Symptom
 
-Step `00c` fails with a message that the FASTA index and sequence dictionary contigs/lengths do not agree.
+Step `00c` fails with a message that the FASTA index and sequence dictionary
+contigs/lengths do not agree, or a nonzero producer attempt leaves a final FAI
+while the final DICT is absent.
 
 ### Cause
 
-`refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` are shared reference sidecars. If either file is stale, empty, partially written, or generated from a different FASTA, GATK-compatible reference validation is unsafe.
+`refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` are shared
+reference sidecars. Either can be stale, empty, malformed, or generated from a
+different FASTA. Separately, the characterized producer can publish the final
+FAI before final DICT publication fails; that retained FAI is incomplete-attempt
+evidence, not successful transaction output.
 
 ### Fix
 
-Do not let Step `05` create or repair these files inside a per-sample job. Inspect the existing sidecars, confirm they belong to `refs/novogene_ref/genome.fa`, and rerun formal Step `00c` only after deciding how to handle the invalid shared reference files.
-
-Step `00c` intentionally does not overwrite invalid existing sidecars by default.
+Do not let Step `05` create or repair these files inside a per-sample job. Use
+the exact final producer commands in the [runbook](RUNBOOK.md#step-00c-gatk-reference-sidecars)
+only after confirming the FASTA/FAI/DICT provenance and ownership. Preserve the
+producer context, scheduler stdout/stderr, lock state, run-token temporary
+paths, and final FAI/DICT state before any cleanup or rerun decision. Step `00c`
+does not overwrite invalid existing sidecars by default. After provenance and
+ownership are established, a separately authorized rerun may reuse a valid FAI
+and generate only the missing DICT; relocation neither fixes nor blesses the
+partial-publication defect.
 
 ## Step 00c structured validation reports FASTA/FAI/DICT disagreement
 
@@ -614,9 +626,12 @@ or repair shared reference inputs.
 ### Fix
 
 Follow the [common response](#structured-validation-response) and resolve the
-FASTA/FAI/DICT provenance before using formal Step `00c` preparation for a
-missing sidecar. Failed current validation does not rewrite historical cluster
-evidence.
+FASTA/FAI/DICT provenance before using the exact final
+[validator command](RUNBOOK.md#step-00c-gatk-reference-sidecars) or producer for
+a missing sidecar. Preserve the explicit inputs and report together. A private
+reference-owner loader failure is a checkout-integrity diagnostic; do not mask
+it with a `PYTHONPATH` workaround. Failed current validation does not rewrite
+historical cluster evidence or authorize input repair.
 
 ## Step 01 structured validation reports STAR output disagreement
 

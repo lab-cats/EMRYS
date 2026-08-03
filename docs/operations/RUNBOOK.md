@@ -2328,79 +2328,77 @@ Focused validation:
 
 ### Step 00c: GATK Reference Sidecars
 
-Script:
+From the repository root, run the final producer directly or through Bash with
+the reference and all three tool paths explicit. Both forms are dry-run by
+default:
 
 ```bash
-scripts/step_00c_prepare_gatk_reference.sh
-```
-
-Job:
-
-```bash
-jobs/step_00c_prepare_gatk_reference.slurm
-```
-
-Purpose:
-
-```text
-Create and validate the FASTA index and sequence dictionary required by GATK.
-```
-
-Expected outputs:
-
-```bash
-refs/novogene_ref/genome.fa.fai
-refs/novogene_ref/genome.dict
-```
-
-Expected validation evidence:
-
-```text
-Ad hoc sidecar prep completed with exit code 0:0.
-FAI contigs: 194
-DICT contigs: 194
-BAM header contigs: 194
-Reference/BAM SQ check: PASS
-```
-
-Dry-run:
-
-```bash
-sbatch jobs/step_00c_prepare_gatk_reference.slurm
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_00c_prepare_gatk_reference.slurm
-```
-
-Direct script dry-run with explicit cluster tools:
-
-```bash
-scripts/step_00c_prepare_gatk_reference.sh \
+src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh \
   --reference-fasta refs/novogene_ref/genome.fa \
-  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
-  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk
+  --samtools-bin /absolute/path/to/samtools \
+  --gatk-bin /absolute/path/to/gatk \
+  --java-bin /absolute/path/to/java
+
+bash src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh \
+  --reference-fasta refs/novogene_ref/genome.fa \
+  --samtools-bin /absolute/path/to/samtools \
+  --gatk-bin /absolute/path/to/gatk \
+  --java-bin /absolute/path/to/java
 ```
 
-Direct script execute with explicit cluster tools:
+Dry-run resolves the tool paths and prints the planned commands but invokes no
+tool version or generation command and creates no directory, lock, temporary
+path, FAI, or DICT. Add `--execute` only after inspecting the resolved command.
+From another working directory, make the checkout, reference, and tool paths
+absolute:
 
 ```bash
-scripts/step_00c_prepare_gatk_reference.sh \
-  --reference-fasta refs/novogene_ref/genome.fa \
-  --samtools-bin /cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools \
-  --gatk-bin /cm/shared/apps/gatk/gatk-4.6.1.0/gatk \
-  --execute
+/absolute/path/to/norad/src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh \
+  --reference-fasta /absolute/refs/genome.fa \
+  --samtools-bin /absolute/path/to/samtools \
+  --gatk-bin /absolute/path/to/gatk \
+  --java-bin /absolute/path/to/java
 ```
 
-Step `00c` formalizes the prep required before Step `05` execute-mode validation. It is dry-run by default, uses a reference-level lock in execute mode, reuses valid existing sidecars, generates only missing sidecars, and validates `.fai`/`.dict` contig-name and length agreement. Step `05` treats these files as prerequisites, fails clearly if they are missing, and must not silently create shared reference sidecars inside per-sample jobs.
+The expected outputs for `refs/novogene_ref/genome.fa` are
+`refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict`. Step
+`00c` uses a reference-level lock in execute mode, reuses each valid existing
+sidecar, generates only a missing sidecar, and validates FAI/DICT contig-name
+and length agreement. Step `05` consumes these sidecars but must not create or
+repair them inside a per-sample job.
+
+For scheduler use, SLURM opens the declared log paths before the job body runs.
+Create `logs/`, change to the intended checkout, and submit the exact final job.
+Omitting `EXECUTE` keeps the default dry run:
+
+```bash
+cd /path/to/norad
+mkdir -p logs
+sbatch --export=ALL,REFERENCE_FASTA=/absolute/refs/genome.fa,SAMTOOLS_BIN_OVERRIDE=/absolute/path/to/samtools,GATK_BIN_OVERRIDE=/absolute/path/to/gatk,JAVA_BIN_OVERRIDE=/absolute/path/to/java,TMPDIR=/absolute/path/to/tmp \
+  src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm
+```
+
+Real work uses the same explicit bindings plus `EXECUTE=1`:
+
+```bash
+cd /path/to/norad
+mkdir -p logs
+sbatch --export=ALL,REFERENCE_FASTA=/absolute/refs/genome.fa,SAMTOOLS_BIN_OVERRIDE=/absolute/path/to/samtools,GATK_BIN_OVERRIDE=/absolute/path/to/gatk,JAVA_BIN_OVERRIDE=/absolute/path/to/java,TMPDIR=/absolute/path/to/tmp,EXECUTE=1 \
+  src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm
+```
+
+The current CSU samtools/GATK defaults are site bindings rather than portable
+defaults, and module setup is tolerated. Bash `3.2` can stop in default dry-run
+before producer delegation because of the characterized empty-array expansion.
+In execute mode, the wrapper checks only that the two declared output files are
+nonempty; use the structured validator for content evidence.
 
 The structured Step `00c` validator reads one explicit FASTA and its exact FAI
-and DICT sidecars:
+and DICT sidecars. Invoke its mode-`0644` file only through an explicit
+interpreter:
 
 ```bash
-.venv/bin/python scripts/validate_step_00c_reference_sidecars.py \
+.venv/bin/python src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py \
   --scope-id novogene_ref \
   --reference-fasta refs/novogene_ref/genome.fa \
   --reference-fai refs/novogene_ref/genome.fa.fai \
@@ -2414,7 +2412,7 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00c
-.venv/bin/python scripts/validate_step_00c_reference_sidecars.py \
+.venv/bin/python src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py \
   --scope-id novogene_ref \
   --reference-fasta refs/novogene_ref/genome.fa \
   --reference-fai refs/novogene_ref/genome.fa.fai \
@@ -2423,11 +2421,27 @@ mkdir -p results/qc/validation/00c
   --execute
 ```
 
+The report contains exactly the five ordered `fasta_structure`,
+`fai_structure`, `dict_structure`, `fai_contig_agreement`, and
+`dict_contig_agreement` rows under the common seven-column validation contract.
+It is reference-sidecar evidence, not an ad hoc BAM/reference comparison. A
+content disagreement reports `status=fail`; it does not repair any input.
+
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_00c_reference_sidecars.py
+bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py \
+  tests/test_slurm_wrapper_contracts.py
 ```
+
+These are local fixture and mocked-wrapper checks. They do not prove real
+samtools/GATK/Java execution, SLURM, cluster, production, scientific-review, or
+biological readiness. Preserve a retained FAI with absent DICT after a nonzero
+producer attempt as incomplete-attempt evidence; follow the
+[Step `00c` troubleshooting routes](TROUBLESHOOTING.md#step-00c-faidict-validation-fails)
+before any separately authorized cleanup or rerun.
 
 ## Step 01: STAR Alignment
 

@@ -150,7 +150,7 @@ target dependency direction, not historical alias order or raw file size.
 
 ## Blocked by
 
-- [REVIEW-UX-03E](../COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03E](REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews closed before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -326,11 +326,11 @@ target dependency direction, not historical alias order or raw file size.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal review
-completion checkpoint `9ae3b12d45080c9b7d9132174dc01a7594050b84`. Architecture,
-reliability, and usability reviews are complete. Task-specific planning and
-baseline evidence follow in separate bounded slices; no executable or test path
-has moved at this selection checkpoint.
+Completed from clean, published, local/upstream/live-remote-equal executable/test
+checkpoint `cd3b5479d64592563d4dd6a557efb52840f9edda`. Architecture,
+reliability, usability, baseline, cutover, and final-path acceptance are
+complete. The commit containing this record is the separate documentation and
+lifecycle close; no later owner is selected by this card.
 
 ### Task-specific execution plan
 
@@ -454,3 +454,65 @@ local fixture/mock evidence only:
   floor remains validator `90/96` lines and `23/26` branches and global
   `9343/11506` lines and `3281/4698` branches. Publish this documentation-only
   checkpoint and prove live remote equality before the fourteen-file cutover.
+
+### Delivered state and acceptance evidence
+
+- The mode-`0755` producer now lives at its final owner with only the reviewed
+  usage self-path change: `14,511` bytes, `515` lines, SHA-256
+  `ed3e9ca039102c881c4f91cb02fd32e4a67d09ad799300c789cbab27ce1ab0a1`.
+  The mode-`0644` validator is `8,699` bytes, `234` lines, SHA-256
+  `d2554dea8888d51cbcb7a02a6638e09d05ea16526f9d0d82ba0c36f18b3c2a5a`;
+  it changes owner-depth resolution and adds only the reviewed exact public
+  reference-provenance bridge. The mode-`0755` job is `4,566` bytes, `151`
+  lines, SHA-256
+  `c084f8bcbc9173b3f99c2a0baf6f443f2a8121e8bf90b8af345c21b751593d51`
+  with only the final child path changed.
+- The two direct suites moved to
+  `tests/stages/construct_FASTA_sidecars/`. The mode-`0755` shell test has
+  SHA-256
+  `35bfce22da1aa08d155bd74ed4a306a10d0002c5df43f63fe1a7914013940882`;
+  the mode-`0644` validator test has SHA-256
+  `e768515779268206728a21a8ef0a1fbddb8b8ba2cb4031648b3cafae7afdb900`.
+  Final-path shell acceptance passed, including retained nonempty FAI, absent
+  DICT, removed owned lock, and no run-token residue after controlled final-DICT
+  move failure. The direct validator suite passed `11` tests, and the exact
+  affected Python surface passed `561` tests in `62.92s`.
+- Deterministic serial coverage passed `1,079` tests with `17` skips and one
+  explicit documentation-validator deselection. It measured the final validator
+  at `128/139` lines and `35/42` branches (`0.920863`/`0.833333`) and the global
+  surface at `9381/11549` lines and `3293/4714` branches
+  (`0.812278`/`0.698557`), above the frozen covered-count floor. Every non-target
+  row was identical to the prior baseline, and the standalone coverage policy
+  comparison passed after the final row was placed in lexical order.
+- The complete aggregate gate was not fully green. Static preflight, shell
+  contracts, guarded R, and report runtime passed. The first sandboxed guarded-R
+  attempt was blocked only by DNS access to Bioconductor metadata; the exact
+  network-enabled rerun used the existing project library and installed,
+  restored, deleted, and updated nothing. The ignored malformed `macos`
+  directory warning remains characterized local state. Python executed `1,079`
+  passes and `17` skips before the documentation-validator test reported exactly
+  ten migration-caused stale links plus the nine inherited `invalid card
+  location` findings under `docs/tasks/UNREFINED/`. This documentation close
+  repairs the ten migration links; the nine inherited findings remain an
+  expected-only nonpassing condition and are never called a passing gate.
+- Exact inspection found one final owner for each moved basename and no live
+  non-documentation legacy path, wrapper, compatibility copy, symlink, package
+  marker, descriptor, schema, or peer-stage implementation import. Artifact
+  evidence names and hashes the final producer without changing public artifact
+  identities, contents, ordering, schemas, reconciliation, or consumers. The
+  public reference-provenance CLI, its tests and coverage row, and the Step `05`
+  consumer remain unchanged.
+- FAI-first nontransactional publication, lack of receipt/recovery marker, the
+  scheduler's Bash `3.2` empty-array dry-run defect, current CSU site bindings,
+  tolerated module setup, fallback submit CWD, Java policy, and file-only output
+  checks remain characterized defects. The private reference bridge remains
+  bounded mixed-layout debt. Relocation neither fixes nor blesses any of them.
+- Published rollback points are old-path baseline `9850a8d`, executable/test
+  checkpoint `cd3b547`, and the commit containing this completion record.
+  Reverse the documentation close before reverting the executable cutover;
+  preserve runtime artifacts and do not restore duplicate source files.
+
+No real samtools, GATK, or Java generation, scheduler submission, cluster or
+production input, dependency change, scientific review, or biological-readiness
+evidence was created. The public DAG and artifact flow did not change, so no
+diagram edit was warranted.

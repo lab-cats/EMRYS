@@ -1804,3 +1804,104 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   global `9343/11506` lines and `3281/4698` branches. Publish this baseline
   checkpoint, prove live remote equality, then apply only the reviewed fourteen-
   file atomic cutover.
+
+## 2026-08-03T00:41:29-0400 — MIG-03E executable cutover accepted and documentation close prepared
+
+- **Published parent and atomic scope:** the cutover began from clean,
+  published, local/upstream/live-remote-equal old-path baseline `9850a8d`, with
+  no untracked file, recovery marker, index lock, or mutable-lane collision. It
+  moved exactly the producer, validator, job, shell test, and validator test and
+  changed only the nine reviewed Make, artifact, public-CLI, SLURM, validation-
+  roster, shared-loader, coverage, and literal-fixture callers. Git's default
+  rename display represented the heavily expanded validator test as an add and
+  delete; `--find-renames=20%` confirms the frozen five logical moves and nine
+  modifications. Published executable/test checkpoint is `cd3b547`.
+- **Final native identity:** producer mode/bytes/lines/hash is `0755` / `14,511`
+  / `515` /
+  `ed3e9ca039102c881c4f91cb02fd32e4a67d09ad799300c789cbab27ce1ab0a1`;
+  validator `0644` / `8,699` / `234` /
+  `d2554dea8888d51cbcb7a02a6638e09d05ea16526f9d0d82ba0c36f18b3c2a5a`;
+  job `0755` / `4,566` / `151` /
+  `c084f8bcbc9173b3f99c2a0baf6f443f2a8121e8bf90b8af345c21b751593d51`;
+  shell test `0755` / `14,410` / `458` /
+  `35bfce22da1aa08d155bd74ed4a306a10d0002c5df43f63fe1a7914013940882`;
+  and validator test `0644` / `10,247` / `295` /
+  `e768515779268206728a21a8ef0a1fbddb8b8ba2cb4031648b3cafae7afdb900`.
+  Production changes remain limited to producer usage self-path, validator
+  owner depths/private loader, and job child path.
+- **Mixed-layout decision:** the validator resolves the neutral report owner
+  from its final source depth and uses private identity
+  `_norad_reference_provenance` to exact-load unchanged public
+  `scripts/reference_provenance.py`. It verifies cached `__file__`, exception
+  and callable API shape, preserves foreign cache objects and `sys.path`, and
+  removes only its owned partial state. This bridge is bounded debt, not a
+  package identity, `PYTHONPATH` convention, readiness-sentinel addition, or
+  reference-provenance extraction approval. The public CLI/test/coverage row
+  and Step `05` consumer remain unchanged.
+- **Focused final-path acceptance:** the moved shell suite passed, including
+  controlled final-DICT move failure with exit `73`, retained nonempty FAI,
+  absent DICT, removed owned lock, and no run-token residue. The direct moved
+  validator suite passed `11` tests. The exact affected Python surface passed
+  `561` tests in `62.92s`, including arbitrary-CWD dry-run/execute/repeat bytes
+  and the missing/wrong-cache/incomplete/owned-failure loader matrix.
+- **Coverage decision:** deterministic serial coverage passed `1,079` tests,
+  skipped `17`, and explicitly deselected only the documentation-validator test
+  whose stale links were reserved for this close. It measured the final
+  validator at `128/139` lines and `35/42` branches
+  (`0.920863`/`0.833333`) and global coverage at `9381/11549` lines and
+  `3293/4714` branches (`0.812278`/`0.698557`), above the frozen covered-count
+  floor. Every non-target row matched the prior baseline. The standalone policy
+  comparison passed after moving the renamed row to lexical order; coverage
+  policy was not weakened.
+- **Aggregate-gate truth:** static preflight, shell contracts, guarded R, and
+  report runtime passed. The first sandboxed guarded-R run failed only because
+  DNS could not reach Bioconductor metadata; the exact network-enabled rerun
+  used the existing project library and changed no dependency. The ignored
+  malformed `macos` warning remains characterized local recovery state. Python
+  executed `1,079` passes and `17` skips before the documentation-validator test
+  reported exactly ten migration-caused stale links in the owner contract and
+  functional inventory plus the nine inherited `UNREFINED` card-location
+  findings. The aggregate gate was not fully green and is not recorded as such.
+- **Preserved defects and operational risks:** retain FAI-first nontransactional
+  publication without receipt or recovery marker; the retained FAI is
+  incomplete-attempt evidence, not successful output or deletion authority.
+  Retain scheduler Bash `3.2` empty-array dry-run failure, CSU site bindings,
+  tolerated modules, fallback submit CWD, Java selection/version policy, and
+  nonempty-file-only post-checks. These remain characterized defects and are
+  neither fixed nor blessed. Local fixture/mock success is not real
+  samtools/GATK/Java, scheduler, cluster, production, scientific-review, or
+  biological evidence.
+- **Documentation and lifecycle decision:** batch the adjacent owner README,
+  final commands, current topology/coverage/ownership status, both diagnostic
+  routes, all ten migration links, every inbound lifecycle link, completed-card
+  move, and this risk ledger into one documentation-only close. The public DAG
+  and artifact flow did not change, so no diagram edit is warranted. Select no
+  later owner until this close is committed, pushed, and proved equal.
+- **Rollback and evidence ceiling:** reverse the documentation close before
+  reverting executable checkpoint `cd3b547`; published old-path baseline is
+  `9850a8d`. Preserve runtime artifacts during rollback and restore no duplicate
+  legacy source. The nine inherited `UNREFINED` findings remain a nonpassing
+  documentation ceiling, not authority for unrelated lifecycle changes.
+
+## 2026-08-03T00:42:49-0400 — MIG-03E documentation/lifecycle acceptance
+
+- **Canonical close:** added the adjacent implemented-owner README; repaired the
+  contract, architecture, functional inventory, coverage owner, documentation
+  ownership roster, roadmap, handoff, complete Step `00c` commands, and both
+  troubleshooting routes; moved `MIG-03E` to `COMPLETED`; repaired every inbound
+  lifecycle link; and recorded the executable evidence and risks above. No
+  executable, test, dependency, diagram, schema, or later-owner card changed.
+- **Exact migration-link result:** nonhistorical searches found no remaining
+  active-card link or legacy Step `00c` producer, validator, job, or direct-test
+  path. Historical old-path planning/baseline text remains immutable evidence in
+  the completed card and dated history rather than being rewritten as current
+  topology.
+- **Documentation gate:** `git diff --check` passed. The exact documentation
+  validator reported only the nine inherited `invalid card location` findings
+  under `docs/tasks/UNREFINED/`; all ten `MIG-03E`-caused missing links are
+  repaired. This is an expected-only nonpassing documentation result, not a
+  green gate and not authority to change those inherited files.
+- **Publication boundary:** stage only this impact-directed documentation and
+  lifecycle close, commit it separately from executable checkpoint `cd3b547`,
+  push normally, and prove local `HEAD`, configured upstream, and live remote
+  equality before selecting the next dependency-valid owner.
