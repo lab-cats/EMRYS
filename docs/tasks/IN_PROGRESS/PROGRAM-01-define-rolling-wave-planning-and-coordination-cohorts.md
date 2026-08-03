@@ -1,37 +1,38 @@
 # PROGRAM-01 — Define rolling-wave planning and coordination cohorts
 
-**Current execution boundary — Slice 2**
+**Current execution boundary — Slice 3**
 
-Only this slice is active. It replaces the completed physical-migration
-campaign boundary with a bounded repository-health runway without activating
-the preserved program remainder.
+Only this slice is active. It settles the program-owned trigger for the future
+`INTEGRATION_REVIEW` state without activating lifecycle implementation or the
+preserved program remainder.
 
 **Active objective**
 
-- Record that the one-unit-at-a-time physical-migration campaign paused after
-  completed MIG-03M and that no Step `09` or later owner is selected.
-- Activate only one separately planned repository-health package at a time
-  under the existing just-in-time and quiet-validation rules.
+- Resolve `CHOICE-LIFECYCLE-01`: persist `INTEGRATION_REVIEW` only when a frozen
+  candidate awaits asynchronous review beyond the current unpublished
+  integration package.
+- Remove the now-satisfied program decision from `TASK-LIFECYCLE-01`'s hard
+  blocker graph while leaving `DOC-GATE-01` unchanged as its sole blocker.
 - Keep this card in progress for later separately planned slices.
 
 **Active scope**
 
-- Correct the temporary task-start route, current-priority view, roadmap, and
-  handoff so they agree on the post-MIG-03M health boundary.
-- Freeze physical migration, runtime cleanup, lifecycle implementation,
-  default-branch integration, and the preserved program remainder; each still
-  requires its own later task-specific slice.
-- Do not select, create, or preload the next health package in this slice.
+- Update only the decision/question owners, reciprocal mutable-card metadata,
+  and minimal current handoff/roadmap status required by that decision.
+- Freeze validator and lifecycle implementation, physical migration, runtime
+  cleanup, default-branch integration, and the preserved program remainder.
 - Use quiet validation immediately; retain complete output for failures or an
   explicitly requested verbose run.
 
 **Active acceptance evidence**
 
-- The temporary route, current-priority view, roadmap, handoff, and this card
-  agree that MIG-03M is complete, physical migration is paused, and only
-  separately planned repository-health work may proceed.
-- No lifecycle dependency, validator behavior, runtime library, migration
-  owner, default branch, or preserved program-design decision changes.
+- `CHOICE-LIFECYCLE-01` has one durable decision, immediate same-package
+  integration remains in the active-card lifecycle, and asynchronous review
+  has an objective persistence trigger.
+- `TASK-LIFECYCLE-01` names only `DOC-GATE-01` as a hard blocker; reciprocal
+  mutable-card metadata agrees.
+- No validator behavior, lifecycle directory, runtime library, migration owner,
+  default branch, or other preserved program-design decision changes.
 - Existing program information below remains present and unchanged in meaning.
 - Git checks pass and the documentation validator introduces no finding beyond
   the nine inherited `UNREFINED` locations. Computational validation is not
@@ -129,7 +130,7 @@ and unnecessary context for bounded work.
 
 ## Completion unblocks
 
-- [TASK-LIFECYCLE-01](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Defines the rolling-wave, current-tranche, and refactor-plan reconciliation semantics required by the lifecycle implementation; completed `CONCURRENCY-02` is satisfied and `DOC-GATE-01` remains required.
+- None.
 
 ## Prerequisites
 
@@ -159,7 +160,6 @@ and unnecessary context for bounded work.
 ## Questions owned by this card
 
 - [`CHOICE-PROGRAM-01`](../../design/QUESTIONS.md#choice-program-01--first-planning-cohorts-and-delivery-tranche).
-- [`CHOICE-LIFECYCLE-01`](../../design/QUESTIONS.md#choice-lifecycle-01--durable-integration-review-trigger).
 - [`CHOICE-EPIC-01`](../../design/QUESTIONS.md#choice-epic-01--initial-logical-epic-taxonomy-and-membership).
 
 ## In scope
@@ -280,6 +280,8 @@ established the temporary critical runway without completing this card. The
 user later reassessed that boundary after MIG-03A and retained it for the
 one-unit-at-a-time physical-migration campaign through completed MIG-03M.
 Published authority-sync checkpoint `a6bd366` is the clean base for Slice `2`,
-which records the post-MIG-03M repository-health runway. This card remains
+which records the post-MIG-03M repository-health runway in published checkpoint
+`94a4ef7`. Slice `3` settles only `CHOICE-LIFECYCLE-01` and removes that
+satisfied decision from lifecycle blocker metadata. This card remains
 `IN_PROGRESS`; none of its preserved unsliced program-design deliverables is
 activated or claimed complete.

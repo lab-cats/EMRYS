@@ -32,9 +32,11 @@ unintegrated work as approved or complete.
   and upstream equality.
 - Exact candidate SHA, worktree, checks, and fragment identity remain live
   state in `HANDOFF.md`, not duplicated in the task card.
-- [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-  decides the objective trigger for persisting `INTEGRATION_REVIEW`; routine
-  immediate integration must not create meaningless status churn.
+- The resolved
+  [`CHOICE-LIFECYCLE-01`](../../design/DECISIONS.md#govern-future-work-through-a-file-backed-task-registry)
+  persists `INTEGRATION_REVIEW` only for asynchronous review beyond the current
+  unpublished integration package; routine same-package integration remains in
+  the active-card lifecycle.
 - Current lifecycle directories remain flat and authoritative until an atomic
   migration passes parity and final validation. The selected target then uses
   permanent ID-only canonical card paths with reviewed structured lifecycle
@@ -46,7 +48,6 @@ unintegrated work as approved or complete.
 ## Blocked by
 
 - [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
-- [PROGRAM-01](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md) — Required: the rolling tranche model must settle when an asynchronous handoff enters the durable review queue.
 
 ## Completion unblocks
 
@@ -69,13 +70,13 @@ unintegrated work as approved or complete.
   rolling-delivery decisions in
   [`DECISIONS.md`](../../design/DECISIONS.md), and the extracted documentation
   validator plus focused tests.
-- Completed `CONCURRENCY-02`, the live `DOC-GATE-01` and `PROGRAM-01` cards,
-  and the live handoff/roadmap owners.
+- Completed `CONCURRENCY-02`, live `DOC-GATE-01`, the resolved program-owned
+  integration-review trigger, and the live handoff/roadmap owners.
 
 ## Questions owned by this card
 
-- None. `PROGRAM-01` owns the remaining integration-review trigger; this card
-  owns only implementation mechanics after that decision is complete.
+- None. The program-owned integration-review trigger is resolved; this card
+  owns implementation mechanics only.
 
 ## In scope
 

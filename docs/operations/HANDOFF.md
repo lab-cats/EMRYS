@@ -11,9 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published post-MIG-03M
-  authority synchronization
-  `a6bd366e5fd5c4088019a561d1e81b2960898b9b`.
+  exact SHA from live Git. Its frozen parent is published health-runway
+  activation `94a4ef7b5a6dff1188f74d47c09c9473e09429d2`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -44,19 +43,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   published and local/upstream/live-remote-equal. Documentation/lifecycle close
   `3f91fce` is published and equal on both the prior campaign branch and the
   current neutral remediation branch. Authority-sync checkpoint `a6bd366` is
-  published and local/upstream/live-remote-equal.
-- Current package: Slice `2` of active
+  published and local/upstream/live-remote-equal. Health-runway activation
+  `94a4ef7` is also published and equal.
+- Current package: Slice `3` of active
   [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
-  replacing the completed physical-migration campaign boundary with a bounded
-  repository-health runway. Completed
-  [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
-  remains the latest migration; Step `09` and every later owner/review card
-  remain uncreated and unselected.
-- Package type at this checkpoint: documentation-only runway-state
-  reconciliation. It changes or runs no executable, test, configuration,
-  dependency, schema, fixture, report template, card lifecycle, runtime state,
-  or migration owner.
-- Remote publication and upstream equality: authority sync `a6bd366` is
+  resolving the durable integration-review trigger and removing the satisfied
+  program decision from `TASK-LIFECYCLE-01`'s blocker metadata. `DOC-GATE-01`
+  remains that card's sole blocker; no implementation card is selected.
+- Package type at this checkpoint: documentation-only program decision and
+  mutable-card dependency correction. It changes or runs no executable, test,
+  validator behavior, lifecycle directory, configuration, dependency, schema,
+  fixture, report template, runtime state, or migration owner.
+- Remote publication and upstream equality: health-runway activation `94a4ef7`
+  is
   verified local/upstream/live-remote-equal. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default

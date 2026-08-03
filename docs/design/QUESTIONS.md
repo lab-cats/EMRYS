@@ -249,21 +249,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   the smallest evidence-supported vertical slice and let integrated feedback
   shape later tranches.
 
-### CHOICE-LIFECYCLE-01 — Durable integration-review trigger
-
-- **Question:** Must every frozen candidate enter `INTEGRATION_REVIEW`, or only
-  a candidate whose review persists beyond the current unpublished integration
-  package?
-- **Why it matters:** always transitioning makes short serialized integration
-  noisy, while an undefined optional transition can hide a durable review
-  queue.
-- **Owning card:**
-  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
-- **Decision deadline:** before `TASK-LIFECYCLE-01` task-specific planning.
-- **Recommendation:** reserve the durable state for asynchronous review that
-  survives beyond one unpublished integration package; keep immediate frozen
-  handoff and integration within the active card lifecycle.
-
 ### CHOICE-EPIC-01 — Initial logical epic taxonomy and membership
 
 - **Question:** Which stable epic IDs describe the live task families, and may
@@ -281,6 +266,10 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
 
+- `CHOICE-LIFECYCLE-01`: persist `INTEGRATION_REVIEW` only for asynchronous
+  candidate review that survives beyond the current unpublished integration
+  package; same-package frozen handoff and integration remain in the active
+  card lifecycle;
 - TSV manifests and explicit manifest-defined sample pairing;
 - local-first development with SLURM scaling;
 - descendant branches and separate docpatch gates;

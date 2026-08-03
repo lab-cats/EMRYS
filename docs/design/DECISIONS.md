@@ -726,6 +726,16 @@ actionable-card status authority until the atomic target migration above.
 `TASK-EPIC-01` later adds orthogonal navigation without changing lifecycle
 authority.
 
+`CHOICE-LIFECYCLE-01` resolved on 2026-08-03: persist the future
+`INTEGRATION_REVIEW` state only when a frozen candidate awaits asynchronous
+review beyond the current unpublished integration package. A frozen handoff
+that is reviewed and integrated within that same unpublished package remains
+under the active card lifecycle; it does not create a durable review-queue
+transition. Once persisted, the future state's no-scope-expansion, exact-
+candidate, correction-return, and completion-after-integration rules remain
+mandatory. This decision settles the trigger only; `TASK-LIFECYCLE-01` still
+owns implementation and tests.
+
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative
 of expanding the roadmap into task specifications would duplicate status and
