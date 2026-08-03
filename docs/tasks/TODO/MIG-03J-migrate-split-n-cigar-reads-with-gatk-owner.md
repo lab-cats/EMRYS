@@ -180,13 +180,43 @@ Step `05` as the smallest next JIT unit but does not select it.
   GATK/Java/samtools selection, project-storage temp and lock behavior,
   rollback/residue preservation, focused tests, provenance, Git rollback, and
   the local-only evidence ceiling.
+- Final root commands invoke the mode-`0644` producer through Bash and the
+  validator through an explicit interpreter. Arbitrary-CWD forms use absolute
+  producer/interpreter, BAM/BAI, FASTA/FAI/DICT, output/report, GATK, Java, and
+  samtools paths. No installed command, package import, legacy alias, wrapper,
+  symlink, ambient `PYTHONPATH`, or global `sys.path` route is supported.
+- Keep dry-run effects distinct. Producer dry-run validates existing input/
+  reference files and executable paths, prints scratch/backup/lock/GATK-temp
+  plans, invokes no version or data tool, and writes nothing. Validator dry-run
+  invokes its explicit checks, prints five TSV rows plus the completion line,
+  and writes no report. Scheduler use starts in the checkout, creates `logs/`
+  before `sbatch`, and documents submit-CWD fallback, exported `/tmp`, body-
+  level logs, defaults/overrides, Java resolution/version floor, tolerated
+  module diagnostics, warning-only missing tools, version-command failures,
+  Bash `3.2`, and stale-pair false success without hardening any of them.
+- Add a Step `05` rollback-failure/stale-pair recovery route at documentation
+  close. Before any cleanup or same-name retry, preserve all surviving final,
+  temp, backup, GATK-temp, lock/owner, input/reference, unrelated, stream, job/
+  log, checkout, and tool/version evidence. A prior-BAI-only state can remain
+  after failed BAM restore while cleanup erases backups, lock, scratch, and all
+  recovery evidence; absence is not proof of cleanliness. Rule out the lock
+  owner, running producer, and Step `06` readers; do not combine pair members,
+  infer attempt identity from timestamps, remove a foreign lock, or adopt stale
+  scheduler success. Use an isolated output directory for any separately
+  authorized diagnostic retry; Git rollback never restores runtime artifacts.
+- Correct the owner contract from unimplemented/flat and stale Step-`00a`/`02`
+  helper attribution to the final owner, neutral report/BAM libraries, and
+  unchanged public reference-provenance bridge. Producer success proves only
+  structural publication, validator exit `0` may contain failed rows, and
+  scheduler success may rediscover stale outputs. Retain historical cluster
+  observations as historical rather than new migration evidence.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, new transaction/receipt/recovery mechanism, scheduler abstraction,
   reference parser, GATK policy, manifest mutation, or public library API.
 
 ## Blocked by
 
-- [REVIEW-UX-03J](../IN_PROGRESS/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03J](../COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -295,7 +325,6 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture and reliability reviews are complete in their
-respective completed cards; usability alone is active. No
-executable/test path changed, no computational test ran, and no Step `06` or
-later owner is preloaded.
+Not selected. Architecture, reliability, and usability reviews are complete in
+their respective completed cards. No executable/test path changed, no
+computational test ran, and no Step `06` or later owner is preloaded.

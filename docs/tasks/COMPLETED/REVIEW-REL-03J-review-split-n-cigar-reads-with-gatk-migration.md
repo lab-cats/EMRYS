@@ -31,7 +31,7 @@ must preserve and characterize these defects without fixing or approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03J](../IN_PROGRESS/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: active usability review follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03J](REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: completed usability review follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

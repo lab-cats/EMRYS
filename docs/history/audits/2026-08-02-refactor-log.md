@@ -3753,3 +3753,59 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   selection-caused path, lifecycle, dependency, cycle, orphan, anchor, or
   diagram finding remains. The expected-only result is nonpassing and is not
   called green.
+
+## 2026-08-03T07:12:43-0400 — REVIEW-UX-03J completed
+
+- **Verified parent:** usability-selection checkpoint
+  `f41f988d36c56ac3212d47d284e3eeef4e88e5ad` was clean, tracked/untracked
+  empty, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch before this read-only pass.
+- **High decision — final journeys are explicit path surfaces:** documentation
+  close replaces every active producer, validator, job, focused-test, helper,
+  artifact, and coverage path. Root use invokes the mode-`0644` final producer
+  through Bash and validator through an explicit interpreter; arbitrary-CWD
+  use makes all code, input, output/report, reference, GATK, Java, and samtools
+  paths absolute. No installed command, package, alias, wrapper, symlink,
+  ambient `PYTHONPATH`, or global `sys.path` route is supported.
+- **High decision — dry-run effects and scheduler diagnostics stay distinct:**
+  producer dry-run validates files/executable paths, prints scratch/backup/
+  lock/GATK-temp plans, invokes no version or data tool, and writes nothing.
+  Validator dry-run invokes explicit checks, emits five rows plus completion,
+  and writes no report. Scheduler submission starts in the checkout after
+  `logs/` exists and retains submit-CWD fallback, exported `/tmp`, body logs,
+  defaults/overrides, Java resolution/version floor, tolerated module lists,
+  warning-only missing tools, version-command failures, Bash `3.2`, and stale-
+  pair false success without hardening or approval.
+- **High decision — recovery never combines or silently retries a pair:**
+  preserve all surviving final, temp, backup, GATK-temp, lock/owner, input/
+  reference, unrelated-file, stream, job/log, checkout, and tool/version
+  evidence. Failed BAM restoration can leave only the prior BAI while cleanup
+  erases backups, lock, scratch, and recovery evidence; signal cleanup also
+  leaves no attempt marker. Absence is not proof of cleanliness. Rule out the
+  lock owner, running producer, and Step `06` readers; never combine members,
+  infer one attempt from timestamps, remove a foreign lock, or adopt stale
+  wrapper success. Only an isolated output directory is a safe separately
+  authorized diagnostic retry. Git rollback never restores runtime artifacts.
+- **Medium decision — status, helper ownership, and provenance need correction:**
+  the contract must stop calling the final home unimplemented or the owner
+  flat and must route neutral validation-report/BAM helpers plus unchanged
+  public reference provenance accurately. Producer success does not prove the
+  GATK transformation or attempt binding; validator exit `0` may publish failed
+  rows; scheduler exit `0` may accept stale outputs. Artifact evidence changes
+  only path/hash, and historical cluster observations remain historical rather
+  than migration proof.
+- **Accepted findability and rollback:** one adjacent README and the exact
+  canonical documentation roster own commands, focused direct/central tests,
+  diagnostics, preservation, provenance, evidence ceiling, and rollback.
+  Revert docs, atomic five-move/ten-update cutover, scheduler, validator,
+  producer admission/signal, then producer transaction checkpoints in that
+  order. No compatibility surface is warranted.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent, so independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. No usability-review path, lifecycle, dependency, cycle,
+  orphan, anchor, or diagram finding remains. This expected-only ceiling is
+  nonpassing, not green, and not authority to alter inherited lifecycle state.
