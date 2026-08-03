@@ -426,3 +426,28 @@ this card's move to `COMPLETED`, all inbound lifecycle links, and the audit.
 Rollback reverts documentation first, then owner cutover, then helper
 preparation; the old-path evidence checkpoints remain immutable. Runtime
 artifacts are preserved during Git rollback.
+
+### Old-path helper baseline
+
+Captured from clean, published, local/upstream/live-remote-equal plan checkpoint
+`d8638a0a99993a4a3624bb0ffdfae95f03af9124` with the repository remaining
+tracked/untracked clean. An isolated Python `3` exact-load probe ran from an
+auto-removed non-repository temporary directory with bytecode writes disabled.
+
+`run_tool(Path("/bin/sh"), "-c", <probe>)` preserved argv exactly, returned
+status `7`, stdout `probe-out\n`, and stderr `probe-err\n`. Calling the old
+helper with `/definitely/missing/mig03f-tool --probe` raised
+`FileNotFoundError` with errno `2`. `parse_header(..., "S")` returned:
+
+- valid: `(True, True, "HD=1 RG=1")`;
+- missing: `(False, False, "HD=0 RG=0")`;
+- two `@HD` plus two `@RG`: `(False, False, "HD=2 RG=2")`; and
+- coordinate header with mismatched RG ID: `(True, False, "HD=1 RG=1")`.
+
+The sorted canonical JSON for module path, command result, missing-tool
+exception, header tuples, `sys.path` equality, and CWD residue has SHA-256
+`e5676241625a500ddcef922f98c33fc7ddcd25b3f750fbd495b6a453b0a12d23`.
+`sys.path` was unchanged and the temporary CWD was empty after execution. This
+is local interpreter/subprocess characterization only; no tracked file,
+coverage baseline, dependency, real samtools runtime, scheduler, production,
+scientific-review, or biological evidence changed.

@@ -2171,3 +2171,21 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   never deleted by Git rollback. No executable/test mutation or computational,
   scheduler, production, scientific-review, or biological evidence changed or
   ran in this planning slice.
+
+## 2026-08-03T01:19:02-0400 — MIG-03F old helper baseline captured
+
+- **Exact probe:** from clean, published, local/upstream/live-remote-equal plan
+  `d8638a0`, an isolated non-repository-CWD exact-load of the flat Step `02`
+  validator recorded `run_tool` argv, status `7`, `probe-out` stdout,
+  `probe-err` stderr, and missing-tool `FileNotFoundError(errno=2)`. Bytecode
+  writes were disabled and the temporary directory removed itself.
+- **Header results:** valid returned `(true, true, HD=1 RG=1)`; empty returned
+  `(false, false, HD=0 RG=0)`; two HD/two RG returned
+  `(false, false, HD=2 RG=2)`; and a coordinate header with wrong RG ID returned
+  `(true, false, HD=1 RG=1)`. The complete canonical JSON SHA-256 is
+  `e5676241625a500ddcef922f98c33fc7ddcd25b3f750fbd495b6a453b0a12d23`.
+- **Residue and evidence ceiling:** `sys.path` remained byte-for-byte equal, the
+  temporary CWD remained empty, and Git stayed tracked/untracked clean. This is
+  local interpreter/subprocess characterization only; no executable/test file,
+  coverage, dependency, real samtools runtime, scheduler, production,
+  scientific-review, or biological evidence changed.
