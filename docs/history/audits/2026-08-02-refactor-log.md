@@ -1560,3 +1560,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   dependency action, scheduler submission, executable mutation, or future-owner
   preload occurred. Full applicable validation and batched migration
   documentation remain card-boundary work.
+
+## 2026-08-02T23:39:53-0400 — REVIEW-ARCH-03E selected
+
+- **Selection:** move only `REVIEW-ARCH-03E` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after JIT-definition checkpoint `3c6aaf0`
+  was clean, published, and equal across local `HEAD`, configured upstream, and
+  the live remote branch. `REVIEW-REL-03E`, `REVIEW-UX-03E`, and `MIG-03E`
+  remain unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time
+  adversarial pass over DAG eligibility, final-owner placement, exact path and
+  import changes, job delegation, neutral-report and temporary reference-
+  provenance loading, artifact provenance, explicit caller inventories, test
+  ownership, wrapper necessity, atomicity, and rollback. The same campaign
+  agent performs the pass, so independent authorship is not claimed.
+  Executable/test mutation and computational, runtime, scheduler, production,
+  scientific-review, and biological evidence remain out of scope.

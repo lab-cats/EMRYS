@@ -31,7 +31,7 @@ silently promote a deferred shared-library decision.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03E](REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) — Fully: reliability review requires an architecture-corrected owner, import, caller, and rollback boundary.
+- [REVIEW-REL-03E](../TODO/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) — Fully: reliability review requires an architecture-corrected owner, import, caller, and rollback boundary.
 
 ## Prerequisites
 
