@@ -53,6 +53,22 @@ assert_fails() {
     fi
 }
 
+assert_exits() {
+    local expected_status="$1"
+    local output_file="$2"
+    local status
+    shift 2
+
+    set +e
+    "$@" >"$output_file" 2>&1
+    status=$?
+    set -e
+    [[ "$status" -eq "$expected_status" ]] || {
+        cat "$output_file" >&2
+        fail "expected exit $expected_status, got $status: $*"
+    }
+}
+
 assert_file_equals() {
     local path="$1"
     local expected="$2"
@@ -78,6 +94,52 @@ assert_no_step06_scratch() {
         find "$qc_dir" -name '*.step06.*' -print >&2
         fail "Step 06 scratch files remain in $qc_dir"
     fi
+}
+
+assert_no_step06_final_set() {
+    local sample="$1"
+    local output_dir="$2"
+    local qc_dir="$3"
+
+    assert_not_exists "$output_dir/${sample}.FWD_like.bam"
+    assert_not_exists "$output_dir/${sample}.FWD_like.bam.bai"
+    assert_not_exists "$output_dir/${sample}.REV_like.bam"
+    assert_not_exists "$output_dir/${sample}.REV_like.bam.bai"
+    assert_not_exists "$qc_dir/${sample}.orientation_counts.tsv"
+}
+
+assert_no_step06_attempt_marker() {
+    local output_dir="$1"
+    local qc_dir="$2"
+    local dir
+
+    for dir in "$output_dir" "$qc_dir"; do
+        if [[ -d "$dir" ]] && find "$dir" \( -iname '*receipt*' -o -iname '*recovery*' \) -print | grep -q .; then
+            find "$dir" \( -iname '*receipt*' -o -iname '*recovery*' \) -print >&2
+            fail "Step 06 receipt or recovery marker remains in $dir"
+        fi
+    done
+}
+
+prepare_child_failure_dirs() {
+    local output_dir="$1"
+    local qc_dir="$2"
+
+    mkdir -p "$output_dir" "$qc_dir"
+    printf 'unrelated output bytes\n' >"$output_dir/unrelated.txt"
+    printf 'unrelated qc bytes\n' >"$qc_dir/unrelated.txt"
+}
+
+assert_child_failure_state() {
+    local output_dir="$1"
+    local qc_dir="$2"
+
+    assert_no_step06_final_set ABE_EV_2 "$output_dir" "$qc_dir"
+    assert_not_exists "$output_dir/.ABE_EV_2.step06.lock"
+    assert_file_equals "$output_dir/unrelated.txt" "unrelated output bytes"
+    assert_file_equals "$qc_dir/unrelated.txt" "unrelated qc bytes"
+    assert_no_step06_scratch "$output_dir" "$qc_dir"
+    assert_no_step06_attempt_marker "$output_dir" "$qc_dir"
 }
 
 write_input_bam_pair() {
@@ -143,9 +205,9 @@ write_filtered_bam() {
     local output_bam="\$3"
     local count
 
-    if [[ -n "\${FAKE_VIEW_B_FAIL_FLAG:-}" && "\$flag" == "\$FAKE_VIEW_B_FAIL_FLAG" ]]; then
+    if [[ -n "\${FAKE_FILTER_FAIL_FLAG:-}" && "\$flag" == "\$FAKE_FILTER_FAIL_FLAG" ]]; then
         printf 'fake samtools view -b forced failure for flag %s\\n' "\$flag" >&2
-        exit 65
+        exit "\${FAKE_FILTER_FAIL_STATUS:-71}"
     fi
 
     count="\$(count_for_flag "\$flag")"
@@ -211,6 +273,10 @@ case "\$subcommand" in
         [[ -n "\$input_bam" ]] || { printf 'fake samtools view missing input BAM\\n' >&2; exit 64; }
 
         if [[ "\$count_mode" == true ]]; then
+            if [[ -n "\${FAKE_COUNT_FAIL_MATCH:-}" && "\$input_bam" == *"\$FAKE_COUNT_FAIL_MATCH"* ]]; then
+                printf 'fake samtools count forced failure for %s\\n' "\$input_bam" >&2
+                exit "\${FAKE_COUNT_FAIL_STATUS:-74}"
+            fi
             if [[ -n "\$flag" ]]; then
                 count_for_flag "\$flag"
             else
@@ -248,6 +314,11 @@ case "\$subcommand" in
         [[ -n "\$output_bam" ]] || { printf 'fake samtools merge missing -o output\\n' >&2; exit 64; }
         [[ "\${#inputs[@]}" -eq 2 ]] || { printf 'fake samtools merge expected two inputs\\n' >&2; exit 64; }
 
+        if [[ -n "\${FAKE_MERGE_FAIL_MATCH:-}" && "\$output_bam" == *"\$FAKE_MERGE_FAIL_MATCH"* ]]; then
+            printf 'fake samtools merge forced failure for %s\\n' "\$output_bam" >&2
+            exit "\${FAKE_MERGE_FAIL_STATUS:-72}"
+        fi
+
         total=0
         for input in "\${inputs[@]}"; do
             [[ -s "\$input" ]] || { printf 'fake samtools merge input missing or empty: %s\\n' "\$input" >&2; exit 64; }
@@ -259,6 +330,10 @@ case "\$subcommand" in
             total=0
         fi
 
+        if [[ -n "\${FAKE_MERGE_COUNT_MATCH:-}" && "\$output_bam" == *"\$FAKE_MERGE_COUNT_MATCH"* ]]; then
+            total="\${FAKE_MERGE_COUNT:-\$total}"
+        fi
+
         {
             printf 'MERGED:%s %s\\n' "\${inputs[0]}" "\${inputs[1]}"
             printf 'COUNT:%s\\n' "\$total"
@@ -267,6 +342,10 @@ case "\$subcommand" in
     index)
         input_bam="\${1:-}"
         [[ -n "\$input_bam" ]] || { printf 'fake samtools index missing BAM\\n' >&2; exit 64; }
+        if [[ -n "\${FAKE_INDEX_FAIL_MATCH:-}" && "\$input_bam" == *"\$FAKE_INDEX_FAIL_MATCH"* ]]; then
+            printf 'fake samtools index forced failure for %s\\n' "\$input_bam" >&2
+            exit "\${FAKE_INDEX_FAIL_STATUS:-73}"
+        fi
         if [[ -n "\${FAKE_INDEX_EMPTY_MATCH:-}" && "\$input_bam" == *"\$FAKE_INDEX_EMPTY_MATCH"* ]]; then
             : > "\$input_bam.bai"
         else
@@ -373,6 +452,22 @@ assert_fails "$invalid_threads_output" bash "$SCRIPT" \
     --samtools-bin "$fake_bin/samtools"
 assert_contains "$invalid_threads_output" "--threads must be a positive integer"
 
+printf 'Running missing explicit samtools pre-directory failure check...\n'
+missing_samtools_output="$tmp_dir/missing_samtools.out"
+missing_samtools_dir="$tmp_dir/results/missing_samtools/orientation/ABE_EV_2"
+missing_samtools_qc="$tmp_dir/results/missing_samtools/qc/orientation"
+assert_fails "$missing_samtools_output" bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$missing_samtools_dir" \
+    --qc-dir "$missing_samtools_qc" \
+    --threads 2 \
+    --samtools-bin "$tmp_dir/missing/samtools" \
+    --execute
+assert_contains "$missing_samtools_output" "samtools does not exist"
+assert_not_exists "$missing_samtools_dir"
+assert_not_exists "$missing_samtools_qc"
+
 printf 'Running dry-run side-effect-free check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/orientation/ABE_EV_2"
@@ -458,6 +553,159 @@ assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "Step 06 read-orientation output details:"
 assert_not_exists "$execute_output_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$execute_output_dir" "$execute_qc_dir"
+
+printf 'Running basename/PATH execute from arbitrary CWD check...\n'
+arbitrary_cwd="$tmp_dir/arbitrary_cwd"
+arbitrary_output="$tmp_dir/arbitrary_cwd.out"
+arbitrary_output_dir="$tmp_dir/results/arbitrary/orientation/ABE_EV_2"
+arbitrary_qc_dir="$tmp_dir/results/arbitrary/qc/orientation"
+mkdir -p "$arbitrary_cwd"
+(
+    cd "$arbitrary_cwd"
+    SLURM_JOB_ID=path001 bash "$SCRIPT" \
+        --sample-id ABE_EV_2 \
+        --input-bam "$input_bam" \
+        --output-dir "$arbitrary_output_dir" \
+        --qc-dir "$arbitrary_qc_dir" \
+        --threads 2 \
+        --samtools-bin samtools \
+        --execute
+) >"$arbitrary_output" 2>&1
+[[ -s "$arbitrary_output_dir/ABE_EV_2.FWD_like.bam" ]] || fail "arbitrary-CWD run did not publish FWD_like BAM"
+[[ -s "$arbitrary_output_dir/ABE_EV_2.FWD_like.bam.bai" ]] || fail "arbitrary-CWD run did not publish FWD_like BAI"
+[[ -s "$arbitrary_output_dir/ABE_EV_2.REV_like.bam" ]] || fail "arbitrary-CWD run did not publish REV_like BAM"
+[[ -s "$arbitrary_output_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "arbitrary-CWD run did not publish REV_like BAI"
+[[ -s "$arbitrary_qc_dir/ABE_EV_2.orientation_counts.tsv" ]] || fail "arbitrary-CWD run did not publish counts TSV"
+assert_contains "$arbitrary_output" "samtools bin: $fake_bin/samtools"
+if find "$arbitrary_cwd" -mindepth 1 -print | grep -q .; then
+    find "$arbitrary_cwd" -mindepth 1 -print >&2
+    fail "arbitrary-CWD run left invocation-directory residue"
+fi
+assert_not_exists "$arbitrary_output_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$arbitrary_output_dir" "$arbitrary_qc_dir"
+assert_no_step06_attempt_marker "$arbitrary_output_dir" "$arbitrary_qc_dir"
+
+printf 'Running filter child exit propagation and cleanup check...\n'
+filter_fail_output="$tmp_dir/filter_fail.out"
+filter_fail_dir="$tmp_dir/results/filter_fail/orientation/ABE_EV_2"
+filter_fail_qc="$tmp_dir/results/filter_fail/qc/orientation"
+prepare_child_failure_dirs "$filter_fail_dir" "$filter_fail_qc"
+assert_exits 71 "$filter_fail_output" env \
+    FAKE_FILTER_FAIL_FLAG=147 \
+    FAKE_FILTER_FAIL_STATUS=71 \
+    SLURM_JOB_ID=filter071 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$filter_fail_dir" \
+    --qc-dir "$filter_fail_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$filter_fail_output" "fake samtools view -b forced failure for flag 147"
+assert_child_failure_state "$filter_fail_dir" "$filter_fail_qc"
+
+printf 'Running merge child exit propagation and cleanup check...\n'
+merge_fail_output="$tmp_dir/merge_fail.out"
+merge_fail_dir="$tmp_dir/results/merge_fail/orientation/ABE_EV_2"
+merge_fail_qc="$tmp_dir/results/merge_fail/qc/orientation"
+prepare_child_failure_dirs "$merge_fail_dir" "$merge_fail_qc"
+assert_exits 72 "$merge_fail_output" env \
+    FAKE_MERGE_FAIL_MATCH=FWD_like.tmp.bam \
+    FAKE_MERGE_FAIL_STATUS=72 \
+    SLURM_JOB_ID=merge072 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$merge_fail_dir" \
+    --qc-dir "$merge_fail_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$merge_fail_output" "fake samtools merge forced failure"
+assert_child_failure_state "$merge_fail_dir" "$merge_fail_qc"
+
+printf 'Running index child exit propagation and cleanup check...\n'
+index_fail_output="$tmp_dir/index_fail.out"
+index_fail_dir="$tmp_dir/results/index_fail/orientation/ABE_EV_2"
+index_fail_qc="$tmp_dir/results/index_fail/qc/orientation"
+prepare_child_failure_dirs "$index_fail_dir" "$index_fail_qc"
+assert_exits 73 "$index_fail_output" env \
+    FAKE_INDEX_FAIL_MATCH=REV_like.tmp.bam \
+    FAKE_INDEX_FAIL_STATUS=73 \
+    SLURM_JOB_ID=index073 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$index_fail_dir" \
+    --qc-dir "$index_fail_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$index_fail_output" "fake samtools index forced failure"
+assert_child_failure_state "$index_fail_dir" "$index_fail_qc"
+
+printf 'Running count child exit propagation and cleanup check...\n'
+count_fail_output="$tmp_dir/count_fail.out"
+count_fail_dir="$tmp_dir/results/count_fail/orientation/ABE_EV_2"
+count_fail_qc="$tmp_dir/results/count_fail/qc/orientation"
+prepare_child_failure_dirs "$count_fail_dir" "$count_fail_qc"
+assert_exits 74 "$count_fail_output" env \
+    FAKE_COUNT_FAIL_MATCH=FWD_like.tmp.bam \
+    FAKE_COUNT_FAIL_STATUS=74 \
+    SLURM_JOB_ID=count074 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$count_fail_dir" \
+    --qc-dir "$count_fail_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$count_fail_output" "fake samtools count forced failure"
+assert_child_failure_state "$count_fail_dir" "$count_fail_qc"
+
+printf 'Running assigned-greater-than-input rejection check...\n'
+assigned_input_bam="$fixture_dir/assigned_gt_input/ABE_EV_2.split_ncigar.bam"
+FAKE_INPUT_COUNT=10 write_input_bam_pair "$assigned_input_bam"
+assigned_output="$tmp_dir/assigned_gt_input.out"
+assigned_dir="$tmp_dir/results/assigned_gt_input/orientation/ABE_EV_2"
+assigned_qc="$tmp_dir/results/assigned_gt_input/qc/orientation"
+prepare_child_failure_dirs "$assigned_dir" "$assigned_qc"
+assert_fails "$assigned_output" env SLURM_JOB_ID=assigned001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$assigned_input_bam" \
+    --output-dir "$assigned_dir" \
+    --qc-dir "$assigned_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$assigned_output" "assigned_records exceeds input_records: 18 > 10"
+assert_child_failure_state "$assigned_dir" "$assigned_qc"
+
+printf 'Running flag-subcount/merged-count mismatch publication defect check...\n'
+mismatch_output="$tmp_dir/count_mismatch.out"
+mismatch_dir="$tmp_dir/results/count_mismatch/orientation/ABE_EV_2"
+mismatch_qc="$tmp_dir/results/count_mismatch/qc/orientation"
+mkdir -p "$mismatch_dir" "$mismatch_qc"
+printf 'unrelated mismatch output bytes\n' >"$mismatch_dir/unrelated.txt"
+printf 'unrelated mismatch qc bytes\n' >"$mismatch_qc/unrelated.txt"
+FAKE_MERGE_COUNT_MATCH=FWD_like.tmp.bam \
+FAKE_MERGE_COUNT=12 \
+SLURM_JOB_ID=mismatch001 \
+    run_step06 ABE_EV_2 "$input_bam" "$mismatch_dir" "$mismatch_qc" --execute >"$mismatch_output" 2>&1
+mismatch_counts="$mismatch_qc/ABE_EV_2.orientation_counts.tsv"
+[[ -s "$mismatch_dir/ABE_EV_2.FWD_like.bam" ]] || fail "mismatch run did not publish FWD_like BAM"
+[[ -s "$mismatch_dir/ABE_EV_2.FWD_like.bam.bai" ]] || fail "mismatch run did not publish FWD_like BAI"
+[[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam" ]] || fail "mismatch run did not publish REV_like BAM"
+[[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "mismatch run did not publish REV_like BAI"
+assert_contains "$mismatch_counts" $'ABE_EV_2\t20\t5\t6\t4\t3\t12\t7\t19\t1\t0.950000'
+assert_file_equals "$mismatch_dir/unrelated.txt" "unrelated mismatch output bytes"
+assert_file_equals "$mismatch_qc/unrelated.txt" "unrelated mismatch qc bytes"
+assert_contains "$mismatch_output" "Step 06 read-orientation output details:"
+assert_not_exists "$mismatch_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$mismatch_dir" "$mismatch_qc"
+assert_no_step06_attempt_marker "$mismatch_dir" "$mismatch_qc"
 
 printf 'Running existing foreign lock failure check...\n'
 lock_dir="$tmp_dir/results/locked/orientation/ABE_EV_2"
