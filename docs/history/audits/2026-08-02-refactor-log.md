@@ -2882,3 +2882,41 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   production, scientific-review, or biological evidence changed or ran in
   this selection slice. The reviewed five-move/nine-update ceiling and three-
   checkpoint delivery sequence remain binding.
+
+## 2026-08-03T04:26:47-0400 — MIG-03H task-specific plan frozen
+
+- **Git and slicing:** planning began from clean, tracked/untracked-empty,
+  published, local/upstream/live-remote-equal selection `13b8a7e`, with no
+  recovery/index lock or mutable-lane collision. Publish one exact three-test
+  old-path baseline, one atomic fourteen-file cutover/executable card boundary,
+  and one separate documentation close. Batch canonical links and small docs in
+  that close; no later owner is preloaded.
+- **Baseline boundary:** modify only the direct Step `03` shell and validator
+  tests plus the central SLURM suite. Add exact partial/empty predecessor,
+  malformed nonempty, arbitrary-CWD, post-build mutation, venv/PATH selection,
+  dry-run logs, and stale-output false-success oracles. Run only syntax, those
+  two direct suites, and scheduler cases selected by the Step `03` basename;
+  no coverage or broad suite runs here.
+- **Cutover boundary:** move only producer, validator, mode-`0644` job, and two
+  direct tests; update only Make, artifact producer/assertion, public CLI,
+  SLURM, roster, shared-report map, coverage row, and literal Make fixture.
+  Production edits remain the reviewed usage path, report depth, and job child
+  path; direct-test edits remain the reviewed roots, final targets, and private
+  exact roster load. No docs, wrapper, alias, package, descriptor, schema,
+  transaction, receipt, recovery marker, dependency, or later owner enters the
+  slice.
+- **Gate and truthful ceiling:** after minimal final-path checks, measure
+  coverage with only the intentionally stale documentation assertion
+  deselected, then run the exact RUNBOOK aggregate once with an explicit result
+  JSON. The aggregate may report only that assertion with ten deferred Step
+  `03` links plus nine inherited `UNREFINED` locations; this is an expected-
+  only nonpassing ceiling, not a green gate. Any other failure must be
+  understood before commit.
+- **Close and rollback:** the separate close adds the owner README, repairs the
+  contract and all canonical/current/lifecycle links, records exact evidence,
+  and runs the documentation-only gate. It may retain only nine inherited
+  findings. Roll back docs, then cutover, then baseline; Git rollback never
+  deletes runtime/production evidence, locks, logs, or recovery artifacts. No
+  executable/test mutation or computational, real-RSeQC, scheduler,
+  production, scientific-review, or biological evidence changed or ran in
+  this plan slice.
