@@ -18,20 +18,22 @@ from validation_roster_expectations import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
-VALIDATOR_SCRIPTS = {
-    "00a": "validate_step_00a_star_index.py",
-    "00b": "validate_step_00b_bed12.py",
-    "00c": "validate_step_00c_reference_sidecars.py",
-    "01": "validate_step_01_star_alignment.py",
-    "02": "validate_step_02_canonical_bam.py",
-    "02b": "validate_step_02b_bam_qc.py",
-    "03": "validate_step_03_rseqc_orientation.py",
-    "04": "validate_step_04_mark_duplicates.py",
-    "05": "validate_step_05_split_ncigar.py",
-    "06": "validate_step_06_orientation_outputs.py",
-    "07": "validate_step_07_mpileup_outputs.py",
-    "08": "validate_step_08_preprocessing_outputs.py",
-    "09": "validate_step_09_cmh_outputs.py",
+VALIDATOR_PATHS = {
+    "00a": Path(
+        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
+    ),
+    "00b": Path("scripts/validate_step_00b_bed12.py"),
+    "00c": Path("scripts/validate_step_00c_reference_sidecars.py"),
+    "01": Path("scripts/validate_step_01_star_alignment.py"),
+    "02": Path("scripts/validate_step_02_canonical_bam.py"),
+    "02b": Path("scripts/validate_step_02b_bam_qc.py"),
+    "03": Path("scripts/validate_step_03_rseqc_orientation.py"),
+    "04": Path("scripts/validate_step_04_mark_duplicates.py"),
+    "05": Path("scripts/validate_step_05_split_ncigar.py"),
+    "06": Path("scripts/validate_step_06_orientation_outputs.py"),
+    "07": Path("scripts/validate_step_07_mpileup_outputs.py"),
+    "08": Path("scripts/validate_step_08_preprocessing_outputs.py"),
+    "09": Path("scripts/validate_step_09_cmh_outputs.py"),
 }
 VALIDATION_HEADER = (
     "step_id",
@@ -90,10 +92,18 @@ def mutate_roster(expected: tuple[str, ...], mutation: str) -> tuple[str, ...]:
 
 
 def test_expectations_cover_exactly_the_live_validator_inventory() -> None:
-    live = {path.name for path in SCRIPTS_ROOT.glob("validate_step_*.py")}
+    live_flat = {
+        Path("scripts") / path.name
+        for path in SCRIPTS_ROOT.glob("validate_step_*.py")
+    }
+    expected_flat = {
+        path for path in VALIDATOR_PATHS.values() if path.parent == Path("scripts")
+    }
 
-    assert set(EXPECTED_CHECK_ROSTERS) == set(VALIDATOR_SCRIPTS)
-    assert live == set(VALIDATOR_SCRIPTS.values())
+    assert set(EXPECTED_CHECK_ROSTERS) == set(VALIDATOR_PATHS)
+    assert live_flat == expected_flat
+    assert all((REPO_ROOT / path).is_file() for path in VALIDATOR_PATHS.values())
+    assert len(set(VALIDATOR_PATHS.values())) == len(VALIDATOR_PATHS)
 
 
 @pytest.mark.parametrize("step_id", sorted(EXPECTED_CHECK_ROSTERS))

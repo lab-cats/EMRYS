@@ -210,7 +210,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert config.getboolean("run", "relative_files")
     assert config.get("run", "source").split() == [
         "scripts",
-        "src/norad/libraries",
+        "src/norad",
     ]
     assert config.get("run", "patch").split() == ["subprocess"]
 
@@ -222,7 +222,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert (
         "--new-shared-module src/norad/libraries/validation_report.py" in makefile
     )
-    assert "compileall -q scripts src/norad/libraries tests" in makefile
+    assert "compileall -q scripts src/norad tests" in makefile
 
 
 def test_cli_help_build_and_check_interfaces(tmp_path: Path) -> None:

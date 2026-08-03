@@ -25,27 +25,75 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_ROOT = REPO_ROOT / "scripts"
 REPORT_PATH = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
+VALIDATOR_PATHS = {
+    "validate_step_00a_star_index": Path(
+        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
+    ),
+    "validate_step_00b_bed12": Path("scripts/validate_step_00b_bed12.py"),
+    "validate_step_00c_reference_sidecars": Path(
+        "scripts/validate_step_00c_reference_sidecars.py"
+    ),
+    "validate_step_01_star_alignment": Path(
+        "scripts/validate_step_01_star_alignment.py"
+    ),
+    "validate_step_02_canonical_bam": Path(
+        "scripts/validate_step_02_canonical_bam.py"
+    ),
+    "validate_step_02b_bam_qc": Path("scripts/validate_step_02b_bam_qc.py"),
+    "validate_step_03_rseqc_orientation": Path(
+        "scripts/validate_step_03_rseqc_orientation.py"
+    ),
+    "validate_step_04_mark_duplicates": Path(
+        "scripts/validate_step_04_mark_duplicates.py"
+    ),
+    "validate_step_05_split_ncigar": Path(
+        "scripts/validate_step_05_split_ncigar.py"
+    ),
+    "validate_step_06_orientation_outputs": Path(
+        "scripts/validate_step_06_orientation_outputs.py"
+    ),
+    "validate_step_07_mpileup_outputs": Path(
+        "scripts/validate_step_07_mpileup_outputs.py"
+    ),
+    "validate_step_08_preprocessing_outputs": Path(
+        "scripts/validate_step_08_preprocessing_outputs.py"
+    ),
+    "validate_step_09_cmh_outputs": Path(
+        "scripts/validate_step_09_cmh_outputs.py"
+    ),
+}
+VALIDATOR_MODULES = tuple(VALIDATOR_PATHS)
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-STEP_00A = importlib.import_module("validate_step_00a_star_index")
-REPORT = STEP_00A.report
 
-VALIDATOR_MODULES = (
-    "validate_step_00a_star_index",
-    "validate_step_00b_bed12",
-    "validate_step_00c_reference_sidecars",
-    "validate_step_01_star_alignment",
-    "validate_step_02_canonical_bam",
-    "validate_step_02b_bam_qc",
-    "validate_step_03_rseqc_orientation",
-    "validate_step_04_mark_duplicates",
-    "validate_step_05_split_ncigar",
-    "validate_step_06_orientation_outputs",
-    "validate_step_07_mpileup_outputs",
-    "validate_step_08_preprocessing_outputs",
-    "validate_step_09_cmh_outputs",
-)
+def validator_path(module_name: str) -> Path:
+    return REPO_ROOT / VALIDATOR_PATHS[module_name]
+
+
+def load_validator_module(module_name: str) -> ModuleType:
+    if module_name != "validate_step_00a_star_index":
+        return importlib.import_module(module_name)
+    cached = sys.modules.get(module_name)
+    if cached is not None:
+        assert isinstance(cached, ModuleType)
+        return cached
+    path = validator_path(module_name)
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load moved validator: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(module_name, None)
+        raise
+    return module
+
+
+STEP_00A = load_validator_module("validate_step_00a_star_index")
+REPORT = STEP_00A.report
 SCOPE_ID = "fixture_scope"
 STEP_ID = "fixture"
 CHECK_IDS = {"publication_contract"}
@@ -118,23 +166,27 @@ def hidden_attempt_paths(paths: PublicationPaths) -> list[Path]:
 
 
 def test_exact_step_validator_inventory_uses_one_shared_publisher() -> None:
-    discovered = {
-        path.stem for path in SCRIPT_ROOT.glob("validate_step_*.py")
+    discovered_flat = {
+        Path("scripts") / path.name
+        for path in SCRIPT_ROOT.glob("validate_step_*.py")
     }
-    assert discovered == set(VALIDATOR_MODULES)
+    expected_flat = {
+        path for path in VALIDATOR_PATHS.values() if path.parent == Path("scripts")
+    }
+    assert discovered_flat == expected_flat
+    assert all(validator_path(name).is_file() for name in VALIDATOR_MODULES)
+    assert len(set(VALIDATOR_PATHS.values())) == len(VALIDATOR_MODULES)
 
     # One adversarial helper matrix therefore exercises all thirteen public
     # step-report formats through the exact final owner and private identity.
     assert Path(REPORT.__file__).resolve() == REPORT_PATH.resolve()
     assert sys.modules["_norad_validation_report"] is REPORT
     for module_name in VALIDATOR_MODULES:
-        module = importlib.import_module(module_name)
+        module = load_validator_module(module_name)
         assert module.report is REPORT
 
     for module_name in VALIDATOR_MODULES:
-        source = (SCRIPT_ROOT / f"{module_name}.py").read_text(
-            encoding="utf-8"
-        )
+        source = validator_path(module_name).read_text(encoding="utf-8")
         assert "changed after validation" in source
         assert "report.publish(" in source
         assert "import validate_step_00a_star_index as report" not in source
@@ -144,7 +196,7 @@ def test_all_validator_loaders_preserve_sys_path() -> None:
     before = list(sys.path)
     for module_name in VALIDATOR_MODULES:
         sys.modules.pop(module_name, None)
-        module = importlib.import_module(module_name)
+        module = load_validator_module(module_name)
         assert module.report is REPORT
         assert Path(module.report.__file__).resolve() == REPORT_PATH.resolve()
     assert sys.path == before
@@ -166,7 +218,7 @@ def test_loader_rejects_and_preserves_foreign_cache_entries(
     message: str,
     module_name: str,
 ) -> None:
-    validator = importlib.import_module(module_name)
+    validator = load_validator_module(module_name)
     foreign = ModuleType("_norad_validation_report")
     foreign.__file__ = (
         str(tmp_path / cached_file) if cached_file == "wrong-owner.py" else cached_file
@@ -211,7 +263,7 @@ def test_public_loader_cache_collision_is_one_stderr_line(
         cached._NORAD_VALIDATION_REPORT_READY = {ready!r}
         sys.modules["_norad_validation_report"] = cached
         runpy.run_path(
-            {str(SCRIPT_ROOT / f"{module_name}.py")!r},
+            {str(validator_path(module_name))!r},
             run_name="__main__",
         )
         """
@@ -246,7 +298,7 @@ def test_loader_removes_only_its_owned_partial_after_execution_failure(
     error_type: type[BaseException],
     module_name: str,
 ) -> None:
-    validator = importlib.import_module(module_name)
+    validator = load_validator_module(module_name)
     failing_owner = tmp_path / "validation_report.py"
     failing_owner.write_text(source, encoding="utf-8")
     monkeypatch.setattr(validator, "_REPORT_MODULE_PATH", failing_owner)
@@ -263,7 +315,7 @@ def test_each_loader_can_initialize_the_exact_owner_from_an_empty_cache(
     monkeypatch: pytest.MonkeyPatch,
     module_name: str,
 ) -> None:
-    validator = importlib.import_module(module_name)
+    validator = load_validator_module(module_name)
     monkeypatch.delitem(sys.modules, "_norad_validation_report", raising=False)
 
     loaded = validator._load_validation_report()
@@ -278,7 +330,7 @@ def test_each_loader_fails_closed_when_no_specification_can_be_created(
     monkeypatch: pytest.MonkeyPatch,
     module_name: str,
 ) -> None:
-    validator = importlib.import_module(module_name)
+    validator = load_validator_module(module_name)
     monkeypatch.delitem(sys.modules, "_norad_validation_report", raising=False)
     monkeypatch.setattr(
         validator.importlib.util,
@@ -328,15 +380,14 @@ def test_every_copied_validator_reports_a_missing_exact_owner_without_artifacts(
     tmp_path: Path,
 ) -> None:
     copied_root = tmp_path / "copied"
-    copied_scripts = copied_root / "scripts"
-    copied_scripts.mkdir(parents=True)
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     expected_path = copied_root / "src" / "norad" / "libraries" / "validation_report.py"
 
     for module_name in VALIDATOR_MODULES:
-        source = SCRIPT_ROOT / f"{module_name}.py"
-        copied = copied_scripts / source.name
+        source = validator_path(module_name)
+        copied = copied_root / VALIDATOR_PATHS[module_name]
+        copied.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, copied)
         result = owner_failure_result(copied, invocation_cwd)
         assert_owner_failure(result, expected_path, "FileNotFoundError")
@@ -347,8 +398,6 @@ def test_every_copied_validator_reports_owner_execution_failure_without_artifact
     tmp_path: Path,
 ) -> None:
     copied_root = tmp_path / "copied"
-    copied_scripts = copied_root / "scripts"
-    copied_scripts.mkdir(parents=True)
     owner = copied_root / "src" / "norad" / "libraries" / "validation_report.py"
     owner.parent.mkdir(parents=True)
     owner.write_text("raise RuntimeError('injected corrupt owner')\n", encoding="utf-8")
@@ -356,8 +405,9 @@ def test_every_copied_validator_reports_owner_execution_failure_without_artifact
     invocation_cwd.mkdir()
 
     for module_name in VALIDATOR_MODULES:
-        source = SCRIPT_ROOT / f"{module_name}.py"
-        copied = copied_scripts / source.name
+        source = validator_path(module_name)
+        copied = copied_root / VALIDATOR_PATHS[module_name]
+        copied.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, copied)
         result = owner_failure_result(copied, invocation_cwd)
         assert_owner_failure(result, owner, "RuntimeError")

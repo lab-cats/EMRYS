@@ -1,13 +1,27 @@
 import csv
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
-from validation_roster_expectations import assert_exact_check_roster
-
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_00a_star_index.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "construct_star_index_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src"
+    / "norad"
+    / "stages"
+    / "construct_STAR_index"
+    / "validate_step_00a_star_index.py"
+)
 MEMBERS = (
     "genomeParameters.txt", "Genome", "SA", "SAindex", "chrLength.txt",
     "chrName.txt", "chrNameLength.txt", "chrStart.txt", "exonGeTrInfo.tab",
@@ -40,7 +54,14 @@ def fixture(tmp_path: Path):
     return index, fasta, gtf, output
 
 
-def run(index: Path, fasta: Path, gtf: Path, output: Path, *extra: str):
+def run(
+    index: Path,
+    fasta: Path,
+    gtf: Path,
+    output: Path,
+    *extra: str,
+    cwd: Path = ROOT,
+):
     return subprocess.run(
         [
             sys.executable, str(SCRIPT),
@@ -53,7 +74,7 @@ def run(index: Path, fasta: Path, gtf: Path, output: Path, *extra: str):
             "--output", str(output),
             *extra,
         ],
-        cwd=ROOT,
+        cwd=cwd,
         text=True,
         capture_output=True,
     )
@@ -83,6 +104,44 @@ def test_execute_publishes_five_passing_checks(tmp_path):
     first = output.read_bytes()
     assert run(index, fasta, gtf, output, "--execute").returncode == 0
     assert output.read_bytes() == first
+
+
+def test_full_dry_run_and_execute_repeat_are_cwd_independent(tmp_path):
+    index, fasta, gtf, output = fixture(tmp_path)
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    before = tuple(invocation_cwd.iterdir())
+
+    dry_run = run(index, fasta, gtf, output, cwd=invocation_cwd)
+
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert dry_run.stderr == ""
+    assert dry_run.stdout.endswith("Dry-run complete; no output was written.\n")
+    assert not output.exists()
+    assert tuple(invocation_cwd.iterdir()) == before
+
+    first = run(index, fasta, gtf, output, "--execute", cwd=invocation_cwd)
+
+    assert first.returncode == 0, first.stderr
+    assert first.stderr == ""
+    first_bytes = output.read_bytes()
+    dry_prefix = dry_run.stdout.removesuffix(
+        "Dry-run complete; no output was written.\n"
+    )
+    assert first.stdout == (
+        dry_prefix + f"Published Step 00a validation report: {output}\n"
+    )
+    assert first_bytes.decode("utf-8") in dry_prefix
+    assert tuple(invocation_cwd.iterdir()) == before
+
+    repeated = run(index, fasta, gtf, output, "--execute", cwd=invocation_cwd)
+
+    assert repeated.returncode == 0, repeated.stderr
+    assert repeated.stderr == ""
+    assert repeated.stdout == first.stdout
+    assert output.read_bytes() == first_bytes
+    assert not list(output.parent.glob(".*validation*"))
+    assert tuple(invocation_cwd.iterdir()) == before
 
 
 def test_scientific_mismatches_are_reported_not_repaired(tmp_path):

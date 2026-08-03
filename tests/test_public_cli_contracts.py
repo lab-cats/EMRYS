@@ -24,35 +24,58 @@ MAKE_EXPANSION_GOLDEN = (
     / "make_target_expansions.json"
 )
 
-PYTHON_ENTRYPOINTS = frozenset(
-    {
-        "build_artifact_index.py",
-        "build_run_summary.py",
-        "gtf_to_bed12.py",
-        "reference_provenance.py",
-        "render_run_report.py",
-        "render_run_report_bundle.py",
-        "restore_quarto.py",
-        "runtime_preflight.py",
-        "step_09c_scientific_validation.py",
-        "storage_inventory.py",
-        "validate_artifact_contracts.py",
-        "validate_manifest.py",
-        "validate_step_00a_star_index.py",
-        "validate_step_00b_bed12.py",
-        "validate_step_00c_reference_sidecars.py",
-        "validate_step_01_star_alignment.py",
-        "validate_step_02_canonical_bam.py",
-        "validate_step_02b_bam_qc.py",
-        "validate_step_03_rseqc_orientation.py",
-        "validate_step_04_mark_duplicates.py",
-        "validate_step_05_split_ncigar.py",
-        "validate_step_06_orientation_outputs.py",
-        "validate_step_07_mpileup_outputs.py",
-        "validate_step_08_preprocessing_outputs.py",
-        "validate_step_09_cmh_outputs.py",
-    }
-)
+PYTHON_ENTRYPOINT_PATHS = {
+    "build_artifact_index.py": Path("scripts/build_artifact_index.py"),
+    "build_run_summary.py": Path("scripts/build_run_summary.py"),
+    "gtf_to_bed12.py": Path("scripts/gtf_to_bed12.py"),
+    "reference_provenance.py": Path("scripts/reference_provenance.py"),
+    "render_run_report.py": Path("scripts/render_run_report.py"),
+    "render_run_report_bundle.py": Path("scripts/render_run_report_bundle.py"),
+    "restore_quarto.py": Path("scripts/restore_quarto.py"),
+    "runtime_preflight.py": Path("scripts/runtime_preflight.py"),
+    "step_09c_scientific_validation.py": Path(
+        "scripts/step_09c_scientific_validation.py"
+    ),
+    "storage_inventory.py": Path("scripts/storage_inventory.py"),
+    "validate_artifact_contracts.py": Path("scripts/validate_artifact_contracts.py"),
+    "validate_manifest.py": Path("scripts/validate_manifest.py"),
+    "validate_step_00a_star_index.py": Path(
+        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
+    ),
+    "validate_step_00b_bed12.py": Path("scripts/validate_step_00b_bed12.py"),
+    "validate_step_00c_reference_sidecars.py": Path(
+        "scripts/validate_step_00c_reference_sidecars.py"
+    ),
+    "validate_step_01_star_alignment.py": Path(
+        "scripts/validate_step_01_star_alignment.py"
+    ),
+    "validate_step_02_canonical_bam.py": Path(
+        "scripts/validate_step_02_canonical_bam.py"
+    ),
+    "validate_step_02b_bam_qc.py": Path("scripts/validate_step_02b_bam_qc.py"),
+    "validate_step_03_rseqc_orientation.py": Path(
+        "scripts/validate_step_03_rseqc_orientation.py"
+    ),
+    "validate_step_04_mark_duplicates.py": Path(
+        "scripts/validate_step_04_mark_duplicates.py"
+    ),
+    "validate_step_05_split_ncigar.py": Path(
+        "scripts/validate_step_05_split_ncigar.py"
+    ),
+    "validate_step_06_orientation_outputs.py": Path(
+        "scripts/validate_step_06_orientation_outputs.py"
+    ),
+    "validate_step_07_mpileup_outputs.py": Path(
+        "scripts/validate_step_07_mpileup_outputs.py"
+    ),
+    "validate_step_08_preprocessing_outputs.py": Path(
+        "scripts/validate_step_08_preprocessing_outputs.py"
+    ),
+    "validate_step_09_cmh_outputs.py": Path(
+        "scripts/validate_step_09_cmh_outputs.py"
+    ),
+}
+PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 PRIVATE_PYTHON_MODULES = frozenset({"_run_summary_science.py"})
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
@@ -182,6 +205,10 @@ def mode_is_executable(path: Path) -> bool:
     return bool(path.stat().st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
 
 
+def python_entrypoint_path(entrypoint: str) -> Path:
+    return REPO_ROOT / PYTHON_ENTRYPOINT_PATHS[entrypoint]
+
+
 def relative_snapshot(root: Path) -> tuple[str, ...]:
     return tuple(sorted(str(path.relative_to(root)) for path in root.rglob("*")))
 
@@ -300,7 +327,14 @@ def test_inventory_classifies_every_live_public_script() -> None:
     live_shell = {path.name for path in SCRIPTS_ROOT.glob("*.sh")}
     live_r = {path.name for path in SCRIPTS_ROOT.glob("*.R")}
 
-    assert live_python == PYTHON_ENTRYPOINTS | PRIVATE_PYTHON_MODULES
+    flat_python_entrypoints = {
+        path.name
+        for path in PYTHON_ENTRYPOINT_PATHS.values()
+        if path.parent == Path("scripts")
+    }
+    assert live_python == flat_python_entrypoints | PRIVATE_PYTHON_MODULES
+    assert all(python_entrypoint_path(name).is_file() for name in PYTHON_ENTRYPOINTS)
+    assert len(set(PYTHON_ENTRYPOINT_PATHS.values())) == len(PYTHON_ENTRYPOINTS)
     assert live_shell == SHELL_ENTRYPOINTS
     assert live_r == R_ENTRYPOINTS
     assert DIRECT_PYTHON_ENTRYPOINTS | INTERPRETER_ONLY_PYTHON_ENTRYPOINTS == (
@@ -364,7 +398,7 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = SCRIPTS_ROOT / entrypoint
+    script = python_entrypoint_path(entrypoint)
     before = relative_snapshot(tmp_path)
 
     help_result = run_command(
@@ -388,7 +422,7 @@ def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = SCRIPTS_ROOT / entrypoint
+    script = python_entrypoint_path(entrypoint)
     shim_dir = tmp_path / "prepared-path"
     shim_dir.mkdir()
     python_shim = shim_dir / "python3"
@@ -416,7 +450,7 @@ def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
 def test_interpreter_only_python_file_modes_are_characterized(
     entrypoint: str,
 ) -> None:
-    assert not mode_is_executable(SCRIPTS_ROOT / entrypoint)
+    assert not mode_is_executable(python_entrypoint_path(entrypoint))
 
 
 @pytest.mark.parametrize("entrypoint", sorted(SHELL_ENTRYPOINTS))

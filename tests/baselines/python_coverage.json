@@ -154,15 +154,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.700000",
-      "covered_branches": 42,
-      "covered_lines": 165,
-      "line_rate": "0.873016",
-      "num_branches": 60,
-      "num_statements": 189,
-      "path": "scripts/validate_step_00a_star_index.py"
-    },
-    {
       "branch_rate": "0.805556",
       "covered_branches": 29,
       "covered_lines": 127,
@@ -278,13 +269,22 @@
       "num_branches": 36,
       "num_statements": 108,
       "path": "src/norad/libraries/validation_report.py"
+    },
+    {
+      "branch_rate": "0.700000",
+      "covered_branches": 42,
+      "covered_lines": 165,
+      "line_rate": "0.873016",
+      "num_branches": 60,
+      "num_statements": 189,
+      "path": "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     }
   ],
   "measurement": {
     "branch": true,
     "source": [
       "scripts",
-      "src/norad/libraries"
+      "src/norad"
     ],
     "subprocess": true,
     "test_command": [

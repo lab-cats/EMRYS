@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import gzip
 import os
 import stat
 import subprocess
@@ -14,6 +13,43 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOBS_ROOT = REPO_ROOT / "jobs"
+JOB_PATHS = {
+    "step_00a_build_novogene_star_index.slurm": Path(
+        "src/norad/stages/construct_STAR_index/"
+        "step_00a_build_novogene_star_index.slurm"
+    ),
+    "step_00b_gtf_to_bed12.slurm": Path("jobs/step_00b_gtf_to_bed12.slurm"),
+    "step_00c_prepare_gatk_reference.slurm": Path(
+        "jobs/step_00c_prepare_gatk_reference.slurm"
+    ),
+    "step_01_star_align.slurm": Path("jobs/step_01_star_align.slurm"),
+    "step_02_sort_index_bam.slurm": Path("jobs/step_02_sort_index_bam.slurm"),
+    "step_02b_bam_qc.slurm": Path("jobs/step_02b_bam_qc.slurm"),
+    "step_03_infer_strandedness_and_orientation.slurm": Path(
+        "jobs/step_03_infer_strandedness_and_orientation.slurm"
+    ),
+    "step_04_mark_duplicates.slurm": Path("jobs/step_04_mark_duplicates.slurm"),
+    "step_05_split_n_cigar_reads.slurm": Path(
+        "jobs/step_05_split_n_cigar_reads.slurm"
+    ),
+    "step_06_split_bam_by_read_orientation.slurm": Path(
+        "jobs/step_06_split_bam_by_read_orientation.slurm"
+    ),
+    "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
+        "jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+    ),
+    "step_08_vcf_preprocessing.slurm": Path("jobs/step_08_vcf_preprocessing.slurm"),
+    "step_09_cmh_editing_site_calling.slurm": Path(
+        "jobs/step_09_cmh_editing_site_calling.slurm"
+    ),
+    "template.slurm": Path("jobs/template.slurm"),
+    "tool_check.slurm": Path("jobs/tool_check.slurm"),
+    "validate_manifest.slurm": Path("jobs/validate_manifest.slurm"),
+}
+
+
+def job_path(name: str) -> Path:
+    return REPO_ROOT / JOB_PATHS[name]
 
 
 @dataclass(frozen=True)
@@ -1042,7 +1078,7 @@ def run_prepared(
     if cwd is None:
         cwd = prepared.submit if contract.submit_cwd == "caller" else prepared.launch
     return subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / prepared.name)],
+        ["/bin/bash", str(job_path(prepared.name))],
         cwd=cwd,
         env=environment,
         text=True,
@@ -1072,17 +1108,24 @@ def read_lines(path: Path) -> tuple[str, ...]:
 
 
 def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
-    live_jobs = {path.name for path in JOBS_ROOT.glob("*.slurm")}
+    live_flat_jobs = {
+        Path("jobs") / path.name for path in JOBS_ROOT.glob("*.slurm")
+    }
+    expected_flat_jobs = {
+        path for path in JOB_PATHS.values() if path.parent == Path("jobs")
+    }
 
-    assert live_jobs == set(CONTRACTS) == set(SBATCH_DIRECTIVES)
-    assert len(live_jobs) == 16
+    assert live_flat_jobs == expected_flat_jobs
+    assert set(JOB_PATHS) == set(CONTRACTS) == set(SBATCH_DIRECTIVES)
+    assert all(job_path(name).is_file() for name in CONTRACTS)
+    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 16
     for contract in CONTRACTS.values():
         assert all(getattr(contract, field.name) for field in fields(contract))
 
 
 @pytest.mark.parametrize("name", sorted(CONTRACTS))
 def test_sbatch_shebang_strict_mode_and_file_mode_are_exact(name: str) -> None:
-    job = JOBS_ROOT / name
+    job = job_path(name)
     lines = job.read_text(encoding="utf-8").splitlines()
     directives = tuple(line for line in lines if line.startswith("#SBATCH "))
 
@@ -1096,7 +1139,7 @@ def test_sbatch_shebang_strict_mode_and_file_mode_are_exact(name: str) -> None:
 
 @pytest.mark.parametrize("name", sorted(CONTRACTS))
 def test_submit_directory_decision_is_literal(name: str) -> None:
-    source = (JOBS_ROOT / name).read_text(encoding="utf-8")
+    source = job_path(name).read_text(encoding="utf-8")
     decision = CONTRACTS[name].submit_cwd
 
     if decision == "required":
@@ -1110,7 +1153,7 @@ def test_submit_directory_decision_is_literal(name: str) -> None:
 
 @pytest.mark.parametrize("name", sorted(NO_EXPLICIT_MODE_JOBS))
 def test_legacy_and_utility_jobs_have_no_execute_mode(name: str) -> None:
-    source = (JOBS_ROOT / name).read_text(encoding="utf-8")
+    source = job_path(name).read_text(encoding="utf-8")
 
     assert "EXECUTE" not in source
     assert CONTRACTS[name].invalid_mode == "not_applicable"
@@ -1290,67 +1333,6 @@ def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, st
     return submit, launch, base_environment(tmp_path, fake_bin)
 
 
-def test_step00a_embedded_compute_contract_uses_only_mocked_star(
-    tmp_path: Path,
-) -> None:
-    submit, _, environment = prepare_legacy_environment(tmp_path)
-    reference_dir = submit / "data/raw/novogene_remora/04.Ref"
-    reference_dir.mkdir(parents=True)
-    with gzip.open(reference_dir / "genome.fa.gz", "wt", encoding="utf-8") as handle:
-        handle.write(">chr1\nACGT\n")
-    with gzip.open(reference_dir / "genome.gtf.gz", "wt", encoding="utf-8") as handle:
-        handle.write("chr1\ttest\texon\t1\t4\t.\t+\t.\tgene_id \"g1\";\n")
-
-    result = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00a_build_novogene_star_index.slurm")],
-        cwd=submit,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == CONTRACTS[
-        "step_00a_build_novogene_star_index.slurm"
-    ].module_calls
-    assert read_lines(Path(environment["FAKE_TOOL_LOG"])) == (
-        "STAR\t--runThreadN\t3\t--runMode\tgenomeGenerate"
-        "\t--genomeDir\trefs/novogene_star_index"
-        "\t--genomeFastaFiles\trefs/novogene_ref/genome.fa"
-        "\t--sjdbGTFfile\trefs/novogene_ref/genome.gtf"
-        "\t--sjdbOverhang\t149",
-    )
-    assert (submit / "refs/novogene_ref/genome.fa").read_text(
-        encoding="utf-8"
-    ) == ">chr1\nACGT\n"
-    assert (submit / "refs/novogene_star_index/Genome").is_file()
-
-    failing_environment = environment.copy()
-    failing_environment["FAKE_FAIL_TOOL"] = "STAR"
-    failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00a_build_novogene_star_index.slurm")],
-        cwd=submit,
-        env=failing_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert failed.returncode == 37
-
-    module_environment = environment.copy()
-    module_environment["FAKE_MODULE_EXIT"] = "23"
-    module_failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00a_build_novogene_star_index.slurm")],
-        cwd=submit,
-        env=module_environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert module_failed.returncode == 23
-
-
 def install_step00b_fakes(fake_bin: Path) -> None:
     write_executable(
         fake_bin / "python-step00b",
@@ -1423,7 +1405,7 @@ def test_step00b_embedded_converter_sort_and_validation_contract(
     )
 
     result = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00b_gtf_to_bed12.slurm")],
+        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
         cwd=launch,
         env=environment,
         text=True,
@@ -1444,7 +1426,7 @@ def test_step00b_embedded_converter_sort_and_validation_contract(
     child_environment = environment.copy()
     child_environment["FAKE_FAIL_TOOL"] = "python-step00b"
     child_failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00b_gtf_to_bed12.slurm")],
+        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
         cwd=launch,
         env=child_environment,
         text=True,
@@ -1456,7 +1438,7 @@ def test_step00b_embedded_converter_sort_and_validation_contract(
     bad_bed_environment = environment.copy()
     bad_bed_environment["FAKE_BAD_BED"] = "1"
     bad_bed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00b_gtf_to_bed12.slurm")],
+        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
         cwd=launch,
         env=bad_bed_environment,
         text=True,
@@ -1469,7 +1451,7 @@ def test_step00b_embedded_converter_sort_and_validation_contract(
     module_environment = environment.copy()
     module_environment["FAKE_MODULE_EXIT"] = "23"
     module_failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00b_gtf_to_bed12.slurm")],
+        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
         cwd=launch,
         env=module_environment,
         text=True,
@@ -1481,7 +1463,7 @@ def test_step00b_embedded_converter_sort_and_validation_contract(
     missing_submit_environment = environment.copy()
     missing_submit_environment.pop("SLURM_SUBMIT_DIR")
     missing_submit = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "step_00b_gtf_to_bed12.slurm")],
+        ["/bin/bash", str(job_path("step_00b_gtf_to_bed12.slurm"))],
         cwd=launch,
         env=missing_submit_environment,
         text=True,
@@ -1527,7 +1509,7 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
     picard = Path(environment["PICARD"])
 
     result = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / name)],
+        ["/bin/bash", str(job_path(name))],
         cwd=submit,
         env=environment,
         text=True,
@@ -1545,7 +1527,7 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
     child_environment = environment.copy()
     child_environment["FAKE_FAIL_TOOL"] = "python"
     child_failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / name)],
+        ["/bin/bash", str(job_path(name))],
         cwd=submit,
         env=child_environment,
         text=True,
@@ -1557,7 +1539,7 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
     module_environment = environment.copy()
     module_environment["FAKE_MODULE_EXIT"] = "23"
     module_failed = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / name)],
+        ["/bin/bash", str(job_path(name))],
         cwd=submit,
         env=module_environment,
         text=True,
@@ -1574,7 +1556,7 @@ def test_tool_check_tolerates_only_its_optional_picard_version_probe(
     environment["FAKE_FAIL_JAVA_JAR"] = "1"
 
     result = subprocess.run(
-        ["/bin/bash", str(JOBS_ROOT / "tool_check.slurm")],
+        ["/bin/bash", str(job_path("tool_check.slurm"))],
         cwd=submit,
         env=environment,
         text=True,

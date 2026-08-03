@@ -189,6 +189,33 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert not artifact_fixture.output_root.exists()
 
 
+def test_step00a_implementation_evidence_uses_final_path_and_frozen_job_bytes(
+) -> None:
+    git_commit = "a" * 40
+
+    evidence = ADAPTER.producer_evidence(git_commit)
+
+    assert tuple(evidence) == tuple(ADAPTER.STEP_PRODUCERS)
+    assert evidence["00a"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_00a",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/construct_STAR_index/"
+                    "step_00a_build_novogene_star_index.slurm"
+                ),
+                "sha256": (
+                    "f27924e80fee3b8f207a41fd7af472897"
+                    "ad51f06aa2e4c670973eb51f25b5fcc"
+                ),
+            }
+        ],
+    }
+
+
 def test_help_and_dry_run_validate_all_sources_without_writing(
     artifact_fixture: Any,
 ) -> None:

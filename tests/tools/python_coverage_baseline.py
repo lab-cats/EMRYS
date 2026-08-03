@@ -13,7 +13,7 @@ from typing import Any, Sequence
 
 SCHEMA_VERSION = "1.0.0"
 COVERAGE_VERSION = "7.15.2"
-SOURCE_ROOTS = ("scripts", "src/norad/libraries")
+SOURCE_ROOTS = ("scripts", "src/norad")
 REQUIRED_SUBPROCESS_FILES = (
     "scripts/gtf_to_bed12.py",
     "scripts/validate_manifest.py",

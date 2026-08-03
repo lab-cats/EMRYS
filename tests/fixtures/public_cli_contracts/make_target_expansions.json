@@ -91,7 +91,7 @@
     "\t\tjobs/step_03_infer_strandedness_and_orientation.slurm"
   ],
   "lint": [
-    "python -m compileall scripts src/norad/libraries tests"
+    "python -m compileall scripts src/norad tests"
   ],
   "local-real-r-test": [
     "NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
@@ -227,7 +227,7 @@
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_runtime_preflight.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_reference_provenance.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_storage_inventory.py",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_00a_star_index.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_00b_bed12.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_00c_reference_sidecars.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_validate_step_01_star_alignment.py",
@@ -244,7 +244,7 @@
   "smoke": [
     "bash -n scripts/*.sh",
     "bash -n scripts/git_orchestration/*.sh",
-    "bash -n jobs/*.slurm"
+    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
   ],
   "test": [
     "python -m pytest"
@@ -332,9 +332,9 @@
     "git diff --check",
     "bash -n scripts/*.sh",
     "bash -n scripts/git_orchestration/*.sh",
-    "bash -n jobs/*.slurm",
+    "bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm",
     "PYTHONDONTWRITEBYTECODE=1 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad/libraries tests",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad tests",
     "\"<REPO_ROOT>/.venv/bin/python\" scripts/validate_manifest.py \\",
     "\t\t--manifest samples.example.tsv"
   ]
