@@ -4287,6 +4287,93 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T11:23:03-0400 — MIG-03M and sequential reviews defined
+
+- **Verified parent and live-DAG choice:** published MIG-03L documentation/
+  lifecycle close `4562ec3218453fe6869cf98ca2a382d09d796ca2` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, and equal across local
+  `HEAD`, configured upstream, and live remote. The canonical direct-edge map
+  leaves exactly one eligible unmigrated owner:
+  `preprocess_and_annotate_cohort_candidates`. Its complete declared-
+  partition-and-orientation Step `07` barrier is migrated. Step `09` remains
+  blocked on Step `08` sites and its input receipt; Step `09c` additionally
+  requires the complete three-output Step `08` transaction. No Step `09` or
+  later card is created.
+- **Frozen native boundary:** define only semantic stage
+  `norad.stage.preprocess_and_annotate_cohort_candidates.v1`, historical alias
+  `08`, final source home
+  `src/norad/stages/preprocess_and_annotate_cohort_candidates/`, and mirrored
+  test home `tests/stages/preprocess_and_annotate_cohort_candidates/`.
+  Candidate native moves are the mode-`0755` shell, mode-`0644` R program,
+  mode-`0644` validator, and mode-`0644` job. Their `124,401` bytes / `3,380`
+  lines and hashes
+  `28d1188aa53a3bf2ca53b3b2b8d5e95ac8451c4a1a71e1e87a1ad4eb858afb07`,
+  `f2580880ed0947efc8b41697a7ebd6f227a38556bb82922635b1bc8ba4cbc883`,
+  `8a2dfd21f3e42b4ee4cf890da2686d686928b0b2cedce82ebc9d5d7cde2af410`,
+  and `a369dfbb9a7ad3bcaf8e5013a76a3d04e9e225e8b97c49d9f30a892cb45f221c`
+  are frozen for architecture review.
+- **Proposed test/cutover boundary:** candidate protection moves are the mode-
+  `0755` shell test, mode-`0755` guarded-R runner, mode-`0644` R test, and
+  mode-`0644` validator test. The evidence-backed hypothesis is eight moves
+  plus ten integration owners: Make, artifact mapping/evidence, public CLI,
+  scheduler contracts, validation roster, neutral report-loader matrix,
+  guarded local-R oracle, coverage baseline, and literal Make expansion.
+  Architecture must prove all counts, exact final roots/hashes/modes, and the
+  absence of a hidden scaffold, config, import, wrapper, or duplicate owner.
+- **Dependency-direction decision:** keep the shell/R implementation siblings.
+  The moved validator continues to private exact-load neutral
+  `src/norad/libraries/validation_report.py` and must replace its ambient
+  sibling import of still-flat `scripts/step_09c_scientific_validation.py`
+  with a private exact-file bridge. The moved test must likewise avoid root
+  `sys.path` mutation. No Step `09c` source, shared schema/helper, public API,
+  package identity, `PYTHONPATH`, descriptor, or schema moves with Step `08`.
+- **Scientific and R decisions:** preserve bounded lexical VCF checks,
+  VariantAnnotation parsing, allele expansion, SNV selection, candidate IDs
+  and order, GTF overlap, DP/AD/AF arithmetic, header-only/multiallelic/skipped-
+  allele behavior, exact three TSVs, and `legacy_provisional_v1`. The
+  FWD/complemented-plus and REV/unchanged-minus mapping remains compatibility
+  behavior, not validated strand, sense/antisense, variant, RNA-editing-site,
+  scientific-review, or biological-readiness proof. No R dependency is
+  installed, restored, updated, or removed.
+- **Transaction and provenance risks:** preserve the cohort lock, output/QC-
+  split run-token scratch/backups, all-three-or-none predecessor, repeated
+  manifest/Step `07`/annotation/input hash checks, prepublication validation,
+  sites/summary/input-receipt publication, receipt-last native marker, final
+  validation, cleanup, and traps. Preserve rather than approve receipt
+  visibility before final checks/commit; best-effort restoration; remaining
+  backups but no durable recovery marker after restore failure; lock release
+  after incomplete restoration; sibling sites/summary omitted from the
+  receipt hash; and absent R/package, Step `07` tool/reference/filter, and
+  attempt identity.
+- **Validator and ownership risks:** preserve five exact rows and exit-`0`
+  failed evidence without rerunning R, VariantAnnotation, annotation overlap,
+  allele expansion, complementation, or upstream filtering. The validator does
+  not recompute candidate IDs or deterministic order, does not reopen Step
+  `07` inputs to rederive hashes, and can fail equivalent annotation path
+  spellings. Shared Step `08` schema/validation functions remain owned by Step
+  `09c`. The producer's input receipt stays the native marker while the
+  artifact adapter's summary stays its failure marker; review must preserve
+  and test that distinction rather than choose a new contract.
+- **Scheduler and coverage risks:** preserve scheduler mode/directives, submit-
+  CWD fallback, module/renv/R resolution, explicit execute gate, delegation,
+  `logs/` effects, three-file check, streams/exits, and possible stale-complete
+  false success. Frozen validator coverage is `122/129` lines and `26/36`
+  branches with global floors `9561/11720` lines and `3351/4772` branches.
+  Architecture/reliability must define final-path and non-target-exact
+  measurement without dependency or cluster action.
+- **Bounded lifecycle decision:** create only unselected `MIG-03M` and
+  unselected sequential `REVIEW-ARCH-03M` → `REVIEW-REL-03M` →
+  `REVIEW-UX-03M`. No card is selected; no executable, test, harness,
+  configuration, dependency, schema, fixture, report-template, runtime,
+  scheduler, cluster, production, scientific-review, or future-owner file
+  changes or runs.
+- **Definition rollback and gate:** rollback removes only the four new cards
+  and their current roadmap/handoff/audit references. `git diff --check`
+  passes and the exact RUNBOOK documentation validator retains only the nine
+  inherited `UNREFINED` card-location findings. That expected-only status `1`
+  result is nonpassing, not green. Publish and prove this definition clean/
+  upstream/live-remote-equal before selecting architecture review alone.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection

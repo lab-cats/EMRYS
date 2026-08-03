@@ -11,8 +11,9 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published executable/test
-  checkpoint `60eb3561af2bf145133a27294c3a3c1df3c35f1a`.
+  exact SHA from live Git. Its frozen parent is published MIG-03L
+  documentation/lifecycle close
+  `4562ec3218453fe6869cf98ca2a382d09d796ca2`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -31,26 +32,25 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   prior campaign branch and the fresh branch named above. MIG-03L pipeline/
   selector `c813ea3`, transaction/recovery `ed58fd3`, stability/provenance
   `82d7049`, validator `65277f7`, and scheduler `523144e` test baselines plus
-  executable/test checkpoint `60eb356` are published and equal. The
-  documentation/lifecycle close is the commit containing this handoff.
-- Current package: completed
-  [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
-  after completed
-  [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
-  completed
-  [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
-  and completed
-  [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
-  All three reviews and the migration are complete. No Step `08` or later
-  owner/review card is selected or preloaded.
-- Package type at this checkpoint: documentation-only MIG-03L lifecycle close.
-  It batches canonical final paths and commands, current status/evidence,
-  retained-defect recovery guidance, migration links, and the audit record;
-  it changes no executable, test, configuration, dependency, schema, fixture,
-  or report-template behavior.
-- Remote publication and upstream equality: executable parent `60eb356` is
-  verified local/upstream/live-remote-equal. Publish and prove the
-  documentation/lifecycle checkpoint equal before refreshing the live DAG.
+  executable/test checkpoint `60eb356` and documentation/lifecycle close
+  `4562ec3` are published and local/upstream/live-remote-equal.
+- Current package: unselected
+  [`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+  and sequential unselected
+  [`REVIEW-ARCH-03M`](../tasks/TODO/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+  → [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+  → [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
+  No card is selected. Step `09` and every later owner/review card remain
+  uncreated.
+- Package type at this checkpoint: documentation-only MIG-03M and sequential-
+  review definition. It records the live-DAG choice, frozen paths/modes/hashes,
+  proposed move/caller ceiling, known transaction/R/validator/scheduler risks,
+  review questions, and rollback boundary without changing or running an
+  executable, test, configuration, dependency, schema, fixture, or report
+  template.
+- Remote publication and upstream equality: definition parent `4562ec3` is
+  verified local/upstream/live-remote-equal. Publish and prove this definition
+  checkpoint equal before selecting architecture review alone.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -516,9 +516,31 @@ producer/validator `regions_file` asymmetry remain characterized. So do the
 scheduler's warning-only missing/unusable tool behavior, version failure,
 submit-path and `logs/` effects, and stale-three-file false success. No real
 bcftools, scheduler, cluster, production, scientific-review, variant-calling,
-or biological evidence was created. MIG-03L is complete in the documentation/
-lifecycle checkpoint containing this handoff; a fresh live-DAG refresh is the
-next bounded action and no successor is selected or preloaded.
+or biological evidence was created. MIG-03L is complete in published
+documentation/lifecycle checkpoint `4562ec3`.
+
+Published documentation close `4562ec3` was then verified clean,
+tracked/untracked-empty, recovery/index-lock-free, and equal across local
+`HEAD`, configured upstream, and live remote. The refreshed required-artifact
+DAG leaves exactly one eligible unmigrated owner:
+`preprocess_and_annotate_cohort_candidates`. Its complete Step `07` declared-
+partition-and-orientation barrier is migrated. Step `09` remains blocked on the
+Step `08` sites table and input receipt, and Step `09c` additionally requires
+the complete Step `08` three-output transaction.
+
+The checkpoint containing this handoff defines only unselected
+[`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+and sequential unselected
+[`REVIEW-ARCH-03M`](../tasks/TODO/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
+The proposed boundary is the four Step `08` native assets and four owner-local
+protection assets plus ten integration owners. Architecture must prove that
+ceiling, guarded-R test ownership, final hashes/modes, artifact marker meaning,
+and private exact-file bridges to the neutral report owner and still-flat Step
+`09c` contract implementation. No executable/test file changed or ran, no R
+dependency action occurred, no review finding is claimed, and no Step `09` or
+later card is created or preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1118,9 +1140,16 @@ is published/equal at `5a501df`. Fresh branch
 is complete at published pipeline/selector `c813ea3`, transaction/recovery
 `ed58fd3`, stability/provenance `82d7049`, validator `65277f7`, and scheduler
 `523144e` test baselines plus executable/test checkpoint `60eb356`; its
-documentation/lifecycle close is the commit containing this handoff. No Step
-`08` or later owner/review card is selected or preloaded. Refresh the live
-required-artifact DAG from the clean, published, equal close before defining
-only the next eligible unit and its sequential reviews.
+documentation/lifecycle close is published at `4562ec3`.
+Published documentation/lifecycle close `4562ec3` supported that refresh. It
+left only
+[`MIG-03M`](../tasks/TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+eligible, with sequential
+[`REVIEW-ARCH-03M`](../tasks/TODO/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-REL-03M`](../tasks/TODO/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+→ [`REVIEW-UX-03M`](../tasks/TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
+defined in the checkpoint containing this handoff. All four cards remain
+unselected in `TODO`; select architecture review alone only after publication
+and equality proof. Step `09` and later cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.
