@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `MIG-03G` definition checkpoint
-  `417a2a50084c7a10ee54d9ac045bbed72e4388d4` is clean, published, and
-  local/upstream/live-remote-equal; completed `MIG-03F` close is `543eb8f`.
-- Current package: selected
+- Recorded package state: migration-selection checkpoint
+  `18703e177d066cbe548b7d6091e48143ddce28cb` is clean, published, and
+  local/upstream/live-remote-equal; three-review completion is `7b86a5e`.
+- Current package: task-specific plan for
   [`MIG-03G`](../tasks/IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-  after all three dedicated reviews closed. Task-specific planning is next; no
-  baseline or executable/test mutation has begun.
-- Package type at this checkpoint: documentation-only migration selection; no
-  executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: usability-review parent `7b86a5e`
-  is verified local/upstream/live-remote-equal. The commit containing this
-  handoff must be published and proved equal before task-specific planning.
+  with exact three-test baseline, fourteen-file cutover, minimal-check, full-
+  gate, separate-close, and rollback boundaries.
+- Package type at this checkpoint: execution-planning documentation only; no
+  baseline ran and no executable/test file changed.
+- Remote publication and upstream equality: parent `18703e1` is verified
+  local/upstream/live-remote-equal. The commit containing this plan must be
+  published and proved equal before the old-path test baseline.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -157,8 +157,8 @@ is complete and
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`MIG-03G`](../tasks/IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-alone is selected. No Step `03`, Step `04`, or later owner/review card is
-created or selected.
+alone is selected with its exact remaining slices frozen in the active card. No
+Step `03`, Step `04`, or later owner/review card is created or selected.
 
 ## Active concurrent lanes
 
@@ -683,7 +683,8 @@ and its reviews
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 are defined at published checkpoint `417a2a5`; architecture and reliability are
 complete and usability is now complete. Only `MIG-03G` is selected; publish and
-prove this selection checkpoint equal before task-specific planning. Step `03`,
-Step `04`, and all later owner cards remain unselected. The
+prove the plan in the commit containing this paragraph equal before the exact
+three-test old-path baseline. Step `03`, Step `04`, and all later owner cards
+remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

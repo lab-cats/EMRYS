@@ -298,3 +298,78 @@ empty, and equal across local `HEAD`, configured upstream, and the live remote
 branch. No executable/test path changed, no computational test ran, and no
 later owner is preloaded. Task-specific planning must publish before the
 three-test old-path baseline begins.
+
+### Task-specific execution plan
+
+Selection checkpoint `18703e177d066cbe548b7d6091e48143ddce28cb` is the
+clean, published, local/upstream/live-remote-equal planning parent. Keep the
+remaining work to three independently revertible slices and publish/prove each
+checkpoint before the next:
+
+1. add and run the exact three-test old-path reliability baseline;
+2. apply the atomic five-move/nine-update cutover, run only minimal final-path
+   checks, then run the complete applicable computational gate once at the
+   assembled executable card boundary and publish the executable checkpoint;
+3. batch canonical commands, owner README/contract links, current topology,
+   migration links, lifecycle repair, and complete evidence in the separate
+   documentation close.
+
+The baseline changes exactly three existing test files and no production,
+harness, fixture, coverage-baseline, or documentation file:
+
+- `tests/shell/test_step_02b_bam_qc.sh` adds PATH-only tool absence plus exact
+  predecessor-bearing quickcheck and flagstat fault/residue assertions;
+- `tests/test_validate_step_02b_bam_qc.py` adds the explicit marker mismatch,
+  arbitrary-CWD dry-run/execute/repeat, and post-build input-mutation/prior-
+  report preservation assertions; and
+- `tests/test_slurm_wrapper_contracts.py` adds the Step `02b` stale-file false-
+  success assertion.
+
+Run only `bash -n` for the changed shell test, that direct shell test, the
+direct Step `02b` validator suite, and the central scheduler cases selected by
+`step_02b_bam_qc` at the baseline boundary. Record the exact test counts,
+streams, exits, residue, file modes, lines, bytes, and hashes before movement;
+do not run coverage or a broad suite in this slice.
+
+The executable cutover is atomic because every known caller is repository-
+owned. Move exactly the producer, validator, mode-`0644` job, shell test, and
+validator test to their reviewed evidence-owner homes. Update exactly
+`Makefile`, `scripts/build_artifact_index.py`,
+`tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
+`tests/test_slurm_wrapper_contracts.py`,
+`tests/test_validation_check_rosters.py`,
+`tests/libraries/test_validation_report.py`,
+`tests/baselines/python_coverage.json`, and
+`tests/fixtures/public_cli_contracts/make_target_expansions.json`. Apply only
+the five reviewed moved-file path edits. No wrapper, alias, duplicate, package,
+descriptor, schema, transaction, receipt, recovery marker, dependency action,
+or documentation path belongs in this slice.
+
+Before the complete gate, run only final producer/job/shell-test syntax, the
+moved direct shell and validator suites, the Step `02b` scheduler cases, and the
+small explicit inventory/roster/report/artifact/Make path assertions affected
+by the cutover. Then measure final Python coverage with only
+`tests/git_orchestration/test_validators.py::test_documentation_validator_accepts_repository_from_arbitrary_cwd`
+deselected so the intentionally deferred links do not prevent an exact moved-
+row measurement. Update only the moved validator row and mechanically changed
+global counts, require every non-target row exact, and enforce the frozen rate/
+covered-count floors.
+
+Run the canonical RUNBOOK gate once against the assembled executable tree with
+`RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` and an explicit result
+JSON under `/private/tmp`. Because documentation is intentionally deferred,
+the aggregate may report only the one documentation assertion containing the
+ten Step `02b` migration-link findings plus nine inherited `UNREFINED` card-
+location findings. Report that as an expected-only nonpassing ceiling, never a
+green gate. Any other failing test, link count, coverage regression, missing
+tool, or lane failure must be understood before the executable commit. Do not
+install dependencies or use cluster/production resources.
+
+At documentation close, use the card's canonical roster, add no unrelated
+documentation, repair all ten migration links and every inbound lifecycle
+link, move this card to `COMPLETED`, and run exactly the RUNBOOK documentation-
+only sequence. The accepted close may still report only the nine inherited
+`UNREFINED` locations; it must contain no migration-caused finding. Roll back
+documentation first, cutover second, and baseline third. Git rollback never
+deletes or alters runtime evidence, production data, locks, logs, or recovery
+artifacts.
