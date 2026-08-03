@@ -12,47 +12,47 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: migration-selection checkpoint
-  `28acbbb871fd77815ea03d1631ff7462dbe50c2f` is clean, published, and
-  local/upstream-equal; the task-specific plan and old-path baseline are in the
-  commit containing this handoff.
-- Current package: selected
-  [`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md)
-  with task-specific planning/baselining complete and execution not begun.
-- Package type at this checkpoint: documentation-only planning plus local
-  fixture/mock characterization; no executable or test file has changed.
-- Remote publication and upstream equality: selection parent `28acbbb` is
-  verified equal. Before execution, prove the commit containing this handoff is
-  clean, published, and local/upstream-equal.
+- Recorded package state: executable/test checkpoint
+  `e19f28162a84f674cf910b38665e3c8ee85f0c45` is clean, published, and
+  local/upstream-equal; the documentation/lifecycle close is the commit
+  containing this handoff.
+- Current package: completed
+  [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md).
+- Package type at this checkpoint: impact-directed documentation-only close
+  after the separately published executable/test cutover.
+- Remote publication and upstream equality: executable checkpoint `e19f281` is
+  verified equal. Resolve the exact commit containing this handoff from live
+  Git and prove that documentation checkpoint published and equal before
+  selecting another owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
 integrated canonical tip. The neutral publication owner lives at
-`src/norad/libraries/validation_report.py`; the first migrated functional owner
-now lives at `src/norad/stages/construct_STAR_index/`. Its validator and the
-twelve remaining legacy-path validators load the neutral file without package
-identity, a wrapper, or `sys.path` mutation. The network-enabled canonical
-`make all-checks` attempt passed static, shell, guarded-R, and report-runtime
-lanes but its aggregate Python lane remained nonpassing because the pre-close
-documentation test found six migration-caused stale links plus nine inherited,
-authorized `UNREFINED` locations. This close removes the six; the nine inherited
-findings remain an expected-only evidence ceiling, not a passing gate and not
-authority to change task-lifecycle behavior in this package.
+`src/norad/libraries/validation_report.py`; migrated functional owners now live
+at `src/norad/stages/construct_STAR_index/` and
+`src/norad/stages/convert_GTF_to_BED12/`. Their two validators and the eleven
+remaining legacy-path validators load the neutral file without package
+identity, a wrapper, or `sys.path` mutation.
 
-The next unit is `convert_GTF_to_BED12`, selected from the two current typed-
-external-input root candidates because its producer/validator dependency stays
-inside one owner. `construct_FASTA_sidecars` also remains dependency-valid but
-its validator additionally depends on the still-flat cross-cutting reference-
-provenance parser owner, so it is not preloaded or selected. Historical aliases
-did not determine this choice.
+The `MIG-03C` focused suites and reviewed final-path coverage passed before the
+executable commit. The recorded final-path measurement retained the producer at
+`151/167` lines and `44/56` branches and the validator at `127/140` lines and
+`29/36` branches; global measurement was `9474/11506` lines and `3354/4698`
+branches, above the committed non-regression floor. The aggregate gate was not
+fully green: canonical documentation validation reported exactly ten
+migration-caused stale links plus the nine inherited, authorized `UNREFINED`
+card-location findings. This close repairs the ten migration links. The nine
+inherited findings remain an expected-only nonpassing evidence ceiling, not a
+passing gate and not authority to change task-lifecycle behavior in this
+package.
 
-The exact next action is the atomic executable/test cutover listed in the
-[`MIG-03C` completion record](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md#completion-record).
-Do not repeat card selection or the completed reviews, and do not begin a later
-unit. Move the producer, validator, job, and two direct tests; add the owner-
-local isolated job matrix; cut over every named caller; then run final-path
-parity and coverage before committing. The executable checkpoint must contain
-no documentation close.
+`MIG-03C` moved the producer, validator, scheduler job, and owner-local tests to
+their final homes and cut over every reviewed repository caller without a
+wrapper, compatibility copy, package identity, descriptor, schema, or DAG
+change. Its characterized silent replacement and nontransactional scheduler
+residue remain defects. No next owner is preselected. Only after this close is
+published and upstream-equal may the integration owner use the live DAG to
+create and review one next migration unit just in time.
 
 ## Active concurrent lanes
 
@@ -507,10 +507,10 @@ or updated.
 complete. The second JIT unit,
 [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md),
 is complete at executable/test checkpoint `4f9c863` and documentation close
-`1b82e4f`. The next JIT card is
-[`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md);
-its three dedicated reviews, task-specific plan, and old-path baseline are
-complete. It alone is selected; execution has not begun.
+`1b82e4f`. The third JIT unit,
+[`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md),
+is complete at published executable/test checkpoint `e19f281`; its
+documentation/lifecycle close is the commit containing this handoff.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -521,12 +521,12 @@ and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. MIG-03C is selected, while
+are complete. MIG-03C and its dedicated
 [`REVIEW-ARCH-03C`](../tasks/COMPLETED/REVIEW-ARCH-03C-review-convert-gtf-to-bed12-migration.md),
 [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are complete. The exact write set and baseline are frozen in `MIG-03C`; prove
-the current documentation tip published/equal, then begin only its atomic
-executable/test cutover. No later card is pre-created. The unsliced
-`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.
+are complete. No later card is pre-created or selected. Prove the current
+documentation tip published/equal, then select only one next dependency-valid
+unit from live DAG evidence. The unsliced `PROGRAM-01` remainder and unrelated
+roadmap remain preserved and out of scope.

@@ -13,10 +13,11 @@ Canonical diagrams:
 ## Compute pipeline
 
 Current public workflow entry points use a mixed physical layout. The neutral
-validation-report library and the `construct_STAR_index` job and validator now
-live under `src/norad/`; remaining workflow entry points stay under `scripts/`
-and `jobs/`. Other colocated functional-owner documents under `src/norad/`
-remain contracts rather than claims that their implementations have migrated.
+validation-report library, the `construct_STAR_index` job and validator, and the
+`convert_GTF_to_BED12` producer, validator, and job now live under `src/norad/`;
+remaining workflow entry points stay under `scripts/` and `jobs/`. Other
+colocated functional-owner documents under `src/norad/` remain contracts rather
+than claims that their implementations have migrated.
 
 The supported workflow is a directed graph of shared reference inputs,
 per-sample alignment and BAM transformations, non-gating QC/orientation
@@ -45,11 +46,12 @@ not in this implemented-current-topology document.
 [`validation_report.py`](../../src/norad/libraries/validation_report.py) owns
 the shared snapshot, seven-column rendering/validation, and transactional
 publication protocol used by all thirteen validator entry points. The final
-`construct_STAR_index` validator and twelve remaining `scripts/` validators
-resolve that exact file through private caller-local loaders; no package marker,
-public Python import identity, install step, compatibility wrapper, or
-`sys.path` mutation is part of the current interface. Stage-specific parsing
-and check rosters remain with their functional owners.
+`construct_STAR_index` and `convert_GTF_to_BED12` validators and eleven
+remaining `scripts/` validators resolve that exact file through private
+caller-local loaders; no package marker, public Python import identity, install
+step, compatibility wrapper, or `sys.path` mutation is part of the current
+interface. Stage-specific parsing and check rosters remain with their
+functional owners.
 
 This relocation preserved the characterized snapshot, ordering, collision,
 rollback, cleanup, descriptor, and lock defects. It did not correct them or

@@ -577,7 +577,10 @@ the explicit GTF exon models.
 
 Follow the [common response](#structured-validation-response), comparing the
 BED with deterministic exon normalization of the exact GTF. Regenerate only
-through `gtf_to_bed12.py` after confirming that conversion contract.
+through
+`src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py` after confirming that
+conversion contract. Preserve scheduler logs, the intermediate BED, and the
+final BED together when failure residue or ownership is ambiguous.
 
 ## Step 00c FAI/DICT validation fails
 

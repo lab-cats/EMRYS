@@ -1015,3 +1015,66 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   coverage, and the complete applicable gate precede the executable commit.
   No dependency, cluster, production, scientific-review, or biological claim
   was created.
+
+## 2026-08-02T22:07:41-0400 — MIG-03C documentation and lifecycle close
+
+- **Checkpoint and authority:** before documentation mutation, live Git
+  verification found branch
+  `codex/mig-03a-extract-validation-report-library` clean including untracked
+  files at `e19f28162a84f674cf910b38665e3c8ee85f0c45`, with no index lock, merge,
+  rebase, cherry-pick, revert, bisect, sequencer, or other recovery marker. A
+  network-enabled fetch and `ls-remote` proved local `HEAD`, configured
+  upstream, and the live GitHub ref equal at that SHA with ahead/behind `0/0`.
+- **Delivered owner and provenance decision:** the mode-`0755` producer is
+  byte-identical at its final path with SHA-256
+  `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`.
+  The mode-`0644` validator changed only its neutral-library owner-relative
+  lookup and retains the sibling producer import. The mode-`0755` job changed
+  only its delegated producer path and has final SHA-256
+  `2b902dd60d9f027eca912f5c50598963c728114facfa9e37157e25cd3a1ff381`.
+  Artifact identity, BED12/validation contracts, scheduler semantics, and
+  producer implementation hash remain unchanged; no wrapper, compatibility
+  copy, package marker, descriptor, schema, or stage-to-stage import was added.
+- **Documentation-impact decision:** add the adjacent owner README; repair the
+  owner contract, functional inventory, coverage route, documentation ownership
+  map, runbook, troubleshooting path, current architecture, roadmap, handoff,
+  card lifecycle, review backlink, and this dated record. Exact pre-close
+  validation found ten migration-caused broken links: five in the contract and
+  five in the inventory. The source move changes mixed physical placement but
+  not the semantic DAG or public artifact flow, so neither canonical diagram is
+  changed.
+- **Operator and recovery decision:** repository-root documentation now gives
+  complete direct and exact-interpreter producer commands, explicit-interpreter
+  validator dry-run/execute commands, the three-suite focused-test command, and
+  `cd <checkout>` before the exact final `sbatch` path. Arbitrary-CWD use
+  requires an absolute checkout path or an explicit `cd`. Submission executes
+  implicitly, has no dry run, retains all four overrides, and publishes
+  nontransactionally. Silent producer replacement, failure-created directories,
+  intermediate/final residue, and contradictory bad-field stdout remain
+  characterized defects; preserve ambiguous artifacts and logs rather than
+  treating characterization as cleanup authority.
+- **Evidence decision:** reviewed final-path coverage retained producer
+  `151/167` lines and `44/56` branches and validator `127/140` lines and `29/36`
+  branches; global measurement was `9474/11506` and `3354/4698`
+  (`0.823396`/`0.713921`), above the committed floor. Focused final-path suites
+  passed. The aggregate gate was not fully green because documentation
+  validation still contained the ten migration links plus nine inherited
+  authorized `UNREFINED` locations; do not promote that result to a passing
+  gate. No runtime, scheduler, production, scientific-review, or biological
+  evidence was created.
+- **Card-boundary gate:** after the documentation edits, `git diff --check`
+  passed and the exact repository documentation validator reported only the
+  same nine inherited `invalid card location` findings under
+  `docs/tasks/UNREFINED/`, with no migration-caused finding. This is an
+  expected-only nonpassing documentation result, not a pass. The complete
+  predecessor-to-final diff is documentation-only/non-consuming, so Python,
+  shell, R, report-runtime, and cluster suites are not applicable and were not
+  rerun.
+- **Lifecycle and slice policy:** move `MIG-03C` to `COMPLETED`, repair every
+  inbound lifecycle link, and publish this documentation close separately from
+  executable checkpoint `e19f281`. Keep future slices explicitly small; use
+  only the minimum safety check at a slice boundary, batch migration links and
+  other impact-directed documentation into the card-boundary close, and run the
+  complete applicable gate only at that boundary. No later card or owner is
+  preloaded. Select one next dependency-valid unit from live DAG evidence only
+  after this close is clean, published, and upstream-equal.

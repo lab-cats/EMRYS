@@ -3,11 +3,12 @@
 This document records the observed current contract of historical Step `00b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
+is now the implemented native source owner for its producer, validator, and
+scheduler entry point; it is not a Python package and exposes no package import
+identity.
 
-Only this contract is colocated here. The current executable files remain in
-`jobs/` and `scripts/` until a separately approved migration.
+The adjacent [`README.md`](README.md) routes maintainers and operators to the
+implemented assets, supported commands, diagnostics, and recovery boundary.
 
 ## Responsibility
 
@@ -72,14 +73,14 @@ responsibility rather than a proven functional requirement.
 
 ## Current execution surfaces
 
-[`gtf_to_bed12.py`](../../../../scripts/gtf_to_bed12.py) is the public
+[`gtf_to_bed12.py`](gtf_to_bed12.py) is the public
 conversion entrypoint. It accepts explicit input/output and GTF-selection
 arguments, creates the output parent directory, and writes immediately. It has
 no dry-run or transactional publication mode and silently replaces the
 declared output when that path already exists; replacement is a characterized
 defect, not an approved target behavior.
 
-[`step_00b_gtf_to_bed12.slurm`](../../../../jobs/step_00b_gtf_to_bed12.slurm)
+[`step_00b_gtf_to_bed12.slurm`](step_00b_gtf_to_bed12.slurm)
 is the scheduler entrypoint. It:
 
 - executes implicitly and has no dry-run or explicit execute control;
@@ -96,7 +97,7 @@ interface.
 
 ## Validation interface
 
-[`validate_step_00b_bed12.py`](../../../../scripts/validate_step_00b_bed12.py)
+[`validate_step_00b_bed12.py`](validate_step_00b_bed12.py)
 accepts explicit scope, BED12, source-GTF, and output paths. Validation is
 dry-run by default; `--execute` publishes `<scope-id>.validation.tsv` using the
 common seven-field step-validation contract.
@@ -116,10 +117,11 @@ report.
 
 The GTF-agreement check imports the converter's parsing and BED-record builder,
 so it compares against the producer's normalization logic rather than an
-independent implementation. The validator also imports snapshot, rendering,
-validation, locking, and publication functions from the Step `00a` validator.
-Both dependencies are observed current ownership, not target placement
-decisions.
+independent implementation. The producer is its same-owner sibling. Snapshot,
+rendering, validation, locking, and publication functions come from the neutral
+exact-file [`validation_report.py`](../../libraries/validation_report.py)
+owner through a private owner-relative loader. Neither dependency creates a
+public package import identity or cross-stage implementation edge.
 
 ## Consumers
 
@@ -137,16 +139,20 @@ No downstream stage should depend on this stage's implementation module.
 
 ## Protected behavior and evidence
 
-- [`test_gtf_to_bed12.py`](../../../../tests/test_gtf_to_bed12.py) protects the
+- [`test_gtf_to_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_gtf_to_bed12.py) protects the
   public CLI, exact exon-to-block conversion, sorting, warnings, configurable
   attributes, invalid-transcript handling, failure with no valid records, and
   characterized output replacement.
-- [`test_validate_step_00b_bed12.py`](../../../../tests/test_validate_step_00b_bed12.py)
+- [`test_validate_step_00b_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py)
   protects dry-run, the five checks, mismatch evidence, structural failures,
   and preservation of foreign locks or invalid predecessors.
+- [`test_step_00b_gtf_to_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_step_00b_gtf_to_bed12.py)
+  protects success plus the isolated missing-submit-directory, colliding-output,
+  missing-GTF, nonexecutable-Python, module-failure, converter-failure,
+  bedtools-failure, and bad-field scheduler states and their exact residue.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects the embedded converter/sort sequence, submit-directory requirement,
-  module behavior, field-count check, and exit propagation with local mocks.
+  protects the exact mixed-layout job roster, directives, mode, and generic
+  scheduler boundaries.
 - [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
@@ -167,16 +173,16 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   wrapper's bedtools command.
 - The validator reuses producer normalization code for its strongest agreement
   check.
-- Cross-cutting validation-publication code remains owned by the Step `00a`
-  module.
+- Cross-cutting validation publication lives in the neutral exact-file
+  [`validation_report.py`](../../libraries/validation_report.py) owner and is
+  loaded by the validator through its private owner-relative bridge.
 
-This inventory records those boundaries without choosing an extraction,
-deduplication, or target owner.
+This inventory records the remaining reference-materialization, duplicated-
+sorting, and oracle boundaries without choosing an unreviewed correction.
 
 ## Deferred decisions
 
 - Final owner of reference materialization.
 - Whether the target contract retains one or both sorting operations.
 - Whether GTF-agreement validation requires a producer-independent oracle.
-- Final ownership of scheduler templates and non-Python assets.
-- Migration order, compatibility wrappers, and shared-code extraction.
+- Whether a later descriptor, schema, or package contract is justified.

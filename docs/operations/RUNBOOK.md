@@ -2249,17 +2249,36 @@ Focused validation:
 
 ### Step 00b: GTF To BED12
 
-Script:
+From the repository root, invoke the mode-`0755` producer directly or through
+the exact repository interpreter with explicit GTF and BED paths:
 
 ```bash
-scripts/gtf_to_bed12.py
+src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py \
+  --gtf refs/novogene_ref/genome.gtf \
+  --bed refs/novogene_ref/genome.unsorted.bed
+
+.venv/bin/python src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py \
+  --gtf refs/novogene_ref/genome.gtf \
+  --bed refs/novogene_ref/genome.unsorted.bed
 ```
 
-Job:
+From another working directory, either `cd` to the checkout or replace the
+producer, GTF, and BED arguments with explicit absolute paths. The producer has
+no dry-run and silently replaces its declared output; that behavior is a
+characterized defect.
+
+Submit the scheduler entry point from the intended checkout:
 
 ```bash
-jobs/step_00b_gtf_to_bed12.slurm
+cd /Users/elisteiger/dev/norad
+sbatch src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm
 ```
+
+Submission executes implicitly and has no dry-run control. The job requires
+`SLURM_SUBMIT_DIR`, changes to that directory, and honors the existing `GTF`,
+`UNSORTED_BED`, `BED`, and `PYTHON_BIN` overrides. Intermediate and final BED
+publication is nontransactional; preserve failure residue and scheduler logs
+until ownership and recovery are explicit.
 
 Outputs:
 
@@ -2277,7 +2296,7 @@ Validated output:
 The structured Step `00b` validator reads one explicit BED12 and source GTF:
 
 ```bash
-.venv/bin/python scripts/validate_step_00b_bed12.py \
+.venv/bin/python src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py \
   --scope-id novogene_ref \
   --bed12 refs/novogene_ref/genome.bed \
   --source-gtf refs/novogene_ref/genome.gtf \
@@ -2290,7 +2309,7 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00b
-.venv/bin/python scripts/validate_step_00b_bed12.py \
+.venv/bin/python src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py \
   --scope-id novogene_ref \
   --bed12 refs/novogene_ref/genome.bed \
   --source-gtf refs/novogene_ref/genome.gtf \
@@ -2301,7 +2320,10 @@ mkdir -p results/qc/validation/00b
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_00b_bed12.py
+.venv/bin/python -m pytest -q \
+  tests/stages/convert_GTF_to_BED12/test_gtf_to_bed12.py \
+  tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py \
+  tests/stages/convert_GTF_to_BED12/test_step_00b_gtf_to_bed12.py
 ```
 
 ### Step 00c: GATK Reference Sidecars

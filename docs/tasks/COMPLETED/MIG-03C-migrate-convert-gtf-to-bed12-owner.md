@@ -297,22 +297,20 @@ alias order.
 
 ## Completion record
 
-Selected and task-specific read-only execution planning complete after all
-three reviews. The selected parent `28acbbb` was clean, published, and
-local/upstream-equal; the frozen campaign rollback parent remains
-`1b82e4f04b926ac12e6306e40d03fee7840f3fa6`. Old-path characterization and
-coverage are recorded below. No executable or test path has moved. The next
-agent begins with the atomic cutover in the exact write set below, only after
-proving the commit containing this plan is clean, published, and upstream-equal.
+Completed in published executable/test checkpoint
+`e19f28162a84f674cf910b38665e3c8ee85f0c45`. The architecture, reliability,
+and usability reviews and the frozen pre-mutation baseline below remain the
+decision record. The documentation/lifecycle close is the commit containing
+this completion record; resolve and verify its exact SHA from live Git.
 
 ### Task-specific execution plan and frozen old-path baseline
 
 Planning was completed on clean, published, local/upstream-equal selection tip
 `28acbbb871fd77815ea03d1631ff7462dbe50c2f`. Git showed no merge, rebase,
 cherry-pick, revert, index-lock, or recovery state and no overlapping mutable
-lane. Execution has not begun.
+lane. At that checkpoint, execution had not begun.
 
-The exact executable/test cutover write set is:
+The exact executable/test cutover write set was:
 
 - move `scripts/gtf_to_bed12.py`, `scripts/validate_step_00b_bed12.py`, and
   `jobs/step_00b_gtf_to_bed12.slurm` without basename changes into
@@ -339,15 +337,13 @@ The exact executable/test cutover write set is:
 - make no `.coveragerc`, package-marker, wrapper, compatibility-copy, descriptor,
   schema, unrelated owner, or documentation change in the executable commit.
 
-Execute that cutover atomically, then run the moved owner tests first. Prove the
-shared validator loader exact-loads and path-validates the final sibling producer
-without `sys.path` mutation or a foreign cache, and make copied Step `00b`
-neutral-owner fault layouts include the sibling producer. Update the artifact
-adapter assertion to require the final producer path and unchanged producer
-SHA-256. Run a reviewed final-path coverage measurement before updating the
-snapshot, then the coverage check and one de-duplicated complete applicable
-local gate. Only after the executable checkpoint is committed, published, and
-upstream-equal may the impact-directed documentation/lifecycle close begin.
+The reviewed sequence required one atomic cutover, moved-owner tests first,
+exact loading and path validation of the sibling producer without `sys.path`
+mutation or a foreign cache, final-layout copied fault fixtures, final producer
+path and unchanged SHA-256 provenance, and a reviewed final-path coverage
+measurement before the baseline path transition. Impact-directed documentation
+and lifecycle closure followed only after the executable checkpoint was
+committed, published, and upstream-equal.
 
 Frozen old-path evidence on `28acbbb`:
 
@@ -377,3 +373,48 @@ Frozen old-path evidence on `28acbbb`:
 - the documentation gate still reports exactly the nine authorized inherited
   `invalid card location` findings under `docs/tasks/UNREFINED/` and no
   migration-caused finding.
+
+### Delivered state and acceptance evidence
+
+- The mode-`0755` producer moved byte-for-byte to its final owner and retains
+  SHA-256
+  `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`.
+  The mode-`0644` validator moved beside it with only its owner-relative neutral-
+  library lookup changed and retains the literal sibling
+  `import gtf_to_bed12`. The mode-`0755` job moved beside both and changed only
+  its delegated producer path; its final SHA-256 is
+  `2b902dd60d9f027eca912f5c50598963c728114facfa9e37157e25cd3a1ff381`.
+- The producer, validator, and isolated mocked-job suites now live under
+  `tests/stages/convert_GTF_to_BED12/`. Reviewed focused owner and caller suites
+  passed at the final paths, including exact sibling loading, public CLI,
+  validation roster/report, SLURM inventory and behavior, artifact provenance,
+  Make expansion, and coverage wiring. This is local fixture/mock evidence.
+- The reviewed final-path coverage measurement retained the producer at
+  `151/167` lines and `44/56` branches and the validator at `127/140` lines and
+  `29/36` branches. Global measurement was `9474/11506` lines and `3354/4698`
+  branches (`0.823396`/`0.713921`), above the committed non-regression floor of
+  `9343/11506` and `3281/4698` (`0.812011`/`0.698382`). The tracked snapshot
+  changed the two paths and required-subprocess identity without lowering the
+  accepted floor.
+- Repository-owned callers use explicit final paths. Exact inspection found no
+  legacy implementation/test/job file, duplicate basename, wrapper,
+  compatibility copy, symlink, package marker, descriptor, schema, or
+  stage-to-stage implementation import. Artifact implementation evidence names
+  the final producer while preserving its identity, bytes, and source hash.
+- The complete aggregate gate was not fully green. Its documentation validation
+  reported exactly ten migration-caused stale links plus the nine inherited,
+  authorized `invalid card location` findings under `docs/tasks/UNREFINED/`.
+  The documentation close repairs the ten migration links; the nine inherited
+  findings remain an expected-only nonpassing condition and are never called a
+  passing gate.
+- Silent producer replacement, module-failure directory residue,
+  converter-failure directories, bedtools-failure intermediate and redirect-
+  created final residue, and bad-field publication with contradictory success
+  stdout remain characterized defects. The migration neither fixes nor blesses
+  them, and it adds no runtime, scheduler, production, scientific-review, or
+  biological evidence.
+- Rollback points are published old-path baseline `59ca185`, published
+  executable checkpoint `e19f281` before documentation close, and the commit
+  containing this completion record before the next JIT unit. Reverse the
+  documentation close before the executable cutover; do not restore duplicate
+  files or alter runtime artifacts during source rollback.
