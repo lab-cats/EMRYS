@@ -88,7 +88,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_08_preprocessing_outputs.py"
     ),
     "validate_step_09_cmh_outputs.py": Path(
-        "scripts/validate_step_09_cmh_outputs.py"
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "validate_step_09_cmh_outputs.py"
     ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
@@ -148,7 +149,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
-        "scripts/step_09_cmh_editing_site_calling.sh"
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
         "scripts/step_09c_scientific_validation.sh"
@@ -172,7 +174,8 @@ R_ENTRYPOINT_PATHS = {
         "step_08_vcf_preprocessing.R"
     ),
     "step_09_cmh_editing_site_calling.R": Path(
-        "scripts/step_09_cmh_editing_site_calling.R"
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "step_09_cmh_editing_site_calling.R"
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)

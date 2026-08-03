@@ -414,6 +414,25 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["09"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_09",
+                "role": "implementation",
+                "path": (
+                    "src/norad/analyses/"
+                    "rank_cohort_candidates_with_paired_CMH/"
+                    "step_09_cmh_editing_site_calling.sh"
+                ),
+                "sha256": (
+                    "7926d13bd9f0192522a20224c24716b7"
+                    "b8dca7a1348803cb7e8aefa1b056123a"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

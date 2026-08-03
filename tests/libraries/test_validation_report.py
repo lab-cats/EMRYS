@@ -73,7 +73,8 @@ VALIDATOR_PATHS = {
         "validate_step_08_preprocessing_outputs.py"
     ),
     "validate_step_09_cmh_outputs": Path(
-        "scripts/validate_step_09_cmh_outputs.py"
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "validate_step_09_cmh_outputs.py"
     ),
 }
 VALIDATOR_MODULES = tuple(VALIDATOR_PATHS)

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-test_script="$repo_root/tests/r/test_step_09_cmh_editing_site_calling.R"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+test_script="$repo_root/tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.R"
 
 explicit_rscript="${STEP09_TEST_RSCRIPT_BIN:-${RSCRIPT_BIN_OVERRIDE:-}}"
 if [[ -n "$explicit_rscript" ]]; then
@@ -27,7 +27,7 @@ else
     rscript_bin="$(command -v Rscript)"
 fi
 
-step09_help="$("$rscript_bin" "$repo_root/scripts/step_09_cmh_editing_site_calling.R" --help)"
+step09_help="$("$rscript_bin" "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" --help)"
 [[ "$step09_help" == *"Usage:"* ]] || {
     echo "Step 09 --help output is missing its usage line." >&2
     exit 1

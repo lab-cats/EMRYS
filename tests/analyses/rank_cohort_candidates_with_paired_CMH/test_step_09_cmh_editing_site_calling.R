@@ -9,9 +9,13 @@ if (length(file_value) != 1L) {
 }
 test_path <- normalizePath(sub("^--file=", "", file_value), mustWork = TRUE)
 repo_root <- normalizePath(
-    file.path(dirname(test_path), "..", ".."), mustWork = TRUE
+    file.path(dirname(test_path), "..", "..", ".."), mustWork = TRUE
 )
-engine <- file.path(repo_root, "scripts", "step_09_cmh_editing_site_calling.R")
+engine <- file.path(
+    repo_root, "src", "norad", "analyses",
+    "rank_cohort_candidates_with_paired_CMH",
+    "step_09_cmh_editing_site_calling.R"
+)
 rscript_bin <- file.path(R.home("bin"), "Rscript")
 
 STEP08_METADATA_COLUMNS <- c(
@@ -152,9 +156,7 @@ load_engine_run_cmh <- function() {
 }
 
 assert_independent_cmh_corpus <- function() {
-    corpus_path <- file.path(
-        repo_root, "tests", "fixtures", "step_09_cmh_oracle.tsv"
-    )
+    corpus_path <- file.path(dirname(test_path), "step_09_cmh_oracle.tsv")
     corpus <- read_tsv(corpus_path)
     expected_header <- c(
         "case_id", "requirement_tags", "bh_family", "min_sample_dp",

@@ -60,7 +60,8 @@ JOB_PATHS = {
         "step_08_vcf_preprocessing.slurm"
     ),
     "step_09_cmh_editing_site_calling.slurm": Path(
-        "jobs/step_09_cmh_editing_site_calling.slurm"
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "step_09_cmh_editing_site_calling.slurm"
     ),
     "template.slurm": Path("jobs/template.slurm"),
     "tool_check.slurm": Path("jobs/tool_check.slurm"),
@@ -259,7 +260,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list",),
         submit_cwd="fallback",
-        delegation="scripts/step_09_cmh_editing_site_calling.sh",
+        delegation=(
+            "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+            "step_09_cmh_editing_site_calling.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

@@ -9,9 +9,10 @@ from pathlib import Path
 import pytest
 
 
-ROOT = Path(__file__).resolve().parents[1]
-ORACLE_PATH = ROOT / "tests/tools/step_09_cmh_oracle.py"
-CORPUS_PATH = ROOT / "tests/fixtures/step_09_cmh_oracle.tsv"
+ROOT = Path(__file__).resolve().parents[3]
+OWNER = ROOT / "tests/analyses/rank_cohort_candidates_with_paired_CMH"
+ORACLE_PATH = OWNER / "step_09_cmh_oracle.py"
+CORPUS_PATH = OWNER / "step_09_cmh_oracle.tsv"
 SPEC = importlib.util.spec_from_file_location("step09_cmh_oracle", ORACLE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 ORACLE = importlib.util.module_from_spec(SPEC)

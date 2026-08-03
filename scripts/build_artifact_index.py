@@ -991,7 +991,10 @@ STEP_PRODUCERS = {
         "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
         "step_08_vcf_preprocessing.sh"
     ),
-    "09": "scripts/step_09_cmh_editing_site_calling.sh",
+    "09": (
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "step_09_cmh_editing_site_calling.sh"
+    ),
     "09c": "scripts/step_09c_scientific_validation.py",
 }
 

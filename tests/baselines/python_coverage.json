@@ -151,7 +151,7 @@
       "line_rate": "0.974684",
       "num_branches": 40,
       "num_statements": 158,
-      "path": "scripts/validate_step_09_cmh_outputs.py"
+      "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
     },
     {
       "branch_rate": "0.823529",
