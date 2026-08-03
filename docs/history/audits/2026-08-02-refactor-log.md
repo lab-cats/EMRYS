@@ -4080,6 +4080,68 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T09:56:11-0400 — REVIEW-ARCH-03L completed
+
+- **Review basis:** complete a separate read-only architecture pass from clean,
+  published, local/upstream/live-remote-equal selection
+  `e34edb55e93b9874830fcc66688e5ac3b0d3f9dd`. Recheck the canonical identity,
+  direct DAG, target topology, migration mechanics, modes, every tracked old
+  path/basename reference, public CLI/Make/SLURM maps, neutral report loader,
+  artifact projection/reconciliation, coverage row, direct/pending test owners,
+  shared partition manifests, and reverse rollback. Independent authorship is
+  not claimed.
+- **Eligibility and placement decision:**
+  `generate_partitioned_cohort_mpileup_VCFs` remains the only eligible
+  unmigrated owner; Step `08` remains blocked, uncreated, and unselected. Move
+  only the mode-`0755` producer, mode-`0644` validator, mode-`0644` job, mode-
+  `0755` direct shell test, and mode-`0644` direct validator test to their
+  frozen stage/test homes. Preserve direct-executable, explicit-interpreter,
+  and `sbatch`/explicit-Bash surfaces and exact modes.
+- **Exact cutover decision:** all supported callers are repository-owned and
+  fit one atomic direct cutover of five moves plus exactly nine integration
+  owners: Make, artifact producer mapping, artifact final-path/hash assertion,
+  public CLI, SLURM path/delegation, validation roster, neutral report-loader
+  map, coverage row, and literal Make fixture. Exact tracked-path/basename/
+  recipe searches found no tenth integration owner. Root Step `07` partition
+  manifests remain shared inputs, the contract remains documentation, and no
+  pending Step `07` scaffold exists. An extra integration owner, sixth move,
+  or different production edit reopens architecture review; no wrapper, alias,
+  duplicate, package, or compatibility copy is justified.
+- **Production and moved-test roots:** production edits only the producer usage
+  path, validator report root `parents[1]` → `parents[4]`, and job child path.
+  The private report identity/behavior stays unchanged. The shell test uses
+  `SCRIPT_DIR/../../..` and final producer/job targets. The Python test uses
+  `parents[3]`, the final validator, and a private exact-file load of unchanged
+  `tests/validation_roster_expectations.py` under
+  `generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle` without
+  `sys.path`, package, production-helper, or global module-cache change.
+- **Projected native evidence:** applying only those reviewed substitutions in
+  read-only streams projects producer `31,526` bytes / `893` lines /
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`,
+  validator `13,524` / `334` /
+  `3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`,
+  and job `4,421` / `133` /
+  `fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
+  Any final production hash or mode difference reopens review.
+- **Artifact and coverage ownership:** Step `07` artifact evidence changes only
+  to the final producer path and first projected hash. VCF, receipt, validation-
+  report identities, schemas, ordering, downstream dependency, receipt-marker
+  interpretation, consumers, and scientific meaning remain fixed. Coverage
+  renames one validator row and must preserve its `167/198` line and `48/72`
+  branch rates, every non-target row, and global covered-count floors.
+- **Rollback and evidence ceiling:** reverse documentation first, then the
+  atomic five-move/nine-update cutover with Make/oracle and artifact path/hash
+  assertion together, then later reliability baselines in reverse order. Git
+  rollback never changes runtime VCF/receipt, lock, backup, scratch, log, or
+  recovery evidence. This review changed or ran no executable, test, harness,
+  dependency, real bcftools, scheduler, production, scientific-review,
+  variant/editing-site, or biological state.
+- **Card-boundary gate:** `git diff --check` passed. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no architecture-review-caused path, lifecycle,
+  dependency, cycle, orphan, anchor, or diagram finding. The expected-only
+  result remains nonpassing and is not called green.
+
 ## 2026-08-03T08:25:54-0400 — REVIEW-ARCH-03K completed
 
 - **Review basis:** complete a separate read-only architecture pass from clean,

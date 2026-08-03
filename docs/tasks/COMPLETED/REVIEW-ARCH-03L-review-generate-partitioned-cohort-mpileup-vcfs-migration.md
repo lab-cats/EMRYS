@@ -109,8 +109,67 @@ extraction, or second functional-owner migration.
 
 ## Completion record
 
-Selected as the sole active migration review from clean, published,
-local/upstream/live-remote-equal definition checkpoint
-`8dc61287819d7ea10ca4bcc38934a0819161d24a`. No architecture finding is
-recorded yet, no later review or migration card is selected, and no
-executable/test file changed or ran.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `e34edb55e93b9874830fcc66688e5ac3b0d3f9dd`.
+
+- **High — exact cutover ceiling accepted:** move exactly the producer,
+  validator, mode-`0644` job, direct shell test, and direct validator test to
+  the frozen stage/test homes. Update exactly nine integration owners: Make,
+  artifact producer mapping and final path/hash evidence, public CLI, SLURM,
+  validation roster, neutral report-loader matrix, coverage baseline, and the
+  literal Make expansion. Searches prove no tenth integration owner. The
+  three root Step `07` partition manifests remain shared operator inputs and
+  the adjacent contract remains documentation; neither is a sixth move. No
+  Step `07` pending scaffold exists.
+- **High — permissible production edits and hashes fixed:** only the producer
+  usage path, validator `parents[1]` to `parents[4]` report-root depth, and
+  scheduler child path change bytes. Projected final producer is mode `0755`,
+  `31,526` bytes, `893` lines, SHA-256
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`;
+  validator is mode `0644`, `13,524` bytes, `334` lines,
+  `3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`;
+  and job is mode `0644`, `4,421` bytes, `133` lines,
+  `fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
+  Any difference reopens this review.
+- **High — private helper ownership accepted:** the validator keeps its
+  unchanged exact-file neutral report identity and readiness/path/cache
+  behavior. The moved shell test uses `SCRIPT_DIR/../../..` and final producer/
+  job targets. The moved Python test uses `parents[3]`, final validator path,
+  and an exact-file bridge to unchanged root
+  `tests/validation_roster_expectations.py` under private identity
+  `generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle`, binding
+  only `assert_exact_check_roster` without `sys.path` or module-cache mutation.
+  No production helper, package import, or second test owner is needed.
+- **High — artifact and coverage assignment accepted:**
+  `STEP_PRODUCERS["07"]` changes only to the final producer path and projected
+  hash; the existing migrated-implementation evidence test gains the exact
+  Step `07` assertion. VCF/receipt/report identities, schemas, dependency
+  ordering, completion-marker interpretation, and scientific meaning do not
+  change. The coverage row moves to the final validator path while retaining
+  `167/198` lines, `48/72` branches, non-target exactness, and global covered-
+  count floors.
+- **Medium — Make/static and documentation boundaries accepted:** exact final
+  producer/job paths replace flat wildcards; direct test recipes move; central
+  maps remain explicit. Contract, inventory, topology status, test baseline,
+  documentation ownership, runbook/troubleshooting, artifact provenance,
+  current roadmap/handoff, lifecycle links, and the adjacent README change
+  only in the later batched migration documentation close. No diagram change
+  is expected because semantic identities, direct DAG edges, and public flow
+  remain unchanged.
+- **Accepted atomicity and rollback:** old and final executable/test paths may
+  not coexist. Apply the five moves and nine integrations atomically after
+  reviewed reliability baselines. Roll back documentation first, then the
+  five-move/nine-update cutover, then any test-only reliability checkpoints in
+  reverse order. Git rollback never authenticates or changes runtime VCF,
+  receipt, lock, scratch, backup, log, or recovery evidence. No wrapper, alias,
+  symlink, compatibility copy, package marker, descriptor, schema, or future-
+  owner preload is justified.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, real bcftools, scheduler, production, scientific-
+  review, variant/editing-site, or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. No review path, lifecycle, dependency, cycle, orphan,
+  anchor, or diagram finding remains. This expected-only ceiling is
+  nonpassing, not green and not authority to alter inherited lifecycle state.

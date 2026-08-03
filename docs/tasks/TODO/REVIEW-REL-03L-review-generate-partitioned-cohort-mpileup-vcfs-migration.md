@@ -31,7 +31,7 @@ characterize these defects without fixing or approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03L](../IN_PROGRESS/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, test, and cutover boundary.
+- [REVIEW-ARCH-03L](../COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, test, and cutover boundary.
 
 ## Completion unblocks
 
@@ -117,5 +117,6 @@ characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-ARCH-03L`; no executable/test file
-changed or ran.
+Not selected. Architecture review is complete; reliability review is now
+dependency-unblocked but remains in `TODO`. No executable/test file changed or
+ran.

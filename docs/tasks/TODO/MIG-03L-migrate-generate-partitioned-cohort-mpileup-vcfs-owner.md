@@ -54,7 +54,8 @@ but does not select it.
   `9e46296ad22c3a08cb73f5b596844f2b0f13464ccf75739873454390d24189ba`
   and validator
   `2e13076b65bebad9c09de43a099ec45aa9970e6e6cefa65b9df247415b976180`.
-- Proposed executable cutover is five moves plus nine explicit integration
+- Architecture-reviewed executable cutover is exactly five moves plus nine
+  explicit integration
   owners: `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
@@ -62,22 +63,37 @@ but does not select it.
   `tests/libraries/test_validation_report.py`,
   `tests/baselines/python_coverage.json`, and
   `tests/fixtures/public_cli_contracts/make_target_expansions.json`.
-  Architecture review must prove the complete caller set and exact logical-
-  file ceiling before execution planning. The artifact test requires one
-  exact final producer path/hash assertion even though it contains no old
-  producer literal today.
-- Production edits are limited to the producer usage path, the validator
-  repository-root depth used to resolve neutral
-  `src/norad/libraries/validation_report.py`, and the scheduler child path.
-  Architecture review must project exact final hashes. No package import,
-  `PYTHONPATH`, helper move, schema extraction, or behavior change is
-  permitted without a recorded finding.
-- The moved shell test may change only its repository root and producer/job
-  targets before reviewed reliability additions. The moved Python test must
-  resolve the final validator and exact-load unchanged root
-  `tests/validation_roster_expectations.py` under a private test identity
-  without changing global `sys.path`. Architecture review owns the exact
-  helper bridge and its path/cache/failure boundary.
+  Exact tracked-path, basename, Make-recipe, and artifact-provenance searches
+  prove no tenth integration owner. The artifact test adds the final Step `07`
+  path/hash assertion even though it has no old producer literal. The three
+  root `configs/step_07_partitions.*.tsv` files remain shared operator inputs,
+  not owner implementation or a sixth move. No pending Step `07` scaffold
+  exists. A tenth update, sixth move, or different production-file edit
+  reopens architecture review.
+- Production edits are exactly: replace the producer usage path; change the
+  validator repository root from `parents[1]` to `parents[4]` for unchanged
+  neutral `src/norad/libraries/validation_report.py`; and replace the
+  scheduler child path. The existing private report identity and loader
+  behavior remain unchanged. No package import, `PYTHONPATH`, helper move,
+  schema extraction, or other production edit is permitted.
+- Projected final native values after only those reviewed path/root edits are
+  producer `31,526` bytes / `893` lines / SHA-256
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`,
+  validator `13,524` bytes / `334` lines / SHA-256
+  `3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`,
+  and job `4,421` bytes / `133` lines / SHA-256
+  `fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
+  Producer remains mode `0755`; validator and job remain mode `0644`. Any
+  production hash or mode difference reopens architecture review.
+- The moved shell test changes only its repository root to
+  `SCRIPT_DIR/../../..` and producer/job targets to final paths before
+  reliability additions. The moved Python test changes its root to
+  `parents[3]`, targets the final validator, and exact-loads unchanged root
+  `tests/validation_roster_expectations.py` through
+  `importlib.util.spec_from_file_location` under private test identity
+  `generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle`. It
+  validates the spec/loader, binds only `assert_exact_check_roster`, inserts no
+  global module or path, and needs no production helper or separate test owner.
 - Preserve producer CLI/help, filename-safe cohort/partition/sample IDs,
   positive maximum depth, nonempty filter, bcftools argument/override/PATH
   resolution, side-effect-free dry-run, exact manifest order, reference
@@ -137,7 +153,11 @@ but does not select it.
   level `logs/` mutation. Reliability review must disposition missing/
   unusable tool, module, version, child, stale complete output, and submitted-
   job states without hardening them.
-- `STEP_PRODUCERS["07"]` changes only to the final producer path. Preserve
+- `STEP_PRODUCERS["07"]` changes only to final path
+  `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh`
+  with projected hash
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`.
+  Preserve
   artifact status, evidence ID, Git projection, Step `07` VCF/receipt/report
   identities, schemas, ordering, reconciliation, downstream Step `08`
   dependency, completion-marker interpretation, consumers, and scientific
@@ -290,7 +310,7 @@ but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03K` documentation checkpoint `b73b12b`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no Step `08` or later owner is preloaded.
+Not selected. Architecture review completed from published/equal selection
+checkpoint `e34edb55e93b9874830fcc66688e5ac3b0d3f9dd`; reliability and usability
+reviews remain unselected in `TODO`. No executable/test path changed, no
+computational test ran, and no Step `08` or later owner is preloaded.
