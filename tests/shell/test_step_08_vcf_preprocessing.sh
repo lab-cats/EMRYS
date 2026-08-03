@@ -66,6 +66,18 @@ run_expect_failure() {
     fi
 }
 
+wait_for_marker() {
+    local marker="$1"
+    local process_id="$2"
+
+    for _ in {1..500}; do
+        [[ -e "$marker" ]] && return 0
+        kill -0 "$process_id" 2>/dev/null || return 1
+        sleep 0.01
+    done
+    return 1
+}
+
 assert_no_step08_scratch() {
     local output_root="$1"
     local qc_root="$2"
@@ -151,6 +163,13 @@ done
 
 if [[ "${FAKE_RSCRIPT_FAIL:-0}" == "1" ]]; then
     exit 73
+fi
+
+if [[ -n "${FAKE_RSCRIPT_BARRIER_MARKER:-}" ]]; then
+    : >"$FAKE_RSCRIPT_BARRIER_MARKER"
+    while [[ ! -e "${FAKE_RSCRIPT_BARRIER_RELEASE:?}" ]]; do
+        sleep 0.01
+    done
 fi
 
 hash_file() {
@@ -868,6 +887,75 @@ assert_not_exists \
     "$barrier_fixture/output/cohort_barrier/.cohort_barrier.step08.lock"
 assert_no_step08_scratch "$barrier_fixture/output" "$barrier_fixture/qc"
 
+printf 'Running TERM-after-receipt replacement restoration check...\n'
+signal_fixture="$test_root/signal-replacement"
+signal_dir="$signal_fixture/output/cohort_signal"
+signal_qc="$signal_fixture/qc"
+signal_marker="$test_root/signal-replacement.marker"
+signal_release="$test_root/signal-replacement.release"
+create_fixture "$signal_fixture" cohort_signal
+mkdir -p "$signal_dir" "$signal_qc"
+printf 'previous sites bytes\n' >"$signal_dir/cohort_signal.step08_sites.tsv"
+printf 'previous inputs bytes\n' >"$signal_dir/cohort_signal.step08_inputs.tsv"
+printf 'previous summary bytes\n' >"$signal_qc/cohort_signal.step08_summary.tsv"
+printf 'unrelated output bytes\n' >"$signal_fixture/output/unrelated.txt"
+printf 'unrelated QC bytes\n' >"$signal_qc/unrelated.txt"
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=signalreplace08 \
+    FAKE_MV_BARRIER_DEST_MATCH="cohort_signal.step08_inputs.tsv" \
+    FAKE_MV_BARRIER_MARKER="$signal_marker" \
+    FAKE_MV_BARRIER_RELEASE="$signal_release" \
+    bash "$script" \
+    --cohort-id cohort_signal \
+    --sample-manifest "$signal_fixture/samples.tsv" \
+    --partition-manifest "$signal_fixture/partitions.tsv" \
+    --step07-root "$signal_fixture/step07" \
+    --annotation-gtf "$signal_fixture/annotation.gtf" \
+    --output-root "$signal_fixture/output" \
+    --qc-root "$signal_qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$signal_fixture/step08_impl.R" \
+    --execute >"$test_root/signal-replacement.out" \
+    2>"$test_root/signal-replacement.err" &
+signal_pid=$!
+if ! wait_for_marker "$signal_marker" "$signal_pid"; then
+    : >"$signal_release"
+    kill -TERM "$signal_pid" 2>/dev/null || true
+    wait "$signal_pid" 2>/dev/null || true
+    fail "Signal replacement receipt barrier was not reached"
+fi
+[[ -s "$signal_dir/cohort_signal.step08_sites.tsv" ]] ||
+    fail "Replacement sites were not visible before TERM"
+[[ -s "$signal_qc/cohort_signal.step08_summary.tsv" ]] ||
+    fail "Replacement summary was not visible before TERM"
+[[ -s "$signal_dir/cohort_signal.step08_inputs.tsv" ]] ||
+    fail "Replacement input receipt was not visible before TERM"
+kill -TERM "$signal_pid"
+: >"$signal_release"
+set +e
+wait "$signal_pid"
+signal_status=$?
+set -e
+[[ "$signal_status" -eq 143 ]] ||
+    fail "Expected TERM exit 143; got $signal_status"
+assert_file_equals \
+    "$signal_dir/cohort_signal.step08_sites.tsv" \
+    "previous sites bytes"
+assert_file_equals \
+    "$signal_dir/cohort_signal.step08_inputs.tsv" \
+    "previous inputs bytes"
+assert_file_equals \
+    "$signal_qc/cohort_signal.step08_summary.tsv" \
+    "previous summary bytes"
+assert_file_equals \
+    "$signal_fixture/output/unrelated.txt" \
+    "unrelated output bytes"
+assert_file_equals "$signal_qc/unrelated.txt" "unrelated QC bytes"
+assert_not_exists "$signal_dir/.cohort_signal.step08.lock"
+assert_no_step08_scratch "$signal_fixture/output" "$signal_qc"
+assert_no_step08_recovery_marker "$signal_fixture/output" "$signal_qc"
+
 printf 'Running header-only candidate-table success check...\n'
 header_fixture="$test_root/header-only"
 create_fixture "$header_fixture" cohort_header
@@ -1048,6 +1136,79 @@ assert_file_equals \
 assert_no_step08_scratch \
     "$r_program_mutation_fixture/output" \
     "$r_program_mutation_fixture/qc"
+
+printf 'Running same-cohort lock concurrency check...\n'
+concurrency_fixture="$test_root/concurrency"
+concurrency_marker="$test_root/concurrency.marker"
+concurrency_release="$test_root/concurrency.release"
+create_fixture "$concurrency_fixture" cohort_concurrency
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=concurrencyfirst08 \
+    FAKE_RSCRIPT_BARRIER_MARKER="$concurrency_marker" \
+    FAKE_RSCRIPT_BARRIER_RELEASE="$concurrency_release" \
+    bash "$script" \
+    --cohort-id cohort_concurrency \
+    --sample-manifest "$concurrency_fixture/samples.tsv" \
+    --partition-manifest "$concurrency_fixture/partitions.tsv" \
+    --step07-root "$concurrency_fixture/step07" \
+    --annotation-gtf "$concurrency_fixture/annotation.gtf" \
+    --output-root "$concurrency_fixture/output" \
+    --qc-root "$concurrency_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$concurrency_fixture/step08_impl.R" \
+    --execute >"$test_root/concurrency-first.out" \
+    2>"$test_root/concurrency-first.err" &
+concurrency_first_pid=$!
+if ! wait_for_marker "$concurrency_marker" "$concurrency_first_pid"; then
+    : >"$concurrency_release"
+    kill -TERM "$concurrency_first_pid" 2>/dev/null || true
+    wait "$concurrency_first_pid" 2>/dev/null || true
+    fail "First same-cohort execution did not reach the R barrier"
+fi
+concurrency_lock="$concurrency_fixture/output/cohort_concurrency/.cohort_concurrency.step08.lock"
+[[ -d "$concurrency_lock" ]] ||
+    fail "First same-cohort execution did not hold the cohort lock"
+assert_contains "$concurrency_lock/owner" $'run_token\tconcurrencyfirst08'
+assert_not_exists \
+    "$concurrency_fixture/output/cohort_concurrency/cohort_concurrency.step08_sites.tsv"
+set +e
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=concurrencysecond08 \
+    bash "$script" \
+    --cohort-id cohort_concurrency \
+    --sample-manifest "$concurrency_fixture/samples.tsv" \
+    --partition-manifest "$concurrency_fixture/partitions.tsv" \
+    --step07-root "$concurrency_fixture/step07" \
+    --annotation-gtf "$concurrency_fixture/annotation.gtf" \
+    --output-root "$concurrency_fixture/output" \
+    --qc-root "$concurrency_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$concurrency_fixture/step08_impl.R" \
+    --execute >"$test_root/concurrency-second.out" \
+    2>"$test_root/concurrency-second.err"
+concurrency_second_status=$?
+set -e
+[[ "$concurrency_second_status" -eq 1 ]] ||
+    fail "Expected competing same-cohort execution to exit 1; got $concurrency_second_status"
+assert_contains "$test_root/concurrency-second.err" "Step 08 lock already exists"
+assert_contains "$concurrency_lock/owner" $'run_token\tconcurrencyfirst08'
+: >"$concurrency_release"
+wait "$concurrency_first_pid" ||
+    fail "First same-cohort execution did not publish the winning output set"
+assert_contains "$test_root/concurrency-first.out" "Step 08 execute complete"
+assert_exists \
+    "$concurrency_fixture/output/cohort_concurrency/cohort_concurrency.step08_sites.tsv"
+assert_exists \
+    "$concurrency_fixture/output/cohort_concurrency/cohort_concurrency.step08_inputs.tsv"
+assert_exists \
+    "$concurrency_fixture/qc/cohort_concurrency.step08_summary.tsv"
+assert_not_exists "$concurrency_lock"
+assert_no_step08_scratch "$concurrency_fixture/output" "$concurrency_fixture/qc"
+assert_no_step08_recovery_marker \
+    "$concurrency_fixture/output" \
+    "$concurrency_fixture/qc"
 
 printf 'Running foreign lock preservation check...\n'
 lock_fixture="$test_root/foreign-lock"
