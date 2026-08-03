@@ -28,7 +28,7 @@ or an undiscoverable owner.
 
 ## Completion unblocks
 
-- [MIG-03D](MIG-03D-migrate-align-rna-reads-with-star-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03D](../TODO/MIG-03D-migrate-align-rna-reads-with-star-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 

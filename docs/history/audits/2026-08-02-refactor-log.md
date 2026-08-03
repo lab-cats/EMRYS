@@ -1254,3 +1254,17 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   agent; independent authorship is not claimed. No executable/test mutation or
   computational, real STAR, runtime, scheduler, production, scientific-review,
   or biological evidence was created.
+
+## 2026-08-02T22:48:00-0400 — REVIEW-UX-03D selected
+
+- **Selection:** move only `REVIEW-UX-03D` to `IN_PROGRESS` and repair its
+  dependency/status links after reliability checkpoint `f11dc9f` was clean,
+  published, and local/upstream-equal. `MIG-03D` remains unselected in `TODO`.
+- **Review boundary:** this begins the final read-only independent-in-time pass
+  over producer direct/interpreter and arbitrary-CWD journeys, validator
+  invocation/publication, scheduler submission/CWD/default/override guidance,
+  Make and focused-test commands, artifact provenance, diagnostics, owner
+  findability, recovery, links, and evidence ceilings. The same campaign agent
+  performs the pass, so independent authorship is not claimed; executable/test
+  mutation and computational, runtime, scheduler, production, scientific-
+  review, and biological evidence remain out of scope.

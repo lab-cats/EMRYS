@@ -27,7 +27,7 @@ failure, and residue state.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03D](../TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
+- [REVIEW-UX-03D](../IN_PROGRESS/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Fully: public and maintainer continuity follows fixed fault and parity obligations.
 
 ## Prerequisites
 

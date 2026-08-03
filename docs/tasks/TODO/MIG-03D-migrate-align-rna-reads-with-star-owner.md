@@ -99,7 +99,7 @@ the semantic DAG and live coupling, not historical alias order.
 
 ## Blocked by
 
-- [REVIEW-UX-03D](REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03D](../IN_PROGRESS/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
