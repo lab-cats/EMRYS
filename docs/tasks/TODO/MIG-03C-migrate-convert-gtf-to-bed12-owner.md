@@ -89,6 +89,11 @@ alias order.
 - Establish identical-input pre-move baselines for direct producer,
   validator, and mocked scheduler behavior without SLURM submission, production
   inputs, dependency installation, or dependency restoration.
+- Extend the validator baseline to one full non-repository-CWD dry-run and
+  execute/repeat journey with identical explicit inputs, comparing streams,
+  exits, report bytes, and invocation-directory residue before and after the
+  move. Extend scheduler baselines as isolated fresh-fixture scenarios so prior
+  success artifacts cannot mask failure timing or residue.
 
 ## Required context
 
@@ -136,6 +141,14 @@ alias order.
 - Extend old/new parity where reviews find a missing named behavior. Measure
   coverage before using the reviewed baseline-update command, then run the
   exact coverage check and one de-duplicated complete applicable local gate.
+- Replace the monolithic Step `00b` mocked-job case with owner-local isolated
+  scenarios for success; missing submit directory; colliding output paths;
+  missing GTF; nonexecutable Python; module-load failure; converter failure;
+  bedtools failure; and bad-field output. Freeze exact module/tool calls,
+  directory creation timing, intermediate/final bytes or absence, redirect-
+  created empty final behavior, contradictory field-check stdout, and exits.
+  Run the expanded cases against the old path before movement and unchanged at
+  the final path except for the intentional delegated producer argument.
 - After executable state is fixed, add the owner README and update only impact-
   directed current topology, inventory, test baseline, commands,
   troubleshooting, ownership, roadmap, handoff, lifecycle links, and dated
@@ -190,12 +203,25 @@ alias order.
   does not accept a foreign cached producer during its test-owned exact-file
   load. The remaining validators and producer imports retain their current
   identities and behavior.
+- A full validator dry-run/execute/repeat journey from a non-repository CWD
+  preserves stdout/stderr, exit status, deterministic five-row report bytes,
+  explicit inputs, no dry-run output, stable repeat replacement, and no
+  invocation-directory residue. Shared neutral fault tests remain the owner for
+  same-size/restored-mtime, collision, rollback, interruption, cleanup, and lock
+  defects; relocation does not bless or repair them.
 - Scheduler parity preserves mode `0755`, seven directives, `/usr/bin/env bash`,
   strict mode, required `SLURM_SUBMIT_DIR`, all four environment overrides,
   preflight, directory/log creation timing, tolerant module lists, strict
   bedtools load, exact final producer argument, bedtools sort/redirection,
   field-count diagnostic and exit, summary/preview, child/module failure
   propagation, and existing intermediate/final residue.
+- Fresh-fixture fault evidence proves preflight failures precede directory and
+  module/tool effects; module failure follows directory creation but precedes
+  conversion; converter failure leaves created directories without producer
+  outputs; bedtools failure retains the intermediate and leaves the redirect-
+  created final at its characterized bytes; and malformed sorted output remains
+  published while the awk `END` message still prints its existing success text
+  before the job exits nonzero. These defects are characterized, not approved.
 - Artifact evidence records the final producer path with unchanged producer
   bytes SHA-256
   `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`.

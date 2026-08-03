@@ -84,5 +84,22 @@ must preserve rather than normalize every success, failure, and residue state.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+reliability-selection checkpoint `60698cc` after architecture checkpoint
+`aed342d`. One high finding replaces the monolithic reused-state mocked-job case
+with fresh isolated old/new scenarios: preflight failures, module failure,
+converter failure, bedtools failure, malformed sorted output, and success each
+must prove exact directory timing, calls, bytes/absence, streams, exit, and
+residue. In particular, bedtools redirection can create or truncate the final
+before child success, and awk prints its current success text from `END` even
+after a bad-field error; both remain defects. A second high finding adds the
+missing full validator dry-run/execute/repeat journey from a non-repository CWD
+with exact streams, report bytes, and residue parity. Artifact evidence must
+assert the final producer path and unchanged producer hash; coverage must move
+both frozen rows plus the required-subprocess identity only after inspected
+measurement. The existing producer tests, public-CLI matrix, exact rosters, and
+neutral publisher fault suite otherwise cover applicable conversion,
+publication, rollback, interruption, collision, and cleanup states. No
+escalation condition was triggered. The same campaign agent performed the pass;
+independent authorship is not claimed. No executable/test file changed and no
+computational test ran.

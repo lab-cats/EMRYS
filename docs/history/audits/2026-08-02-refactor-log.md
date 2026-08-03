@@ -864,3 +864,43 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   independent authorship is not claimed. Executable/test mutation and
   computational, runtime, scheduler, production, scientific-review, and
   biological evidence remain out of scope.
+
+## 2026-08-02T20:44:16-0400 — REVIEW-REL-03C completed
+
+- **High finding — reused-state scheduler test masks residue:** the current
+  Step `00b` case runs failure variants after a successful invocation in one
+  fixture. Preexisting intermediate/final files and directories prevent exact
+  claims about each failure's timing and residue. Build fresh owner-local
+  scenarios for success, missing submit directory, colliding output paths,
+  missing GTF, nonexecutable Python, module failure, converter failure, bedtools
+  failure, and malformed sorted output; run the identical matrix old and new.
+- **Characterized scheduler defects:** bedtools output redirection can create or
+  truncate the final BED before bedtools returns success, leaving the
+  intermediate plus an empty/partial final on failure. A bad-field final remains
+  published, and awk executes its `END` block so stdout can contain both the
+  error and `BED12 field-count check passed` before nonzero exit. Preserve and
+  assert these states; do not repair, normalize, or call them target contracts.
+- **High finding — validator journey gap:** the direct suite forces repository
+  CWD and does not compare repeat publication streams/bytes. Add one full
+  non-repository-CWD dry-run and execute/repeat journey with identical absolute
+  BED/GTF/output paths before and after movement, proving exact stdout/stderr,
+  exit, deterministic five-row bytes, no dry-run output, stable replacement,
+  and no invocation-directory residue.
+- **Producer and publication disposition:** the eleven direct producer tests and
+  public CLI matrix already cover conversion rules, warnings, failures,
+  arbitrary CWD, direct-help mode, and silent declared-output replacement.
+  Neutral publisher tests retain stable-input, same-size/restored-mtime,
+  collision, rollback, interruption, late-foreign, cleanup, descriptor, residue,
+  and lock findings. Producer-coupled GTF agreement remains a characterized
+  validation limitation and is not redesigned by this move.
+- **Coverage and provenance:** final-path measurement must retain producer
+  `151/167` lines and `44/56` branches and validator `127/140` lines and `29/36`
+  branches or improve only through reviewed parity tests, while global rates do
+  not regress. Move the required-subprocess producer identity and both baseline
+  rows only after inspection. Assert final producer path and unchanged SHA-256
+  in artifact implementation evidence; no artifact schema or identity changes.
+- **Independence and evidence boundary:** this was a separate committed-time
+  adversarial pass by the same campaign agent; independent authorship is not
+  claimed. Corrections affect planning documentation only. No executable/test
+  file changed and no computational, runtime, scheduler, production,
+  scientific-review, or biological evidence was created.
