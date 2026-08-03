@@ -20,7 +20,14 @@ from typing import Iterable, Mapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CONTRACT_PATH = REPO_ROOT / "scripts" / "step_09c_scientific_validation.py"
+CONTRACT_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
+    / "step_09c_scientific_validation.py"
+)
 REVIEW_ID = "review_fixture"
 COHORT_ID = "cohort"
 PRIMARY_ANALYSIS_ID = "analysis_primary"

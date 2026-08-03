@@ -25,8 +25,16 @@ SCRIPT = (
     / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH"
     / "validate_step_09_cmh_outputs.py"
 )
-CONTRACTS_PATH = ROOT / "scripts/step_09c_scientific_validation.py"
-FIXTURE_PATH = ROOT / "tests/fixtures/step09c/build_fixture.py"
+CONTRACTS_PATH = (
+    ROOT
+    / "src/norad/evidence/assemble_scientific_review_evidence_package"
+    / "step_09c_scientific_validation.py"
+)
+FIXTURE_PATH = (
+    ROOT
+    / "tests/evidence/assemble_scientific_review_evidence_package"
+    / "build_fixture.py"
+)
 FIXTURE_MODULE_NAME = "_norad_test_step09c_fixture_for_step09_validator"
 FIXTURE_SPEC = importlib.util.spec_from_file_location(
     FIXTURE_MODULE_NAME, FIXTURE_PATH

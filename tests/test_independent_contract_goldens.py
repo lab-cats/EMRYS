@@ -25,7 +25,7 @@ if str(SCRIPTS) not in sys.path:
 ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
-SCIENTIFIC_REVIEW = importlib.import_module("step_09c_scientific_validation")
+SCIENTIFIC_REVIEW = ARTIFACT_INDEX.step09c
 SHARED_SCIENCE = RUN_SUMMARY.science
 
 HEADER_MODULES: Mapping[str, ModuleType] = {

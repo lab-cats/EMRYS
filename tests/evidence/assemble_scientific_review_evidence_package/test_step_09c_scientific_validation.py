@@ -16,11 +16,16 @@ from typing import Any
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "step_09c_scientific_validation.py"
-FIXTURE_BUILDER = (
-    REPO_ROOT / "tests" / "fixtures" / "step09c" / "build_fixture.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+OWNER_ROOT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
 )
+SCRIPT = OWNER_ROOT / "step_09c_scientific_validation.py"
+FIXTURE_BUILDER = Path(__file__).with_name("build_fixture.py")
 
 
 def load_fixture_builder() -> ModuleType:

@@ -22,7 +22,14 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 
-CONTRACTS_PATH = ROOT / "scripts" / "step_09c_scientific_validation.py"
+CONTRACTS_PATH = (
+    ROOT
+    / "src"
+    / "norad"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
+    / "step_09c_scientific_validation.py"
+)
 CONTRACTS_TEST_MODULE_NAME = "_norad_test_step09c_contracts_for_step08_validator"
 CONTRACTS_SPEC = importlib.util.spec_from_file_location(
     CONTRACTS_TEST_MODULE_NAME,

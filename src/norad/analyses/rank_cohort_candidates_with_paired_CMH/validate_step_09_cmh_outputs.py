@@ -75,7 +75,10 @@ except Exception as exc:
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
 _CONTRACTS_MODULE_PATH = (
     Path(__file__).resolve().parents[4]
-    / "scripts"
+    / "src"
+    / "norad"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
     / "step_09c_scientific_validation.py"
 ).resolve(strict=False)
 _CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"

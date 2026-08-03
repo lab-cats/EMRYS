@@ -10,7 +10,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/step_09c_scientific_validation.sh \
+  src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh \
     --review-id REVIEW_ID \
     --sample-manifest SAMPLE_MANIFEST \
     --partition-manifest PARTITION_MANIFEST \

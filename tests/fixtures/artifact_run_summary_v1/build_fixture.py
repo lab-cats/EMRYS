@@ -25,7 +25,11 @@ ADAPTER_FIXTURE_PATH = (
     / "build_fixture.py"
 )
 STEP09C_FIXTURE_PATH = (
-    REPO_ROOT / "tests" / "fixtures" / "step09c" / "build_fixture.py"
+    REPO_ROOT
+    / "tests"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
+    / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
 REPORT_TABLE_APPROVALS_HEADER = (

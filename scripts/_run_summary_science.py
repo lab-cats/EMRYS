@@ -5,16 +5,86 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import io
 import os
 import stat
+import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-import step_09c_scientific_validation as step09c
 import validate_artifact_contracts as contracts
+
+
+_CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
+_CONTRACTS_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "evidence"
+    / "assemble_scientific_review_evidence_package"
+    / "step_09c_scientific_validation.py"
+).resolve(strict=False)
+_CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"
+
+
+def _validated_step09c_contracts(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached Step 09c contract owner has no valid file path"
+        ) from exc
+    if module_path != _CONTRACTS_MODULE_PATH:
+        raise ImportError(
+            f"cached Step 09c contract owner resolves to {module_path}, "
+            f"expected {_CONTRACTS_MODULE_PATH}"
+        )
+    if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached Step 09c contract owner is partially initialized"
+        )
+    return module
+
+
+def _load_step09c_contracts() -> object:
+    cached = sys.modules.get(_CONTRACTS_MODULE_NAME)
+    if cached is not None:
+        return _validated_step09c_contracts(cached)
+    spec = importlib.util.spec_from_file_location(
+        _CONTRACTS_MODULE_NAME, _CONTRACTS_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file Step 09c module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_CONTRACTS_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_step09c_contracts(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _CONTRACTS_READY_ATTRIBUTE, True)
+        _validated_step09c_contracts(module)
+    except BaseException:
+        if sys.modules.get(_CONTRACTS_MODULE_NAME) is module:
+            del sys.modules[_CONTRACTS_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    step09c = _load_step09c_contracts()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load Step 09c contract owner at "
+        f"{_CONTRACTS_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
 
 
 SCIENCE_SCHEMA_VERSION = "1.1.0"

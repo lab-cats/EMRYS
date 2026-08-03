@@ -36,7 +36,8 @@ PYTHON_ENTRYPOINT_PATHS = {
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
     "runtime_preflight.py": Path("scripts/runtime_preflight.py"),
     "step_09c_scientific_validation.py": Path(
-        "scripts/step_09c_scientific_validation.py"
+        "src/norad/evidence/assemble_scientific_review_evidence_package/"
+        "step_09c_scientific_validation.py"
     ),
     "storage_inventory.py": Path("scripts/storage_inventory.py"),
     "validate_artifact_contracts.py": Path("scripts/validate_artifact_contracts.py"),
@@ -153,7 +154,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
-        "scripts/step_09c_scientific_validation.sh"
+        "src/norad/evidence/assemble_scientific_review_evidence_package/"
+        "step_09c_scientific_validation.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)

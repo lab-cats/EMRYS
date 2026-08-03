@@ -10,8 +10,9 @@ import json
 import os
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 import pytest
@@ -433,6 +434,144 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["09c"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_09c",
+                "role": "implementation",
+                "path": (
+                    "src/norad/evidence/"
+                    "assemble_scientific_review_evidence_package/"
+                    "step_09c_scientific_validation.py"
+                ),
+                "sha256": (
+                    "7b6b48b71c07249cb791ceb818bd4aef"
+                    "5c30015724cb2406127159815c1e09f8"
+                ),
+            }
+        ],
+    }
+
+
+def test_step09c_loader_uses_exact_ready_owner_without_mutating_sys_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._CONTRACTS_MODULE_NAME
+    before_sys_path = list(sys.path)
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+    loaded = ADAPTER._load_step09c_contracts()
+
+    assert Path(loaded.__file__).resolve() == ADAPTER._CONTRACTS_MODULE_PATH
+    assert getattr(loaded, ADAPTER._CONTRACTS_READY_ATTRIBUTE) is True
+    assert sys.modules[name] is loaded
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_step09c_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._CONTRACTS_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step09c.py")
+        setattr(cached, ADAPTER._CONTRACTS_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(ADAPTER._CONTRACTS_MODULE_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        ADAPTER._load_step09c_contracts()
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_step09c_loader_fails_closed_without_usable_specification(
+    specification: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._CONTRACTS_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        ADAPTER.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        ADAPTER._load_step09c_contracts()
+
+    assert name not in sys.modules
+
+
+def test_step09c_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._CONTRACTS_MODULE_NAME
+    failing_owner = tmp_path / "step_09c_scientific_validation.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 09c execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(ADAPTER, "_CONTRACTS_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 09c execution failure"):
+        ADAPTER._load_step09c_contracts()
+
+    assert name not in sys.modules
+
+
+def test_step09c_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError("injected\\n" + chr(0) + " Step 09c path")
+
+        cached = ModuleType("_norad_step_09c_scientific_validation_contracts")
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load Step 09c contract owner at "
+        f"{ADAPTER._CONTRACTS_MODULE_PATH}: RuntimeError: injected Step 09c path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

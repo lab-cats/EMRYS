@@ -109,15 +109,6 @@
       "path": "scripts/runtime_preflight.py"
     },
     {
-      "branch_rate": "0.711929",
-      "covered_branches": 561,
-      "covered_lines": 1262,
-      "line_rate": "0.822686",
-      "num_branches": 788,
-      "num_statements": 1534,
-      "path": "scripts/step_09c_scientific_validation.py"
-    },
-    {
       "branch_rate": "0.698113",
       "covered_branches": 74,
       "covered_lines": 240,
@@ -152,6 +143,15 @@
       "num_branches": 40,
       "num_statements": 158,
       "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
+    },
+    {
+      "branch_rate": "0.711929",
+      "covered_branches": 561,
+      "covered_lines": 1262,
+      "line_rate": "0.822686",
+      "num_branches": 788,
+      "num_statements": 1534,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py"
     },
     {
       "branch_rate": "0.823529",
