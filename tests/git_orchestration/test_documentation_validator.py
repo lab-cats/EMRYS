@@ -324,8 +324,10 @@ def test_make_documentation_check_retains_engine_failure_diagnostic(
     assert direct.returncode == 1
     assert wrapped.returncode == 2
     assert wrapped.stdout == direct.stdout == ""
+    make_level = int(os.environ.get("MAKELEVEL", "0"))
+    make_label = "make" if make_level == 0 else f"make[{make_level}]"
     assert wrapped.stderr == (
-        direct.stderr + "make: *** [documentation-check] Error 1\n"
+        direct.stderr + f"{make_label}: *** [documentation-check] Error 1\n"
     )
 
 
