@@ -152,6 +152,17 @@ def validate(
     )
 
 
+def install_fixture_validator(repository: Path) -> None:
+    fixture_validator = (
+        repository
+        / "scripts"
+        / "git_orchestration"
+        / "validate_documentation.py"
+    )
+    fixture_validator.parent.mkdir(parents=True)
+    shutil.copy2(VALIDATOR, fixture_validator)
+
+
 def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
 
@@ -240,14 +251,7 @@ def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
 
 def test_make_documentation_check_matches_direct_cli(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    fixture_validator = (
-        repository
-        / "scripts"
-        / "git_orchestration"
-        / "validate_documentation.py"
-    )
-    fixture_validator.parent.mkdir(parents=True)
-    shutil.copy2(VALIDATOR, fixture_validator)
+    install_fixture_validator(repository)
 
     direct = validate(repository, cwd=tmp_path)
     wrapped = run(
@@ -266,6 +270,38 @@ def test_make_documentation_check_matches_direct_cli(tmp_path: Path) -> None:
         direct.returncode,
         direct.stdout,
         direct.stderr,
+    )
+
+
+def test_make_documentation_check_retains_engine_failure_diagnostic(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    install_fixture_validator(repository)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8") + "\n[Missing](missing.md)\n",
+        encoding="utf-8",
+    )
+
+    direct = validate(repository, cwd=tmp_path)
+    wrapped = run(
+        [
+            "make",
+            "-s",
+            "--no-print-directory",
+            "-f",
+            str(REPO_ROOT / "Makefile"),
+            "documentation-check",
+        ],
+        cwd=repository,
+    )
+
+    assert direct.returncode == 1
+    assert wrapped.returncode == 2
+    assert wrapped.stdout == direct.stdout == ""
+    assert wrapped.stderr == (
+        direct.stderr + "make: *** [documentation-check] Error 1\n"
     )
 
 
