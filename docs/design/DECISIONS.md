@@ -102,10 +102,11 @@ The manual, reviewable integration-fragment protocol is owned by
 [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
 Its synthetic exchange establishes the inspected manual contract without
 reviewing or integrating the preserved pilot. Its operator-invoked Git helpers
-mechanize only supplied identities, paths, and terminal records. Only after
-`DOC-GATE-01` provides a tested validator owner may
+mechanize only supplied identities, paths, and terminal records. Completed
+[`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
+now provides the tested validator owner required before
 [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
-add automatic repository-wide structural enforcement. Fragments remain
+may add automatic repository-wide structural enforcement. Fragments remain
 transient proposals; they never become a second canonical documentation system
 or acquire authority to publish status, evidence, decisions, or card
 transitions.
@@ -1143,15 +1144,15 @@ rule-by-rule source-to-destination ledger must prove that slimming the root file
 does not lose critical protections.
 
 Operational documentation owns supported invocations and behavior summaries,
-not substantial embedded implementations. The current documentation validator
-is already extracted under `scripts/git_orchestration/` but must gain an
-independent behavior lock before its dependency semantics change; `RUNBOOK.md`
-retains only the current supported invocation and concise operator-facing
-explanation. The user-selected command target is a stable, logic-free Make
-wrapper over the same explicit-root engine. `DOC-GATE-01` must prove wrapper/
-engine equivalence before the wrapper is described as implemented; task-
-dependency semantics remain owned by `TASK-REG-01`, not validator
-characterization.
+not substantial embedded implementations. The documentation validator remains
+under `scripts/git_orchestration/` and is independently behavior-locked before
+any dependency-semantic change. `RUNBOOK.md` owns the concise
+`make documentation-check` invocation and operator-facing behavior summary;
+the target is a stable, logic-free wrapper over the same explicit-root engine.
+Completed `DOC-GATE-01` proves literal expansion, same-engine delegation, and
+the Make-native failure contract: preserved engine stderr followed by Make's
+target diagnostic and exit `2`. Task-dependency semantics remain owned by
+`TASK-REG-01`, not validator characterization.
 
 Rationale: conventional local documentation makes the repository inspectable
 without creating more canonical owners. A blind cleanup or blanket commenting
@@ -1161,7 +1162,7 @@ Consequences: see
 [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 through
 [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
-[`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) and
+completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md) and
 the bounded `DOC-CONS-08A`–`DOC-CONS-08H` cards linked from the
 [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md#bounded-follow-up-packages).
 Concrete consolidation/comment rollout cards are created only after inventories.

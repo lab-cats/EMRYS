@@ -58,7 +58,7 @@ validation subject.
 - Decide an ignored or tracked receipt-location and retention policy without
   copying current results into canonical prose or risking private data.
 - Sequence documentation-gate incorporation and final cross-gate closeout
-  after [`DOC-GATE-01`](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md)
+  after [`DOC-GATE-01`](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
   supplies an accepted extracted command and separable result boundary. This
   is readiness and integration order, not a technological blocker: catalog
   schema, computational-gate inventory, subject hashing, and emitter or
@@ -72,7 +72,7 @@ validation subject.
   validation and integration commands in
   [`RUNBOOK.md`](../../operations/RUNBOOK.md).
 - [`CONCURRENT_WORK.md`](../../operations/CONCURRENT_WORK.md), the current
-  [`DOC-GATE-01`](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) contract and
+  [`DOC-GATE-01`](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md) contract and
   accepted state at selection, and every then-current gate script,
   configuration, consumer, and test.
 - [`TEST_BASELINE.md`](../../design/TEST_BASELINE.md) for the selected

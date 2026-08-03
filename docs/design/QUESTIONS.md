@@ -349,7 +349,7 @@ Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
   [rolling-delivery decision](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery);
 - `CHOICE-DOC-GATE-01`: a stable, logic-free Make wrapper over the same
   explicit-root validator engine, owned for implementation by
-  [`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md);
+  completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md);
 - a file-backed task registry with separate planning/approval for every card;
 - a future proper documentation-health skill and later separate skill review,
   with no `docs/skills/` directory now.

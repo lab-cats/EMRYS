@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published program-decision
-  checkpoint `2df3e6cdc86981978958694ee9e47ad1d8755beb`.
+  exact SHA from live Git. Its frozen parent is published DOC-GATE-01
+  Make-failure checkpoint `8a8bb1a`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -45,18 +45,23 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   current neutral remediation branch. Authority-sync checkpoint `a6bd366` is
   published and local/upstream/live-remote-equal. Health-runway activation
   `94a4ef7` and program-decision checkpoint `2df3e6c` are also published and
-  equal.
-- Current package: active
-  [`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md),
-  selected alone for task-specific characterization and implementation
-  planning. `PROGRAM-01` remains in progress as the frozen program owner;
-  `TASK-LIFECYCLE-01` remains unselected and blocked only by this card.
-- Package type at this checkpoint: documentation-only status selection. It
-  changes or runs no executable, test, Make target, validator behavior,
-  lifecycle schema, configuration, dependency, fixture, report template,
-  runtime state, or migration owner.
-- Remote publication and upstream equality: program decision `2df3e6c` is
-  verified local/upstream/live-remote-equal. The configured `origin` is
+  equal. DOC-GATE-01 CLI/root `7f48bf6`, card-rule `2eee679`, link/diagram
+  `4be3225`, Make-wrapper `7a4c724`, acceptance-matrix `fb30f3f`, and
+  Make-failure `8a8bb1a` checkpoints are published and local/upstream-equal.
+- Current package: completed
+  [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md).
+  No health package is selected in this documentation checkpoint.
+  `PROGRAM-01` remains in progress as the frozen program owner; dependency-
+  valid
+  [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  is the exact next JIT package.
+- Package type at this checkpoint: separate executable/test/Make behavior lock
+  followed by documentation/lifecycle close. Validator semantics, lifecycle
+  schema, dependencies, scientific/report evidence, runtime packages,
+  migration owners, and the default branch did not change.
+- Remote publication and upstream equality: implementation tip `8a8bb1a` is
+  verified local/upstream-equal; publish and verify the documentation close
+  from live Git. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -966,6 +971,15 @@ update packages, and its temporary Python-environment symlink was removed.
 
 ## Current blockers
 
+- The complete repository documentation gate is intentionally not green yet:
+  it reports only the eight authorized `UNREFINED` proposals plus their README.
+  `TASK-LIFECYCLE-01` is now dependency-valid and owns the schema/validator
+  support that must close those nine findings.
+- The guarded-R lane is not green in this checkout. It reports the inherited
+  ignored malformed
+  `renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` entry and, in the
+  sandboxed card-boundary run, could not resolve Bioconductor metadata. No
+  package mutation or dependency restoration was attempted.
 - The full production `samples.tsv` is not in this checkout. Its immutable
   cluster copy, explicit replicate values, persistence, and hash require
   inspection.
@@ -992,34 +1006,23 @@ update packages, and its temporary Python-environment symlink was removed.
 
 ## Immediate resume point
 
-[`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-is complete. Its canonical result is the
-[`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md),
-and separately approved local-only documentation exceptions
-[`DOC-CONS-08A`](../tasks/COMPLETED/DOC-CONS-08A-slim-root-agent-router.md)
-and
-[`DOC-CONS-08B`](../tasks/COMPLETED/DOC-CONS-08B-compress-root-entry-and-priority-views.md)
-and
-[`DOC-CONS-08C`](../tasks/COMPLETED/DOC-CONS-08C-compress-operational-guidance.md)
-and
-[`DOC-CONS-08D`](../tasks/COMPLETED/DOC-CONS-08D-establish-dated-documentation-history.md)
-are complete. Their root and operational compression and dated-history split,
-neutral
-[`engineering-conventions owner`](ENGINEERING_CONVENTIONS.md), and expanded
-[`task-delivery procedure`](TASK_DELIVERY.md#package-delivery), concise newcomer
-entry, short current-priority route, indexed runbook, diagnostic split, and
-concise current audit/baseline routes do not select the remaining
-`DOC-CONS-08E`–`DOC-CONS-08H` cards or change ordinary
-runway order; each still
-requires separate selection, task-specific planning, and approval. Existing
-`DOC-SITEMAP-01`, `DOC-README-03`, `DOC-GATE-01`, `DOC-PIPE-04`, `CODEDOC-05`,
-and `TASK-EPIC-01` retain their nonoverlapping scopes.
+After publishing and proving this documentation close equal, select only
+[`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+with `git mv` and repair its inbound lifecycle links. Its JIT plan must use the
+completed DOC-GATE behavior-lock harness, preserve `UNREFINED` as nonselectable
+proposal state, implement only the resolved asynchronous
+`INTEGRATION_REVIEW` boundary, and make the nine current documentation findings
+green without changing task-dependency meaning. Do not select
+`CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the frozen program
+remainder.
 
-This package changes documentation only. Its final gate is Git and repository
-documentation validation; computational, R, shell, report-runtime, and cluster
-suites are not applicable. It creates no runtime, cluster, scientific-review,
-or biological-readiness evidence, and no dependency was installed, restored,
-or updated.
+DOC-GATE-01 focused validation passed `183` tests. Its full computational gate
+was not green because guarded R stopped on the inherited malformed ignored
+library entry and unavailable Bioconductor metadata DNS. Its documentation
+gate retained exactly the nine lifecycle findings above. These are separate
+recorded follow-up conditions, not passing claims. No dependency was installed,
+restored, removed, or updated; no runtime, cluster, scientific-review, or
+biological-readiness evidence was created.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are

@@ -4287,6 +4287,52 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T14:02:24-0400 — DOC-GATE-01 behavior lock and lifecycle close
+
+- **Published bounded checkpoints:** the CLI/root/inventory baseline
+  `7f48bf6`, complete card-rule matrix `2eee679`, link/anchor/Mermaid matrix
+  `4be3225`, Make-wrapper checkpoint `7a4c724`, oracle/lifecycle acceptance
+  checkpoint `fb30f3f`, and Make-failure checkpoint `8a8bb1a` were committed
+  separately, pushed, and proved local/upstream-equal before documentation
+  closure. No production validator rule or accepted repository state changed.
+- **Independent behavior decision:** freeze the extracted engine in place with
+  test-owned fixture repositories, exact stdout/stderr/exit and ordered
+  diagnostic assertions, explicit-root and fail-closed Git inventory cases, a
+  hard-coded legacy heading oracle checked against production, every inherited
+  card/link/anchor/dependency/cycle/orphan/Mermaid rule, and distinct active and
+  completed incomplete-blocker boundaries. Semantic dependency changes remain
+  outside DOC-GATE-01.
+- **Supported command decision:** add only `make documentation-check` as a
+  stable logic-free wrapper around the executable's explicit `--repo` command.
+  The public Make inventory and literal dry-run golden now include the target,
+  and an independent valid fixture proves same-engine success delegation. A
+  separate failure fixture locks the engine's exact diagnostic, Make's appended
+  target error, and Make's native exit `2` rather than claiming false process-
+  level equivalence. The Runbook owns the Make invocation and concise behavior
+  summary; the executable remains the sole validator implementation.
+- **Focused acceptance:** the exact documentation/public-command focused set
+  passed `183` tests. It covers the complete reviewed DOC-GATE contract without
+  installing, restoring, removing, or updating a dependency.
+- **Full-gate risk, not green:** the exact command
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` passed static
+  preflight, then stopped with status `2` in guarded R. The inherited ignored
+  `renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` entry lacks a
+  DESCRIPTION file, and the sandboxed process could not resolve Bioconductor
+  metadata. No later lane is claimed to have passed in that run.
+- **Repository-state risk, not green:** `make -s documentation-check` reported
+  exactly the eight authorized `UNREFINED` proposals plus their README as nine
+  invalid card locations and no other finding. Closing the behavior-lock owner
+  does not waive those findings. Their schema/validator closure is assigned to
+  immediately dependency-valid TASK-LIFECYCLE-01, resolving the otherwise
+  circular prerequisite while preserving a truthful nonpassing boundary.
+- **Lifecycle and evidence boundary:** move only DOC-GATE-01 from
+  `IN_PROGRESS` to `COMPLETED`, repair every inbound lifecycle link, update the
+  canonical command/decision/baseline/roadmap/priority/handoff owners, and
+  leave TASK-LIFECYCLE-01 unselected until its own JIT status slice. The
+  physical-migration campaign remains paused after MIG-03M; no Step `09` card,
+  fragment enforcement, epic index, runtime/cluster action, default-branch
+  integration, scientific review, or biological evidence is created.
+
 ## 2026-08-03T12:55:50-0400 — MIG-03M executable migration and lifecycle close
 
 - **Selection and bounded sequence:** MIG-03M was selected alone from clean,

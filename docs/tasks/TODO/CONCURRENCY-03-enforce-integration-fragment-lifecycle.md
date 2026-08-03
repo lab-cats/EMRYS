@@ -17,7 +17,7 @@ speculative rules or automate integration decisions.
 ## Fixed decisions
 
 - Extend the standalone, tested documentation validator produced by
-  [`DOC-GATE-01`](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md); do not add
+  [`DOC-GATE-01`](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md); do not add
   another embedded runbook program.
 - Reuse stable parsing or checks from `scripts/git_orchestration/` when that
   avoids duplication, but do not turn the operator helpers into a central
@@ -36,7 +36,7 @@ speculative rules or automate integration decisions.
 
 ## Blocked by
 
-- [DOC-GATE-01](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) — Required: fragment rules need the extracted, behavior-locked validator and focused test harness.
+- [DOC-GATE-01](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md) — Required: fragment rules need the extracted, behavior-locked validator and focused test harness.
 
 ## Completion unblocks
 
@@ -56,7 +56,7 @@ speculative rules or automate integration decisions.
 ## Required context
 
 - The completed fragment protocol, its first inspected handoff evidence,
-  [`DOC-GATE-01`](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md), the current
+  [`DOC-GATE-01`](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md), the current
   documentation-validator implementation and tests, and the fragment-related
   operator procedure and linked helpers in
   [`RUNBOOK.md`](../../operations/RUNBOOK.md).

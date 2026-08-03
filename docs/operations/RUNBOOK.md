@@ -1880,12 +1880,17 @@ For a qualifying documentation-only patch or standalone package, run:
 ```bash
 cd /Users/elisteiger/dev/norad
 git diff --check
-./scripts/git_orchestration/validate_documentation.py --repo "$PWD"
+make -s documentation-check
 git status --short
 git diff --name-status
 ```
 
-The checker validates local paths and GitHub-style heading anchors, includes
+The Make target is a logic-free wrapper over the behavior-locked direct engine
+`./scripts/git_orchestration/validate_documentation.py --repo "$PWD"`; its
+literal expansion and same-engine delegation are independently tested. A
+direct validation failure exits `1`; Make preserves the engine diagnostic,
+appends its native target error, and exits `2`. The checker validates local
+paths and GitHub-style heading anchors, includes
 untracked new documents, enforces task-card IDs/locations/headings/direct
 dependencies, rejects hard-dependency cycles and orphan cards/diagrams, and
 checks basic Mermaid source structure. It reads the repository globally but

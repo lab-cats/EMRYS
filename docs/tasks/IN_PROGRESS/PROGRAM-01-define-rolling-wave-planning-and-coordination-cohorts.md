@@ -1,21 +1,24 @@
 # PROGRAM-01 — Define rolling-wave planning and coordination cohorts
 
-**Current execution boundary — Slice 3**
+**Current execution boundary — Slice 3 complete; program remainder frozen**
 
-Only this slice is active. It settles the program-owned trigger for the future
+This slice settled the program-owned trigger for the future
 `INTEGRATION_REVIEW` state without activating lifecycle implementation or the
-preserved program remainder.
+preserved program remainder. The separately selected DOC-GATE-01 package is
+now complete; TASK-LIFECYCLE-01 is dependency-valid but remains a separate JIT
+selection.
 
-**Active objective**
+**Completed slice objective**
 
 - Resolve `CHOICE-LIFECYCLE-01`: persist `INTEGRATION_REVIEW` only when a frozen
   candidate awaits asynchronous review beyond the current unpublished
   integration package.
 - Remove the now-satisfied program decision from `TASK-LIFECYCLE-01`'s hard
-  blocker graph while leaving `DOC-GATE-01` unchanged as its sole blocker.
+  blocker graph. DOC-GATE-01 remained its sole blocker during this slice and
+  has since completed in its own package.
 - Keep this card in progress for later separately planned slices.
 
-**Active scope**
+**Completed slice scope**
 
 - Update only the decision/question owners, reciprocal mutable-card metadata,
   and minimal current handoff/roadmap status required by that decision.
@@ -24,13 +27,14 @@ preserved program remainder.
 - Use quiet validation immediately; retain complete output for failures or an
   explicitly requested verbose run.
 
-**Active acceptance evidence**
+**Completed slice acceptance evidence**
 
 - `CHOICE-LIFECYCLE-01` has one durable decision, immediate same-package
   integration remains in the active-card lifecycle, and asynchronous review
   has an objective persistence trigger.
-- `TASK-LIFECYCLE-01` names only `DOC-GATE-01` as a hard blocker; reciprocal
-  mutable-card metadata agrees.
+- `TASK-LIFECYCLE-01` named only `DOC-GATE-01` as a hard blocker; reciprocal
+  mutable-card metadata agreed. DOC-GATE-01's later completion now makes the
+  lifecycle card dependency-valid without selecting it.
 - No validator behavior, lifecycle directory, runtime library, migration owner,
   default branch, or other preserved program-design decision changes.
 - Existing program information below remains present and unchanged in meaning.

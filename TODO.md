@@ -7,16 +7,18 @@ scope, roadmap, current state, blockers, or open questions.
 
 The physical-migration campaign is paused after completed
 [`MIG-03M`](docs/tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md).
-No Step `09` or later migration/review card is created or selected. The active
-boundary is Slice `2` of
+No Step `09` or later migration/review card is created or selected. The current
+boundary is Slice `3` of
 [`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
 which activates only one separately planned repository-health package at a
 time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
-Active [`DOC-GATE-01`](docs/tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md)
-is the sole selected health package. Unrelated work, `TASK-LIFECYCLE-01`, and
-the preserved program remainder remain frozen; roadmap order is not blocker
-metadata.
+Completed [`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
+removes the remaining technological blocker from
+[`TASK-LIFECYCLE-01`](docs/tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
+No health card is selected at this documentation checkpoint; TASK-LIFECYCLE-01
+is the next JIT package, while unrelated work and the preserved program
+remainder remain frozen. Roadmap order is not blocker metadata.
 
 ## Canonical routes
 

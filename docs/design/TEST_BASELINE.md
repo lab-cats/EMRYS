@@ -116,6 +116,25 @@ Python run had the same `1,219` passes and `17` skips before its sole failure
 listed twelve deferred MIG-03M links plus nine inherited `UNREFINED` locations.
 Neither result makes the aggregate gate green.
 
+DOC-GATE-01 independently freezes the extracted documentation validator with a
+hard-coded legacy heading oracle, isolated valid/invalid repositories, exact
+ordered diagnostics, explicit-root and fail-closed Git inventory scenarios,
+all current card/link/anchor/dependency/orphan/Mermaid rules, and distinct
+`IN_PROGRESS`/`COMPLETED` blocker boundaries. Its card-boundary focused suite
+passed `183` tests. The logic-free `documentation-check` Make target has a
+literal public-command expansion and same-engine success fixture. Its failure
+fixture locks the direct engine's exit `1`, the preserved engine diagnostic,
+and Make's appended target error and native exit `2`; production validator
+semantics did not change.
+
+The corresponding full command was not green. Static preflight passed before
+guarded R stopped with status `2` on the inherited ignored malformed `macos`
+library entry and unavailable Bioconductor metadata DNS. The separate complete
+documentation check reported only the eight authorized `UNREFINED` proposals
+plus their README. Those nine findings remain a nonpassing repository-state
+boundary assigned to `TASK-LIFECYCLE-01`, not a DOC-GATE pass claim. No
+dependency was installed, restored, removed, or updated.
+
 ## Current evidence vocabulary
 
 - `preserved contract` means independent regression evidence protects the

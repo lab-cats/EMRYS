@@ -11,8 +11,9 @@ The implementation now lives at
 `scripts/git_orchestration/validate_documentation.py`, and `RUNBOOK.md` contains
 only its invocation. That urgent extraction removed the embedded program but
 did not supply independent invalid-state fixtures for every inherited rule.
-The stable public-entry choice is now resolved as a future logic-free Make
-wrapper, but neither that wrapper nor its equivalence proof exists yet.
+At selection, the stable public-entry choice was resolved as a future
+logic-free Make wrapper, but neither that wrapper nor its delegation/failure-
+surface proof existed.
 
 ## Fixed decisions
 
@@ -26,9 +27,9 @@ wrapper, but neither that wrapper nor its equivalence proof exists yet.
 - A concise Make target may wrap the executable, but it must not duplicate the
   validation logic.
 - The selected target is a stable, logic-free Make wrapper over the same
-  explicit-root validator engine. The current direct Runbook invocation stays
-  authoritative until wrapper expansion and behavior are proved exactly
-  equivalent.
+  explicit-root validator engine. The direct Runbook invocation stays
+  authoritative until wrapper expansion, same-engine delegation, and Make's
+  native failure surface are independently proved.
 - Semantic review, automated validation, and completion verification remain
   separate ordered responsibilities; the validator owns only validation.
 - Smaller, independently understandable gate stages may be exposed through
@@ -79,7 +80,8 @@ wrapper, but neither that wrapper nor its equivalence proof exists yet.
   remains a separately justified source-layout decision.
 - Preserve the current thin Runbook invocation until the selected logic-free
   Make wrapper and exact equivalence evidence land atomically.
-- Exact success/failure exit behavior and actionable diagnostic preservation.
+- Exact direct-engine success/failure behavior, actionable diagnostic
+  preservation, and explicit characterization of Make's native wrapper exit.
 
 ## Out of scope
 
@@ -102,19 +104,26 @@ wrapper, but neither that wrapper nor its equivalence proof exists yet.
   scenario covering exact stdout, stderr, diagnostic order, and exit status;
   and explicit-root scenarios for unavailable, non-Git, nested non-root, and
   fail-closed Git-inventory inputs.
-- A stable, logic-free Make wrapper with literal expansion/golden coverage and
-  exact behavioral equivalence to the same explicit-root engine.
+- A stable, logic-free Make wrapper with literal expansion/golden coverage,
+  same-engine success equivalence, and an explicit Make-native failure
+  contract.
 - A runbook section reduced to the supported invocation and behavior summary.
 
 ## Acceptance evidence
 
 - The current command continues to accept and reject the frozen representative
   repository states with identical ordered diagnostics and exit behavior.
-- Focused tests and the complete applicable documentation gate pass.
+- Focused tests pass. At this behavior-preserving boundary, the complete
+  repository documentation gate must either pass or report only the authorized
+  `UNREFINED` locations owned by the immediately dependent lifecycle package;
+  that retained result remains explicitly nonpassing until the lifecycle
+  package closes it.
 - Independent fixtures, not expectations derived from the production
   implementation, lock every inherited rule and aggregate diagnostic order.
-- The Make wrapper contains no validation logic and is proved exactly
-  equivalent to direct invocation of the explicit-root engine.
+- The Make wrapper contains no validation logic. Its accepted state and engine
+  output match direct invocation; on engine failure, tests lock the preserved
+  diagnostic followed by Make's native target error and exit `2` rather than
+  falsely claiming process-level exit equivalence.
 - Each supported stage or mode has an independently understandable result while
   exercising the same underlying validator engine.
 - The command surface supports complete reconciliation validation without
@@ -142,5 +151,31 @@ wrapper, but neither that wrapper nor its equivalence proof exists yet.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Completed on 2026-08-03.
+
+- Published test checkpoints `7f48bf6`, `2eee679`, `4be3225`, `fb30f3f`, and
+  `8a8bb1a` independently lock exact CLI/root/inventory behavior, every inherited card,
+  link, anchor, dependency, lifecycle-boundary, orphan, and Mermaid rule, the
+  aggregate diagnostic order, the hard-coded legacy heading oracle, and both
+  active and completed incomplete-blocker rejection.
+- Published implementation checkpoint `7a4c724` adds only the logic-free
+  `make documentation-check` wrapper, its literal public-Make expansion, and
+  same-engine success fixture. Test checkpoint `8a8bb1a` separately locks the
+  unavoidable Make-native failure surface: the engine's exact stderr remains,
+  then Make appends its target diagnostic and exits `2`. Production validator
+  semantics and accepted repository states did not change.
+- The card-boundary focused suite passed `183` tests. The exact full command
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` was not green:
+  static preflight passed, then guarded R stopped with status `2` on the
+  inherited ignored malformed `macos` library entry and unavailable
+  Bioconductor metadata DNS. No dependency was installed, restored, removed,
+  or updated.
+- `make -s documentation-check` retained exactly the eight authorized
+  `UNREFINED` proposals plus their README as nine invalid-location findings
+  and no other documentation finding. This is a truthful nonpassing boundary,
+  not a green gate or a waiver. The dependency deadlock is resolved by assigning
+  repository-state closure to immediately eligible
+  [`TASK-LIFECYCLE-01`](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
+  which owns those locations and their independent validation schema.
+- No task-dependency semantics, workflow, scientific behavior, report,
+  evidence state, runtime, cluster state, or default branch changed.

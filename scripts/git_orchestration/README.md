@@ -9,7 +9,9 @@ resolve conflicts, clean recovery state, or authorize publication.
 The read-only validators are:
 
 - [`validate_documentation.py`](validate_documentation.py), which runs the
-  repository documentation structure gate for an explicit worktree root;
+  repository documentation structure gate for an explicit worktree root. From
+  the repository root, the supported `make -s documentation-check` target is a
+  logic-free wrapper over that exact engine;
 - [`validate_fragment_candidate.py`](validate_fragment_candidate.py), which
   binds one frozen candidate to its worktree, branch, base, exact diff,
   reservations, fragment shape, and published source ref; and

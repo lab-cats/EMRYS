@@ -79,8 +79,8 @@ a completed production review.
 | `codex/plan-02z-first-migration-readiness` | Rolling [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) checkpoint, tranche-specific reviews, and first migration-card readiness rooted at the verified integrated canonical tip | plan checkpoint `c45e748`, all three dedicated [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) reviews, and the completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) task-specific plan remain the documentation-only readiness record; the branch is published/upstream-equal |
 | `codex/mig-03a-extract-validation-report-library` | Physical migration campaign through completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)–[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md), plus completed [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), and [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) | the first eleven units are complete through published documentation/lifecycle close `b73b12b`; the branch ends clean and published at usability completion `5a501df`, before MIG-03L execution. |
 | `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` | Fresh execution branch for completed [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md), completed [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md), and its completed [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) reviews | MIG-03M test baselines and executable checkpoint `5e51496` are published/equal; the documentation/lifecycle close is the commit containing this row. No Step `09` or later card is created or selected. |
-| `codex/post-mig-03m-completion` | Neutral remediation integration lane created at published MIG-03M documentation/lifecycle close `3f91fce` | authority synchronization `a6bd366` and health-runway activation `94a4ef7` are published/equal; the checkpoint containing this row resolves only the `PROGRAM-01` integration-review trigger. No validator/lifecycle implementation, runtime, migration owner, or default-branch integration is selected, and remote `master` remains untouched pending a separate explicit decision. |
-| Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see active [`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order; the program-owned integration-review trigger is resolved, leaving active `DOC-GATE-01` as `TASK-LIFECYCLE-01`'s sole blocker. Actionable-card workflow remains directory-owned, authorized UNREFINED preservation is nonselectable, and the validator still rejects its nine current Markdown locations and lacks the card's independent invalid-state fixture coverage and separately approved Make exposure. |
+| `codex/post-mig-03m-completion` | Neutral remediation integration lane created at published MIG-03M documentation/lifecycle close `3f91fce` | authority synchronization `a6bd366`, health-runway activation `94a4ef7`, program decision `2df3e6c`, and the six published DOC-GATE-01 implementation/test checkpoints through `8a8bb1a` are complete. The documentation close is the commit containing this row. Runtime remediation, lifecycle implementation, migration work, and default-branch integration remain separate; remote `master` is untouched pending a separate explicit decision. |
+| Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | DOC-GATE-01 now supplies independent fixtures and the logic-free `documentation-check` Make wrapper without changing validator semantics. Its repository-state check remains explicitly nonpassing on only the eight authorized `UNREFINED` proposals plus their README. TASK-LIFECYCLE-01 is now dependency-valid and owns closing those nine findings plus future `INTEGRATION_REVIEW`; it remains unselected until its separate JIT status move. CONCURRENCY-03 is independently eligible but is not selected by this runway. |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
 | `refactor-01e-slurm-contracts` | Every SLURM wrapper's mode/module/delegation/output/exit contract; see [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md) | implementation `9a4fb09` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01F` |
@@ -145,15 +145,17 @@ inspection and approval.
 
 ## Active critical runway
 
-The physical-migration campaign is paused after completed MIG-03M. The current
-boundary is Slice `3` of
-[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md):
-the program-owned `INTEGRATION_REVIEW` persistence trigger is resolved without
-implementing the state, and `DOC-GATE-01` is now the sole lifecycle blocker.
-No Step `09` or later migration/review card is created or selected, and the
-preserved program remainder remains frozen. The chronology below records how
-the completed physical-migration boundary was reached; it does not authorize
-another migration.
+The physical-migration campaign is paused after completed MIG-03M. Slice `3` of
+[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+is complete. The program-owned `INTEGRATION_REVIEW` persistence trigger is resolved without
+implementing the state. Completed
+[`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
+removes the remaining technological blocker from `TASK-LIFECYCLE-01`, which is
+the next health-runway package but remains unselected in `TODO` at this
+checkpoint. No Step `09` or later migration/review card is created or selected,
+and the preserved program remainder remains frozen. The chronology below
+records how the completed physical-migration boundary was reached; it does not
+authorize another migration.
 
 `ARCH-02A` through `ARCH-02D` and the interposed `JIT-01` workflow bootstrap
 are complete. The user separately selected and completed `DOC-IA-01` and
@@ -423,9 +425,10 @@ work. Maintenance order remains distinct from technical blocking:
    architecture runway.
 5. Reassess the remaining order under that model. The current expected
    candidates begin with
-   [`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md),
-   which should characterize, extract, and test the embedded documentation
-   validator without changing accepted behavior.
+   completed
+   [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md),
+   which characterized and exposed the extracted documentation validator
+   without changing accepted behavior.
 6. Once their genuine prerequisites are complete,
    [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
    may enforce the proven fragment contract using `CONCURRENCY-02`'s synthetic

@@ -47,7 +47,7 @@ unintegrated work as approved or complete.
 
 ## Blocked by
 
-- [DOC-GATE-01](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
+- [DOC-GATE-01](../COMPLETED/DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
 
 ## Completion unblocks
 
@@ -70,7 +70,7 @@ unintegrated work as approved or complete.
   rolling-delivery decisions in
   [`DECISIONS.md`](../../design/DECISIONS.md), and the extracted documentation
   validator plus focused tests.
-- Completed `CONCURRENCY-02`, live `DOC-GATE-01`, the resolved program-owned
+- Completed `CONCURRENCY-02`, completed `DOC-GATE-01`, the resolved program-owned
   integration-review trigger, and the live handoff/roadmap owners.
 
 ## Questions owned by this card
