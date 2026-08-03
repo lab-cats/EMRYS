@@ -326,7 +326,8 @@ target dependency direction, not historical alias order or raw file size.
 
 ## Completion record
 
-Not started. JIT-carded from clean published parent
-`5259acbf3b717487e78eecfd938cc793665673f8`. Architecture, reliability, and
-usability reviews must close sequentially before selection. This definition is
-documentation-only; no executable or test path has moved.
+Selected from clean, published, local/upstream/live-remote-equal review
+completion checkpoint `9ae3b12d45080c9b7d9132174dc01a7594050b84`. Architecture,
+reliability, and usability reviews are complete. Task-specific planning and
+baseline evidence follow in separate bounded slices; no executable or test path
+has moved at this selection checkpoint.

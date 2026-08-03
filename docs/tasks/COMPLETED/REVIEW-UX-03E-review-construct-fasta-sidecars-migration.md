@@ -29,7 +29,7 @@ recovery guidance, or an undiscoverable owner.
 
 ## Completion unblocks
 
-- [MIG-03E](../TODO/MIG-03E-migrate-construct-fasta-sidecars-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03E](../IN_PROGRESS/MIG-03E-migrate-construct-fasta-sidecars-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 

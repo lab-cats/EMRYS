@@ -1713,3 +1713,17 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   `4750161`, performed by the same campaign agent; independent authorship is
   not claimed. No executable, test, dependency, runtime-tool, scheduler,
   production, scientific-review, or biological evidence changed or ran.
+
+## 2026-08-02T23:57:20-0400 — MIG-03E selected
+
+- **Selection:** move only `MIG-03E` to `IN_PROGRESS` and repair its reciprocal
+  lifecycle/status links after usability-review completion checkpoint `9ae3b12`
+  was clean, published, and equal across local `HEAD`, configured upstream, and
+  the live remote branch. All three dedicated reviews are complete; no later
+  migration or review card is created or selected.
+- **Execution boundary:** this checkpoint authorizes task-specific planning for
+  the reviewed fourteen-file `construct_FASTA_sidecars` cutover. Baseline
+  capture, executable/test mutation, card-boundary validation, and batched
+  canonical documentation remain separate bounded slices. No executable, test,
+  harness, dependency, runtime-tool, scheduler, production, scientific-review,
+  or biological evidence changed or ran at selection.
