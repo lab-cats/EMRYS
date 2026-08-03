@@ -31,11 +31,11 @@ characterize these defects without fixing or approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03L](../COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, test, and cutover boundary.
+- [REVIEW-ARCH-03L](../COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Satisfied: architecture fixed the exact owner, loader, caller, artifact, test, and cutover boundary.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03L](REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03L](../TODO/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 
@@ -117,6 +117,8 @@ characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Architecture review is complete; reliability review is now
-dependency-unblocked but remains in `TODO`. No executable/test file changed or
-ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal architecture-completion checkpoint
+`ec7e8d911c575418ac5fc89fbfb5fef2793b6dc0`. No reliability finding is
+recorded yet, usability and migration remain unselected, and no executable/
+test file changed or ran.

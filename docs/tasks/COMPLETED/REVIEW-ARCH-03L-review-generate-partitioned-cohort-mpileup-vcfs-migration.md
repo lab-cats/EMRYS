@@ -35,7 +35,7 @@ extraction, or second functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03L](../TODO/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03L](../IN_PROGRESS/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
