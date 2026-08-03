@@ -148,6 +148,9 @@ def write_fixture(root: Path) -> Path:
         "docs/tasks/README.md": "# Task registry\n",
         "docs/tasks/TODO/README.md": "# TODO tasks\n",
         "docs/tasks/IN_PROGRESS/README.md": "# Active tasks\n",
+        "docs/tasks/INTEGRATION_REVIEW/README.md": (
+            "# Integration-review task cards\n"
+        ),
         "docs/tasks/COMPLETED/README.md": "# Completed tasks\n",
         "docs/tasks/UNREFINED/README.md": "# UNREFINED — Proposal intake\n",
         "docs/tasks/TODO/TEST-01-fixture-card.md": card_text(),
@@ -191,7 +194,7 @@ def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(7 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(8 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
 
@@ -640,24 +643,32 @@ def test_rejects_dependency_edge_in_proposal(tmp_path: Path) -> None:
     )
 
 
-def test_current_engine_rejects_integration_review_lifecycle_location(
+def test_accepts_full_card_in_integration_review_lifecycle_location(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
-    review = add_card(repository, "TEST-02", status="INTEGRATION_REVIEW")
-    (review.parent / "README.md").write_text(
-        "# Integration-review task cards\n",
-        encoding="utf-8",
+    add_card(repository, "TEST-02", status="INTEGRATION_REVIEW")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "PASS documentation structure "
+        "(9 Markdown documents, 2 task cards, 1 Mermaid sources)\n"
     )
+    assert result.stderr == ""
+
+
+def test_requires_integration_review_registry_readme(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "docs/tasks/INTEGRATION_REVIEW/README.md").unlink()
 
     assert_failures(
         repository,
         cwd=tmp_path,
         expected=[
-            "invalid card location: "
-            "docs/tasks/INTEGRATION_REVIEW/README.md",
-            "invalid card location: "
-            "docs/tasks/INTEGRATION_REVIEW/TEST-02-fixture-card.md",
+            "missing task-registry README: "
+            "docs/tasks/INTEGRATION_REVIEW/README.md"
         ],
     )
 
@@ -985,4 +996,13 @@ def test_completed_card_requires_completed_blockers(tmp_path: Path) -> None:
     assert_lifecycle_card_requires_completed_blockers(
         tmp_path,
         status="COMPLETED",
+    )
+
+
+def test_integration_review_card_requires_completed_blockers(
+    tmp_path: Path,
+) -> None:
+    assert_lifecycle_card_requires_completed_blockers(
+        tmp_path,
+        status="INTEGRATION_REVIEW",
     )

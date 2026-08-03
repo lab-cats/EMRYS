@@ -35,7 +35,12 @@ UNREFINED_SECTIONS = (
     "Questions before refinement",
     "Promotion conditions",
 )
-CARD_STATUSES = frozenset({"TODO", "IN_PROGRESS", "COMPLETED"})
+CARD_STATUSES = frozenset(
+    {"TODO", "IN_PROGRESS", "INTEGRATION_REVIEW", "COMPLETED"}
+)
+STARTED_CARD_STATUSES = frozenset(
+    {"IN_PROGRESS", "INTEGRATION_REVIEW", "COMPLETED"}
+)
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "data:")
 TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$")
 UNREFINED_STATE_PATTERN = re.compile(
@@ -155,6 +160,7 @@ def validate_cards(
         task_root / "README.md",
         task_root / "TODO" / "README.md",
         task_root / "IN_PROGRESS" / "README.md",
+        task_root / "INTEGRATION_REVIEW" / "README.md",
         task_root / "COMPLETED" / "README.md",
         task_root / "UNREFINED" / "README.md",
     }
@@ -345,7 +351,7 @@ def validate_cards(
     for card_id, path in cards.items():
         if not (inbound.get(path, set()) - {path}):
             problems.append(f"orphan task card: {path.relative_to(root)}")
-        if path.parent.name in {"IN_PROGRESS", "COMPLETED"}:
+        if path.parent.name in STARTED_CARD_STATUSES:
             for dependency in blocked[card_id]:
                 if dependency in cards and cards[dependency].parent.name != "COMPLETED":
                     problems.append(
