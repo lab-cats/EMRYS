@@ -15,14 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03E` documentation/lifecycle checkpoint
   `fa79883683b37559dfa90880a3f04a978bbfb530` is clean, published, and
   local/upstream/live-remote-equal; its executable checkpoint is `cd3b547`.
-- Current package: JIT definition of
-  [`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md)
-  and its three sequential review cards. All four cards remain unselected.
-- Package type at this checkpoint: documentation-only next-owner definition;
-  no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: parent `fa79883` is verified
-  local/upstream/live-remote-equal. The commit containing this handoff must be
-  published and proved equal before architecture-review selection.
+- Current package: selected
+  [`REVIEW-ARCH-03F`](../tasks/IN_PROGRESS/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
+  for the `MIG-03F` neutral-helper and final-owner architecture pass. All later
+  `03F` cards remain unselected.
+- Package type at this checkpoint: documentation-only architecture-review
+  selection; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: definition parent `ee25492` is
+  verified local/upstream/live-remote-equal. The commit containing this handoff
+  must be published and proved equal before review completion.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -573,7 +574,9 @@ is complete at published executable/test checkpoint `cd3b547` and
 documentation/lifecycle checkpoint `fa79883`. The sixth JIT unit,
 [`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md), and
 its architecture, reliability, and usability review cards are JIT-defined; all
-four remain unselected. No downstream or later migration card is created.
+four were unselected at definition checkpoint `ee25492`. Only
+[`REVIEW-ARCH-03F`](../tasks/IN_PROGRESS/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
+is now selected. No downstream or later migration card is created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -604,8 +607,10 @@ and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
 are complete. `MIG-03E` is complete at published executable/test checkpoint
 `cd3b547` and documentation/lifecycle checkpoint `fa79883`.
-[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) and
-its three review cards are defined but unselected. Publish and prove this
-definition checkpoint equal before selecting only `REVIEW-ARCH-03F`; no
-downstream or later owner is selected. The unsliced `PROGRAM-01` remainder and
+[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) is
+unselected; only
+[`REVIEW-ARCH-03F`](../tasks/IN_PROGRESS/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
+is selected. Publish and prove this selection checkpoint equal before the
+read-only review completes; reliability, usability, migration, downstream, and
+later owners remain unselected. The unsliced `PROGRAM-01` remainder and
 unrelated roadmap remain preserved and out of scope.

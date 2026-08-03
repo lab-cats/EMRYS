@@ -32,7 +32,7 @@ are bounded first.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03F](REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Fully: reliability review requires an architecture-corrected helper, owner, caller, test, and rollback boundary.
+- [REVIEW-REL-03F](../TODO/REVIEW-REL-03F-review-construct-canonical-bam-migration.md) — Fully: reliability review requires an architecture-corrected helper, owner, caller, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -100,5 +100,8 @@ are bounded first.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal definition
+checkpoint `ee254927be99216c1af728aa66ead973d25eb756`. This is a read-only
+independent-in-time adversarial pass by the same campaign agent; independent
+authorship is not claimed. No executable/test mutation or computational test is
+part of review selection.

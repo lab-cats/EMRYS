@@ -27,7 +27,7 @@ preserve and characterize each state without approving it.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03F](REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md) — Required: reliability review needs the architecture-corrected helper, owner, caller, and slice boundary.
+- [REVIEW-ARCH-03F](../IN_PROGRESS/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md) — Required: reliability review needs the architecture-corrected helper, owner, caller, and slice boundary.
 
 ## Completion unblocks
 

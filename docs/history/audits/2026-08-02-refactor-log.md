@@ -1979,3 +1979,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   and documentation validation at its boundary; no computational test,
   dependency action, scheduler submission, executable mutation, or future-owner
   preload occurred.
+
+## 2026-08-03T00:52:50-0400 — REVIEW-ARCH-03F selected
+
+- **Selection:** move only `REVIEW-ARCH-03F` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after definition checkpoint `ee25492` was
+  clean, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch. `REVIEW-REL-03F`, `REVIEW-UX-03F`, and `MIG-03F` remain
+  unselected in `TODO`.
+- **Review boundary:** this begins one read-only independent-in-time adversarial
+  pass over live-DAG eligibility, final-owner placement, exact two-function
+  neutral ownership, three caller-local loader depths, job delegation, direct
+  and cross-owner test placement, explicit caller maps, executable-slice
+  ceilings, artifact/coverage ownership, wrapper necessity, and rollback order.
+  The same campaign agent performs the pass, so independent authorship is not
+  claimed. Executable/test mutation and computational, runtime, scheduler,
+  production, scientific-review, and biological evidence remain out of scope.
