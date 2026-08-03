@@ -275,7 +275,8 @@ it.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03H` documentation checkpoint `ef990c8`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no Step `05` or later owner is preloaded.
+Selected from clean, published, local/upstream/live-remote-equal usability-
+completion checkpoint `beee633f6671662cc0cb1d9acdfba82f40cce233` after all
+three dedicated reviews completed sequentially. Execution is not started: no
+executable/test path changed, no computational test ran, and no Step `05` or
+later owner is preloaded.
