@@ -203,6 +203,7 @@ def test_frozen_card_heading_oracle_matches_production() -> None:
     production = runpy.run_path(str(VALIDATOR))
 
     assert production["CARD_SECTIONS"] == CARD_SECTIONS
+    assert production["UNREFINED_SECTIONS"] == UNREFINED_SECTIONS
 
 
 def test_rejects_unavailable_root(tmp_path: Path) -> None:
@@ -503,6 +504,28 @@ def test_accepts_unrefined_proposal_without_actionable_inbound_link(
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
+    assert result.stdout == (
+        "PASS documentation structure "
+        "(9 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+    )
+    assert result.stderr == ""
+
+
+def test_accepts_additional_unrefined_proposal_sections(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(
+        proposal_text().replace(
+            "## Questions before refinement",
+            "## Optional context\n\nFixture text.\n\n"
+            "## Questions before refinement",
+        ),
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
     assert result.stderr == ""
 
 
@@ -591,6 +614,31 @@ def test_requires_ordered_unrefined_core_sections(tmp_path: Path) -> None:
         proposal_text().replace(
             "## Questions before refinement", "## Open questions"
         ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "proposal heading order/count: "
+            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+        ],
+    )
+
+
+def test_rejects_out_of_order_unrefined_core_sections(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    text = proposal_text()
+    questions = "## Questions before refinement\n\nFixture text.\n\n"
+    promotion = "## Promotion conditions\n\nFixture text.\n"
+    assert questions in text
+    assert promotion in text
+    proposal.write_text(
+        text.replace(questions, "ORDER-SLOT", 1)
+        .replace(promotion, questions, 1)
+        .replace("ORDER-SLOT", promotion, 1),
         encoding="utf-8",
     )
 
