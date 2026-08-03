@@ -219,6 +219,16 @@ write_filtered_bam() {
     local output_bam="\$3"
     local count
 
+    if [[ "\$flag" == "99" && "\${FAKE_MUTATE_ADMITTED_INPUTS:-0}" == "1" ]]; then
+        printf 'mutated input bam\\n' >> "\$input_bam"
+        printf 'mutated input bai\\n' >> "\$input_bam.bai"
+    fi
+
+    if [[ "\$flag" == "99" && "\${FAKE_FILTER_TERM_PARENT:-0}" == "1" ]]; then
+        kill -TERM "\$PPID"
+        kill -TERM "\$\$"
+    fi
+
     if [[ -n "\${FAKE_FILTER_FAIL_FLAG:-}" && "\$flag" == "\$FAKE_FILTER_FAIL_FLAG" ]]; then
         printf 'fake samtools view -b forced failure for flag %s\\n' "\$flag" >&2
         exit "\${FAKE_FILTER_FAIL_STATUS:-71}"
@@ -401,6 +411,36 @@ done
 
 source="\${1:-}"
 
+if [[ -n "\${FAKE_MV_BARRIER_DIR:-}" && "\$source" == *.FWD_like.tmp.bam && "\$dest" == *.FWD_like.bam ]]; then
+    mkdir -p "\$FAKE_MV_BARRIER_DIR"
+    : > "\$FAKE_MV_BARRIER_DIR/\${SLURM_JOB_ID:-\$\$}.ready"
+    barrier_attempt=0
+    while true; do
+        ready_count="\$(find "\$FAKE_MV_BARRIER_DIR" -type f -name '*.ready' -print | wc -l | tr -d ' ')"
+        [[ "\$ready_count" -ge 2 ]] && break
+        barrier_attempt=\$((barrier_attempt + 1))
+        if [[ "\$barrier_attempt" -ge 1000 ]]; then
+            printf 'fake mv barrier timed out\\n' >&2
+            exit 69
+        fi
+        sleep 0.01
+    done
+    if [[ "\${FAKE_MV_BARRIER_DELAY:-0}" != "0" ]]; then
+        sleep "\$FAKE_MV_BARRIER_DELAY"
+    fi
+    if [[ -n "\${FAKE_MV_BARRIER_WAIT_FOR_FILE:-}" ]]; then
+        barrier_attempt=0
+        while [[ ! -e "\$FAKE_MV_BARRIER_WAIT_FOR_FILE" ]]; do
+            barrier_attempt=\$((barrier_attempt + 1))
+            if [[ "\$barrier_attempt" -ge 1000 ]]; then
+                printf 'fake mv completion wait timed out\\n' >&2
+                exit 69
+            fi
+            sleep 0.01
+        done
+    fi
+fi
+
 fail_marker="\${FAKE_MV_FAIL_MARKER:-$tmp_dir/fake_mv_failed_once}"
 # Force only the first matching publish move to fail so rollback moves can still
 # restore the previous final output set.
@@ -416,6 +456,9 @@ if [[ -n "\${FAKE_MV_RESTORE_FAIL_SOURCE:-}" && "\$source" == "\$FAKE_MV_RESTORE
 fi
 
 /bin/mv "\$@"
+if [[ -n "\${FAKE_MV_COMPLETE_MARKER:-}" && "\$dest" == *.orientation_counts.tsv ]]; then
+    : > "\$FAKE_MV_COMPLETE_MARKER"
+fi
 EOF_MV
 chmod +x "$fake_bin/mv"
 
@@ -957,6 +1000,151 @@ assert_file_equals "$restore_failure_qc/unrelated.txt" "unrelated restore-failur
 assert_not_exists "$restore_failure_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$restore_failure_dir" "$restore_failure_qc"
 assert_no_step06_attempt_marker "$restore_failure_dir" "$restore_failure_qc"
+
+printf 'Running admitted BAM/BAI mutation success check...\n'
+mutation_input_bam="$fixture_dir/mutation/ABE_EV_2.split_ncigar.bam"
+write_input_bam_pair "$mutation_input_bam"
+mutation_output="$tmp_dir/mutation.out"
+mutation_dir="$tmp_dir/results/mutation/orientation/ABE_EV_2"
+mutation_qc="$tmp_dir/results/mutation/qc/orientation"
+mkdir -p "$mutation_dir" "$mutation_qc"
+printf 'unrelated mutation output bytes\n' >"$mutation_dir/unrelated.txt"
+printf 'unrelated mutation qc bytes\n' >"$mutation_qc/unrelated.txt"
+FAKE_MUTATE_ADMITTED_INPUTS=1 \
+SLURM_JOB_ID=mutation001 \
+    run_step06 ABE_EV_2 "$mutation_input_bam" "$mutation_dir" "$mutation_qc" --execute >"$mutation_output" 2>&1
+assert_file_equals "$mutation_input_bam" $'INPUT_BAM\nCOUNT:20\nmutated input bam'
+assert_file_equals "$mutation_input_bam.bai" $'fake step05 split-n-cigar bai\nmutated input bai'
+[[ -s "$mutation_dir/ABE_EV_2.FWD_like.bam" ]] || fail "input-mutation run did not publish FWD_like BAM"
+[[ -s "$mutation_dir/ABE_EV_2.FWD_like.bam.bai" ]] || fail "input-mutation run did not publish FWD_like BAI"
+[[ -s "$mutation_dir/ABE_EV_2.REV_like.bam" ]] || fail "input-mutation run did not publish REV_like BAM"
+[[ -s "$mutation_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "input-mutation run did not publish REV_like BAI"
+assert_contains "$mutation_qc/ABE_EV_2.orientation_counts.tsv" $'ABE_EV_2\t20\t5\t6\t4\t3\t11\t7\t18\t2\t0.900000'
+assert_file_equals "$mutation_dir/unrelated.txt" "unrelated mutation output bytes"
+assert_file_equals "$mutation_qc/unrelated.txt" "unrelated mutation qc bytes"
+assert_contains "$mutation_output" "Step 06 read-orientation output details:"
+assert_not_exists "$mutation_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$mutation_dir" "$mutation_qc"
+assert_no_step06_attempt_marker "$mutation_dir" "$mutation_qc"
+
+printf 'Running controlled TERM cleanup and predecessor preservation check...\n'
+signal_dir="$tmp_dir/results/signal/orientation/ABE_EV_2"
+signal_qc="$tmp_dir/results/signal/qc/orientation"
+mkdir -p "$signal_dir" "$signal_qc"
+printf 'prior signal FWD BAM bytes\n' >"$signal_dir/ABE_EV_2.FWD_like.bam"
+printf 'prior signal FWD BAI bytes\n' >"$signal_dir/ABE_EV_2.FWD_like.bam.bai"
+printf 'prior signal REV BAM bytes\n' >"$signal_dir/ABE_EV_2.REV_like.bam"
+printf 'prior signal REV BAI bytes\n' >"$signal_dir/ABE_EV_2.REV_like.bam.bai"
+printf 'prior signal counts bytes\n' >"$signal_qc/ABE_EV_2.orientation_counts.tsv"
+printf 'unrelated signal output bytes\n' >"$signal_dir/unrelated.txt"
+printf 'unrelated signal qc bytes\n' >"$signal_qc/unrelated.txt"
+signal_output="$tmp_dir/signal.out"
+assert_exits 143 "$signal_output" env \
+    FAKE_FILTER_TERM_PARENT=1 \
+    SLURM_JOB_ID=signal001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$signal_dir" \
+    --qc-dir "$signal_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam" "prior signal FWD BAM bytes"
+assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam.bai" "prior signal FWD BAI bytes"
+assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam" "prior signal REV BAM bytes"
+assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam.bai" "prior signal REV BAI bytes"
+assert_file_equals "$signal_qc/ABE_EV_2.orientation_counts.tsv" "prior signal counts bytes"
+assert_file_equals "$signal_dir/unrelated.txt" "unrelated signal output bytes"
+assert_file_equals "$signal_qc/unrelated.txt" "unrelated signal qc bytes"
+assert_not_exists "$signal_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$signal_dir" "$signal_qc"
+assert_no_step06_attempt_marker "$signal_dir" "$signal_qc"
+
+printf 'Running distinct-output-lock/shared-QC collision check...\n'
+collision_barrier="$tmp_dir/collision_barrier"
+collision_first_complete="$collision_barrier/first.complete"
+collision_a_dir="$tmp_dir/results/collision_a/orientation/ABE_EV_2"
+collision_b_dir="$tmp_dir/results/collision_b/orientation/ABE_EV_2"
+collision_qc="$tmp_dir/results/collision_shared/qc/orientation"
+collision_a_output="$tmp_dir/collision_a.out"
+collision_b_output="$tmp_dir/collision_b.out"
+mkdir -p "$collision_a_dir" "$collision_b_dir" "$collision_qc"
+printf 'unrelated collision A bytes\n' >"$collision_a_dir/unrelated.txt"
+printf 'unrelated collision B bytes\n' >"$collision_b_dir/unrelated.txt"
+printf 'unrelated collision QC bytes\n' >"$collision_qc/unrelated.txt"
+env \
+    FAKE_MV_BARRIER_DIR="$collision_barrier" \
+    FAKE_MV_COMPLETE_MARKER="$collision_first_complete" \
+    SLURM_JOB_ID=collision_a \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$collision_a_dir" \
+    --qc-dir "$collision_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute >"$collision_a_output" 2>&1 &
+collision_a_pid=$!
+env \
+    FAKE_FLAG_99_COUNT=2 \
+    FAKE_FLAG_147_COUNT=3 \
+    FAKE_FLAG_83_COUNT=4 \
+    FAKE_FLAG_163_COUNT=5 \
+    FAKE_MV_BARRIER_DIR="$collision_barrier" \
+    FAKE_MV_BARRIER_WAIT_FOR_FILE="$collision_first_complete" \
+    SLURM_JOB_ID=collision_b \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$collision_b_dir" \
+    --qc-dir "$collision_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute >"$collision_b_output" 2>&1 &
+collision_b_pid=$!
+set +e
+wait "$collision_a_pid"
+collision_a_status=$?
+wait "$collision_b_pid"
+collision_b_status=$?
+set -e
+[[ "$collision_a_status" -eq 0 ]] || {
+    cat "$collision_a_output" >&2
+    fail "first collision run exited $collision_a_status"
+}
+[[ "$collision_b_status" -eq 0 ]] || {
+    cat "$collision_b_output" >&2
+    fail "second collision run exited $collision_b_status"
+}
+for path in \
+    "$collision_a_dir/ABE_EV_2.FWD_like.bam" \
+    "$collision_a_dir/ABE_EV_2.FWD_like.bam.bai" \
+    "$collision_a_dir/ABE_EV_2.REV_like.bam" \
+    "$collision_a_dir/ABE_EV_2.REV_like.bam.bai" \
+    "$collision_b_dir/ABE_EV_2.FWD_like.bam" \
+    "$collision_b_dir/ABE_EV_2.FWD_like.bam.bai" \
+    "$collision_b_dir/ABE_EV_2.REV_like.bam" \
+    "$collision_b_dir/ABE_EV_2.REV_like.bam.bai"
+do
+    [[ -s "$path" ]] || fail "collision run did not preserve output: $path"
+done
+assert_contains "$collision_a_dir/ABE_EV_2.FWD_like.bam" "COUNT:11"
+assert_contains "$collision_a_dir/ABE_EV_2.REV_like.bam" "COUNT:7"
+assert_contains "$collision_b_dir/ABE_EV_2.FWD_like.bam" "COUNT:5"
+assert_contains "$collision_b_dir/ABE_EV_2.REV_like.bam" "COUNT:9"
+assert_contains "$collision_qc/ABE_EV_2.orientation_counts.tsv" $'ABE_EV_2\t20\t2\t3\t4\t5\t5\t9\t14\t6\t0.700000'
+assert_file_equals "$collision_a_dir/unrelated.txt" "unrelated collision A bytes"
+assert_file_equals "$collision_b_dir/unrelated.txt" "unrelated collision B bytes"
+assert_file_equals "$collision_qc/unrelated.txt" "unrelated collision QC bytes"
+assert_contains "$collision_a_output" "Step 06 read-orientation output details:"
+assert_contains "$collision_b_output" "Step 06 read-orientation output details:"
+assert_not_exists "$collision_a_dir/.ABE_EV_2.step06.lock"
+assert_not_exists "$collision_b_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$collision_a_dir" "$collision_qc"
+assert_no_step06_scratch "$collision_b_dir" "$collision_qc"
+assert_no_step06_attempt_marker "$collision_a_dir" "$collision_qc"
+assert_no_step06_attempt_marker "$collision_b_dir" "$collision_qc"
 
 printf 'Running stale Step 05 path checks...\n'
 stale_path_output="$tmp_dir/stale_paths.out"
