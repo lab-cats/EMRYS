@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published usability-review
-  completion checkpoint `0328fbed07aadd2d316d4b96ae8d7bba17aee63c`.
+  exact SHA from live Git. Its frozen parent is published migration-selection
+  checkpoint `5415538fcaad581e76b13d061251da060dd8e8a9`.
 - Recorded package state: `MIG-03I` executable/test checkpoint `803fcc4` and
   documentation/lifecycle close `c6814e0` are published and local/upstream/
   live-remote-equal.
@@ -22,13 +22,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   and [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
   Only Step `05` is live-DAG-eligible; Step `06` and later cards remain
   uncreated.
-- Package type at this checkpoint: documentation-only migration selection. It
-  records no task-specific execution plan and changes no executable,
-  configuration, dependency, schema, fixture, report template, or test
-  behavior, and runs no computational, scheduler, cluster, or production work.
-- Remote publication and upstream equality: usability completion parent
-  `0328fbe` is verified local/upstream/live-remote-equal. Publish and prove this
-  selection checkpoint equal before writing only the `MIG-03J` execution plan.
+- Package type at this checkpoint: documentation-only task-specific execution
+  plan. It freezes four one-test-file baselines, one atomic cutover/card gate,
+  and one separate documentation close while changing no executable, test,
+  configuration, dependency, schema, fixture, or report-template behavior and
+  running no computational work.
+- Remote publication and upstream equality: migration selection parent
+  `5415538` is verified local/upstream/live-remote-equal. Publish and prove this
+  plan checkpoint equal before changing only the old-path direct shell test's
+  producer-transaction slice.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -313,8 +315,8 @@ is complete with exactly four bounded old-path test-only checkpoints and exact
 fault/parity/scheduler dispositions. Usability is complete with exact final-
 command, dry-run, recovery, ownership, provenance, and evidence-ceiling
 decisions. Migration alone is selected; no executable/test path changed or
-computational check ran in this selection, and no Step `06` or later card is
-preloaded.
+computational check ran in planning. Its six-slice execution plan is frozen in
+the commit containing this handoff, and no Step `06` or later card is preloaded.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)

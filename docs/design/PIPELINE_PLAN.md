@@ -106,7 +106,7 @@ a completed production review.
 | Ninth JIT-tranche reviews | completed [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md) → completed [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) → completed [`REVIEW-UX-03I`](../tasks/COMPLETED/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md) | all three read-only independent-in-time passes completed before migration selection with exact cutover, residue/parity/scheduler, command, diagnostics, preservation, provenance, evidence-ceiling, and rollback boundaries; independent authorship is not claimed |
 | Phase `03` ninth bounded package | Move `mark_BAM_duplicates_with_Picard` through completed [`MIG-03I`](../tasks/COMPLETED/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md) | complete in published producer `de52e93`, validator `3d73d52`, and scheduler `3e805ac` test baselines plus executable/test checkpoint `803fcc4`; the final owner contains the path-adjusted producer, validator, mode-`0644` job, and mirrored direct tests with no wrapper, alias, package, descriptor, schema, transaction, receipt, recovery marker, or behavior redesign. Documentation/lifecycle closure is the commit containing this row. |
 | Tenth JIT-tranche reviews | completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md) → completed [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) → completed [`REVIEW-UX-03J`](../tasks/COMPLETED/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) | all three read-only independent-in-time passes completed before migration selection with exact cutover, fault/parity/scheduler, final-command, recovery, provenance, evidence-ceiling, and rollback boundaries; independent authorship is not claimed. |
-| Phase `03` tenth bounded package | Selected move of `split_N_cigar_reads_with_GATK` through [`MIG-03J`](../tasks/IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) | all three reviews are complete and migration alone is selected. No executable/test path changed or computational check ran in selection, and Step `06` remains blocked and uncreated. |
+| Phase `03` tenth bounded package | Selected move of `split_N_cigar_reads_with_GATK` through [`MIG-03J`](../tasks/IN_PROGRESS/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) | all three reviews are complete and the six-slice task-specific plan is frozen in the commit containing this row. No executable/test path changed or computational check ran in planning, and Step `06` remains blocked and uncreated. |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -242,8 +242,9 @@ the commit containing this plan with four exact old-path test-only slices and
 the retained fault/evidence boundaries recorded. Usability is complete in the
 commit containing this plan with exact final-command, dry-run, recovery,
 ownership, and evidence-ceiling decisions. Migration alone is now selected;
-no source/test file changed or computational check ran in this selection. Step
-`06` and every later card remain absent.
+its six-slice execution plan is frozen in the commit containing this plan. No
+source/test file changed or computational check ran in planning. Step `06` and
+every later card remain absent.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 

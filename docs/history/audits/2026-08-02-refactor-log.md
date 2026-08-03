@@ -3828,3 +3828,50 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   selection-caused path, lifecycle, dependency, cycle, orphan, anchor, or
   diagram finding remains. The expected-only result is nonpassing and is not
   called green.
+
+## 2026-08-03T07:17:13-0400 — MIG-03J task-specific plan frozen
+
+- **Git and slice boundary:** planning began from clean, tracked/untracked-
+  empty, published, local/upstream/live-remote-equal selection
+  `5415538fcaad581e76b13d061251da060dd8e8a9`, with no recovery/index lock or
+  mutable-lane collision. Publish four single-test-file reliability slices,
+  one atomic fifteen-logical-file cutover/executable card boundary, and one
+  separate documentation close. Batch migration links and small canonical
+  docs only in that close; no later owner is preloaded.
+- **Producer transaction baseline:** change only the direct Step `05` shell
+  test for lone-final preservation, final-revalidation restoration, and BAI-
+  publication `67` plus BAM-restoration `68` with exact predecessor/unrelated/
+  erased-recovery state. Run only shell syntax and that complete direct test.
+- **Producer admission/signal baseline:** change only the same shell test for
+  missing explicit samtools before directory creation, five admitted-input/
+  reference mutations that still succeed, and TERM `143` predecessor/
+  unrelated preservation with owned residue removed and no attempt marker.
+  Run only shell syntax and that complete direct test.
+- **Validator baseline:** change only the direct validator test for arbitrary-
+  CWD dry-run/execute/repeat bytes, exit-`0` failed evidence, exit-`2`
+  nonpublication, and post-build mutation/predecessor preservation. Run only
+  that direct pytest file; exact reference-bridge cases wait for cutover.
+- **Scheduler baseline:** change only the central SLURM suite for Java, GATK,
+  samtools, submit-directory, log, warning/delegation, and stale-pair states.
+  Run only the Step `05` scheduler selection. The assembled tip adds no other
+  test, production, fixture, baseline, documentation, dependency, or future-
+  owner file.
+- **Cutover and card-boundary gate:** move exactly five files and update exactly
+  ten callers/harness owners, including the five moved-consumer reference-
+  bridge tests. After minimal final-path checks, measure coverage with only the
+  intentionally stale documentation assertion deselected, then run the exact
+  RUNBOOK aggregate once with explicit result JSON. Only the exact migration-
+  caused documentation paths plus nine inherited `UNREFINED` locations may
+  remain as a nonpassing expected-only ceiling. Any other fault must be
+  understood before commit.
+- **Close and rollback:** the separate close adds the owner README, repairs the
+  contract and full canonical/current/lifecycle roster, records exact evidence,
+  and runs the documentation-only gate. It may retain only nine inherited
+  findings. Roll back docs, cutover, scheduler, validator, producer admission/
+  signal, then producer transaction. Git rollback never alters runtime/
+  production evidence, locks, logs, or recovery artifacts.
+- **Minimal slice check:** `git diff --check` passed for exactly the active card,
+  current roadmap/handoff, and dated audit. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  ran in this planning slice; the complete documentation gate remains owned by
+  the separate card close.
