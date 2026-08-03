@@ -95,7 +95,7 @@ a completed production review.
 | Phase `03` third bounded package | Move `convert_GTF_to_BED12` through [`MIG-03C`](../tasks/COMPLETED/MIG-03C-migrate-convert-gtf-to-bed12-owner.md) | complete in published executable/test checkpoint `e19f281`; the final owner contains the byte-identical producer, path-adjusted validator and job, and mirrored tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
 | Fourth JIT-tranche reviews | [`REVIEW-ARCH-03D`](../tasks/COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) → [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md) | all three independent-in-time passes complete; the corrected card owns exact producer, validator, scheduler, Make, diagnostics, recovery, and provenance journeys, and independent authorship is not claimed |
 | Phase `03` fourth bounded package | Move `align_RNA_reads_with_STAR` through [`MIG-03D`](../tasks/COMPLETED/MIG-03D-migrate-align-rna-reads-with-star-owner.md) | complete in published executable/test checkpoint `12f9be5`; the final owner contains the path-adjusted producer, validator, and job plus mirrored direct tests, with explicit mixed-layout callers and no wrapper, duplicate, package, descriptor, or schema. Documentation/lifecycle closure is the commit containing this row. |
-| Fifth JIT-tranche reviews | [`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-REL-03E`](../tasks/COMPLETED/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-UX-03E`](../tasks/TODO/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) | architecture and reliability reviews complete; exact FAI-only fault parity, private-loader failure ownership, arbitrary-CWD validator repeatability, scheduler evidence ownership, and coverage floor are corrected; usability and migration remain unselected |
+| Fifth JIT-tranche reviews | [`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-REL-03E`](../tasks/COMPLETED/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md) → [`REVIEW-UX-03E`](../tasks/IN_PROGRESS/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) | architecture and reliability reviews complete and usability review selected for one read-only pass; migration remains unselected; independent authorship will not be claimed |
 | Phase `03` fifth bounded package | Move `construct_FASTA_sidecars` through [`MIG-03E`](../tasks/TODO/MIG-03E-migrate-construct-fasta-sidecars-owner.md) | JIT-defined only from published parent `5259acb`; no review is selected, no executable/test path moved, and no later owner is preloaded |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
@@ -149,8 +149,9 @@ in published executable/test checkpoint `12f9be5` and documentation close
 `5259acb`. `MIG-03E` definition checkpoint `3c6aaf0`, architecture selection
 checkpoint `79af085`, and architecture completion checkpoint `494889f` are
 published and equal. Reliability selection checkpoint `e39f4b2` is also
-published and equal. `REVIEW-REL-03E` is complete in the commit containing this
-paragraph; usability, migration, and any later owner remain unselected.
+published and equal, and `REVIEW-REL-03E` is complete at `522a4b4`. Only
+`REVIEW-UX-03E` is selected in the commit containing this paragraph; migration
+and any later owner remain unselected.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 

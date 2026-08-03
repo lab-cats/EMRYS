@@ -131,7 +131,7 @@ target dependency direction, not historical alias order or raw file size.
 
 ## Blocked by
 
-- [REVIEW-UX-03E](REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03E](../IN_PROGRESS/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
