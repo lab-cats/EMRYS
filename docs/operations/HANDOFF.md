@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: task-specific plan checkpoint
-  `d8638a0a99993a4a3624bb0ffdfae95f03af9124` is clean, published, and
-  local/upstream/live-remote-equal; migration selection is `679aba9`.
-- Current package: old helper baseline for
+- Recorded package state: old helper baseline checkpoint
+  `9a2517bb94adefae862f2635d8288716ee479e74` is clean, published, and
+  local/upstream/live-remote-equal; task-specific plan is `d8638a0`.
+- Current package: old native-owner baseline for
   [`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
-  records exact old `run_tool` results/exceptions and `parse_header` tuples from
-  an isolated no-residue probe; native owner baseline remains next.
-- Package type at this checkpoint: local baseline evidence plus documentation;
-  no executable/test file or coverage baseline changed.
-- Remote publication and upstream equality: parent `d8638a0` is verified
+  records syntax, direct producer/validator, Step `02` scheduler, arbitrary-CWD
+  repeat, and exact mode/hash evidence. Helper preparation remains next.
+- Package type at this checkpoint: local fixture/mock baseline evidence plus
+  documentation; no executable/test file or coverage baseline changed.
+- Remote publication and upstream equality: parent `9a2517b` is verified
   local/upstream/live-remote-equal. The commit containing this evidence must be
-  published and proved equal before old native-owner checks.
+  published and proved equal before helper preparation.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -580,8 +580,8 @@ is complete, and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 is complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. `MIG-03F` alone is selected; its exact write sets are frozen and
-old helper evidence is recorded in the active card. Native baseline is next. No
+is complete. `MIG-03F` alone is selected; its exact write sets and both old-path
+baseline slices are recorded in the active card. Helper preparation is next. No
 downstream or later migration card is created.
 
 The user has authorized one continuous physical-migration campaign on this
@@ -620,7 +620,7 @@ and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 are complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. Publish the helper-evidence checkpoint containing this paragraph
-before old native-owner checks; downstream and later owners remain unselected.
-The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
-out of scope.
+is complete. Publish the native-evidence checkpoint containing this paragraph
+before helper preparation; downstream and later owners remain unselected. The
+unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
+of scope.

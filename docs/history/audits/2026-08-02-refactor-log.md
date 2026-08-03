@@ -2189,3 +2189,25 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   local interpreter/subprocess characterization only; no executable/test file,
   coverage, dependency, real samtools runtime, scheduler, production,
   scientific-review, or biological evidence changed.
+
+## 2026-08-03T01:21:45-0400 — MIG-03F old native baseline captured
+
+- **Focused checks:** from clean, published, local/upstream/live-remote-equal
+  helper-evidence checkpoint `9a2517b`, producer/job syntax and the complete
+  direct producer suite passed. The direct Step `02`/`04`/`05` validator set
+  passed `15` tests in `2.53s`; the exact Step `02` scheduler subset passed `9`
+  in `0.82s` with `102` unrelated cases deselected.
+- **Arbitrary-CWD parity:** dry-run and two execute attempts returned zero with
+  empty stderr from a temporary non-repository CWD. Dry-run wrote no report and
+  stdout hashed to `e0edf8f70d40ffc6ca9ae6ef732c797ac00abd056ee16496ad22038e277c5c1f`.
+  Execute/repeat produced identical ordered five-pass-row bytes: length `542`,
+  SHA-256 `0007c190b23071286fea72670f72d9cf98666c5c11fd76f1657715aa2d76a7c8`.
+  Inputs and modes were unchanged and the invocation CWD stayed empty.
+- **Frozen owner evidence:** producer/validator/job modes remain `0755`/`0644`/
+  `0644`, lines `442`/`207`/`97`, bytes `13,670`/`7,686`/`2,387`, with hashes
+  `ad73a547...`, `d805f17c...`, and `b67f50db...`. Direct shell/Python tests
+  remain modes `0755`/`0644`, lines `528`/`90`, bytes `20,546`/`3,189`, with
+  hashes `239646b4...` and `f7f9dd25...`; the active card records full hashes.
+  Git stayed tracked/untracked clean. Evidence is local synthetic fixture/mock
+  only; no real samtools, scheduler, dependency, production, scientific-review,
+  or biological action occurred.

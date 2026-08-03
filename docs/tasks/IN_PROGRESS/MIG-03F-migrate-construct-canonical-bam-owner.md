@@ -451,3 +451,35 @@ exception, header tuples, `sys.path` equality, and CWD residue has SHA-256
 is local interpreter/subprocess characterization only; no tracked file,
 coverage baseline, dependency, real samtools runtime, scheduler, production,
 scientific-review, or biological evidence changed.
+
+### Old-path native baseline
+
+Captured from clean, published, local/upstream/live-remote-equal helper-evidence
+checkpoint `9a2517bb94adefae862f2635d8288716ee479e74`. Both shell
+assets passed `bash -n`; the direct producer suite passed every declared group;
+the Step `02`/`04`/`05` direct validator set passed `15` tests in `2.53s`; and
+the exact Step `02` central scheduler subset passed `9` tests in `0.82s` with
+`102` unrelated cases deselected.
+
+The isolated non-repository-CWD Step `02` validator journey returned `0` with
+empty stderr in dry-run and both execute attempts. Dry-run published nothing
+and its stdout SHA-256 was
+`e0edf8f70d40ffc6ca9ae6ef732c797ac00abd056ee16496ad22038e277c5c1f`.
+Execute published the exact ordered five pass rows in `542` bytes with SHA-256
+`0007c190b23071286fea72670f72d9cf98666c5c11fd76f1657715aa2d76a7c8`;
+repeat bytes were identical. BAM, BAI, and fake-tool hashes/modes were unchanged
+and the invocation CWD remained empty.
+
+Frozen owner/test rollback evidence is:
+
+| Path | Mode | Lines | Bytes | SHA-256 |
+| --- | --- | ---: | ---: | --- |
+| `scripts/step_02_sort_index_bam.sh` | `0755` | 442 | 13,670 | `ad73a5476447cba0cd5265864a16710492a2e313150ab2ac7293fef8c26a627c` |
+| `scripts/validate_step_02_canonical_bam.py` | `0644` | 207 | 7,686 | `d805f17c4c95aea004f4a440c82241d7d5f5e8d3024fac94fb1de90421bb67ac` |
+| `jobs/step_02_sort_index_bam.slurm` | `0644` | 97 | 2,387 | `b67f50db365aba533d882746df02a1f9ea0c5e6b5c25170e9251978cc8be6f8b` |
+| `tests/shell/test_step_02_sort_index_bam.sh` | `0755` | 528 | 20,546 | `239646b44d6b411fe9b590108e6e7e977427ee93c62cee1b16212f90c275e29c` |
+| `tests/test_validate_step_02_canonical_bam.py` | `0644` | 90 | 3,189 | `f7f9dd25ec9ad7e70a4d5566a09039e67f3b27cee5dd0294bffaa48990260492` |
+
+Git remained tracked/untracked clean. All results are local synthetic fixture/
+mock evidence; no real samtools work, scheduler submission, dependency action,
+production data, scientific review, or biological evidence occurred.
