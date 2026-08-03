@@ -5678,3 +5678,22 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   lifecycle, dependency, cycle, orphan, schema, or diagram finding remains.
   Publish and prove the definition clean/upstream/live-remote-equal before
   selecting architecture review alone.
+
+## 2026-08-03T16:36:55-0400 — REVIEW-ARCH-03N selected
+
+- **Selection:** definition `8bb27d43a970551cc739f4deac25345b02c72042`
+  was clean, tracked/untracked-empty, published, and equal across local `HEAD`,
+  configured upstream, and live remote. Move only `REVIEW-ARCH-03N` from
+  `TODO` to `IN_PROGRESS` and repair the one direct reliability-review
+  lifecycle link. MIG-03N, reliability, usability, Step `09c`, every later
+  owner, and the frozen program remainder stay unselected.
+- **Read-only plan:** inspect the live DAG, eleven candidate moves, all exact
+  path/basename/import/Make/R/job/test callers, final root depths, private
+  neutral-report/Step-`09c` loaders, artifact producer identity, coverage row,
+  modes, projected hashes, and reverse rollback. Record finding-by-finding
+  dispositions in the cards and current audit/status owners. Run no executable,
+  test, dependency, scheduler, cluster, production, or scientific workload.
+- **Minimal slice check:** run `git diff --check` only. Per the card-boundary-
+  only validation rule, the complete documentation gate belongs to
+  architecture-review completion. Publish and prove this selection checkpoint
+  clean/upstream/live-remote-equal before beginning the review.

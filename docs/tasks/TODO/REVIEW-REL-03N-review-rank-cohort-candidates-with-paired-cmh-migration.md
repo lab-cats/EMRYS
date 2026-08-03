@@ -30,7 +30,7 @@ dependencies.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03N](REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: reliability review needs the architecture-corrected cutover and loader boundary.
+- [REVIEW-ARCH-03N](../IN_PROGRESS/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) — Required: reliability review needs the architecture-corrected cutover and loader boundary.
 
 ## Completion unblocks
 
@@ -108,5 +108,5 @@ dependencies.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-ARCH-03N`; no executable/test file
-changed or ran.
+Not selected. Blocked on selected, incomplete `REVIEW-ARCH-03N`; no
+executable/test file changed or ran.

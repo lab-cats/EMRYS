@@ -111,5 +111,8 @@ schemas, or leaving a compatibility owner.
 
 ## Completion record
 
-Not selected. Defined from clean, published health close `57d7ea4`; no
-executable/test file changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+definition checkpoint `8bb27d43a970551cc739f4deac25345b02c72042` for a
+read-only architecture pass. MIG-03N, reliability, usability, Step `09c`, and
+all executable/test files remain unselected and unchanged; no computational
+test runs in this review.
