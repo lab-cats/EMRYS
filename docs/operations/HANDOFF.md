@@ -7,12 +7,13 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`
+  `codex/post-mig-03m-completion`
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published executable/test
-  checkpoint `5e51496fdef8835bdef297b946d99382ed24574b`.
+  exact SHA from live Git. Its frozen parent is published MIG-03M
+  documentation/lifecycle close
+  `3f91fceb769707fd8f8a18e350619b84c5625595`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -40,8 +41,9 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   live-remote-equal. MIG-03M runtime/input `d29f87b`, transaction/recovery
   `44e649d`, signal/concurrency `6e2e2f6`, validator `3f02d19`, and scheduler
   `7a667ee` test baselines plus executable/test checkpoint `5e51496` are
-  published and local/upstream/live-remote-equal. Its documentation/lifecycle
-  close is the commit containing this handoff.
+  published and local/upstream/live-remote-equal. Documentation/lifecycle close
+  `3f91fce` is published and equal on both the prior campaign branch and the
+  current neutral remediation branch.
 - Current package: completed
   [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
   after completed
@@ -52,15 +54,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
   All three reviews and the migration are complete. Step `09` and every later
   owner/review card remain uncreated and unselected.
-- Package type at this checkpoint: documentation-only MIG-03M lifecycle
-  close. It adds the adjacent owner README, repairs canonical final paths and
-  lifecycle links, and records the already-published computational evidence;
-  it changes or runs no executable, test, configuration, dependency, schema,
-  fixture, or report template.
-- Remote publication and upstream equality: executable checkpoint `5e51496` is
-  verified local/upstream/live-remote-equal. Publish and prove the documentation
-  close equal, create the requested neutral fresh branch at that exact commit,
-  and stop without selecting another owner.
+- Package type at this checkpoint: documentation-only post-MIG-03M authority
+  synchronization. It records the already-created neutral remediation branch,
+  canonical remote URL, and untouched default branch; it changes or runs no
+  executable, test, configuration, dependency, schema, fixture, report
+  template, card lifecycle, or migration owner.
+- Remote publication and upstream equality: MIG-03M close `3f91fce` is verified
+  local/upstream/live-remote-equal. The configured `origin` is
+  `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
+  `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
+  branch requires a separate explicit decision. Resolve this state-sync tip
+  and its publication from live Git before takeover.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
