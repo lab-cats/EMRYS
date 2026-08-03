@@ -27,11 +27,11 @@ retry guidance, or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03L](../COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: usability review uses the completed corrected architecture and fixed reliability obligations.
+- [REVIEW-REL-03L](../COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: completed reliability review fixes the architecture and reliability obligations used here.
 
 ## Completion unblocks
 
-- [MIG-03L](MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03L](../TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -98,6 +98,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Reliability review is complete; usability review is now
-dependency-unblocked but remains in `TODO`. No executable/test file changed or
-ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal reliability-completion checkpoint
+`db33d9cdf562134f8377639c23db74cc860830b3`. No usability finding is recorded
+yet, migration remains unselected, and no executable/test file changed or ran.

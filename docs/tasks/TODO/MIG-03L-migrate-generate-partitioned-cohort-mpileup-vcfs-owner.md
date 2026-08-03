@@ -242,7 +242,7 @@ but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03L](REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03L](../IN_PROGRESS/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
