@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from validation_roster_expectations import assert_exact_check_roster
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,27 +39,91 @@ def fixture(root: Path):
     )
 
 
-def run(values, *extra):
+def arguments(values, *extra):
     (
         samples, partitions, sites, inputs, all_sites, significant, summary,
         mutation, mutation_pdf, depth_pdf, output,
     ) = values
+    return [
+        "--analysis-id", FIXTURE.PRIMARY_ANALYSIS_ID,
+        "--cohort-id", FIXTURE.COHORT_ID,
+        "--sample-manifest", str(samples),
+        "--partition-manifest", str(partitions),
+        "--step08-sites", str(sites),
+        "--step08-inputs", str(inputs),
+        "--all-sites", str(all_sites),
+        "--significant-sites", str(significant),
+        "--summary", str(summary),
+        "--mutation-spectrum", str(mutation),
+        "--mutation-spectrum-pdf", str(mutation_pdf),
+        "--depth-delta-pdf", str(depth_pdf),
+        "--output", str(output),
+        *extra,
+    ]
+
+
+def run(values, *extra, cwd=ROOT):
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--analysis-id", FIXTURE.PRIMARY_ANALYSIS_ID,
-         "--cohort-id", FIXTURE.COHORT_ID,
-         "--sample-manifest", str(samples), "--partition-manifest", str(partitions),
-         "--step08-sites", str(sites), "--step08-inputs", str(inputs),
-         "--all-sites", str(all_sites), "--significant-sites", str(significant),
-         "--summary", str(summary), "--mutation-spectrum", str(mutation),
-         "--mutation-spectrum-pdf", str(mutation_pdf),
-         "--depth-delta-pdf", str(depth_pdf), "--output", str(output), *extra],
-        cwd=ROOT, text=True, capture_output=True,
+        [sys.executable, str(SCRIPT), *arguments(values, *extra)],
+        cwd=cwd, text=True, capture_output=True,
     )
+
+
+def load_validator():
+    module_name = "_test_step09_cmh_outputs_validator"
+    contract_name = "step_09c_scientific_validation"
+    previous_contract = sys.modules.get(contract_name)
+    sys.modules[contract_name] = FIXTURE.CONTRACT
+    try:
+        validator_spec = importlib.util.spec_from_file_location(module_name, SCRIPT)
+        assert validator_spec is not None and validator_spec.loader is not None
+        validator = importlib.util.module_from_spec(validator_spec)
+        validator_spec.loader.exec_module(validator)
+    finally:
+        if previous_contract is None:
+            sys.modules.pop(contract_name, None)
+        else:
+            sys.modules[contract_name] = previous_contract
+    return validator
 
 
 def rows(path):
     with path.open() as stream:
         return list(csv.DictReader(stream, delimiter="\t"))
+
+
+def test_arbitrary_cwd_dry_execute_repeat_byte_parity_has_no_residue(tmp_path):
+    values = fixture(tmp_path / "fixture")
+    invocation_cwd = tmp_path / "arbitrary-cwd"
+    invocation_cwd.mkdir()
+    input_paths = values[:-1]
+    before = {
+        path: (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    }
+
+    dry = run(values, cwd=invocation_cwd)
+    assert dry.returncode == 0, dry.stderr
+    assert dry.stderr == ""
+    assert dry.stdout.endswith("Dry-run complete; no output was written.\n")
+    assert not values[-1].exists()
+
+    first = run(values, "--execute", cwd=invocation_cwd)
+    assert first.returncode == 0, first.stderr
+    assert first.stderr == ""
+    first_report = values[-1].read_bytes()
+    assert dry.stdout.encode().startswith(first_report)
+    assert first.stdout.encode().startswith(first_report)
+
+    second = run(values, "--execute", cwd=invocation_cwd)
+    assert second.returncode == 0, second.stderr
+    assert second.stderr == ""
+    assert second.stdout == first.stdout
+    assert values[-1].read_bytes() == first_report
+    assert {
+        path: (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    } == before
+    assert list(invocation_cwd.iterdir()) == []
+    assert set(values[-1].parent.iterdir()) == {values[-1]}
 
 
 def test_dry_run_is_side_effect_free(tmp_path):
@@ -140,6 +206,111 @@ def test_incorrect_bh_adjustment_is_failed_semantic_evidence(tmp_path):
     assert run(values, "--execute").returncode == 0
     status = {row["check_id"]: row["status"] for row in rows(values[-1])}
     assert status["status_semantics"] == "fail"
+
+
+def test_fabricated_cmh_statistics_pvalues_bh_and_odds_ratios_all_pass(
+    tmp_path,
+):
+    values = fixture(tmp_path)
+    fabricated = {
+        "FWD_like|1|10|T>C": {
+            "cmh_statistic": "999999",
+            "cmh_p_value": "0.013",
+            "cmh_fdr_bh": "0.013",
+            "common_odds_ratio": "999",
+        },
+        "REV_like|1|20|A>G": {
+            "cmh_statistic": "0.000001",
+            "cmh_p_value": "0.013",
+            "cmh_fdr_bh": "0.013",
+            "common_odds_ratio": "0.001",
+        },
+        "REV_like|2|60|A>G": {
+            "cmh_statistic": "123456",
+            "cmh_p_value": "0.013",
+            "cmh_fdr_bh": "0.013",
+            "common_odds_ratio": "1.1",
+        },
+    }
+    for path in values[4:6]:
+        with path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream, delimiter="\t")
+            fieldnames = reader.fieldnames
+            table = list(reader)
+        assert fieldnames is not None
+        for row in table:
+            row.update(fabricated.get(row["candidate_id"], {}))
+        with path.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(
+                stream,
+                fieldnames=fieldnames,
+                delimiter="\t",
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(table)
+
+    result = run(values, "--execute")
+    assert result.returncode == 0, result.stderr
+    report_rows = rows(values[-1])
+    assert_exact_check_roster(report_rows, "09")
+    by_check = {row["check_id"]: row for row in report_rows}
+    status_row = by_check["status_semantics"]
+    assert status_row["status"] == "pass", status_row
+    assert {row["status"] for row in report_rows} == {"pass"}, by_check
+    assert status_row["expected"] == (
+        "recomputed target/test/call, depth, AF, background, CMH, and BH"
+    )
+
+
+@pytest.mark.parametrize(
+    "input_index",
+    range(10),
+    ids=(
+        "sample_manifest",
+        "partition_manifest",
+        "step08_sites",
+        "step08_inputs",
+        "all_sites",
+        "significant_sites",
+        "summary",
+        "mutation_spectrum",
+        "mutation_spectrum_pdf",
+        "depth_delta_pdf",
+    ),
+)
+def test_post_build_mutation_of_each_input_preserves_predecessor_report(
+    tmp_path, monkeypatch, capsys, input_index,
+):
+    values = fixture(tmp_path)
+    baseline = run(values, "--execute")
+    assert baseline.returncode == 0, baseline.stderr
+    predecessor = values[-1].read_bytes()
+    input_paths = values[:-1]
+    before = {path: path.read_bytes() for path in input_paths}
+    target = input_paths[input_index]
+    validator = load_validator()
+    real_build = validator.build
+
+    def mutate_after_build(args):
+        built = real_build(args)
+        target.write_bytes(before[target] + b"post-build mutation\n")
+        return built
+
+    monkeypatch.setattr(validator, "build", mutate_after_build)
+    status = validator.main(arguments(values, "--execute"))
+
+    captured = capsys.readouterr()
+    assert status == 2
+    assert f"Input changed after validation: {target}" in captured.err
+    assert values[-1].read_bytes() == predecessor
+    assert target.read_bytes() == before[target] + b"post-build mutation\n"
+    assert {
+        path: path.read_bytes() for path in input_paths if path != target
+    } == {
+        path: data for path, data in before.items() if path != target
+    }
+    assert set(values[-1].parent.iterdir()) == {values[-1]}
 
 
 def test_significant_subset_disagreement_is_failed_evidence(tmp_path):
