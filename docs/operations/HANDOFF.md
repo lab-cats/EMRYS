@@ -12,19 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `cd3b5479d64592563d4dd6a557efb52840f9edda` is clean, published, and
-  local/upstream/live-remote-equal; old-path baseline is `9850a8d`.
-- Current package: documentation/lifecycle close for completed
-  [`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md).
-  All three reviews, the baseline, cutover, and executable acceptance are
-  complete; no later owner is selected.
-- Package type at this checkpoint: impact-directed documentation and lifecycle
-  closure only; executable/test state remains fixed at `cd3b547`.
-- Remote publication and upstream equality: parent `cd3b547` is verified
-  local/upstream/live-remote-equal. The commit containing this handoff is the
-  separate documentation/lifecycle checkpoint and must be published before
-  another owner is selected.
+- Recorded package state: `MIG-03E` documentation/lifecycle checkpoint
+  `fa79883683b37559dfa90880a3f04a978bbfb530` is clean, published, and
+  local/upstream/live-remote-equal; its executable checkpoint is `cd3b547`.
+- Current package: JIT definition of
+  [`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md)
+  and its three sequential review cards. All four cards remain unselected.
+- Package type at this checkpoint: documentation-only next-owner definition;
+  no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: parent `fa79883` is verified
+  local/upstream/live-remote-equal. The commit containing this handoff must be
+  published and proved equal before architecture-review selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -98,9 +96,17 @@ The producer's FAI-first nontransactional publication and the scheduler's Bash
 remain characterized, not approved. The exact reference-provenance bridge is
 bounded mixed-layout debt, not extraction or package approval. No real
 samtools/GATK/Java, scheduler, cluster, production, scientific-review, or
-biological evidence was created. No later owner is selected at this checkpoint;
-the next JIT choice must be refreshed from the live DAG only after this close is
-published and equal.
+biological evidence was created.
+
+The refreshed live DAG exposes exactly one next functional owner:
+`construct_canonical_BAM`, whose sole hard predecessor is the migrated
+`align_RNA_reads_with_STAR`. Every other remaining functional owner still has
+an unmigrated hard predecessor. The Step `02` producer, validator, and job total
+`23,743` bytes and `746` lines, but Step `04` and Step `05` currently import
+`run_tool` and `parse_header` from the Step `02` validator. `MIG-03F` therefore
+requires architecture review of one bounded two-function neutral-helper
+preparation slice before the native owner move. Neither downstream stage is
+selected or migrated, and no later card is preloaded.
 
 ## Active concurrent lanes
 
@@ -563,9 +569,11 @@ documentation/lifecycle close `f9d6381`. The fourth JIT card,
 is complete at published executable/test checkpoint `12f9be5` and
 documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
 [`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
-is complete at published executable/test checkpoint `cd3b547`; its separate
-documentation/lifecycle close is the commit containing this handoff. No later
-migration or review card is created or selected.
+is complete at published executable/test checkpoint `cd3b547` and
+documentation/lifecycle checkpoint `fa79883`. The sixth JIT unit,
+[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md), and
+its architecture, reliability, and usability review cards are JIT-defined; all
+four remain unselected. No downstream or later migration card is created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -595,7 +603,9 @@ and its reviews
 and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
 are complete. `MIG-03E` is complete at published executable/test checkpoint
-`cd3b547`; publish and prove this separate documentation/lifecycle close equal
-before selecting another dependency-valid owner. No later owner is selected.
-The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
-out of scope.
+`cd3b547` and documentation/lifecycle checkpoint `fa79883`.
+[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) and
+its three review cards are defined but unselected. Publish and prove this
+definition checkpoint equal before selecting only `REVIEW-ARCH-03F`; no
+downstream or later owner is selected. The unsliced `PROGRAM-01` remainder and
+unrelated roadmap remain preserved and out of scope.

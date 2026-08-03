@@ -1905,3 +1905,77 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   lifecycle close, commit it separately from executable checkpoint `cd3b547`,
   push normally, and prove local `HEAD`, configured upstream, and live remote
   equality before selecting the next dependency-valid owner.
+
+## 2026-08-03T00:49:15-0400 — MIG-03F JIT unit defined
+
+- **Git and predecessor:** definition began only after `MIG-03E`
+  documentation/lifecycle checkpoint
+  `fa79883683b37559dfa90880a3f04a978bbfb530` was committed, published, clean,
+  and proved equal across local `HEAD`, configured upstream, and the live remote
+  branch. Recent history is linear; no merge, rebase, cherry-pick, revert,
+  sequencer, index lock, recovery marker, untracked file, or overlapping mutable
+  lane was present.
+- **Live-DAG decision:** select only `construct_canonical_BAM` for JIT
+  definition. Its sole hard predecessor, `align_RNA_reads_with_STAR`, is
+  migrated. Every other remaining stage, analysis, or evidence owner still has
+  at least one unmigrated hard predecessor. Historical alias order and raw file
+  size did not choose the unit; no downstream owner was carded.
+- **Frozen native surface:** producer `scripts/step_02_sort_index_bam.sh` is
+  mode `0755`, `13,670` bytes, `442` lines, SHA-256
+  `ad73a5476447cba0cd5265864a16710492a2e313150ab2ac7293fef8c26a627c`;
+  validator `scripts/validate_step_02_canonical_bam.py` is mode `0644`, `7,686`
+  bytes, `207` lines, SHA-256
+  `d805f17c4c95aea004f4a440c82241d7d5f5e8d3024fac94fb1de90421bb67ac`;
+  and job `jobs/step_02_sort_index_bam.slurm` is intentionally mode `0644`,
+  `2,387` bytes, `97` lines, SHA-256
+  `b67f50db365aba533d882746df02a1f9ea0c5e6b5c25170e9251978cc8be6f8b`.
+  Direct-test hashes are shell
+  `239646b44d6b411fe9b590108e6e7e977427ee93c62cee1b16212f90c275e29c`
+  and validator
+  `f7f9dd25ec9ad7e70a4d5566a09039e67f3b27cee5dd0294bffaa48990260492`.
+- **Known target-direction leak:** Step `04` and Step `05` validators ambient-
+  import `run_tool` and `parse_header` from the Step `02` validator. A direct
+  move would retain a prohibited peer-implementation import or require a legacy
+  wrapper. The bounded candidate is one private neutral
+  `src/norad/libraries/bam_validation.py` containing only those two proven
+  helpers, with exact-file caller-local loaders in all three validators. Reviews
+  must settle module identity, readiness/API checks, cache ownership, fault
+  diagnostics, direct tests, path ceiling, and rollback. They must reject copied
+  helpers, public package identity, `sys.path` mutation, broad library design,
+  or migration of either downstream owner.
+- **Small-slice decision:** after all reviews and a frozen plan/baseline, perform
+  the helper preparation and Step `02` native owner move as two separate
+  executable checkpoints. Run only their smallest direct checks at slice
+  boundaries and the complete applicable computational gate once on assembled
+  final executable state at the card boundary. Batch path links, owner README,
+  canonical status, troubleshooting, lifecycle, and audit closure separately at
+  the card boundary.
+- **Producer risks:** preserve side-effect-free producer dry-run, samtools PATH
+  resolution, staged sort/read-group/index validation, complete-pair
+  precondition, owned lock, run-token paths, replaceable predecessor, backup/
+  publish/final-validation order, and cleanup. Rollback restoration moves are
+  best-effort and ignored on failure; cleanup can remove backups without a
+  receipt or recovery marker. Reliability review must assign a safe old/final-
+  path oracle and evidence-preservation route without fixing or blessing this
+  ambiguous recovery state.
+- **Validator and scheduler risks:** preserve the validator's five rows,
+  deterministic publisher behavior, and intentional divergence from the
+  producer on zero records, `LB`, `PL`, quickcheck detail, and BAM/BAI identity.
+  Preserve job mode `0644`, caller-CWD behavior, strict module load with
+  tolerated listings, dry-run directory creation, explicit execute control,
+  nonempty-file checks, and the Bash `3.2` empty-array dry-run defect. Local
+  fixture/mock evidence will not become real samtools, SLURM, cluster,
+  production, scientific-review, or biological evidence.
+- **Coverage, artifact, and caller boundary:** committed Step `02` validator
+  coverage is `105/115` lines and `21/28` branches; current global snapshot is
+  `9381/11549` lines and `3293/4714` branches. The new neutral helper must meet
+  the existing 90% line/85% branch threshold, and final measurement must preserve
+  global policy. Only Step `02` implementation path/hash artifact evidence may
+  change. Make, public CLI, SLURM, validator, shared-loader, coverage, artifact,
+  and literal fixtures remain explicit; no recursive discovery is approved.
+- **Review and evidence boundary:** create only `MIG-03F` and dedicated
+  `REVIEW-ARCH-03F`, `REVIEW-REL-03F`, and `REVIEW-UX-03F` cards. All remain
+  unselected in `TODO`. This definition is documentation-only and uses only Git
+  and documentation validation at its boundary; no computational test,
+  dependency action, scheduler submission, executable mutation, or future-owner
+  preload occurred.
