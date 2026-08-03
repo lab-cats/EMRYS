@@ -487,6 +487,11 @@ cat > "$tmp/bin/mv" <<'FAKE_MV'
 #!/usr/bin/env bash
 set -euo pipefail
 destination="${!#}"
+source="${1:-}"
+
+if [[ -n "${FAKE_MV_LOG:-}" ]]; then
+    printf '%s\t%s\n' "$source" "$destination" >> "$FAKE_MV_LOG"
+fi
 
 if [[ -n "${FAKE_MV_FAIL_ONCE_DEST:-}" &&
       "$destination" == "$FAKE_MV_FAIL_ONCE_DEST" &&
@@ -510,6 +515,16 @@ if [[ -n "${FAKE_MV_CORRUPT_ONCE_DEST:-}" &&
     /bin/mv "$@"
     : > "$FAKE_MV_CORRUPT_MARKER"
     printf 'valid-looking post-publication padding\n' >> "$destination"
+    exit 0
+fi
+
+if [[ -n "${FAKE_MV_BARRIER_DEST:-}" &&
+      "$destination" == "$FAKE_MV_BARRIER_DEST" ]]; then
+    /bin/mv "$@"
+    : > "${FAKE_MV_BARRIER_MARKER:?}"
+    while [[ ! -e "${FAKE_MV_BARRIER_RELEASE:?}" ]]; do
+        sleep 0.01
+    done
     exit 0
 fi
 
@@ -1241,6 +1256,98 @@ do
         fail "successful replacement retained prior content: $replacement_path"
 done
 assert_no_scratch "$replacement/output" replacement
+
+publication_order="$tmp/publication-order"
+copy_fixture "$publication_order"
+seed_prior_outputs \
+    "$publication_order/output" publication-order "prior publication order"
+publication_order_dir="$publication_order/output/publication-order"
+printf 'unrelated bytes\n' > "$publication_order_dir/unrelated.txt"
+publication_order_log="$publication_order/mv.log"
+publication_order_marker="$publication_order/summary-visible"
+publication_order_release="$publication_order/release"
+env \
+    PATH="$tmp/bin:$PATH" \
+    SLURM_JOB_ID=publishorder09 \
+    FAKE_R_MARKER="$publication_order/fake-r.invoked" \
+    FAKE_MV_LOG="$publication_order_log" \
+    FAKE_MV_BARRIER_DEST="$publication_order_dir/publication-order.cmh_summary.tsv" \
+    FAKE_MV_BARRIER_MARKER="$publication_order_marker" \
+    FAKE_MV_BARRIER_RELEASE="$publication_order_release" \
+    "$script" --analysis-id publication-order --cohort-id cohort \
+    --sample-manifest "$publication_order/samples.tsv" \
+    --partition-manifest "$publication_order/partitions.tsv" \
+    --step08-root "$publication_order/step08" \
+    --output-root "$publication_order/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$repo_root/scripts/step_09_cmh_editing_site_calling.R" \
+    --execute > "$publication_order/execute.out" \
+    2> "$publication_order/execute.err" &
+publication_order_pid=$!
+publication_order_seen=false
+for _ in {1..500}; do
+    if [[ -e "$publication_order_marker" ]]; then
+        publication_order_seen=true
+        break
+    fi
+    if ! kill -0 "$publication_order_pid" 2>/dev/null; then
+        break
+    fi
+    sleep 0.01
+done
+if [[ "$publication_order_seen" != true ]]; then
+    : > "$publication_order_release"
+    wait "$publication_order_pid" 2>/dev/null || true
+    fail "summary-publication barrier was not reached: $(cat "$publication_order/execute.err")"
+fi
+publication_order_error=""
+for suffix in \
+    cmh_all_sites.tsv \
+    cmh_significant_sites.tsv \
+    mutation_spectrum.tsv \
+    mutation_spectrum.pdf \
+    depth_delta.pdf \
+    cmh_summary.tsv
+do
+    publication_final="$publication_order_dir/publication-order.$suffix"
+    publication_backup="$publication_order_dir/.publication-order.$suffix.publishorder09.previous"
+    if [[ ! -s "$publication_final" ]]; then
+        publication_order_error="new final was not visible at the summary barrier: $suffix"
+    elif grep -q "prior publication order" "$publication_final"; then
+        publication_order_error="prior final remained visible at the summary barrier: $suffix"
+    elif [[ ! -s "$publication_backup" ]]; then
+        publication_order_error="predecessor backup was not retained at the summary barrier: $suffix"
+    elif [[ "$(<"$publication_backup")" != "prior publication order $suffix" ]]; then
+        publication_order_error="predecessor backup changed at the summary barrier: $suffix"
+    fi
+done
+[[ -d "$publication_order_dir/.publication-order.step09.lock" ]] ||
+    publication_order_error="owned lock was not held at the summary barrier"
+[[ "$(<"$publication_order_dir/unrelated.txt")" == "unrelated bytes" ]] ||
+    publication_order_error="unrelated output changed at the summary barrier"
+: > "$publication_order_release"
+wait "$publication_order_pid" ||
+    fail "barrier-controlled publication failed: $(cat "$publication_order/execute.err")"
+[[ -z "$publication_order_error" ]] || fail "$publication_order_error"
+
+observed_publication_moves="$(tail -n 6 "$publication_order_log")"
+expected_publication_moves="$(printf '%s\t%s\n' \
+    "$publication_order_dir/.publication-order.step09.publishorder09.all.tmp.tsv" \
+    "$publication_order_dir/publication-order.cmh_all_sites.tsv" \
+    "$publication_order_dir/.publication-order.step09.publishorder09.significant.tmp.tsv" \
+    "$publication_order_dir/publication-order.cmh_significant_sites.tsv" \
+    "$publication_order_dir/.publication-order.step09.publishorder09.mutation.tmp.tsv" \
+    "$publication_order_dir/publication-order.mutation_spectrum.tsv" \
+    "$publication_order_dir/.publication-order.step09.publishorder09.mutation.tmp.pdf" \
+    "$publication_order_dir/publication-order.mutation_spectrum.pdf" \
+    "$publication_order_dir/.publication-order.step09.publishorder09.depth.tmp.pdf" \
+    "$publication_order_dir/publication-order.depth_delta.pdf" \
+    "$publication_order_dir/.publication-order.step09.publishorder09.summary.tmp.tsv" \
+    "$publication_order_dir/publication-order.cmh_summary.tsv")"
+[[ "$observed_publication_moves" == "$expected_publication_moves" ]] ||
+    fail "Step 09 final publication order changed"
+assert_file_equals "$publication_order_dir/unrelated.txt" "unrelated bytes"
+assert_no_scratch "$publication_order/output" publication-order
 
 move_failure="$tmp/move-failure"
 copy_fixture "$move_failure"
