@@ -209,7 +209,7 @@ but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03K](REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03K](../IN_PROGRESS/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

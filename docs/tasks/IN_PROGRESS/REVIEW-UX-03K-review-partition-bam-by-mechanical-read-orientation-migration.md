@@ -30,7 +30,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03K](MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03K](../TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -94,5 +94,8 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Unblocked by completed `REVIEW-REL-03K`; migration remains
-unselected, and no executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal reliability-review completion checkpoint
+`1d5406ac4a085ea1ad82a2c8bedf37f5b69a4bd5`. No usability finding is
+recorded yet, migration remains unselected, and no executable/test file changed
+or ran.

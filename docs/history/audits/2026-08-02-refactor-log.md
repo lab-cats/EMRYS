@@ -4222,3 +4222,21 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings and no reliability-review-caused path, lifecycle,
   dependency, cycle, orphan, anchor, or diagram finding. The expected-only
   result remains nonpassing and is not called green.
+
+## 2026-08-03T08:41:01-0400 — REVIEW-UX-03K selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  reliability-review completion
+  `1d5406ac4a085ea1ad82a2c8bedf37f5b69a4bd5`, move only `REVIEW-UX-03K` to
+  `IN_PROGRESS` and repair its reliability/migration lifecycle links.
+  `MIG-03K` remains unselected in `TODO`; Step `07` and every later owner/review
+  card remain uncreated.
+- **Boundary:** this checkpoint selects read-only usability review but records
+  no finding. No executable, test, harness, configuration, dependency, schema,
+  fixture, report-template, runtime, scheduler, cluster, production,
+  scientific-review, biological-orientation, or biological state changes or
+  runs.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete documentation gate belongs to usability-
+  review completion.
