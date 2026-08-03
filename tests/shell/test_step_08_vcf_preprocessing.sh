@@ -317,10 +317,15 @@ case "${FAKE_RSCRIPT_MUTATE:-}" in
     sample) printf '\n' >>"$sample_manifest" ;;
     partition) printf '\n' >>"$partition_manifest" ;;
     annotation) printf '\n' >>"$annotation_gtf" ;;
+    receipt)
+        first_partition="$(awk -F '\t' 'NR == 2 { print $1; exit }' "$partition_manifest")"
+        printf '\n' >>"$step07_root/$cohort_id/$first_partition/$cohort_id.$first_partition.step07_outputs.tsv"
+        ;;
     vcf)
         first_partition="$(awk -F '\t' 'NR == 2 { print $1; exit }' "$partition_manifest")"
         printf '\n' >>"$step07_root/$cohort_id/$first_partition/$cohort_id.$first_partition.FWD_like.mpileup.vcf"
         ;;
+    r_script) printf '\n# changed while fake R was running\n' >>"$r_script" ;;
 esac
 FAKE_RSCRIPT
 chmod +x "$fake_rscript"
@@ -473,6 +478,44 @@ run_invalid_fake_output_case() {
     assert_no_step08_scratch "$case_root/output" "$case_root/qc"
 }
 
+run_detected_input_mutation_case() {
+    local slug="$1"
+    local mutation="$2"
+    local expected_error="$3"
+    local case_root="$test_root/$slug"
+    local cohort="cohort_$slug"
+
+    create_fixture "$case_root" "$cohort"
+    mkdir -p "$case_root/output" "$case_root/qc"
+    printf 'unrelated output bytes\n' >"$case_root/output/unrelated.txt"
+    printf 'unrelated QC bytes\n' >"$case_root/qc/unrelated.txt"
+    run_expect_failure \
+        "$test_root/$slug.out" \
+        "$test_root/$slug.err" \
+        env \
+        PATH="$fake_bin:$PATH" \
+        SLURM_JOB_ID="${slug}08" \
+        FAKE_RSCRIPT_MUTATE="$mutation" \
+        bash "$script" \
+        --cohort-id "$cohort" \
+        --sample-manifest "$case_root/samples.tsv" \
+        --partition-manifest "$case_root/partitions.tsv" \
+        --step07-root "$case_root/step07" \
+        --annotation-gtf "$case_root/annotation.gtf" \
+        --output-root "$case_root/output" \
+        --qc-root "$case_root/qc" \
+        --rscript-bin "$fake_rscript" \
+        --r-script "$case_root/step08_impl.R" \
+        --execute
+    assert_contains "$test_root/$slug.err" "$expected_error"
+    assert_not_exists "$case_root/output/$cohort/$cohort.step08_sites.tsv"
+    assert_not_exists "$case_root/output/$cohort/$cohort.step08_inputs.tsv"
+    assert_not_exists "$case_root/qc/$cohort.step08_summary.tsv"
+    assert_file_equals "$case_root/output/unrelated.txt" "unrelated output bytes"
+    assert_file_equals "$case_root/qc/unrelated.txt" "unrelated QC bytes"
+    assert_no_step08_scratch "$case_root/output" "$case_root/qc"
+}
+
 help_output="$(bash "$script" --help)"
 assert_contains "$help_output" "Usage:"
 assert_contains "$help_output" "--step07-root"
@@ -483,6 +526,66 @@ assert_contains "$help_output" "legacy_provisional_v1"
 run_expect_failure "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script" --sample-manifest "$fixture/samples.tsv"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
+
+printf 'Running R runtime and program preflight checks...\n'
+missing_rscript_fixture="$test_root/missing-rscript"
+create_fixture "$missing_rscript_fixture" cohort_missing_rscript
+run_expect_failure \
+    "$test_root/missing-rscript.out" \
+    "$test_root/missing-rscript.err" \
+    bash "$script" \
+    --cohort-id cohort_missing_rscript \
+    --sample-manifest "$missing_rscript_fixture/samples.tsv" \
+    --partition-manifest "$missing_rscript_fixture/partitions.tsv" \
+    --step07-root "$missing_rscript_fixture/step07" \
+    --annotation-gtf "$missing_rscript_fixture/annotation.gtf" \
+    --output-root "$missing_rscript_fixture/output" \
+    --qc-root "$missing_rscript_fixture/qc" \
+    --rscript-bin "$missing_rscript_fixture/absent-Rscript" \
+    --r-script "$missing_rscript_fixture/step08_impl.R"
+assert_contains "$test_root/missing-rscript.err" "Rscript does not exist"
+assert_not_exists "$missing_rscript_fixture/output"
+assert_not_exists "$missing_rscript_fixture/qc"
+
+nonexec_rscript_fixture="$test_root/nonexec-rscript"
+create_fixture "$nonexec_rscript_fixture" cohort_nonexec_rscript
+printf '#!/usr/bin/env bash\nexit 0\n' >"$nonexec_rscript_fixture/nonexec-Rscript"
+chmod 0644 "$nonexec_rscript_fixture/nonexec-Rscript"
+run_expect_failure \
+    "$test_root/nonexec-rscript.out" \
+    "$test_root/nonexec-rscript.err" \
+    bash "$script" \
+    --cohort-id cohort_nonexec_rscript \
+    --sample-manifest "$nonexec_rscript_fixture/samples.tsv" \
+    --partition-manifest "$nonexec_rscript_fixture/partitions.tsv" \
+    --step07-root "$nonexec_rscript_fixture/step07" \
+    --annotation-gtf "$nonexec_rscript_fixture/annotation.gtf" \
+    --output-root "$nonexec_rscript_fixture/output" \
+    --qc-root "$nonexec_rscript_fixture/qc" \
+    --rscript-bin "$nonexec_rscript_fixture/nonexec-Rscript" \
+    --r-script "$nonexec_rscript_fixture/step08_impl.R"
+assert_contains "$test_root/nonexec-rscript.err" "Rscript exists but is not executable"
+assert_not_exists "$nonexec_rscript_fixture/output"
+assert_not_exists "$nonexec_rscript_fixture/qc"
+
+missing_r_program_fixture="$test_root/missing-r-program"
+create_fixture "$missing_r_program_fixture" cohort_missing_r_program
+run_expect_failure \
+    "$test_root/missing-r-program.out" \
+    "$test_root/missing-r-program.err" \
+    bash "$script" \
+    --cohort-id cohort_missing_r_program \
+    --sample-manifest "$missing_r_program_fixture/samples.tsv" \
+    --partition-manifest "$missing_r_program_fixture/partitions.tsv" \
+    --step07-root "$missing_r_program_fixture/step07" \
+    --annotation-gtf "$missing_r_program_fixture/annotation.gtf" \
+    --output-root "$missing_r_program_fixture/output" \
+    --qc-root "$missing_r_program_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$missing_r_program_fixture/absent-step08.R"
+assert_contains "$test_root/missing-r-program.err" "Step 08 R script does not exist or is empty"
+assert_not_exists "$missing_r_program_fixture/output"
+assert_not_exists "$missing_r_program_fixture/qc"
 
 printf 'Running Step 08 dry-run and exact-input enumeration checks...\n'
 printf 'unmanifested\n' >"$fixture/step07/cohort_A/p1/unmanifested.extra.vcf"
@@ -502,6 +605,34 @@ assert_not_contains "$test_root/dry.out" "unmanifested.extra.vcf"
 assert_not_exists "$dry_log"
 assert_not_exists "$fixture/output"
 assert_not_exists "$fixture/qc"
+
+printf 'Running PATH-basename Rscript from an arbitrary CWD...\n'
+path_fixture="$test_root/path-rscript"
+path_cwd="$test_root/path-rscript-cwd"
+create_fixture "$path_fixture" cohort_path_rscript
+mkdir -p "$path_cwd"
+(
+    cd "$path_cwd"
+    env \
+        PATH="$fake_bin:$PATH" \
+        SLURM_JOB_ID=pathrscript08 \
+        bash "$script" \
+        --cohort-id cohort_path_rscript \
+        --sample-manifest "$path_fixture/samples.tsv" \
+        --partition-manifest "$path_fixture/partitions.tsv" \
+        --step07-root "$path_fixture/step07" \
+        --annotation-gtf "$path_fixture/annotation.gtf" \
+        --output-root "$path_fixture/output" \
+        --qc-root "$path_fixture/qc" \
+        --rscript-bin Rscript \
+        --r-script "$path_fixture/step08_impl.R" \
+        --execute >"$test_root/path-rscript.out"
+)
+assert_contains "$test_root/path-rscript.out" "Rscript: $fake_rscript"
+assert_exists "$path_fixture/output/cohort_path_rscript/cohort_path_rscript.step08_sites.tsv"
+assert_exists "$path_fixture/output/cohort_path_rscript/cohort_path_rscript.step08_inputs.tsv"
+assert_exists "$path_fixture/qc/cohort_path_rscript.step08_summary.tsv"
+assert_no_step08_scratch "$path_fixture/output" "$path_fixture/qc"
 
 printf 'Running missing declared input failure check...\n'
 missing_fixture="$test_root/missing-input"
@@ -625,6 +756,13 @@ assert_contains "$(<"$sites")" $'DP__sample_A\tDP__sample_B\tAD__sample_A\tAD__s
     fail "Expected four manifest x orientation input rows"
 [[ "$(awk 'END { print NR - 1 }' "$summary")" == "1" ]] ||
     fail "Expected one summary row"
+inputs_header_observed="$(sed -n '1p' "$inputs")"
+for omitted_identity in \
+    rscript r_script r_package package_version \
+    run_token attempt step08_sites_sha256 step08_summary_sha256
+do
+    assert_not_contains "$inputs_header_observed" "$omitted_identity"
+done
 assert_contains "$test_root/execute.out" "Step 08 execute complete"
 assert_not_exists "$fixture/output/cohort_A/.cohort_A.step08.lock"
 assert_no_step08_scratch "$fixture/output" "$fixture/qc"
@@ -755,54 +893,68 @@ run_invalid_fake_output_case \
     FAKE_RSCRIPT_EXTRA_INPUT_FIELD=1 \
     "invalid field count"
 
-printf 'Running input hash mutation check...\n'
-mutation_fixture="$test_root/mutation"
-create_fixture "$mutation_fixture" cohort_mutation
-run_expect_failure "$test_root/mutation.out" "$test_root/mutation.err" \
-    env \
-    PATH="$fake_bin:$PATH" \
-    SLURM_JOB_ID=mutate08 \
-    FAKE_RSCRIPT_MUTATE=annotation \
-    bash "$script" \
-    --cohort-id cohort_mutation \
-    --sample-manifest "$mutation_fixture/samples.tsv" \
-    --partition-manifest "$mutation_fixture/partitions.tsv" \
-    --step07-root "$mutation_fixture/step07" \
-    --annotation-gtf "$mutation_fixture/annotation.gtf" \
-    --output-root "$mutation_fixture/output" \
-    --qc-root "$mutation_fixture/qc" \
-    --rscript-bin "$fake_rscript" \
-    --r-script "$mutation_fixture/step08_impl.R" \
-    --execute
-assert_contains "$test_root/mutation.err" "Annotation GTF changed during Step 08"
-assert_no_step08_scratch "$mutation_fixture/output" "$mutation_fixture/qc"
-
-vcf_mutation_fixture="$test_root/vcf-mutation"
-create_fixture "$vcf_mutation_fixture" cohort_vcf_mutation
-run_expect_failure \
-    "$test_root/vcf-mutation.out" \
-    "$test_root/vcf-mutation.err" \
-    env \
-    PATH="$fake_bin:$PATH" \
-    SLURM_JOB_ID=vcfmutate08 \
-    FAKE_RSCRIPT_MUTATE=vcf \
-    bash "$script" \
-    --cohort-id cohort_vcf_mutation \
-    --sample-manifest "$vcf_mutation_fixture/samples.tsv" \
-    --partition-manifest "$vcf_mutation_fixture/partitions.tsv" \
-    --step07-root "$vcf_mutation_fixture/step07" \
-    --annotation-gtf "$vcf_mutation_fixture/annotation.gtf" \
-    --output-root "$vcf_mutation_fixture/output" \
-    --qc-root "$vcf_mutation_fixture/qc" \
-    --rscript-bin "$fake_rscript" \
-    --r-script "$vcf_mutation_fixture/step08_impl.R" \
-    --execute
-assert_contains \
-    "$test_root/vcf-mutation.err" \
+printf 'Running admitted-input mutation checks...\n'
+run_detected_input_mutation_case \
+    sample-mutation \
+    sample \
+    "Sample manifest changed during Step 08"
+run_detected_input_mutation_case \
+    partition-mutation \
+    partition \
+    "Partition manifest changed during Step 08"
+run_detected_input_mutation_case \
+    annotation-mutation \
+    annotation \
+    "Annotation GTF changed during Step 08"
+run_detected_input_mutation_case \
+    receipt-mutation \
+    receipt \
+    "Step 07 receipt changed during Step 08"
+run_detected_input_mutation_case \
+    vcf-mutation \
+    vcf \
     "Step 07 VCF changed during Step 08"
+
+printf 'Running untracked R-program mutation characterization...\n'
+r_program_mutation_fixture="$test_root/r-program-mutation"
+create_fixture "$r_program_mutation_fixture" cohort_r_program_mutation
+mkdir -p "$r_program_mutation_fixture/output" "$r_program_mutation_fixture/qc"
+printf 'unrelated output bytes\n' >"$r_program_mutation_fixture/output/unrelated.txt"
+printf 'unrelated QC bytes\n' >"$r_program_mutation_fixture/qc/unrelated.txt"
+env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=rprogrammutate08 \
+    FAKE_RSCRIPT_MUTATE=r_script \
+    bash "$script" \
+    --cohort-id cohort_r_program_mutation \
+    --sample-manifest "$r_program_mutation_fixture/samples.tsv" \
+    --partition-manifest "$r_program_mutation_fixture/partitions.tsv" \
+    --step07-root "$r_program_mutation_fixture/step07" \
+    --annotation-gtf "$r_program_mutation_fixture/annotation.gtf" \
+    --output-root "$r_program_mutation_fixture/output" \
+    --qc-root "$r_program_mutation_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$r_program_mutation_fixture/step08_impl.R" \
+    --execute >"$test_root/r-program-mutation.out"
+assert_contains "$test_root/r-program-mutation.out" "Step 08 execute complete"
+assert_contains \
+    "$r_program_mutation_fixture/step08_impl.R" \
+    "changed while fake R was running"
+assert_exists \
+    "$r_program_mutation_fixture/output/cohort_r_program_mutation/cohort_r_program_mutation.step08_sites.tsv"
+assert_exists \
+    "$r_program_mutation_fixture/output/cohort_r_program_mutation/cohort_r_program_mutation.step08_inputs.tsv"
+assert_exists \
+    "$r_program_mutation_fixture/qc/cohort_r_program_mutation.step08_summary.tsv"
+assert_file_equals \
+    "$r_program_mutation_fixture/output/unrelated.txt" \
+    "unrelated output bytes"
+assert_file_equals \
+    "$r_program_mutation_fixture/qc/unrelated.txt" \
+    "unrelated QC bytes"
 assert_no_step08_scratch \
-    "$vcf_mutation_fixture/output" \
-    "$vcf_mutation_fixture/qc"
+    "$r_program_mutation_fixture/output" \
+    "$r_program_mutation_fixture/qc"
 
 printf 'Running foreign lock preservation check...\n'
 lock_fixture="$test_root/foreign-lock"
