@@ -1,5 +1,50 @@
 # TASK-LIFECYCLE-01 — Implement unrefined and integration-review states
 
+**Approved task-specific plan — current flat lifecycle only**
+
+- Inspected revision: published/upstream-equal selection `5766a65` in
+  `/Users/elisteiger/dev/norad` on branch
+  `codex/post-mig-03m-completion`; no concurrent mutable lane shares this
+  worktree.
+- Planning category: `behavior or architecture planning`. Validation impact:
+  `executable/test-affecting`.
+- Current outcome: make the existing eight `UNREFINED` proposals and their
+  README valid under an explicit lightweight, nonactionable schema; add the
+  flat `INTEGRATION_REVIEW` status README and full-card validation; and document
+  the already resolved manual transitions and authority boundary.
+- Schema boundary: an unrefined proposal retains one canonical ID/H1 and
+  matching filename, the exact local proposal-state declaration, and ordered
+  `Proposal`, `Why preserve it`, `Settled boundaries`, `Questions before
+  refinement`, and `Promotion conditions` sections. Additional proposal
+  sections may remain. Full-card lifecycle/dependency/completion headings and
+  dependency-edge syntax are prohibited. Proposals do not count as actionable
+  cards and need no canonical inbound status link.
+- Integration-review boundary: cards use the unchanged full actionable-card
+  schema and unique IDs, participate in ordinary reachability/dependency
+  validation, and require completed blockers like active/completed cards.
+  Persistence is limited to an asynchronous frozen handoff beyond the current
+  unpublished integration package; same-package handoff stays `IN_PROGRESS`.
+- Execution slices: first add independent accepted/rejected proposal and
+  review-state fixtures; then change only the existing validator and create
+  the required status README; then run the focused validator/transition gate;
+  finally batch all impact-directed command, policy, status, evidence, audit,
+  and inbound-link updates into the separate card close.
+- Implementation write set: `scripts/git_orchestration/validate_documentation.py`,
+  `tests/git_orchestration/test_documentation_validator.py`,
+  `tests/git_orchestration/test_validators.py`, and new
+  `docs/tasks/INTEGRATION_REVIEW/README.md`. The final documentation close may
+  touch only the card's canonical documentation roster and discovered inbound
+  lifecycle links.
+- Validation: smallest affected tests at slice boundaries; at the card
+  boundary, the complete focused documentation/public-command set, exact
+  `make -s documentation-check`, Git checks, and a separate lifecycle/
+  concurrency semantic review. No dependency installation, network, runtime,
+  cluster, production, scientific-review, biological, or default-branch work.
+- Explicit exclusions: no permanent ID-only path migration, generated
+  lifecycle/dependency/epic/tranche projections, blocker-edge migration,
+  transition daemon or automation, fragment enforcement, proposal promotion,
+  existing-proposal rewrite, or card movement into `INTEGRATION_REVIEW`.
+
 ## Objective
 
 Complete tested validator and transition support for the authorized
@@ -37,13 +82,10 @@ unintegrated work as approved or complete.
   persists `INTEGRATION_REVIEW` only for asynchronous review beyond the current
   unpublished integration package; routine same-package integration remains in
   the active-card lifecycle.
-- Current lifecycle directories remain flat and authoritative until an atomic
-  migration passes parity and final validation. The selected target then uses
-  permanent ID-only canonical card paths with reviewed structured lifecycle
-  state; logical epic navigation remains a separate concern.
-- Target lifecycle, dependency, epic, and tranche Markdown projections are
-  committed and byte-for-byte check-regenerated. This is a selected target,
-  not a claim that generated views or the permanent path model exist today.
+- Current lifecycle directories remain flat and authoritative in this package.
+  Permanent ID-only paths and generated lifecycle/dependency/epic/tranche
+  projections remain later atomic-registry target constraints; they are not
+  deliverables or acceptance criteria here.
 
 ## Blocked by
 
@@ -96,8 +138,13 @@ unintegrated work as approved or complete.
 
 - Reclassifying blocker/unblock edges; defining or materializing epic
   taxonomy; changing card scope; reopening or re-integrating the consumed
-  recovery source; recasting the refactor program; or changing workflow,
-  schema, scientific, report, runtime, or evidence behavior.
+  recovery source; recasting the refactor program; or changing computational
+  workflow, data schema, scientific, report, runtime, or evidence behavior.
+- Permanent ID-only card-path migration; structured lifecycle metadata;
+  generated lifecycle, dependency, epic, or tranche projections; mixed-root
+  compatibility; parity manifests; generator/check commands; or atomic
+  registry cutover. Those require later separately selected registry,
+  dependency, epic, and tranche owners.
 
 ## Deliverables
 
@@ -107,15 +154,6 @@ unintegrated work as approved or complete.
 - Independent fixtures and validator rules that accept the reviewed
   lightweight `UNREFINED` schema while rejecting selection, priority,
   dependency, blocker, unblock, completion, and full-card authority there.
-- For the later permanent-path migration, a frozen old/new manifest covering
-  every ID, path, lifecycle state, H1, body, completion record, dependency,
-  and inbound link; legacy-read/new-write transition testing without a mixed
-  canonical registry; exact parity and stale-view checks; one atomic cutover;
-  and abort/rollback that leaves the old registry canonical until every gate
-  passes.
-- Committed lifecycle projections that name their generator, relevant input
-  digest, and exact refresh/check behavior and that are regenerated in
-  temporary space for byte-for-byte comparison.
 - Tested documentation-validator support that distinguishes proposals,
   actionable cards, frozen review work, and completed history.
 - Updated canonical documentation with no duplicated live candidate identity
