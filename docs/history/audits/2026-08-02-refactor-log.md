@@ -6342,3 +6342,64 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal selection validation:** run `git diff --check` only. Publish and
   prove the usability-selection checkpoint clean/upstream/live-remote-equal
   before the review begins.
+
+## 2026-08-03T18:38:51-0400 — REVIEW-UX-03O completed
+
+- **Verified review base:** usability selection
+  `35ba58384bf0fae40f530869a5a0c432c69350bd` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, published, and equal
+  across local `HEAD`, configured upstream, and live remote. This was a
+  separate read-only committed-time pass by the same campaign agent;
+  independent authorship is not claimed.
+- **Invocation and choice decision:** final root use is the mode-`0755`
+  owner-local shell launcher or explicit interpreter plus its mode-`0644`
+  Python sibling. Arbitrary-CWD use makes code, interpreter, both manifests,
+  all Step `08`/`09` inputs, review plan, evidence manifest/payloads, and output
+  root absolute. Retained `configs/` examples/schemas are structural
+  references, not production evidence. Use one unique review ID and a fresh
+  absolute output root for the safest first run; no installed identity,
+  wrapper, alias, package import, ambient `PYTHONPATH`, or global `sys.path`
+  route is supported.
+- **Healthy journey:** dry-run validates all declared inputs and reports exact
+  choices without output, lock, scratch, backup, or final mutation. Execute
+  owns one exact thirteen-file transaction and publishes summary last.
+  Replacement requires an existing all-thirteen set. Summary visibility still
+  precedes final checks and the second 32-input recheck and does not bind its
+  twelve siblings, so it is not durable committed-attempt proof.
+- **Recovery journey and severe preserved defects:** before any diagnosis,
+  cleanup, restoration, or retry preserve thirteen finals, matching temp/
+  backup/recovery paths, lock, 32 inputs, process/signal/stream/environment
+  evidence, and unrelated bytes. Never remove a foreign/recovery lock, discard
+  backups, combine attempts, manufacture a member, or retry an ambiguous root.
+  Incomplete restore, post-summary `TERM`, and post-summary
+  `KeyboardInterrupt` can leave the distinct reliability-reviewed states.
+  Those are characterized severe defects, not accepted behavior. Rule out all
+  writers/readers before an authorized diagnostic retry in a new isolated
+  absolute output root.
+- **Provenance and evidence ceiling:** the final Python path is the artifact
+  producer; artifact indexing validates all thirteen adapters, run-summary
+  reconstructs the selected full package, and report rendering consumes the
+  authorized normalized record. These layers do not authenticate a publication
+  attempt or prove runtime, cluster, production, completed scientific review,
+  editing-site validity, or biological readiness. The owner packages declared
+  evidence and does not rerun CMH or infer decisions.
+  `science_review_complete_exploratory` remains provisional and
+  `biological_interpretation_ready` remains rejected.
+- **Findability and rollback:** documentation close adds one adjacent README
+  and repairs final shell/Python/test/import/artifact/run-summary/report paths,
+  config/schema choices, lock/recovery routes, and language. Exact focused
+  final suites are the moved direct shell/Python tests, Step `08`/`09` private-
+  loader tests, artifact/run-summary, independent-golden, and public-CLI
+  suites. The full executable card boundary remains
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks`; documentation close
+  separately uses `make -s documentation-check`. Reverse rollback removes docs
+  first, cutover second, then the five test checkpoints in reverse; Git never
+  authenticates or repairs runtime evidence, outputs, locks, or backups.
+- **Read-only evidence:** no executable, test, fixture, configuration,
+  dependency, runtime, scheduler, cluster, production, scientific-review, or
+  biological file changed or ran. MIG-03O remains unselected and no later
+  package or final audit is created or selected.
+- **Card boundary:** `git diff --check` passes and the exact RUNBOOK
+  `make -s documentation-check` reports `PASS documentation structure (213
+  Markdown documents, 133 task cards, 6 Mermaid sources)`. Usability moves to
+  `COMPLETED`; MIG-03O remains unselected.

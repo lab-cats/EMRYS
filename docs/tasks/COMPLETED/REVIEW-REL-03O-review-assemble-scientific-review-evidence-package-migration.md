@@ -33,7 +33,7 @@ focused oracles without redesigning those concerns.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03O](../IN_PROGRESS/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: selected usability review consumes these completed failure, residue, recovery, import, state, and provenance obligations.
+- [REVIEW-UX-03O](REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: completed usability review consumes these failure, residue, recovery, import, state, and provenance obligations.
 
 ## Prerequisites
 
