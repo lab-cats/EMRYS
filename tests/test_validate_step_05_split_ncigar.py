@@ -1,4 +1,5 @@
 import csv
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +23,15 @@ def fixture(root: Path):
         "#!/usr/bin/env bash\nset -euo pipefail\n"
         "case \"$1 $2\" in\n"
         " 'quickcheck -v') exit \"${QUICKCHECK_EXIT:-0}\" ;;\n"
-        " 'view -H') printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
+        " 'view -H')\n"
+        "   if [[ \"${HEADER_EXIT:-0}\" != 0 ]]; then\n"
+        "     printf 'forced header failure\\n' >&2\n"
+        "     exit \"$HEADER_EXIT\"\n"
+        "   fi\n"
+        "   if [[ -n \"${MUTATE_PATH:-}\" ]]; then\n"
+        "     printf 'post-build mutation\\n' >> \"$MUTATE_PATH\"\n"
+        "   fi\n"
+        "   printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
         "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\" ;;\n"
         " *) exit 9 ;;\nesac\n"
     )
@@ -31,14 +40,14 @@ def fixture(root: Path):
     return bam, bai, fasta, fai, dictionary, tool, out / "S.validation.tsv"
 
 
-def run(values, *extra):
+def run(values, *extra, cwd=ROOT, environment=None):
     bam, bai, fasta, fai, dictionary, tool, output = values
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
          "--bai", str(bai), "--reference-fasta", str(fasta),
          "--reference-fai", str(fai), "--reference-dict", str(dictionary),
          "--samtools-bin", str(tool), "--output", str(output), *extra],
-        cwd=ROOT, text=True, capture_output=True,
+        cwd=cwd, env=environment, text=True, capture_output=True,
     )
 
 
@@ -84,3 +93,61 @@ def test_foreign_lock_is_preserved(tmp_path):
     lock.write_text("foreign\n")
     assert run(values, "--execute").returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(tmp_path):
+    values = fixture(tmp_path / "fixture")
+    other_cwd = tmp_path / "other-cwd"
+    other_cwd.mkdir()
+    input_paths = values[:-1]
+    before = {path: path.read_bytes() for path in input_paths}
+
+    dry_run = run(values, cwd=other_cwd)
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert not values[-1].exists()
+
+    first = run(values, "--execute", cwd=other_cwd)
+    assert first.returncode == 0, first.stderr
+    first_report = values[-1].read_bytes()
+    assert dry_run.stdout.encode().startswith(first_report)
+
+    second = run(values, "--execute", cwd=other_cwd)
+    assert second.returncode == 0, second.stderr
+    assert values[-1].read_bytes() == first_report
+    assert {path: path.read_bytes() for path in input_paths} == before
+
+
+def test_quickcheck_failure_is_published_as_failed_evidence(tmp_path):
+    values = fixture(tmp_path)
+    environment = {**os.environ, "QUICKCHECK_EXIT": "7"}
+    result = run(values, "--execute", environment=environment)
+
+    assert result.returncode == 0, result.stderr
+    by_check = {row["check_id"]: row for row in rows(values[-1])}
+    assert by_check["samtools_quickcheck"]["status"] == "fail"
+    assert by_check["samtools_quickcheck"]["observed"] == "exit=7"
+
+
+def test_header_tool_failure_exits_two_without_publication(tmp_path):
+    values = fixture(tmp_path)
+    environment = {**os.environ, "HEADER_EXIT": "8"}
+    result = run(values, "--execute", environment=environment)
+
+    assert result.returncode == 2
+    assert "samtools view -H failed: forced header failure" in result.stderr
+    assert not values[-1].exists()
+
+
+def test_post_build_input_mutation_preserves_valid_predecessor(tmp_path):
+    values = fixture(tmp_path)
+    initial = run(values, "--execute")
+    assert initial.returncode == 0, initial.stderr
+    predecessor = values[-1].read_bytes()
+
+    environment = {**os.environ, "MUTATE_PATH": str(values[0])}
+    result = run(values, "--execute", environment=environment)
+
+    assert result.returncode == 2
+    assert "Input changed after validation" in result.stderr
+    assert values[-1].read_bytes() == predecessor
+    assert values[0].read_bytes().endswith(b"post-build mutation\n")
