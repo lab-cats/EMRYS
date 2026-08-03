@@ -26,10 +26,13 @@ DEMO_REPORT_OUTPUT_ROOT := $(DEMO_REPORT_ROOT)/reports
 DEMO_REPORT_SCIENCE_SUMMARY := $(DEMO_REPORT_FIXTURE_ROOT)/science_fixture/step09c_fixture/output/review_fixture/review_fixture.step09c_review_summary.tsv
 DEMO_REPORT_TABLE_APPROVALS := $(DEMO_REPORT_FIXTURE_ROOT)/report_table_approvals.tsv
 
-.PHONY: test shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks demo-step03-dry-run demo-step03
+.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
+
+documentation-check:
+	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
 
 validation-shell-contracts:
 	bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh

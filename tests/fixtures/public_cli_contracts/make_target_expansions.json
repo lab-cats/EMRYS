@@ -80,6 +80,9 @@
     "\t\t\"<REPO_ROOT>/results/demo-report/reports/synthetic_full_run_demo/synthetic_full_run_demo.run_summary.tsv\" \\",
     "\t\t\"<REPO_ROOT>/results/demo-report/reports/synthetic_full_run_demo/synthetic_full_run_demo.report_outputs.tsv\""
   ],
+  "documentation-check": [
+    "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\""
+  ],
   "demo-step03": [
     "mkdir -p logs",
     "sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,SAMPLE_ID=ABE_EV_2 \\",

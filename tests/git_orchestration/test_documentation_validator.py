@@ -231,6 +231,37 @@ def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
     )
 
 
+def test_make_documentation_check_matches_direct_cli(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    fixture_validator = (
+        repository
+        / "scripts"
+        / "git_orchestration"
+        / "validate_documentation.py"
+    )
+    fixture_validator.parent.mkdir(parents=True)
+    shutil.copy2(VALIDATOR, fixture_validator)
+
+    direct = validate(repository, cwd=tmp_path)
+    wrapped = run(
+        [
+            "make",
+            "-s",
+            "--no-print-directory",
+            "-f",
+            str(REPO_ROOT / "Makefile"),
+            "documentation-check",
+        ],
+        cwd=repository,
+    )
+
+    assert (wrapped.returncode, wrapped.stdout, wrapped.stderr) == (
+        direct.returncode,
+        direct.stdout,
+        direct.stderr,
+    )
+
+
 def test_aggregate_cli_diagnostics_are_complete_and_ordered(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     (repository / "README.md").write_text(

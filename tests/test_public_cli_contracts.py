@@ -202,6 +202,7 @@ GIT_ORCHESTRATION_PRIVATE_FILES = frozenset(
 
 MAKE_TARGET_DECISIONS = {
     "test": "local_gate",
+    "documentation-check": "local_gate",
     "shell-test": "local_gate",
     "validation-shell-contracts": "local_gate",
     "real-r-test": "local_gate",
