@@ -293,7 +293,8 @@ the semantic DAG and live coupling, not historical alias order.
 
 ## Completion record
 
-Not started. JIT-carded from clean published parent
-`f9d638199c6d60cbe81c992fde6a1090cb364302`. Architecture, reliability, and
-usability reviews must close sequentially before selection. This definition is
-documentation-only; no executable or test path has moved.
+Selected for task-specific read-only planning after published usability-review
+checkpoint `7d31459ceea981fa4a809afcdc1c8e24dd599874`. The frozen migration parent
+remains `f9d638199c6d60cbe81c992fde6a1090cb364302`; all three sequential reviews
+are complete. No old-path baseline has run and no executable or test path has
+moved at this selection checkpoint.
