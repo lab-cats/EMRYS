@@ -52,7 +52,8 @@ JOB_PATHS = {
         "step_06_split_bam_by_read_orientation.slurm"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
-        "jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
     ),
     "step_08_vcf_preprocessing.slurm": Path("jobs/step_08_vcf_preprocessing.slurm"),
     "step_09_cmh_editing_site_calling.slurm": Path(
@@ -227,7 +228,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list", "load CBI bcftools/1.21", "list"),
         submit_cwd="fallback",
-        delegation="scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh",
+        delegation=(
+            "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+            "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.666667",
-      "covered_branches": 48,
-      "covered_lines": 167,
-      "line_rate": "0.843434",
-      "num_branches": 72,
-      "num_statements": 198,
-      "path": "scripts/validate_step_07_mpileup_outputs.py"
-    },
-    {
       "branch_rate": "0.722222",
       "covered_branches": 26,
       "covered_lines": 122,
@@ -262,6 +253,15 @@
       "path": "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
     },
     {
+      "branch_rate": "0.708333",
+      "covered_branches": 51,
+      "covered_lines": 177,
+      "line_rate": "0.893939",
+      "num_branches": 72,
+      "num_statements": 198,
+      "path": "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py"
+    },
+    {
       "branch_rate": "0.833333",
       "covered_branches": 35,
       "covered_lines": 146,
@@ -322,10 +322,10 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.701593",
-    "covered_branches": 3348,
-    "covered_lines": 9551,
-    "line_rate": "0.814932",
+    "branch_rate": "0.702221",
+    "covered_branches": 3351,
+    "covered_lines": 9561,
+    "line_rate": "0.815785",
     "num_branches": 4772,
     "num_statements": 11720
   }

@@ -983,7 +983,10 @@ STEP_PRODUCERS = {
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
-    "07": "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh",
+    "07": (
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+    ),
     "08": "scripts/step_08_vcf_preprocessing.sh",
     "09": "scripts/step_09_cmh_editing_site_calling.sh",
     "09c": "scripts/step_09c_scientific_validation.py",

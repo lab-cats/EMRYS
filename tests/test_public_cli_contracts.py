@@ -80,7 +80,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_06_orientation_outputs.py"
     ),
     "validate_step_07_mpileup_outputs.py": Path(
-        "scripts/validate_step_07_mpileup_outputs.py"
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "validate_step_07_mpileup_outputs.py"
     ),
     "validate_step_08_preprocessing_outputs.py": Path(
         "scripts/validate_step_08_preprocessing_outputs.py"
@@ -138,7 +139,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
-        "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(
         "scripts/step_08_vcf_preprocessing.sh"

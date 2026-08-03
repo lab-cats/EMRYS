@@ -65,7 +65,8 @@ VALIDATOR_PATHS = {
         "validate_step_06_orientation_outputs.py"
     ),
     "validate_step_07_mpileup_outputs": Path(
-        "scripts/validate_step_07_mpileup_outputs.py"
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "validate_step_07_mpileup_outputs.py"
     ),
     "validate_step_08_preprocessing_outputs": Path(
         "scripts/validate_step_08_preprocessing_outputs.py"

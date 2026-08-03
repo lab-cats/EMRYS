@@ -57,7 +57,10 @@ VALIDATOR_PATHS = {
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
         "validate_step_06_orientation_outputs.py"
     ),
-    "07": Path("scripts/validate_step_07_mpileup_outputs.py"),
+    "07": Path(
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "validate_step_07_mpileup_outputs.py"
+    ),
     "08": Path("scripts/validate_step_08_preprocessing_outputs.py"),
     "09": Path("scripts/validate_step_09_cmh_outputs.py"),
 }

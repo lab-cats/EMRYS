@@ -378,6 +378,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["07"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_07",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+                    "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+                ),
+                "sha256": (
+                    "e3af9900b6f7831f2feafbc6d13f3755"
+                    "a475f02e5013c8b756107ddd90d22297"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-script="$repo_root/scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-job="$repo_root/jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+script="$repo_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+job="$repo_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
@@ -1075,8 +1075,9 @@ assert_contains "$primary_partitions" $'MT\tregion\tMT'
     fail "Pilot manifest must contain exactly one partition plus its header"
 assert_contains "$pilot_partitions" $'pilot_1\tregion\t1:1-100000'
 wrapper_root="$test_root/wrapper"
-mkdir -p "$wrapper_root/scripts"
-cp "$script" "$wrapper_root/scripts/"
+wrapper_owner="$wrapper_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs"
+mkdir -p "$wrapper_owner"
+cp "$script" "$wrapper_owner/"
 wrapper_filter='INFO/AD[1-]>7 & MAX(FORMAT/DP)>31'
 env \
     PATH="$fake_bin:$PATH" \
@@ -1119,8 +1120,9 @@ assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.REV_li
 assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.step07_outputs.tsv"
 
 wrapper_missing_root="$test_root/wrapper-missing-output"
-mkdir -p "$wrapper_missing_root/scripts"
-cat >"$wrapper_missing_root/scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
+wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs"
+mkdir -p "$wrapper_missing_owner"
+cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
 #!/usr/bin/env bash
 exit 0
 STUB
