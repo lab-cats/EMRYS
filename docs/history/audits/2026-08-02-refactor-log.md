@@ -4287,6 +4287,122 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T12:55:50-0400 — MIG-03M executable migration and lifecycle close
+
+- **Selection and bounded sequence:** MIG-03M was selected alone from clean,
+  published, local/upstream/live-remote-equal usability completion `a8e7f0a`.
+  Architecture, reliability, and usability reviews completed before execution.
+  The five published old-path test-only checkpoints are runtime/input
+  provenance `d29f87b`, transaction/recovery `44e649d`, signal/concurrency
+  `6e2e2f6`, validator `3f02d19`, and scheduler `7a667ee`. No Step `09`, Step
+  `09c`, or later owner/review card was created, selected, or preloaded.
+- **Atomic physical cutover:** published executable/test checkpoint
+  `5e51496fdef8835bdef297b946d99382ed24574b` moved exactly the reviewed shell,
+  R implementation, validator, job, shell test, guarded-R runner, R test, and
+  validator test into the final source/test owner. It changed exactly the ten
+  reviewed Make, artifact, public-CLI, scheduler, roster, report, local-R,
+  coverage, and literal-Make integration owners. Old and final paths do not
+  coexist. No wrapper, alias, symlink, compatibility copy, package marker,
+  descriptor, schema, recovery marker, scheduler abstraction, policy/method,
+  dependency, or DAG change was added.
+- **Final native identities:** shell mode/bytes/lines/SHA-256 is `0755` /
+  `39,954` / `1,024` /
+  `578542fefa02aa23667bb40e582cbab215e6d3efec0a7c2fbb002290f1cfc1f3`;
+  R is `0644` / `69,505` / `1,939` /
+  `50cae0523ea68f87535866cbe9e86d38c3812f96a2c8a06ebd66a72177268699`;
+  validator is `0644` / `12,918` / `346` /
+  `57a227c478c0caec60fe2ff8d84f7feb1fce28c5248338f1369b2a186284c78f`;
+  and job is `0644` / `4,597` / `134` /
+  `e51d0df86609ca5d3d39b60f6036ee225bc17c11b6a83d68c683603842c57de6`.
+  All match architecture projection exactly.
+- **Loader and ownership decision:** the validator resolves repository root
+  with `parents[4]`, exact-loads neutral `validation_report.py`, and replaces
+  its ambient sibling import with an exact-file bridge to unchanged flat
+  `scripts/step_09c_scientific_validation.py`. Both use private identities,
+  validate exact paths/readiness, preserve foreign/partial cache entries,
+  remove only loader-owned failed partials, sanitize public load failure, and
+  mutate no `sys.path`. The Step `09c` dependency remains an ownership
+  inversion; this is not a package API, helper extraction, or Step `09c`
+  migration.
+- **Semantic preservation:** shell input enumeration remains the exact
+  partition-manifest product with two mechanical orientations. R lexical and
+  VariantAnnotation parsing, supported-SNV selection, allele expansion, GTF
+  overlap, deterministic rows, DP/AD/AF arithmetic, skipped-allele counts,
+  header-only behavior, schemas, and fixed `legacy_provisional_v1` mapping are
+  unchanged. The mapping is provisional compatibility behavior, not validated
+  biological strand, sense/antisense, variant/editing-site, scientific-review,
+  or readiness evidence.
+- **Runtime and provenance risks preserved:** manifests, Step `07` receipts/
+  VCFs, and annotation remain explicitly admitted and hash-checked. Controlled
+  post-admission mutation of each fails before publication except the R program,
+  whose mutation remains untracked and can publish. The input receipt records
+  no R program/runtime/package/attempt identity and no sibling sites/summary
+  hashes. Artifact indexing changes only the final shell path/hash and preserves
+  the existing input-receipt native marker versus summary failure-marker
+  distinction.
+- **Transaction and recovery risks preserved:** publication remains sites,
+  cross-root QC summary, then input receipt. Receipt visibility precedes final
+  validation and the in-memory commit flag. Controlled receipt-publication exit
+  `67` followed by sites-restoration exit `68` propagates `67`, leaves the prior
+  sites final absent while its output-root backup survives, restores prior
+  summary and receipt, removes owned scratch/lock, and creates no durable
+  recovery marker. Cleanup may release the lock after incomplete restore. This
+  is ambiguous preservation-first manual recovery, not a successful rollback
+  or retry guarantee.
+- **Signal, concurrency, validator, and scheduler risks preserved:** controlled
+  `TERM` after receipt visibility exits `143` and restores a complete
+  predecessor; a same-cohort race retains one lock winner and one loser.
+  Validator exit `0` may publish failed rows, trusts recorded upstream hashes,
+  does not recompute candidate IDs/order or R semantics, and can fail equivalent
+  annotation spelling while accepting arbitrary unique IDs and reversed site
+  rows. Scheduler behavior retains warning-only unusable Rscript, tolerated
+  version failure, submit-CWD fallback, body-level `logs/` mutation, one-CPU
+  request, and zero-exit stale-three-output false success. Characterization
+  does not approve any defect.
+- **Focused final-path acceptance:** all `17` moved validator tests passed; the
+  complete direct shell suite passed; and `597` integration/scheduler/report
+  tests passed. The complete shell-contract lane passed. The corrected moved
+  guarded-R runner and isolated existing-library Step `08` and Step `09` real-R
+  semantic suites passed despite the inherited ignored malformed-library
+  warning. Pinned report runtime passed `17` tests with `60` deselected. These
+  are local fixture/fake-tool or local-runtime results, not scheduler, cluster,
+  production, scientific-review, or biological proof.
+- **Coverage decision:** one untouched full Python measurement reached `1,219`
+  passes and `17` skips before its sole documentation-validator failure. A
+  measurement with only that deliberately deferred assertion deselected passed
+  `1,219` with `17` skips and produced the reviewed target baseline. Step `08`
+  is `162/167` covered lines and `42/48` branches; global tracked floors are
+  `9601/11758` lines and `3367/4784` branches. Every non-target tracked row
+  remains exact and the standalone policy comparison passed. Higher transient
+  raw Step `09c` execution from early exact loading was not promoted into a
+  non-target baseline.
+- **Aggregate-gate truth:** exact `RSCRIPT_BIN=/usr/local/bin/Rscript make -s
+  all-checks` was attempted once. Static preflight passed in `0.163s`. Guarded
+  R failed status `2` in `5.615s` because the ignored project library contains
+  a malformed `macos` entry without `DESCRIPTION` and Bioconductor metadata was
+  unavailable through DNS. The orchestrator cancelled other aggregate lanes
+  and ended status `2` after `5.842s`. No dependency was installed, restored,
+  removed, or changed. Separately passing lanes do not make the aggregate green.
+- **Documentation and lifecycle decisions:** add one adjacent owner README;
+  correct the contract from unimplemented/flat, stale publisher, and deferred-
+  migration wording; update current architecture, inventory, coverage,
+  ownership, roadmap, handoff, runbook, troubleshooting, neutral library,
+  Step `07` predecessor, Step `09`/`09c` consumers, artifact/manifest/guarded-R
+  routes, review backlink, and every inbound lifecycle link. Move only MIG-03M
+  to `COMPLETED`. No diagram changes because semantic identities, direct DAG
+  edges, and public data flow did not change.
+- **Documentation gate, rollback, and pause:** before this close, full Python's
+  sole failure listed exactly twelve intentionally stale MIG-03M links plus the
+  nine inherited `UNREFINED` card locations. This close repairs every migration
+  link. The exact RUNBOOK documentation validator retained only the inherited
+  nine; that status `1` result remains nonpassing and is never called green.
+  Rollback removes this documentation close, executable
+  `5e51496`, scheduler `7a667ee`, validator `3f02d19`, signal/concurrency
+  `6e2e2f6`, transaction/recovery `44e649d`, then runtime/input `d29f87b`.
+  Git rollback never changes runtime evidence. Publish and prove the close
+  clean/local-upstream-live-remote-equal, create the requested neutral fresh
+  branch at that exact commit, and stop without selecting another owner.
+
 ## 2026-08-03T11:23:03-0400 — MIG-03M and sequential reviews defined
 
 - **Verified parent and live-DAG choice:** published MIG-03L documentation/

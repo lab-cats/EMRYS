@@ -2153,7 +2153,7 @@ compression from becoming an untested code extraction:
 | Tested executable owner exists; retain only operator ordering and invocation | Documentation/fragment validation, candidate application, finalization, no-op recording, and exact-ref publication | Interfaces live in [`scripts/git_orchestration/`](../../scripts/git_orchestration/README.md); authority, human review, conflict disposition, and recovery remain here and in `CONCURRENT_WORK.md`. |
 | Retain as runbook-owned operator procedure | Demo presence loop; canonical/candidate/immutable-lane checks; coordination checkpoint; ordinary integration and retirement; cluster checkout/promotion; Step `07` and Step `09` scheduler/output inspection; Step `09c` reviewer workflow and rerun matrix | These blocks combine explicit human inspection, action-point safety, evidence interpretation, or recovery meaning not implemented by one helper. |
 | Retain pending a separately tested extraction | Step `07` manifest-pair reconciliation, selector/FAI reconciliation, and manifest-named receipt/VCF census | Current validators cover related per-partition checks but not these exact whole-universe procedures. |
-| Removed as validator-owned duplication | Step `08` manual partition/orientation ordering scan | [`validate_step_08_preprocessing_outputs.py`](../../scripts/validate_step_08_preprocessing_outputs.py) checks the complete ordered partition-by-orientation receipt; the explicit `25 × 2` acceptance remains below. |
+| Removed as validator-owned duplication | Step `08` manual partition/orientation ordering scan | [`validate_step_08_preprocessing_outputs.py`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py) checks the complete ordered partition-by-orientation receipt; the explicit `25 × 2` acceptance remains below. |
 
 ## Reference Prep
 
@@ -4087,19 +4087,22 @@ cluster-proven.
 Implemented files:
 
 ```text
-scripts/step_08_vcf_preprocessing.sh
-scripts/step_08_vcf_preprocessing.R
-jobs/step_08_vcf_preprocessing.slurm
-tests/shell/test_step_08_vcf_preprocessing.sh
-tests/r/run_step_08_vcf_preprocessing_tests.sh
-tests/r/test_step_08_vcf_preprocessing.R
+src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh
+src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R
+src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py
+src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm
+tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
+tests/stages/preprocess_and_annotate_cohort_candidates/run_step_08_vcf_preprocessing_tests.sh
+tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.R
+tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
 ```
 
 Structured validation consumes the exact published three-TSV transaction and
 is dry-run-first:
 
 ```bash
-.venv/bin/python scripts/validate_step_08_preprocessing_outputs.py \
+.venv/bin/python \
+  src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -4133,10 +4136,20 @@ The wrapper does not guess an R module or install packages. Record a supported
 cluster executable/environment and pass it explicitly. `Rscript` resolution is
 the CLI `--rscript-bin`, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript` on
 `PATH`. The R implementation defaults to
-`scripts/step_08_vcf_preprocessing.R` and can be overridden with
+`src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R`
+and can be overridden with
 `--r-script` or `STEP08_R_SCRIPT`.
 
-Before the Step `08` dry-run, prove the exact batch-visible environment:
+Before the Step `08` dry-run, prove the guarded repository-local environment
+without restoring or installing dependencies:
+
+```bash
+RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
+RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
+```
+
+For a separately approved batch-visible environment, run the direct semantic
+fixtures with the supported executable:
 
 ```bash
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript make real-r-test
@@ -4155,7 +4168,7 @@ promotion.
 Direct dry-run:
 
 ```bash
-scripts/step_08_vcf_preprocessing.sh \
+src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -4179,7 +4192,7 @@ Direct execute is limited to an explicitly allocated compute-node context or a
 tiny approved fixture.
 
 ```bash
-scripts/step_08_vcf_preprocessing.sh \
+src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -4196,7 +4209,7 @@ SLURM dry-run:
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
-  jobs/step_08_vcf_preprocessing.slurm
+  src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm
 ```
 
 SLURM execute, only after the dry-run and prerequisites are inspected:
@@ -4204,7 +4217,7 @@ SLURM execute, only after the dry-run and prerequisites are inspected:
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
-  jobs/step_08_vcf_preprocessing.slurm
+  src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm
 ```
 
 Wrapper variables and defaults:
@@ -4218,7 +4231,7 @@ ANNOTATION_GTF=refs/novogene_ref/genome.gtf
 OUTPUT_ROOT=results/vcf_preprocessed
 QC_ROOT=results/qc/vcf_preprocessing
 RSCRIPT_BIN_OVERRIDE=<unset; defaults to Rscript on PATH>
-STEP08_R_SCRIPT=scripts/step_08_vcf_preprocessing.R
+STEP08_R_SCRIPT=src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R
 EXECUTE=0
 ```
 

@@ -314,7 +314,7 @@ defines Step `08` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03M](../COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: completed architecture, reliability, and usability reviews fix task-specific execution planning.
+- [REVIEW-UX-03M](REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: completed architecture, reliability, and usability reviews fixed task-specific execution planning.
 
 ## Completion unblocks
 
@@ -438,8 +438,73 @@ defines Step `08` as the smallest next JIT unit but does not select it.
 Selected as the sole active migration from clean, published,
 local/upstream/live-remote-equal usability-review completion
 `a8e7f0aa32e62cc9771277b9b6def7e08d8bd59e`. Architecture, reliability, and
-usability reviews are complete. Execute only the five ordered old-path test
-checkpoints, then the atomic cutover with the complete computational card-
-boundary gate, then the separate documentation/lifecycle close. No executable/
-test path changed or ran at selection, and no Step `09` or later owner is
-preloaded.
+usability reviews completed before execution. No Step `09` or later owner or
+review card was created, selected, or preloaded.
+
+- Published old-path checkpoints are runtime/input provenance `d29f87b`,
+  transaction/recovery `44e649d`, signal/concurrency `6e2e2f6`, validator
+  `3f02d19`, and scheduler `7a667ee`. Atomic executable/test checkpoint
+  `5e51496fdef8835bdef297b946d99382ed24574b` moved exactly the eight reviewed
+  assets and changed exactly the ten reviewed integration owners. It added no
+  wrapper, alias, compatibility copy, package identity, descriptor, schema,
+  recovery marker, policy change, Step `09c` extraction, or DAG change.
+- Final native identities match review: shell mode/bytes/lines/SHA-256 is
+  `0755` / `39,954` / `1,024` /
+  `578542fefa02aa23667bb40e582cbab215e6d3efec0a7c2fbb002290f1cfc1f3`;
+  R is `0644` / `69,505` / `1,939` /
+  `50cae0523ea68f87535866cbe9e86d38c3812f96a2c8a06ebd66a72177268699`;
+  validator is `0644` / `12,918` / `346` /
+  `57a227c478c0caec60fe2ff8d84f7feb1fce28c5248338f1369b2a186284c78f`;
+  and job is `0644` / `4,597` / `134` /
+  `e51d0df86609ca5d3d39b60f6036ee225bc17c11b6a83d68c683603842c57de6`.
+- Final-path acceptance passed the complete direct shell suite, all `17`
+  owner-validator tests, and `597` integration/scheduler/report tests. The
+  complete shell-contract lane and isolated existing-library Step `08` and
+  Step `09` real-R semantic suites passed. Pinned report runtime passed `17`
+  tests with `60` deselected. These are local fixture/fake-tool or local-runtime
+  results, not scheduler, cluster, production, scientific-review, variant/
+  editing-site, or biological evidence.
+- Coverage with only the deliberately deferred documentation assertion
+  deselected passed `1,219` tests with `17` skips. The moved validator is
+  tracked at `162/167` lines and `42/48` branches; global floors are
+  `9601/11758` lines and `3367/4784` branches. Every non-target tracked row
+  stayed exact and the standalone policy comparison passed. Higher transient
+  Step `09c` raw counts caused by early exact-file loading were deliberately
+  not promoted into a non-target baseline.
+- The aggregate gate was not green. Static preflight passed; guarded `r-check`
+  failed status `2` after `5.615s` on the inherited ignored malformed `macos`
+  library entry and unavailable Bioconductor DNS, cancelling other aggregate
+  lanes. The orchestrator ended status `2` after `5.842s`; no dependency was
+  installed, restored, removed, or changed. Separately passing lanes remain
+  separate evidence. An untouched full Python run reached `1,219` passes and
+  `17` skips before its sole documentation assertion listed twelve deliberately
+  deferred MIG-03M links plus nine inherited `UNREFINED` locations.
+- Preserved producer defects include receipt visibility before final
+  validation/commit, missing sibling-output/R-runtime/package/attempt identity,
+  admitted R-program mutation blindness, best-effort split-root restoration,
+  cleanup after incomplete restore, and no durable recovery marker. Controlled
+  publication exit `67` plus sites-restore exit `68` leaves the prior sites
+  final absent with its backup retained while prior summary/receipt are
+  restored, removes owned scratch/lock, and writes no marker. This is ambiguous
+  preservation-first recovery evidence, not successful rollback.
+- Preserved validator defects include exit-`0` failed rows, annotation spelling
+  asymmetry, non-recomputed candidate IDs/order, upstream-hash trust, and
+  semantic non-recomputation. Preserved scheduler defects include warning-only
+  unusable Rscript, tolerated version failure, submit-CWD and body-level log
+  effects, and stale-three-output false success. None is fixed, approved, or
+  readiness evidence.
+- The separate documentation/lifecycle close adds the owner README, repairs
+  all twelve migration-caused links and final commands, updates current
+  topology/status/evidence and recovery routes, records this audit evidence,
+  and moves only this card to `COMPLETED`. No diagram changed because semantic
+  identities, direct DAG edges, and public data flow did not change. Exact
+  documentation validation retains only the nine inherited `UNREFINED`
+  locations; that expected-only result remains nonpassing, never green.
+- Git rollback order is this documentation close, executable `5e51496`,
+  scheduler `7a667ee`, validator `3f02d19`, signal/concurrency `6e2e2f6`,
+  transaction/recovery `44e649d`, then runtime/input `d29f87b`. Before runtime
+  recovery or retry, preserve both roots, every final/scratch/backup/lock,
+  manifests, Step `07` receipts/VCFs, annotation, R identity/library, streams,
+  scheduler records/CWD, and unrelated bytes. Git rollback never alters
+  runtime evidence. Publication and equality end this campaign boundary; no
+  next owner is selected.

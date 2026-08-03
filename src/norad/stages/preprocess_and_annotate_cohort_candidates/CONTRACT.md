@@ -1,10 +1,11 @@
 # `preprocess_and_annotate_cohort_candidates` stage contract
 
-This is the observed contract of historical Step `08` for `ARCH-02A`. The
-exact public identity and historical alias are owned by the
+This is the observed contract of historical Step `08`, now implemented in this
+native owner directory. The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and owns the shell/R producer, validator, and scheduler
+assets. Supported journeys and migration evidence are in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
@@ -71,7 +72,7 @@ row per partition/orientation, ordered by the partition manifest then
 hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
-[`step_08_vcf_preprocessing.sh`](../../../../scripts/step_08_vcf_preprocessing.sh)
+[`step_08_vcf_preprocessing.sh`](step_08_vcf_preprocessing.sh)
 is side-effect-free in dry-run. Execute mode uses a cohort lock, run-token
 temporary/backup paths, all-three-or-none prior-state enforcement, repeated
 input hash checks, prepublication validation, and rollback. It publishes sites,
@@ -85,21 +86,22 @@ Failed restore moves preserve remaining backups, but no recovery marker or
 automated recovery interface exists, and cleanup releases the cohort lock even
 when restoration is incomplete.
 
-[`step_08_vcf_preprocessing.R`](../../../../scripts/step_08_vcf_preprocessing.R)
+[`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
 owns semantic parsing, candidate construction, provisional orientation policy,
 annotation, and deterministic TSV generation. The shell owns orchestration,
 validation, locking, and publication.
 
-[`step_08_vcf_preprocessing.slurm`](../../../../jobs/step_08_vcf_preprocessing.slurm)
+[`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
 owns cluster defaults, modules and optional repository-local R environment,
 execution gating, delegation, and final path checks.
 
 ## Validation interface
 
-[`validate_step_08_preprocessing_outputs.py`](../../../../scripts/validate_step_08_preprocessing_outputs.py)
+[`validate_step_08_preprocessing_outputs.py`](validate_step_08_preprocessing_outputs.py)
 accepts explicit cohort, manifests, annotation GTF, the three outputs, and a
 report path. It does not invoke R. Dry-run prints the common report;
-`--execute` snapshot-rechecks inputs and uses Step `00a`'s shared publisher.
+`--execute` snapshot-rechecks inputs and uses the neutral validation-report
+publisher.
 
 Exact checks are:
 
@@ -140,16 +142,19 @@ publication failures exit `2`.
 This is local fixture characterization, including guarded real-R fixtures, not
 production, cluster, scientific-review, or biological evidence.
 
-## Ownership gaps and deferred decisions
+## Current ownership boundaries and retained defects
 
-- Shared Step `08` schemas and reconciliation currently live in the Step `09c`
-  scientific-validation module and are reused by the independent validator.
+- Shared Step `08` schemas and reconciliation remain in the flat Step `09c`
+  scientific-validation module. The validator exact-loads that file under a
+  private identity for dataclass-safe execution without adding package or
+  `sys.path` behavior.
 - The producer declares the input receipt as its commit marker, while the
   artifact adapter treats the summary as the native-transaction failure
   marker; ownership must resolve this disagreement.
-- Receipt and candidate checks are duplicated across shell, R, Python,
-  Step `09`, and artifact adapters; shared report publication remains owned by
-  the Step `00a` validator.
+- Receipt and candidate checks remain duplicated across shell, R, Python,
+  Step `09`, and artifact adapters. Shared report publication remains in
+  neutral [`validation_report.py`](../../libraries/validation_report.py),
+  exact-loaded under a private identity.
 - Producer and validator disagree on the required breadth of sample-manifest
   columns, and the validator does not reopen the upstream Step `07` files to
   recompute their declared hashes.
@@ -161,5 +166,6 @@ production, cluster, scientific-review, or biological evidence.
   parameters.
 - The orientation policy mixes compatibility behavior with preprocessing and
   remains explicitly provisional.
-- Target files, policy/schema ownership, recovery design, and
-  migration mechanics remain deferred.
+- Policy/schema ownership and recovery design remain deferred. The scheduler's
+  warning-only R preflight, submit-CWD/log effects, and stale-three-output false
+  success remain characterized defects, not guarantees.

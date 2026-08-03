@@ -105,6 +105,17 @@ global covered-count floors are `9561/11720` lines and `3351/4772` branches,
 and the standalone policy comparison passed. This result is not a green
 aggregate gate.
 
+The final MIG-03M measurement moved Step `08` to
+`src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py`
+at `162/167` covered lines and `42/48` branches. The policy measurement passed
+`1,219` tests with `17` skips and one explicit deselection of the documentation
+assertion reserved for this close. The tracked target-only baseline keeps every
+non-target row exact; global covered-count floors are `9601/11758` lines and
+`3367/4784` branches, and the standalone comparison passed. An untouched full
+Python run had the same `1,219` passes and `17` skips before its sole failure
+listed twelve deferred MIG-03M links plus nine inherited `UNREFINED` locations.
+Neither result makes the aggregate gate green.
+
 ## Current evidence vocabulary
 
 - `preserved contract` means independent regression evidence protects the
@@ -133,7 +144,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `07` live under `tests/stages/`, while migrated Step `02b` and Step `03` evidence tests live under their owner directories in `tests/evidence/` |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `08` live under `tests/stages/`, while migrated Step `02b` and Step `03` evidence tests live under their owner directories in `tests/evidence/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |

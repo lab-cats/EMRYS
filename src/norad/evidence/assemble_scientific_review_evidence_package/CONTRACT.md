@@ -18,7 +18,9 @@ CMH statistics, infer reviewer decisions, discover substitute inputs, mutate
 upstream artifacts, or execute requested reruns.
 
 Required inputs are a safe review ID, exact sample and partition manifests,
-all three Step `08` outputs, the Step `09` analysis directory named by the
+all three outputs from the final
+[`preprocess_and_annotate_cohort_candidates`](../../stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+owner, the Step `09` analysis directory named by the
 plan's `primary_analysis_id`, a one-row review plan, an evidence manifest plus
 every declared evidence payload, and an output root. The analysis directory
 must contain all six exact Step `09` files. Inputs and evidence sources are
@@ -129,7 +131,8 @@ interpretation readiness is established in this checkout.
 
 - The 4,500-line implementation also owns reusable Step `08`/`09` schemas and
   validators, ten evidence domains, state policy, and transaction machinery;
-  upstream validators import it as a contract library, reversing ownership.
+  the final Step `08` validator exact-loads it under a private identity as a
+  contract library, reversing ownership without creating a package API.
 - Headers exist in Python and tracked schema TSVs; parity is tested, but the
   canonical schema owner and versioning boundary are not explicit.
 - State/evidence rules are duplicated across publication, artifact indexing,

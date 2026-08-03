@@ -180,7 +180,9 @@ survives, restores prior REV and receipt bytes, removes owned temps/lock, and
 creates no recovery marker. This is ambiguous manual recovery, not successful
 rollback. Never combine attempts, reconstruct a member, delete a foreign lock,
 trust receipt presence/counts/timestamps, or adopt stale wrapper success. Rule
-out every active producer and Step `08` reader. Any separately authorized
+out every active producer and reader in the final
+[`preprocess_and_annotate_cohort_candidates`](../preprocess_and_annotate_cohort_candidates/README.md)
+owner. Any separately authorized
 diagnostic retry uses an isolated output root and remains nonproduction.
 
 Follow the dedicated

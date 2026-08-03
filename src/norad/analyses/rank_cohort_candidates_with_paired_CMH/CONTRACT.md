@@ -9,14 +9,16 @@ Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
-Consume the committed Step `08` cohort candidates, construct explicit paired
+Consume the committed
+[`preprocess_and_annotate_cohort_candidates`](../../stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+cohort candidates, construct explicit paired
 control/treatment replicate strata, run cohort-wide paired Cochran–Mantel–
 Haenszel analysis for a requested RNA substitution, apply one Benjamini–
 Hochberg correction, classify results under explicit thresholds, and publish
 tables and diagnostic plots. Its outputs are CMH-ranked candidates, not
 validated RNA-editing sites.
 
-Step `09` requires the Step `08` sites table and input receipt, the sample and
+Step `09` requires that final owner's sites table and input receipt, the sample and
 partition manifests, and explicit analysis policy. It does not consume the
 Step `08` QC summary or standalone validation report. Step `09c` consumes the
 complete six-output transaction together with upstream evidence for scientific

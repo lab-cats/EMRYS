@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published usability-review
-  completion `a8e7f0aa32e62cc9771277b9b6def7e08d8bd59e`.
+  exact SHA from live Git. Its frozen parent is published executable/test
+  checkpoint `5e51496fdef8835bdef297b946d99382ed24574b`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -37,25 +37,30 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   completion `7740584`, reliability selection `88eef71`, and reliability
   completion `fd00094`, and usability selection `a6effa2` are also published
   and equal. Usability completion `a8e7f0a` is published and local/upstream/
-  live-remote-equal.
-- Current package: active
-  [`MIG-03M`](../tasks/IN_PROGRESS/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+  live-remote-equal. MIG-03M runtime/input `d29f87b`, transaction/recovery
+  `44e649d`, signal/concurrency `6e2e2f6`, validator `3f02d19`, and scheduler
+  `7a667ee` test baselines plus executable/test checkpoint `5e51496` are
+  published and local/upstream/live-remote-equal. Its documentation/lifecycle
+  close is the commit containing this handoff.
+- Current package: completed
+  [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
   after completed
   [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md),
   and completed
   [`REVIEW-REL-03M`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md),
   followed by completed
   [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
-  All three reviews are complete; migration alone is selected, while Step `09`
-  and every later owner/review card remain uncreated.
+  All three reviews and the migration are complete. Step `09` and every later
+  owner/review card remain uncreated and unselected.
 - Package type at this checkpoint: documentation-only MIG-03M lifecycle
-  selection. It fixes the five ordered test-only slices, atomic cutover,
-  complete computational card-boundary gate, and separate documentation close
-  while changing or running no executable, test, configuration, dependency,
-  schema, fixture, or report template.
-- Remote publication and upstream equality: usability completion `a8e7f0a` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before the runtime/input-provenance test-only slice.
+  close. It adds the adjacent owner README, repairs canonical final paths and
+  lifecycle links, and records the already-published computational evidence;
+  it changes or runs no executable, test, configuration, dependency, schema,
+  fixture, or report template.
+- Remote publication and upstream equality: executable checkpoint `5e51496` is
+  verified local/upstream/live-remote-equal. Publish and prove the documentation
+  close equal, create the requested neutral fresh branch at that exact commit,
+  and stop without selecting another owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -71,14 +76,18 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/partition_BAM_by_mechanical_read_orientation/`, and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
 `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`, and
-`src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/`. Their eleven
-validators and the two remaining flat validators load the neutral report file
+`src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/`, and
+`src/norad/stages/preprocess_and_annotate_cohort_candidates/`. Their twelve
+validators and the one remaining flat validator load the neutral report file
 without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
 and Step `05` validators also use private exact-file bridges to unchanged
 public `scripts/reference_provenance.py`. The final Step `02`/`04`/`05`
 validators exact-load private neutral
 `src/norad/libraries/bam_validation.py`; no peer-stage implementation import
-remains.
+remains. The final Step `08` validator separately exact-loads unchanged flat
+`scripts/step_09c_scientific_validation.py` under a private identity for shared
+contracts; that retained inversion is not a package API or Step `09c`
+migration.
 
 The `MIG-03C` focused suites and reviewed final-path coverage passed before the
 executable commit. The recorded final-path measurement retained the producer at
@@ -533,25 +542,27 @@ partition-and-orientation barrier is migrated. Step `09` remains blocked on the
 Step `08` sites table and input receipt, and Step `09c` additionally requires
 the complete Step `08` three-output transaction.
 
-The checkpoint containing this handoff selects only
-[`MIG-03M`](../tasks/IN_PROGRESS/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+This checkpoint completes
+[`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
 after sequential completed
 [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-REL-03M`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md).
-Architecture is complete at published/equal `7740584`. It fixes the
-four Step `08` native and four owner-local protection moves plus ten integration
-owners; private neutral-report and flat-Step-`09c` exact-file bridges; guarded-
-R ownership; exact final native hashes/modes; artifact marker and coverage
-assignment; atomicity; and reverse rollback. Reliability is published/equal at
-`fd00094`. It fixes exactly five test-only
-checkpoints—runtime/input provenance, transaction/recovery,
-signal/concurrency, validator, and scheduler—before atomic cutover. Usability
-is published/equal at `a8e7f0a` with final journeys, split-root recovery,
-provisional language, findability, evidence, and rollback fixed. Migration
-alone is selected. No executable/test file changed or ran at selection, no R
-dependency action occurred, and no Step `09` or later card is created or
-preloaded.
+The five published test checkpoints are `d29f87b`, `44e649d`, `6e2e2f6`,
+`3f02d19`, and `7a667ee`; atomic eight-move/ten-integration executable
+checkpoint `5e51496` is published/equal. The final owner preserves private
+neutral-report and flat-Step-`09c` bridges, guarded-R ownership, exact native
+identities, artifact marker distinction, coverage policy, and reverse
+rollback. This close adds only canonical documentation/lifecycle evidence.
+
+The aggregate gate remains non-green: static preflight passed, then inherited
+guarded-R environment damage and unavailable Bioconductor DNS stopped the
+lane. Complete shell contracts, isolated existing-library Step `08`/`09`
+real-R semantics, report runtime, and coverage policy passed separately. The
+exact documentation validator after this close retains only nine inherited
+`UNREFINED` locations and remains nonpassing. No dependency action, scheduler,
+cluster, production, scientific-review, variant/editing-site, or biological
+evidence occurred. No Step `09` or later card is created or preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1154,14 +1165,17 @@ is complete at published pipeline/selector `c813ea3`, transaction/recovery
 documentation/lifecycle close is published at `4562ec3`.
 Published documentation/lifecycle close `4562ec3` supported that refresh. It
 left only
-[`MIG-03M`](../tasks/IN_PROGRESS/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
+[`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
 eligible, with sequential
 [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-REL-03M`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 → [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md)
 defined at published/equal checkpoint `546538c`. Architecture is complete at
 published/equal `7740584`; reliability is published/equal at `fd00094`.
-Usability is published/equal at `a8e7f0a`; migration alone is selected. Step
-`09` and later cards remain uncreated.
+Usability is published/equal at `a8e7f0a`. MIG-03M is complete through
+published test checkpoints `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
+`7a667ee`, published/equal executable checkpoint `5e51496`, and the
+documentation/lifecycle close containing this handoff. Step `09` and later
+cards remain uncreated and unselected.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

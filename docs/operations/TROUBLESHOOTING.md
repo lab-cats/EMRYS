@@ -1812,13 +1812,18 @@ identity, input-receipt, sites schema/uniqueness, or summary-count failure.
 
 The sites, input receipt, and summary may not be one completed publication;
 manifests or annotation may have changed; the partition-orientation universe
-may be incomplete; or candidate/sample/count fields may not reconcile.
+may be incomplete; or candidate/sample/count fields may not reconcile. The
+producer preserves the supplied annotation path spelling while the validator
+compares resolved paths, so equivalent relative spellings can also publish
+failed annotation-identity evidence.
 
 ### Fix
 
 Follow the [common response](#structured-validation-response). Inspect the
 exact three-output set, complete partition/orientation universe, manifests,
-and annotation; regeneration belongs to separately authorized Step `08`.
+and annotation. Invoke the final validator from any CWD with absolute input and
+output paths when diagnosing spelling differences; do not edit report rows or
+source receipts. Regeneration belongs to separately authorized Step `08`.
 
 ## Step 08 rejects a Step 07 receipt, VCF, hash, count, or sample order
 
@@ -1969,6 +1974,58 @@ The wrapper removes only its owned run-token scratch and lock paths and restores
 the prior complete three-file set when a replacement fails after backup begins.
 Lock, cleanup, input-mutation, and rollback behavior is locally tested with a
 fake R executable; no Step `08` cluster incident has been observed.
+
+## Step 08 producer or wrapper leaves a partial rollback failure or stale transaction
+
+### Symptom
+
+The producer exits after one or more finals became visible; a prior sites,
+input-receipt, or cross-root summary final is absent while a corresponding
+`previous` backup survives; run-token scratch remains; the lock disappeared;
+or the scheduler reports success against three nonempty files that may predate
+the current attempt. Receipt presence may coexist with a failed final
+post-publication validation.
+
+### Cause
+
+Step `08` publishes sites, QC summary, then input receipt. Receipt visibility
+precedes final validation and the in-memory committed flag. Restoration is
+best-effort across separate output and QC roots, has no durable recovery
+marker, and cleanup may release the lock after incomplete restoration. A
+controlled receipt-publication exit `67` followed by sites-restoration exit
+`68` leaves the prior sites final absent with its backup retained while prior
+summary and receipt are restored. The wrapper independently checks only that
+three nonempty finals exist after a zero-exit child, so stale files can satisfy
+it.
+
+### Diagnose
+
+Preserve and inventory both roots before action:
+
+```bash
+cohort=<cohort_id>
+find "results/vcf_preprocessed/$cohort" -maxdepth 2 -name ".${cohort}.step08*" -print
+find results/qc/vcf_preprocessing -maxdepth 1 -name ".${cohort}.step08*" -print
+ls -la "results/vcf_preprocessed/$cohort" results/qc/vcf_preprocessing
+```
+
+Also preserve the lock owner if present, all three finals, both manifests,
+Step `07` receipts/VCFs, annotation GTF, R program/runtime/library identity,
+stdout/stderr, scheduler job/accounting/logs, checkout and submit CWD, and every
+environment override. Record expected paths that are missing. Rule out every
+active producer and Step `09`/`09c` reader.
+
+### Fix
+
+Do not combine attempts, reconstruct a member, manufacture or edit the receipt,
+delete a foreign lock, discard a surviving backup, trust timestamps/counts,
+or rerun against the same roots. Escalate the preserved state for explicit
+manual recovery. Any separately authorized diagnostic retry uses isolated
+absolute output and QC roots and remains nonproduction. Git rollback cannot
+recover or authenticate runtime files.
+
+The final-path shell, validator, guarded-real-R, and scheduler tests characterize
+these states; they do not approve them or establish cluster recovery.
 
 ## Step 09 rejects the sample manifest pairing
 
