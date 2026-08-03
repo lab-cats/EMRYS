@@ -11,24 +11,24 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published `MIG-03I` close
-  `c6814e01352998ee4ebc01014737fac731f2e029`.
+  exact SHA from live Git. Its frozen parent is published definition checkpoint
+  `f88f56e2b51a8af9dde558af6ffb6c6ca148f05e`.
 - Recorded package state: `MIG-03I` executable/test checkpoint `803fcc4` and
   documentation/lifecycle close `c6814e0` are published and local/upstream/
   live-remote-equal.
-- Current package: unselected [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-  plus unselected sequential [`architecture`](../tasks/TODO/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  [`reliability`](../tasks/TODO/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  and [`usability`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-  review cards. Only Step `05` is live-DAG-eligible; Step `06` and later cards
-  remain uncreated.
-- Package type at this checkpoint: documentation-only JIT definition. It
-  changes no executable, configuration, dependency, schema, fixture, report
-  template, or test behavior and runs no computational, scheduler, cluster,
-  or production work.
-- Remote publication and upstream equality: parent `c6814e0` is verified
-  local/upstream/live-remote-equal. Publish and prove this definition checkpoint
-  equal before selecting only `REVIEW-ARCH-03J`.
+- Current package: active [`REVIEW-ARCH-03J`](../tasks/IN_PROGRESS/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md).
+  [`REVIEW-REL-03J`](../tasks/TODO/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md),
+  [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md),
+  and [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
+  remain unselected. Only Step `05` is live-DAG-eligible; Step `06` and later
+  cards remain uncreated.
+- Package type at this checkpoint: documentation-only architecture-review
+  selection. It records no review finding, changes no executable,
+  configuration, dependency, schema, fixture, report template, or test
+  behavior, and runs no computational, scheduler, cluster, or production work.
+- Remote publication and upstream equality: definition parent `f88f56e` is
+  verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before performing only `REVIEW-ARCH-03J`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -300,13 +300,14 @@ Java, samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created. `MIG-03I` is complete at published and equal
 documentation close `c6814e0`. The refreshed DAG leaves only
 `split_N_cigar_reads_with_GATK` eligible because both direct predecessors are
-migrated. This definition checkpoint creates only unselected
+migrated. Published definition checkpoint `f88f56e` created only unselected
 [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-and its unselected sequential
-[`REVIEW-ARCH-03J`](../tasks/TODO/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+and its sequential
+[`REVIEW-ARCH-03J`](../tasks/IN_PROGRESS/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-REL-03J`](../tasks/TODO/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
-No executable/test path changes, no review or computational check runs, and no
+Architecture alone is now selected. No executable/test path changes, review
+finding, or computational check belongs to this selection checkpoint, and no
 Step `06` or later card is preloaded.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -867,8 +868,9 @@ complete at published producer `de52e93`, validator `3d73d52`, and scheduler
 `3e805ac` test baselines, published executable/test checkpoint `803fcc4`, and
 published documentation/lifecycle close `c6814e0`. The fresh live-DAG check
 supports only unselected [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-and its three unselected sequential review cards, defined in the commit
-containing this handoff. Select only `REVIEW-ARCH-03J` after this definition
-checkpoint is published and proved equal. Step `06` and later cards remain
+and its sequential reviews, defined at published checkpoint `f88f56e`.
+[`REVIEW-ARCH-03J`](../tasks/IN_PROGRESS/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+alone is selected in the commit containing this handoff; reliability,
+usability, and migration remain unselected. Step `06` and later cards remain
 uncreated. The unsliced `PROGRAM-01` remainder and unrelated roadmap remain
 preserved and out of scope.

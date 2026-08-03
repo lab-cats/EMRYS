@@ -33,7 +33,7 @@ second functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03J](REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: reliability review requires an architecture-corrected owner, exact-loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03J](../TODO/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: reliability review requires an architecture-corrected owner, exact-loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 
@@ -102,5 +102,8 @@ second functional-owner migration.
 
 ## Completion record
 
-Not selected. Defined with `MIG-03J` from clean, published, local/upstream/
-live-remote-equal parent `c6814e0`; no executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal definition checkpoint
+`f88f56e2b51a8af9dde558af6ffb6c6ca148f05e`. No architecture finding is
+recorded yet, no later review or migration card is selected, and no
+executable/test file changed or ran.

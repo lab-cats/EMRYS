@@ -27,7 +27,7 @@ must preserve and characterize these defects without fixing or approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03J](REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, and cutover boundary.
+- [REVIEW-ARCH-03J](../IN_PROGRESS/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, and cutover boundary.
 
 ## Completion unblocks
 
@@ -102,5 +102,5 @@ must preserve and characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Blocked on unselected `REVIEW-ARCH-03J`; no executable/test file
+Not selected. Blocked on active `REVIEW-ARCH-03J`; no executable/test file
 changed or ran.

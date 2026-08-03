@@ -3576,3 +3576,20 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings and no new card, path, dependency, cycle, orphan, anchor,
   or diagram finding. This expected-only result remains nonpassing, not green,
   and is not authority to alter the inherited lifecycle state.
+
+## 2026-08-03T06:50:21-0400 — REVIEW-ARCH-03J selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal JIT
+  definition checkpoint `f88f56e2b51a8af9dde558af6ffb6c6ca148f05e`,
+  move only `REVIEW-ARCH-03J` to `IN_PROGRESS` and repair its reciprocal
+  lifecycle link from `REVIEW-REL-03J`. Reliability, usability, and migration
+  remain unselected in `TODO`; Step `06` and every later card remain uncreated.
+- **Boundary:** this checkpoint selects review work but does not perform it.
+  No architecture finding or migration-card correction is recorded; no
+  executable, test, harness, configuration, dependency, runtime, scheduler,
+  cluster, production, scientific-review, or biological state changes or runs.
+- **Documentation gate:** `git diff --check` passes. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no selection-caused path, lifecycle, dependency,
+  cycle, orphan, anchor, or diagram finding. The expected-only result remains
+  nonpassing and is not called green.
