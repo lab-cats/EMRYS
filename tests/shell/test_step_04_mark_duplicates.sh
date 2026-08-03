@@ -22,6 +22,18 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local file="$1"
+    local unexpected="$2"
+
+    if grep -Fq -- "$unexpected" "$file"; then
+        printf 'Did not expect to find: %s\n' "$unexpected" >&2
+        printf 'Actual output:\n' >&2
+        cat "$file" >&2
+        fail "unexpected output"
+    fi
+}
+
 assert_not_exists() {
     local path="$1"
 
@@ -36,6 +48,72 @@ assert_fails() {
         cat "$output_file" >&2
         fail "command unexpectedly succeeded: $*"
     fi
+}
+
+assert_exit() {
+    local output_file="$1"
+    local expected="$2"
+    shift 2
+
+    set +e
+    "$@" >"$output_file" 2>&1
+    local status=$?
+    set -e
+    if [[ "$status" -ne "$expected" ]]; then
+        cat "$output_file" >&2
+        fail "expected exit $expected, got $status: $*"
+    fi
+}
+
+assert_file_content() {
+    local path="$1"
+    local expected="$2"
+
+    [[ -f "$path" ]] || fail "expected file: $path"
+    local actual
+    actual="$(cat "$path")"
+    [[ "$actual" == "$expected" ]] || {
+        printf 'Expected file content: %s\n' "$expected" >&2
+        printf 'Actual file content: %s\n' "$actual" >&2
+        fail "unexpected file content: $path"
+    }
+}
+
+assert_empty_file() {
+    local path="$1"
+
+    [[ -f "$path" ]] || fail "expected empty file: $path"
+    [[ ! -s "$path" ]] || fail "file should be empty: $path"
+}
+
+assert_no_recovery_artifacts() {
+    local root="$1"
+    local found
+    found="$(find "$root" -mindepth 1 \( \
+        -name '*.lock' -o -name '*.tmp' -o -name '*.previous' -o \
+        -name '*.backup' -o -name '*.receipt' -o -name '*recovery*' \
+        \) -print)"
+    [[ -z "$found" ]] || {
+        printf 'Unexpected recovery artifact(s):\n%s\n' "$found" >&2
+        fail "producer created recovery artifacts"
+    }
+}
+
+prepare_predecessor() {
+    local root="$1"
+    local sample="$2"
+
+    case_output_dir="$root/markdup"
+    case_metrics_dir="$root/qc"
+    case_output_bam="$case_output_dir/${sample}.markdup.bam"
+    case_output_bai="$case_output_bam.bai"
+    case_metrics="$case_metrics_dir/${sample}.markdup.metrics.txt"
+    case_unrelated="$root/unrelated.keep"
+    mkdir -p "$case_output_dir" "$case_metrics_dir"
+    printf 'prior bam bytes\n' >"$case_output_bam"
+    printf 'prior bai bytes\n' >"$case_output_bai"
+    printf 'prior metrics bytes\n' >"$case_metrics"
+    printf 'unrelated bytes\n' >"$case_unrelated"
 }
 
 tmp_dir="$(mktemp -d)"
@@ -64,10 +142,14 @@ if [[ "\${3:-}" != "MarkDuplicates" ]]; then
     exit 64
 fi
 
+input_bam=""
 output_bam=""
 metrics_file=""
 for arg in "\$@"; do
     case "\$arg" in
+        INPUT=*)
+            input_bam="\${arg#INPUT=}"
+            ;;
         OUTPUT=*)
             output_bam="\${arg#OUTPUT=}"
             ;;
@@ -88,8 +170,32 @@ if [[ -z "\$metrics_file" ]]; then
 fi
 
 mkdir -p "\$(dirname "\$output_bam")" "\$(dirname "\$metrics_file")"
-printf 'fake duplicate-marked bam\\n' > "\$output_bam"
-printf 'fake picard metrics\\n' > "\$metrics_file"
+case "\${FAKE_JAVA_MODE:-success}" in
+    success)
+        printf 'fake duplicate-marked bam\\n' > "\$output_bam"
+        printf 'fake picard metrics\\n' > "\$metrics_file"
+        ;;
+    partial_failure)
+        printf 'partial picard bam\\n' > "\$output_bam"
+        printf 'partial picard metrics\\n' > "\$metrics_file"
+        printf 'fake Picard partial failure\\n' >&2
+        exit 42
+        ;;
+    empty_metrics)
+        printf 'fake duplicate-marked bam\\n' > "\$output_bam"
+        : > "\$metrics_file"
+        ;;
+    *)
+        printf 'unknown FAKE_JAVA_MODE: %s\\n' "\${FAKE_JAVA_MODE}" >&2
+        exit 64
+        ;;
+esac
+
+if [[ "\${FAKE_JAVA_MUTATE_INPUTS:-0}" == "1" ]]; then
+    [[ -n "\$input_bam" ]] || exit 64
+    printf 'mutated admitted input bam\\n' > "\$input_bam"
+    printf 'mutated admitted input bai\\n' > "\$input_bam.bai"
+fi
 EOF_JAVA
 chmod +x "$fake_bin/java"
 
@@ -110,6 +216,10 @@ case "\$subcommand" in
             printf 'fake samtools quickcheck missing input BAM\\n' >&2
             exit 64
         fi
+        if [[ "\${FAKE_SAMTOOLS_QUICKCHECK_EXIT:-0}" != "0" ]]; then
+            printf 'fake samtools quickcheck failure\\n' >&2
+            exit "\${FAKE_SAMTOOLS_QUICKCHECK_EXIT}"
+        fi
         [[ -s "\$input_bam" ]]
         ;;
     index)
@@ -117,6 +227,11 @@ case "\$subcommand" in
         if [[ -z "\$input_bam" ]]; then
             printf 'fake samtools index missing input BAM\\n' >&2
             exit 64
+        fi
+        if [[ "\${FAKE_SAMTOOLS_INDEX_EXIT:-0}" != "0" ]]; then
+            printf 'partial bam index\\n' > "\$input_bam.bai"
+            printf 'fake samtools index failure\\n' >&2
+            exit "\${FAKE_SAMTOOLS_INDEX_EXIT}"
         fi
         printf 'fake bam index\\n' > "\$input_bam.bai"
         ;;
@@ -289,5 +404,170 @@ assert_fails "$bad_tmp_output" env TMPDIR="$tmp_dir/missing_tmp" bash "$SCRIPT" 
     --java-bin "$fake_bin/java" \
     --samtools-bin "$fake_bin/samtools"
 assert_contains "$bad_tmp_output" "TMP_DIR does not exist or is not a directory"
+
+printf 'Running predecessor-bearing Picard partial failure check...\n'
+prepare_predecessor "$tmp_dir/results/picard_failure" sample_picard_failure
+picard_failure_output="$tmp_dir/picard_failure.out"
+rm -f "$java_log" "$samtools_log"
+assert_exit "$picard_failure_output" 42 env \
+    TMPDIR="$tmp_dir" FAKE_JAVA_MODE=partial_failure bash "$SCRIPT" \
+    --sample-id sample_picard_failure \
+    --input-bam "$input_bam" \
+    --output-dir "$case_output_dir" \
+    --metrics-dir "$case_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_file_content "$case_output_bam" "partial picard bam"
+assert_file_content "$case_output_bai" "prior bai bytes"
+assert_file_content "$case_metrics" "partial picard metrics"
+assert_file_content "$case_unrelated" "unrelated bytes"
+assert_contains "$picard_failure_output" "fake Picard partial failure"
+assert_not_exists "$samtools_log"
+assert_no_recovery_artifacts "$tmp_dir/results/picard_failure"
+
+printf 'Running predecessor-bearing quickcheck failure check...\n'
+prepare_predecessor "$tmp_dir/results/quickcheck_failure" sample_quickcheck_failure
+quickcheck_failure_output="$tmp_dir/quickcheck_failure.out"
+rm -f "$java_log" "$samtools_log"
+assert_exit "$quickcheck_failure_output" 43 env \
+    TMPDIR="$tmp_dir" FAKE_SAMTOOLS_QUICKCHECK_EXIT=43 bash "$SCRIPT" \
+    --sample-id sample_quickcheck_failure \
+    --input-bam "$input_bam" \
+    --output-dir "$case_output_dir" \
+    --metrics-dir "$case_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_file_content "$case_output_bam" "fake duplicate-marked bam"
+assert_file_content "$case_output_bai" "prior bai bytes"
+assert_file_content "$case_metrics" "fake picard metrics"
+assert_file_content "$case_unrelated" "unrelated bytes"
+assert_contains "$quickcheck_failure_output" "fake samtools quickcheck failure"
+assert_contains "$samtools_log" "quickcheck"
+assert_not_contains "$samtools_log" "index"
+assert_no_recovery_artifacts "$tmp_dir/results/quickcheck_failure"
+
+printf 'Running predecessor-bearing index failure check...\n'
+prepare_predecessor "$tmp_dir/results/index_failure" sample_index_failure
+index_failure_output="$tmp_dir/index_failure.out"
+rm -f "$java_log" "$samtools_log"
+assert_exit "$index_failure_output" 44 env \
+    TMPDIR="$tmp_dir" FAKE_SAMTOOLS_INDEX_EXIT=44 bash "$SCRIPT" \
+    --sample-id sample_index_failure \
+    --input-bam "$input_bam" \
+    --output-dir "$case_output_dir" \
+    --metrics-dir "$case_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_file_content "$case_output_bam" "fake duplicate-marked bam"
+assert_file_content "$case_output_bai" "partial bam index"
+assert_file_content "$case_metrics" "fake picard metrics"
+assert_file_content "$case_unrelated" "unrelated bytes"
+assert_contains "$index_failure_output" "fake samtools index failure"
+assert_contains "$samtools_log" "quickcheck"
+assert_contains "$samtools_log" "index"
+assert_no_recovery_artifacts "$tmp_dir/results/index_failure"
+
+printf 'Running empty metrics final-check failure check...\n'
+prepare_predecessor "$tmp_dir/results/empty_metrics" sample_empty_metrics
+empty_metrics_output="$tmp_dir/empty_metrics.out"
+rm -f "$java_log" "$samtools_log"
+assert_exit "$empty_metrics_output" 1 env \
+    TMPDIR="$tmp_dir" FAKE_JAVA_MODE=empty_metrics bash "$SCRIPT" \
+    --sample-id sample_empty_metrics \
+    --input-bam "$input_bam" \
+    --output-dir "$case_output_dir" \
+    --metrics-dir "$case_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_file_content "$case_output_bam" "fake duplicate-marked bam"
+assert_file_content "$case_output_bai" "fake bam index"
+assert_empty_file "$case_metrics"
+assert_file_content "$case_unrelated" "unrelated bytes"
+assert_contains "$empty_metrics_output" "Picard metrics file is missing or empty"
+assert_no_recovery_artifacts "$tmp_dir/results/empty_metrics"
+
+printf 'Running arbitrary-CWD explicit-tool execute check...\n'
+arbitrary_cwd="$tmp_dir/arbitrary-cwd"
+arbitrary_output_dir="$tmp_dir/results/arbitrary/markdup"
+arbitrary_metrics_dir="$tmp_dir/results/arbitrary/qc"
+arbitrary_output="$tmp_dir/arbitrary.out"
+mkdir -p "$arbitrary_cwd"
+rm -f "$java_log" "$samtools_log"
+(
+    cd "$arbitrary_cwd"
+    env TMPDIR="$tmp_dir" bash "$SCRIPT" \
+        --sample-id sample_arbitrary \
+        --input-bam "$input_bam" \
+        --output-dir "$arbitrary_output_dir" \
+        --metrics-dir "$arbitrary_metrics_dir" \
+        --picard-jar "$picard_jar" \
+        --java-bin "$fake_bin/java" \
+        --samtools-bin "$fake_bin/samtools" \
+        --execute >"$arbitrary_output" 2>&1
+)
+assert_file_content "$arbitrary_output_dir/sample_arbitrary.markdup.bam" \
+    "fake duplicate-marked bam"
+assert_file_content "$arbitrary_output_dir/sample_arbitrary.markdup.bam.bai" \
+    "fake bam index"
+assert_file_content "$arbitrary_metrics_dir/sample_arbitrary.markdup.metrics.txt" \
+    "fake picard metrics"
+assert_contains "$arbitrary_output" "Mode: execute"
+
+printf 'Running missing explicit samtools pre-directory failure check...\n'
+missing_samtools_output="$tmp_dir/missing_samtools.out"
+missing_samtools_output_dir="$tmp_dir/results/missing_samtools/markdup"
+missing_samtools_metrics_dir="$tmp_dir/results/missing_samtools/qc"
+assert_exit "$missing_samtools_output" 1 env TMPDIR="$tmp_dir" bash "$SCRIPT" \
+    --sample-id sample_missing_samtools \
+    --input-bam "$input_bam" \
+    --output-dir "$missing_samtools_output_dir" \
+    --metrics-dir "$missing_samtools_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$tmp_dir/missing-tools/samtools" \
+    --execute
+assert_contains "$missing_samtools_output" "samtools does not exist"
+assert_not_exists "$missing_samtools_output_dir"
+assert_not_exists "$missing_samtools_metrics_dir"
+
+printf 'Running admitted-input mutation defect check...\n'
+mutation_root="$tmp_dir/results/input_mutation"
+mutation_input="$mutation_root/input/sample.sorted.bam"
+mutation_output_dir="$mutation_root/markdup"
+mutation_metrics_dir="$mutation_root/qc"
+mutation_output="$tmp_dir/input_mutation.out"
+mkdir -p "$(dirname "$mutation_input")"
+printf 'original admitted input bam\n' >"$mutation_input"
+printf 'original admitted input bai\n' >"$mutation_input.bai"
+printf 'unrelated bytes\n' >"$mutation_root/unrelated.keep"
+rm -f "$java_log" "$samtools_log"
+env TMPDIR="$tmp_dir" FAKE_JAVA_MUTATE_INPUTS=1 bash "$SCRIPT" \
+    --sample-id sample_input_mutation \
+    --input-bam "$mutation_input" \
+    --output-dir "$mutation_output_dir" \
+    --metrics-dir "$mutation_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute >"$mutation_output" 2>&1
+assert_file_content "$mutation_input" "mutated admitted input bam"
+assert_file_content "$mutation_input.bai" "mutated admitted input bai"
+assert_file_content "$mutation_output_dir/sample_input_mutation.markdup.bam" \
+    "fake duplicate-marked bam"
+assert_file_content "$mutation_output_dir/sample_input_mutation.markdup.bam.bai" \
+    "fake bam index"
+assert_file_content "$mutation_metrics_dir/sample_input_mutation.markdup.metrics.txt" \
+    "fake picard metrics"
+assert_file_content "$mutation_root/unrelated.keep" "unrelated bytes"
+assert_contains "$mutation_output" "Picard MarkDuplicates output details:"
+assert_no_recovery_artifacts "$mutation_root"
 
 printf 'All step_04 Picard MarkDuplicates smoke tests passed.\n'
