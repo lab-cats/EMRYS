@@ -102,8 +102,50 @@ second functional-owner migration.
 
 ## Completion record
 
-Selected as the sole active migration review from clean, published,
-local/upstream/live-remote-equal definition checkpoint
-`f88f56e2b51a8af9dde558af6ffb6c6ca148f05e`. No architecture finding is
-recorded yet, no later review or migration card is selected, and no
-executable/test file changed or ran.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `032e4fb72998d479001a21561207fba2d327b386`.
+
+- **High — ambient reference import and moved-test discovery needed explicit
+  owners:** replace only Step `05`'s ambient import with the proven Step-`00c`
+  private exact-file bridge to unchanged public
+  `scripts/reference_provenance.py`. Reuse module identity
+  `_norad_reference_provenance`; validate exact file, exception type, and all
+  three parser callables; preserve foreign/incomplete caches; remove only an
+  owned failed partial; and make no `sys.path` change. Keep report/BAM paths on
+  repository-root `parents[4]`. The moved Python test uses root `parents[3]`,
+  privately exact-loads the unchanged root roster oracle, and owns reference-
+  bridge consumer tests. The public reference owner/test does not change.
+- **High — exact cutover ceiling confirmed:** one atomic direct cutover is five
+  moves plus ten updates: Make, artifact producer mapping, artifact path/hash
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  neutral BAM-helper caller/cache matrix, coverage row, and literal Make
+  fixture. The moved shell test uses `SCRIPT_DIR/../../..` and final producer/
+  job paths. Both final shell assets become explicit static/smoke inputs. An
+  eleventh update, sixth move, or different moved-file edit reopens review.
+- **Medium — projected native and artifact evidence frozen:** final producer
+  is `18,920` bytes / `596` lines /
+  `e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`;
+  validator `12,584` / `334` /
+  `f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`;
+  and job `5,383` / `167` /
+  `3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
+  All remain mode `0644`. Step `05` artifact evidence changes only to the final
+  producer path and first hash; evidence ID, three artifact identities,
+  schemas, contents, ordering, reconciliation, consumers, and meaning stay
+  fixed. Coverage renames the validator row while preserving target rates,
+  every non-target row, and global covered-count floors.
+- **Accepted architecture and rollback:** the live DAG leaves only Step `05`
+  eligible after both direct predecessors migrated; Step `06` remains blocked,
+  uncreated, and unselected. All supported callers are repository-owned and
+  fit one direct cutover, so no wrapper, alias, duplicate, package, descriptor,
+  schema, helper move, or second owner is justified. Roll back documentation,
+  then the five-move/ten-update cutover with Make/oracle and artifact path/hash/
+  assertion together, then any reliability baselines in reverse order.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. That expected-only result is not green; no architecture-
+  review-caused finding remains.

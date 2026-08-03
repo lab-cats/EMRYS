@@ -48,8 +48,8 @@ Step `05` as the smallest next JIT unit but does not select it.
   `a2d748f064139b0ed6c2f3c6f0664f445acf83689d379b0787d4f1b2b247a8b6`
   and validator
   `9f24713234b0b2ec35d9fd424d8a590334c8071d15078f4095faaf4417e232c4`.
-- Proposed owner cutover is five moves plus the same ten explicit integration
-  owners used by the adjacent BAM stages: `Makefile`,
+- Architecture-reviewed owner cutover is exactly five moves plus ten explicit
+  integration owners: `Makefile`,
   `scripts/build_artifact_index.py`, `tests/test_artifact_adapters.py`,
   `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
@@ -57,15 +57,28 @@ Step `05` as the smallest next JIT unit but does not select it.
   `tests/libraries/test_validation_report.py`,
   `tests/libraries/test_bam_validation.py`,
   `tests/baselines/python_coverage.json`, and
-  `tests/fixtures/public_cli_contracts/make_target_expansions.json`.
-  Architecture review must prove the complete caller/reference-helper set and
-  exact logical-file ceiling before execution planning.
-- Production edits are limited to final self/delegation paths, final-depth
-  private loaders, and replacing the validator's ambient
-  `import reference_provenance` with a private exact-file bridge to unchanged
-  public `scripts/reference_provenance.py`. Architecture review must decide the
-  exact bridge and projected hashes; no package import, `PYTHONPATH`, helper
-  move, or reference-owner redesign is permitted without a recorded finding.
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. Exact
+  tracked-path and basename searches prove no eleventh integration owner; the
+  public reference-provenance owner/test remain unchanged. An eleventh update
+  or sixth move reopens architecture review.
+- Production edits are exactly: replace the producer usage path; change both
+  validator repository roots from `parents[1]` to `parents[4]`; replace ambient
+  `import reference_provenance` with the Step-`00c`-pattern private exact-file
+  bridge named `_norad_reference_provenance` to unchanged public
+  `scripts/reference_provenance.py`; and replace the scheduler child path. The
+  bridge validates exact `__file__`, `ProvenanceError`, `parse_fasta`,
+  `parse_fai`, and `parse_dict`, preserves foreign/incomplete caches, removes
+  only its owned partial module, mutates no `sys.path`, and exits `2` with the
+  owned diagnostic when load fails. No package import, `PYTHONPATH`, helper
+  move, reference-owner redesign, or other production edit is permitted.
+- Projected final native values after only those reviewed path/loader edits are
+  producer `18,920` bytes / `596` lines / SHA-256
+  `e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`,
+  validator `12,584` bytes / `334` lines / SHA-256
+  `f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`,
+  and job `5,383` bytes / `167` lines / SHA-256
+  `3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
+  Any production-hash difference reopens architecture review.
 - Preserve producer CLI/help, exact `<bam>.bai` and FASTA/FAI/DICT admission,
   GATK/samtools/Java argument-override/PATH/`JAVA_HOME` resolution, execute-only
   version checks, side-effect-free dry-run, run-token names, project-storage
@@ -90,6 +103,16 @@ Step `05` as the smallest next JIT unit but does not select it.
   public `scripts/reference_provenance.py` after movement. Add no package
   identity, wrapper, alias, `PYTHONPATH`, public helper API, or helper behavior
   change.
+- The moved shell test changes only its repository root to
+  `SCRIPT_DIR/../../..` and producer/job targets to final paths before
+  reliability additions. The moved Python test changes its root to
+  `parents[3]`, exact-loads unchanged root
+  `tests/validation_roster_expectations.py` under a private test identity, and
+  owns the new reference-bridge cache/path/failure coverage. The central BAM-
+  helper matrix changes the Step `05` path, isolates
+  `_norad_reference_provenance` instead of ambient `reference_provenance`, and
+  removes its obsolete dummy ambient injection. No change to
+  `tests/test_reference_provenance.py` is warranted.
 - Preserve scheduler mode/directives, submit-directory fallback, exported
   `/tmp`, sample/input/reference/output defaults, tolerated samtools module
   load, fixed default GATK/samtools paths with overrides, Java override/home/
@@ -98,7 +121,10 @@ Step `05` as the smallest next JIT unit but does not select it.
   Bash `3.2` empty-array defect. Reliability review must disposition stale
   output, missing/unusable tool, module, version, and child states without
   hardening them.
-- `STEP_PRODUCERS["05"]` changes only to the final producer path. Preserve
+- `STEP_PRODUCERS["05"]` changes only to final path
+  `src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh`
+  with projected hash
+  `e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`. Preserve
   artifact status, evidence ID, Git projection, three public Step `05` artifact
   identities, schemas, contents, ordering, reconciliation, consumers, and
   scientific meaning. Architecture review must require an exact final producer
@@ -237,7 +263,7 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03I` documentation checkpoint `c6814e0`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no Step `06` or later owner is preloaded.
+Not selected. Architecture review is complete in the commit containing
+`REVIEW-ARCH-03J`; reliability and usability remain unselected in `TODO`. No
+executable/test path changed, no computational test ran, and no Step `06` or
+later owner is preloaded.

@@ -3593,3 +3593,69 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings and no selection-caused path, lifecycle, dependency,
   cycle, orphan, anchor, or diagram finding. The expected-only result remains
   nonpassing and is not called green.
+
+## 2026-08-03T06:57:10-0400 — REVIEW-ARCH-03J completed
+
+- **Live-DAG and placement decision:** against clean, published, equal
+  selection checkpoint `032e4fb72998d479001a21561207fba2d327b386`, confirm
+  Step `05` is the sole eligible unmigrated identity. Both direct predecessors
+  are final-owner migrated; Step `06` remains blocked, uncreated, and
+  unselected. The frozen source/test homes and three mode-`0644` native asset
+  classes exactly match `SOURCE_TOPOLOGY.md`; no descriptor or package is part
+  of this migration.
+- **High finding — ambient reference import cannot survive movement:** retain
+  unchanged public `scripts/reference_provenance.py` and copy the proven Step-
+  `00c` private exact-file bridge shape into the moved Step `05` validator.
+  Reuse `_norad_reference_provenance`; resolve from repository-root
+  `parents[4]`; validate exact file, `ProvenanceError`, and all three parser
+  callables; preserve foreign/incomplete cache entries; remove only an owned
+  failed partial; emit the owned exit-`2` diagnostic; and mutate no `sys.path`.
+  Keep report and BAM exact-file roots on `parents[4]` with their unchanged
+  neutral owners. No public import, `PYTHONPATH`, helper move, or API redesign
+  is required.
+- **High finding — moved direct-test discovery must be explicit:** shell root
+  becomes `SCRIPT_DIR/../../..` and its producer/job paths become final. Python
+  root becomes `parents[3]`; replace ambient root-roster import with a private
+  exact-file load of unchanged `tests/validation_roster_expectations.py`.
+  Consumer-specific reference-bridge cache/path/failure tests stay in that
+  moved owner. Update the central BAM-helper caller/cache matrix to final Step
+  `05`, isolate `_norad_reference_provenance`, and remove its now-obsolete dummy
+  ambient reference module. Public `tests/test_reference_provenance.py` remains
+  unchanged.
+- **Exact cutover ceiling:** tracked basename/path and semantic-consumer
+  searches prove one direct atomic cutover of five moves plus ten updates:
+  `Makefile`, artifact producer mapping, artifact path/hash assertion, public
+  CLI, SLURM, validation roster, validation-report map, BAM-helper matrix,
+  coverage row, and literal Make fixture. Final producer and job become exact
+  static/smoke inputs. No unmovable caller, wrapper, alias, symlink, duplicate,
+  package, descriptor, schema, or eleventh integration owner exists; any sixth
+  move or eleventh update reopens architecture review.
+- **Projected native evidence:** reviewed path/loader-only transforms project
+  producer `18,920` bytes / `596` lines /
+  `e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`,
+  validator `12,584` / `334` /
+  `f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`,
+  and job `5,383` / `167` /
+  `3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
+  All remain mode `0644`; a different production hash requires re-review.
+- **Artifact, coverage, documentation, and rollback decisions:** change Step
+  `05` implementation evidence only to final producer path and projected first
+  hash; retain its evidence ID, three public artifact identities, schemas,
+  contents, ordering, reconciliation, consumers, and scientific meaning. Move
+  the validator coverage row while retaining target rates, every non-target
+  row, and global covered-count floors. Batch contract/current topology,
+  operational commands, impacted neutral/reference/upstream owner routes,
+  lifecycle links, and owner README at migration close; no diagram changes are
+  proposed because neither DAG nor public flow changes. Roll back docs, then
+  atomic cutover with Make/oracle and artifact path/hash/assertion together,
+  then reliability baselines in reverse order.
+- **Review evidence boundary:** this was a read-only committed-time pass by the
+  same campaign agent; independent authorship is not claimed. No executable,
+  test, harness, dependency, runtime, scheduler, cluster, production,
+  scientific-review, or biological evidence changed or ran. Reliability,
+  usability, and migration remain unselected.
+- **Documentation gate:** `git diff --check` passes. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no architecture-review-caused path, lifecycle,
+  dependency, cycle, orphan, anchor, or diagram finding. The expected-only
+  result remains nonpassing and is not called green.
