@@ -6078,3 +6078,44 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   Complete status/name-status review, publish the separate documentation close,
   and prove clean local/upstream/live-remote equality before any next JIT
   selection.
+
+## 2026-08-03T18:04:00-0400 — MIG-03O and reviews defined
+
+- **Verified parent and fresh branch:** MIG-03N documentation close
+  `68fd2a99d53d9fd2c9b9dcf3fb626c373d3378ea` was clean,
+  tracked/untracked-empty, recovery/index-lock-free, and equal across local
+  `HEAD`, configured upstream, and live remote. The requested fresh branch is
+  `codex/mig-03o-assemble-scientific-review-evidence-package`; exact local and
+  remote collision checks found no prior branch of that name.
+- **Live-DAG decision:** the frozen fourteen-owner identity/topology roster has
+  exactly one unmigrated functional owner,
+  `assemble_scientific_review_evidence_package`. Its complete Step `08`
+  three-output and Step `09` six-output required-artifact predecessors are
+  migrated. Numeric alias `09c` did not select it; the direct artifact edges
+  and final-tree placement did. No later owner or final-audit package was
+  created or preloaded.
+- **Definition evidence:** candidate native assets are the `159,620`-byte,
+  `4,533`-line mode-`0644` Python implementation and `5,403`-byte, `200`-line
+  mode-`0755` shell launcher. Candidate owner-local protection is the direct
+  Python test, shell test, and fixture builder. The two public examples and
+  thirteen evidence-schema TSVs remain architecture questions rather than
+  silently assumed moves. Exact imports/callers include migrated Step `08`/`09`
+  private loaders, artifact indexing, run-summary science normalization,
+  independent goldens, fixtures/tests, Make/public CLI literals, coverage, and
+  documentation; architecture must prove the exact ceiling.
+- **Sequential boundary:** define only unselected MIG-03O and unselected
+  architecture → reliability → usability reviews. Architecture owns exact
+  asset/caller/private-loader/artifact/run-summary/report/coverage/rollback
+  placement; reliability owns transaction/input/state/import/recovery oracles;
+  usability owns final commands, choices, preservation, provenance, and
+  evidence language. No card is selected in this definition checkpoint.
+- **Evidence and safety ceiling:** preserve the thirteen-output transaction,
+  summary-last publication, input binding, review/evidence-state gates,
+  provisional exploratory status, reserved biological-state rejection, and
+  all characterized recovery/import defects without blessing or fixing them.
+  Add no package, wrapper, compatibility copy, descriptor, schema/state/policy
+  redesign, dependency action, scheduler/cluster/production work, scientific
+  review, biological claim, or future package.
+- **Minimal definition validation:** run `git diff --check` only. Publish and
+  prove the definition checkpoint clean/upstream/live-remote-equal before
+  selecting architecture alone.

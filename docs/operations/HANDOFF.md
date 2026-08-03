@@ -7,12 +7,12 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/mig-03n-rank-cohort-candidates-with-paired-cmh`
+  `codex/mig-03o-assemble-scientific-review-evidence-package`
 - Package base:
-  `1966d03a9906f1fe8afbe21d8373d877569182ad`
+  `68fd2a99d53d9fd2c9b9dcf3fb626c373d3378ea`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published repository-health
-  documentation close `57d7ea4f84d117dcca3586c9e5e4a32a6e69b63e`.
+  exact SHA from live Git. Its frozen parent is published MIG-03N
+  documentation close `68fd2a99d53d9fd2c9b9dcf3fb626c373d3378ea`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -57,27 +57,25 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   upstream/live-remote-equal. MIG-03N runtime/input `fd015e4`, publication
   order `3828496`, signal/concurrency `7aced51`, validator `1ba3001`, and
   scheduler `d35b674` test baselines plus atomic executable/test checkpoint
-  `50e1bb3` are published and local/upstream/live-remote-equal.
-- Current package: completed
-  [`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md),
-  after completed
-  [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
-  and [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
-  plus completed
-  [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md).
-  No bounded migration/review card is selected. Step `09c` and every later
-  migration/review card remain uncreated; the active program remainder stays
-  frozen.
-- Package type at this checkpoint: documentation-only MIG-03N lifecycle
-  close. It adds the adjacent owner README, repairs canonical final paths and
-  lifecycle links, records exact evidence and preserved defects, and moves the
-  card to `COMPLETED` without changing an executable, test, configuration,
-  dependency, schema, fixture, report template, scheduler, cluster, or
-  production surface.
-- Remote publication and upstream equality: executable checkpoint `50e1bb3` is
-  verified local/upstream/live-remote-equal. Publish and prove the
-  documentation tip containing this handoff equal before any later JIT
-  selection. The configured `origin` is
+  `50e1bb3` and documentation/lifecycle close `68fd2a9` are published and
+  local/upstream/live-remote-equal.
+- Current package: unselected
+  [`MIG-03O`](../tasks/TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
+  with sequential unselected
+  [`REVIEW-ARCH-03O`](../tasks/TODO/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md)
+  → [`REVIEW-REL-03O`](../tasks/TODO/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md)
+  → [`REVIEW-UX-03O`](../tasks/TODO/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md).
+  No bounded migration/review card is selected. No later owner or final-audit
+  package is created or preloaded; the active program remainder stays frozen.
+- Package type at this checkpoint: documentation-only MIG-03O and review-card
+  definition from a read-only live-DAG and caller refresh. No executable, test,
+  configuration, dependency, schema, fixture, report template, scheduler,
+  cluster, production, scientific-review, or biological surface changed or
+  ran.
+- Remote publication and upstream equality: parent `68fd2a9` is verified
+  local/upstream/live-remote-equal. Publish and prove the definition tip
+  containing this handoff equal before selecting architecture alone. The
+  configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -1077,10 +1075,10 @@ Python-environment symlink remains removed.
 ## Immediate resume point
 
 MIG-03N is complete after all three reviews, five published test-only
-checkpoints, published/equal executable checkpoint `50e1bb3`, and the
-documentation/lifecycle close containing this handoff. No bounded migration/
-review card is selected. Step `09c` and later migration/review cards remain
-uncreated, not preloaded; the active program remainder stays frozen.
+checkpoints, published/equal executable checkpoint `50e1bb3`, and published/
+equal documentation close `68fd2a9`. The fresh direct required-artifact DAG
+leaves only `assemble_scientific_review_evidence_package` unmigrated; both
+Step `08` and Step `09` predecessor transactions are migrated.
 
 The first exact executable-boundary gate required network metadata after a
 sandboxed DNS failure. Its network-enabled rerun passed static, shell,
@@ -1092,11 +1090,12 @@ the exact documentation gate passes. The final exact aggregate rerun passes
 all lanes with summary status `0` in `197.374s`; it does not relabel the
 earlier run.
 
-Before selecting another JIT unit, prove this close clean and equal across
-local `HEAD`, configured upstream, and live remote, then refresh the direct
-required-artifact DAG from the final tree. Do not infer the next owner from a
-numeric stage name and do not select `CONCURRENCY-03`, `TASK-EPIC-01`, or the
-frozen program remainder as part of this close.
+Unselected MIG-03O and its architecture, reliability, and usability reviews
+are now defined from that evidence. Publish and prove this definition clean and
+equal across local `HEAD`, configured upstream, and live remote, then select
+only `REVIEW-ARCH-03O`. Do not run executable/test/configuration work in the
+definition or select reliability, usability, migration, `CONCURRENCY-03`,
+`TASK-EPIC-01`, the frozen program remainder, or a final-audit package.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
@@ -1265,8 +1264,9 @@ reliability review is complete at `f0160c4`; usability is complete at
 `c6c4712`. MIG-03N is complete through published test checkpoints `fd015e4`,
 `3828496`, `7aced51`, `1ba3001`, and `d35b674`, published/equal executable
 checkpoint `50e1bb3`, and the documentation/lifecycle close containing this
-handoff. Step `09c` migration and later owner cards remain uncreated and
-unselected; the next eligible unit must be determined from a fresh live-DAG
-refresh after publication/equality proof.
+handoff. That close left Step `09c` migration and later owner cards uncreated.
+The fresh live-DAG refresh now defines only unselected MIG-03O with its
+sequential architecture, reliability, and usability reviews; no later owner or
+final-audit package is created or preloaded.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.
