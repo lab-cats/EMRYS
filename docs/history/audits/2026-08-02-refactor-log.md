@@ -3011,3 +3011,73 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   hash/assertion changes together. Git rollback never deletes, restores, or
   authenticates runtime evidence, production data, locks, logs, or recovery
   artifacts.
+
+## 2026-08-03T05:23:22-0400 — MIG-03I and sequential reviews defined
+
+- **Verified definition parent:** `MIG-03H` documentation/lifecycle close
+  `ef990c892626ba720b79b8998a783cabf2360cab` was clean, tracked/untracked
+  empty, published, and equal across local `HEAD`, configured upstream, and the
+  server-acknowledged remote-tracking ref, with `0/0` divergence. No recovery,
+  rebase, merge, cherry-pick, or index-lock state and no mutable-lane collision
+  was present.
+- **Live-DAG decision:** only `mark_BAM_duplicates_with_Picard` is eligible.
+  Its sole direct artifact predecessor, migrated `construct_canonical_BAM`, is
+  complete; `split_N_cigar_reads_with_GATK` still requires Step `04` and is not
+  eligible. Define only `MIG-03I` and `REVIEW-ARCH-03I` → `REVIEW-REL-03I` →
+  `REVIEW-UX-03I`, all unselected in `TODO`. No Step `05` or later owner/review
+  card is created or preloaded.
+- **Frozen identity and native provenance:** semantic stage identity is
+  `mark_BAM_duplicates_with_Picard`, machine key
+  `norad.stage.mark_BAM_duplicates_with_Picard.v1`, alias `04`, final source
+  home `src/norad/stages/mark_BAM_duplicates_with_Picard/`, and mirrored test
+  home `tests/stages/mark_BAM_duplicates_with_Picard/`. Mode-`0644` producer,
+  validator, and job total `22,336` bytes and `679` lines, with SHA-256 values
+  `cd1b52c2e2a2ba1a5de93efd1b32c11f753616b28f527567780d42fe5b88aa41`,
+  `8b1a4bf54731281c5636d16a27292589864a446d23e1d3b459043ea30b3152a6`,
+  and `c0be74fc58b8ef343aaa48d62f9bc118ea08e652d3f28ba07b3c744295baa684`.
+  The two mode-`0644` direct-test hashes are
+  `c92426b4e7594795e5f6a3b3f00c1174418aa870b17ffc5d576f0f7bc63283a7`
+  and `e3ed5075abf29b3715b4f2dfa0ecbf95f76f4f079419083dbcd7c9985c4b77d6`.
+- **Candidate architecture boundary:** propose exactly five moves plus ten
+  caller/harness updates. The Step `04`-specific tenth update is the independent
+  neutral BAM-helper caller matrix; all other path owners mirror the preceding
+  owner cutover pattern. Proposed path-only producer, dual-loader validator,
+  and job hashes are
+  `b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`,
+  `17a541e7b9d9822df5de0721747187621035f0dae7aaa0f1a35995f727bfb178`,
+  and `4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`.
+  Architecture review must confirm the full fifteen-logical-file ceiling,
+  moved-test roots/imports, artifact assertion, and no-wrapper decision before
+  executable planning.
+- **Reliability risks reserved for review:** preserve, do not approve, direct-
+  final Picard BAM/metrics writes, quickcheck-before-index, silent replacement,
+  and absent lock/stage/no-clobber/stable-input recheck/receipt/rollback/all-or-
+  none transaction. Controlled Picard, quickcheck, index, empty-output, and
+  post-check faults must disposition partial/new/prior BAM/BAI/metrics bytes.
+  Scheduler review must cover submit-CWD, strict modules, `PICARD`, Java
+  override/`JAVA_HOME`/PATH/version behavior, samtools PATH, exported `/tmp`,
+  tolerated module listing, dry-run logs, Bash `3.2`, unset-`JAVA_HOME`, child
+  exits, and stale-three-file false success. Validator review must preserve
+  both neutral exact loaders, five rows, stable-input behavior, and exit `0`
+  failed evidence versus exit `2` nonpublication.
+- **Coverage/artifact/evidence boundary:** starting Step `04` validator coverage
+  is `144/155` lines and `33/42` branches; global coverage is `9508/11677`
+  lines and `3331/4756` branches. Only implementation producer path/hash may
+  change; four Step `04` public artifact identities, schemas, contents,
+  ordering, consumers, and marked-BAM meaning remain fixed. No executable/test,
+  Make, fixture, artifact, coverage, dependency, runtime, scheduler,
+  production, scientific-review, or biological evidence changed or ran in this
+  definition slice.
+- **Sequential review and stop boundary:** architecture reviews DAG/path/helper/
+  artifact ownership first; reliability reviews exact fault/residue parity
+  second; usability reviews commands, tool/temp selection, diagnostics,
+  preservation, provenance, and rollback third. Independent-in-time passes are
+  by the same campaign agent, so independent authorship will not be claimed.
+  Publish and prove this four-card definition checkpoint equal before selecting
+  only `REVIEW-ARCH-03I`.
+- **Definition gate:** `git diff --check` passed and the complete documentation
+  validator reported exactly the nine inherited `UNREFINED` card-location
+  findings. No MIG-03I/review path, anchor, dependency, cycle, orphan, or other
+  definition-caused finding remains. This expected-only result is still
+  nonpassing, not a green gate and not authority to alter inherited lifecycle
+  state.

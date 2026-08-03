@@ -12,17 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `24ed9b1ec98f63944a963628907a4c310558a420` is clean, published, and
-  local/upstream/live-remote-equal; old-path baseline is `88f4994`.
-- Current package: completed
-  [`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
-  documentation/lifecycle close in the commit containing this handoff.
-- Package type at this checkpoint: canonical documentation, lifecycle, and
-  audit closure only; executable/test state remains checkpoint `24ed9b1`.
-- Remote publication and upstream equality: parent `24ed9b1` is verified
+- Recorded package state: `MIG-03H` documentation/lifecycle close
+  `ef990c892626ba720b79b8998a783cabf2360cab` is clean, published, and
+  local/upstream/live-remote-equal; its executable/test checkpoint is `24ed9b1`.
+- Current package: unselected four-card definition for
+  [`MIG-03I`](../tasks/TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
+  and its sequential architecture, reliability, and usability reviews.
+- Package type at this checkpoint: documentation/card definition only; no
+  executable/test file changed and no computational test ran.
+- Remote publication and upstream equality: parent `ef990c8` is verified
   local/upstream/live-remote-equal. Publish and prove the commit containing this
-  handoff equal before refreshing the live DAG.
+  handoff equal before selecting `REVIEW-ARCH-03I`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -233,9 +233,19 @@ scheduler, cluster, production, scientific-review, or biological evidence was
 created.
 
 [`MIG-03H`](../tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
-and its three reviews are complete in the commit containing this handoff. No
-later owner or review card is selected; refresh the live DAG from this clean,
-published close before defining the next unit.
+and its three reviews are complete at documentation/lifecycle close `ef990c8`.
+The refreshed live DAG leaves only `mark_BAM_duplicates_with_Picard` eligible:
+its sole direct predecessor, `construct_canonical_BAM`, is migrated, while
+Step `05` remains blocked on Step `04`. Only
+[`MIG-03I`](../tasks/TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
+and unselected
+[`REVIEW-ARCH-03I`](../tasks/TODO/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
+→
+[`REVIEW-REL-03I`](../tasks/TODO/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
+→
+[`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
+are defined in the commit containing this handoff. No review or migration is
+selected; Step `05` and every later owner/review card remain uncreated.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -781,7 +791,16 @@ were defined at published checkpoint `0cd872e`; architecture is complete at
 `350223f`, reliability at `1d1de19`, and usability at `76923e1`. `MIG-03H` is
 complete at published test-only baseline `88f4994`, published executable/test
 checkpoint `24ed9b1`, and documentation/lifecycle close in the commit
-containing this handoff. No later owner or review card is selected; refresh the
-live DAG only after this close is published and equal. The
+`ef990c8`. The ninth migration card,
+[`MIG-03I`](../tasks/TODO/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md),
+and unselected reviews
+[`REVIEW-ARCH-03I`](../tasks/TODO/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
+→
+[`REVIEW-REL-03I`](../tasks/TODO/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
+→
+[`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
+are defined in the commit containing this handoff. Step `04` is the only
+eligible unmigrated live-DAG owner; no review/migration is selected, and Step
+`05` and all later cards remain uncreated. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.
