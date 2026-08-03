@@ -91,5 +91,36 @@ silently promote a deferred shared-library decision.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `79af085` and JIT-definition checkpoint `3c6aaf0`.
+
+One high finding makes the temporary reference-provenance dependency fully
+explicit and testable. The final validator uses private identity
+`_norad_reference_provenance`, resolves only the unchanged
+`scripts/reference_provenance.py`, verifies exact `__file__` and the four-symbol
+API (`ProvenanceError`, `parse_fasta`, `parse_fai`, `parse_dict`), removes only
+its owned partial cache on execution failure, preserves foreign cache state and
+`sys.path`, and emits one path-bearing fail-closed diagnostic. The separate
+module has no readiness sentinel, so the migration may not edit it to create
+one. This bridge is accepted only as bounded mixed-layout debt; it does not
+approve a neutral extraction, package identity, or Step `05` change.
+
+A second high finding freezes the atomic executable/test cutover to exactly
+fourteen tracked files: five native/test moves and nine explicit Make,
+artifact, CLI, SLURM, roster, loader, coverage, and literal-expansion callers.
+The moved tests receive only root/path corrections plus later review-approved
+parity oracles. Any fifteenth path reopens architecture review before mutation.
+
+One medium finding routes the non-flat final validator through the existing
+shared path-validating test loader while still-flat validators retain module-
+name imports. Another keeps all scheduler behavior in the independent
+parametrized wrapper suite; only the two direct owner tests move. No wrapper,
+duplicate, package marker, descriptor, schema, runtime discovery, global path
+mutation, or future-owner change is justified.
+
+The no-predecessor DAG eligibility, final homes, artifact identities, direct
+cutover, one-owner invariant, documentation-after-executable order, and reverse
+rollback otherwise pass. The DAG and public artifact flow do not change, so no
+diagram edit is justified. The same campaign agent authored/reconciled and
+reviewed the plan; independent authorship is not claimed. No executable/test
+file changed and no computational test ran.

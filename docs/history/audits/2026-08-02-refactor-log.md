@@ -1576,3 +1576,41 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   agent performs the pass, so independent authorship is not claimed.
   Executable/test mutation and computational, runtime, scheduler, production,
   scientific-review, and biological evidence remain out of scope.
+
+## 2026-08-02T23:42:00-0400 — REVIEW-ARCH-03E completed
+
+- **High finding — exact reference-provenance readiness was underspecified:**
+  the separate `scripts/reference_provenance.py` has no readiness sentinel, and
+  adding one would violate this unit's immutable-owner boundary. Freeze private
+  identity `_norad_reference_provenance`, exact path resolution independent of
+  caller CWD, cached `__file__` verification, and the complete required API
+  `ProvenanceError`, `parse_fasta`, `parse_fai`, and `parse_dict`. Reject wrong
+  or incomplete cached state, remove only an owned partial module after failed
+  execution, preserve foreign state and `sys.path`, and fail before publication
+  with one explicit path-bearing diagnostic.
+- **High finding — the atomic cutover lacked an enumerated file ceiling:**
+  freeze exactly fourteen tracked files: moves of the producer, validator, job,
+  direct shell test, and direct validator test; plus `Makefile`, artifact-index
+  producer evidence, artifact-adapter assertion, public CLI map, SLURM map,
+  validator roster, shared validation-loader roster, coverage baseline path,
+  and literal Make-expansion fixture. A fifteenth executable/test path reopens
+  architecture review rather than expanding the slice silently.
+- **Medium findings — independent owners stay independent:** route the final
+  non-flat validator through the shared suite's existing path-validating exact-
+  file loader while still-flat validators retain module-name import. Keep the
+  Step `00c` adapter and every scheduler behavior in the central parametrized
+  wrapper suite; move only the two direct tests. Do not move or edit the public
+  reference-provenance CLI, its direct test/coverage row, or the Step `05`
+  consumer. The private bridge is bounded mixed-layout debt, not approval of a
+  neutral extraction or package contract.
+- **Accepted architecture and rollback:** the no-predecessor DAG eligibility,
+  final source/test homes, direct no-wrapper cutover, one-owner invariant,
+  artifact identity preservation, documentation-after-executable order, and
+  reverse rollback pass. The production edit ceiling is the producer help
+  self-path, validator owner/dependency resolution and private loader, and job
+  child path. The DAG and artifact flow are unchanged, so no diagram edit is
+  warranted.
+- **Evidence boundary:** this was a separate committed-time adversarial pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

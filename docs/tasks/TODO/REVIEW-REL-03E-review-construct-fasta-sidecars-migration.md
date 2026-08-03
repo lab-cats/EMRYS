@@ -26,7 +26,7 @@ Relocation must preserve and characterize every state without approving it.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03E](../IN_PROGRESS/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md) — Required: reliability review needs the architecture-corrected owner, import, and caller boundary.
+- [REVIEW-ARCH-03E](../COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md) — Required: reliability review needs the architecture-corrected owner, import, and caller boundary.
 
 ## Completion unblocks
 

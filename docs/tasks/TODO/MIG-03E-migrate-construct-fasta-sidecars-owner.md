@@ -51,11 +51,15 @@ target dependency direction, not historical alias order or raw file size.
   IDs, report bytes, dry-run/execute behavior, and publication semantics.
 - Do not move, duplicate, or redesign `scripts/reference_provenance.py` in this
   unit. Replace the moved validator's ambient sibling import with one private
-  caller-local exact-file bridge to that existing path. The bridge must use a
-  private module identity, verify the cached module's exact `__file__`, reject
-  wrong or partial cache state, remove only its owned partial state on failure,
-  preserve foreign state, leave `sys.path` unchanged, and fail with an explicit
-  path-bearing diagnostic before report publication.
+  caller-local exact-file bridge to that existing path. Freeze the private
+  module identity as `_norad_reference_provenance`, resolve the exact repository
+  path independently of caller CWD, and treat `ProvenanceError`, `parse_fasta`,
+  `parse_fai`, and `parse_dict` as the complete required API. The bridge verifies
+  cached `__file__` plus that API, rejects wrong or partial cache state, removes
+  only its owned partial state on execution failure, preserves foreign state,
+  leaves `sys.path` unchanged, and fails before report publication with
+  `ERROR: unable to load NORAD reference-provenance owner at <path>: <type>: <reason>`.
+  No readiness sentinel may be added to the separate owner merely for this move.
 - Keep the public reference-provenance CLI, its direct test and coverage row,
   and the separate Step `05` consumer unchanged. This temporary mixed-layout
   dependency does not approve a library extraction, package identity, or
@@ -104,6 +108,11 @@ target dependency direction, not historical alias order or raw file size.
   inventories must retain explicit basename or semantic-ID path maps and exact
   one-owner equality. Do not introduce recursive runtime discovery, alias-
   derived placement, package identity, installation, or global path mutation.
+- In the shared validation-report suite, route the final Step `00c` validator
+  through the existing path-validating exact-file test loader already used by
+  other non-flat validators. Keep module-name import only for validators whose
+  declared parent remains `scripts/`; do not add a Step-specific loader or test
+  framework.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Add one
   concise owner `README.md` only at the documentation close. It must route
   final commands, FAI/DICT diagnostics, dry-run guarantees, partial-publication
@@ -168,6 +177,21 @@ target dependency direction, not historical alias order or raw file size.
   including Make/static/smoke, literal expansions, artifact provenance, public
   CLI, SLURM roster, validator roster, shared loader, direct tests, and tracked
   coverage path.
+- Freeze that atomic write set to exactly fourteen tracked files: five moves
+  (producer, validator, job, shell test, validator test) plus `Makefile`,
+  `scripts/build_artifact_index.py`, `tests/test_artifact_adapters.py`,
+  `tests/test_public_cli_contracts.py`, `tests/test_slurm_wrapper_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/baselines/python_coverage.json`, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. Any
+  fifteenth executable/test path requires a recorded review correction before
+  mutation.
+- Update the moved shell test's repository-root calculation and native-asset
+  paths and the moved Python test's repository-root calculation and validator
+  path. These are relocation edits; the production diff is limited to the
+  producer help self-path, both validator owner/dependency resolutions, the
+  private reference-provenance loader, and the scheduler delegated child path.
 - Extend old/final parity only where sequential reviews identify a missing
   named behavior. Measure coverage and run the complete applicable local gate
   once on final executable state at the card boundary.

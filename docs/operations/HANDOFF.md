@@ -12,18 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `MIG-03E` definition checkpoint
-  `3c6aaf0b048da9dc813cd1e4f0157b2148ceff47` is clean, published, and
-  local/upstream/live-remote-equal; its frozen parent is `5259acb`.
-- Current package: selection of
-  [`REVIEW-ARCH-03E`](../tasks/IN_PROGRESS/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md)
-  for one read-only architecture pass. Reliability, usability, and migration
-  remain unselected in `TODO`.
-- Package type at this checkpoint: lifecycle/status documentation only; no
-  executable/test file changed and no review finding is claimed yet.
-- Remote publication and upstream equality: parent `3c6aaf0` is verified
-  local/upstream/live-remote-equal. The commit containing this selection must
-  be published and proved equal before the architecture pass begins.
+- Recorded package state: architecture-review selection checkpoint
+  `79af0852b7ebf268c088d361e5d0b453ac09ee7b` is clean, published, and
+  local/upstream/live-remote-equal; its JIT definition is `3c6aaf0`.
+- Current package: completed read-only
+  [`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md).
+  Reliability, usability, and migration remain unselected in `TODO`.
+- Package type at this checkpoint: architecture-review documentation only; no
+  executable/test file changed and no computational evidence was created.
+- Remote publication and upstream equality: parent `79af085` is verified
+  local/upstream/live-remote-equal. The commit containing this completion must
+  be published and proved equal before reliability-review selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -542,9 +541,8 @@ documentation/lifecycle close `f9d6381`. The fourth JIT card,
 is complete at published executable/test checkpoint `12f9be5` and
 documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
 [`MIG-03E`](../tasks/TODO/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
-and its architecture, reliability, and usability review cards are defined;
-only the architecture review is selected. No later migration or review card is
-created.
+and its architecture, reliability, and usability review cards are defined; the
+architecture review is complete. No later migration or review card is created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -567,11 +565,11 @@ and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
 are complete. `MIG-03D` is complete at published executable/test checkpoint
 `12f9be5` and documentation/lifecycle checkpoint `5259acb`. `MIG-03E` and
-[`REVIEW-ARCH-03E`](../tasks/IN_PROGRESS/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md),
+[`REVIEW-ARCH-03E`](../tasks/COMPLETED/REVIEW-ARCH-03E-review-construct-fasta-sidecars-migration.md),
 [`REVIEW-REL-03E`](../tasks/TODO/REVIEW-REL-03E-review-construct-fasta-sidecars-migration.md),
 and
 [`REVIEW-UX-03E`](../tasks/TODO/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
-are JIT-defined; only architecture review is selected. Publish this selection
-checkpoint before performing that read-only pass. No later owner is selected.
-The unsliced `PROGRAM-01`
+are JIT-defined; architecture review is complete. Publish this completion
+checkpoint before selecting reliability review. Usability, migration, and any
+later owner remain unselected. The unsliced `PROGRAM-01`
 remainder and unrelated roadmap remain preserved and out of scope.
