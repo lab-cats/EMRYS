@@ -29,7 +29,7 @@ caller-CWD/module behavior, or an undiscoverable owner.
 
 ## Completion unblocks
 
-- [MIG-03F](../TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03F](../IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 

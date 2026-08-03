@@ -2123,3 +2123,19 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, dependency, runtime tool, scheduler, production, scientific-review, or
   biological evidence changed or ran.
+
+## 2026-08-03T01:13:49-0400 — MIG-03F selected
+
+- **Selection:** move only `MIG-03F` to `IN_PROGRESS` and repair its reciprocal
+  lifecycle/status links after three-review-complete checkpoint `a8d760b` was
+  clean, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch. No downstream or later owner is selected or preloaded.
+- **Execution boundary:** task-specific planning and old-path baseline remain
+  documentation/evidence slices before executable mutation. Then publish one
+  exact five-file neutral-helper checkpoint and one exact five-move/ten-update
+  owner checkpoint with minimum slice checks. Run the full applicable gate once
+  at the assembled executable card boundary, then batch canonical documentation
+  and lifecycle repair into a separate close. No executable/test mutation,
+  computational test, dependency action, runtime tool, scheduler submission,
+  production input, scientific review, or biological evidence occurred at
+  selection.

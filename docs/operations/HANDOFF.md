@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03E` documentation/lifecycle checkpoint
   `fa79883683b37559dfa90880a3f04a978bbfb530` is clean, published, and
   local/upstream/live-remote-equal; its executable checkpoint is `cd3b547`.
-- Current package: completed
-  [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-  for the `MIG-03F` producer, validator, scheduler, helper-diagnostic,
-  recovery, and maintainer journeys. Migration remains unselected.
-- Package type at this checkpoint: documentation-only usability-review
-  completion; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: usability selection parent
-  `308f02e` is verified local/upstream/live-remote-equal. The commit containing
-  this handoff must be published and proved equal before migration selection.
+- Current package: selected
+  [`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
+  for task-specific planning followed by bounded helper preparation, native
+  owner cutover, card-boundary validation, and documentation close.
+- Package type at this checkpoint: documentation-only migration selection; no
+  executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: three-review-complete parent
+  `a8d760b` is verified local/upstream/live-remote-equal. The commit containing
+  this handoff must be published and proved equal before task-specific planning.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -572,7 +572,7 @@ documentation/lifecycle checkpoint `5259acb`. The fifth JIT card,
 [`MIG-03E`](../tasks/COMPLETED/MIG-03E-migrate-construct-fasta-sidecars-owner.md),
 is complete at published executable/test checkpoint `cd3b547` and
 documentation/lifecycle checkpoint `fa79883`. The sixth JIT unit,
-[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md), and
+[`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md), and
 its architecture, reliability, and usability review cards are JIT-defined; all
 four were unselected at definition checkpoint `ee25492`. Only
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
@@ -580,8 +580,8 @@ is complete, and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 is complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. Migration remains unselected; no downstream or later migration
-card is created.
+is complete. `MIG-03F` alone is selected; no downstream or later migration card
+is created.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -612,14 +612,13 @@ and
 [`REVIEW-UX-03E`](../tasks/COMPLETED/REVIEW-UX-03E-review-construct-fasta-sidecars-migration.md)
 are complete. `MIG-03E` is complete at published executable/test checkpoint
 `cd3b547` and documentation/lifecycle checkpoint `fa79883`.
-[`MIG-03F`](../tasks/TODO/MIG-03F-migrate-construct-canonical-bam-owner.md) is
-unselected;
+[`MIG-03F`](../tasks/IN_PROGRESS/MIG-03F-migrate-construct-canonical-bam-owner.md)
+alone is selected;
 [`REVIEW-ARCH-03F`](../tasks/COMPLETED/REVIEW-ARCH-03F-review-construct-canonical-bam-migration.md)
 and
 [`REVIEW-REL-03F`](../tasks/COMPLETED/REVIEW-REL-03F-review-construct-canonical-bam-migration.md)
 are complete, and
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
-is complete. Publish and prove this completion checkpoint equal before
-migration selection; migration, downstream, and later owners remain unselected.
-The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
-out of scope.
+is complete. Publish and prove this selection checkpoint equal before task-
+specific planning; downstream and later owners remain unselected. The unsliced
+`PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

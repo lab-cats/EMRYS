@@ -344,7 +344,9 @@ migrate either downstream stage.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03E` documentation checkpoint `fa79883`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no later owner is preloaded.
+Selected from clean, published, local/upstream/live-remote-equal three-review-
+complete checkpoint `a8d760bbadcb0164be94ee07d2e433e7d15ba2f0`. Task-specific
+planning, old-path baselines, neutral-helper preparation, native-owner cutover,
+card-boundary validation, and documentation/lifecycle close remain sequential
+bounded slices. No executable/test path changed and no computational test ran
+at selection; no downstream or later owner is preloaded.
