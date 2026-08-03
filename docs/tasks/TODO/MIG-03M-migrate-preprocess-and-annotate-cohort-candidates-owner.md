@@ -249,6 +249,46 @@ defines Step `08` as the smallest next JIT unit but does not select it.
   local-R evidence oracle. Keep public CLI, R, SLURM, validation, neutral report,
   Step `09c` bridge, artifact, and coverage routes explicit rather than adding
   recursive discovery.
+- Final root use directly invokes the mode-`0755` shell at
+  `src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh`;
+  it selects its sibling R program by default. Direct Rscript use is a
+  maintainer/fixture diagnostic, not a production orchestration route. Invoke
+  the mode-`0644` validator from the same owner with an explicit interpreter.
+  From checkout root, create `logs/` before submitting the mode-`0644` job with
+  `sbatch`; explicit Bash is only a local wrapper diagnostic. Arbitrary-CWD
+  shell/validator use makes code, interpreter, Rscript/R program, manifests,
+  Step `07`, annotation, output/QC, native inputs, and report paths absolute.
+  Use absolute Step `07` and annotation paths for stable recorded spelling and
+  validator agreement. Add no installed, public-import, `PYTHONPATH`, legacy,
+  alias, wrapper, or symlink route.
+- Preserve distinct effects. Shell dry-run resolves runtime/program and fully
+  validates/enumerates inputs but invokes no R and creates no output/QC path.
+  Validator dry-run reads/snapshots six inputs, prints five rows, and writes no
+  report; execute needs an existing real report parent and may return `0` with
+  failed rows. The guarded-R runner is local semantic-fixture evidence and an
+  explicit runtime/package failure is not a pass. Scheduler `EXECUTE=0`
+  changes CWD, creates `logs/`, performs tolerated module/Rscript diagnostics,
+  inherits caller R/`renv` startup state, and delegates shell dry-run. It does
+  not install/restore dependencies and is not side-effect-free.
+- Recovery documentation must preserve both split roots, all finals/temps/
+  backups, lock/owner, manifests, annotation, Step `07` receipts/VCFs, selected
+  R runtime/program/package context, unrelated bytes, streams, scheduler
+  records/logs, and checkout/submit CWD before action. Name the controlled exit-
+  `67`/restore-exit-`68` state where sites final is absent but its backup
+  survives while prior input receipt and QC summary are restored and the lock
+  is gone. Never combine attempts, reconstruct a member, remove a foreign lock,
+  trust receipt visibility/hash/count/time or stale scheduler success, or retry
+  the same names. Rule out Step `08` writers and Step `09`/`09c`/artifact
+  readers first. Any separately authorized nonproduction diagnostic retry uses
+  a distinct output-root and QC-root pair.
+- Documentation must keep `legacy_provisional_v1` as compatibility behavior:
+  FWD-like maps to annotation `+` with complemented genomic alleles and REV-
+  like maps to `-` unchanged. It is not validated strand, sense/antisense,
+  variant/editing-site proof, completed scientific review, or biological
+  readiness. Distinguish fake-R orchestration, guarded-real-R semantics,
+  validator failed evidence/non-recomputation, stale scheduler success, native
+  receipt marker, and artifact summary failure marker without promoting any to
+  runtime, production, scientific, or biological proof.
 - Old and final executable/test paths may not coexist. After reviewed
   reliability baselines, apply all eight moves, ten integrations, and exact
   production path/loader edits atomically. Reverse rollback restores
@@ -274,7 +314,7 @@ defines Step `08` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03M](../IN_PROGRESS/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03M](../COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Required: completed architecture, reliability, and usability reviews fix task-specific execution planning.
 
 ## Completion unblocks
 

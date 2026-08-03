@@ -4554,6 +4554,63 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to usability-
   review completion.
 
+## 2026-08-03T11:51:57-0400 — REVIEW-UX-03M completed
+
+- **Reviewed boundary:** clean, published, local/upstream/live-remote-equal
+  selection `a6effa287ac88142aba785c827ab42261954077e` remained the read-only
+  parent. The review changed only cards, current status, and this audit; no
+  executable/test file changed or ran, no R dependency action occurred, and no
+  migration or later owner/review card was selected or created.
+- **Final journey disposition:** root shell use invokes the mode-`0755` final
+  owner path and its sibling R default; direct Rscript is a maintainer/fixture
+  diagnostic. The mode-`0644` validator uses an explicit interpreter. Create
+  checkout-root `logs/` before `sbatch` of the mode-`0644` owner-local job;
+  explicit Bash is not scheduler execution. Arbitrary-CWD shell/validator use
+  makes all code, runtime/program, manifest, Step `07`, annotation, output/QC,
+  native-input, and report paths absolute. Absolute Step `07` and annotation
+  inputs preserve stable recorded spelling. No installed/public-import/
+  `PYTHONPATH`, legacy, alias, wrapper, or symlink route is supported.
+- **Effect and R disposition:** shell dry-run fully validates/resolves and
+  prints the split-root plan while invoking no R and creating no output/QC
+  state. Validator dry-run snapshots six inputs and prints five rows without
+  publishing; execute requires an existing report parent and can return `0`
+  with failed evidence. Guarded R is local semantic-fixture evidence; explicit
+  runtime/package failure is not a pass. Scheduler dry-run changes CWD, creates
+  logs, performs tolerated module/Rscript diagnostics, inherits caller R/
+  `renv` startup, and delegates shell dry-run; it neither restores dependencies
+  nor guarantees current-attempt outputs.
+- **Recovery disposition:** preserve the complete two-root transaction,
+  scratch/backups/lock, upstream/annotation/R identities, unrelated bytes,
+  streams, scheduler evidence, and CWD before action. Exit `67` plus sites-
+  restoration exit `68` leaves the sites final absent with its backup, restores
+  receipt/summary, removes the lock, and creates no marker. Never combine,
+  reconstruct, delete a foreign lock, trust receipt/hash/count/time or stale
+  wrapper success, or retry the same names. Rule out Step `08` writers and
+  Step `09`/`09c`/artifact readers first; a separately authorized diagnostic
+  retry uses a distinct output/QC root pair.
+- **Meaning/evidence disposition:** preserve the complete cohort barrier and
+  `legacy_provisional_v1` compatibility mapping without calling it validated
+  strand, sense/antisense, variant/editing-site proof, scientific review, or
+  biological readiness. Producer, validator, fake-R, guarded-real-R, scheduler,
+  native-receipt, and artifact-summary evidence each retain their narrower
+  meanings and known identity/non-recomputation/stale-output ceilings.
+- **Documentation/findability/rollback:** at migration close add one adjacent
+  README; correct contract status/ownership language; update all impact-
+  directed architecture, inventory, testing, documentation, runbook,
+  troubleshooting, predecessor/consumer, artifact, manifest, local-R,
+  roadmap/handoff, and lifecycle routes; and add the explicit split-root
+  partial/restoration-failure diagnostic. Diagrams remain unchanged. Roll back
+  documentation, cutover, scheduler, validator, signal/concurrency,
+  transaction/recovery, then runtime/input-provenance in reverse. Git rollback
+  never changes runtime evidence, and no compatibility surface is justified.
+- **Evidence and gate:** this same-agent read-only review supplies no
+  independent authorship, R runtime/package, scheduler, cluster, production,
+  scientific-review, provisional-policy, variant/editing-site, or biological
+  evidence. `git diff --check` passes and exact documentation validation
+  retains only the nine inherited `UNREFINED` location findings. The result is
+  status `1`, nonpassing, and not green. Publish and prove this completion
+  equal before selecting migration alone.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection
