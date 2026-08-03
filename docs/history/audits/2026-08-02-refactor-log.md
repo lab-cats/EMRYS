@@ -2569,3 +2569,83 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   deletes runtime/production evidence, locks, logs, or recovery artifacts. No
   executable/test mutation or computational, scheduler, production,
   scientific-review, or biological evidence changed or ran in this plan slice.
+
+## 2026-08-03T03:47:26-0400 — MIG-03G completed
+
+- **Published slice chain:** plan `6a0377b`, test-only baseline `0904faf`, and
+  executable/test checkpoint `2f186dd` were each clean, pushed, and equal across
+  local HEAD, configured upstream, and the live remote before the next slice.
+  The close containing this record is documentation/lifecycle only. No later
+  owner or review card was created or selected.
+- **Old-path baseline:** exactly three test files changed. Shell syntax and the
+  complete direct shell suite passed; the validator reported `8` passes; and
+  scheduler selection `step_02b_bam_qc` reported `9` passes with `103`
+  deselected. The added PATH, quickcheck-`42`, flagstat-`43`, predecessor,
+  marker-mismatch, arbitrary-CWD repeat, post-build mutation, and stale-wrapper
+  oracles preserve exact exits, bytes, streams, unrelated files, and absence of
+  transaction/recovery artifacts. They approve none of the exposed defects.
+- **Atomic cutover:** exactly five files moved and nine callers/harnesses
+  changed. Producer is mode/bytes/lines/hash `0755` / `4,062` / `163` /
+  `92895b2dbd1117e72703e8261a66ce1a7cc34db6000280e23753cd5f9132101c`;
+  validator `0644` / `6,934` / `186` /
+  `fa25aeba0e6bd2e9fd0fc90229590cced4e6f44bb7b83310215500b9fb51fe96`;
+  and job `0644` / `2,139` / `87` /
+  `119e0cc7f8937a03c7e766c60aede204ae743ee735300eceda126333fe51a77c`.
+  Shell test is `0755` / `12,106` / `350` /
+  `03e1234e9e35f705aae25336e0c1b77336f92daf50ad9d671b59cde953bc2a0f`;
+  validator test is `0644` / `6,616` / `196` /
+  `77147a9e0c8822c26a63ac82a874c6dea662109fb771bcc82232908a3ee90b48`.
+  Production edits remain the producer help path, neutral-report root depth,
+  and scheduler child path.
+- **Reviewed-plan omission and decision:** the first moved-validator test run
+  failed collection because its old direct roster-oracle import no longer
+  resolved from the deeper directory. Exact-loading the unchanged
+  `tests/validation_roster_expectations.py` by repository path within that same
+  moved test was the minimum functional relocation fix. It added no logical
+  file, package identity, `PYTHONPATH`, production behavior, or roster change;
+  the rerun passed `8`. The deviation is explicit rather than folded into a
+  false claim that only two moved-test path edits were sufficient.
+- **Minimal final-path acceptance:** producer/job/shell-test syntax, the full
+  moved shell suite, `8` validator tests, `9` scheduler cases, and `12` exact
+  public-CLI/Make/roster/report/artifact assertions passed. Exact searches found
+  one final owner per basename and no live non-documentation legacy source,
+  wrapper, alias, duplicate, symlink, package marker, descriptor, schema,
+  receipt, recovery marker, dependency change, or later-owner preload.
+- **Coverage decision:** the complete serial Python measurement deselected only
+  the intentionally stale documentation assertion and passed `1,113` tests
+  with `17` skips. Step `02b` improved from `102/110` lines and `23/30` branches
+  to `103/110` and `24/30`; global covered counts improved from `9504/11677`
+  and `3327/4756` to `9505/11677` and `3328/4756`. Every non-target row was
+  exact, the baseline equals the measured snapshot, and standalone policy
+  comparison passed without weakening a floor.
+- **Aggregate-gate truth:** the first exact sandboxed gate passed static and
+  stopped on unavailable Bioconductor DNS metadata after preserving the
+  inherited malformed `macos` warning. The network-enabled rerun used the
+  existing project library and installed, restored, deleted, and updated
+  nothing. Static passed in `0.120s`, shell in `85.781s`, guarded R in
+  `364.185s`, and report runtime in `302.007s`. Python reported `1,113` passes
+  and `17` skips before its sole failure listed exactly ten deferred migration
+  links plus nine inherited `UNREFINED` locations. The aggregate is not green.
+- **Preserved risk boundary:** direct-final quickcheck/flagstat writes,
+  mixed-attempt residue, quickcheck status normalization, shallow unused BAI
+  admission, sample/path nonbinding, producer/validator marker mismatch,
+  validator-zero failed rows, and zero-count acceptance remain characterized.
+  Scheduler required-submit-CWD, forced `/tmp`, Bash `3.2` empty-array failure,
+  strict samtools load, tolerated module-list diagnostics, dry-run directory
+  creation, and stale-file false success also remain defects. Step `02b`
+  remains non-gating; producer, validator, and scheduler success are distinct.
+- **Documentation and provenance decision:** add the adjacent README, correct
+  the contract, owner inventory, architecture, coverage owner, documentation
+  ownership, roadmap, handoff, runbook, troubleshooting, card, review backlink,
+  and all ten migration links. Artifact evidence changes only to the final
+  producer path/hash; identities, schemas, contents, ordering, reconciliation,
+  consumers, semantic DAG edges, and evidence status remain unchanged. No
+  diagram edit is warranted.
+- **Close gate, evidence ceiling, and rollback:** the documentation-only gate
+  for this final tree reported exactly the nine inherited `UNREFINED` location
+  findings and no migration-caused failure; that expected-only result is not a
+  passing gate. Reverse the documentation close, `2f186dd`, then `0904faf`;
+  Git rollback never deletes runtime artifacts, evidence files, logs, locks, or
+  recovery state and never restores a duplicate flat owner.
+  No real samtools run, scheduler submission, cluster/production input,
+  dependency action, scientific review, or biological evidence was created.

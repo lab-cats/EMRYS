@@ -3,14 +3,14 @@
 This document records the observed current contract of historical Step `02b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
+is now the implemented native source owner; it remains deliberately without a
+Python package identity.
 
 Historical Step `02b` is classified as an independently runnable evidence
 operation associated with the canonical-BAM stage, not as a peer scientific
-data-transformation stage. Only its contract is colocated here. The current
-executable files remain in `jobs/` and `scripts/` until a separately approved
-migration.
+data-transformation stage. The producer, validator, and scheduler entry point
+are colocated here, with supported commands and recovery boundaries in the
+adjacent [`README.md`](README.md).
 
 ## Responsibility
 
@@ -81,7 +81,7 @@ version, or attempt.
 
 ## Current execution surfaces
 
-[`step_02b_bam_qc.sh`](../../../../scripts/step_02b_bam_qc.sh) is the public
+[`step_02b_bam_qc.sh`](step_02b_bam_qc.sh) is the public
 producer entrypoint. It:
 
 - creates the output directory before deciding between dry-run and execute;
@@ -97,7 +97,7 @@ partial or cross-attempt evidence set, especially when an older sibling file
 already exists. These are preserved current semantics, not a target
 publication design.
 
-[`step_02b_bam_qc.slurm`](../../../../jobs/step_02b_bam_qc.slurm) requires and
+[`step_02b_bam_qc.slurm`](step_02b_bam_qc.slurm) requires and
 changes to `SLURM_SUBMIT_DIR`, creates log and output directories, loads the
 samtools module, delegates to the shell producer, maps `EXECUTE=0` to dry-run
 and `EXECUTE=1` to `--execute`, and rejects other values. After execution it
@@ -107,7 +107,7 @@ producer.
 
 ## Validation interface
 
-[`validate_step_02b_bam_qc.py`](../../../../scripts/validate_step_02b_bam_qc.py)
+[`validate_step_02b_bam_qc.py`](validate_step_02b_bam_qc.py)
 accepts an explicit scope, quickcheck file, flagstat file, and output path. It
 does not receive the source BAM, BAI, samtools identity, or an attempt receipt.
 Validation is dry-run by default; `--execute` publishes
@@ -137,7 +137,8 @@ A content mismatch is represented by a `status=fail` row and does not repair
 the evidence. Missing, unreadable, or unsafe input, an invalid CLI/output
 contract, or unsafe report publication exits with code `2` without publishing
 a new validation report. General report rendering, snapshots, locking, and
-publication are imported from the Step `00a` validator.
+publication are privately exact-loaded from neutral
+[`validation_report.py`](../../libraries/validation_report.py).
 
 ## Consumers
 
@@ -154,16 +155,18 @@ make it a prerequisite for later computation.
 
 ## Protected behavior and evidence
 
-- [`test_step_02b_bam_qc.sh`](../../../../tests/shell/test_step_02b_bam_qc.sh)
-  protects the public CLI, both index-name conventions, dry-run directory side
-  effect, exact paths, silent and nonempty quickcheck success, native flagstat
-  capture, and quickcheck-failure preservation.
-- [`test_validate_step_02b_bam_qc.py`](../../../../tests/test_validate_step_02b_bam_qc.py)
-  protects dry-run, the five checks, malformed/count mismatch evidence, fail-
-  closed missing input, publication, and foreign-lock preservation.
+- [`test_step_02b_bam_qc.sh`](../../../../tests/evidence/collect_canonical_BAM_QC_evidence/test_step_02b_bam_qc.sh)
+  protects the public CLI, both index-name conventions, PATH absence, dry-run
+  directory side effect, exact paths, silent/nonempty success, and the two
+  predecessor-bearing mixed-attempt faults.
+- [`test_validate_step_02b_bam_qc.py`](../../../../tests/evidence/collect_canonical_BAM_QC_evidence/test_validate_step_02b_bam_qc.py)
+  protects dry-run, five checks, marker/count mismatch evidence, arbitrary-CWD
+  repeatability, post-build input mutation, publication, and foreign-lock
+  preservation.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects wrapper execution control, module/CWD/delegation behavior,
-  directory creation, the Bash 3.2 defect, and child failure propagation.
+  directory creation, the Bash 3.2 defect, child failure propagation, and the
+  stale-final false-success defect.
 - [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py),
   [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
   [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
@@ -187,11 +190,12 @@ roadmap and handoff.
   interpretation lives in a separate validator and artifact adapter.
 - Producer success, validator success, and artifact-adapter success are not
   one identical quickcheck contract.
-- Cross-cutting validation-publication code remains owned by the Step `00a`
-  validator, while scheduler runtime bindings remain in the wrapper.
+- Cross-cutting validation-publication code is owned by neutral
+  `src/norad/libraries/validation_report.py`, while scheduler runtime bindings
+  remain in the wrapper.
 
-This inventory assigns the operation to the neutral evidence domain without
-settling its final submodule shape or changing behavior.
+The direct migration implemented this evidence owner without changing its
+public behavior, DAG edges, artifact schemas, or evidence status.
 
 ## Deferred decisions
 

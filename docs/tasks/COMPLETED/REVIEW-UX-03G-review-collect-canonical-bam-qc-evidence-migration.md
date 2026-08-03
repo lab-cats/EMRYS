@@ -29,7 +29,7 @@ undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03G](../IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03G](MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md) — Fully: migration completed after all three reviews closed.
 
 ## Prerequisites
 

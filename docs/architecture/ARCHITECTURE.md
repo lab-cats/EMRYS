@@ -15,11 +15,11 @@ Canonical diagrams:
 Current public workflow entry points use a mixed physical layout. The neutral
 validation-report and BAM-validation libraries, the `construct_STAR_index` job
 and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
-`align_RNA_reads_with_STAR`, and `construct_canonical_BAM` producers,
-validators, and jobs now live under `src/norad/`; remaining workflow entry
-points stay under `scripts/` and `jobs/`. Other colocated functional-owner
-documents under `src/norad/` remain contracts rather than claims that their
-implementations have migrated.
+`align_RNA_reads_with_STAR`, `construct_canonical_BAM`, and
+`collect_canonical_BAM_QC_evidence` producers, validators, and jobs now live
+under `src/norad/`; remaining workflow entry points stay under `scripts/` and
+`jobs/`. Other colocated functional-owner documents under `src/norad/` remain
+contracts rather than claims that their implementations have migrated.
 
 The supported workflow is a directed graph of shared reference inputs,
 per-sample alignment and BAM transformations, non-gating QC/orientation
@@ -50,12 +50,12 @@ the shared snapshot, seven-column rendering/validation, and transactional
 publication protocol used by all thirteen validator entry points. The final
 `construct_STAR_index`, `convert_GTF_to_BED12`,
 `construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`, and
-`construct_canonical_BAM` validators and eight remaining `scripts/` validators
-resolve that exact file through private
-caller-local loaders; no package marker, public Python import identity, install
-step, compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The FASTA-sidecar validator also privately exact-loads the unchanged
-public flat reference-provenance owner. Stage-specific parsing and check rosters
+`construct_canonical_BAM`, and `collect_canonical_BAM_QC_evidence` validators
+and seven remaining `scripts/` validators resolve that exact file through
+private caller-local loaders; no package marker, public Python import identity,
+install step, compatibility wrapper, or `sys.path` mutation is part of the
+current interface. The FASTA-sidecar validator also privately exact-loads the
+unchanged public flat reference-provenance owner. Stage-specific parsing and check rosters
 remain with their functional owners.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the

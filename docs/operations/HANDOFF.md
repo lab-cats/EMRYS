@@ -12,18 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: migration-selection checkpoint
-  `18703e177d066cbe548b7d6091e48143ddce28cb` is clean, published, and
-  local/upstream/live-remote-equal; three-review completion is `7b86a5e`.
-- Current package: task-specific plan for
-  [`MIG-03G`](../tasks/IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-  with exact three-test baseline, fourteen-file cutover, minimal-check, full-
-  gate, separate-close, and rollback boundaries.
-- Package type at this checkpoint: execution-planning documentation only; no
-  baseline ran and no executable/test file changed.
-- Remote publication and upstream equality: parent `18703e1` is verified
-  local/upstream/live-remote-equal. The commit containing this plan must be
-  published and proved equal before the old-path test baseline.
+- Recorded package state: executable/test checkpoint
+  `2f186dde1d7e22aeffe2bd52e8d1dcbbda2211c1` is clean, published, and
+  local/upstream/live-remote-equal; test-only baseline is `0904faf`.
+- Current package: completed
+  [`MIG-03G`](../tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
+  documentation/lifecycle close.
+- Package type at this checkpoint: impact-directed documentation only;
+  executable/test state remains exactly published checkpoint `2f186dd`.
+- Remote publication and upstream equality: parent `2f186dd` is verified
+  local/upstream/live-remote-equal. The commit containing this close must be
+  published and proved equal before selecting another owner.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -33,8 +32,9 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/convert_GTF_to_BED12/`, and
 `src/norad/stages/align_RNA_reads_with_STAR/`, and
 `src/norad/stages/construct_FASTA_sidecars/`, and
-`src/norad/stages/construct_canonical_BAM/`. Their five validators and the eight
-remaining flat validators load the neutral report file without package
+`src/norad/stages/construct_canonical_BAM/`, and
+`src/norad/evidence/collect_canonical_BAM_QC_evidence/`. Their six validators
+and the seven remaining flat validators load the neutral report file without package
 identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar validator also
 uses a private exact-file bridge to unchanged public
 `scripts/reference_provenance.py`. The final Step `02` validator and flat Step
@@ -146,19 +146,50 @@ changes only the producer path and reviewed SHA-256
 No real samtools, scheduler, cluster, production, scientific-review, or
 biological evidence was created.
 
-After `543eb8f` was published and proved equal, the refreshed live DAG exposed
-three eligible owners. Only first canonical identity
-`collect_canonical_BAM_QC_evidence` has `03G` cards, defined at published and
-equal checkpoint `417a2a5`.
+`MIG-03G` published its exact three-test old-path baseline at `0904faf` and its
+five-move/nine-update executable cutover at `2f186dd`. The final owner is
+`src/norad/evidence/collect_canonical_BAM_QC_evidence/`; no legacy source,
+wrapper, alias, package marker, descriptor, schema, receipt, recovery marker,
+or later-owner preload remains. The moved shell suite, `8` validator tests,
+`9` Step `02b` scheduler cases, and `12` targeted inventory/roster/report/
+artifact/Make assertions passed.
+
+Serial coverage passed `1,113` tests with `17` skips and one explicit
+documentation-validator deselection. The final validator measured `103/110`
+lines and `24/30` branches; global coverage measured `9505/11677` lines and
+`3328/4756` branches. Every non-target row remained exact and the standalone
+policy comparison passed.
+
+The aggregate gate was not fully green. Its first sandboxed attempt passed
+static preflight and stopped when guarded R could not resolve Bioconductor
+metadata, also preserving the inherited malformed `macos` warning. The exact
+network-enabled rerun used the existing library and changed no dependency.
+Static, shell, guarded R, and report runtime passed; Python reported `1,113`
+passes and `17` skips before its sole documentation assertion listed exactly
+ten deferred migration links plus nine inherited `UNREFINED` card-location
+findings. This close repairs the ten links. The inherited nine remain an
+expected-only nonpassing condition, never a passing-gate claim.
+
+The producer's mixed-attempt final writes, quickcheck exit normalization,
+producer/validator marker mismatch, and lack of lock/stage/receipt/recovery
+remain characterized defects. So do the scheduler's required submit directory,
+forced `/tmp`, strict samtools load, Bash `3.2` dry-run failure, and stale-file
+false success. Artifact evidence changes only the final producer path and hash
+`92895b2dbd1117e72703e8261a66ce1a7cc34db6000280e23753cd5f9132101c`.
+No real samtools, scheduler, cluster, production, scientific-review, or
+biological evidence was created.
+
+After `2f186dd` was published and proved equal, `MIG-03G` closed without
+selecting another owner.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
-[`MIG-03G`](../tasks/IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-alone is selected with its exact remaining slices frozen in the active card. No
-Step `03`, Step `04`, or later owner/review card is created or selected.
+[`MIG-03G`](../tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
+is complete. No Step `03`, Step `04`, or later owner/review card is created or
+selected.
 
 ## Active concurrent lanes
 
@@ -632,8 +663,9 @@ and its architecture, reliability, and usability review cards are complete.
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
 closed before helper checkpoint `4726ad1` and executable/test checkpoint
 `13a2748`; documentation/lifecycle close is `543eb8f`. The commit containing
-this handoff defines only the four unselected Step `02b` cards. No other
-downstream or later migration card is created or selected.
+this handoff records completed `MIG-03G` baseline `0904faf`, executable/test
+checkpoint `2f186dd`, and documentation/lifecycle close. No downstream or later
+migration card is created or selected.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -673,18 +705,17 @@ and its reviews
 [`REVIEW-UX-03F`](../tasks/COMPLETED/REVIEW-UX-03F-review-construct-canonical-bam-migration.md)
 are complete. `MIG-03F` is complete at published helper checkpoint `4726ad1`,
 executable/test checkpoint `13a2748`, and documentation/lifecycle close
-`543eb8f`. The next migration card,
-[`MIG-03G`](../tasks/IN_PROGRESS/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md),
+`543eb8f`. The seventh migration card,
+[`MIG-03G`](../tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md),
 and its reviews
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 →
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 →
 [`REVIEW-UX-03G`](../tasks/COMPLETED/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
-are defined at published checkpoint `417a2a5`; architecture and reliability are
-complete and usability is now complete. Only `MIG-03G` is selected; publish and
-prove the plan in the commit containing this paragraph equal before the exact
-three-test old-path baseline. Step `03`, Step `04`, and all later owner cards
-remain unselected. The
+are complete. `MIG-03G` is complete at published test-only baseline `0904faf`,
+published executable/test checkpoint `2f186dd`, and the documentation/lifecycle
+close containing this paragraph. Step `03`, Step `04`, and all later owner
+cards remain unselected and uncreated. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

@@ -373,3 +373,79 @@ only sequence. The accepted close may still report only the nine inherited
 documentation first, cutover second, and baseline third. Git rollback never
 deletes or alters runtime evidence, production data, locks, logs, or recovery
 artifacts.
+
+### Completion evidence
+
+- Published test-only checkpoint `0904faf` changed exactly the direct Step
+  `02b` shell test, direct validator test, and central SLURM suite. Shell syntax
+  and the complete direct shell suite passed; the validator reported `8`
+  passes; and the exact scheduler selection reported `9` passes with `103`
+  unrelated cases deselected. The new oracles preserve PATH-only tool absence,
+  quickcheck exit `42` becoming producer exit `1`, flagstat exit `43`, exact
+  mixed-attempt bytes/streams/residue, producer/validator marker disagreement,
+  arbitrary-CWD dry/execute/repeat, post-build input mutation, and stale-final
+  wrapper false success. These are characterized defects, not approvals.
+- Published executable/test checkpoint `2f186dd` applied exactly five moves and
+  nine caller/harness updates. Final producer mode/bytes/lines/hash is `0755` /
+  `4,062` / `163` /
+  `92895b2dbd1117e72703e8261a66ce1a7cc34db6000280e23753cd5f9132101c`;
+  validator is `0644` / `6,934` / `186` /
+  `fa25aeba0e6bd2e9fd0fc90229590cced4e6f44bb7b83310215500b9fb51fe96`;
+  and intentionally mode-`0644` job is `2,139` / `87` /
+  `119e0cc7f8937a03c7e766c60aede204ae743ee735300eceda126333fe51a77c`.
+  The mode-`0755` shell test is `12,106` bytes / `350` lines /
+  `03e1234e9e35f705aae25336e0c1b77336f92daf50ad9d671b59cde953bc2a0f`;
+  the mode-`0644` validator test is `6,616` / `196` /
+  `77147a9e0c8822c26a63ac82a874c6dea662109fb771bcc82232908a3ee90b48`.
+- The first final-path validator collection exposed one bounded review
+  omission: the moved test's old direct import of
+  `tests/validation_roster_expectations.py` was no longer importable three
+  directories deep. The same moved test now exact-loads that unchanged oracle
+  by final repository path. This required no sixth move, tenth update, package,
+  `PYTHONPATH`, production change, or roster-behavior change. The rerun passed
+  all `8` tests; the deviation is recorded rather than hidden.
+- Minimal final-path acceptance passed producer/job/test syntax, the complete
+  moved shell suite, `8` moved validator tests, `9` Step `02b` scheduler cases
+  with `103` deselected, and `12` explicit public-CLI, Make, roster, shared-
+  report, and artifact assertions.
+- Deterministic serial coverage passed `1,113` tests with `17` skips and one
+  explicit deselection of the already-observed documentation-validator
+  assertion reserved for this close. Final Step `02b` measured `103/110`
+  covered lines and `24/30` branches; global coverage is `9505/11677` lines and
+  `3328/4756` branches. Every non-target row matched the prior baseline exactly,
+  covered-count/rate floors increased or held, and the standalone policy
+  comparison passed.
+- The aggregate gate was not fully green. The sandboxed attempt passed static
+  preflight and stopped because guarded R could not resolve Bioconductor
+  metadata, while preserving the inherited malformed `macos` warning. The
+  network-enabled rerun used the existing project library and installed,
+  restored, deleted, and updated nothing. Static preflight, shell contracts,
+  guarded R, and report runtime passed. Python executed `1,113` passes and `17`
+  skips before its sole failure reported exactly ten migration-caused stale
+  links in this owner contract and the functional inventory plus the nine
+  inherited `UNREFINED` card-location findings. This close repairs the ten;
+  the nine inherited findings remain expected-only nonpassing evidence and are
+  never called a passing gate.
+- Exact inspection found one final owner for every moved basename and no live
+  non-documentation legacy path, wrapper, compatibility copy, alias, symlink,
+  package marker, descriptor, schema, transaction, receipt, recovery marker,
+  dependency change, or later-owner preload. Artifact evidence changes only
+  the producer path and reviewed hash without changing public artifact
+  identities, contents, ordering, schemas, reconciliation, or consumers.
+- Producer direct-final writes, mixed-attempt residue, quickcheck exit
+  normalization, BAI shallowness, sample/path nonbinding, producer/validator
+  marker mismatch, and zero-count acceptance remain characterized. So do the
+  scheduler's required submit directory, forced `/tmp`, Bash `3.2` empty-array
+  dry-run failure, strict samtools load, tolerated module-list diagnostics,
+  dry-run directory creation, and file-existence-only false success. Relocation
+  fixes or blesses none of them.
+- Published rollback points are plan `6a0377b`, test baseline `0904faf`,
+  executable/test checkpoint `2f186dd`, and the commit containing this
+  completion record. Reverse documentation first, owner cutover second, and
+  test baseline third; preserve runtime artifacts and restore no duplicate
+  legacy source.
+
+No real samtools work, scheduler submission, cluster or production input,
+dependency change, scientific review, or biological-readiness evidence was
+created. The public DAG and artifact flow did not change, so no diagram edit
+was warranted.

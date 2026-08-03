@@ -2825,29 +2825,73 @@ Normal tool progress may appear on stderr. For example, samtools sort can emit:
 
 ## Step 02b: BAM QC
 
-Script:
+Implemented owner:
 
 ```bash
-scripts/step_02b_bam_qc.sh
+src/norad/evidence/collect_canonical_BAM_QC_evidence/
 ```
 
-Job:
+The mode-`0755` producer is dry-run by default. From the repository root, both
+direct and explicit-Bash forms require the sample, BAM, and output directory:
 
 ```bash
-jobs/step_02b_bam_qc.slurm
+src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/qc/bam
+
+bash src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/qc/bam
 ```
 
-Outputs:
+Dry-run checks the BAM, one adjacent BAI name, and samtools on `PATH`, prints
+both commands, invokes no samtools process, and creates the output directory.
+After inspection, add `--execute` to either form:
 
 ```bash
+src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/qc/bam \
+  --execute
+
+bash src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir results/qc/bam \
+  --execute
+```
+
+From another CWD, use absolute producer, BAM, and output paths. The first
+command is dry-run; the second executes:
+
+```bash
+/absolute/path/to/norad/src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam /absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir /absolute/results/qc/bam
+
+bash /absolute/path/to/norad/src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh \
+  --sample-id ABE_EV_2 \
+  --bam /absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+  --output-dir /absolute/results/qc/bam \
+  --execute
+```
+
+The native outputs are:
+
+```text
 results/qc/bam/<sample>.quickcheck.txt
 results/qc/bam/<sample>.flagstat.txt
 ```
 
-The structured Step `02b` validator reads those two persisted evidence files:
+The mode-`0644` structured validator reads those persisted files through an
+explicit interpreter. This first command is a no-write dry run:
 
 ```bash
-.venv/bin/python scripts/validate_step_02b_bam_qc.py \
+.venv/bin/python src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py \
   --scope-id ABE_EV_2 \
   --quickcheck results/qc/bam/ABE_EV_2.quickcheck.txt \
   --flagstat results/qc/bam/ABE_EV_2.flagstat.txt \
@@ -2860,7 +2904,7 @@ then create the parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/02b
-.venv/bin/python scripts/validate_step_02b_bam_qc.py \
+.venv/bin/python src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py \
   --scope-id ABE_EV_2 \
   --quickcheck results/qc/bam/ABE_EV_2.quickcheck.txt \
   --flagstat results/qc/bam/ABE_EV_2.flagstat.txt \
@@ -2868,22 +2912,67 @@ mkdir -p results/qc/validation/02b
   --execute
 ```
 
+Repeat that exact execute command to replace the owned report deterministically
+after stable-input rechecks. From another CWD, make the interpreter, validator,
+both evidence inputs, and output absolute; dry-run, execute, and repeat create
+no invocation-directory residue:
+
+```bash
+/absolute/path/to/norad/.venv/bin/python \
+  /absolute/path/to/norad/src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py \
+  --scope-id ABE_EV_2 \
+  --quickcheck /absolute/results/qc/bam/ABE_EV_2.quickcheck.txt \
+  --flagstat /absolute/results/qc/bam/ABE_EV_2.flagstat.txt \
+  --output /absolute/results/qc/validation/02b/ABE_EV_2.validation.tsv
+
+/absolute/path/to/norad/.venv/bin/python \
+  /absolute/path/to/norad/src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py \
+  --scope-id ABE_EV_2 \
+  --quickcheck /absolute/results/qc/bam/ABE_EV_2.quickcheck.txt \
+  --flagstat /absolute/results/qc/bam/ABE_EV_2.flagstat.txt \
+  --output /absolute/results/qc/validation/02b/ABE_EV_2.validation.tsv \
+  --execute
+```
+
+Repeat the second command exactly to prove the same-input replacement journey.
+
+Producer exit `0` is not validator pass. A nonempty zero-exit quickcheck stream
+is preserved by the producer but fails the validator's exact marker row.
+Validator exit `0` can publish `status=fail` rows and does not make this
+non-gating evidence branch a computational prerequisite.
+
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_02b_bam_qc.py
+bash tests/evidence/collect_canonical_BAM_QC_evidence/test_step_02b_bam_qc.sh
+.venv/bin/python -m pytest -q \
+  tests/evidence/collect_canonical_BAM_QC_evidence/test_validate_step_02b_bam_qc.py
+.venv/bin/python -m pytest -q \
+  tests/test_slurm_wrapper_contracts.py -k step_02b_bam_qc
 ```
 
-Dry-run:
+Submit the intentionally mode-`0644` job from the checkout. Slurm must provide
+`SLURM_SUBMIT_DIR`; bind all public variables explicitly. `EXECUTE=0` is the
+dry run:
 
 ```bash
-sbatch jobs/step_02b_bam_qc.slurm
+cd /absolute/path/to/norad
+SAMPLE_ID=ABE_EV_2 \
+BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+OUTPUT_DIR=/absolute/results/qc/bam \
+EXECUTE=0 \
+  sbatch src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm
 ```
 
-Execute:
+Execute changes only the explicit mode:
 
 ```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/step_02b_bam_qc.slurm
+cd /absolute/path/to/norad
+SAMPLE_ID=ABE_EV_2 \
+BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
+OUTPUT_DIR=/absolute/results/qc/bam \
+EXECUTE=1 \
+  sbatch src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm
 ```
 
 Validation checklist:
@@ -2896,7 +2985,13 @@ grep -E "in total|primary|secondary|mapped|properly paired|duplicates" \
   "results/qc/bam/$sample.flagstat.txt"
 ```
 
-Important nuance: the current Step `02b` script creates the requested output directory before dry-run exit. It should not be described as side-effect-free.
+The wrapper forces `TMPDIR=/tmp`, strictly loads samtools `1.19.2`, tolerates
+diagnostics only from `module list`, and creates `logs/` and the output
+directory. Bash `3.2` can fail before producer delegation when expanding the
+empty dry-run argument array. Its execute post-check tests only file existence;
+an exit-`0` child that emits nothing can rediscover stale named predecessors
+and let the job succeed. Preserve both evidence files and all producer/job
+streams before any retry or cleanup decision.
 
 Cluster PATH note: the first Step `02b` cohort attempt failed immediately because `samtools` was not found on `PATH`, despite module output listing `samtools/1.19.2`. The successful rerun prepended the known samtools bin directory:
 

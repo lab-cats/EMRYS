@@ -312,6 +312,9 @@ export PATH="/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin:$PAT
 ```
 
 The Step `02b` cohort rerun succeeded across all six final hardened Step `02` BAMs with that path available.
+The current producer is
+`src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh`;
+do not recreate the removed flat path as a workaround.
 
 ## RSeQC `infer_experiment.py` not found
 
@@ -737,6 +740,52 @@ indexing, or read-group regeneration belongs to separately authorized Step
 `02` execution. Use only the final producer/validator paths in the
 [Step `02` runbook](RUNBOOK.md#step-02-canonical-sort-read-group-tagging-and-bam-indexing).
 
+## Step 02b producer or wrapper leaves a partial, mixed, or stale evidence pair
+
+### Symptom
+
+The producer exits nonzero after changing one named evidence file, or the
+scheduler exits zero even though the quickcheck and flagstat bytes appear to
+come from different attempts. An older sibling or both stale named files may
+remain in place.
+
+### Cause
+
+The producer writes quickcheck and flagstat directly to final paths without a
+lock, stage, backup, receipt, rollback, stable-input recheck, or output-set
+commit marker. Quickcheck failure is normalized to producer exit `1` after its
+combined child diagnostic replaces that final; flagstat failure can follow a
+new quickcheck PASS marker and leave partial flagstat stdout. The wrapper checks
+only that both named files exist, so an exit-`0` child that emits nothing can
+rediscover stale predecessors and report success. These are characterized
+defects, not valid mixed-attempt publication.
+
+### Fix
+
+Preserve both evidence files, unrelated directory entries, producer stdout and
+stderr, scheduler stdout and stderr, job/accounting identity, BAM/BAI identity,
+and available filesystem metadata. There may be no lock, attempt directory,
+backup, receipt, or recovery marker; absence of those paths is not cleanup,
+adoption, or retry authority. Do not delete or rerun the same names until the
+operator establishes which attempt owns each file and records a recovery
+decision.
+
+Use the final validator in dry-run mode to inspect the persisted bytes without
+rerunning samtools:
+
+```bash
+.venv/bin/python \
+  src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py \
+  --scope-id <sample_id> \
+  --quickcheck results/qc/bam/<sample_id>.quickcheck.txt \
+  --flagstat results/qc/bam/<sample_id>.flagstat.txt \
+  --output results/qc/validation/02b/<sample_id>.validation.tsv
+```
+
+Producer or scheduler exit `0` does not prove validator pass. Validator exit
+`0` can print or publish `status=fail` evidence rows; it records disagreement
+and does not repair or gate the workflow.
+
 ## Step 02b structured validation reports BAM-QC disagreement
 
 ### Symptom
@@ -755,7 +804,11 @@ than rerunning samtools.
 
 Follow the [common response](#structured-validation-response). Inspect the
 persisted quickcheck and flagstat files plus their producing job/log. This
-validator reads persisted evidence and does not rerun samtools.
+validator reads persisted evidence and does not rerun samtools. Use only the
+final producer/validator paths in the
+[Step `02b` runbook](RUNBOOK.md#step-02b-bam-qc), and follow the
+[mixed/stale-pair route](#step-02b-producer-or-wrapper-leaves-a-partial-mixed-or-stale-evidence-pair)
+before any same-name retry.
 
 ## Step 03 structured validation reports RSeQC fraction disagreement
 
