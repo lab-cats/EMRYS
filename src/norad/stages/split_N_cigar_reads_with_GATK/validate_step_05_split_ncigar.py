@@ -13,7 +13,7 @@ from typing import Sequence
 # Temporary exact-file bridge; the final owner is src/norad/libraries/validation_report.py.
 _REPORT_MODULE_NAME = "_norad_validation_report"
 _REPORT_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
     / "libraries"
@@ -74,7 +74,7 @@ except Exception as exc:
 
 _BAM_MODULE_NAME = "_norad_bam_validation"
 _BAM_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
     / "libraries"
@@ -129,7 +129,81 @@ def _load_bam_validation() -> object:
     return module
 
 
-import reference_provenance
+# Temporary exact-file bridge; the public owner remains scripts/reference_provenance.py.
+_REFERENCE_MODULE_NAME = "_norad_reference_provenance"
+_REFERENCE_MODULE_PATH = (
+    Path(__file__).resolve().parents[4]
+    / "scripts"
+    / "reference_provenance.py"
+).resolve(strict=False)
+_REFERENCE_PARSER_NAMES = ("parse_fasta", "parse_fai", "parse_dict")
+
+
+def _validated_reference_provenance(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached reference-provenance owner has no valid file path"
+        ) from exc
+    if module_path != _REFERENCE_MODULE_PATH:
+        raise ImportError(
+            f"cached reference-provenance owner resolves to {module_path}, "
+            f"expected {_REFERENCE_MODULE_PATH}"
+        )
+    provenance_error = getattr(module, "ProvenanceError", None)
+    if not (
+        isinstance(provenance_error, type)
+        and issubclass(provenance_error, BaseException)
+    ):
+        raise ImportError(
+            "cached reference-provenance owner has invalid ProvenanceError"
+        )
+    for name in _REFERENCE_PARSER_NAMES:
+        if not callable(getattr(module, name, None)):
+            raise ImportError(
+                f"cached reference-provenance owner has invalid {name}"
+            )
+    return module
+
+
+def _load_reference_provenance() -> object:
+    cached = sys.modules.get(_REFERENCE_MODULE_NAME)
+    if cached is not None:
+        return _validated_reference_provenance(cached)
+    spec = importlib.util.spec_from_file_location(
+        _REFERENCE_MODULE_NAME, _REFERENCE_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError("unable to create an exact-file module specification")
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_REFERENCE_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_reference_provenance(existing)
+    try:
+        spec.loader.exec_module(module)
+        _validated_reference_provenance(module)
+    except BaseException:
+        if sys.modules.get(_REFERENCE_MODULE_NAME) is module:
+            del sys.modules[_REFERENCE_MODULE_NAME]
+        raise
+    return module
+
+
+def _load_reference_provenance_or_exit() -> object:
+    try:
+        return _load_reference_provenance()
+    except Exception as exc:
+        reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+        print(
+            "ERROR: unable to load NORAD reference-provenance owner at "
+            f"{_REFERENCE_MODULE_PATH}: {type(exc).__name__}: {reason}",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from None
+
+
+reference_provenance = _load_reference_provenance_or_exit()
 
 try:
     bam_report = _load_bam_validation()

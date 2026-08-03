@@ -57,7 +57,8 @@ VALIDATOR_PATHS = {
         "validate_step_04_mark_duplicates.py"
     ),
     "validate_step_05_split_ncigar": Path(
-        "scripts/validate_step_05_split_ncigar.py"
+        "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "validate_step_05_split_ncigar.py"
     ),
     "validate_step_06_orientation_outputs": Path(
         "scripts/validate_step_06_orientation_outputs.py"

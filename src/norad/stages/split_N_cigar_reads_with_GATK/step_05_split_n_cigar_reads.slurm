@@ -133,7 +133,7 @@ fi
 
 cmd=(
     bash
-    scripts/step_05_split_n_cigar_reads.sh
+    src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh
     --sample-id "$SAMPLE_ID"
     --input-bam "$INPUT_BAM"
     --reference-fasta "$REFERENCE_FASTA"

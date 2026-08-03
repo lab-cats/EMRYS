@@ -975,7 +975,10 @@ STEP_PRODUCERS = {
         "src/norad/stages/mark_BAM_duplicates_with_Picard/"
         "step_04_mark_duplicates.sh"
     ),
-    "05": "scripts/step_05_split_n_cigar_reads.sh",
+    "05": (
+        "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "step_05_split_n_cigar_reads.sh"
+    ),
     "06": "scripts/step_06_split_bam_by_read_orientation.sh",
     "07": "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh",
     "08": "scripts/step_08_vcf_preprocessing.sh",

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "src/norad/libraries/bam_validation.py"
 BAM_MODULE_NAME = "_norad_bam_validation"
 REPORT_MODULE_NAME = "_norad_validation_report"
+REFERENCE_MODULE_NAME = "_norad_reference_provenance"
 
 
 @dataclass(frozen=True)
@@ -35,13 +36,18 @@ CALLERS = (
         / "src/norad/stages/mark_BAM_duplicates_with_Picard/"
         "validate_step_04_mark_duplicates.py",
     ),
-    Caller("step05", ROOT / "scripts/validate_step_05_split_ncigar.py"),
+    Caller(
+        "step05",
+        ROOT
+        / "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "validate_step_05_split_ncigar.py",
+    ),
 )
 
 
 @contextmanager
 def isolated_module_cache():
-    names = (BAM_MODULE_NAME, REPORT_MODULE_NAME, "reference_provenance")
+    names = (BAM_MODULE_NAME, REPORT_MODULE_NAME, REFERENCE_MODULE_NAME)
     missing = object()
     previous = {name: sys.modules.get(name, missing) for name in names}
     for name in names:
@@ -64,10 +70,6 @@ def exact_load(path: Path, module_name: str) -> object:
 
 
 def load_caller(caller: Caller) -> object:
-    if caller.name == "step05":
-        sys.modules["reference_provenance"] = types.ModuleType(
-            "reference_provenance"
-        )
     return exact_load(caller.source, f"_mig03f_{caller.name}_{id(caller)}")
 
 

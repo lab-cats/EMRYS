@@ -72,7 +72,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_04_mark_duplicates.py"
     ),
     "validate_step_05_split_ncigar.py": Path(
-        "scripts/validate_step_05_split_ncigar.py"
+        "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "validate_step_05_split_ncigar.py"
     ),
     "validate_step_06_orientation_outputs.py": Path(
         "scripts/validate_step_06_orientation_outputs.py"
@@ -128,7 +129,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
-        "scripts/step_05_split_n_cigar_reads.sh"
+        "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
         "scripts/step_06_split_bam_by_read_orientation.sh"

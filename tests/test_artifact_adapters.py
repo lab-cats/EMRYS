@@ -341,6 +341,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["05"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_05",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/split_N_cigar_reads_with_GATK/"
+                    "step_05_split_n_cigar_reads.sh"
+                ),
+                "sha256": (
+                    "e25c8d94d940aa02187e5550c51a71b8"
+                    "fdd8ca75660a07f5851dc215679248ac"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.815789",
-      "covered_branches": 31,
-      "covered_lines": 138,
-      "line_rate": "0.926174",
-      "num_branches": 38,
-      "num_statements": 149,
-      "path": "scripts/validate_step_05_split_ncigar.py"
-    },
-    {
       "branch_rate": "0.766667",
       "covered_branches": 23,
       "covered_lines": 107,
@@ -287,6 +278,15 @@
       "num_branches": 42,
       "num_statements": 155,
       "path": "src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py"
+    },
+    {
+      "branch_rate": "0.833333",
+      "covered_branches": 45,
+      "covered_lines": 178,
+      "line_rate": "0.927083",
+      "num_branches": 54,
+      "num_statements": 192,
+      "path": "src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py"
     }
   ],
   "measurement": {
@@ -322,11 +322,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.700799",
-    "covered_branches": 3333,
-    "covered_lines": 9510,
-    "line_rate": "0.814422",
-    "num_branches": 4756,
-    "num_statements": 11677
+    "branch_rate": "0.701383",
+    "covered_branches": 3347,
+    "covered_lines": 9550,
+    "line_rate": "0.814846",
+    "num_branches": 4772,
+    "num_statements": 11720
   }
 }
