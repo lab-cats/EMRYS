@@ -64,7 +64,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_02b_bam_qc.py"
     ),
     "validate_step_03_rseqc_orientation.py": Path(
-        "scripts/validate_step_03_rseqc_orientation.py"
+        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "validate_step_03_rseqc_orientation.py"
     ),
     "validate_step_04_mark_duplicates.py": Path(
         "scripts/validate_step_04_mark_duplicates.py"
@@ -118,7 +119,8 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_02b_bam_qc.sh"
     ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
-        "scripts/step_03_infer_strandedness_and_orientation.sh"
+        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path("scripts/step_04_mark_duplicates.sh"),
     "step_05_split_n_cigar_reads.sh": Path(

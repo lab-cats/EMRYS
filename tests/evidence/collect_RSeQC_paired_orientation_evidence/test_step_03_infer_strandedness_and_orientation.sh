@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_03_infer_strandedness_and_orientation.sh"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh"
 
 # Keep this test self-contained and local-only. It uses placeholder BAM/BED
 # files plus a fake infer_experiment.py, so no real biological data or RSeQC

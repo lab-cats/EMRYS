@@ -304,6 +304,25 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["03"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_03",
+                "role": "implementation",
+                "path": (
+                    "src/norad/evidence/"
+                    "collect_RSeQC_paired_orientation_evidence/"
+                    "step_03_infer_strandedness_and_orientation.sh"
+                ),
+                "sha256": (
+                    "01aa11cc60d9042ac541cfe445aec3e5"
+                    "62a198a761c45449e82e96b7b9ab0784"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

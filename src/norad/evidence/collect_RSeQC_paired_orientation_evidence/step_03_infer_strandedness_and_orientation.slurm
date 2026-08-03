@@ -93,7 +93,7 @@ module list 2>&1 || true
 # printed wrapper command is copy-pasteable from logs.
 cmd=(
     bash
-    scripts/step_03_infer_strandedness_and_orientation.sh
+    src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh
     --sample-id "$SAMPLE_ID"
     --input-bam "$BAM"
     --bed12 "$BED12"

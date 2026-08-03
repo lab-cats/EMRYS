@@ -36,7 +36,8 @@ JOB_PATHS = {
         "step_02b_bam_qc.slurm"
     ),
     "step_03_infer_strandedness_and_orientation.slurm": Path(
-        "jobs/step_03_infer_strandedness_and_orientation.slurm"
+        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "step_03_infer_strandedness_and_orientation.slurm"
     ),
     "step_04_mark_duplicates.slurm": Path("jobs/step_04_mark_duplicates.slurm"),
     "step_05_split_n_cigar_reads.slurm": Path(
@@ -160,7 +161,10 @@ CONTRACTS = {
         module_policy="tolerated",
         module_calls=("list",),
         submit_cwd="fallback",
-        delegation="scripts/step_03_infer_strandedness_and_orientation.sh",
+        delegation=(
+            "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+            "step_03_infer_strandedness_and_orientation.sh"
+        ),
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),

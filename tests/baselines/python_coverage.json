@@ -145,15 +145,6 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.735294",
-      "covered_branches": 25,
-      "covered_lines": 100,
-      "line_rate": "0.869565",
-      "num_branches": 34,
-      "num_statements": 115,
-      "path": "scripts/validate_step_03_rseqc_orientation.py"
-    },
-    {
       "branch_rate": "0.785714",
       "covered_branches": 33,
       "covered_lines": 144,
@@ -206,6 +197,15 @@
       "num_branches": 40,
       "num_statements": 158,
       "path": "scripts/validate_step_09_cmh_outputs.py"
+    },
+    {
+      "branch_rate": "0.823529",
+      "covered_branches": 28,
+      "covered_lines": 103,
+      "line_rate": "0.895652",
+      "num_branches": 34,
+      "num_statements": 115,
+      "path": "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/validate_step_03_rseqc_orientation.py"
     },
     {
       "branch_rate": "0.800000",
@@ -322,10 +322,10 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.699748",
-    "covered_branches": 3328,
-    "covered_lines": 9505,
-    "line_rate": "0.813993",
+    "branch_rate": "0.700378",
+    "covered_branches": 3331,
+    "covered_lines": 9508,
+    "line_rate": "0.814250",
     "num_branches": 4756,
     "num_statements": 11677
   }
