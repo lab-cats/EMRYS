@@ -31,7 +31,7 @@ characterize these defects without fixing or approving them.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03K](../IN_PROGRESS/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: reliability review needs the architecture-corrected owner, loader, caller, artifact, test, and cutover boundary.
+- [REVIEW-ARCH-03K](../COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: completed architecture review fixes the owner, loader, caller, artifact, test, pending-scaffold, and cutover boundary.
 
 ## Completion unblocks
 
@@ -115,5 +115,5 @@ characterize these defects without fixing or approving them.
 
 ## Completion record
 
-Not selected. Blocked on active `REVIEW-ARCH-03K`; no executable/test file
-changed or ran.
+Not selected. Architecture prerequisite is complete; this card remains in
+`TODO` until separately selected. No executable/test file changed or ran.

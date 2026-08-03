@@ -110,8 +110,57 @@ functional-owner migration.
 
 ## Completion record
 
-Selected as the sole active migration review from clean, published,
-local/upstream/live-remote-equal definition checkpoint
-`0bc12acbb7441dabcbd098e22f9a7e5811eb2d72`. No architecture finding is
-recorded yet, no later review or migration card is selected, and no
-executable/test file changed or ran.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `efdec11229edcddaa1a14d6165330898a0261a13`.
+
+- **High — exact owner, mode, and loader boundary confirmed:** Step `06` is the
+  sole eligible unmigrated identity after final Step `05`; Step `07` remains
+  blocked, uncreated, and unselected. Move the mode-`0755` producer, mode-
+  `0644` validator, mode-`0755` job, mode-`0755` direct shell test, and mode-
+  `0644` direct validator test to the frozen stage/test homes. Production
+  changes only the producer usage path, validator report-owner root from
+  `parents[1]` to `parents[4]`, and job child path. The existing private report
+  loader identity/behavior stays unchanged and the neutral loader matrix owns
+  its path/cache/failure coverage.
+- **High — exact cutover ceiling and moved-test discovery confirmed:** one
+  atomic direct cutover is five moves plus nine integration owners: Make,
+  artifact producer mapping, artifact path/hash assertion, public CLI, SLURM,
+  validation roster, validation-report map, coverage row, and literal Make
+  fixture. The moved shell test uses `SCRIPT_DIR/../../..` and final producer/
+  job paths. The moved Python test uses root `parents[3]`, final validator path,
+  and one private exact-file load of unchanged root roster oracle without a
+  package or `sys.path` mutation. A tenth update, sixth executable move, or
+  different moved-file edit reopens review.
+- **Medium — obsolete pending scaffold receives a terminal documentation
+  disposition:** delete
+  `tests/pending/test_step_06_split_bam_by_read_orientation.sh` only in the
+  separate documentation close. Its four future-test bullets are already
+  implemented in the active direct suite. It is not moved, promoted, counted
+  as an executable cutover file, or retained as a second test owner.
+- **Medium — projected native and artifact evidence frozen:** final producer
+  is mode `0755`, `24,542` bytes / `784` lines / SHA-256
+  `74399ceb42cb081b213256977b03137d7ae8513c07f98fb4cd06b2f7ee6a2730`;
+  validator is mode `0644`, `8,892` / `227` /
+  `96385f8988219a486094c05d490acc8d2b228001d241ee29af784ec269460b33`;
+  and job is mode `0755`, `4,072` / `125` /
+  `fc1ddbce861293fac9dcbd9e87571d8b4f955ae602f4f2daa6afa7908d5251af`.
+  Step `06` artifact evidence changes only to the final producer path and first
+  hash; evidence ID, six artifact identities, schemas, contents, ordering,
+  reconciliation, completion-marker interpretation, consumers, and meaning
+  stay fixed. Coverage renames the validator row while preserving target
+  rates, every non-target row, and global covered-count floors.
+- **Accepted architecture and rollback:** all supported callers are repository-
+  owned and fit one direct cutover, so no wrapper, alias, duplicate, package,
+  descriptor, schema, helper move, or second owner is justified. Roll back the
+  documentation close and pending-scaffold deletion, then the five-move/nine-
+  update cutover with Make/oracle and artifact path/hash assertion together,
+  then any reliability baselines in reverse order. Git rollback never changes
+  runtime BAM/BAI/counts, locks, backups, scratch, logs, or recovery evidence.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-
+  review, biological-orientation, or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. That expected-only result is nonpassing, not green; no
+  architecture-review-caused finding remains.

@@ -11,29 +11,30 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published MIG-03K definition
-  `0bc12acbb7441dabcbd098e22f9a7e5811eb2d72`.
+  exact SHA from live Git. Its frozen parent is published architecture-review
+  selection `efdec11229edcddaa1a14d6165330898a0261a13`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
   published and local/upstream/live-remote-equal. MIG-03K definition
-  `0bc12ac` is also published and equal.
+  `0bc12ac` and architecture selection `efdec11` are also published and equal.
 - Current package: unselected
   [`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
-  with active
-  [`REVIEW-ARCH-03K`](../tasks/IN_PROGRESS/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+  after completed
+  [`REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   followed by unselected
   [`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),
   and [`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
-  Architecture review alone is selected. Step `07` and later cards remain
-  uncreated.
-- Package type at this checkpoint: documentation-only architecture-review
-  selection. It records no finding yet and changes or runs no executable,
-  test, configuration, dependency, schema, fixture, or report-template
-  behavior.
-- Remote publication and upstream equality: definition parent `0bc12ac` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before recording architecture findings.
+  No review or migration is currently selected. Step `07` and later cards
+  remain uncreated.
+- Package type at this checkpoint: completed documentation-only architecture
+  review. It freezes the exact cutover, modes, roots, pending-scaffold
+  disposition, projected hashes, artifact/coverage ownership, and rollback
+  without changing or running executable/test/configuration/dependency/schema/
+  fixture/report-template behavior.
+- Remote publication and upstream equality: selection parent `efdec11` is
+  verified local/upstream/live-remote-equal. Publish and prove this completed
+  review checkpoint equal before selecting only `REVIEW-REL-03K`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -367,15 +368,15 @@ sole direct predecessor is migrated, while Step `07` still depends on Step
 `06`. Published/equal definition checkpoint `0bc12ac` created only unselected
 [`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and sequential
-[`REVIEW-ARCH-03K`](../tasks/IN_PROGRESS/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+[completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 → [`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 → [`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md).
-The frozen candidate is three native assets, two active direct tests, nine
-proposed integration owners, and one pending-scaffold disposition question.
-Architecture review alone is selected in the checkpoint containing this
-handoff; no finding is recorded yet. Reliability, usability, and migration
-remain unselected, no executable/test file changed or ran, and no Step `07` or
-later owner/review card is preloaded.
+Architecture confirms exactly five moves, nine integration owners, unchanged
+native modes, one private moved-test roster bridge, final native hashes, one
+documentation-close deletion of the obsolete pending scaffold, unchanged
+artifact/coverage ownership, and reverse rollback. Reliability, usability,
+and migration remain unselected; no executable/test file changed or ran, and
+no Step `07` or later owner/review card is preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -949,8 +950,8 @@ lifecycle close is published at `db60dfa`. A fresh live-DAG check then
 supported only unselected
 [`MIG-03K`](../tasks/TODO/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md)
 and its sequential reviews, defined at published checkpoint `0bc12ac`.
-[`REVIEW-ARCH-03K`](../tasks/IN_PROGRESS/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
-alone is active;
+[completed `REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
+is in the checkpoint containing this handoff;
 [`REVIEW-REL-03K`](../tasks/TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md)
 →
 [`REVIEW-UX-03K`](../tasks/TODO/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md),

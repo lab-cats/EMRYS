@@ -41,10 +41,12 @@ but does not select it.
   `tests/shell/test_step_06_split_bam_by_read_orientation.sh` and mode-`0644`
   direct validator test `tests/test_validate_step_06_orientation_outputs.py`
   to the mirrored stage test home. Keep independent scheduler behavior in the
-  central wrapper suite. Architecture review must disposition the obsolete
-  documentation-only scaffold
-  `tests/pending/test_step_06_split_bam_by_read_orientation.sh` without
-  promoting it into a second test owner.
+  central wrapper suite. Delete the obsolete documentation-only scaffold
+  `tests/pending/test_step_06_split_bam_by_read_orientation.sh` only in the
+  separate documentation close: every one of its four future-test bullets is
+  already implemented by the active direct suite, and retaining or moving it
+  would create stale duplicate ownership. Its deletion is not a sixth
+  executable move or a reliability baseline.
 - The three native assets total `37,398` bytes and `1,136` lines. Frozen
   SHA-256 values are producer
   `bb0ebbaea9158c0dfceb3a0cd2e083c99e8f63913859c10df93ec85314de2275`,
@@ -56,27 +58,45 @@ but does not select it.
   `948d07f6a570b0ae97ee3ae45c6bd04ec8d09eed0de1116b03d92d55c7c62193`
   and validator
   `53ebf9d53b00cf8507835e8cf9f62f8027bd5fe2d73315545c442360389e2f2e`.
-- Proposed executable cutover is five moves plus nine explicit integration
+- Architecture-reviewed executable cutover is exactly five moves plus nine
+  explicit integration
   owners: `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
   `tests/test_validation_check_rosters.py`,
   `tests/libraries/test_validation_report.py`,
   `tests/baselines/python_coverage.json`, and
-  `tests/fixtures/public_cli_contracts/make_target_expansions.json`.
-  Architecture review must prove the complete caller set, exact logical-file
-  ceiling, and pending-scaffold disposition before execution planning.
-- Production edits are limited to the producer usage path, the validator
-  repository-root depth used to resolve the neutral report owner, and the
-  scheduler child path. Architecture review must project exact final hashes.
-  No package import, `PYTHONPATH`, helper move, schema extraction, or behavior
-  change is permitted without a recorded finding.
-- The moved shell test may change only its repository root and producer/job
-  targets before reviewed reliability additions. The moved Python test must
-  resolve the final validator and exact-load unchanged root
-  `tests/validation_roster_expectations.py` under a private test identity
-  without changing global `sys.path`. Architecture review owns the exact test
-  bridge and cache/path/failure coverage, if required.
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. Exact
+  tracked-path and basename searches prove no tenth integration owner;
+  `tests/test_artifact_adapters.py` adds the final Step `06` path/hash assertion
+  even though it has no old path literal. A tenth update, sixth executable
+  move, or different moved-file edit reopens architecture review.
+- Production edits are exactly: replace the producer usage path; change the
+  validator repository root from `parents[1]` to `parents[4]` for unchanged
+  neutral `src/norad/libraries/validation_report.py`; and replace the scheduler
+  child path. The existing private report identity and loader behavior remain
+  unchanged and are already covered across every validator by the neutral
+  report-loader matrix. No package import, `PYTHONPATH`, helper move, schema
+  extraction, or other production edit is permitted.
+- Projected final native values after only those reviewed path/root edits are
+  producer `24,542` bytes / `784` lines / SHA-256
+  `74399ceb42cb081b213256977b03137d7ae8513c07f98fb4cd06b2f7ee6a2730`,
+  validator `8,892` bytes / `227` lines / SHA-256
+  `96385f8988219a486094c05d490acc8d2b228001d241ee29af784ec269460b33`,
+  and job `4,072` bytes / `125` lines / SHA-256
+  `fc1ddbce861293fac9dcbd9e87571d8b4f955ae602f4f2daa6afa7908d5251af`.
+  Producer and job remain mode `0755`; validator remains mode `0644`. Any
+  production hash or mode difference reopens architecture review.
+- The moved shell test changes only its repository root to
+  `SCRIPT_DIR/../../..` and producer/job targets to final paths before
+  reliability additions. The moved Python test changes its root to
+  `parents[3]`, targets the final validator, and exact-loads unchanged root
+  `tests/validation_roster_expectations.py` through
+  `importlib.util.spec_from_file_location` under private test identity
+  `partition_bam_by_mechanical_read_orientation_validation_roster_oracle`.
+  It validates the spec/loader, binds only `assert_exact_check_roster`, inserts
+  no global module or path, and needs no production helper or separate test
+  owner.
 - Preserve producer CLI/help, exact `<bam>.bai` admission, positive threads,
   samtools argument/override/PATH resolution, execute-only version call,
   side-effect-free dry-run, run-token names, per-sample output-directory lock,
@@ -120,12 +140,16 @@ but does not select it.
   must disposition stale complete output, missing/unusable tool, module,
   version, child, and `THREADS` versus requested-CPU states without hardening
   them.
-- `STEP_PRODUCERS["06"]` changes only to the final producer path. Preserve
+- `STEP_PRODUCERS["06"]` changes only to final path
+  `src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh`
+  with projected hash
+  `74399ceb42cb081b213256977b03137d7ae8513c07f98fb4cd06b2f7ee6a2730`.
+  Preserve
   artifact status, evidence ID, Git projection, six public Step `06` artifact
   identities, schemas, contents, ordering, reconciliation, completion-marker
-  interpretation, consumers, and scientific meaning. Architecture review must
-  require an exact final producer path/hash assertion in the migrated-
-  implementation evidence test.
+  interpretation, consumers, and scientific meaning. Add the exact final
+  producer path/hash assertion to the existing migrated-implementation
+  evidence test; no artifact adapter or schema behavior changes.
 - Frozen starting coverage is validator `107/119` covered lines and `23/30`
   branches with global `9550/11720` lines and `3347/4772` branches. Final
   measurement must retain target rates, keep every non-target row exact, and
@@ -145,6 +169,13 @@ but does not select it.
   orientation meaning, samtools/thread/output/QC/lock selection, rollback and
   residue preservation, focused tests, provenance, Git rollback, and the
   local-only evidence ceiling.
+- Every supported path consumer is repository-owned and can change in one
+  atomic direct cutover, so no temporary wrapper is justified. Roll back the
+  documentation close and pending-scaffold deletion first, then the five-move/
+  nine-update executable cutover with Make/oracle and artifact path/hash
+  assertion together, then any reliability baselines in reverse order. Git
+  rollback never alters runtime BAM/BAI/counts, lock, backup, scratch, log, or
+  recovery evidence.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction/receipt/recovery mechanism, scheduler abstraction,
   orientation-policy change, manifest mutation, or public library API.
