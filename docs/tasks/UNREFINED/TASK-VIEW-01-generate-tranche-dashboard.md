@@ -48,7 +48,7 @@ manually copying those facts would create another source of truth.
 
 - [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
   owns accepted tranche semantics and approval envelopes.
-- [`TASK-LIFECYCLE-01`](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+- [`TASK-LIFECYCLE-01`](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
   owns future lifecycle roots and transition rules.
 - [`TASK-REG-01`](../TODO/TASK-REG-01-correct-task-dependency-semantics.md)
   owns the authored dependency direction and generated reverse views.

@@ -5,8 +5,7 @@
 This slice settled the program-owned trigger for the future
 `INTEGRATION_REVIEW` state without activating lifecycle implementation or the
 preserved program remainder. The separately selected DOC-GATE-01 package is
-now complete; TASK-LIFECYCLE-01 is dependency-valid but remains a separate JIT
-selection.
+now complete; TASK-LIFECYCLE-01 is selected as its own separate JIT package.
 
 **Completed slice objective**
 
@@ -156,7 +155,7 @@ and unnecessary context for bounded work.
   completed concurrency policy.
 - The completed fragment protocol plus the planned lifecycle and epic
   implementation boundaries in
-  [`TASK-LIFECYCLE-01`](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  [`TASK-LIFECYCLE-01`](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
   and [`TASK-EPIC-01`](../TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
 - The settled architecture direction and future-only extension constraints;
   these are guardrails, not prewritten implementation plans.

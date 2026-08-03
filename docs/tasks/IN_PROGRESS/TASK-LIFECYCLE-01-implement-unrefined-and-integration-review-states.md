@@ -51,7 +51,7 @@ unintegrated work as approved or complete.
 
 ## Completion unblocks
 
-- [TASK-EPIC-01](TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) — Fully: stable lifecycle roots allow the epic index to distinguish non-status navigation from authoritative task state.
+- [TASK-EPIC-01](../TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) — Fully: stable lifecycle roots allow the epic index to distinguish non-status navigation from authoritative task state.
 
 ## Prerequisites
 
@@ -150,7 +150,8 @@ unintegrated work as approved or complete.
 
 ## Completion record
 
-Not started as an implementation package. The authorized UNREFINED directory,
-README, and recovered proposals exist, while validator and transition support
-remain unimplemented. Select this card for read-only planning; implementation
-requires a separately approved task-specific plan.
+Selected on 2026-08-03 from clean, published, upstream-equal DOC-GATE-01 close
+`dc3ee2e`. The authorized UNREFINED directory, README, and recovered proposals
+exist, while validator and transition support remain unimplemented. Selection
+starts bounded task-specific planning only; it does not implement a lifecycle
+state, generated projection, permanent-path migration, or transition.

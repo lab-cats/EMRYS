@@ -12,7 +12,7 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen parent is published DOC-GATE-01
-  Make-failure checkpoint `8a8bb1a`.
+  documentation/lifecycle close `dc3ee2e`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -47,20 +47,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `94a4ef7` and program-decision checkpoint `2df3e6c` are also published and
   equal. DOC-GATE-01 CLI/root `7f48bf6`, card-rule `2eee679`, link/diagram
   `4be3225`, Make-wrapper `7a4c724`, acceptance-matrix `fb30f3f`, and
-  Make-failure `8a8bb1a` checkpoints are published and local/upstream-equal.
-- Current package: completed
-  [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md).
-  No health package is selected in this documentation checkpoint.
-  `PROGRAM-01` remains in progress as the frozen program owner; dependency-
-  valid
-  [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-  is the exact next JIT package.
-- Package type at this checkpoint: separate executable/test/Make behavior lock
-  followed by documentation/lifecycle close. Validator semantics, lifecycle
-  schema, dependencies, scientific/report evidence, runtime packages,
-  migration owners, and the default branch did not change.
-- Remote publication and upstream equality: implementation tip `8a8bb1a` is
-  verified local/upstream-equal; publish and verify the documentation close
+  Make-failure `8a8bb1a` checkpoints plus documentation/lifecycle close
+  `dc3ee2e` are published and local/upstream/live-remote-equal.
+- Current package: active
+  [`TASK-LIFECYCLE-01`](../tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
+  selected alone for bounded task-specific planning. Completed
+  [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
+  supplies its tested validator owner. `PROGRAM-01` remains in progress as the
+  frozen program owner.
+- Package type at this checkpoint: documentation-only status selection. It
+  changes no validator behavior, lifecycle schema, dependency, fixture,
+  executable, runtime state, migration owner, or default branch.
+- Remote publication and upstream equality: DOC-GATE-01 close `dc3ee2e` is
+  verified local/upstream/live-remote-equal; publish and verify this selection
   from live Git. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
@@ -1006,9 +1005,9 @@ update packages, and its temporary Python-environment symlink was removed.
 
 ## Immediate resume point
 
-After publishing and proving this documentation close equal, select only
-[`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-with `git mv` and repair its inbound lifecycle links. Its JIT plan must use the
+Active
+[`TASK-LIFECYCLE-01`](../tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+must first receive a bounded task-specific plan using the
 completed DOC-GATE behavior-lock harness, preserve `UNREFINED` as nonselectable
 proposal state, implement only the resolved asynchronous
 `INTEGRATION_REVIEW` boundary, and make the nine current documentation findings

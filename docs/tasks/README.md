@@ -110,7 +110,7 @@ decision. File presence preserves a proposal; it does not approve or schedule
 implementation.
 
 The current documentation validator does not yet recognize this authorized
-lifecycle location. [`TASK-LIFECYCLE-01`](TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+lifecycle location. Active [`TASK-LIFECYCLE-01`](IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
 owns validator implementation and independent fixtures; neither this registry
 text nor the local [`UNREFINED` README](UNREFINED/README.md) is an executable
 owner or a passing-gate claim.

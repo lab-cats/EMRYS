@@ -47,7 +47,7 @@ disposition work without creating another canonical documentation layer.
 ## Completion unblocks
 
 - [CONCURRENCY-03](../TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Partially: the validator cannot enforce a fragment lifecycle until this card publishes its stable manual contract.
-- [TASK-LIFECYCLE-01](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: `INTEGRATION_REVIEW` cannot safely represent a frozen handoff until fragment ownership and disposition are defined.
+- [TASK-LIFECYCLE-01](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: `INTEGRATION_REVIEW` cannot safely represent a frozen handoff until fragment ownership and disposition are defined.
 
 ## Prerequisites
 

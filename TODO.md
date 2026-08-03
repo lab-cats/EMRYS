@@ -14,11 +14,11 @@ which activates only one separately planned repository-health package at a
 time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
 Completed [`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-removes the remaining technological blocker from
-[`TASK-LIFECYCLE-01`](docs/tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
-No health card is selected at this documentation checkpoint; TASK-LIFECYCLE-01
-is the next JIT package, while unrelated work and the preserved program
-remainder remain frozen. Roadmap order is not blocker metadata.
+removed the remaining technological blocker from active
+[`TASK-LIFECYCLE-01`](docs/tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
+That card alone is selected for bounded task-specific planning and execution;
+unrelated work and the preserved program remainder remain frozen. Roadmap order
+is not blocker metadata.
 
 ## Canonical routes
 
