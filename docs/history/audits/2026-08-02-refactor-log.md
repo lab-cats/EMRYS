@@ -3175,3 +3175,49 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   findings. No reliability-selection path, lifecycle, dependency, cycle,
   orphan, or anchor finding remains. The inherited result is still nonpassing,
   not green and not authority to modify those preserved cards.
+
+## 2026-08-03T05:39:03-0400 — REVIEW-REL-03I completed
+
+- **Verified parent:** reliability-selection checkpoint `25dbef6` was clean,
+  tracked/untracked empty, published, and equal across local `HEAD`, configured
+  upstream, and the live remote branch before this read-only pass.
+- **High decision — producer residue needs four exact cut-point oracles:** the
+  old-path direct shell owner must freeze Picard exit `42` after partial BAM/
+  metrics replacement with prior BAI retained; quickcheck exit `43` after new
+  BAM/metrics with prior BAI and no index; index exit `44` after partial BAI
+  replacement; and zero-exit Picard with empty metrics followed by successful
+  quickcheck/index and final producer exit `1`. Each test preserves exact
+  tokenized new/partial/prior bytes, child diagnostics, one unrelated file, and
+  the absence of recovery artifacts. These mixed triplets remain defects.
+- **High decision — admission and stable-input behavior needs direct proof:**
+  add arbitrary-CWD explicit Java/samtools use, missing explicit samtools before
+  directory creation, and controlled input mutation that the lockless producer
+  fails to recheck. The direct validator must add arbitrary-CWD dry-run/
+  execute/repeat byte parity, quickcheck failure as exit-`0` failed evidence,
+  header-tool failure as exit-`2` nonpublication, and post-build input mutation
+  preserving a valid prior report. Shared neutral suites retain exact-loader
+  and publication-fault ownership.
+- **High decision — scheduler selection and stale outputs need named oracles:**
+  add Java-home and PATH fallback, Java version failure/unparseable/under-17,
+  missing `PICARD`, list-only module failure tolerance, dry-run log mutation,
+  and stale-three-file false success. Explicitly freeze the current unguarded
+  unset-`JAVA_HOME` abort even with a valid Java override; do not harden or
+  approve it. Existing generic cases retain submit-CWD, strict loads, exported
+  `/tmp`, override priority, PATH samtools, Bash `3.2`, child exit, and missing-
+  output behavior.
+- **Bounded implementation decision:** use exactly the existing direct shell,
+  direct validator, and central scheduler test files, optionally as three
+  sequential small test-only slices. Add no fourth owner, production change,
+  fixture, baseline, dependency, or future-owner work. The later atomic cutover
+  remains five moves plus ten updates.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent, so independent authorship is not claimed. No source,
+  test, harness, runtime, scheduler, production, scientific-review, or
+  biological evidence changed or ran. All planned evidence is local fake-tool/
+  fixture characterization; real Picard, Java, samtools, scheduler, cluster,
+  and production behavior remain outside the migration proof.
+- **Card-boundary gate:** `git diff --check` passed and the complete
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. No reliability-review path, lifecycle, dependency, cycle,
+  orphan, or anchor finding remains. This expected-only ceiling is nonpassing,
+  not a green gate and not authority to alter inherited lifecycle state.

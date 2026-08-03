@@ -12,19 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: architecture-review completion checkpoint
-  `403fdf58dd410fc58421a45b903924c514a6ea70` is clean, published, and
-  local/upstream/live-remote-equal; definition checkpoint is `86419d3`.
-- Current package: selected
-  [`REVIEW-REL-03I`](../tasks/IN_PROGRESS/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
-  for the bounded direct-final multi-output, tool/temp/scheduler, stable-input,
-  parity, and rollback review.
+- Recorded package state: reliability-review selection checkpoint
+  `25dbef637b8df87e77ec49a28dac5f8bee6e481c` is clean, published, and
+  local/upstream/live-remote-equal; architecture completion is `403fdf5`.
+- Current package: completed
+  [`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
+  with exact producer residue, validator parity, scheduler Java/tool/stale-
+  output, evidence-limit, and rollback dispositions.
 - Package type at this checkpoint: documentation-only reliability-review
-  selection; no reliability finding is recorded, no executable/test path
-  changed, and no computational test ran.
-- Remote publication and upstream equality: selection parent `403fdf5` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before completing `REVIEW-REL-03I`.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: selection parent `25dbef6` is
+  verified local/upstream/live-remote-equal. Publish and prove this completion
+  checkpoint equal before selecting `REVIEW-UX-03I`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -243,13 +242,13 @@ Step `05` remains blocked on Step `04`. Only
 and reviews
 [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
-[`REVIEW-REL-03I`](../tasks/IN_PROGRESS/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
+[`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
 are defined at published checkpoint `86419d3`. Architecture is complete at
-published checkpoint `403fdf5`; reliability alone is selected in the commit
-containing this handoff. Usability, migration, Step `05`, and every later
-owner/review card remain unselected.
+published checkpoint `403fdf5`; reliability completes in the commit containing
+this handoff with exactly three old-path test owners required. Usability,
+migration, Step `05`, and every later owner/review card remain unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -800,12 +799,12 @@ checkpoint `24ed9b1`, and documentation/lifecycle close in the commit
 and its reviews
 [`REVIEW-ARCH-03I`](../tasks/COMPLETED/REVIEW-ARCH-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
-[`REVIEW-REL-03I`](../tasks/IN_PROGRESS/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
+[`REVIEW-REL-03I`](../tasks/COMPLETED/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md)
 →
 [`REVIEW-UX-03I`](../tasks/TODO/REVIEW-UX-03I-review-mark-bam-duplicates-with-picard-migration.md)
 are defined at published checkpoint `86419d3`. Step `04` is the only eligible
 unmigrated live-DAG owner; architecture is complete at published checkpoint
-`403fdf5`, and reliability alone is selected in the commit containing this
-handoff. Usability, migration, Step `05`, and all later cards remain unselected. The
+`403fdf5`, and reliability completes in the commit containing this handoff.
+Usability, migration, Step `05`, and all later cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

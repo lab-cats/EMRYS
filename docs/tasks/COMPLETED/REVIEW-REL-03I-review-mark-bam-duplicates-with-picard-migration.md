@@ -102,8 +102,57 @@ characterize them without approving them.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal architecture-
-completion checkpoint `403fdf58dd410fc58421a45b903924c514a6ea70`.
-This is a read-only independent-in-time adversarial pass by the same campaign
-agent; independent authorship is not claimed. No executable/test mutation or
-computational test is part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `25dbef637b8df87e77ec49a28dac5f8bee6e481c`.
+
+- **High — four producer cut points lacked predecessor-bearing byte oracles:**
+  add a test-only old-path baseline in the existing direct shell owner. A
+  Picard stub that writes tokenized partial BAM and metrics bytes and exits `42`
+  must propagate `42`, retain the prior BAI byte-exactly, expose child stderr,
+  and preserve an unrelated file. A quickcheck exit `43` after successful
+  Picard replacement must leave new BAM/metrics plus the prior BAI and must not
+  invoke index. An index stub that writes a partial BAI and exits `44` must
+  propagate `44` and leave new BAM/metrics plus that partial BAI. A zero-exit
+  Picard result with nonempty BAM but empty metrics must pass quickcheck/index,
+  fail the final metrics `-s` check with producer exit `1`, and leave new BAM/
+  BAI plus empty metrics. None of these mixed states is approved.
+- **High — producer admission and stable-input gaps need direct disposition:**
+  add explicit Java/samtools paths from arbitrary CWD; a missing explicit
+  samtools failure before output-directory creation; and one controlled Picard
+  success that mutates the admitted input BAM/BAI while the producer still
+  reports success. Freeze exact inputs, outputs, streams, exits, unrelated-file
+  immunity, and absence of lock/stage/backup/receipt/recovery artifacts. Keep
+  existing help, exact `<bam>.bai`, dry-run nonmutation, missing Picard, and bad
+  `TMPDIR` oracles; the missing stable-input recheck remains a defect.
+- **High — validator direct-path parity was incomplete:** in the existing
+  direct validator owner, add arbitrary-CWD dry-run/execute/repeat journeys
+  with byte-identical reports; quickcheck nonzero as exit-`0` failed evidence;
+  header-tool failure as exit-`2` nonpublication; and a post-build input
+  mutation that exits `2` while preserving a valid predecessor report. The
+  neutral validation-report and BAM-helper suites remain the owners for both
+  exact-loader caches and shared publication faults; no helper duplication is
+  warranted.
+- **High — Step 04 scheduler selection and stale-triplet defects need direct
+  oracles:** in the central SLURM suite, add `JAVA_HOME/bin/java` selection,
+  PATH fallback after an unusable but set `JAVA_HOME`, Java `-version` failure,
+  unparseable/under-17 rejection, missing `PICARD`, list-only module failure
+  tolerance, dry-run `logs/` mutation, and a zero-exit child that emits nothing
+  while three stale nonempty outputs satisfy the wrapper and remain byte-exact.
+  Also freeze the current unset-`JAVA_HOME` defect: even with a valid override,
+  the later unguarded diagnostic exits before delegation under `set -u`.
+  Existing generic cases retain submit-CWD fallback, strict module loads,
+  exported `/tmp`, override priority, PATH samtools delegation, Bash `3.2`,
+  invalid mode, child exit, and missing-output failure.
+- **Accepted slice, coverage, and evidence boundary:** the old-path baseline is
+  limited to exactly three existing test files and may be published as three
+  small sequential test-only slices: direct producer, direct validator, then
+  central scheduler. No fourth test owner, production edit, fixture, coverage-
+  baseline edit, documentation batch, dependency, or later owner enters those
+  slices. Coverage may increase but cannot regress below the frozen target
+  rates or global covered-count floors. All evidence remains local fake-tool/
+  fixture behavior; no real Picard, Java, samtools, scheduler, cluster,
+  production, scientific-review, or biological result is created.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

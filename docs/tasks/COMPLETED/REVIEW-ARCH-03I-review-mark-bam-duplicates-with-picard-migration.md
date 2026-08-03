@@ -30,7 +30,7 @@ frozen topology and migration boundary.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03I](../IN_PROGRESS/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, helper, artifact, test, and rollback boundary.
+- [REVIEW-REL-03I](REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, helper, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

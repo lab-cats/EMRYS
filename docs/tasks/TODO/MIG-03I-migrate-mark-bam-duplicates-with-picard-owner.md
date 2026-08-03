@@ -92,6 +92,17 @@ it.
   all-or-none transaction. Picard, quickcheck, index, or final-check failure can
   leave partial or cross-attempt BAM/BAI/metrics state. Reliability review owns
   safe predecessor-bearing and residue oracles; it may not repair the behavior.
+- Reliability review requires exactly three existing old-path test owners,
+  published in bounded producer, validator, and scheduler slices. The direct
+  shell suite freezes tokenized Picard exit-`42`, quickcheck exit-`43`, index
+  exit-`44`, empty-metrics final-check, arbitrary-CWD/tool-admission, and input-
+  mutation states with exact new/partial/prior triplet bytes and no recovery
+  artifacts. The direct validator suite freezes arbitrary-CWD repeat parity,
+  exit-`0` failed evidence, exit-`2` nonpublication, and stable-input failure.
+  The central scheduler suite freezes Java-home/PATH/version selection, missing
+  `PICARD`, list-only diagnostic tolerance, dry-run logs, stale-three-file false
+  success, and the unguarded unset-`JAVA_HOME` abort. These tests characterize;
+  they do not bless or repair any defect.
 - Preserve the producer/validator boundary: producer success does not parse
   metrics, verify duplicate flags, prove BAM/BAI or metrics/BAM correspondence,
   or bind sample/library/platform/tool identity. Validator exit `0` may publish
@@ -204,9 +215,10 @@ it.
 
 ## Deliverables
 
-- One reviewed old-path reliability checkpoint if required, one exact final-
-  owner/caller/test cutover checkpoint, and one separate documentation/
-  lifecycle close, sequentially published on the same branch.
+- One assembled old-path reliability checkpoint reached through at most three
+  small sequential test-only slices, one exact final-owner/caller/test cutover
+  checkpoint, and one separate documentation/lifecycle close, sequentially
+  published on the same branch.
 - Final native assets under
   `src/norad/stages/mark_BAM_duplicates_with_Picard/`, direct tests under
   `tests/stages/mark_BAM_duplicates_with_Picard/`, and no live legacy path,
