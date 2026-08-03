@@ -962,3 +962,56 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   before running old-path computational baselines. No executable/test file,
   production data, scheduler state, dependency, runtime artifact, scientific-
   review state, or biological evidence changes here.
+
+## 2026-08-02T21:09:37-0400 — MIG-03C task-specific plan and old-path baseline complete
+
+- **Git and scope decision:** planning ran on clean, published, upstream-equal
+  selection tip `28acbbb871fd77815ea03d1631ff7462dbe50c2f`, with no recovery
+  state or mutable lane overlap. The exact write set is one producer, its
+  same-owner validator, its scheduler asset, two moved direct tests, one new
+  owner-local scheduler test, and only their named Make, artifact, public-CLI,
+  SLURM, validator, loader, coverage, and literal-fixture callers. No wrapper,
+  package marker, descriptor, schema, `.coveragerc`, unrelated owner, or
+  documentation belongs in the executable commit.
+- **Frozen source evidence:** producer mode `0755`, SHA-256
+  `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`,
+  341 lines; validator mode `0644`, SHA-256
+  `e7f2caac22bf461374e23c18dd3a92c9c61456422b0fcf960b52aa7b7076d97d`,
+  226 lines; job mode `0755`, SHA-256
+  `7eb6b3f904daa7ec6cb74f7a55377d0be1aa485b2c80cdd1464d025f9129414f`,
+  121 lines. The producer bytes/hash remain invariant; the job hash is rollback
+  evidence because its delegated path intentionally changes.
+- **Existing-suite baseline:** the two direct modules plus public CLI, SLURM,
+  validation roster/report, artifact-adapter, and coverage suites passed `566`
+  tests in `62.90s`. This is local fixture/mock evidence only.
+- **Expanded old-path baseline:** an out-of-tree harness initially failed only
+  during collection because its fallback path expression was evaluated despite
+  an explicit environment path; no repository file or test executed. After the
+  harness-only initialization fix, all `11` cases passed in `1.81s`: direct and
+  exact-interpreter producer parity, full non-repository-CWD validator dry-run/
+  execute/repeat parity, and fresh success, missing-submit, colliding-output,
+  missing-GTF, nonexecutable-Python, module-failure, converter-failure,
+  bedtools-failure, and bad-field scheduler fixtures.
+- **Failure/residue decision:** preserve exact preflight-before-directory/tool
+  effects, module-load directory residue, converter-failure directories without
+  outputs, bedtools-failure intermediate plus redirect-created empty final, and
+  bad-field published bytes plus contradictory awk success stdout before exit
+  `1`. These are characterized defects, not approved behavior or repair scope.
+- **Coverage-gate result:** unmodified `make python-coverage-check` ran all
+  `1,079` tests and ended at exactly `1,061` passed, `17` skipped, and the one
+  expected documentation-validator failure caused by the nine authorized
+  `UNREFINED` locations, so Make correctly stopped before export. To measure
+  without changing the repository or calling that gate passing, the same test
+  body was rerun under one out-of-tree strict expected-failure marker: `1,061`
+  passed, `17` skipped, `1` xfailed in `264.15s`; coverage comparison passed.
+- **Coverage baseline:** producer remains `151/167` lines and `44/56` branches;
+  validator remains `127/140` and `29/36`. Global current measurement is
+  `9472/11506` lines and `3353/4698` branches (`0.823223`/`0.713708`), above the
+  committed baseline `9343/11506` and `3281/4698` (`0.812011`/`0.698382`). Do
+  not update tracked rows until final-path measurement is reviewed.
+- **Execution and handoff decision:** no executable/test mutation has begun.
+  Publish and prove this documentation checkpoint equal, then the next agent
+  begins only the exact atomic cutover frozen in `MIG-03C`; final-path parity,
+  coverage, and the complete applicable gate precede the executable commit.
+  No dependency, cluster, production, scientific-review, or biological claim
+  was created.

@@ -12,18 +12,18 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: completed usability-review checkpoint
-  `784073e9f0897bbd880555fae1768c3ec3dc2e0d` is clean, published, and
-  local/upstream-equal with all review corrections incorporated.
+- Recorded package state: migration-selection checkpoint
+  `28acbbb871fd77815ea03d1631ff7462dbe50c2f` is clean, published, and
+  local/upstream-equal; the task-specific plan and old-path baseline are in the
+  commit containing this handoff.
 - Current package: selected
   [`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md)
-  for task-specific read-only execution planning.
-- Package type at this checkpoint: behavior/architecture planning with
-  documentation-only/non-consuming mutation; no executable or test file has
-  changed.
-- Remote publication and upstream equality: usability-review parent `784073e`
-  is verified local/upstream-equal. The migration-selection commit must be
-  published and proved equal before computational baselining.
+  with task-specific planning/baselining complete and execution not begun.
+- Package type at this checkpoint: documentation-only planning plus local
+  fixture/mock characterization; no executable or test file has changed.
+- Remote publication and upstream equality: selection parent `28acbbb` is
+  verified equal. Before execution, prove the commit containing this handoff is
+  clean, published, and local/upstream-equal.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -45,6 +45,14 @@ inside one owner. `construct_FASTA_sidecars` also remains dependency-valid but
 its validator additionally depends on the still-flat cross-cutting reference-
 provenance parser owner, so it is not preloaded or selected. Historical aliases
 did not determine this choice.
+
+The exact next action is the atomic executable/test cutover listed in the
+[`MIG-03C` completion record](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md#completion-record).
+Do not repeat card selection or the completed reviews, and do not begin a later
+unit. Move the producer, validator, job, and two direct tests; add the owner-
+local isolated job matrix; cut over every named caller; then run final-path
+parity and coverage before committing. The executable checkpoint must contain
+no documentation close.
 
 ## Active concurrent lanes
 
@@ -501,8 +509,8 @@ complete. The second JIT unit,
 is complete at executable/test checkpoint `4f9c863` and documentation close
 `1b82e4f`. The next JIT card is
 [`MIG-03C`](../tasks/IN_PROGRESS/MIG-03C-migrate-convert-gtf-to-bed12-owner.md);
-its three dedicated reviews are complete and it alone is selected for task-
-specific read-only planning.
+its three dedicated reviews, task-specific plan, and old-path baseline are
+complete. It alone is selected; execution has not begun.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -518,6 +526,7 @@ are complete. MIG-03C is selected, while
 [`REVIEW-REL-03C`](../tasks/COMPLETED/REVIEW-REL-03C-review-convert-gtf-to-bed12-migration.md),
 and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
-are complete. Publish and prove the migration-selection checkpoint equal before
-computational baselining; no later card is pre-created. The unsliced
+are complete. The exact write set and baseline are frozen in `MIG-03C`; prove
+the current documentation tip published/equal, then begin only its atomic
+executable/test cutover. No later card is pre-created. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

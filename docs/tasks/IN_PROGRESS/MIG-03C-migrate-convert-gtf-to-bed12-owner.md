@@ -297,9 +297,83 @@ alias order.
 
 ## Completion record
 
-Selected for task-specific read-only execution planning after architecture,
-reliability, and usability reviews completed sequentially and their final
-checkpoint `784073e9f0897bbd880555fae1768c3ec3dc2e0d` was clean, published, and
-local/upstream-equal. The frozen rollback parent remains
-`1b82e4f04b926ac12e6306e40d03fee7840f3fa6`. No executable or test path has
-moved, and no computational baseline has run at this selection checkpoint.
+Selected and task-specific read-only execution planning complete after all
+three reviews. The selected parent `28acbbb` was clean, published, and
+local/upstream-equal; the frozen campaign rollback parent remains
+`1b82e4f04b926ac12e6306e40d03fee7840f3fa6`. Old-path characterization and
+coverage are recorded below. No executable or test path has moved. The next
+agent begins with the atomic cutover in the exact write set below, only after
+proving the commit containing this plan is clean, published, and upstream-equal.
+
+### Task-specific execution plan and frozen old-path baseline
+
+Planning was completed on clean, published, local/upstream-equal selection tip
+`28acbbb871fd77815ea03d1631ff7462dbe50c2f`. Git showed no merge, rebase,
+cherry-pick, revert, index-lock, or recovery state and no overlapping mutable
+lane. Execution has not begun.
+
+The exact executable/test cutover write set is:
+
+- move `scripts/gtf_to_bed12.py`, `scripts/validate_step_00b_bed12.py`, and
+  `jobs/step_00b_gtf_to_bed12.slurm` without basename changes into
+  `src/norad/stages/convert_GTF_to_BED12/`;
+- move `tests/test_gtf_to_bed12.py` and
+  `tests/test_validate_step_00b_bed12.py` into
+  `tests/stages/convert_GTF_to_BED12/`, and add owner-local
+  `test_step_00b_gtf_to_bed12.py` with the frozen isolated scheduler matrix;
+- change only the job's delegated producer argument, and change only the moved
+  validator's neutral-owner lookup to `parents[2] / "libraries"` while keeping
+  its literal sibling `import gtf_to_bed12`;
+- update explicit path consumers in `Makefile`, `scripts/build_artifact_index.py`,
+  `tests/test_public_cli_contracts.py`, `tests/test_slurm_wrapper_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/test_artifact_adapters.py`, `tests/test_python_coverage_baseline.py`,
+  `tests/tools/python_coverage_baseline.py`,
+  `tests/baselines/python_coverage.json`, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`;
+- remove only the Step `00b` fake setup and reused-state behavior case from the
+  cross-owner SLURM suite. Keep its exact path map, semantic contract, directive,
+  mode, inventory, and generic scheduler assertions, pointed to the final job;
+  and
+- make no `.coveragerc`, package-marker, wrapper, compatibility-copy, descriptor,
+  schema, unrelated owner, or documentation change in the executable commit.
+
+Execute that cutover atomically, then run the moved owner tests first. Prove the
+shared validator loader exact-loads and path-validates the final sibling producer
+without `sys.path` mutation or a foreign cache, and make copied Step `00b`
+neutral-owner fault layouts include the sibling producer. Update the artifact
+adapter assertion to require the final producer path and unchanged producer
+SHA-256. Run a reviewed final-path coverage measurement before updating the
+snapshot, then the coverage check and one de-duplicated complete applicable
+local gate. Only after the executable checkpoint is committed, published, and
+upstream-equal may the impact-directed documentation/lifecycle close begin.
+
+Frozen old-path evidence on `28acbbb`:
+
+- modes, byte hashes, and line counts match the fixed decisions: producer
+  `0755`, SHA-256 `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`,
+  341 lines; validator `0644`, SHA-256
+  `e7f2caac22bf461374e23c18dd3a92c9c61456422b0fcf960b52aa7b7076d97d`,
+  226 lines; and job `0755`, SHA-256
+  `7eb6b3f904daa7ec6cb74f7a55377d0be1aa485b2c80cdd1464d025f9129414f`,
+  121 lines;
+- the eight existing focused and cross-owner modules passed `566` tests in
+  `62.90s`;
+- a temporary out-of-tree harness passed all `11` independent cases in `1.81s`:
+  direct/exact-interpreter producer parity, non-repository-CWD validator dry-
+  run/execute/repeat parity, and nine fresh scheduler fixtures for success plus
+  the eight named failure/residue states;
+- the unmodified full coverage invocation executed `1,079` tests and ended with
+  exactly `1` expected inherited documentation-validator failure, `1,061`
+  passes, and `17` skips. A second measurement ran the same failing test body
+  under one temporary strict expected-failure marker, yielding `1,061` passes,
+  `17` skips, and `1` xfail; coverage comparison passed. This does not make the
+  documentation gate pass;
+- measured coverage retains producer `151/167` lines and `44/56` branches and
+  validator `127/140` lines and `29/36` branches. Current global measurement is
+  `9472/11506` lines and `3353/4698` branches (`0.823223`/`0.713708`), above the
+  committed `9343/11506` and `3281/4698` baseline; and
+- the documentation gate still reports exactly the nine authorized inherited
+  `invalid card location` findings under `docs/tasks/UNREFINED/` and no
+  migration-caused finding.
