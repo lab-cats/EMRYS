@@ -85,5 +85,24 @@ owner, or lose scheduler-specific test behavior.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+selection checkpoint `8fd0063` and JIT-definition checkpoint `5ef6c6a`. One
+high finding replaces flat-root shell inference with an explicit basename-to-
+path map parallel to the Python inventory, retaining exact equality for the
+remaining `scripts/` entries and routing all shell CLI journeys through the
+declared path. A second high finding routes the moved validator through the
+existing path-validating exact-file test loader for non-flat validators while
+flat validators retain module-name imports; this preserves `sys.path`, rejects
+foreign cached paths, and adds no package or special loader framework. One
+medium finding keeps Step `01` scheduler setup and its default-placeholder
+assertion in the independent comparative wrapper suite because extraction would
+duplicate or cross-import its shared harness; only the two direct owner tests
+move. Another medium finding freezes the production diff to the producer help
+self-path, validator neutral-owner depth, and job child path, with old hashes as
+rollback evidence and a reviewed final producer hash for artifact provenance.
+The DAG selection, final homes, atomic caller cutover, no-wrapper decision,
+one-owner invariant, reverse rollback, and no-package/descriptor/schema boundary
+otherwise pass. Public artifact flow and the semantic DAG do not change, so no
+diagram edit is justified. The same campaign agent authored/reconciled and
+reviewed the plan; independent authorship is not claimed. No executable/test
+file changed and no computational test ran.

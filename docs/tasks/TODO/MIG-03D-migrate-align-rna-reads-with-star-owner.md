@@ -36,10 +36,10 @@ the semantic DAG and live coupling, not historical alias order.
 - Move the mode-`0755` direct shell test
   `tests/shell/test_step_01_star_align.sh` and mode-`0644` direct validator test
   `tests/test_validate_step_01_star_alignment.py` to the mirrored test home.
-  Move Step `01`-specific scheduler setup and default-fixture behavior into an
-  owner-local mocked-job test only if the reviews confirm that extraction keeps
-  the independent cross-owner directive, mode, roster, and generic delegation
-  assertions intact.
+  Keep the Step `01` fixture adapter and default-placeholder assertion in the
+  independent cross-owner scheduler suite: they share its parametrized wrapper
+  harness, and extraction would duplicate or cross-import test infrastructure.
+  Update only that suite's explicit job path and delegated producer path.
 - Preserve the shell producer's arguments, dry-run default, execute control,
   command bytes, compression handling, streams, exits, and output-directory
   side effect. Its self-identifying help path must name the final producer; any
@@ -48,6 +48,11 @@ the semantic DAG and live coupling, not historical alias order.
   final owner depth. Preserve its private exact-file report identity, no
   `sys.path` mutation, public basename, interpreter-only mode, five check IDs,
   report bytes, dry-run/execute behavior, and publication semantics.
+- In the shared validation-report suite, route every declared non-flat
+  validator through the existing path-validating exact-file test loader while
+  retaining module-name import for validators still in `scripts/`. This reuses
+  the established loader, rejects a foreign cached validator path, preserves
+  `sys.path`, and avoids a Step-`01` special case or new loader framework.
 - Change the scheduler's delegated producer argument to the exact final path.
   Preserve all seven directives, caller-CWD behavior, module policy, defaults,
   `EXECUTE` handling, thread binding, mutable default fixtures, streams, exits,
@@ -72,6 +77,11 @@ the semantic DAG and live coupling, not historical alias order.
   inventories must retain explicit basename or semantic-ID path maps and exact
   one-owner equality. Do not introduce recursive runtime discovery, alias-
   derived placement, package identity, installation, or global path mutation.
+- Replace flat-root inference for public shell entry points with an explicit
+  `SHELL_ENTRYPOINT_PATHS` map parallel to the existing Python map, derive the
+  public basename set from its keys, and keep exact flat-root inventory equality
+  only for entries whose declared parent is `scripts/`. All shell CLI tests must
+  resolve paths through that map.
 - The existing `CONTRACT.md` remains the detailed behavior owner. Its stale
   Step-00a publication dependency is repaired only in the documentation close.
   Add one concise owner `README.md` only at that card boundary. Do not add the
@@ -128,14 +138,19 @@ the semantic DAG and live coupling, not historical alias order.
   owner; change only the producer's displayed self-path, the validator's
   owner-relative neutral-library lookup, and the job's delegated producer path
   unless a completed review records another required path-only edit.
-- Move the two direct tests and, when review-supported, Step `01`-specific
-  mocked scheduler behavior to the mirrored owner home. Keep independent
-  cross-owner mode, directive, roster, CLI, loader, artifact, Make, and coverage
-  suites as explicit path-aware consumers.
+- Move the two direct tests to the mirrored owner home. Keep the independent
+  cross-owner scheduler fixture adapter and default-placeholder assertion in
+  its existing comparative suite, together with mode, directive, roster, CLI,
+  loader, artifact, Make, and coverage suites as explicit path-aware consumers.
 - Cut over every named repository caller in the same atomic executable/test
   commit, including Make/static/smoke, literal expansions, artifact provenance,
   public CLI, SLURM roster, validator roster, shared loader, direct tests, and
   tracked coverage path.
+- Update the moved shell test's repository-root calculation and producer path,
+  and the moved Python test's repository-root calculation and validator path;
+  those are test-location edits, not new behavior. The production diff is
+  limited to the producer usage self-path, validator neutral-owner depth, and
+  scheduler delegated child path.
 - Extend old/new parity only where the sequential reviews find a missing named
   behavior. Measure coverage at the card boundary, then run the complete
   applicable local gate once on final executable state.

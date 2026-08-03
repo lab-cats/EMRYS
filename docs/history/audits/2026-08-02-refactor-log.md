@@ -1165,3 +1165,44 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   authorship is not claimed. Executable/test mutation and computational,
   runtime, scheduler, production, scientific-review, and biological evidence
   remain out of scope.
+
+## 2026-08-02T22:32:00-0400 — REVIEW-ARCH-03D completed
+
+- **High finding — flat shell inventory cannot represent the final owner:**
+  `test_public_cli_contracts.py` currently derives every shell path from
+  `scripts/`, unlike its explicit Python path map. Add an explicit
+  `SHELL_ENTRYPOINT_PATHS` map, derive the basename roster from its keys, route
+  every shell CLI/mode journey through a path helper, and compare the live flat
+  root only with entries whose declared parent remains `scripts/`. Do not use
+  recursive discovery or weaken exact inventory equality.
+- **High finding — shared test loader assumes flat module import:** the shared
+  validation-report suite exact-loads the two migrated validators but imports
+  all others by module name from `scripts/`. Reuse its existing path-validating
+  exact-file helper for every declared non-flat validator, including the final
+  Step `01` path; retain module-name import for still-flat validators, foreign-
+  cache rejection, and `sys.path` preservation. No package identity, global
+  path mutation, Step-specific loader, or new framework is required.
+- **Medium finding — scheduler-specific evidence remains independently owned:**
+  the Step `01` fixture adapter is required by every parametrized delegated-job
+  assertion, and its default-placeholder test reuses the same central harness.
+  Keep both in the independent cross-wrapper suite and update only its explicit
+  job/delegation paths. Move the direct shell and validator suites to the owner;
+  do not duplicate the scheduler harness or import one test module from another.
+- **Atomicity, provenance, and rollback:** one executable/test commit moves all
+  three native assets and two direct tests, changes production text only in the
+  producer usage self-path, validator neutral-owner depth, and job child path,
+  and cuts over explicit Make, CLI, SLURM, roster, loader, artifact, coverage,
+  and test callers. Old producer/job hashes are rollback evidence because path
+  text changes; assert the reviewed final producer path/hash for artifact
+  provenance. Rollback reverts the atomic caller/move commit after reverting the
+  later documentation close; repository history, not a duplicate, restores the
+  legacy layout.
+- **Accepted architecture and evidence boundary:** the migrated STAR-index
+  predecessor, explicit FASTQ inputs, final homes, direct-cutover/no-wrapper
+  decision, one-owner invariant, nonexecutable job mode, public artifact
+  identities, and no-package/descriptor/schema boundary pass. The DAG and public
+  artifact flow are unchanged, so diagrams remain untouched. This separate
+  committed-time pass was performed by the same campaign agent; independent
+  authorship is not claimed. No executable/test mutation or computational,
+  runtime, scheduler, production, scientific-review, or biological evidence was
+  created.

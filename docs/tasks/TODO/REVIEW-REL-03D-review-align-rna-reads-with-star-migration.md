@@ -23,7 +23,7 @@ failure, and residue state.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03D](../IN_PROGRESS/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) — Required: reliability review needs the architecture-corrected owner and caller boundary.
+- [REVIEW-ARCH-03D](../COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md) — Required: reliability review needs the architecture-corrected owner and caller boundary.
 
 ## Completion unblocks
 
