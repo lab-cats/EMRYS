@@ -33,7 +33,7 @@ path text without restoring or changing dependencies.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03M](../TODO/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: usability review needs the fixed failure, residue, recovery, R, validator, and scheduler obligations.
+- [REVIEW-UX-03M](../IN_PROGRESS/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) — Fully: active usability review uses the fixed failure, residue, recovery, R, validator, and scheduler obligations.
 
 ## Prerequisites
 

@@ -31,7 +31,7 @@ retry guidance, biological overclaim, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03M](MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03M](../TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -98,6 +98,8 @@ retry guidance, biological overclaim, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Architecture and reliability reviews are complete; no
-executable/test file changed or ran under either review, and usability remains
-the sole unselected prerequisite before migration selection.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal reliability completion
+`fd000947d01807fcce00c5eb283181929f26caed`. No usability finding is
+recorded yet, no migration or later card is selected, and no executable/test
+file changed or ran.

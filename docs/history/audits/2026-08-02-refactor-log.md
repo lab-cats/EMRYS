@@ -4538,6 +4538,22 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   status `1`, nonpassing, and not green. Publish and prove this completion
   equal before selecting usability review alone.
 
+## 2026-08-03T11:48:34-0400 — REVIEW-UX-03M selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  reliability completion `fd000947d01807fcce00c5eb283181929f26caed`, move
+  only `REVIEW-UX-03M` to `IN_PROGRESS` and repair its direct migration
+  lifecycle links. `MIG-03M` remains unselected in `TODO`; Step `09` and every
+  later owner/review card remain uncreated.
+- **Boundary:** this checkpoint selects read-only usability review but records
+  no finding. No executable, test, harness, configuration, dependency, schema,
+  fixture, report template, R runtime, scheduler, cluster, production,
+  scientific-review, provisional-policy, or biological state changes or runs.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete documentation gate belongs to usability-
+  review completion.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection
