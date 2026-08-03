@@ -1,4 +1,5 @@
 import csv
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,8 +25,16 @@ def fixture(root: Path):
         "#!/usr/bin/env bash\nset -euo pipefail\n"
         "case \"$1 $2\" in\n"
         " 'quickcheck -v') exit \"${QUICKCHECK_EXIT:-0}\" ;;\n"
-        " 'view -H') printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
-        "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\" ;;\n"
+        " 'view -H')\n"
+        "   if [[ \"${VIEW_EXIT:-0}\" != 0 ]]; then\n"
+        "     printf 'fake samtools header failure\\n' >&2\n"
+        "     exit \"$VIEW_EXIT\"\n"
+        "   fi\n"
+        "   printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
+        "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\"\n"
+        "   if [[ -n \"${MUTATE_PATH:-}\" ]]; then\n"
+        "     printf 'mutated-after-build\\n' >> \"$MUTATE_PATH\"\n"
+        "   fi ;;\n"
         " *) exit 9 ;;\nesac\n"
     )
     tool.chmod(0o755)
@@ -33,13 +42,13 @@ def fixture(root: Path):
     return bam, bai, metrics, tool, out / "S.validation.tsv"
 
 
-def run(values, *extra, env=None):
+def run(values, *extra, env=None, cwd=ROOT):
     bam, bai, metrics, tool, output = values
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
          "--bai", str(bai), "--metrics", str(metrics),
          "--samtools-bin", str(tool), "--output", str(output), *extra],
-        cwd=ROOT, text=True, capture_output=True, env=env,
+        cwd=cwd, text=True, capture_output=True, env=env,
     )
 
 
@@ -63,7 +72,6 @@ def test_execute_publishes_five_passes(tmp_path):
 
 
 def test_bad_header_and_metrics_are_failed_evidence(tmp_path):
-    import os
     values = fixture(tmp_path)
     values[2].write_text("LIBRARY\tPERCENT_DUPLICATION\nS\t2\n")
     env = dict(os.environ, SORT_ORDER="queryname", RG_ID="wrong")
@@ -89,3 +97,83 @@ def test_foreign_lock_is_preserved(tmp_path):
     lock.write_text("foreign\n")
     assert run(values, "--execute").returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_exact(tmp_path):
+    values = fixture(tmp_path / "fixture")
+    invocation = tmp_path / "invocation"
+    invocation.mkdir()
+    input_bytes = tuple(path.read_bytes() for path in values[:-1])
+
+    dry_run = run(values, cwd=invocation)
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert not values[-1].exists()
+    assert list(invocation.iterdir()) == []
+
+    first = run(values, "--execute", cwd=invocation)
+    assert first.returncode == 0, first.stderr
+    report_bytes = values[-1].read_bytes()
+    assert dry_run.stdout.encode().startswith(report_bytes)
+    assert_exact_check_roster(rows(values[-1]), "04")
+
+    second = run(values, "--execute", cwd=invocation)
+    assert second.returncode == 0, second.stderr
+    assert values[-1].read_bytes() == report_bytes
+    assert tuple(path.read_bytes() for path in values[:-1]) == input_bytes
+    assert list(invocation.iterdir()) == []
+
+
+def test_quickcheck_nonzero_publishes_failed_evidence_with_exit_zero(tmp_path):
+    values = fixture(tmp_path)
+    result = run(
+        values,
+        "--execute",
+        env=dict(os.environ, QUICKCHECK_EXIT="17"),
+    )
+
+    assert result.returncode == 0, result.stderr
+    report_rows = {row["check_id"]: row for row in rows(values[-1])}
+    assert report_rows["samtools_quickcheck"]["status"] == "fail"
+    assert report_rows["samtools_quickcheck"]["observed"] == "exit=17"
+    assert {
+        row["status"]
+        for check_id, row in report_rows.items()
+        if check_id != "samtools_quickcheck"
+    } == {"pass"}
+
+
+def test_header_tool_failure_preserves_valid_predecessor_report(tmp_path):
+    values = fixture(tmp_path)
+    first = run(values, "--execute")
+    assert first.returncode == 0, first.stderr
+    predecessor = values[-1].read_bytes()
+
+    failed = run(
+        values,
+        "--execute",
+        env=dict(os.environ, VIEW_EXIT="29"),
+    )
+
+    assert failed.returncode == 2
+    assert failed.stdout == ""
+    assert "samtools view -H failed: fake samtools header failure" in failed.stderr
+    assert values[-1].read_bytes() == predecessor
+
+
+def test_post_build_input_mutation_preserves_valid_predecessor_report(tmp_path):
+    values = fixture(tmp_path)
+    first = run(values, "--execute")
+    assert first.returncode == 0, first.stderr
+    predecessor = values[-1].read_bytes()
+    original_bam = values[0].read_bytes()
+
+    failed = run(
+        values,
+        "--execute",
+        env=dict(os.environ, MUTATE_PATH=str(values[0])),
+    )
+
+    assert failed.returncode == 2
+    assert "Input changed after validation" in failed.stderr
+    assert values[0].read_bytes() == original_bam + b"mutated-after-build\n"
+    assert values[-1].read_bytes() == predecessor
