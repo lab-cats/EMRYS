@@ -3734,3 +3734,22 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings. No reliability-review path, lifecycle, dependency, cycle,
   orphan, anchor, or diagram finding remains. This expected-only ceiling is
   nonpassing, not green, and not authority to alter inherited lifecycle state.
+
+## 2026-08-03T07:09:17-0400 — REVIEW-UX-03J selected
+
+- **Selection:** after reliability-completion checkpoint
+  `daa7ec4c0091dd87e86043b83096111efb44e1cb` was clean, tracked/untracked
+  empty, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch, move only `REVIEW-UX-03J` to `IN_PROGRESS` and repair its
+  reciprocal lifecycle links. `MIG-03J` remains unselected in `TODO`; Step `06`
+  and every later card remain uncreated.
+- **Boundary:** this checkpoint selects review work but does not perform it. No
+  usability finding or migration-card correction is recorded; no executable,
+  test, harness, configuration, dependency, runtime, scheduler, cluster,
+  production, scientific-review, or biological state changes or runs.
+- **Documentation gate:** after repairing the selection's current lifecycle
+  links, `git diff --check` passes and the exact RUNBOOK documentation validator
+  reports only the nine inherited `UNREFINED` card-location findings. No
+  selection-caused path, lifecycle, dependency, cycle, orphan, anchor, or
+  diagram finding remains. The expected-only result is nonpassing and is not
+  called green.

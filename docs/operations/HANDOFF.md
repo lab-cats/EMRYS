@@ -12,24 +12,23 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen parent is published reliability-review
-  selection checkpoint `5785b87660d4274b07e39fba07590fb50f75f6d2`.
+  completion checkpoint `daa7ec4c0091dd87e86043b83096111efb44e1cb`.
 - Recorded package state: `MIG-03I` executable/test checkpoint `803fcc4` and
   documentation/lifecycle close `c6814e0` are published and local/upstream/
   live-remote-equal.
-- Current package: completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+- Current package: active [`REVIEW-UX-03J`](../tasks/IN_PROGRESS/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md),
+  after completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
   and [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md).
-  [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  and [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-  remain unselected. Only Step `05` is live-DAG-eligible; Step `06` and later
+  [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
+  remains unselected. Only Step `05` is live-DAG-eligible; Step `06` and later
   cards remain uncreated.
-- Package type at this checkpoint: documentation-only reliability-review
-  completion. It records exact producer transaction/admission/signal,
-  validator, and scheduler dispositions as four future test-only slices while
-  changing no executable, configuration, dependency, schema, fixture, report
-  template, or test behavior and running no computational work.
-- Remote publication and upstream equality: reliability selection parent
-  `5785b87` is verified local/upstream/live-remote-equal. Publish and prove this
-  completion checkpoint equal before selecting only `REVIEW-UX-03J`.
+- Package type at this checkpoint: documentation-only usability-review
+  selection. It records no usability finding and changes no executable,
+  configuration, dependency, schema, fixture, report template, or test
+  behavior, and runs no computational, scheduler, cluster, or production work.
+- Remote publication and upstream equality: reliability completion parent
+  `daa7ec4` is verified local/upstream/live-remote-equal. Publish and prove this
+  selection checkpoint equal before performing only `REVIEW-UX-03J`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -306,14 +305,14 @@ migrated. Published definition checkpoint `f88f56e` created only unselected
 and its sequential
 [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-→ [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
+→ [`REVIEW-UX-03J`](../tasks/IN_PROGRESS/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
 Architecture is complete with the exact private reference bridge, neutral-
 loader depths, five-move/ten-update ceiling, moved-test roots, projected native
 hashes, artifact/coverage ownership, and reverse rollback recorded. Reliability
 is complete with exactly four bounded old-path test-only checkpoints and exact
-fault/parity/scheduler dispositions. Usability and migration remain unselected.
-No executable/test path changed or computational check ran in either review,
-and no Step `06` or later card is preloaded.
+fault/parity/scheduler dispositions. Usability alone is selected; migration
+remains unselected. No executable/test path changed or computational check ran
+in this selection, and no Step `06` or later card is preloaded.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)

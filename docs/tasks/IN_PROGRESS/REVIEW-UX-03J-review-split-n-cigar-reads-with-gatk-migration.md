@@ -29,7 +29,7 @@ dry-run claims, unsafe retry guidance, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03J](MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03J](../TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md) — Fully: migration selection may begin after all three reviews close.
 
 ## Prerequisites
 
@@ -92,5 +92,7 @@ dry-run claims, unsafe retry guidance, or an undiscoverable final owner.
 
 ## Completion record
 
-Not selected. Its `REVIEW-REL-03J` prerequisite is complete, but this usability
-review remains unselected in `TODO`; no executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal reliability checkpoint
+`daa7ec4c0091dd87e86043b83096111efb44e1cb`. No usability finding is recorded
+yet, `MIG-03J` remains unselected, and no executable/test file changed or ran.

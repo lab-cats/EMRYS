@@ -186,7 +186,7 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03J](REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03J](../IN_PROGRESS/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 
@@ -296,6 +296,6 @@ Step `05` as the smallest next JIT unit but does not select it.
 ## Completion record
 
 Not selected. Architecture and reliability reviews are complete in their
-respective completed cards; usability remains unselected in `TODO`. No
+respective completed cards; usability alone is active. No
 executable/test path changed, no computational test ran, and no Step `06` or
 later owner is preloaded.
