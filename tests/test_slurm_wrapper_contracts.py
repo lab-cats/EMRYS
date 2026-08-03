@@ -2319,6 +2319,171 @@ def test_step_08_vcf_preprocessing_stale_three_mask_missing_child_outputs(
     assert "Validated Step 08 VCF preprocessing outputs:" in result.stdout
 
 
+@pytest.mark.parametrize("rscript_state", ("missing", "nonexecutable"))
+def test_step_09_cmh_editing_site_calling_forwards_unusable_rscript_to_child(
+    tmp_path: Path,
+    rscript_state: str,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    rscript_path = tmp_path / f"{rscript_state}-Rscript"
+    if rscript_state == "nonexecutable":
+        touch(rscript_path, "not executable\n")
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--rscript-bin") + 1] = str(rscript_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"RSCRIPT_BIN_OVERRIDE": str(rscript_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "WARNING:" not in result.stdout
+    assert read_lines(tmp_path / "tool.log") == ()
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n"
+        for output in prepared.outputs
+    )
+
+
+def test_step_09_cmh_editing_site_calling_forwards_path_rscript_basename(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--rscript-bin") + 1] = "Rscript"
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"RSCRIPT_BIN_OVERRIDE": "Rscript"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_lines(tmp_path / "tool.log") == ()
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n"
+        for output in prepared.outputs
+    )
+
+
+def test_step_09_cmh_editing_site_calling_forwards_missing_r_program_to_child(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    missing_r_program = prepared.submit / "implementation" / "missing-step09.R"
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index("--r-script") + 1] = str(missing_r_program)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"STEP09_R_SCRIPT": str(missing_r_program)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not missing_r_program.exists()
+    assert read_lines(tmp_path / "tool.log") == ()
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n"
+        for output in prepared.outputs
+    )
+
+
+def test_step_09_cmh_editing_site_calling_uses_launch_cwd_without_submit_dir(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_removals=("SLURM_SUBMIT_DIR",),
+        cwd=prepared.launch,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
+        prepared.launch
+    )
+    assert (prepared.launch / "logs").is_dir()
+
+
+def test_step_09_cmh_editing_site_calling_dry_run_creates_logs_only(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    before = {
+        path.relative_to(prepared.submit)
+        for path in prepared.submit.rglob("*")
+    }
+
+    result = run_prepared(prepared)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    after = {
+        path.relative_to(prepared.submit)
+        for path in prepared.submit.rglob("*")
+    }
+    assert after - before == {Path("logs")}
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(
+        not directory.exists() for directory in prepared.output_directories
+    )
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args
+
+
+def test_step_09_cmh_editing_site_calling_stale_six_mask_missing_child_outputs(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_09_cmh_editing_site_calling.slurm", tmp_path
+    )
+    stale_bytes = tuple(
+        f"stale Step 09 output {index}\n".encode()
+        for index in range(len(prepared.outputs))
+    )
+    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
+    assert "Validated Step 09 output paths:" in result.stdout
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_module_failure_policy_is_observable(
     name: str,
