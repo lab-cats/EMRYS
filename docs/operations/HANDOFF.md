@@ -12,18 +12,19 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: migration-selection checkpoint
-  `d6abed12a303dabc9b8166c511969b87f8c41ff2` is clean, published, and
-  local/upstream-equal. Its usability completion checkpoint is `7d31459`.
-- Current package: task-specific plan for
+- Recorded package state: task-specific plan checkpoint
+  `03cbc97be2fd58944c8f19eb0fb2672416648cce` is clean, published, and
+  local/upstream-equal. Its migration-selection checkpoint is `d6abed1`.
+- Current package: old-path fixture/mock baseline for
   [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md)
-  with an exact fourteen-file atomic write set and targeted old-path baseline
-  tranche. All three dedicated reviews are complete.
-- Package type at this checkpoint: execution planning documentation only; no
-  computational baseline ran and no executable or test file changed.
-- Remote publication and upstream equality: parent `d6abed1` is verified
-  local/upstream-equal. The commit containing this plan must be published and
-  proved equal before old-path computational baselines begin.
+  with an exact fourteen-file atomic write set. All three dedicated reviews and
+  the targeted old-path baseline are complete.
+- Package type at this checkpoint: targeted local fixture/mock baseline
+  evidence recorded in documentation only; no tracked executable or test file
+  changed.
+- Remote publication and upstream equality: parent `03cbc97` is verified
+  local/upstream-equal. The commit containing this baseline must be published
+  and proved equal before the atomic executable/test cutover begins.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -59,6 +60,14 @@ neutral validation-report owner. `construct_FASTA_sidecars` remains dependency-
 valid but is not selected because its validator still imports the separate flat
 `reference_provenance` implementation. Historical alias order did not determine
 the selection.
+
+The old-path baseline passed shell syntax and the direct shell suite, plus
+`555` targeted Python tests in `62.65s`. Temporary fixture/mock probes preserved
+the characterized producer child exit `37` and empty output-directory residue,
+and proved byte-identical five-row validator publication across two executions
+from a non-repository CWD with no invocation or publisher residue. This is not
+real STAR, scheduler, production, scientific-review, or biological evidence;
+the complete applicable gate remains deferred to the final-path card boundary.
 
 ## Active concurrent lanes
 
@@ -519,8 +528,9 @@ is complete at published executable/test checkpoint `e19f281` and
 documentation/lifecycle close `f9d6381`. The next JIT card is
 [`MIG-03D`](../tasks/IN_PROGRESS/MIG-03D-migrate-align-rna-reads-with-star-owner.md);
 its three reviews are complete and it is selected for task-specific planning.
-The exact atomic write set and old-path baseline tranche are now frozen in its
-card; baseline execution remains the next bounded slice.
+The exact atomic write set is frozen in its card and the targeted old-path
+fixture/mock baseline is complete. The reviewed fourteen-file atomic cutover is
+the next bounded slice.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -541,8 +551,8 @@ are complete. The MIG-03D reviews
 [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
 [`REVIEW-UX-03D`](../tasks/COMPLETED/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are complete. `MIG-03D` is selected and its exact task-specific plan is frozen.
-After this checkpoint is clean, published, and equal, run only the targeted
-old-path fixture/mock baselines; publish their evidence before the atomic
+are complete. `MIG-03D` is selected, its exact task-specific plan is frozen,
+and its targeted old-path fixture/mock baseline is complete. Publish and prove
+this evidence checkpoint equal before the reviewed fourteen-file atomic
 executable/test cutover. No later owner is selected. The unsliced `PROGRAM-01`
 remainder and unrelated roadmap remain preserved and out of scope.

@@ -298,8 +298,10 @@ checkpoint `7d31459ceea981fa4a809afcdc1c8e24dd599874`. The frozen migration pare
 remains `f9d638199c6d60cbe81c992fde6a1090cb364302`; all three sequential reviews
 are complete. Selection checkpoint
 `d6abed12a303dabc9b8166c511969b87f8c41ff2` is the clean, published,
-upstream-equal planning parent. No old-path baseline has run and no executable
-or test path has moved at this planning checkpoint.
+upstream-equal planning parent. Task-specific plan checkpoint
+`03cbc97be2fd58944c8f19eb0fb2672416648cce` is also clean, published, and
+upstream-equal. The targeted old-path fixture/mock baseline below has run; no
+executable or test path has moved.
 
 ### Task-specific execution plan
 
@@ -360,3 +362,45 @@ atomic cutover, run the same focused probes at final paths, inspect the final
 producer/job diff and hash, then run the complete applicable local gate once at
 the `MIG-03D` executable card boundary. Documentation and lifecycle closure
 remain a separate batched commit after executable state is fixed.
+
+### Old-path fixture/mock baseline
+
+The baseline ran from clean, published, upstream-equal plan checkpoint
+`03cbc97be2fd58944c8f19eb0fb2672416648cce` with no tracked or untracked file,
+recovery marker, index lock, or mutable-lane collision. It is local
+fixture/mock evidence only:
+
+- `bash -n` passed for the producer and job, and the existing direct shell
+  suite passed all of its syntax, help, dry-run, execute, paired-compression,
+  mixed-compression, invalid-thread, missing-argument, and missing-input cases.
+- The exact targeted Python surface named in the plan passed `555` tests in
+  `62.65s`: the direct validator, public CLI, SLURM wrapper, validation roster,
+  shared validation-report, artifact-adapter, and coverage-policy modules.
+- A temporary fake `STAR` exiting `37` was invoked with the reviewed arguments;
+  the producer returned `37`, emitted no stderr, retained its already-created
+  output directory, and left that directory empty. This characterizes the
+  child-failure residue and does not approve or repair it.
+- From a temporary non-repository CWD, the validator returned `0` for dry-run,
+  first execute, and repeat execute. Dry-run wrote no report; both executions
+  produced the same five all-pass rows and byte-identical report with SHA-256
+  `13a6540f578ed55a7c2e5ba66346ec41df45e95df06e746b920cb31dcd5d3a94`;
+  stderr, invocation-CWD residue, and publisher lock/temp residue were empty.
+- Frozen asset evidence is producer mode `0755`, 5,600 bytes, 195 lines,
+  SHA-256
+  `25e2120ca9843ea25f2e1f3b4084aced6261976ab46f7cb25c33d7911f82d0ba`;
+  validator mode `0644`, 8,506 bytes, 229 lines, SHA-256
+  `40b878493949b3d095379aae1413999f1cbfca5954c31299c2a1a34ba89d2aed`;
+  and job mode `0644`, 3,348 bytes, 114 lines, SHA-256
+  `1b75457580d294a7a4e06017c80aea36b3a9abd68794b8047f47172be3706aa4`.
+  The direct shell test remains mode `0755`, SHA-256
+  `f86f797b9d8a77437b92a1315c355f2f811ac4d09628c85e775846a2deb9f535`;
+  the direct Python test remains mode `0644`, SHA-256
+  `2ec9ab15cc2da5f59582b71c778da2b2358a3aee9eb47f38ea353201c7def3c3`.
+- No tracked coverage measurement ran. The committed rollback floor remains
+  validator `125/140` lines and `34/44` branches and global `9343/11506` lines
+  and `3281/4698` branches. Full validation remains deferred to the final-path
+  executable card boundary as required.
+
+No real STAR process, scheduler submission, production input, dependency
+action, cluster state, scientific review, or biological-readiness evidence was
+created. The next slice is the reviewed fourteen-file atomic cutover only.

@@ -1351,3 +1351,41 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   run real STAR, submit a job, install/restore dependencies, touch production
   data, or claim runtime, scheduler, production, scientific-review, or
   biological evidence.
+
+## 2026-08-02T23:10:00-0400 — MIG-03D old-path baseline captured
+
+- **Published parent and clean scope:** the baseline began from clean,
+  published, local/upstream-equal task-specific plan checkpoint `03cbc97`, with
+  no untracked file, recovery marker, index lock, or mutable-lane collision. It
+  changed no tracked executable/test file and did not preload another owner.
+- **Targeted suites:** `bash -n` passed for the frozen producer and scheduler
+  job; the direct shell suite passed all existing cases. The exact planned
+  Python surface passed `555` tests in `62.65s`, covering the direct validator,
+  public CLI, scheduler wrapper, validation roster, shared report publisher,
+  artifact adapter, and coverage policy. This is not the complete card gate.
+- **Reviewed missing oracles:** a temporary fake STAR returned `37`; the
+  producer propagated `37`, invoked the child with the reviewed arguments,
+  emitted no stderr, and retained an empty pre-created output directory. A
+  temporary non-repository-CWD validator journey returned `0` for dry-run and
+  two executions, wrote no dry-run report, then produced five all-pass rows
+  with byte-identical SHA-256
+  `13a6540f578ed55a7c2e5ba66346ec41df45e95df06e746b920cb31dcd5d3a94`;
+  invocation-CWD and publisher residue were empty. These results characterize
+  existing behavior without approving the residue or inherited publisher gaps.
+- **Frozen rollback evidence:** producer mode/hash is `0755` /
+  `25e2120ca9843ea25f2e1f3b4084aced6261976ab46f7cb25c33d7911f82d0ba`;
+  validator `0644` /
+  `40b878493949b3d095379aae1413999f1cbfca5954c31299c2a1a34ba89d2aed`;
+  job `0644` /
+  `1b75457580d294a7a4e06017c80aea36b3a9abd68794b8047f47172be3706aa4`;
+  direct shell test `0755` /
+  `f86f797b9d8a77437b92a1315c355f2f811ac4d09628c85e775846a2deb9f535`;
+  and direct Python test `0644` /
+  `2ec9ab15cc2da5f59582b71c778da2b2358a3aee9eb47f38ea353201c7def3c3`.
+- **Evidence ceiling and next action:** no tracked coverage run, real STAR
+  process, scheduler submission, dependency action, production data, cluster
+  state, scientific review, or biological-readiness evidence was created. The
+  committed coverage floor remains validator `125/140` lines and `34/44`
+  branches and global `9343/11506` lines and `3281/4698` branches. Publish this
+  documentation-only baseline checkpoint, prove live remote equality, then
+  apply only the reviewed fourteen-file atomic cutover.
