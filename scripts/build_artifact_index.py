@@ -953,7 +953,9 @@ STEP_PRODUCERS = {
     ),
     "00b": "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
     "00c": "scripts/step_00c_prepare_gatk_reference.sh",
-    "01": "scripts/step_01_star_align.sh",
+    "01": (
+        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
+    ),
     "02": "scripts/step_02_sort_index_bam.sh",
     "02b": "scripts/step_02b_bam_qc.sh",
     "03": "scripts/step_03_infer_strandedness_and_orientation.sh",

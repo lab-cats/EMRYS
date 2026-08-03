@@ -1,12 +1,24 @@
 import csv
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
-from validation_roster_expectations import assert_exact_check_roster
-
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/validate_step_01_star_alignment.py"
+ROOT = Path(__file__).resolve().parents[3]
+ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "align_rna_reads_with_star_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = (
+    ROOT
+    / "src/norad/stages/align_RNA_reads_with_STAR"
+    / "validate_step_01_star_alignment.py"
+)
 
 
 def fixture(root: Path):
@@ -27,14 +39,14 @@ def fixture(root: Path):
     return bam, final, log, progress, sj, out / "S.validation.tsv"
 
 
-def run(values, *extra):
+def run(values, *extra, cwd=ROOT):
     bam, final, log, progress, sj, output = values
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
          "--log-final", str(final), "--log-out", str(log),
          "--log-progress", str(progress), "--sj-out", str(sj),
          "--output", str(output), *extra],
-        cwd=ROOT, text=True, capture_output=True,
+        cwd=cwd, text=True, capture_output=True,
     )
 
 
@@ -82,3 +94,30 @@ def test_foreign_lock_is_preserved(tmp_path):
     lock.write_text("foreign\n")
     assert run(values, "--execute").returncode == 2
     assert lock.read_text() == "foreign\n"
+
+
+def test_non_repo_cwd_dry_run_execute_repeat_is_deterministic(tmp_path):
+    values = fixture(tmp_path / "fixture")
+    invocation = tmp_path / "invocation"
+    invocation.mkdir()
+
+    dry = run(values, cwd=invocation)
+    assert dry.returncode == 0
+    assert dry.stderr == ""
+    assert dry.stdout.endswith("Dry-run complete; no output was written.\n")
+    assert not values[-1].exists()
+
+    first = run(values, "--execute", cwd=invocation)
+    assert first.returncode == 0
+    assert first.stderr == ""
+    first_bytes = values[-1].read_bytes()
+
+    second = run(values, "--execute", cwd=invocation)
+    assert second.returncode == 0
+    assert second.stderr == ""
+    assert second.stdout == first.stdout
+    assert values[-1].read_bytes() == first_bytes
+    assert_exact_check_roster(rows(values[-1]), "01")
+    assert {row["status"] for row in rows(values[-1])} == {"pass"}
+    assert list(invocation.iterdir()) == []
+    assert not [path for path in values[-1].parent.iterdir() if path.name.startswith(".")]

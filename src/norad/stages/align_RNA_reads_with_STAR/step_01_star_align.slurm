@@ -91,9 +91,9 @@ echo "  OUTPUT_DIR: $OUTPUT_DIR"
 echo "  THREADS:    $threads"
 echo "  EXECUTE:    $EXECUTE"
 
-# Delegate workflow logic to the script in scripts/; keep SLURM as a wrapper.
+# Delegate workflow logic to the final stage owner; keep SLURM as a wrapper.
 cmd=(
-    bash scripts/step_01_star_align.sh
+    bash src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh
     --sample-id "$SAMPLE_ID"
     --r1-fastq "$R1_FASTQ"
     --r2-fastq "$R2_FASTQ"

@@ -36,7 +36,8 @@ VALIDATOR_PATHS = {
         "scripts/validate_step_00c_reference_sidecars.py"
     ),
     "validate_step_01_star_alignment": Path(
-        "scripts/validate_step_01_star_alignment.py"
+        "src/norad/stages/align_RNA_reads_with_STAR/"
+        "validate_step_01_star_alignment.py"
     ),
     "validate_step_02_canonical_bam": Path(
         "scripts/validate_step_02_canonical_bam.py"
@@ -65,6 +66,11 @@ VALIDATOR_PATHS = {
     ),
 }
 VALIDATOR_MODULES = tuple(VALIDATOR_PATHS)
+NON_FLAT_VALIDATOR_MODULES = frozenset(
+    module_name
+    for module_name, path in VALIDATOR_PATHS.items()
+    if path.parent != Path("scripts")
+)
 STEP_00B_VALIDATOR_NAME = "validate_step_00b_bed12"
 STEP_00B_PRODUCER_NAME = "gtf_to_bed12"
 STEP_00B_PRODUCER_PATH = (
@@ -123,7 +129,7 @@ def load_validator_module(module_name: str) -> ModuleType:
             if not producer_was_cached:
                 sys.modules.pop(STEP_00B_PRODUCER_NAME, None)
             raise
-    if module_name == "validate_step_00a_star_index":
+    if module_name in NON_FLAT_VALIDATOR_MODULES:
         return load_exact_test_module(module_name, validator_path(module_name))
     return importlib.import_module(module_name)
 

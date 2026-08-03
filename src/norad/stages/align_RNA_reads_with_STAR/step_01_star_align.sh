@@ -9,7 +9,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/step_01_star_align.sh \
+  src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh \
     --sample-id SAMPLE_ID \
     --r1-fastq R1_FASTQ \
     --r2-fastq R2_FASTQ \

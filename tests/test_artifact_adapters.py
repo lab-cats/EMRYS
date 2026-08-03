@@ -232,6 +232,24 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             }
         ],
     }
+    assert evidence["01"] == {
+        "status": "implemented",
+        "git_commit": git_commit,
+        "evidence": [
+            {
+                "evidence_id": "implementation_01",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/align_RNA_reads_with_STAR/"
+                    "step_01_star_align.sh"
+                ),
+                "sha256": (
+                    "718625e101a700b4da56b8e30249b1b4"
+                    "2f8dea81546a763fc9db246be9a3edaf"
+                ),
+            }
+        ],
+    }
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

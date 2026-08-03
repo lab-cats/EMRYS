@@ -51,7 +51,8 @@ PYTHON_ENTRYPOINT_PATHS = {
         "scripts/validate_step_00c_reference_sidecars.py"
     ),
     "validate_step_01_star_alignment.py": Path(
-        "scripts/validate_step_01_star_alignment.py"
+        "src/norad/stages/align_RNA_reads_with_STAR/"
+        "validate_step_01_star_alignment.py"
     ),
     "validate_step_02_canonical_bam.py": Path(
         "scripts/validate_step_02_canonical_bam.py"
@@ -95,23 +96,40 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 
-SHELL_ENTRYPOINTS = frozenset(
-    {
-        "render_run_report.sh",
-        "step_00c_prepare_gatk_reference.sh",
-        "step_01_star_align.sh",
-        "step_02_sort_index_bam.sh",
-        "step_02b_bam_qc.sh",
-        "step_03_infer_strandedness_and_orientation.sh",
-        "step_04_mark_duplicates.sh",
-        "step_05_split_n_cigar_reads.sh",
-        "step_06_split_bam_by_read_orientation.sh",
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "step_08_vcf_preprocessing.sh",
-        "step_09_cmh_editing_site_calling.sh",
-        "step_09c_scientific_validation.sh",
-    }
-)
+SHELL_ENTRYPOINT_PATHS = {
+    "render_run_report.sh": Path("scripts/render_run_report.sh"),
+    "step_00c_prepare_gatk_reference.sh": Path(
+        "scripts/step_00c_prepare_gatk_reference.sh"
+    ),
+    "step_01_star_align.sh": Path(
+        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
+    ),
+    "step_02_sort_index_bam.sh": Path("scripts/step_02_sort_index_bam.sh"),
+    "step_02b_bam_qc.sh": Path("scripts/step_02b_bam_qc.sh"),
+    "step_03_infer_strandedness_and_orientation.sh": Path(
+        "scripts/step_03_infer_strandedness_and_orientation.sh"
+    ),
+    "step_04_mark_duplicates.sh": Path("scripts/step_04_mark_duplicates.sh"),
+    "step_05_split_n_cigar_reads.sh": Path(
+        "scripts/step_05_split_n_cigar_reads.sh"
+    ),
+    "step_06_split_bam_by_read_orientation.sh": Path(
+        "scripts/step_06_split_bam_by_read_orientation.sh"
+    ),
+    "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
+        "scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+    ),
+    "step_08_vcf_preprocessing.sh": Path(
+        "scripts/step_08_vcf_preprocessing.sh"
+    ),
+    "step_09_cmh_editing_site_calling.sh": Path(
+        "scripts/step_09_cmh_editing_site_calling.sh"
+    ),
+    "step_09c_scientific_validation.sh": Path(
+        "scripts/step_09c_scientific_validation.sh"
+    ),
+}
+SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)
 INTERPRETER_ONLY_SHELL_DEFECTS = frozenset(
     {
         "step_03_infer_strandedness_and_orientation.sh",
@@ -211,6 +229,10 @@ def mode_is_executable(path: Path) -> bool:
 
 def python_entrypoint_path(entrypoint: str) -> Path:
     return REPO_ROOT / PYTHON_ENTRYPOINT_PATHS[entrypoint]
+
+
+def shell_entrypoint_path(entrypoint: str) -> Path:
+    return REPO_ROOT / SHELL_ENTRYPOINT_PATHS[entrypoint]
 
 
 def relative_snapshot(root: Path) -> tuple[str, ...]:
@@ -336,10 +358,17 @@ def test_inventory_classifies_every_live_public_script() -> None:
         for path in PYTHON_ENTRYPOINT_PATHS.values()
         if path.parent == Path("scripts")
     }
+    flat_shell_entrypoints = {
+        path.name
+        for path in SHELL_ENTRYPOINT_PATHS.values()
+        if path.parent == Path("scripts")
+    }
     assert live_python == flat_python_entrypoints | PRIVATE_PYTHON_MODULES
     assert all(python_entrypoint_path(name).is_file() for name in PYTHON_ENTRYPOINTS)
     assert len(set(PYTHON_ENTRYPOINT_PATHS.values())) == len(PYTHON_ENTRYPOINTS)
-    assert live_shell == SHELL_ENTRYPOINTS
+    assert live_shell == flat_shell_entrypoints
+    assert all(shell_entrypoint_path(name).is_file() for name in SHELL_ENTRYPOINTS)
+    assert len(set(SHELL_ENTRYPOINT_PATHS.values())) == len(SHELL_ENTRYPOINTS)
     assert live_r == R_ENTRYPOINTS
     assert DIRECT_PYTHON_ENTRYPOINTS | INTERPRETER_ONLY_PYTHON_ENTRYPOINTS == (
         PYTHON_ENTRYPOINTS
@@ -462,7 +491,7 @@ def test_shell_help_and_missing_arguments_are_cwd_independent_and_side_effect_fr
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = SCRIPTS_ROOT / entrypoint
+    script = shell_entrypoint_path(entrypoint)
     before = relative_snapshot(tmp_path)
 
     help_result = run_command(["/bin/bash", str(script), "--help"], cwd=tmp_path)
@@ -479,7 +508,7 @@ def test_executable_shell_help_runs_directly_from_arbitrary_cwd(
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = SCRIPTS_ROOT / entrypoint
+    script = shell_entrypoint_path(entrypoint)
 
     result = run_command([str(script), "--help"], cwd=tmp_path)
 
@@ -492,7 +521,7 @@ def test_executable_shell_help_runs_directly_from_arbitrary_cwd(
 def test_nonexecutable_public_shell_modes_are_characterized_defects(
     entrypoint: str,
 ) -> None:
-    assert not mode_is_executable(SCRIPTS_ROOT / entrypoint)
+    assert not mode_is_executable(shell_entrypoint_path(entrypoint))
 
 
 @pytest.mark.parametrize("entrypoint", sorted(DIRECT_R_ENTRYPOINTS))

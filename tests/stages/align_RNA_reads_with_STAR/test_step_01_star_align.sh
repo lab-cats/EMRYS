@@ -2,8 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SCRIPT="$REPO_ROOT/scripts/step_01_star_align.sh"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+SCRIPT="$REPO_ROOT/src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -55,6 +55,7 @@ cat >"$fake_bin/STAR" <<EOF_STAR
 #!/usr/bin/env bash
 printf 'STAR invoked\n' >> "$star_log"
 printf '%s\n' "\$@" >> "$star_log"
+exit "\${STAR_EXIT_CODE:-0}"
 EOF_STAR
 chmod +x "$fake_bin/STAR"
 
@@ -135,6 +136,32 @@ assert_contains "$star_log" "--outSAMtype"
 assert_contains "$star_log" "BAM"
 assert_contains "$star_log" "SortedByCoordinate"
 assert_contains "$execute_output" "Mode: execute"
+
+printf 'Running child failure propagation check...\n'
+failure_output="$tmp_dir/failure.out"
+failure_stderr="$tmp_dir/failure.err"
+failure_output_dir="$tmp_dir/results/failure"
+set +e
+STAR_EXIT_CODE=37 bash "$SCRIPT" \
+    --sample-id sample_failure \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$failure_output_dir" \
+    --threads 3 \
+    --execute \
+    >"$failure_output" 2>"$failure_stderr"
+failure_status=$?
+set -e
+
+[[ "$failure_status" -eq 37 ]] || fail "STAR child exit 37 was not propagated"
+[[ -d "$failure_output_dir" ]] || fail "child failure removed the output directory"
+[[ -z "$(find "$failure_output_dir" -mindepth 1 -print -quit)" ]] || \
+    fail "fake STAR child failure left unexpected output artifacts"
+[[ ! -s "$failure_stderr" ]] || fail "fake STAR child failure emitted stderr"
+assert_contains "$failure_output" "Mode: execute"
+assert_contains "$failure_output" "STAR command:"
+assert_contains "$star_log" "$failure_output_dir/sample_failure."
 
 printf 'Running paired gzip dry-run check...\n'
 gzip_output="$tmp_dir/gzip.out"

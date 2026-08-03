@@ -24,7 +24,9 @@ JOB_PATHS = {
     "step_00c_prepare_gatk_reference.slurm": Path(
         "jobs/step_00c_prepare_gatk_reference.slurm"
     ),
-    "step_01_star_align.slurm": Path("jobs/step_01_star_align.slurm"),
+    "step_01_star_align.slurm": Path(
+        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm"
+    ),
     "step_02_sort_index_bam.slurm": Path("jobs/step_02_sort_index_bam.slurm"),
     "step_02b_bam_qc.slurm": Path("jobs/step_02b_bam_qc.slurm"),
     "step_03_infer_strandedness_and_orientation.slurm": Path(
@@ -108,7 +110,9 @@ CONTRACTS = {
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),
         submit_cwd="caller",
-        delegation="scripts/step_01_star_align.sh",
+        delegation=(
+            "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
+        ),
         output_validation="delegate_only",
         exit_propagation="strict",
     ),
