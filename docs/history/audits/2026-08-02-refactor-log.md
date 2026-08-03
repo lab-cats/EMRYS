@@ -3505,3 +3505,74 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   producer baseline `de52e93`. Git rollback never deletes or authenticates
   runtime/production evidence, locks, logs, or recovery artifacts. Publish the
   close, prove clean local/upstream/live-remote equality, then refresh the DAG.
+
+## 2026-08-03T06:45:30-0400 — MIG-03J and sequential reviews defined
+
+- **Checkpoint and live-DAG decision:** begin from clean, published,
+  local/upstream/live-remote-equal `MIG-03I` documentation close
+  `c6814e01352998ee4ebc01014737fac731f2e029`, with no recovery/index-lock or
+  overlapping mutable-lane state. Refresh the canonical semantic edges rather
+  than relying on historical numbering. Both direct predecessors of
+  `split_N_cigar_reads_with_GATK`—`mark_BAM_duplicates_with_Picard` and
+  `construct_FASTA_sidecars`—are migrated, leaving Step `05` as the sole
+  eligible unmigrated owner. Step `06` still depends on Step `05`; define no
+  Step `06` or later card.
+- **Bounded lifecycle decision:** define only unselected `MIG-03J` and
+  `REVIEW-ARCH-03J` → `REVIEW-REL-03J` → `REVIEW-UX-03J`, all in `TODO`.
+  Architecture alone is dependency-free; reliability depends on architecture,
+  usability on reliability, and migration on usability. Publish and prove this
+  definition checkpoint equal before selecting only the architecture review.
+- **Frozen identity and surface:** semantic owner
+  `split_N_cigar_reads_with_GATK`, key
+  `norad.stage.split_N_cigar_reads_with_GATK.v1`, historical alias `05`, final
+  source home `src/norad/stages/split_N_cigar_reads_with_GATK/`, and mirrored
+  test home `tests/stages/split_N_cigar_reads_with_GATK/`. The three mode-`0644`
+  native assets total `34,030` bytes and `1,023` lines. Producer SHA-256 is
+  `19b3ac73934c28760127a7f447863251e127362bb1cdaeef9346d6a310d3d01e`,
+  validator `ceb3a9720b01c1de60d5f23026dea3f9daf3c9b4d1c93a8a140514ffc29c502a`,
+  and job `00944fc0997117197b155f6f2e5222f27a371ab4d623c091544d9656fc2dddc6`.
+  Direct shell/validator rollback hashes are respectively
+  `a2d748f064139b0ed6c2f3c6f0664f445acf83689d379b0787d4f1b2b247a8b6`
+  and `9f24713234b0b2ec35d9fd424d8a590334c8071d15078f4095faaf4417e232c4`.
+- **Proposed cutover and architecture risk:** propose exactly five moves plus
+  ten adjacent integration-owner updates: Make, artifact mapping/assertion,
+  public CLI, scheduler contracts, validation roster/report/BAM-helper maps,
+  coverage baseline, and literal Make fixture. Architecture review must prove
+  that ceiling, final producer/job/test roots, neutral report/BAM-helper
+  depths, exact artifact path/hash, coverage/static ownership, and reverse
+  rollback. The moved validator cannot retain ambient
+  `import reference_provenance`; it needs a private exact-file bridge to
+  unchanged public `scripts/reference_provenance.py`. The review must settle
+  the bridge and any genuinely required extra caller/test owner without a
+  package, `PYTHONPATH`, helper move, alias, wrapper, or duplicate.
+- **High transaction risk retained for review:** the producer has a run-token
+  scratch area, project-storage GATK temp, output-directory lock, staged
+  validation, backups, sequential BAM/BAI publication, final validation, and
+  rollback. Inputs are not snapshot-rechecked, the lock is broad, no receipt
+  binds an attempt, restoration moves are best-effort, and cleanup can delete
+  backups and the lock after rollback itself fails. Reliability must assign
+  safe restoration-failure, predecessor/recovery-residue, signal, lock,
+  scratch, and admitted-input-mutation oracles; none of these defects may be
+  fixed or approved by relocation.
+- **Scheduler, validation, and evidence risks retained:** the mode-`0644` job
+  preserves submit-directory fallback, exported `/tmp`, tolerated samtools
+  module loading, fixed GATK/samtools defaults and overrides, Java override/
+  `JAVA_HOME`/PATH selection with actual version floor, dry-run `logs/`
+  mutation, Bash `3.2` empty-array failure, and stale nonempty BAM/BAI false
+  success. Reliability must disposition Step-`05`-specific module/tool/version/
+  log/stale-output states. Producer and five-row validator do not prove the
+  split-N-cigar transformation or bind output to an attempt; validator exit
+  `0` may publish failed rows. Artifact identities and scientific meaning stay
+  fixed. Starting coverage is validator `138/149` lines and `31/38` branches,
+  global `9510/11677` lines and `3333/4756` branches.
+- **Definition and validation boundary:** this slice changes only four new
+  cards, current roadmap/handoff, and this audit. No executable, test, harness,
+  configuration, dependency, runtime, scheduler, cluster, production,
+  scientific-review, or biological state changes or runs. Full documentation-
+  only card-boundary validation follows after the assembled definition; small
+  canonical path/link updates remain batched for the eventual migration close.
+- **Documentation gate:** `git diff --check` passes. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no new card, path, dependency, cycle, orphan, anchor,
+  or diagram finding. This expected-only result remains nonpassing, not green,
+  and is not authority to alter the inherited lifecycle state.
