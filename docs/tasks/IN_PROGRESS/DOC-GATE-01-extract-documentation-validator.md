@@ -46,8 +46,8 @@ wrapper, but neither that wrapper nor its equivalence proof exists yet.
 
 ## Completion unblocks
 
-- [CONCURRENCY-03](CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Fully: Provides the independently behavior-locked validator required to enforce the fragment lifecycle; completed `CONCURRENCY-02` supplies the manual protocol and synthetic exchange.
-- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Partially: Provides the independently tested validator owner required for lifecycle support; completed `CONCURRENCY-02` is satisfied and `PROGRAM-01` remains required.
+- [CONCURRENCY-03](../TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Fully: Provides the independently behavior-locked validator required to enforce the fragment lifecycle; completed `CONCURRENCY-02` supplies the manual protocol and synthetic exchange.
+- [TASK-LIFECYCLE-01](../TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Fully: Provides the independently tested validator owner required for lifecycle support; completed `CONCURRENCY-02` and the resolved program-owned integration-review trigger are already satisfied.
 
 ## Prerequisites
 

@@ -13,8 +13,10 @@ boundary is Slice `2` of
 which activates only one separately planned repository-health package at a
 time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
-Unrelated work and the preserved program remainder remain frozen; roadmap
-order is not blocker metadata.
+Active [`DOC-GATE-01`](docs/tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md)
+is the sole selected health package. Unrelated work, `TASK-LIFECYCLE-01`, and
+the preserved program remainder remain frozen; roadmap order is not blocker
+metadata.
 
 ## Canonical routes
 

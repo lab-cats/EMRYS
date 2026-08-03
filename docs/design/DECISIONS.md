@@ -1161,7 +1161,7 @@ Consequences: see
 [`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
 through
 [`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
-[`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md) and
+[`DOC-GATE-01`](../tasks/IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) and
 the bounded `DOC-CONS-08A`–`DOC-CONS-08H` cards linked from the
 [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md#bounded-follow-up-packages).
 Concrete consolidation/comment rollout cards are created only after inventories.

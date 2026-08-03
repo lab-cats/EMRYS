@@ -47,7 +47,7 @@ unintegrated work as approved or complete.
 
 ## Blocked by
 
-- [DOC-GATE-01](DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
+- [DOC-GATE-01](../IN_PROGRESS/DOC-GATE-01-extract-documentation-validator.md) — Required: new locations and schemas require the extracted, tested validator owner.
 
 ## Completion unblocks
 
