@@ -289,10 +289,11 @@ the first functional owner physically unmigrated.
 
 ## Completion record
 
-Selected for execution planning at clean, published, local/upstream/live-
-remote-equal checkpoint `be1b658`. The architecture, reliability, and
-usability reviews are complete. The task-specific baseline below changes
-planning documentation only; no executable or test path has moved.
+Completed in published executable/test checkpoint
+`4f9c863e9cdc2ba43ce631830ca237878b7ff875`. The architecture, reliability,
+and usability reviews and the frozen pre-mutation baseline below remain the
+decision record. The documentation/lifecycle close is the commit containing
+this completion record; resolve and verify its exact SHA from live Git.
 
 ### Frozen task-specific execution baseline
 
@@ -345,3 +346,40 @@ planning documentation only; no executable or test path has moved.
   copy files back, retain a duplicate, or touch runtime/production/lock/
   recovery artifacts. Documentation close is a later separate commit and is
   reverted before the executable cutover if rollback occurs after closure.
+
+### Delivered state and acceptance evidence
+
+- The mode-`0644` job moved byte-for-byte to its final owner and retains SHA-256
+  `f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc`.
+  The validator moved beside it with only its owner-relative neutral-library
+  lookup changed. The direct validator and mocked producer behavior tests now
+  live in the mirrored owner home.
+- Repository-owned callers use explicit final paths. Exact searches found no
+  legacy file, duplicate basename, wrapper, symlink, package marker, descriptor,
+  schema, stage import, or compatibility copy. Artifact implementation evidence
+  retains its identity and frozen job hash while recording the final path.
+- Pre/post owner parity passed. Final direct owner tests reported `10 passed`;
+  the complete affected selection reported `560 passed`; validator rosters,
+  public CLI, shared-loader, SLURM inventory, artifact provenance, and coverage
+  tooling remained green.
+- Separate final-path coverage measurement, reviewed baseline update, and
+  baseline check retained the moved validator at `165/189` lines and `42/60`
+  branches, with unchanged global totals `9343/11506` lines and `3281/4698`
+  branches (`0.812011` line and `0.698382` branch rates across 31 files).
+- The network-enabled canonical gate passed static, shell, guarded-R, and
+  report-runtime lanes. Its Python lane reported `1061 passed, 17 skipped,
+  1 failed` because the pre-close documentation test saw six migration-caused
+  stale links plus the nine inherited authorized `UNREFINED` locations. The
+  separate serial coverage-only lane deselected only that documentation test,
+  reported `1061 passed, 17 skipped, 1 deselected`, and passed the exact
+  baseline check. The parallel coverage no-data warning was not accepted as
+  coverage evidence.
+- The documentation close repairs the six migration-caused links. Documentation
+  validation may still report exactly the nine inherited `invalid card
+  location` findings; that state is expected-only nonpassing and is never
+  called a passing gate. All evidence is local fixture/mock and local-runtime
+  validation only, not cluster, production, scientific-review, or biological
+  proof.
+- Rollback points are published baseline `5e83421` before executable mutation,
+  executable checkpoint `4f9c863` before documentation close, and the commit
+  containing this completion record before the next JIT unit.

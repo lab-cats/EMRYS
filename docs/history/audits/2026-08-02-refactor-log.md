@@ -657,3 +657,90 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   reversion point. Rollback uses Git history and reverses a later documentation
   close before the atomic executable cutover; it never copies an implementation
   back or touches runtime, production, lock, backup, or recovery artifacts.
+
+## 2026-08-02T20:21:16-0400 — MIG-03B executable checkpoint and documentation close
+
+- **Published reversion points:** pre-mutation baseline
+  `5e8342146e6a102dbda1cc3e952ebc2c45ca8eed` was clean, published, and
+  upstream-equal before source mutation. Atomic executable/test checkpoint
+  `4f9c863e9cdc2ba43ce631830ca237878b7ff875` is also clean, published, and
+  upstream-equal `0 0`; it is the rollback point before this separate
+  documentation close.
+- **Remote-location diagnostic:** the executable push succeeded to the
+  configured `https://github.com/Glen-Cocoa/norad.git` origin, while GitHub
+  reported that the repository has moved to `https://github.com/lab-cats/norad.git`.
+  Local/upstream equality is exact after the push. Changing the configured
+  remote is outside this owner migration; reverify the live remote route before
+  later publication rather than silently rewriting repository configuration.
+- **Physical-owner decision:** move the Step `00a` job, validator, and direct
+  validator test once to the frozen `construct_STAR_index` source/test homes,
+  and move owner-specific mocked producer behavior out of the cross-owner SLURM
+  suite. The job is a 100% rename, remains mode `0644`, 1,954 bytes, and retains
+  SHA-256 `f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc`.
+  The validator changes only its exact owner-relative route to the neutral
+  validation-report file. No wrapper, compatibility copy, symlink, package
+  marker, descriptor, schema, public import identity, or second owner was added.
+- **Caller and provenance decision:** public Python, SLURM, validator-roster,
+  and shared-loader inventories now use explicit path maps so mixed physical
+  placement stays exhaustive without numeric inference or recursive runtime
+  discovery. Make static/smoke and compile coverage name the final assets.
+  Artifact implementation evidence intentionally changes only the producer path
+  while preserving its status, evidence ID, Git commit projection, source hash,
+  artifact identities, schemas, and ordering.
+- **Preserved producer risks:** the job still executes implicitly, is submitted
+  as a mode-`0644` scheduler input, resolves hardcoded Novogene inputs and
+  `refs/` outputs from caller CWD, defaults to eight threads, reuses nonempty
+  prepared references, creates directories before STAR, retains prepared state
+  on STAR failure, and performs no final index validation or transaction. These
+  are characterized current behaviors, not newly approved design choices.
+- **Focused parity evidence:** the extended legacy-path direct validator suite
+  reported `6 passed`, the extended legacy-path owner mocked-job suite reported
+  `4 passed`, and the retained SLURM selection reported `4 passed, 108
+  deselected`. At final paths the two owner suites reported `10 passed`; the
+  complete affected selection covering owner tests, SLURM, public CLI, exact
+  rosters, shared report loaders, artifact adapters, and coverage tooling
+  reported `560 passed` in 63.68 seconds. These are local fixture/mock results.
+- **Coverage measurement-before-update:** the first exact final-path
+  `make python-coverage-measure` ran all 1,079 collected tests and reported
+  `1061 passed, 17 skipped, 1 failed`; the sole failing test was the repository
+  documentation validator, which found six temporary migration-caused stale
+  links plus the nine inherited authorized `UNREFINED` locations. A separately
+  reviewed serial coverage-only run deselected exactly that documentation test,
+  then measured the final validator at the frozen `165/189` lines and `42/60`
+  branches with unchanged global `9343/11506` lines and `3281/4698` branches
+  (`0.812011` and `0.698382`) across 31 files. Only after inspection was the
+  tracked snapshot updated through `make python-coverage-baseline-update`; the
+  subsequent exact baseline check passed with `1061 passed, 17 skipped,
+  1 deselected`. The source boundary is now stable `scripts` plus `src/norad`.
+- **Parallel-coverage risk:** a parallel covered lane emitted the known
+  no-data-collected/combine warning. It was not accepted as coverage evidence;
+  only the clean serial measurement and baseline check above support the
+  recorded metrics.
+- **Canonical-gate evidence:** the default sandbox attempt passed static
+  preflight but guarded R stopped before meaningful R validation when
+  Bioconductor DNS resolution was unavailable; it also exposed an inherited
+  stray `macos` missing-`DESCRIPTION` warning. No dependency was installed,
+  restored, deleted, or repaired. The required network-enabled retry passed
+  static in 0.111 seconds, shell contracts in 40.606 seconds, guarded R in
+  154.666 seconds, and report runtime in 131.658 seconds. Its Python lane
+  reported `1061 passed, 17 skipped, 1 failed` solely for the same pre-close
+  documentation finding set. The complete gate therefore ran but is
+  expected-only nonpassing; it is not called a passing gate.
+- **Documentation and topology decision:** repair every active job, validator,
+  direct-test, command, inventory, coverage, ownership, roadmap, handoff, and
+  lifecycle route; add one adjacent owner README; and correct the stale current-
+  architecture reverse-dependency statement. The semantic DAG and public data
+  flow did not change, so no diagram mutation is justified. Historical task and
+  audit references retain legacy paths as dated evidence rather than supported
+  commands.
+- **Evidence ceiling:** this migration establishes implemented-local and
+  locally fixture-tested ownership plus successful local guarded-R/report
+  runtime lanes. It supplies no SLURM scheduler run, production data execution,
+  cluster proof, completed scientific review, or biological-readiness evidence.
+- **Documentation-close validation:** the first post-move documentation check
+  exposed one lifecycle backlink still targeting the former `IN_PROGRESS` card
+  plus the nine inherited `UNREFINED` findings. The backlink was repaired to the
+  completed card without changing review meaning. The repeated exact checker
+  then reported only the same nine `invalid card location` findings and no
+  migration-caused path, anchor, lifecycle, or ownership error. This remains an
+  expected-only nonpassing documentation ceiling, not a passing gate.

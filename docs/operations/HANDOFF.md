@@ -12,36 +12,34 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: executable/test checkpoint
-  `9d93694e87858e0d2db71703cfabeecd2980ef69` is clean, published, and equal to
-  the configured upstream and live remote ref. It atomically establishes the
-  final validation-report owner, all thirteen caller-local loaders, the moved
-  direct/fault owner, and exact coverage/static wiring from the frozen parent.
-- Current package: [`MIG-03B`](../tasks/IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md),
-  selected after its dedicated reviews and now frozen at its task-specific
-  execution plan and focused old-path baseline. No executable or test file has
-  changed at this checkpoint.
-- Package type at this checkpoint: planning documentation only. The selected
-  semantic-root `construct_STAR_index` owner has one producer job, one
-  validator, and one dedicated direct test, the smallest bounded eligible
-  native-asset surface; historical alias order was not used.
-- Remote publication and upstream equality: selection checkpoint
-  `be1b658779c49c9641b9f910867d6b96a34554af` is the verified clean,
-  local/upstream/live-remote-equal predecessor. The commit containing this
-  baseline must itself be published and proved equal before executable or test
-  mutation.
+- Recorded package state: [`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md)
+  executable/test checkpoint `4f9c863e9cdc2ba43ce631830ca237878b7ff875`
+  is clean, published, and equal to the configured upstream. It atomically
+  establishes the final `construct_STAR_index` job, validator, mirrored owner
+  tests, explicit mixed-layout callers, coverage/static wiring, and artifact
+  implementation-evidence path without a wrapper or duplicate.
+- Current package: MIG-03B documentation/lifecycle close. The commit containing
+  this handoff is its documentation checkpoint; resolve and verify its exact
+  SHA from live Git before beginning the next JIT unit.
+- Package type at this checkpoint: impact-directed documentation only, following
+  the separately published executable/test state above.
+- Remote publication and upstream equality: `4f9c863e9cdc2ba43ce631830ca237878b7ff875`
+  is verified local/upstream-equal. The documentation-close commit must be
+  published and proved equal before the next unit is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
-integrated canonical tip. The first physical owner now lives at
-`src/norad/libraries/validation_report.py`; public validators remain at their
-legacy paths and load that exact file without package identity, a wrapper, or
-`sys.path` mutation. The canonical `make all-checks` attempt passed guarded-R,
-shell, report-runtime, and static lanes but its aggregate Python lane remained
-nonpassing because the documentation test rejects nine inherited, authorized
-`UNREFINED` locations. Migration-caused stale links are repaired in this close;
-the inherited findings are an expected-only evidence ceiling, not a passing
-gate and not authority to change task-lifecycle behavior in this package.
+integrated canonical tip. The neutral publication owner lives at
+`src/norad/libraries/validation_report.py`; the first migrated functional owner
+now lives at `src/norad/stages/construct_STAR_index/`. Its validator and the
+twelve remaining legacy-path validators load the neutral file without package
+identity, a wrapper, or `sys.path` mutation. The network-enabled canonical
+`make all-checks` attempt passed static, shell, guarded-R, and report-runtime
+lanes but its aggregate Python lane remained nonpassing because the pre-close
+documentation test found six migration-caused stale links plus nine inherited,
+authorized `UNREFINED` locations. This close removes the six; the nine inherited
+findings remain an expected-only evidence ceiling, not a passing gate and not
+authority to change task-lifecycle behavior in this package.
 
 ## Active concurrent lanes
 
@@ -491,12 +489,11 @@ suites are not applicable. It creates no runtime, cluster, scientific-review,
 or biological-readiness evidence, and no dependency was installed, restored,
 or updated.
 
-[`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) is
-complete. It proposes
-[`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) and a
-dedicated architecture, reliability, and usability review chain. All three
-reviews and the `MIG-03A` task-specific plan are complete. The physical
-migration is complete at atomic executable/test checkpoint `9d93694`, and this
+[`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
+[`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
+complete. The second JIT unit,
+[`MIG-03B`](../tasks/COMPLETED/MIG-03B-migrate-construct-star-index-owner.md),
+is complete at atomic executable/test checkpoint `4f9c863`; this
 impact-directed documentation/lifecycle close records the exact local evidence
 and inherited gate ceiling. Publish this close and prove clean equality before
 selecting the next dependency-valid physical migration unit.
@@ -504,15 +501,13 @@ selecting the next dependency-valid physical migration unit.
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
 exactly one JIT unit at a time, then repeat. Do not pre-create later cards or
-activate unrelated work. The only active unit is
-[`MIG-03B`](../tasks/IN_PROGRESS/MIG-03B-migrate-construct-star-index-owner.md).
-Its dedicated
+activate unrelated work. MIG-03B and its dedicated
 [`REVIEW-ARCH-03B`](../tasks/COMPLETED/REVIEW-ARCH-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-REL-03B`](../tasks/COMPLETED/REVIEW-REL-03B-review-construct-star-index-migration.md)
 and
 [`REVIEW-UX-03B`](../tasks/COMPLETED/REVIEW-UX-03B-review-construct-star-index-migration.md)
-are complete. Task-specific inspection and the focused old-path baseline are
-frozen; after this documentation checkpoint is clean, published, and equal,
-the next action is the one atomic executable/test cutover. The unsliced
+are complete. After this documentation checkpoint is clean, published, and
+equal, the next action is read-only JIT selection and review of exactly one
+dependency-valid owner; no later card is pre-created here. The unsliced
 `PROGRAM-01` remainder and unrelated roadmap remain preserved and out of scope.

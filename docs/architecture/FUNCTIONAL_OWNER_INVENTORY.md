@@ -21,7 +21,7 @@ private library surfaces, not additional public entry points.
 
 | Historical owner | Public implementation and scheduler surfaces | Independent validator | Direct protection |
 | --- | --- | --- | --- |
-| [`00a` — `construct_STAR_index`](../../src/norad/stages/construct_STAR_index/CONTRACT.md) | [`step_00a_build_novogene_star_index.slurm`](../../jobs/step_00a_build_novogene_star_index.slurm) embeds the current producer | [`validate_step_00a_star_index.py`](../../scripts/validate_step_00a_star_index.py) | [`test_validate_step_00a_star_index.py`](../../tests/test_validate_step_00a_star_index.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py) |
+| [`00a` — `construct_STAR_index`](../../src/norad/stages/construct_STAR_index/CONTRACT.md) | [`step_00a_build_novogene_star_index.slurm`](../../src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm) embeds the current producer | [`validate_step_00a_star_index.py`](../../src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py) | [validator test](../../tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py), [mocked-job test](../../tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py) |
 | [`00b` — `convert_GTF_to_BED12`](../../src/norad/stages/convert_GTF_to_BED12/CONTRACT.md) | [`gtf_to_bed12.py`](../../scripts/gtf_to_bed12.py), [`step_00b_gtf_to_bed12.slurm`](../../jobs/step_00b_gtf_to_bed12.slurm) | [`validate_step_00b_bed12.py`](../../scripts/validate_step_00b_bed12.py) | [`test_gtf_to_bed12.py`](../../tests/test_gtf_to_bed12.py), [`test_validate_step_00b_bed12.py`](../../tests/test_validate_step_00b_bed12.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py) |
 | [`00c` — `construct_FASTA_sidecars`](../../src/norad/stages/construct_FASTA_sidecars/CONTRACT.md) | [`step_00c_prepare_gatk_reference.sh`](../../scripts/step_00c_prepare_gatk_reference.sh), [`step_00c_prepare_gatk_reference.slurm`](../../jobs/step_00c_prepare_gatk_reference.slurm) | [`validate_step_00c_reference_sidecars.py`](../../scripts/validate_step_00c_reference_sidecars.py) | [shell contract](../../tests/shell/test_step_00c_prepare_gatk_reference.sh), [`test_validate_step_00c_reference_sidecars.py`](../../tests/test_validate_step_00c_reference_sidecars.py) |
 | [`01` — `align_RNA_reads_with_STAR`](../../src/norad/stages/align_RNA_reads_with_STAR/CONTRACT.md) | [`step_01_star_align.sh`](../../scripts/step_01_star_align.sh), [`step_01_star_align.slurm`](../../jobs/step_01_star_align.slurm) | [`validate_step_01_star_alignment.py`](../../scripts/validate_step_01_star_alignment.py) | [shell contract](../../tests/shell/test_step_01_star_align.sh), [`test_validate_step_01_star_alignment.py`](../../tests/test_validate_step_01_star_alignment.py) |
@@ -50,7 +50,7 @@ scientific stages.
 | Legacy manual cluster probe | [`tool_check.slurm`](../../jobs/tool_check.slurm) | [Wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). It emits scheduler logs rather than a structured runtime-preflight transaction and is not a compute stage. |
 | Dependency lifecycle | [`check_r_environment.R`](../../scripts/check_r_environment.R), [`restore_r_environment.R`](../../scripts/restore_r_environment.R), [`restore_quarto.py`](../../scripts/restore_quarto.py); Make `r-check`, `r-restore`, and `quarto-restore` | [local R contract](../../tests/shell/test_local_r_environment.sh), [`test_quarto_restore.py`](../../tests/test_quarto_restore.py), [public Make contracts](../../tests/test_public_cli_contracts.py). Restoration is explicit operator mutation, never compute-time bootstrap. |
 | Storage evidence | [`storage_inventory.py`](../../scripts/storage_inventory.py) | [`test_storage_inventory.py`](../../tests/test_storage_inventory.py). Inventory and approval state never execute retention actions. |
-| Validation-evidence publication protocol | Neutral owner [`validation_report.py`](../../src/norad/libraries/validation_report.py) with exact-file private loaders in all thirteen legacy validators; no package/import identity or public CLI is assigned to the library | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_validation_check_rosters.py`](../../tests/test_validation_check_rosters.py). Stage parsing/check rosters remain stage-owned, and current validation still does not enforce report-row order. |
+| Validation-evidence publication protocol | Neutral owner [`validation_report.py`](../../src/norad/libraries/validation_report.py) with exact-file private loaders in the final `construct_STAR_index` validator and twelve remaining legacy-path validators; no package/import identity or public CLI is assigned to the library | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_validation_check_rosters.py`](../../tests/test_validation_check_rosters.py). Stage parsing/check rosters remain stage-owned, and current validation still does not enforce report-row order. |
 | Artifact contracts and indexing | [`validate_artifact_contracts.py`](../../scripts/validate_artifact_contracts.py), [`build_artifact_index.py`](../../scripts/build_artifact_index.py), [`schemas/artifacts/v1/`](../../schemas/artifacts/v1/) | [`test_artifact_schema_contracts.py`](../../tests/test_artifact_schema_contracts.py), [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py). Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. |
 | Canonical run-summary assembly | [`build_run_summary.py`](../../scripts/build_run_summary.py), private helper [`_run_summary_science.py`](../../scripts/_run_summary_science.py) | [`test_artifact_run_summary.py`](../../tests/test_artifact_run_summary.py). This normalizes one declared artifact transaction and optional exact review inputs without owning Step `09c` policy. |
 | Static reporting | [`render_run_report.sh`](../../scripts/render_run_report.sh), [`render_run_report.py`](../../scripts/render_run_report.py), [`render_run_report_bundle.py`](../../scripts/render_run_report_bundle.py), [`reports/`](../../reports/); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/shell/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/test_report_exports_v1.py). Rendering consumes one canonical summary and never reruns analysis. |
@@ -78,8 +78,9 @@ Private helpers do not add public owners:
   documentation/Git orchestration.
 - Shared validation-report publication belongs to the neutral
   [`validation_report.py`](../../src/norad/libraries/validation_report.py)
-  owner. All thirteen legacy validators use temporary exact-file private
-  loaders until their later functional-owner migrations.
+  owner. The final `construct_STAR_index` validator and twelve legacy-path
+  validators use temporary exact-file private loaders until any later packaging
+  decision or functional-owner migration.
 - Reusable Step `08`/`09` schemas and validators currently belong to the Step
   `09c` implementation and are imported upstream.
 - Base intake validation does not require `replicate`, while the Step `09` and
@@ -100,10 +101,12 @@ shared-library ownership remain deferred to the approved follow-on cards.
 
 ## Coverage result
 
-The protected current roster contains 25 public top-level Python entry points,
-13 top-level shell entry points, 4 R entry points, 7 Git-orchestration entry
-points, 16 SLURM jobs, and 23 public Make targets. Every member is assigned once
-above. The one private top-level Python module, one neutral library source,
-and three private orchestration files are classified separately. No current
+The protected current roster contains 25 public Python entry points (24 under
+`scripts/` and one final owner-local validator), 13 top-level shell entry
+points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs (15
+under `jobs/` and one final owner-local job), and 23 public Make targets. Every
+member is assigned once above. The one private top-level Python module, one
+neutral library source, and three private orchestration files are classified
+separately. No current
 autonomous pipeline orchestrator,
 ingestion executor, or installable-package entry point exists.

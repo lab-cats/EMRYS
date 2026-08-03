@@ -12,11 +12,11 @@ Canonical diagrams:
 
 ## Compute pipeline
 
-Current public workflow entry points remain under `scripts/` and `jobs/`.
-`src/norad/libraries/validation_report.py` is the first physically migrated
-neutral implementation owner; the colocated functional-owner documents under
-`src/norad/` remain contracts rather than claims that their stage, analysis,
-or evidence implementations have migrated.
+Current public workflow entry points use a mixed physical layout. The neutral
+validation-report library and the `construct_STAR_index` job and validator now
+live under `src/norad/`; remaining workflow entry points stay under `scripts/`
+and `jobs/`. Other colocated functional-owner documents under `src/norad/`
+remain contracts rather than claims that their implementations have migrated.
 
 The supported workflow is a directed graph of shared reference inputs,
 per-sample alignment and BAM transformations, non-gating QC/orientation
@@ -44,11 +44,12 @@ not in this implemented-current-topology document.
 
 [`validation_report.py`](../../src/norad/libraries/validation_report.py) owns
 the shared snapshot, seven-column rendering/validation, and transactional
-publication protocol used by all thirteen legacy validator entry points. The
-validators resolve that exact file through private caller-local loaders; no
-package marker, public Python import identity, install step, compatibility
-wrapper, or `sys.path` mutation is part of the current interface. Stage-
-specific parsing and check rosters remain in their legacy validator owners.
+publication protocol used by all thirteen validator entry points. The final
+`construct_STAR_index` validator and twelve remaining `scripts/` validators
+resolve that exact file through private caller-local loaders; no package marker,
+public Python import identity, install step, compatibility wrapper, or
+`sys.path` mutation is part of the current interface. Stage-specific parsing
+and check rosters remain with their functional owners.
 
 This relocation preserved the characterized snapshot, ordering, collision,
 rollback, cleanup, descriptor, and lock defects. It did not correct them or
@@ -194,10 +195,9 @@ the [ownership inventory](FUNCTIONAL_OWNER_INVENTORY.md) maps every public
 validator to one owner.
 
 The common snapshot, seven-column report, lock, rollback, and publication
-implementation currently lives in the Step `00a` validator and is imported by
-later validators. That reverse dependency is a recorded ownership leak, not a
-target-architecture decision, and current shared publication does not enforce
-report-row order.
+implementation lives in the neutral validation-report library and is loaded by
+all thirteen validators through exact-file private bridges. Current shared
+publication still does not enforce report-row order.
 
 Typed adapters, artifact indexing, canonical-summary assembly, and reporting
 project both passing and failing validation evidence without promoting

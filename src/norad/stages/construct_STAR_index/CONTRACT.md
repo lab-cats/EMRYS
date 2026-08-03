@@ -3,11 +3,11 @@
 This document records the observed current contract of historical Step `00a`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet a Python package or implemented source
-location.
+is now the implemented native source owner for its scheduler job and validator;
+it is not a Python package and exposes no package import identity.
 
-Only this contract is colocated here. The current executable files remain in
-`jobs/` and `scripts/` until a separately approved migration.
+The adjacent [`README.md`](README.md) routes maintainers and operators to the
+implemented assets and exact supported commands.
 
 ## Responsibility
 
@@ -80,7 +80,7 @@ minimum, not a declaration that unrelated files are invalid.
 
 ## Current execution surface
 
-[`step_00a_build_novogene_star_index.slurm`](../../../../jobs/step_00a_build_novogene_star_index.slurm)
+[`step_00a_build_novogene_star_index.slurm`](step_00a_build_novogene_star_index.slurm)
 is the only current producer entrypoint. It:
 
 - executes implicitly when invoked and has no dry-run or explicit execute
@@ -98,7 +98,7 @@ interface.
 
 ## Validation interface
 
-[`validate_step_00a_star_index.py`](../../../../scripts/validate_step_00a_star_index.py)
+[`validate_step_00a_star_index.py`](validate_step_00a_star_index.py)
 accepts explicit scope, index, FASTA, GTF, relative-parameter base, expected
 overhang, and output paths. Validation is dry-run by default; `--execute`
 publishes `<scope-id>.validation.tsv`.
@@ -138,9 +138,13 @@ No downstream stage should depend on this stage's implementation module.
 ## Protected behavior and evidence
 
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects the current embedded STAR command, module handling, caller-working-
-  directory behavior, and exit propagation with local mocks.
-- [`test_validate_step_00a_star_index.py`](../../../../tests/test_validate_step_00a_star_index.py)
+  protects the exact mixed-layout job roster, directives, mode, and generic
+  scheduler boundaries.
+- [`test_step_00a_build_novogene_star_index.py`](../../../../tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py)
+  protects the embedded STAR command, module handling, caller-working-directory
+  behavior, default threads, reference reuse, side effects, and exit propagation
+  with local mocks.
+- [`test_validate_step_00a_star_index.py`](../../../../tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py)
   protects dry-run, the five checks, mismatch reporting, repeat publication,
   contract failures, and preservation of foreign locks or invalid
   predecessors.
@@ -157,21 +161,17 @@ These are local fixture and mocked-wrapper contracts. They do not establish a
 new cluster, production, scientific-review, or biological-evidence result.
 Current evidence status remains owned by the canonical roadmap and handoff.
 
-## Observed ownership leak
+## Neutral publication dependency
 
-The Step `00a` validator owns general report rendering, validation, snapshot,
-locking, and publication functions imported by every other step validator.
-That dependency direction makes a stage-named module the de facto owner of a
-cross-cutting validation-publication domain.
-
-This inventory classifies the shared functions as a cross-cutting ownership
-candidate while keeping the Step `00a` checks stage-local. It does not decide
-whether, when, or how to extract shared code; those decisions remain
-just-in-time work after the target ownership rules are settled.
+General report rendering, validation, snapshot, locking, and publication live
+in the neutral exact-file owner
+[`validation_report.py`](../../libraries/validation_report.py). This validator
+loads that file through its private caller-local bridge while its five checks
+remain stage-local. No package marker, public import identity, compatibility
+wrapper, or global `sys.path` mutation is part of that dependency.
 
 ## Deferred decisions
 
 - Whether reference decompression is part of this stage.
-- Final ownership of scheduler templates and non-Python assets.
 - Final serialization and placement of machine-readable stage contracts.
-- Migration order, compatibility wrappers, and shared-code extraction.
+- Whether a later descriptor, schema, or package contract is justified.

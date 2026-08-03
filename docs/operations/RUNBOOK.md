@@ -2183,11 +2183,15 @@ FASTA and GTF chromosome naming match.
 
 ### Step 00a: STAR Index
 
-Job:
+Submit the mode-`0644` scheduler entry point from the repository root:
 
 ```bash
-jobs/step_00a_build_novogene_star_index.slurm
+sbatch src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm
 ```
+
+Submission executes the job implicitly; there is no dry-run or direct-execute
+mode. Its hardcoded Novogene input and `refs/` output paths resolve from the
+caller's working directory.
 
 Output:
 
@@ -2208,7 +2212,7 @@ reads one explicit STAR index, FASTA, GTF, path-resolution base, expected
 overhang, and scope ID:
 
 ```bash
-.venv/bin/python scripts/validate_step_00a_star_index.py \
+.venv/bin/python src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py \
   --scope-id novogene_ref \
   --index-dir refs/novogene_star_index \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -2224,7 +2228,7 @@ then create the exact parent and add `--execute`:
 
 ```bash
 mkdir -p results/qc/validation/00a
-.venv/bin/python scripts/validate_step_00a_star_index.py \
+.venv/bin/python src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py \
   --scope-id novogene_ref \
   --index-dir refs/novogene_star_index \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -2238,7 +2242,9 @@ mkdir -p results/qc/validation/00a
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_00a_star_index.py
+.venv/bin/python -m pytest -q \
+  tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py \
+  tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py
 ```
 
 ### Step 00b: GTF To BED12

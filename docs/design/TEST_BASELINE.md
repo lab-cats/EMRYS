@@ -36,7 +36,7 @@ The active comparison policy:
   ordinary tests.
 
 Coverage uses branch and subprocess measurement over exactly `scripts` and
-`src/norad/libraries`, and must include `scripts/gtf_to_bed12.py` and
+`src/norad`, and must include `scripts/gtf_to_bed12.py` and
 `scripts/validate_manifest.py`. Low numerical coverage is a review signal; it
 is not by itself proof of a user-visible defect or authority to change
 behavior.
@@ -68,8 +68,8 @@ surface reachable without copying the dated row-by-row matrices:
 
 | Surface or risk | Current regression route |
 | --- | --- |
-| Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner |
+| Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; Step `00a` mocked producer behavior lives under `tests/stages/construct_STAR_index/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication and recovery faults | `tests/libraries/test_validation_report.py` plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
