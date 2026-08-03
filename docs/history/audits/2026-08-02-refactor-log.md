@@ -1995,3 +1995,39 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   The same campaign agent performs the pass, so independent authorship is not
   claimed. Executable/test mutation and computational, runtime, scheduler,
   production, scientific-review, and biological evidence remain out of scope.
+
+## 2026-08-03T00:58:19-0400 — REVIEW-ARCH-03F completed
+
+- **High finding — neutral API and loader contract were underspecified:**
+  accept exactly one mode-`0644` private
+  `src/norad/libraries/bam_validation.py` containing behavior-preserving
+  `run_tool` and `parse_header`. Freeze private identity
+  `_norad_bam_validation`, readiness `_NORAD_BAM_VALIDATION_READY`, callable API
+  checks, exact cached-path validation, owned-partial cleanup, foreign-cache and
+  `sys.path` preservation, and the path-bearing fail-closed diagnostic. Add no
+  validation-report dependency, CLI, package identity, or stage-specific logic.
+- **High finding — executable slices lacked exact ceilings:** helper preparation
+  is exactly five files: add the neutral module and neutral test suite, and
+  modify only the Step `02`, `04`, and `05` validators. Owner cutover is exactly
+  five moves plus ten updates: Make, artifact producer and assertion, public
+  CLI, SLURM, validation roster, validation-report map, BAM-helper caller map,
+  coverage row, and literal Make fixture. A sixth move, eleventh update, or
+  downstream direct-test edit reopens architecture review.
+- **Medium finding — test and artifact ownership needed separation:** the new
+  neutral suite owns helper semantics and all three caller-local loader states;
+  unchanged Step-specific direct suites remain functional-owner evidence and
+  run as the helper slice's affected regression set. Helper extraction changes
+  no artifact evidence. Owner cutover changes only Step `02` producer path/hash
+  and adds its assertion to the existing migrated-evidence test; public artifact
+  contracts remain unchanged.
+- **Accepted architecture and rollback:** `construct_canonical_BAM` is the only
+  live-DAG-supported next owner. Two published executable slices eliminate the
+  peer import without a wrapper or copied helper. Roll back documentation, then
+  native owner movement, then helper extraction so a restored flat Step `02`
+  validator always retains its dependency. No descriptor, schema, package,
+  wrapper, compatibility path, downstream migration, or public import is
+  warranted.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

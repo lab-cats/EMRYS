@@ -49,17 +49,43 @@ migrate either downstream stage.
   `239646b44d6b411fe9b590108e6e7e977427ee93c62cee1b16212f90c275e29c`
   and validator
   `f7f9dd25ec9ad7e70a4d5566a09039e67f3b27cee5dd0294bffaa48990260492`.
-- Resolve the known peer-implementation imports before the owner move. The
-  reviewed candidate is one private neutral
+- Resolve the known peer-implementation imports before the owner move with one
+  private neutral
   `src/norad/libraries/bam_validation.py` containing only behavior-preserving
   `run_tool` and `parse_header` helpers extracted from the Step `02` validator.
-  Step `02`, Step `04`, and Step `05` validators must resolve that exact file
-  through private caller-local loaders, with one frozen private identity,
-  exact cached-`__file__` validation, complete API checks, owned-partial cleanup,
-  foreign-state preservation, unchanged `sys.path`, and path-bearing failure
-  diagnostics. Architecture review must reject or correct this candidate if it
-  cannot remain one neutral, nonpublic, reversible owner without broad library
-  design.
+  Freeze private module identity `_norad_bam_validation`, readiness attribute
+  `_NORAD_BAM_VALIDATION_READY`, and the complete required API as callable
+  `run_tool` and `parse_header`. Step `02`, Step `04`, and Step `05` validators
+  resolve that exact mode-`0644` file through caller-local loaders. Each loader
+  verifies cached `__file__`, readiness and API shape, preserves foreign cache
+  state and `sys.path`, removes only its owned partial module after execution
+  failure, and exits before report publication with
+  `ERROR: unable to load NORAD BAM-validation owner at <path>: <type>: <reason>`.
+  The neutral file has no public CLI, package identity, validation-report
+  dependency, or stage-specific check logic.
+- Freeze the helper preparation slice to exactly five tracked files: add
+  `src/norad/libraries/bam_validation.py` and
+  `tests/libraries/test_bam_validation.py`; modify only
+  `scripts/validate_step_02_canonical_bam.py`,
+  `scripts/validate_step_04_mark_duplicates.py`, and
+  `scripts/validate_step_05_split_ncigar.py`. The neutral suite owns exact helper
+  behavior and the three-caller healthy/missing/wrong-cache/incomplete/owned-
+  failure matrix. Existing Step `02`, `04`, and `05` direct tests remain
+  unchanged but run as the smallest affected regression set.
+- Freeze the subsequent owner cutover to exactly fifteen logical tracked files:
+  five moves of the producer, validator, job, shell test, and validator test;
+  plus `Makefile`, `scripts/build_artifact_index.py`,
+  `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
+  `tests/test_slurm_wrapper_contracts.py`,
+  `tests/test_validation_check_rosters.py`,
+  `tests/libraries/test_validation_report.py`,
+  `tests/libraries/test_bam_validation.py`,
+  `tests/baselines/python_coverage.json`, and
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. The moved
+  validator changes only both exact-owner depths; the producer changes only its
+  help self-path; and the job changes only its delegated child path. Any sixth
+  move, eleventh caller/harness modification, or downstream direct-test edit
+  reopens architecture review.
 - The helper preparation and native owner move are separate executable slices
   under this one card. Publish the reviewed helper checkpoint first, using only
   the smallest direct checks at that slice boundary; then move the owner and
@@ -67,6 +93,16 @@ migrate either downstream stage.
   applicable computational gate once after the complete final executable state
   is assembled at the card boundary. Batch migration links and other canonical
   documentation into the separate card close.
+- Test ownership follows implementation ownership without duplicating
+  frameworks: the new neutral suite owns the helper and private loader contract;
+  Step-specific direct suites continue to own their check rosters and user-
+  visible behavior; the central scheduler, validation-report, public-CLI,
+  artifact, coverage, and Make suites remain independent cross-owner callers.
+- Artifact evidence does not change in the helper slice. The owner cutover
+  changes only the Step `02` producer path and reviewed post-help hash, with one
+  new exact assertion in the existing migrated-implementation evidence test.
+  Public artifact identities, schemas, contents, ordering, and consumers remain
+  unchanged.
 - Do not leave a legacy Step `02` validator wrapper merely to satisfy Step `04`
   or Step `05`. Do not copy the helpers into either downstream validator, import
   the final Step `02` implementation from a peer owner, or introduce package
@@ -119,6 +155,10 @@ migrate either downstream stage.
 - Add no descriptor, schema, package marker, compatibility copy, symlink,
   scheduler abstraction, receipt, recovery marker, transaction redesign,
   manifest policy, or public neutral-helper CLI.
+- Rollback order is documentation close first, owner cutover second, helper
+  preparation third, then the published pre-card parent. Reverting the owner
+  move restores the flat Step `02` validator while it still uses the neutral
+  helper; only then may the helper slice restore the original peer import graph.
 
 ## Blocked by
 

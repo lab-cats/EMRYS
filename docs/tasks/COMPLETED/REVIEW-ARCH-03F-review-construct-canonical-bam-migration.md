@@ -100,8 +100,37 @@ are bounded first.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal definition
-checkpoint `ee254927be99216c1af728aa66ead973d25eb756`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `bc2112ce22118c89fdbdc850738eae616208ead4`.
+
+- **High — neutral API and loader identity were underspecified:** accept one
+  mode-`0644` private `src/norad/libraries/bam_validation.py` containing exactly
+  behavior-preserving `run_tool` and `parse_header`. Freeze identity
+  `_norad_bam_validation`, readiness `_NORAD_BAM_VALIDATION_READY`, exact
+  cached-`__file__` and callable checks, owned-partial cleanup, foreign-state and
+  `sys.path` preservation, and one path-bearing fail-closed diagnostic in each
+  caller. Add no report dependency, CLI, package identity, or stage-specific
+  check logic.
+- **High — the two executable slices lacked exact file ceilings:** helper
+  preparation is exactly five files: add the neutral module and one neutral test
+  suite, modify only the Step `02`, `04`, and `05` validators. Owner cutover is
+  exactly five moves plus ten caller/harness updates: Make, artifact producer and
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  BAM-helper caller map, coverage row, and literal Make fixture. A sixth move,
+  eleventh update, or downstream direct-test edit reopens architecture review.
+- **Medium — test and artifact ownership needed separation:** the new neutral
+  suite owns helper behavior and the three-caller loader matrix. Existing
+  Step-specific direct tests remain stage-owned and unchanged during helper
+  extraction but run as its affected regression set. Artifact evidence does not
+  change until owner cutover, when only Step `02` producer path/hash and its
+  exact existing assertion change; public artifact contracts remain unchanged.
+- **Accepted architecture and rollback:** `construct_canonical_BAM` is the only
+  live-DAG-supported next owner. Two published executable slices are preferable
+  to a wrapper or copied helper. Revert documentation, then the native owner
+  move, then the neutral helper so the temporarily restored flat validator never
+  loses its dependency. No descriptor, schema, package marker, wrapper,
+  compatibility copy, peer import, or downstream-owner migration is warranted.
+- **Evidence boundary:** this was a read-only committed-time adversarial pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
