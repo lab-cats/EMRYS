@@ -144,6 +144,51 @@ def expected_output_names(review_id: str) -> set[str]:
     }
 
 
+def expected_fixture_input_paths(fixture: Any) -> set[Path]:
+    relative_paths = {
+        "samples.tsv",
+        "partitions.tsv",
+        "step08/cohort.step08_sites.tsv",
+        "step08/cohort.step08_inputs.tsv",
+        "step08/cohort.step08_summary.tsv",
+        "step09/analysis_primary/analysis_primary.cmh_all_sites.tsv",
+        "step09/analysis_primary/analysis_primary.cmh_significant_sites.tsv",
+        "step09/analysis_primary/analysis_primary.cmh_summary.tsv",
+        "step09/analysis_primary/analysis_primary.mutation_spectrum.tsv",
+        "step09/analysis_primary/analysis_primary.mutation_spectrum.pdf",
+        "step09/analysis_primary/analysis_primary.depth_delta.pdf",
+        "review_plan.tsv",
+        "evidence_manifest.tsv",
+        "evidence/orientation_locus_audit.tsv",
+        "evidence/annotation_audit.tsv",
+        "evidence/qc_funnel.tsv",
+        "evidence/replicate_effects.tsv",
+        "evidence/sensitivity_matrix.tsv",
+        "evidence/leave_one_pair_out.tsv",
+        "evidence/candidate_selection.tsv",
+        "evidence/candidate_adjudication.tsv",
+        "evidence/decisions.tsv",
+        "evidence/limitations.tsv",
+        "evidence/computational_validation.tsv",
+        (
+            "step09/analysis_sensitivity_dp/"
+            "analysis_sensitivity_dp.cmh_summary.tsv"
+        ),
+        (
+            "step09/analysis_sensitivity_effect/"
+            "analysis_sensitivity_effect.cmh_summary.tsv"
+        ),
+        "step09/analysis_loo_2/analysis_loo_2.cmh_all_sites.tsv",
+        "step09/analysis_loo_2/analysis_loo_2.cmh_summary.tsv",
+        "step09/analysis_loo_3/analysis_loo_3.cmh_all_sites.tsv",
+        "step09/analysis_loo_3/analysis_loo_3.cmh_summary.tsv",
+        "step09/analysis_loo_4/analysis_loo_4.cmh_all_sites.tsv",
+        "step09/analysis_loo_4/analysis_loo_4.cmh_summary.tsv",
+    }
+    assert len(relative_paths) == 32
+    return {(fixture.root / relative).resolve() for relative in relative_paths}
+
+
 def output_directory(output_root: Path, review_id: str) -> Path:
     return output_root / review_id
 
@@ -697,27 +742,90 @@ def test_exploratory_completion_requires_and_preserves_complete_evidence(
         assert summary[f"{category}_status"] == "complete"
 
 
-def test_input_mutation_after_validation_aborts_before_publication(
+def test_context_binds_exact_32_file_fixture_roster(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+
+    assert set(context.input_hashes) == expected_fixture_input_paths(fixture)
+    assert len(context.input_hashes) == 32
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "action", "expected_error"),
+    [
+        (
+            "step09/analysis_primary/analysis_primary.depth_delta.pdf",
+            "disappear",
+            "disappeared",
+        ),
+        ("evidence/orientation_locus_audit.tsv", "mutate", "changed"),
+        (
+            "step09/analysis_sensitivity_dp/"
+            "analysis_sensitivity_dp.cmh_summary.tsv",
+            "mutate",
+            "changed",
+        ),
+        (
+            "step09/analysis_loo_2/analysis_loo_2.cmh_all_sites.tsv",
+            "mutate",
+            "changed",
+        ),
+    ],
+)
+def test_input_identity_change_aborts_before_publication_with_clean_owned_state(
+    tmp_path: Path,
+    relative_path: str,
+    action: str,
+    expected_error: str,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    changed_input = fixture.root / relative_path
+    assert changed_input.resolve() in context.input_hashes
+    if action == "disappear":
+        changed_input.unlink()
+    else:
+        changed_input.write_bytes(changed_input.read_bytes() + b"changed\n")
+
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    final_dir.mkdir(parents=True)
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+
+    with pytest.raises(FIXTURES.CONTRACT.ContractError, match=expected_error):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert set(final_dir.iterdir()) == {unrelated}
+
+
+def test_identical_byte_input_replacement_is_not_detected(
     tmp_path: Path,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
     arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
     context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    orientation_evidence = (
-        fixture.evidence_manifest.parent
-        / "evidence"
-        / "orientation_locus_audit.tsv"
+    target = (
+        fixture.root
+        / "step09"
+        / "analysis_sensitivity_effect"
+        / "analysis_sensitivity_effect.cmh_summary.tsv"
     )
-    orientation_evidence.write_text(
-        orientation_evidence.read_text() + "# changed after validation\n"
-    )
+    original_bytes = target.read_bytes()
+    retained_original = target.with_name(f"{target.name}.original")
+    target.rename(retained_original)
+    target.write_bytes(original_bytes)
+    assert target.stat().st_ino != retained_original.stat().st_ino
 
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="changed"):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+    FIXTURES.CONTRACT.confirm_inputs_unchanged(context.input_hashes)
+    FIXTURES.CONTRACT.publish_outputs(context, tables)
 
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    assert final_dir.is_dir()
-    assert list(final_dir.iterdir()) == []
+    assert {path.name for path in final_dir.iterdir()} == expected_output_names(
+        fixture.review_id
+    )
 
 
 def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
