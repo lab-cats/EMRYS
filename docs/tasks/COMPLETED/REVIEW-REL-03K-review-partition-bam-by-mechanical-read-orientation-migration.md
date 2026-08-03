@@ -35,7 +35,7 @@ characterize these defects without fixing or approving them.
 
 ## Completion unblocks
 
-- [REVIEW-UX-03K](../IN_PROGRESS/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
+- [REVIEW-UX-03K](REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: public and maintainer continuity follows fixed fault, preservation, and parity obligations.
 
 ## Prerequisites
 

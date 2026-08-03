@@ -195,6 +195,39 @@ but does not select it.
   orientation meaning, samtools/thread/output/QC/lock selection, rollback and
   residue preservation, focused tests, provenance, Git rollback, and the
   local-only evidence ceiling.
+- Final root commands directly invoke the mode-`0755` producer and submit the
+  mode-`0755` job from
+  `src/norad/stages/partition_BAM_by_mechanical_read_orientation/`; the mode-
+  `0644` validator always uses an explicit interpreter. Arbitrary-CWD commands
+  use absolute producer/interpreter, input BAM, output/QC, samtools, validator
+  BAM/BAI/counts/report, checkout, and final-owner paths. Support no installed
+  command, package import, alias, wrapper, symlink, ambient `PYTHONPATH`, or
+  global `sys.path` route.
+- Document the three distinct dry-run effects. The direct producer validates
+  input/BAI, threads, and samtools resolution, prints both-directory transaction
+  plans, invokes no samtools, and creates no directory. The validator reads the
+  five explicit inputs, prints five rows plus its completion line, invokes no
+  samtools, and writes no report. Scheduler submission starts at the checkout,
+  creates `logs/` before `sbatch`, and retains module/version probes, one CPU
+  independent of `THREADS`, body-level `logs/`, Bash `3.2`, warning-only tool,
+  and stale-five-file behaviors.
+- Add a Step `06` producer/wrapper recovery route and link structured validation
+  to it. Preserve all five finals, two-directory scratch/backups, every relevant
+  output-directory lock/owner, input pair, unrelated files, streams, job/log/
+  accounting, checkout/submit CWD, overrides, and samtools path/version before
+  action. A diagnostic retry, when separately authorized, uses both isolated
+  output and QC directories after ruling out producers and Step `07` readers.
+  Never infer attempt identity from counts/timestamps, combine members, remove
+  a foreign lock, reconstruct a missing file, or treat absent residue/stale
+  wrapper success as proof. Git rollback changes tracked files only.
+- At documentation close, repair the contract's unimplemented/flat-owner,
+  stale test-path, Step-`00a` publisher, and deferred-migration wording; the
+  functional inventory; architecture migrated-validator count; test baseline;
+  documentation ownership; Step `06` runbook paths/commands; troubleshooting;
+  current roadmap/handoff; artifact provenance route; migration/lifecycle
+  links; and dated audit. Direct Step `05` predecessor and Step `07` consumer
+  semantics already use stable owner identities and require no path edit;
+  diagrams require no update.
 - Every supported path consumer is repository-owned and can change in one
   atomic direct cutover, so no temporary wrapper is justified. Roll back the
   documentation close and pending-scaffold deletion first, then the five-move/
@@ -209,7 +242,7 @@ but does not select it.
 
 ## Blocked by
 
-- [REVIEW-UX-03K](../IN_PROGRESS/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
+- [REVIEW-UX-03K](../COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Required: architecture, reliability, and usability reviews must close before task-specific execution planning.
 
 ## Completion unblocks
 

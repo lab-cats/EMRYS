@@ -4240,3 +4240,63 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validation rule, no computational suite or complete documentation validator
   runs at selection; the complete documentation gate belongs to usability-
   review completion.
+
+## 2026-08-03T08:46:24-0400 — REVIEW-UX-03K completed
+
+- **Review basis:** complete a separate read-only usability pass from clean,
+  published, local/upstream/live-remote-equal selection checkpoint
+  `3f71f877627d039b158ded9b5f470c04ee1424b0`. Inspect public CLI/Make/SLURM
+  characterization, producer/validator help and behavior, final owner/test
+  topology, artifact/coverage/helper routes, the contract, runbook,
+  troubleshooting, documentation ownership, predecessor/consumer semantics,
+  and reviewed recovery defects. Independent authorship is not claimed.
+- **Final invocation decision:** documentation close replaces every live Step
+  `06` producer, validator, job, focused-test, helper, artifact-provenance, and
+  coverage path. Root use directly invokes the final mode-`0755` producer and
+  submits the final mode-`0755` job; the mode-`0644` validator uses an explicit
+  interpreter. Arbitrary-CWD use makes every executable/interpreter, BAM,
+  output/QC, samtools, counts/report, checkout, and owner path absolute. No
+  installed command, package import, alias, wrapper, symlink, `PYTHONPATH`, or
+  global `sys.path` compatibility route is supported.
+- **Dry-run and scheduler decision:** direct producer dry-run validates the
+  exact BAI, threads, and samtools resolution, prints the full two-directory
+  plan, invokes no samtools, and creates neither directory. Validator dry-run
+  reads five explicit inputs, prints five rows plus its completion line, invokes
+  no samtools, and writes no report. Scheduler use starts at the checkout,
+  creates `logs/` before submission, and preserves submit-CWD fallback, `/tmp`,
+  module/version diagnostics, fixed/override samtools, warning-only unusable
+  preflight, one CPU independent of `THREADS`, body `logs/`, Bash `3.2`, exact
+  delegation, and stale-five-file false success.
+- **Recovery and next-safe-action decision:** preserve all five finals, every
+  two-directory temp/backup, every relevant output-directory lock/owner, input
+  pair, unrelated file, stream, scheduler job/accounting/log, checkout/submit
+  CWD, override, and samtools path/version before action. Failed restoration can
+  leave the prior FWD BAM missing while the other four files return and all
+  recovery paths disappear. Distinct output locks do not serialize a shared QC
+  path, so last-writer counts can mix attempts. Rule out every producer and Step
+  `07` reader; do not combine/reconstruct members, infer identity from counts or
+  timestamps, remove foreign locks, or adopt stale wrapper success. A
+  separately authorized diagnostic retry uses isolated output and QC
+  directories. Git rollback cannot restore or authenticate runtime artifacts.
+- **Ownership, evidence, and documentation decision:** update the contract's
+  unimplemented/flat-path, stale-test, Step-`00a` publisher, and deferred-
+  migration text to the implemented owner, mirrored tests, and neutral report
+  library. Producer exit `0` may retain flag-subcount/merged-count disagreement
+  and proves no biological orientation or attempt identity; validator exit `0`
+  may contain failed rows and performs no BAM quickcheck/recount; scheduler exit
+  `0` may accept stale files. Artifact identity/meaning is unchanged apart from
+  final path/hash. Add one adjacent README; repair inventory, architecture
+  migrated-validator count, test baseline, documentation ownership, runbook,
+  troubleshooting, current roadmap/handoff, lifecycle, and audit. Stable Step
+  `05` predecessor/Step `07` consumer semantics and diagrams need no edit.
+- **Rollback and evidence ceiling:** revert documentation first, atomic five-
+  move/nine-update cutover second, then scheduler, validator, producer
+  stability/collision, transaction, and child/count baselines. Historical six-
+  sample cluster observations remain historical. This review changed or ran no
+  source, test, harness, dependency, real samtools, scheduler, production,
+  scientific-review, biological-orientation, or biological evidence.
+- **Card-boundary gate:** `git diff --check` passed. The exact RUNBOOK
+  documentation validator reports only the nine inherited `UNREFINED` card-
+  location findings and no usability-review-caused path, lifecycle, dependency,
+  cycle, orphan, anchor, or diagram finding. The expected-only result remains
+  nonpassing and is not called green.
