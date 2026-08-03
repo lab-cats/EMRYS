@@ -36,7 +36,7 @@ functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03K](REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, pending-scaffold, and rollback boundary.
+- [REVIEW-REL-03K](../TODO/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) — Fully: reliability review requires an architecture-corrected owner, loader, caller, artifact, test, pending-scaffold, and rollback boundary.
 
 ## Prerequisites
 
@@ -110,5 +110,8 @@ functional-owner migration.
 
 ## Completion record
 
-Not selected. Defined with `MIG-03K` from clean, published, local/upstream/
-live-remote-equal parent `db60dfa`; no executable/test file changed or ran.
+Selected as the sole active migration review from clean, published,
+local/upstream/live-remote-equal definition checkpoint
+`0bc12acbb7441dabcbd098e22f9a7e5811eb2d72`. No architecture finding is
+recorded yet, no later review or migration card is selected, and no
+executable/test file changed or ran.

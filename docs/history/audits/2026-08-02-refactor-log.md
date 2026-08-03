@@ -4061,3 +4061,21 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validation rule, no computational suite or complete documentation validator
   ran in this definition slice; the complete documentation gate belongs to the
   architecture-review card boundary.
+
+## 2026-08-03T08:20:43-0400 — REVIEW-ARCH-03K selected
+
+- **Selection:** from clean, published, local/upstream/live-remote-equal
+  definition checkpoint `0bc12acbb7441dabcbd098e22f9a7e5811eb2d72`, move only
+  `REVIEW-ARCH-03K` to `IN_PROGRESS` and repair its direct reliability-review
+  lifecycle link. `MIG-03K`, `REVIEW-REL-03K`, and `REVIEW-UX-03K` remain
+  unselected in `TODO`; Step `07` and every later owner/review card remain
+  uncreated.
+- **Boundary:** this checkpoint selects read-only architecture review but
+  records no finding. No executable, test, harness, configuration, dependency,
+  schema, fixture, report-template, runtime, scheduler, cluster, production,
+  scientific-review, biological-orientation, or biological state changes or
+  runs.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete documentation gate belongs to architecture-
+  review completion.
