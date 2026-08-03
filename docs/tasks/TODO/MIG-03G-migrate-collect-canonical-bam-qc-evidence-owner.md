@@ -48,15 +48,25 @@ uncreated and unselected.
   `7fa961166c7da085ca87d2b60c5786fedb3f7b64f40636f565d2cfa2600a5a99`
   and validator
   `1386a416ba7bb607a4b7a0ab305981363c548bb879202c819b6b27a4eead0e07`.
-- Proposed owner cutover is exactly five moves plus nine explicit updates:
+- Architecture-reviewed owner cutover is exactly five moves plus nine explicit
+  updates:
   `Makefile`, `scripts/build_artifact_index.py`,
   `tests/test_artifact_adapters.py`, `tests/test_public_cli_contracts.py`,
   `tests/test_slurm_wrapper_contracts.py`,
   `tests/test_validation_check_rosters.py`,
   `tests/libraries/test_validation_report.py`,
   `tests/baselines/python_coverage.json`, and
-  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. Dedicated
-  architecture review must confirm this ceiling before execution planning.
+  `tests/fixtures/public_cli_contracts/make_target_expansions.json`. This is a
+  fourteen-logical-file ceiling. A sixth move or tenth update reopens
+  architecture review.
+- Freeze each moved file's only path adjustment. The producer changes its usage
+  self-path to
+  `src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh`;
+  the validator resolves the neutral report from `Path(__file__).parents[4]`;
+  the job delegates to the final producer path; the moved shell test resolves
+  the repository root through `SCRIPT_DIR/../../..` and the final producer; and
+  the moved Python test resolves `ROOT` through `parents[3]` and the final
+  validator. No other moved-file edit is architecture-authorized.
 - Production bytes may change only for the producer help self-path, validator
   exact neutral-report depth, and scheduler child path. The reviewed projected
   producer hash after only its help change is
@@ -102,6 +112,14 @@ uncreated and unselected.
   `validation-static`/`smoke` and the literal Make oracle. Move direct shell and
   validator recipes; keep public CLI, SLURM, validation, artifact, and coverage
   maps explicit rather than introducing recursive discovery.
+- Direct shell and validator tests move with the evidence owner. Central public
+  CLI, scheduler, validation-roster, validation-report, artifact, coverage, and
+  Make suites remain independent cross-owner consumers; no test framework or
+  contract is duplicated under the owner.
+- All known executable callers are repository-owned and fit the same atomic
+  cutover, so no legacy wrapper, alias, symlink, or compatibility path is
+  warranted. Documentation paths are deferred to the separate close and do not
+  justify an executable compatibility owner.
 - Run only minimal old/final focused checks inside executable slices. Run the
   full applicable computational gate once at the assembled executable card
   boundary, then batch canonical paths, commands, small documentation updates,
@@ -114,6 +132,10 @@ uncreated and unselected.
 - Add no descriptor, schema, package marker, wrapper, compatibility copy,
   symlink, transaction, receipt, recovery marker, scheduler abstraction,
   manifest policy, or public library API.
+- Roll back the documentation close first, the final owner/caller/coverage
+  cutover second, and the old-path test-baseline checkpoint third before
+  returning to the frozen parent. Keep Make and its literal oracle together and
+  artifact producer path/hash plus its assertion together during rollback.
 
 ## Blocked by
 
@@ -223,6 +245,6 @@ uncreated and unselected.
 ## Completion record
 
 Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03F` documentation checkpoint `543eb8f`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no later owner is preloaded.
+`MIG-03F` documentation checkpoint `543eb8f`. `REVIEW-ARCH-03G` is complete;
+reliability and usability reviews remain unselected in `TODO`. No executable/
+test path changed, no computational test ran, and no later owner is preloaded.

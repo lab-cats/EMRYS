@@ -2391,3 +2391,34 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   performs the pass, so independent authorship is not claimed. Executable/test
   mutation and computational, runtime, scheduler, production, scientific-
   review, and biological evidence remain out of scope.
+
+## 2026-08-03T02:41:50-0400 — REVIEW-ARCH-03G completed
+
+- **High finding — moved-file edits were underspecified:** freeze exactly the
+  producer usage self-path, validator neutral-report depth `parents[4]`, job
+  child path, moved shell-test root `SCRIPT_DIR/../../..`, and moved Python-test
+  root `parents[3]`. Those are the only edits inside the five moved files; any
+  other moved-file edit reopens architecture review.
+- **High finding — exact cutover ceiling confirmed:** one atomic direct cutover
+  is fourteen logical files: five moves plus Make, artifact producer, artifact
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  coverage row, and literal Make fixture. Make adds exact final producer/job
+  syntax inputs after both leave flat wildcards. A sixth move or tenth update
+  reopens architecture review.
+- **Medium finding — test and artifact ownership confirmed:** move the two
+  direct suites with the evidence owner. Central scheduler, public-CLI,
+  validation-roster, validation-report, artifact, coverage, and Make suites stay
+  independent cross-owner consumers. Change only Step `02b` artifact producer
+  path and reviewed post-help hash, with an exact existing-test assertion;
+  public evidence and artifact identities, schemas, contents, ordering, and
+  consumers remain unchanged.
+- **Accepted architecture and rollback:** Step `02b` is first deterministic
+  among three eligible owners, not uniquely eligible. Every known executable
+  caller fits the atomic cutover, so no wrapper, duplicate, package, descriptor,
+  schema, alias, symlink, or second owner is warranted. Roll back documentation,
+  then owner/caller/coverage cutover, then old-path test baseline; keep Make and
+  its oracle plus artifact path/hash/assertion changes together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.

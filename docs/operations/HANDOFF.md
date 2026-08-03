@@ -15,15 +15,15 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Recorded package state: `MIG-03G` definition checkpoint
   `417a2a50084c7a10ee54d9ac045bbed72e4388d4` is clean, published, and
   local/upstream/live-remote-equal; completed `MIG-03F` close is `543eb8f`.
-- Current package: selected
-  [`REVIEW-ARCH-03G`](../tasks/IN_PROGRESS/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
-  for the Step `02b` evidence-owner architecture pass. All later `03G` cards
-  remain unselected.
+- Current package: completed
+  [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+  for the Step `02b` evidence-owner architecture. Reliability, usability, and
+  migration remain unselected.
 - Package type at this checkpoint: documentation-only architecture-review
-  selection; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: definition parent `417a2a5` is
-  verified local/upstream/live-remote-equal. Publish and prove the selection
-  checkpoint equal before review completion.
+  completion; no executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: selection parent `450e38c` is
+  verified local/upstream/live-remote-equal. The commit containing this handoff
+  must be published and proved equal before reliability-review selection.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -149,8 +149,10 @@ biological evidence was created.
 After `543eb8f` was published and proved equal, the refreshed live DAG exposed
 three eligible owners. Only first canonical identity
 `collect_canonical_BAM_QC_evidence` has `03G` cards, defined at published and
-equal checkpoint `417a2a5`. Only `REVIEW-ARCH-03G` is now selected. No Step
-`03`, Step `04`, or later owner/review card is created or selected.
+equal checkpoint `417a2a5`.
+[`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+is now complete. No Step `03`, Step `04`, or later owner/review card is created
+or selected.
 
 ## Active concurrent lanes
 
@@ -668,13 +670,14 @@ executable/test checkpoint `13a2748`, and documentation/lifecycle close
 `543eb8f`. The next migration card,
 [`MIG-03G`](../tasks/TODO/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md),
 and its reviews
-[`REVIEW-ARCH-03G`](../tasks/IN_PROGRESS/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
+[`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 →
 [`REVIEW-REL-03G`](../tasks/TODO/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 →
 [`REVIEW-UX-03G`](../tasks/TODO/REVIEW-UX-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 are defined at published checkpoint `417a2a5`; only `REVIEW-ARCH-03G` is
-selected. Reliability, usability, migration, Step `03`, Step `04`, and all later
+complete. Publish and prove this architecture-review checkpoint equal before
+selecting reliability; usability, migration, Step `03`, Step `04`, and all later
 owner cards remain unselected. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.

@@ -96,8 +96,34 @@ the frozen topology.
 
 ## Completion record
 
-Selected from clean, published, local/upstream/live-remote-equal definition
-checkpoint `417a2a50084c7a10ee54d9ac045bbed72e4388d4`. This is a read-only
-independent-in-time adversarial pass by the same campaign agent; independent
-authorship is not claimed. No executable/test mutation or computational test is
-part of review selection.
+Completed against clean, published, local/upstream/live-remote-equal selection
+checkpoint `450e38cf29f62921698f0533a4984e840161d5a3`.
+
+- **High — moved-file path edits were underspecified:** freeze the producer
+  usage self-path, validator report-owner depth `parents[4]`, scheduler child
+  path, moved shell-test repository depth `SCRIPT_DIR/../../..`, and moved
+  Python-test repository depth `parents[3]`. Those are the only edits inside the
+  five moved files; any other moved-file edit reopens architecture review.
+- **High — exact cutover ceiling confirmed:** one atomic direct cutover contains
+  exactly five moves plus nine updates: Make, artifact producer, artifact
+  assertion, public CLI, SLURM, validation roster, validation-report map,
+  coverage row, and literal Make fixture. Both final shell assets become exact
+  static/smoke inputs after leaving the flat wildcards. A sixth move or tenth
+  update reopens this review.
+- **Medium — test and artifact ownership confirmed:** direct shell and validator
+  suites move with the evidence owner. Central scheduler, public-CLI,
+  validation-roster, validation-report, artifact, coverage, and Make suites
+  remain independent cross-owner consumers. Artifact evidence changes only the
+  Step `02b` implementation path and reviewed producer hash; public evidence ID,
+  artifact identities, schemas, contents, ordering, and consumers do not
+  change.
+- **Accepted architecture and rollback:** Step `02b` is the first deterministic
+  choice among three eligible owners, not the unique eligible owner. All known
+  executable callers fit the atomic cutover, so no wrapper, duplicate, package,
+  descriptor, schema, alias, symlink, or second owner is warranted. Roll back
+  documentation, then owner/caller/coverage cutover, then old-path test baseline;
+  keep Make/oracle and artifact path/hash/assertion changes together.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent; independent authorship is not claimed. No source,
+  test, harness, dependency, runtime, scheduler, production, scientific-review,
+  or biological evidence changed or ran.
