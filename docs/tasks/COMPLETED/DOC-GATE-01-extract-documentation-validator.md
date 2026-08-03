@@ -48,7 +48,7 @@ surface proof existed.
 ## Completion unblocks
 
 - [CONCURRENCY-03](../TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md) — Fully: Provides the independently behavior-locked validator required to enforce the fragment lifecycle; completed `CONCURRENCY-02` supplies the manual protocol and synthetic exchange.
-- [TASK-LIFECYCLE-01](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Fully: Provides the independently tested validator owner required for lifecycle support; completed `CONCURRENCY-02` and the resolved program-owned integration-review trigger are already satisfied.
+- [TASK-LIFECYCLE-01](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Fully: Provides the independently tested validator owner required for lifecycle support; completed `CONCURRENCY-02` and the resolved program-owned integration-review trigger are already satisfied.
 
 ## Prerequisites
 
@@ -175,7 +175,7 @@ Completed on 2026-08-03.
   and no other documentation finding. This is a truthful nonpassing boundary,
   not a green gate or a waiver. The dependency deadlock is resolved by assigning
   repository-state closure to immediately eligible
-  [`TASK-LIFECYCLE-01`](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
+  [`TASK-LIFECYCLE-01`](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
   which owns those locations and their independent validation schema.
 - No task-dependency semantics, workflow, scientific behavior, report,
   evidence state, runtime, cluster state, or default branch changed.

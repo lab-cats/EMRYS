@@ -88,7 +88,9 @@ promotion; filenames are not provenance.
 Select future work through the [`task registry`](docs/tasks/README.md).
 Selection starts read-only planning and does not authorize implementation;
 every task still requires live repository inspection and an approved
-task-specific plan.
+task-specific plan. `UNREFINED` proposals are nonselectable, while
+`INTEGRATION_REVIEW` contains complete cards frozen for asynchronous canonical
+integration and permits no candidate mutation.
 
 [`TASK_DELIVERY.md`](docs/operations/TASK_DELIVERY.md#package-delivery) owns
 package delivery and documentation-impact procedure; exact validation commands

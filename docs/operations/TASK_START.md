@@ -32,6 +32,9 @@ Before proposing a task-specific plan:
    conversation, or memory.
 2. Read the selected task card in full. If no card exists, bound the objective
    explicitly and decide whether a card is required before mutation.
+   `UNREFINED` proposals are nonselectable and cannot start work. A card in
+   `INTEGRATION_REVIEW` permits only frozen-candidate review/integration or an
+   integration-owner return to `IN_PROGRESS` before correction authoring.
 3. Follow the card's `Required context` links, named anchors, and named local
    surfaces; inspect the directly affected implementation, contracts,
    consumers, tests, and fixtures. For an integration-fragment handoff, also

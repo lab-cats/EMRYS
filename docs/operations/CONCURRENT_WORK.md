@@ -188,6 +188,20 @@ docpatch.
    applicable gate, publishes the canonical branch, proves upstream equality,
    and only then closes affected cards or lanes.
 
+The selected card normally remains `IN_PROGRESS` through candidate handoff,
+serialized landing, and same-package review. Only the integration owner may
+move it to `INTEGRATION_REVIEW`, and only when a valid exact frozen candidate
+will await asynchronous canonical integration beyond the current unpublished
+package. That move repairs every inbound lifecycle link. No candidate or
+sidecar may make it canonical, and exact SHA, ref, worktree, checks, fragment,
+and lane identity remain solely in `HANDOFF.md`.
+
+No scope or candidate byte may change while a card is in
+`INTEGRATION_REVIEW`. A correction first returns it to `IN_PROGRESS` and
+repairs inbound links. Acceptance moves it to `COMPLETED` only after canonical
+integration, final applicable validation, publication, and upstream equality;
+review-state placement alone is never completion evidence.
+
 Exact creation, inspection, integration, verification, and optional cleanup
 commands are in the runbook. Merge, rebase, and automatic conflict resolution
 are not part of this workflow.

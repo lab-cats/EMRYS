@@ -42,6 +42,9 @@ user explicitly selects a TODO card, the integration owner may move it with
 `git mv` to `IN_PROGRESS` and repair inbound links as the only status-only
 mutation before plan approval. That move begins read-only planning only. Task
 lifecycle rules remain in the [`task registry`](docs/tasks/README.md).
+`UNREFINED` proposals cannot be selected. A card in `INTEGRATION_REVIEW` is
+frozen: only review/integration may continue there, and correction authoring
+requires an integration-owner move back to `IN_PROGRESS` first.
 
 ## Concurrent work and Git authority
 

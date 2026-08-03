@@ -189,7 +189,34 @@ unintegrated work as approved or complete.
 ## Completion record
 
 Selected on 2026-08-03 from clean, published, upstream-equal DOC-GATE-01 close
-`dc3ee2e`. The authorized UNREFINED directory, README, and recovered proposals
-exist, while validator and transition support remain unimplemented. Selection
-starts bounded task-specific planning only; it does not implement a lifecycle
-state, generated projection, permanent-path migration, or transition.
+`dc3ee2e` in checkpoint `5766a65`; approved current-flat-lifecycle plan
+`c98179e` froze the exact proposal schema, full-card review semantics, write
+set, test boundary, and exclusions. Baseline `d45e2a3` independently proved the
+pre-change engine rejected the current lifecycle locations.
+
+Implementation `3a87bb8` recognizes the eight unchanged proposal files and
+their README under the exact lightweight schema, prohibits actionable headings
+and dependency-edge syntax, and excludes proposals from card counts and inbound
+reachability. Implementation `b54a2ed` adds the concise
+`INTEGRATION_REVIEW` owner and applies the unchanged full-card, reachability,
+dependency, and completed-blocker rules there. No proposal was rewritten or
+promoted, and no existing card entered review. The implementation adds no
+permanent ID path, structured metadata, projection, blocker-edge migration,
+transition daemon, fragment enforcement, or task selection.
+
+The separate lifecycle/concurrency review found four fixture-only omissions:
+frozen proposal-oracle equality, exact nonactionable counts, optional proposal
+sections, and true out-of-order rejection. Checkpoint `c737ba0` closes those
+gaps without production changes. The complete focused documentation/public-
+command set passed `197` tests. Before this documentation close,
+`make -s documentation-check` passed with `204` Markdown documents, `125`
+actionable task cards, and `6` Mermaid sources, and `git diff --check` was
+clean. The final documentation-only gate is rerun after every canonical link,
+policy, status, evidence, and audit update in the commit containing this
+record.
+
+This close implements only repository lifecycle/documentation structure. It
+does not install or restore dependencies, rerun guarded R, alter runtime or
+scientific behavior, create cluster/production evidence, promote scientific or
+biological readiness, or touch the default branch. The inherited malformed
+ignored R-library entry remains a separately bounded repository-health issue.

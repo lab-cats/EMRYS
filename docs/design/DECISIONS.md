@@ -682,10 +682,10 @@ small future agents, while putting Jira-like detail in every canonical owner
 would recreate responsibility leak.
 
 Decision: use one stable Markdown card per task under `docs/tasks/TODO`,
-`IN_PROGRESS`, or `COMPLETED`; directory location is the status. Cards own
-scope, dependencies, deliverables, acceptance, and completion history. Durable
-rationale, current state, commands, topology, and open choices remain in their
-canonical documents.
+`IN_PROGRESS`, `INTEGRATION_REVIEW`, or `COMPLETED`; directory location is the
+status. Cards own scope, dependencies, deliverables, acceptance, and completion
+history. Durable rationale, current state, commands, topology, and open choices
+remain in their canonical documents.
 
 Moving a card to `IN_PROGRESS` starts task-specific read-only planning. It does
 not authorize implementation. Hard blockers are direct, reciprocal, and
@@ -718,24 +718,27 @@ mandatory throughout cutover.
 
 `UNREFINED` is now an authorized nonselectable intake for lightweight rough
 proposals outside the roadmap; file presence preserves an idea but grants no
-status, selection, dependency, or implementation authority. Its validator and
-transition support remains with `TASK-LIFECYCLE-01`. `INTEGRATION_REVIEW`
-remains a future frozen-candidate state awaiting implementation. Logical epics
-are orthogonal planning groups and indexes, not lifecycle states or blocker
-substitutes. `TODO`/`IN_PROGRESS`/`COMPLETED` directories remain the current
-actionable-card status authority until the atomic target migration above.
-`TASK-EPIC-01` later adds orthogonal navigation without changing lifecycle
-authority.
+status, selection, dependency, or implementation authority. Its exact
+lightweight schema is validated separately from actionable cards, which begin
+in `TODO`. `INTEGRATION_REVIEW` is the implemented full-card state for an exact
+frozen candidate awaiting asynchronous canonical integration beyond the
+current unpublished package. Logical epics are orthogonal planning groups and
+indexes, not lifecycle states or blocker substitutes. The four actionable
+lifecycle directories remain the current status authority until the atomic
+target migration above. `TASK-EPIC-01` later adds orthogonal navigation
+without changing lifecycle authority.
 
-`CHOICE-LIFECYCLE-01` resolved on 2026-08-03: persist the future
+`CHOICE-LIFECYCLE-01` resolved on 2026-08-03: persist the
 `INTEGRATION_REVIEW` state only when a frozen candidate awaits asynchronous
 review beyond the current unpublished integration package. A frozen handoff
 that is reviewed and integrated within that same unpublished package remains
 under the active card lifecycle; it does not create a durable review-queue
-transition. Once persisted, the future state's no-scope-expansion, exact-
+transition. Once persisted, the state's no-scope-expansion, exact-
 candidate, correction-return, and completion-after-integration rules remain
-mandatory. This decision settles the trigger only; `TASK-LIFECYCLE-01` still
-owns implementation and tests.
+mandatory. Completed
+[`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+implements that trigger, the lightweight proposal boundary, and independent
+validator fixtures without moving an existing card into review.
 
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative

@@ -48,8 +48,8 @@ manually copying those facts would create another source of truth.
 
 - [`PROGRAM-01`](../IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
   owns accepted tranche semantics and approval envelopes.
-- [`TASK-LIFECYCLE-01`](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-  owns future lifecycle roots and transition rules.
+- [`TASK-LIFECYCLE-01`](../COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  records the implemented flat lifecycle roots and transition rules.
 - [`TASK-REG-01`](../TODO/TASK-REG-01-correct-task-dependency-semantics.md)
   owns the authored dependency direction and generated reverse views.
 - [`TASK-EPIC-01`](../TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md)

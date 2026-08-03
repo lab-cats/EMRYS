@@ -11,7 +11,10 @@ The read-only validators are:
 - [`validate_documentation.py`](validate_documentation.py), which runs the
   repository documentation structure gate for an explicit worktree root. From
   the repository root, the supported `make -s documentation-check` target is a
-  logic-free wrapper over that exact engine;
+  logic-free wrapper over that exact engine. It validates full cards across
+  `TODO`, `IN_PROGRESS`, `INTEGRATION_REVIEW`, and `COMPLETED`, and separately
+  validates nonactionable `UNREFINED` proposals without adding them to card
+  counts or inbound-reference requirements;
 - [`validate_fragment_candidate.py`](validate_fragment_candidate.py), which
   binds one frozen candidate to its worktree, branch, base, exact diff,
   reservations, fragment shape, and published source ref; and

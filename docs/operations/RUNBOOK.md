@@ -1181,6 +1181,41 @@ du -sh <output_dir>
 ls -lh <output_dir>
 ```
 
+## Move A Task Card Between Lifecycle States
+
+The authority and transition rules are in the
+[`task registry`](../tasks/README.md#lifecycle). Only the canonical integration
+owner performs these moves. `UNREFINED` is not a card status; refine a proposal
+to the complete card schema before promoting it to `TODO`.
+
+From a clean canonical integration worktree, move exactly one card and repair
+every inbound link in the same commit:
+
+```bash
+cd /Users/elisteiger/dev/norad
+norad_task_status=$(git status --porcelain=v1)
+test -z "$norad_task_status"
+git mv \
+  docs/tasks/<FROM>/<CARD-ID>-<slug>.md \
+  docs/tasks/<TO>/<CARD-ID>-<slug>.md
+rg -n '<FROM>/<CARD-ID>-<slug>\.md' --glob '*.md' .
+# Edit every reported inbound lifecycle link to <TO>.
+git diff --check
+make -s documentation-check
+git status --short
+git diff --name-status
+```
+
+Supported actionable transitions are `TODO` to `IN_PROGRESS`, `IN_PROGRESS`
+back to `TODO`, `IN_PROGRESS` to `INTEGRATION_REVIEW`,
+`INTEGRATION_REVIEW` back to `IN_PROGRESS`, and `IN_PROGRESS` or accepted
+`INTEGRATION_REVIEW` to `COMPLETED`. The review transition is only for an exact
+frozen asynchronous handoff beyond the current unpublished integration
+package; routine same-package review remains `IN_PROGRESS`. Do not edit a
+review candidate until its card has returned to `IN_PROGRESS`. Completion
+requires canonical integration, final applicable validation, publication, and
+upstream equality.
+
 ## Concurrent Worktrees And Serialized Integration
 
 The policy and authority model are in
@@ -1892,8 +1927,10 @@ direct validation failure exits `1`; Make preserves the engine diagnostic,
 appends its native target error, and exits `2`. The checker validates local
 paths and GitHub-style heading anchors, includes
 untracked new documents, enforces task-card IDs/locations/headings/direct
-dependencies, rejects hard-dependency cycles and orphan cards/diagrams, and
-checks basic Mermaid source structure. It reads the repository globally but
+dependencies across all four actionable statuses, validates the separate
+lightweight nonactionable `UNREFINED` proposal schema, rejects hard-dependency
+cycles and orphan cards/diagrams, and checks basic Mermaid source structure.
+It reads the repository globally but
 normally emits one compact result, so it does not require loading the corpus
 into agent context. It does not replace targeted semantic comparison of each
 changed or otherwise affected diagram with its owning architecture document.

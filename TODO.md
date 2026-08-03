@@ -14,11 +14,14 @@ which activates only one separately planned repository-health package at a
 time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
 Completed [`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-removed the remaining technological blocker from active
-[`TASK-LIFECYCLE-01`](docs/tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
-That card alone is selected for bounded task-specific planning and execution;
-unrelated work and the preserved program remainder remain frozen. Roadmap order
-is not blocker metadata.
+and completed
+[`TASK-LIFECYCLE-01`](docs/tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+now supply the tested documentation gate and flat lifecycle/proposal support.
+No follow-on card is selected. The already-approved repository-health campaign
+next quarantines only the malformed ignored R-library entry and rechecks the
+guarded environment without dependency installation or restoration. Unrelated
+work and the preserved program remainder remain frozen. Roadmap order is not
+blocker metadata.
 
 ## Canonical routes
 

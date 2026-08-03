@@ -4287,6 +4287,66 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T14:28:50-0400 — TASK-LIFECYCLE-01 implemented, reviewed, and closed
+
+- **Verified boundary and checkpoints:** selected only TASK-LIFECYCLE-01 from
+  clean, published, upstream-equal DOC-GATE-01 close `dc3ee2e` in checkpoint
+  `5766a65`. Approved plan `c98179e` limited the package to the current flat
+  lifecycle; rejected-location baseline `d45e2a3` proved the unchanged engine
+  did not yet accept the authorized proposal/review locations. No concurrent
+  mutable lane, migration owner, default-branch action, or future card entered
+  the package.
+- **UNREFINED decision and risks:** implementation `3a87bb8` preserves all
+  eight proposal files unchanged. One canonical H1/ID and matching filename,
+  the exact local proposal-state declaration, and ordered `Proposal`, `Why
+  preserve it`, `Settled boundaries`, `Questions before refinement`, and
+  `Promotion conditions` headings form the required core; additional proposal
+  headings remain valid. Full-card headings and dependency-edge syntax are
+  rejected. Proposals do not count as actionable cards and need no canonical
+  inbound status link. These rules prevent accidental selection, priority,
+  dependency, blocker/unblock, completion, implementation, or roadmap
+  authority; promotion remains an explicit integration-owner conversion to
+  the full TODO-card contract.
+- **INTEGRATION_REVIEW decision and risks:** implementation `b54a2ed` creates
+  only the status README and validates cards there under the unchanged full
+  card, unique-ID, reachability, dependency, cycle, and completed-blocker
+  rules. Only the integration owner may persist this state, and only for an
+  exact frozen handoff awaiting asynchronous canonical integration beyond the
+  current unpublished package; routine same-package handoff remains
+  `IN_PROGRESS`. Exact SHA/ref/worktree/check/fragment/lane facts stay solely
+  in `HANDOFF.md`. Scope or candidate movement is prohibited; correction first
+  returns to `IN_PROGRESS`, while `COMPLETED` still requires canonical
+  integration, final validation, publication, and upstream equality. No card
+  was moved into review, so this package creates no candidate or review-queue
+  evidence.
+- **Review and focused evidence:** separate lifecycle/concurrency review found
+  four fixture-only gaps—frozen proposal-oracle equality, exact unchanged
+  actionable counts, accepted optional proposal headings, and a true out-of-
+  order core-heading case. Checkpoint `c737ba0` closes all four without
+  production behavior change; its five smallest tests passed. The complete
+  affected documentation-validator/public-command set then passed `197`
+  tests, `git diff --check` passed, and `make -s documentation-check` passed
+  with `204` Markdown documents, `125` actionable cards, and `6` Mermaid
+  sources before the documentation close.
+- **Lifecycle/documentation close:** add and align the task/status READMEs,
+  concurrency authority, task-start route, exact runbook move command,
+  decision, roadmap, priority, handoff, root entry/conduct, ownership map,
+  test baseline, orchestration helper README, dependent card, and every inbound
+  lifecycle link; then move only TASK-LIFECYCLE-01 from `IN_PROGRESS` to
+  `COMPLETED`. The final documentation gate and Git checks run again against
+  the combined close. TASK-EPIC-01's lifecycle prerequisite is complete but it
+  remains unselected; CONCURRENCY-03 and the frozen PROGRAM-01 remainder also
+  remain unselected.
+- **Explicit exclusions and evidence ceiling:** no permanent ID-only paths,
+  structured lifecycle metadata, generated lifecycle/dependency/epic/tranche
+  projections, blocker-edge migration, transition daemon, fragment
+  enforcement, proposal rewrite/promotion, dependency installation or
+  restoration, runtime/cluster/production action, scientific review, or
+  biological-readiness promotion occurred. The guarded-R aggregate was not
+  rerun for this lifecycle card. Its inherited malformed ignored local-library
+  entry remains a separate recoverable health slice; this green documentation
+  gate is not guarded-R or full-repository computational proof.
+
 ## 2026-08-03T14:02:24-0400 — DOC-GATE-01 behavior lock and lifecycle close
 
 - **Published bounded checkpoints:** the CLI/root/inventory baseline

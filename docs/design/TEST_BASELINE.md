@@ -131,9 +131,18 @@ The corresponding full command was not green. Static preflight passed before
 guarded R stopped with status `2` on the inherited ignored malformed `macos`
 library entry and unavailable Bioconductor metadata DNS. The separate complete
 documentation check reported only the eight authorized `UNREFINED` proposals
-plus their README. Those nine findings remain a nonpassing repository-state
-boundary assigned to `TASK-LIFECYCLE-01`, not a DOC-GATE pass claim. No
-dependency was installed, restored, removed, or updated.
+plus their README. At that checkpoint those nine findings were a nonpassing
+repository-state boundary assigned to `TASK-LIFECYCLE-01`, not a DOC-GATE pass
+claim. No dependency was installed, restored, removed, or updated.
+
+TASK-LIFECYCLE-01 adds independent accepted/rejected fixtures for the exact
+lightweight `UNREFINED` proposal schema and full-card `INTEGRATION_REVIEW`
+behavior while retaining the frozen actionable-card heading oracle. Its
+card-boundary documentation/public-command set passed `197` tests. The exact
+`make -s documentation-check` then passed with `204` Markdown documents, `125`
+actionable task cards, and `6` Mermaid sources. This closes the nine lifecycle
+findings; it is documentation-structure evidence only and supplies no guarded-
+R, cluster, production, scientific-review, or biological-readiness evidence.
 
 ## Current evidence vocabulary
 

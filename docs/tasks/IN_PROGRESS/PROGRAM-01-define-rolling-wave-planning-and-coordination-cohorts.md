@@ -2,10 +2,10 @@
 
 **Current execution boundary — Slice 3 complete; program remainder frozen**
 
-This slice settled the program-owned trigger for the future
-`INTEGRATION_REVIEW` state without activating lifecycle implementation or the
-preserved program remainder. The separately selected DOC-GATE-01 package is
-now complete; TASK-LIFECYCLE-01 is selected as its own separate JIT package.
+This slice settled the program-owned trigger for `INTEGRATION_REVIEW` without
+itself activating lifecycle implementation or the preserved program remainder.
+DOC-GATE-01 and TASK-LIFECYCLE-01 have since completed as separate JIT
+packages; this program card remains frozen.
 
 **Completed slice objective**
 
@@ -32,8 +32,9 @@ now complete; TASK-LIFECYCLE-01 is selected as its own separate JIT package.
   integration remains in the active-card lifecycle, and asynchronous review
   has an objective persistence trigger.
 - `TASK-LIFECYCLE-01` named only `DOC-GATE-01` as a hard blocker; reciprocal
-  mutable-card metadata agreed. DOC-GATE-01's later completion now makes the
-  lifecycle card dependency-valid without selecting it.
+  mutable-card metadata agreed. DOC-GATE-01's later completion made the
+  lifecycle card dependency-valid; its later selection and completion occurred
+  in a separate package.
 - No validator behavior, lifecycle directory, runtime library, migration owner,
   default branch, or other preserved program-design decision changes.
 - Existing program information below remains present and unchanged in meaning.
@@ -113,9 +114,9 @@ and unnecessary context for bounded work.
   closeout and its feedback review.
 - `UNREFINED` is an authorized proposal-intake classification outside
   actionable task status, with fixed nonselectability and integration-owner
-  promotion authority. `TASK-LIFECYCLE-01` owns its remaining validator and
-  transition support. This program owns only tranche/handoff interaction with
-  the future `INTEGRATION_REVIEW` concept. The intake location does not
+  promotion authority. Completed `TASK-LIFECYCLE-01` implements its validator
+  and transition support. This program owns only tranche/handoff interaction
+  with `INTEGRATION_REVIEW`. The intake location does not
   reactivate this card. Logical epics are orthogonal navigation groups, not
   lifecycle states, blocker substitutes, or physical status categories.
 - The separately authorized consolidated recovery integration supersedes the
@@ -155,7 +156,7 @@ and unnecessary context for bounded work.
   completed concurrency policy.
 - The completed fragment protocol plus the planned lifecycle and epic
   implementation boundaries in
-  [`TASK-LIFECYCLE-01`](TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  [`TASK-LIFECYCLE-01`](../COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
   and [`TASK-EPIC-01`](../TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
 - The settled architecture direction and future-only extension constraints;
   these are guardrails, not prewritten implementation plans.
@@ -267,7 +268,7 @@ and unnecessary context for bounded work.
   future durable per-tranche artifacts/current pointer, applicable review and
   planning cards, one concise future-direction link in task-registry guidance,
   `HANDOFF.md`, and this card. Existing UNREFINED rules remain authoritative;
-  other lifecycle mechanics wait for `TASK-LIFECYCLE-01`.
+  completed `TASK-LIFECYCLE-01` now supplies their lifecycle mechanics.
 
 ## Escalation conditions
 

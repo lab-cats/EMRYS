@@ -40,7 +40,7 @@ one physical hierarchy.
 
 ## Blocked by
 
-- [TASK-LIFECYCLE-01](../IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Required: the validator and indexes need the complete stable lifecycle roots before introducing non-status Markdown beneath `docs/tasks`.
+- [TASK-LIFECYCLE-01](../COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md) — Required: the validator and indexes need the complete stable lifecycle roots before introducing non-status Markdown beneath `docs/tasks`.
 
 ## Completion unblocks
 

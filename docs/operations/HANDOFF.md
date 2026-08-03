@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published DOC-GATE-01
-  documentation/lifecycle close `dc3ee2e`.
+  exact SHA from live Git. Its frozen executable/test parent is published
+  TASK-LIFECYCLE-01 fixture-review checkpoint `c737ba0`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -49,18 +49,22 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `4be3225`, Make-wrapper `7a4c724`, acceptance-matrix `fb30f3f`, and
   Make-failure `8a8bb1a` checkpoints plus documentation/lifecycle close
   `dc3ee2e` are published and local/upstream/live-remote-equal.
-- Current package: active
-  [`TASK-LIFECYCLE-01`](../tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
-  selected alone for bounded task-specific planning. Completed
-  [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-  supplies its tested validator owner. `PROGRAM-01` remains in progress as the
-  frozen program owner.
-- Package type at this checkpoint: documentation-only status selection. It
-  changes no validator behavior, lifecycle schema, dependency, fixture,
-  executable, runtime state, migration owner, or default branch.
-- Remote publication and upstream equality: DOC-GATE-01 close `dc3ee2e` is
-  verified local/upstream/live-remote-equal; publish and verify this selection
-  from live Git. The configured `origin` is
+  TASK-LIFECYCLE-01 selection `5766a65`, approved plan `c98179e`, rejected-
+  location baseline `d45e2a3`, proposal implementation `3a87bb8`, integration-
+  review implementation `b54a2ed`, and fixture-review correction `c737ba0`
+  are also published and equal.
+- Current package: completed
+  [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
+  No follow-on card is selected. The next already-approved health slice is the
+  exact ignored R-library quarantine and guarded-environment recheck;
+  `PROGRAM-01` remains in progress as the frozen program owner.
+- Package type at this checkpoint: separate lifecycle documentation close
+  following the executable/test-affecting implementation. It changes no
+  dependency edge, proposal content, candidate status, runtime package,
+  migration owner, or default branch.
+- Remote publication and upstream equality: fixture-review checkpoint
+  `c737ba0` is verified local/upstream/live-remote-equal; publish and verify
+  this lifecycle close from live Git. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -101,9 +105,9 @@ branches, above the committed non-regression floor. Its aggregate gate was not
 fully green: canonical documentation validation reported exactly ten
 migration-caused stale links plus the nine inherited, authorized `UNREFINED`
 card-location findings. The published `MIG-03C` documentation close repaired
-those ten links. The nine inherited findings remain an expected-only nonpassing
-evidence ceiling, not a passing gate and not authority to change task-lifecycle
-behavior in this package.
+those ten links. At that checkpoint, the nine inherited findings remained an
+expected-only nonpassing evidence ceiling, not a passing gate and not authority
+to change task-lifecycle behavior in that package.
 
 `MIG-03C` moved the producer, validator, scheduler job, and owner-local tests to
 their final homes and cut over every reviewed repository caller without a
@@ -145,8 +149,8 @@ updated nothing. The ignored malformed `macos` directory warning remains
 characterized local state. Python executed `1,079` passes and `17` skips before
 its documentation-validator test reported exactly ten migration-caused stale
 links plus the nine inherited `UNREFINED` card-location findings. This close
-repairs the ten links; the nine inherited findings remain an expected-only
-nonpassing condition.
+repairs the ten links; at that checkpoint, the nine inherited findings remained
+an expected-only nonpassing condition.
 
 The producer's FAI-first nontransactional publication and the scheduler's Bash
 `3.2` dry-run, site-default, tolerated-module, and file-only output-check defects
@@ -183,8 +187,9 @@ blocked by DNS access to Bioconductor metadata; the exact network-enabled rerun
 used the existing project library and changed no dependency. Python executed
 `1,109` passes and `17` skips before its sole failure reported exactly ten
 MIG-03F stale links plus the same nine inherited `UNREFINED` card-location
-findings. This documentation close repairs the ten migration links; the nine
-inherited findings remain an expected-only nonpassing condition.
+findings. This documentation close repairs the ten migration links; at that
+checkpoint, the nine inherited findings remained an expected-only nonpassing
+condition.
 
 The producer's best-effort rollback remains a characterized ambiguous/data-
 loss defect: failed final BAI publication followed by failed prior-BAM
@@ -218,8 +223,9 @@ network-enabled rerun used the existing library and changed no dependency.
 Static, shell, guarded R, and report runtime passed; Python reported `1,113`
 passes and `17` skips before its sole documentation assertion listed exactly
 ten deferred migration links plus nine inherited `UNREFINED` card-location
-findings. This close repairs the ten links. The inherited nine remain an
-expected-only nonpassing condition, never a passing-gate claim.
+findings. This close repairs the ten links. At that checkpoint, the inherited
+nine remained an expected-only nonpassing condition, never a passing-gate
+claim.
 
 The producer's mixed-attempt final writes, quickcheck exit normalization,
 producer/validator marker mismatch, and lack of lock/stage/receipt/recovery
@@ -267,8 +273,8 @@ runtime in `325.043s`. Python ran `1,120` passes and `17` skips before its sole
 documentation assertion failed; the aggregate stopped at `455.541s`. That
 assertion listed exactly ten deliberately deferred migration links plus nine
 inherited `UNREFINED` card-location findings. This close repairs the ten links;
-the inherited nine remain an expected-only nonpassing condition, never a
-passing-gate claim.
+at that checkpoint, the inherited nine remained an expected-only nonpassing
+condition, never a passing-gate claim.
 
 The producer's direct-final silent replacement, partial/empty predecessor
 truncation, nonempty-only success, and absence of a lock, stage, no-clobber,
@@ -329,8 +335,8 @@ contracts in `131.070s`, guarded R in `459.450s`, and report runtime in
 documentation assertion failed; the aggregate ended at `482.874s`. That
 assertion listed exactly ten deliberately deferred migration links plus nine
 inherited `UNREFINED` card-location findings. This close repairs the ten links;
-the inherited nine remain an expected-only nonpassing condition, never a
-passing-gate claim.
+at that checkpoint, the inherited nine remained an expected-only nonpassing
+condition, never a passing-gate claim.
 
 The producer's direct-final partial/mixed triplets, admitted-input-mutation
 blindness, and absence of lock/stage/no-clobber/stable-input recheck/receipt/
@@ -381,9 +387,9 @@ shell contracts in `87.205s`, guarded R in `351.324s`, and report runtime in
 documentation assertion failed; the aggregate ended at `406.739s`. That
 assertion listed exactly ten deliberately deferred Step `05` migration links
 plus nine inherited `UNREFINED` card-location findings. This close repairs the
-ten links; the inherited nine remain an expected-only nonpassing condition,
-never a passing-gate claim. The existing pinned environments were used and no
-dependency changed.
+ten links; at that checkpoint, the inherited nine remained an expected-only
+nonpassing condition, never a passing-gate claim. The existing pinned
+environments were used and no dependency changed.
 
 The producer's admitted-input-mutation blindness, output-directory-wide lock,
 missing receipt, best-effort restoration, and cleanup erasure after rollback
@@ -444,8 +450,9 @@ preflight passed in `0.166s`, shell contracts in `42.813s`, report runtime in
 skips before its sole documentation assertion failed; the aggregate ended
 status `2` in `183.791s`. That assertion listed exactly ten deliberately
 deferred Step `06` migration links plus nine inherited `UNREFINED` card-
-location findings. This close repairs the ten links; the inherited nine remain
-an expected-only nonpassing condition, never a passing-gate claim.
+location findings. This close repairs the ten links; at that checkpoint, the
+inherited nine remained an expected-only nonpassing condition, never a passing-
+gate claim.
 
 The producer's flag-subcount/merged-count disagreement, admitted-input-
 mutation blindness, best-effort restoration, cleanup erasure after rollback
@@ -520,8 +527,8 @@ other aggregate lanes. No dependency changed. The separately invoked shell,
 report-runtime, and local-real-R lanes above passed. Serial Python's sole
 failure listed exactly ten deliberately deferred MIG-03L links plus the same
 nine inherited `UNREFINED` card-location findings. This close repairs those
-ten migration links. The inherited nine remain expected-only and nonpassing,
-never a green-gate claim.
+ten migration links. At that checkpoint, the inherited nine remained expected-
+only and nonpassing, never a green-gate claim.
 
 The producer's receipt-visible-before-commit window, incomplete identity and
 hash binding, admitted-input mutation blindness, best-effort restoration, and
@@ -559,14 +566,15 @@ neutral-report and flat-Step-`09c` bridges, guarded-R ownership, exact native
 identities, artifact marker distinction, coverage policy, and reverse
 rollback. This close adds only canonical documentation/lifecycle evidence.
 
-The aggregate gate remains non-green: static preflight passed, then inherited
+The MIG-03M aggregate gate remained non-green: static preflight passed, then inherited
 guarded-R environment damage and unavailable Bioconductor DNS stopped the
 lane. Complete shell contracts, isolated existing-library Step `08`/`09`
 real-R semantics, report runtime, and coverage policy passed separately. The
-exact documentation validator after this close retains only nine inherited
-`UNREFINED` locations and remains nonpassing. No dependency action, scheduler,
-cluster, production, scientific-review, variant/editing-site, or biological
-evidence occurred. No Step `09` or later card is created or preloaded.
+exact documentation validator at that close retained only nine inherited
+`UNREFINED` locations and remained nonpassing. Completed TASK-LIFECYCLE-01
+later closed those findings. No dependency action, scheduler, cluster,
+production, scientific-review, variant/editing-site, or biological evidence
+occurred. No Step `09` or later card is created or preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -620,12 +628,13 @@ routed to `DOC-CONS-08G`. The integration fragment is intentionally absent.
 File presence preserves an UNREFINED proposal but does not promote, select,
 prioritize, block, unblock, or authorize implementation.
 
-The current validator does not yet recognize the authorized UNREFINED
-location. Final candidate validation reported exactly nine
+At that recovery-integration checkpoint, the validator did not yet recognize
+the authorized UNREFINED location. Final candidate validation reported exactly nine
 `invalid card location` findings—the README and eight proposal files—and no
 other finding, so the documentation gate is expected-only nonpassing rather
-than passing. `TASK-LIFECYCLE-01` owns that future validator support; this
-package neither implements it nor waives any other structural finding.
+than passing. TASK-LIFECYCLE-01 later implemented that validator support; the
+recovery package itself neither implemented it nor waived any other structural
+finding.
 Computational, R, shell, report-runtime, and cluster suites are not applicable
 to this documentation-only integration.
 
@@ -963,17 +972,16 @@ approved policy defines and unlocks stricter exit criteria.
 
 An earlier sibling-worktree `renv` activation attempted automatic bootstrap
 before failing on missing packages and may have left ignored local cache
-material. Do not delete, repair, normalize, or reuse that cache without
-operator review. The later successful gate referenced the already-restored
-primary project library through `RENV_PATHS_LIBRARY`; it did not restore or
-update packages, and its temporary Python-environment symlink was removed.
+material. Do not delete, repair, normalize, or reuse that cache. The separately
+approved next health slice may inventory and move only the exact malformed
+ignored entry to a timestamped `/private/tmp` quarantine, preserving its bytes;
+it may not install, restore, or change any package. The later successful gate
+referenced the already-restored primary project library through
+`RENV_PATHS_LIBRARY`; it did not restore or update packages, and its temporary
+Python-environment symlink was removed.
 
 ## Current blockers
 
-- The complete repository documentation gate is intentionally not green yet:
-  it reports only the eight authorized `UNREFINED` proposals plus their README.
-  `TASK-LIFECYCLE-01` is now dependency-valid and owns the schema/validator
-  support that must close those nine findings.
 - The guarded-R lane is not green in this checkout. It reports the inherited
   ignored malformed
   `renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` entry and, in the
@@ -1005,23 +1013,17 @@ update packages, and its temporary Python-environment symlink was removed.
 
 ## Immediate resume point
 
-Active
-[`TASK-LIFECYCLE-01`](../tasks/IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-must first receive a bounded task-specific plan using the
-completed DOC-GATE behavior-lock harness, preserve `UNREFINED` as nonselectable
-proposal state, implement only the resolved asynchronous
-`INTEGRATION_REVIEW` boundary, and make the nine current documentation findings
-green without changing task-dependency meaning. Do not select
-`CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the frozen program
-remainder.
-
-DOC-GATE-01 focused validation passed `183` tests. Its full computational gate
-was not green because guarded R stopped on the inherited malformed ignored
-library entry and unavailable Bioconductor metadata DNS. Its documentation
-gate retained exactly the nine lifecycle findings above. These are separate
-recorded follow-up conditions, not passing claims. No dependency was installed,
-restored, removed, or updated; no runtime, cluster, scientific-review, or
-biological-readiness evidence was created.
+Completed
+[`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+passed its complete focused documentation/public-command set (`197` tests),
+and `make -s documentation-check` passed with `204` Markdown documents, `125`
+actionable task cards, and `6` Mermaid sources before this close. The next
+bounded slice inventories and moves only
+`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` to a timestamped
+`/private/tmp` quarantine, then reruns `make -s r-check`. Preserve original
+bytes, install or restore nothing, and retain truthful DNS/runtime failures.
+Do not select `CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the
+frozen program remainder.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are

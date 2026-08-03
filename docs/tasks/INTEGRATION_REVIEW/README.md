@@ -16,4 +16,8 @@ integration package.
   the live handoff rather than being copied into the card.
 
 Cards retain the complete actionable schema and dependency rules in
-[`../README.md`](../README.md).
+[`../README.md`](../README.md), including canonical inbound reachability and
+completed hard blockers. The only authoring-state transition is back to
+`IN_PROGRESS`; acceptance may move the card to `COMPLETED` only after the
+frozen candidate is canonically integrated, finally validated, published, and
+proved upstream-equal.

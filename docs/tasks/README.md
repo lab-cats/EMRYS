@@ -8,6 +8,8 @@ status signal:
 - [`TODO/`](TODO/) — available or blocked work that has not entered planning;
 - [`IN_PROGRESS/`](IN_PROGRESS/) — a task selected for task-specific,
   read-only planning or approved execution;
+- [`INTEGRATION_REVIEW/`](INTEGRATION_REVIEW/) — a full task card whose exact
+  candidate is frozen for asynchronous canonical integration; and
 - [`COMPLETED/`](COMPLETED/) — historical records whose acceptance evidence
   has been inspected.
 
@@ -59,8 +61,8 @@ and completion history. They link rather than duplicate durable truth:
   [`../sitemap/DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
 
 `PIPELINE_PLAN.md` owns pipeline/package/evidence state and lineage. The task
-card's directory is the only owner of TODO/IN_PROGRESS/COMPLETED workflow
-status; roadmap rows link to the card rather than restating that lifecycle.
+card's directory is the only owner of actionable workflow status; roadmap rows
+link to the card rather than restating that lifecycle.
 
 Do not put live branch names, commit IDs, test totals, or mutable status in a
 TODO card. A completion record links to the canonical evidence owner instead
@@ -94,10 +96,18 @@ authority for its inputs.
 3. If planning is paused or blocked, move the card back to `TODO`, record the
    reason in its completion record, and update inbound links. There is no
    separate `BLOCKED` directory.
-4. Move a card to `COMPLETED` only after its acceptance evidence and required
+4. Only the integration owner may move an exact frozen candidate from
+   `IN_PROGRESS` to `INTEGRATION_REVIEW`, and only when asynchronous review
+   persists beyond the current unpublished integration package. Update every
+   inbound link in the same commit. Routine same-package handoff remains
+   `IN_PROGRESS`.
+5. A correction to a frozen candidate first returns the card from
+   `INTEGRATION_REVIEW` to `IN_PROGRESS`, with inbound links repaired, before
+   authoring resumes.
+6. Move a card to `COMPLETED` only after its acceptance evidence and required
    canonical documentation updates have been inspected. Update every inbound
    link in the same commit.
-5. Completed cards are immutable historical records apart from link repair or
+7. Completed cards are immutable historical records apart from link repair or
    factual correction. New work gets a new follow-up card.
 
 `UNREFINED` is a preservation classification, not actionable task status. Its
@@ -109,16 +119,24 @@ review, conversion to the complete TODO-card schema, and an integration-owner
 decision. File presence preserves a proposal; it does not approve or schedule
 implementation.
 
-The current documentation validator does not yet recognize this authorized
-lifecycle location. Active [`TASK-LIFECYCLE-01`](IN_PROGRESS/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-owns validator implementation and independent fixtures; neither this registry
-text nor the local [`UNREFINED` README](UNREFINED/README.md) is an executable
-owner or a passing-gate claim.
+Each proposal uses one `# CARD-ID — Title` H1 whose ID matches its filename,
+the exact local ``State: [`UNREFINED` proposal](README.md). ...`` declaration,
+and these core headings once in order: `Proposal`, `Why preserve it`, `Settled
+boundaries`, `Questions before refinement`, and `Promotion conditions`.
+Additional proposal headings are permitted. Full actionable-card headings and
+dependency-edge syntax are prohibited. The documentation validator enforces
+this schema without counting proposals as actionable cards or requiring a
+canonical inbound status link. Completed
+[`TASK-LIFECYCLE-01`](COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+is the implementation record.
 
 Multiple cards may be `IN_PROGRESS` only when
 [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) records isolated,
 non-overlapping lanes. Candidate-directory placement is proposal state until
 the integration owner accepts it; sidecars never move canonical card status.
+`INTEGRATION_REVIEW` is canonical only after that owner records the move. Its
+cards retain the complete actionable schema, reachability, and dependency
+rules; completed blockers are required just as they are for `IN_PROGRESS`.
 
 An integration fragment is not a card or lifecycle location. It cannot select,
 block, authorize, complete, or supply a canonical inbound reference for a
