@@ -87,5 +87,24 @@ failure, and residue state.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Completed as a read-only independent-in-time adversarial pass against published
+reliability-selection checkpoint `b961274` after architecture checkpoint
+`cd3f3d4`. One high finding adds the missing producer child-failure oracle: a
+controlled fake STAR exit must preserve exact status propagation, invocation
+logging, and the already-created output-directory residue before and after the
+move. A second high finding adds the missing full validator dry-run/execute/
+repeat journey from a non-repository CWD with exact stream/exit parity,
+deterministic five-row bytes, stable replacement, and no invocation-directory
+residue. The existing central scheduler matrix remains sufficient and
+independent: it already freezes the nonexecutable mode, directives, invalid
+`EXECUTE`, strict module failure, child exit, caller-CWD failure, delegate-only
+output checking, and default placeholder mutation, so no duplicate scheduler
+harness is justified. The shared validation-report matrix continues owning
+exact neutral loading, snapshots, input recheck, locks, collisions, rollback,
+interruption, cleanup, and characterized late-foreign/reordering defects.
+Artifact evidence must assert the reviewed final producer path/hash; coverage
+must move the validator's frozen `125/140` line and `34/44` branch row only
+after inspected final-path measurement and global non-regression. No escalation
+condition was triggered. The same campaign agent performed the pass;
+independent authorship is not claimed. No executable/test file changed and no
+computational test ran.

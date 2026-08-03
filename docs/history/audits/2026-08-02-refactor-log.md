@@ -1221,3 +1221,36 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   authorship is not claimed. Executable/test mutation and computational,
   runtime, scheduler, production, scientific-review, and biological evidence
   remain out of scope.
+
+## 2026-08-02T22:44:00-0400 — REVIEW-REL-03D completed
+
+- **High finding — producer child-failure residue lacks a direct oracle:** the
+  current shell suite proves successful fake-STAR execution but its fake cannot
+  fail. Add one controlled child exit to the moved direct suite and run the same
+  case at the frozen old and final paths, asserting the exact exit, recorded
+  invocation, and retained output directory. The producer's direct-final writes
+  and absence of post-execution validation remain defects; the fixture must not
+  synthesize output artifacts or imply real STAR evidence.
+- **High finding — validator relocation needs a complete arbitrary-CWD
+  journey:** generic CLI coverage proves help/parse failure from another CWD,
+  while the direct suite runs successful publication only from repository root.
+  Add one absolute-input non-repository-CWD dry-run, execute, and repeat journey
+  with exact stdout/stderr and exit parity, no dry-run output, deterministic
+  five-row bytes, stable replacement, and no invocation-directory residue.
+- **Existing fault ownership:** the cross-wrapper scheduler matrix already
+  freezes mode `0644`, directives, invalid `EXECUTE`, strict STAR module
+  failure, child exit, caller-CWD failure, delegate-only output checking, and
+  default placeholder creation. Keep it central and run it through the final
+  explicit paths. The neutral validation-report matrix continues owning exact
+  loader identity, snapshots, input recheck, locks, collisions, rollback,
+  interruption, cleanup, and characterized same-size/restored-mtime,
+  late-foreign-final, and check-reordering gaps. Relocation neither repairs nor
+  approves those behaviors.
+- **Coverage, provenance, and evidence boundary:** move the validator's
+  `125/140` line and `34/44` branch baseline row only after inspected final-path
+  measurement and global non-regression. Assert Step `01` artifact evidence at
+  the reviewed final producer path/hash without changing artifact IDs or
+  schemas. This separate committed-time pass was performed by the same campaign
+  agent; independent authorship is not claimed. No executable/test mutation or
+  computational, real STAR, runtime, scheduler, production, scientific-review,
+  or biological evidence was created.

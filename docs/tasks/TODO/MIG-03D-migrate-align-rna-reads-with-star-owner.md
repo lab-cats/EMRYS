@@ -40,6 +40,11 @@ the semantic DAG and live coupling, not historical alias order.
   independent cross-owner scheduler suite: they share its parametrized wrapper
   harness, and extraction would duplicate or cross-import test infrastructure.
   Update only that suite's explicit job path and delegated producer path.
+- Extend the moved shell suite with one controlled fake-STAR failure that proves
+  exact child status propagation, invocation logging, and the characterized
+  output-directory residue. Run the same case against the frozen old path and
+  final path; do not synthesize STAR outputs or turn the check into runtime
+  evidence.
 - Preserve the shell producer's arguments, dry-run default, execute control,
   command bytes, compression handling, streams, exits, and output-directory
   side effect. Its self-identifying help path must name the final producer; any
@@ -48,6 +53,10 @@ the semantic DAG and live coupling, not historical alias order.
   final owner depth. Preserve its private exact-file report identity, no
   `sys.path` mutation, public basename, interpreter-only mode, five check IDs,
   report bytes, dry-run/execute behavior, and publication semantics.
+- Extend the moved validator suite with one full non-repository-CWD dry-run,
+  execute, and repeat journey using absolute inputs. Freeze exit/stream parity,
+  no dry-run publication, deterministic five-row bytes, stable repeat
+  replacement, and no invocation-directory residue across old and final paths.
 - In the shared validation-report suite, route every declared non-flat
   validator through the existing path-validating exact-file test loader while
   retaining module-name import for validators still in `scripts/`. This reuses
@@ -107,6 +116,11 @@ the semantic DAG and live coupling, not historical alias order.
   interpreter producer behavior, validator behavior, and mocked scheduler
   behavior without SLURM submission, real STAR execution, production inputs,
   dependency installation, or dependency restoration.
+- The expanded pre-move baseline must include the controlled producer child
+  failure and full non-repository-CWD validator dry-run/execute/repeat journey.
+  The central scheduler matrix already owns invalid mode, module failure, child
+  exit, caller-CWD failure, delegate-only output validation, and default
+  placeholder mutation; do not duplicate that harness.
 
 ## Required context
 
@@ -154,6 +168,11 @@ the semantic DAG and live coupling, not historical alias order.
 - Extend old/new parity only where the sequential reviews find a missing named
   behavior. Measure coverage at the card boundary, then run the complete
   applicable local gate once on final executable state.
+- Add only the two durable regression journeys identified by reliability
+  review: controlled producer child failure/residue and non-repository-CWD
+  validator dry-run/execute/repeat. The shared neutral-publisher fault matrix
+  remains the owner for snapshot, cache, collision, lock, rollback,
+  interruption, cleanup, and known late-foreign/reordering defects.
 - After executable state is fixed, batch the owner README, migration path/link
   repairs, current topology/status/evidence owners, lifecycle links, and dated
   audit updates into one separate documentation-close commit.
@@ -198,11 +217,19 @@ the semantic DAG and live coupling, not historical alias order.
   paths, matching compression, command construction, output-directory side
   effects, streams, child status, and exact STAR invocation apart from the
   displayed final self-path.
+- A controlled fake STAR exit proves the producer propagates the child status
+  after logging the invocation and retains its already-created output directory;
+  this residue is characterized, not approved or cleaned up.
 - Validator parity preserves mode `0644`, explicit-interpreter and arbitrary-
   CWD behavior, all arguments, five ordered report rows, dry-run/execute/repeat
   effects, deterministic bytes, streams/exits, stable-input recheck, locks,
   foreign state, rollback/cleanup behavior, and exact neutral owner identity
   without global `sys.path` mutation.
+- The full validator journey from a non-repository CWD preserves dry-run,
+  execute, and repeat stdout/stderr and exits, deterministic five-row bytes, no
+  dry-run report, stable replacement, absolute inputs, and no invocation-CWD
+  residue. Shared publication tests retain ownership of inherited publisher
+  gaps; relocation neither repairs nor blesses them.
 - Scheduler parity preserves mode `0644`, seven directives, strict mode,
   caller-CWD delegation, STAR module `2.7.11b`, allocation-derived threads,
   all five overrides plus `EXECUTE`, default dry-run fixture mutation, execute-

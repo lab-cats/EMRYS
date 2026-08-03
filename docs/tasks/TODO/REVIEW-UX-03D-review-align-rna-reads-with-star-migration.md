@@ -24,7 +24,7 @@ or an undiscoverable owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03D](../IN_PROGRESS/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03D](../COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

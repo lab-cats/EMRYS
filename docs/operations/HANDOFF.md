@@ -12,18 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: architecture-review completion checkpoint
-  `cd3f3d42bc29f6809acc16ff70aef013f52f4e15` is clean, published, and
-  local/upstream-equal. Its selection checkpoint is `8fd0063`.
-- Current package: selection of
-  [`REVIEW-REL-03D`](../tasks/IN_PROGRESS/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md)
-  for one read-only reliability pass. `REVIEW-UX-03D` and `MIG-03D` remain
-  unselected in `TODO`.
-- Package type at this checkpoint: lifecycle/status documentation only; no
-  executable or test file changed and no reliability finding is claimed yet.
-- Remote publication and upstream equality: parent `cd3f3d4` is verified
-  local/upstream-equal. The commit containing this review selection must be
-  published and proved equal before the reliability pass begins.
+- Recorded package state: reliability-review selection checkpoint
+  `b9612748bd66023eb6db9c74f22c36a801f4d311` is clean, published, and
+  local/upstream-equal. Its architecture completion checkpoint is `cd3f3d4`.
+- Current package: completed read-only
+  [`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md).
+  `REVIEW-UX-03D` and `MIG-03D` remain unselected in `TODO`.
+- Package type at this checkpoint: reliability-review documentation only; no
+  executable or test file changed and no computational evidence was created.
+- Remote publication and upstream equality: parent `b961274` is verified
+  local/upstream-equal. The commit containing this review completion must be
+  published and proved equal before the usability review is selected.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -536,11 +535,11 @@ and
 [`REVIEW-UX-03C`](../tasks/COMPLETED/REVIEW-UX-03C-review-convert-gtf-to-bed12-migration.md)
 are complete. MIG-03D and
 [`REVIEW-ARCH-03D`](../tasks/COMPLETED/REVIEW-ARCH-03D-review-align-rna-reads-with-star-migration.md),
-[`REVIEW-REL-03D`](../tasks/IN_PROGRESS/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
+[`REVIEW-REL-03D`](../tasks/COMPLETED/REVIEW-REL-03D-review-align-rna-reads-with-star-migration.md),
 and
 [`REVIEW-UX-03D`](../tasks/TODO/REVIEW-UX-03D-review-align-rna-reads-with-star-migration.md)
-are defined; the architecture review is complete and only the reliability
-review is selected. After this checkpoint is clean, published, and equal,
-perform only that read-only pass. Usability, migration execution, and any later
-owner remain unselected. The unsliced `PROGRAM-01` remainder and unrelated
-roadmap remain preserved and out of scope.
+are defined; architecture and reliability reviews are complete. After this
+checkpoint is clean, published, and equal, select only the usability review for
+its read-only pass. Migration execution and any later owner remain unselected.
+The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
+out of scope.
