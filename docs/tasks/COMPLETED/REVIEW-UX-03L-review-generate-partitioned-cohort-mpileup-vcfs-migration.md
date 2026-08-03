@@ -31,7 +31,7 @@ retry guidance, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03L](../TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) — Fully: after the required fresh-branch boundary, migration selection may begin with all three reviews closed.
+- [MIG-03L](../IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) — Fully: the required fresh-branch boundary is published and migration selection began with all three reviews closed.
 
 ## Prerequisites
 

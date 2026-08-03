@@ -7,12 +7,12 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 ## Checkout
 
 - Branch:
-  `codex/mig-03a-extract-validation-report-library`
+  `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen parent is published usability-review
-  selection `3ec83073ceae62eb6a59afe9470941cd1bf1eec3`.
+  completion `5a501df76d51b422266054f98131807019c15bb8`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -27,26 +27,26 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   definition `8dc6128`, architecture selection `e34edb5`, architecture
   completion `ec7e8d9`, reliability selection `3d2b9c0`, and reliability
   completion `db33d9c`, and usability selection `3ec8307` are also published
-  and equal.
-- Current package: unselected
-  [`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+  and equal. Usability completion `5a501df` is published/equal on both the
+  prior campaign branch and the fresh branch named above.
+- Current package: active
+  [`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
   after completed
   [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
   completed
   [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
   and completed
   [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
-  All three reviews are complete; migration remains unselected. Step `08` and
+  All three reviews are complete; migration alone is selected. Step `08` and
   later cards remain uncreated.
-- Package type at this checkpoint: documentation-only usability-review
-  completion. It records final commands, distinct dry-run effects, recovery,
-  ownership, provenance, evidence ceilings, and rollback without changing or
-  running executable, test, configuration, dependency, schema, fixture, or
-  report-template behavior.
-- Remote publication and upstream equality: usability-selection parent
-  `3ec8307` is verified local/upstream/live-remote-equal. Publish and prove this
-  completion checkpoint equal, then cut a fresh branch from it as a separate
-  reversible boundary before selecting `MIG-03L`.
+- Package type at this checkpoint: documentation-only MIG-03L lifecycle
+  selection on the fresh branch. It fixes the five ordered test-only slices,
+  atomic cutover, complete computational card-boundary gate, and separate
+  documentation close without changing or running executable, test,
+  configuration, dependency, schema, fixture, or report-template behavior.
+- Remote publication and upstream equality: fresh-branch parent `5a501df` is
+  verified local/upstream/live-remote-equal. Publish and prove this selection
+  checkpoint equal before the first test-only slice.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -448,7 +448,7 @@ refresh. Only `generate_partitioned_cohort_mpileup_VCFs` is eligible: its
 declared-sample Step `06` BAM/BAI and reference-FAI predecessors are migrated,
 while Step `08` still depends on Step `07`. Published/equal definition
 checkpoint `8dc6128` created only unselected
-[`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and sequential
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
@@ -460,10 +460,11 @@ and reverse rollback. Reliability fixes five small old-path test-only
 checkpoints and their exact defect-preservation oracles. Usability fixes final
 producer/validator/scheduler commands, distinct dry-run effects, absolute-path
 and receipt-path choices, preservation-first recovery, non-calling language,
-owner findability, evidence ceilings, and reverse rollback. Migration remains
-unselected, no executable/test file changed or ran, and no Step `08` or later
-owner/review card is preloaded. Publish this completion, then cut a fresh branch
-before migration selection.
+owner findability, evidence ceilings, and reverse rollback. Published/equal
+completion `5a501df` now bases fresh branch
+`codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`; MIG-03L alone is
+selected there. No executable/test file changed or ran at selection, and no
+Step `08` or later owner/review card is preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1049,15 +1050,17 @@ published child/count `3ae6e3e`, transaction `dafcd18`, stability/collision
 published executable/test checkpoint `1d5b76a`; documentation/lifecycle close
 is published at `b73b12b`. A fresh live-DAG check then supported only
 unselected
-[`MIG-03L`](../tasks/TODO/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and its sequential reviews, defined at published checkpoint `8dc6128`.
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 is published/equal at `ec7e8d9`;
 [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 is published/equal at `db33d9c`;
 [completed `REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
-is in the checkpoint containing this handoff. Migration remains unselected;
-the next boundary is a fresh branch cut before selection. Step `08` and later
-cards remain uncreated.
+is published/equal at `5a501df`. Fresh branch
+`codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` starts at that commit;
+[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+alone is selected in the checkpoint containing this handoff. Step `08` and
+later cards remain uncreated.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

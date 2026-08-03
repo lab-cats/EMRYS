@@ -3757,6 +3757,37 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   cycle, orphan, anchor, or diagram finding. The expected-only result remains
   nonpassing and is not called green.
 
+## 2026-08-03T10:20:18-0400 — fresh branch cut and MIG-03L selected
+
+- **Fresh-branch boundary:** published usability-review completion
+  `5a501df76d51b422266054f98131807019c15bb8` was clean, tracked/untracked-
+  empty, free of recovery/index-lock state, and equal across local `HEAD`, its
+  configured upstream, and the live remote. Create
+  `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` at that exact commit,
+  publish it without content changes, set its upstream, and prove fresh-branch
+  local/upstream/live-remote equality. The prior campaign branch remains at the
+  same published review-completion commit.
+- **Selection:** move only `MIG-03L` from `TODO` to `IN_PROGRESS`, repair its
+  direct completed-usability lifecycle link, and make it the sole active
+  migration. All three dedicated reviews are complete. Step `08` and every
+  later owner/review card remain uncreated and unselected.
+- **Seven-slice boundary:** execute exactly five old-path test-only checkpoints
+  in order—producer pipeline/selector, producer transaction/recovery, producer
+  stability/provenance, validator, then scheduler—followed by one atomic five-
+  move/nine-update executable/test cutover with the single complete
+  computational card-boundary gate, then one separate canonical documentation/
+  lifecycle close. Each slice is independently revertible and is published/
+  proven equal before the next.
+- **Boundary:** this checkpoint selects migration work but changes or runs no
+  executable, test, harness, configuration, dependency, schema, fixture,
+  report-template, runtime, scheduler, cluster, production, scientific-review,
+  variant/editing-site, or biological state. It creates no compatibility
+  surface and preloads no future card.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete computational gate belongs to the assembled
+  executable cutover and the complete documentation gate to lifecycle close.
+
 ## 2026-08-03T10:00:03-0400 — REVIEW-REL-03L selected
 
 - **Selection:** from clean, published, local/upstream/live-remote-equal

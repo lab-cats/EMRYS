@@ -387,8 +387,12 @@ but does not select it.
 
 ## Completion record
 
-Not selected. Architecture, reliability, and usability reviews completed from
-published/equal checkpoints. The next separate reversible boundary is a fresh
-branch cut from the published usability-completion checkpoint before migration
-selection. No executable/test path changed, no computational test ran, and no
-Step `08` or later owner is preloaded.
+Selected as the sole active migration from clean, published,
+local/upstream/live-remote-equal fresh branch
+`codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` at usability-review
+completion `5a501df76d51b422266054f98131807019c15bb8`. Architecture,
+reliability, and usability reviews are complete. Execute only the five ordered
+old-path test checkpoints, then the atomic cutover with the complete
+computational card-boundary gate, then the separate documentation/lifecycle
+close. No executable/test path changed or ran at selection, and no Step `08` or
+later owner is preloaded.
