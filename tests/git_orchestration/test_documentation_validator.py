@@ -259,6 +259,107 @@ def test_aggregate_cli_diagnostics_are_complete_and_ordered(tmp_path: Path) -> N
     )
 
 
+def test_reports_missing_local_link(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8") + "\n[Missing](docs/missing.md)\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["missing link: README.md -> docs/missing.md"],
+    )
+
+
+def test_reports_missing_markdown_anchor(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        + "\n[Missing anchor](docs/tasks/README.md#missing)\n",
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "missing anchor: README.md -> docs/tasks/README.md#missing"
+        ],
+    )
+
+
+def test_accepts_duplicate_github_anchors_and_url_decoding(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    encoded = repository / "docs/encoded file.md"
+    encoded.write_text(
+        "# Encoded heading\n\n## Repeat\n\n## Repeat\n",
+        encoding="utf-8",
+    )
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        + "\n[Encoded](<docs/encoded%20file.md#encoded-heading>)\n"
+        + "[First](<docs/encoded%20file.md#repeat>)\n"
+        + "[Second](<docs/encoded%20file.md#repeat%2D1>)\n",
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_ignores_supported_external_link_schemes(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        + "\n[HTTP](http://example.test/resource)\n"
+        + "[HTTPS](https://example.test/resource)\n"
+        + "[Mail](mailto:fixture@example.test)\n"
+        + "[Data](data:text/plain,fixture)\n",
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_accepts_each_supported_mermaid_flowchart_direction(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    diagram = repository / "docs/fixture.mmd"
+
+    for direction in ("LR", "RL", "TB", "BT", "TD"):
+        diagram.write_text(f"flowchart {direction}\n    A --> B\n", encoding="utf-8")
+        result = validate(repository, cwd=tmp_path)
+        assert result.returncode == 0, (direction, result.stderr)
+        assert result.stderr == ""
+
+
+def test_requires_external_inbound_reference_for_mermaid(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            "\n[Diagram](docs/fixture.mmd)\n", "\n"
+        ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["orphan Mermaid source: docs/fixture.mmd"],
+    )
+
+
 def test_requires_each_task_registry_readme(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     (repository / "docs/tasks/TODO/README.md").unlink()
