@@ -4,8 +4,7 @@ This is the observed contract of historical Step `09` for `ARCH-02A`. It is an
 analysis operation rather than another preprocessing stage. The exact public
 identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and is now the implemented source location.
 
 ## Responsibility and execution dependencies
 
@@ -51,7 +50,7 @@ than discarded. BH adjustment spans every successfully tested target
 candidate in the cohort. Threshold comparisons are strict; results become
 `significant_up`, `significant_down`, or an explicit non-call status.
 
-[`step_09_cmh_editing_site_calling.R`](../../../../scripts/step_09_cmh_editing_site_calling.R)
+[`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
 owns pairing validation, count tables, CMH/BH computation, classification,
 summary and mutation-spectrum aggregation, and plot generation. The historical
 filename's “calling” does not elevate the scientific evidence state.
@@ -80,7 +79,7 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-[`step_09_cmh_editing_site_calling.sh`](../../../../scripts/step_09_cmh_editing_site_calling.sh)
+[`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
 is side-effect-free in dry-run. Execute mode hashes and repeatedly rechecks
 manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
 scratch/backups, requires all six previous outputs or none, validates all
@@ -92,14 +91,14 @@ The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
-[`step_09_cmh_editing_site_calling.slurm`](../../../../jobs/step_09_cmh_editing_site_calling.slurm)
+[`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
 owns cluster defaults, dependency environment, execution gating, delegation,
 and final path checks; it does not own statistical behavior. Unlike the public
 script, the wrapper currently creates its `logs/` directory even in dry-run.
 
 ## Validation interface
 
-[`validate_step_09_cmh_outputs.py`](../../../../scripts/validate_step_09_cmh_outputs.py)
+[`validate_step_09_cmh_outputs.py`](validate_step_09_cmh_outputs.py)
 accepts explicit manifests, Step `08` inputs, all six native outputs, analysis
 and cohort IDs, and report output. It does not invoke R. Dry-run prints the
 common report; `--execute` snapshot-rechecks inputs and uses Step `00a`'s shared

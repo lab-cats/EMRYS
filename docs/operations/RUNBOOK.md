@@ -4329,16 +4329,23 @@ step before Step `08` is cluster-proven.
 Implemented files:
 
 ```text
-scripts/step_09_cmh_editing_site_calling.sh
-scripts/step_09_cmh_editing_site_calling.R
-scripts/validate_step_09_cmh_outputs.py
-jobs/step_09_cmh_editing_site_calling.slurm
-tests/shell/test_step_09_cmh_editing_site_calling.sh
-tests/r/run_step_09_cmh_tests.sh
-tests/r/test_step_09_cmh_editing_site_calling.R
-tests/test_validate_step_09_cmh_outputs.py
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
+tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
+tests/analyses/rank_cohort_candidates_with_paired_CMH/run_step_09_cmh_tests.sh
+tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.R
+tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
+tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py
+tests/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_oracle.py
+tests/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_oracle.tsv
 configs/step_09_pairs.NORAD_EV_PUM1.tsv
 ```
+
+The adjacent [owner README](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md)
+owns the compact root/arbitrary-CWD, recovery, artifact-provenance, and
+migration-evidence routes.
 
 The structured Step `09` validator consumes the exact six native outputs and
 their explicit Step `08`/manifest inputs without invoking R:
@@ -4348,7 +4355,8 @@ analysis=NORAD_EV_vs_PUM1
 cohort=NORAD_EV_PUM1
 analysis_dir="results/editing/$analysis"
 
-.venv/bin/python scripts/validate_step_09_cmh_outputs.py \
+.venv/bin/python \
+  src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py \
   --analysis-id "$analysis" \
   --cohort-id "$cohort" \
   --sample-manifest samples.tsv \
@@ -4377,7 +4385,8 @@ cohort=NORAD_EV_PUM1
 analysis_dir="results/editing/$analysis"
 
 mkdir -p results/qc/validation/09
-.venv/bin/python scripts/validate_step_09_cmh_outputs.py \
+.venv/bin/python \
+  src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py \
   --analysis-id "$analysis" \
   --cohort-id "$cohort" \
   --sample-manifest samples.tsv \
@@ -4396,10 +4405,17 @@ mkdir -p results/qc/validation/09
   --execute
 ```
 
-Focused validation:
+Focused final-owner protection:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_validate_step_09_cmh_outputs.py
+bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
+.venv/bin/python -m pytest -q \
+  tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py \
+  tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py
+RSCRIPT_BIN=/usr/local/bin/Rscript \
+  bash tests/analyses/rank_cohort_candidates_with_paired_CMH/run_step_09_cmh_tests.sh
+.venv/bin/python -m pytest -q \
+  tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
 Runtime requirements:
@@ -4417,7 +4433,8 @@ independently.
 The Step `08` package requirements remain separate. `Rscript` resolution is
 CLI `--rscript-bin`, then `RSCRIPT_BIN_OVERRIDE`, then `Rscript` on `PATH`.
 The R implementation defaults to the adjacent
-`scripts/step_09_cmh_editing_site_calling.R` and may be overridden with
+`src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R`
+and may be overridden with
 `--r-script` or `STEP09_R_SCRIPT`.
 
 The full sample manifest is the only pairing source. Step `09` requires
@@ -4434,7 +4451,7 @@ cluster promotion.
 Direct dry-run:
 
 ```bash
-scripts/step_09_cmh_editing_site_calling.sh \
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh \
   --analysis-id NORAD_EV_vs_PUM1 \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
@@ -4459,6 +4476,12 @@ every declared partition, exact manifest-ordered `DP__`, `AD__`, and `AF__`
 columns, candidate uniqueness, row counts, count/AF consistency, and
 `orientation_policy=legacy_provisional_v1`. Dry-run prints the exact R command
 but does not invoke R, acquire a lock, or create an output directory.
+
+From another CWD, make the shell, Rscript, R program, both manifests, Step
+`08` root, and output root absolute. The owner README gives the complete
+supported form. Relative paths recorded by the producer are later interpreted
+from a consumer's CWD, so retain the original CWD and resolved absolute paths
+as evidence; do not silently reinterpret a summary from another directory.
 
 Default analysis:
 
@@ -4487,7 +4510,7 @@ Direct execute is limited to an explicitly allocated compute-node context or a
 tiny approved fixture.
 
 ```bash
-scripts/step_09_cmh_editing_site_calling.sh \
+src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh \
   --analysis-id NORAD_EV_vs_PUM1 \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
@@ -4503,7 +4526,7 @@ SLURM dry-run:
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
-  jobs/step_09_cmh_editing_site_calling.slurm
+  src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
 ```
 
 SLURM execute, only after the dry-run and upstream gates are inspected:
@@ -4511,7 +4534,7 @@ SLURM execute, only after the dry-run and upstream gates are inspected:
 ```bash
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
 RSCRIPT_BIN_OVERRIDE=/supported/path/to/Rscript \
-  jobs/step_09_cmh_editing_site_calling.slurm
+  src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
 ```
 
 Wrapper variables and defaults:
@@ -4535,7 +4558,7 @@ ABSOLUTE_DIFFERENCE_THRESHOLD=0.005
 BACKGROUND_CONDITION=<empty; disabled>
 BACKGROUND_MAX_FRACTION=0.01
 RSCRIPT_BIN_OVERRIDE=<unset; defaults to Rscript on PATH>
-STEP09_R_SCRIPT=scripts/step_09_cmh_editing_site_calling.R
+STEP09_R_SCRIPT=src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R
 EXECUTE=0
 ```
 
@@ -4683,6 +4706,16 @@ outputs, and run-token scratch paths; never delete or adopt it blindly. If
 rollback cannot restore a complete state, the script deliberately retains its
 owned lock and any recovery evidence. Inspect the reported finals/backups and
 perform an explicit operator recovery before another run.
+
+The selected R program may change after admission without detection and the
+characterized producer can still publish and exit `0`. The summary omits the
+selected Rscript/R program, R/package state, durable attempt identity, and
+hashes of its five sibling outputs. Summary visibility precedes final checks;
+it is not current-attempt proof. The scheduler does not preflight Rscript or
+the R program and can falsely accept six stale outputs after an exit-`0`,
+no-output child. Preserve those defects and all associated evidence; do not
+promote shell, validator, or scheduler success to cluster, scientific-review,
+editing-site, or biological proof.
 
 ## Post-Step 09: Scientific Validation Gate
 

@@ -1719,6 +1719,12 @@ For a direct workflow script run, pass the executable with:
 --rscript-bin /usr/local/bin/Rscript
 ```
 
+The implemented Step `09` producer and sibling R program now live together
+under
+[`src/norad/analyses/rank_cohort_candidates_with_paired_CMH/`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md).
+From another CWD, make both paths and every input/output path absolute rather
+than relying on the launch directory.
+
 For a future validated SLURM environment, export its batch-visible path:
 
 ```bash
@@ -2129,6 +2135,14 @@ six temporary outputs are regenerated and validated together. Do not patch a
 summary count, background status, hash, subset, or PDF signature to force
 publication.
 
+Preserve the selected Rscript, R-program bytes/path, startup and package state,
+and all streams before action. The producer currently detects manifest and
+Step `08` mutations after admission, but a selected-R-program mutation can go
+undetected and still publish with exit `0`. The summary omits Rscript/R-program
+and package identity, a durable attempt identity, and hashes of its five
+sibling outputs. Treat this as an evidence ceiling, not permission to accept
+the result.
+
 These independent output checks and rollback behavior are locally tested with
 a fake R executable. The real-R suite also passes locally without `SKIP`. Its
 PDF fixture now searches the trailing raw bytes for the `%%EOF` marker instead
@@ -2166,6 +2180,12 @@ recomputes enabled-background status/maximum AF and one global BH family, then
 reconciles the exact significant subset, summary provenance/counts, canonical
 mutation spectrum, and both PDF structures.
 
+It does not independently recompute count-table estimability, CMH statistic,
+p-value, or common odds ratio. The current `status_semantics` expected text
+nevertheless says CMH was recomputed and overstates that evidence. Preserve
+the validator rows together with the separate independent-oracle and real-R
+results; do not rewrite the row text as proof or bless the defect here.
+
 ### Fix
 
 Follow the [common response](#structured-validation-response). Inspect every
@@ -2174,9 +2194,42 @@ outputs as one transaction. Preserve the seven reported statuses and the
 nonregular-input/process-failure distinction; regeneration belongs to
 separately authorized Step `09`.
 
+Producer-recorded relative paths are later interpreted from the consumer's
+CWD. Preserve the producer CWD and resolved paths, and rerun inspection with
+the original path context or explicit absolute paths. Do not edit a summary to
+make a path resolve from a new directory.
+
 The structured validator is read-only and locally fixture-tested. Its report
 does not establish production execution, cluster proof, scientific review, or
 biological validity.
+
+## Step 09 scheduler succeeds with stale outputs or an unusable R selection
+
+### Symptom
+
+The Step `09` job exits `0` and finds all six expected names even though the
+current child produced nothing, or the child reports a missing/nonexecutable
+Rscript or missing R program.
+
+### Cause
+
+The mode-`0755` final job delegates runtime validation to the child. It does
+not preflight Rscript, the selected R program, R version, or packages. After an
+exit-`0` child it checks only that six output files exist, so a stale complete
+set can satisfy the wrapper without a current-attempt identity. Body-level
+`logs/` creation also occurs too late to satisfy SLURM's pre-body output-file
+opening; the checkout `logs/` directory must already exist.
+
+### Fix
+
+Preserve the job ID, accounting, stdout/stderr paths, submit and launch CWD,
+environment overrides, child command/streams, all six outputs and hashes,
+lock/owner, and matching temporary/backup paths. Compare them with a known
+current child attempt; do not infer current production from job exit or file
+presence. Create `logs/` before a later submission, correct the batch-visible
+absolute R selection, and use a fresh absolute output root for any separately
+authorized nonproduction diagnostic. Never delete or overwrite the stale set
+while its writers or consumers remain unresolved.
 
 ## Step 09 finds a lock or incomplete six-output set
 
@@ -2202,6 +2255,11 @@ Alternatively, a manual/interrupted operation may have left only part of the
 four-TSV/two-PDF result set or a run-token temp/backup path. The summary is
 published last as the commit marker; fewer than six stable files is not a
 committed transaction.
+
+Even when all six and the summary are briefly visible, final content/hash
+checks may still be in progress. The summary contains no durable attempt or
+five-sibling hash identity, so visibility is not proof that the producer
+returned success or that the visible set belongs to one current attempt.
 
 ### Fix
 

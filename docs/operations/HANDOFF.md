@@ -54,24 +54,30 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   review implementation `b54a2ed`, and fixture-review correction `c737ba0`
   are also published and equal. Lifecycle documentation close `776dad3` and
   recursive-Make fixture correction `10be692` are published and local/
-  upstream/live-remote-equal.
-- Current package: selected
-  [`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md),
+  upstream/live-remote-equal. MIG-03N runtime/input `fd015e4`, publication
+  order `3828496`, signal/concurrency `7aced51`, validator `1ba3001`, and
+  scheduler `d35b674` test baselines plus atomic executable/test checkpoint
+  `50e1bb3` are published and local/upstream/live-remote-equal.
+- Current package: completed
+  [`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md),
   after completed
   [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
   and [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md),
   plus completed
   [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md).
-  No other card is selected. Step `09c` and every later migration/review card
-  remain uncreated.
-- Package type at this checkpoint: documentation-only MIG-03N selection. It
-  fixes the seven ordered implementation boundaries, moves one card, repairs
-  its direct usability link, and updates current status/audit truth without
-  changing or running an executable, test, configuration, dependency, schema,
-  fixture, report template, scheduler, cluster, or production surface.
-- Remote publication and upstream equality: usability completion `c6c4712` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before the first runtime/input test-only slice. The configured `origin` is
+  No bounded migration/review card is selected. Step `09c` and every later
+  migration/review card remain uncreated; the active program remainder stays
+  frozen.
+- Package type at this checkpoint: documentation-only MIG-03N lifecycle
+  close. It adds the adjacent owner README, repairs canonical final paths and
+  lifecycle links, records exact evidence and preserved defects, and moves the
+  card to `COMPLETED` without changing an executable, test, configuration,
+  dependency, schema, fixture, report template, scheduler, cluster, or
+  production surface.
+- Remote publication and upstream equality: executable checkpoint `50e1bb3` is
+  verified local/upstream/live-remote-equal. Publish and prove the
+  documentation tip containing this handoff equal before any later JIT
+  selection. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -92,17 +98,18 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
 `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`, and
 `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/`, and
-`src/norad/stages/preprocess_and_annotate_cohort_candidates/`. Their twelve
-validators and the one remaining flat validator load the neutral report file
-without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
+`src/norad/stages/preprocess_and_annotate_cohort_candidates/`, and
+`src/norad/analyses/rank_cohort_candidates_with_paired_CMH/`. All thirteen
+validators load the neutral report file without package identity, a wrapper,
+or `sys.path` mutation. The FASTA-sidecar
 and Step `05` validators also use private exact-file bridges to unchanged
 public `scripts/reference_provenance.py`. The final Step `02`/`04`/`05`
 validators exact-load private neutral
 `src/norad/libraries/bam_validation.py`; no peer-stage implementation import
-remains. The final Step `08` validator separately exact-loads unchanged flat
-`scripts/step_09c_scientific_validation.py` under a private identity for shared
-contracts; that retained inversion is not a package API or Step `09c`
-migration.
+remains. The final Step `08` and Step `09` validators separately exact-load
+unchanged flat `scripts/step_09c_scientific_validation.py` under private
+identities for shared contracts; that retained inversion is not a package API
+or Step `09c` migration.
 
 The `MIG-03C` focused suites and reviewed final-path coverage passed before the
 executable commit. The recorded final-path measurement retained the producer at
@@ -592,7 +599,7 @@ and input receipt predecessor is migrated. Step `09c` remains blocked on the
 complete six-output Step `09` transaction.
 
 Definition checkpoint `8bb27d4` created only unselected
-[`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+[`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
 and sequential unselected
 [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
@@ -604,6 +611,36 @@ bridges, artifact/coverage ownership, and exact rollback before reliability
 review. No executable/test file changed or ran at definition, no R dependency
 action occurred, no review finding was claimed there, and no Step `09c` migration or later
 owner is created or preloaded.
+
+This checkpoint completes MIG-03N after those three reviews. The five
+published test checkpoints are `fd015e4`, `3828496`, `7aced51`, `1ba3001`,
+and `d35b674`; atomic eleven-move/ten-integration executable checkpoint
+`50e1bb3` is published/equal. The final owner preserves exact shell/R/
+validator/job identities, private neutral-report and flat-Step-`09c` bridges,
+guarded-real-R and independent-oracle ownership, artifact provenance, coverage
+policy, and reverse rollback. This close adds only canonical documentation and
+lifecycle evidence.
+
+Focused final paths passed: the shell suite, `56` owner-local Python tests,
+`15` selected scheduler cases with `157` deselected, and guarded real-R. The
+first exact network-enabled `RSCRIPT_BIN=/usr/local/bin/Rscript make -s
+all-checks` was not green. Static, shell, guarded-R, and report-runtime lanes
+passed; Python reached `1,294` passes and `17` skips before its sole failure,
+`test_documentation_validator_accepts_implemented_unrefined_state`, listed
+exactly twelve intentionally deferred old Step `09` links. Coverage did not
+run after that failure. The earlier result remains nonpassing even though this
+documentation close repairs the links. No dependency, scheduler submission,
+cluster, production, scientific review, validated editing-site, or biological
+evidence was created.
+
+For the final documentation state, `git diff --check` and
+`make -s documentation-check` pass for `209` Markdown documents, `129` task
+cards, and `6` Mermaid sources. The exact network-enabled aggregate rerun then
+passes static preflight in `0.112s`, shell contracts in `55.795s`, guarded R in
+`158.320s`, report runtime in `128.526s`, and Python coverage in `197.253s`,
+with parallel summary status `0` in `197.374s`. This is final local card
+evidence and does not relabel the earlier non-green run or establish scheduler,
+cluster, production, scientific-review, editing-site, or biological proof.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -1039,31 +1076,27 @@ Python-environment symlink remains removed.
 
 ## Immediate resume point
 
-MIG-03N alone is selected after all three completed reviews. The
-repository-health package is complete, and the definition checkpoint created
-only MIG-03N plus its three sequential review cards.
-Standalone
-guarded-R validation first failed only under sandboxed DNS, then passed with
-metadata access and reported a consistent R `4.6.1`/Bioconductor `3.23`
-project environment. The first exact full gate on
-published lifecycle close `776dad3` passed static, shell, guarded-R, and report
-lanes but truthfully failed Python because GNU Make rendered its native nested
-target diagnostic as `make[2]` while one fixture required direct-run `make`.
-The retained failure log is
-`/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-3vtydtkj.log`.
+MIG-03N is complete after all three reviews, five published test-only
+checkpoints, published/equal executable checkpoint `50e1bb3`, and the
+documentation/lifecycle close containing this handoff. No bounded migration/
+review card is selected. Step `09c` and later migration/review cards remain
+uncreated, not preloaded; the active program remainder stays frozen.
 
-Test-only checkpoint `10be692` binds the expected Make label to inherited
-`MAKELEVEL`; the direct and explicit level-`2` focused cases both pass. The
-exact network-enabled rerun
-`RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` then passed: static
-`0.120s`, shell `53.922s`, guarded R `163.293s`, report runtime `128.434s`,
-Python coverage `198.164s`, and overall parallel summary status `0` in
-`198.291s`. This is local repository evidence, not cluster, production,
-scientific-review, or biological-readiness proof. Usability completion
-`c6c4712` is published/equal; execute only selected MIG-03N through its five
-test-only, atomic-cutover/full-gate, and documentation-close boundaries. Do not
-select `CONCURRENCY-03`, `TASK-EPIC-01`, Step `09c`, or the frozen program
-remainder in those slices.
+The first exact executable-boundary gate required network metadata after a
+sandboxed DNS failure. Its network-enabled rerun passed static, shell,
+guarded-R, and report-runtime lanes and reached `1,294` Python passes with `17`
+skips, but the sole documentation-validator failure listed the twelve
+intentionally deferred Step `09` links and prevented coverage from running.
+That run is not green. This documentation close repairs the twelve links and
+the exact documentation gate passes. The final exact aggregate rerun passes
+all lanes with summary status `0` in `197.374s`; it does not relabel the
+earlier run.
+
+Before selecting another JIT unit, prove this close clean and equal across
+local `HEAD`, configured upstream, and live remote, then refresh the direct
+required-artifact DAG from the final tree. Do not infer the next owner from a
+numeric stage name and do not select `CONCURRENCY-03`, `TASK-EPIC-01`, or the
+frozen program remainder as part of this close.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
@@ -1221,16 +1254,19 @@ Usability is published/equal at `a8e7f0a`. MIG-03M is complete through
 published test checkpoints `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
 `7a667ee`, published/equal executable checkpoint `5e51496`, and the
 published documentation/lifecycle close `3f91fce`. Repository-health close
-`57d7ea4` then supported the live-DAG refresh that leaves only unselected
-[`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
-eligible, with sequential unselected
+`57d7ea4` then supported the live-DAG refresh that left only
+[`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+eligible, with sequential
 [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 defined at `8bb27d4`. Architecture review is complete at `e36cb94`;
 reliability review is complete at `f0160c4`; usability is complete at
-`c6c4712`. MIG-03N alone is now in `IN_PROGRESS`, and its first runtime/input
-test-only slice has not begun.
-Step `09c` migration and later owner cards remain uncreated and unselected.
+`c6c4712`. MIG-03N is complete through published test checkpoints `fd015e4`,
+`3828496`, `7aced51`, `1ba3001`, and `d35b674`, published/equal executable
+checkpoint `50e1bb3`, and the documentation/lifecycle close containing this
+handoff. Step `09c` migration and later owner cards remain uncreated and
+unselected; the next eligible unit must be determined from a fresh live-DAG
+refresh after publication/equality proof.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

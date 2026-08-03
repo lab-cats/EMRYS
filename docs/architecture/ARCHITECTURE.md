@@ -20,6 +20,7 @@ and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
 `partition_BAM_by_mechanical_read_orientation`,
 `generate_partitioned_cohort_mpileup_VCFs`,
 `preprocess_and_annotate_cohort_candidates`,
+`rank_cohort_candidates_with_paired_CMH`,
 `collect_canonical_BAM_QC_evidence`, and
 `collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
 now live under `src/norad/`; remaining workflow entry points stay under
@@ -61,13 +62,14 @@ publication protocol used by all thirteen validator entry points. The final
 `mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`, and
 `partition_BAM_by_mechanical_read_orientation` and
 `generate_partitioned_cohort_mpileup_VCFs` and
-`preprocess_and_annotate_cohort_candidates` validators and one remaining
-`scripts/` validator resolve that exact file through private caller-local
+`preprocess_and_annotate_cohort_candidates` and
+`rank_cohort_candidates_with_paired_CMH` validators resolve that exact file
+through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The Step `08` validator separately exact-loads the unchanged flat
-Step `09c` contract owner under a private identity for its shared schemas; this
-is a retained ownership inversion, not a package API. The FASTA-sidecar and
+interface. The Step `08` and Step `09` validators separately exact-load the
+unchanged flat Step `09c` contract owner under private identities for shared
+schemas; this is a retained ownership inversion, not a package API. The FASTA-sidecar and
 split-N-cigar validators also privately
 exact-load the unchanged public flat reference-provenance owner. Stage-specific
 parsing and check rosters remain with their functional owners.

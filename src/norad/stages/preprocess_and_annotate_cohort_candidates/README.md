@@ -85,6 +85,12 @@ hashes upstream VCFs, receipts, manifests, and annotation, but not the sibling
 sites/summary outputs or R program/runtime/packages. It is not immutable-input
 or current-attempt proof.
 
+The implemented
+[`rank_cohort_candidates_with_paired_CMH`](../../analyses/rank_cohort_candidates_with_paired_CMH/README.md)
+analysis consumes the sites table and input receipt together with the same
+manifests. It does not consume the standalone Step `08` QC summary. Preserve
+both required outputs and their path/hash context as one predecessor boundary.
+
 ## Validator and shared owners
 
 The validator invokes no R and prints five report rows without writing in

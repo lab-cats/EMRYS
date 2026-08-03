@@ -20,11 +20,13 @@ upstream artifacts, or execute requested reruns.
 Required inputs are a safe review ID, exact sample and partition manifests,
 all three outputs from the final
 [`preprocess_and_annotate_cohort_candidates`](../../stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
-owner, the Step `09` analysis directory named by the
-plan's `primary_analysis_id`, a one-row review plan, an evidence manifest plus
-every declared evidence payload, and an output root. The analysis directory
-must contain all six exact Step `09` files. Inputs and evidence sources are
-bound by path, SHA-256, and row count and are rechecked during publication.
+owner, the Step `09` analysis directory produced by the final
+[`rank_cohort_candidates_with_paired_CMH`](../../analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md)
+owner and named by the plan's `primary_analysis_id`, a one-row review plan, an
+evidence manifest plus every declared evidence payload, and an output root.
+The analysis directory must contain all six exact Step `09` files. Inputs and
+evidence sources are bound by path, SHA-256, and row count and are rechecked
+during publication.
 
 ## Evidence and state contract
 
@@ -131,8 +133,9 @@ interpretation readiness is established in this checkout.
 
 - The 4,500-line implementation also owns reusable Step `08`/`09` schemas and
   validators, ten evidence domains, state policy, and transaction machinery;
-  the final Step `08` validator exact-loads it under a private identity as a
-  contract library, reversing ownership without creating a package API.
+  the final Step `08` and Step `09` validators exact-load it under private
+  identities as a contract library, reversing ownership without creating a
+  package API.
 - Headers exist in Python and tracked schema TSVs; parity is tested, but the
   canonical schema owner and versioning boundary are not explicit.
 - State/evidence rules are duplicated across publication, artifact indexing,

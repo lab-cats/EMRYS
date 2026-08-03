@@ -31,7 +31,7 @@ retry guidance, scientific overclaim, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03N](../IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) — Fully: selected migration consumes all three completed reviews.
+- [MIG-03N](MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) — Fully: completed after all three reviews closed.
 
 ## Prerequisites
 

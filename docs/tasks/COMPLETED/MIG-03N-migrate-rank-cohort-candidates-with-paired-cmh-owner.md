@@ -421,12 +421,38 @@ defines Step `09` as the smallest next JIT unit but does not select it.
 Selected alone from clean, published, local/upstream/live-remote-equal
 three-review checkpoint `c6c47129461f32e43d317e35afe84b49c9ec079c`.
 
-Execution remains exactly seven sequential published boundaries: five small
-old-path test-only checkpoints in reviewed order; one atomic eleven-move/ten-
-integration executable cutover followed by the complete computational card
-gate; and one separately committed documentation/lifecycle close. Each
-test-only slice changes only its named existing test owner and runs only its
-smallest focused check. Canonical path/link batches, owner README, runbook/
-troubleshooting, topology/status owners, and lifecycle movement remain deferred
-to the documentation close. No Step `09c` migration or later owner card is
-created or selected.
+Execution completed in exactly seven sequential published boundaries. The
+five old-path test-only checkpoints are runtime/input provenance `fd015e4`,
+publication order `3828496`, signal/concurrency `7aced51`, validator
+reliability `1ba3001`, and scheduler behavior `d35b674`. Each changed only its
+reviewed existing test owner and ran the smallest focused check.
+
+Atomic executable checkpoint `50e1bb3b56adb7c137c117ac75db321dd234fe57`
+moved exactly four native and seven direct-protection assets, updated exactly
+ten integration owners, removed every legacy executable/test path, and
+preserved the reviewed final modes, byte/line counts, hashes, private loaders,
+artifact identity, and coverage route. Focused final evidence passed: the
+shell suite, `56` owner-local Python tests, `15` selected scheduler cases with
+`157` deselected, and guarded real-R.
+
+The first exact network-enabled
+`RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` was not green. Static,
+shell, guarded-R, and report-runtime lanes passed; Python reached `1,294`
+passes and `17` skips before its sole failure,
+`test_documentation_validator_accepts_implemented_unrefined_state`, reported
+the twelve intentionally deferred old Step `09` documentation links. Coverage
+did not run after that failure. A prior sandboxed attempt had stopped on DNS
+while checking Bioconductor metadata. No dependency was installed or changed,
+and separately passing lanes do not relabel the aggregate result.
+
+The separate documentation/lifecycle close adds the adjacent owner README,
+repairs all final code/test/command and lifecycle links, updates current
+topology/status/evidence and predecessor/consumer/recovery routes, records
+every reviewed risk and decision in the dated audit log, and moves this card
+to `COMPLETED`. Semantic identity, DAG edges, and public flow did not change,
+so no diagram changed. `git diff --check` and the exact documentation gate pass
+for `209` Markdown documents, `129` task cards, and `6` Mermaid sources. The
+exact network-enabled aggregate rerun then passes every static, shell,
+guarded-R, report-runtime, and Python-coverage lane with summary status `0` in
+`197.374s`. This later result does not relabel the earlier non-green run. No
+Step `09c` migration or later owner card is created or selected by this close.

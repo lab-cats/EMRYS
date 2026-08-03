@@ -5956,3 +5956,125 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal slice check:** run `git diff --check` only. Publish and prove this
   selection checkpoint clean/upstream/live-remote-equal before the first test-
   only slice.
+
+## 2026-08-03T17:43:46-0400 — MIG-03N completed
+
+- **Verified execution base and isolation:** selection `71a21e1` and each
+  subsequent published checkpoint were clean, tracked/untracked-empty,
+  recovery/index-lock-free, and equal across local `HEAD`, configured
+  upstream, and live remote before the next boundary. The documentation close
+  began from published/equal executable checkpoint
+  `50e1bb3b56adb7c137c117ac75db321dd234fe57`. No concurrent mutable lane,
+  merge, rebase, sidecar, dependency installation, scheduler submission,
+  cluster, production, Step `09c`, or later-owner action entered the package.
+- **Five bounded reliability checkpoints:** runtime/input provenance
+  `fd015e4` froze explicit missing/nonexecutable Rscript, missing R program,
+  PATH-basename arbitrary-CWD use, four admitted-input mutations, undetected
+  selected-R-program mutation, and missing runtime/attempt/sibling identities.
+  Publication-order `3828496` froze all-sites, significant-sites, mutation TSV,
+  mutation PDF, depth PDF, then summary visibility with all six predecessors,
+  backups, and the lock barrier-observed before final commit checks.
+  Signal/concurrency `7aced51` froze post-summary `TERM` exit `143` restoration
+  and same-analysis lock exclusion. Validator `1ba3001` froze arbitrary-CWD
+  parity, all ten post-build input mutations, predecessor-report preservation,
+  and fabricated internally consistent CMH values that the validator does not
+  independently recompute. Scheduler `d35b674` froze child-owned R selection,
+  launch-CWD fallback, logs-only dry-run, and stale-six-output false success.
+  Each slice changed only its reviewed test owner and ran its smallest focused
+  check.
+- **Atomic physical cutover:** `50e1bb3` applied exactly eleven moves—four
+  native assets and seven analysis-specific test/oracle/corpus assets—and ten
+  integration updates. Final production identities are shell mode `0755`,
+  `58,279` bytes / `1,331` lines / SHA-256
+  `7926d13bd9f0192522a20224c24716b7b8dca7a1348803cb7e8aefa1b056123a`;
+  R mode `0644`, `48,993` / `1,205` /
+  `f429fa71d91794f0a5f3bf4c77c7ce1981cbf5ebe98ea1ab50302dda2b18d1dc`;
+  validator mode `0644`, `18,201` / `487` /
+  `ab14263de43d624f39490e080ead040309d9584d6bf08f101346192a8758763a`;
+  and job mode `0755`, `4,387` / `121` /
+  `d84cfbd9afe3822b7abe8e1e5a249444801030387c77c46a29ca61cd97dcc677`.
+  Exact searches found no live legacy executable/test path, duplicate, wrapper,
+  alias, symlink, ambient import, or undeclared integration owner.
+- **Focused executable evidence:** the final owner shell suite passed; `56`
+  owner-local Python tests passed; the central Step `09` scheduler selection
+  passed `15` tests with `157` deselected; and the guarded real-R owner route
+  passed. Final artifact producer identity and validator coverage ownership
+  moved to the reviewed paths. These are local fake-R, Python, guarded-real-R,
+  and independent-oracle fixtures, not scheduler submission, cluster,
+  production, completed scientific review, validated editing-site, or
+  biological-readiness evidence.
+- **Exact aggregate-gate record:** the first exact
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` attempt stopped in the
+  guarded-R lane when the sandbox blocked Bioconductor metadata DNS; no
+  dependency action occurred. The required network-enabled rerun passed
+  static, shell, guarded-R, and report-runtime lanes. Python reached `1,294`
+  passes and `17` skips with exactly one failure,
+  `tests/git_orchestration/test_validators.py::test_documentation_validator_accepts_implemented_unrefined_state`.
+  Its diagnostic named exactly twelve intentionally deferred old Step `09`
+  links: eight inventory links and four owner-contract links. Coverage did not
+  run after that failure. The retained failure log is
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-1z3hjw3_.log`.
+  This result is non-green and is not promoted by separately passing lanes or
+  by the later documentation repair.
+- **Documentation and topology decision:** the separate close adds only the
+  adjacent owner README, contract/path corrections, implemented-current
+  architecture/inventory/test/ownership routes, current plan/handoff evidence,
+  final RUNBOOK shell/R/validator/scheduler and focused commands, Step `09`
+  troubleshooting/recovery routes, the Step `08` predecessor route, Step `09c`
+  consumer route, this card, inbound lifecycle links, and this audit. Semantic
+  identity, required-artifact DAG edges, and public flow did not change, so no
+  Mermaid diagram changed. Step `09c` remains flat, uncreated as a migration
+  card, and unselected.
+- **Producer and transaction risks preserved:** the selected R program can
+  change after admission and the characterized producer can still publish and
+  exit `0`. The summary omits selected Rscript/R-program/package identity,
+  durable attempt identity, and hashes of its five siblings. Producer-recorded
+  relative paths remain consumer-CWD-sensitive. All six files and the summary
+  can be visible before final validation/hash checks finish. Incomplete
+  restoration may leave one final absent, retain its exact backup and owned
+  recovery lock, restore the other five predecessors, and remove owned temps.
+  Summary visibility, names, timestamps, or hashes alone are not committed-
+  attempt proof. Preserve all six finals, every temp/backup, lock/owner,
+  manifests, Step `08` inputs, R/runtime state, streams, scheduler evidence,
+  environment, and unrelated bytes before action; never combine attempts,
+  manufacture a member/summary, delete a foreign/recovery lock, discard a
+  backup, or reuse the same output root without ruling out every writer and
+  consumer.
+- **Validator and ownership risks preserved:** the validator invokes no R,
+  may exit `0` with failed rows, derives BH only from reported p-values, and
+  does not independently recompute table estimability, CMH statistic, p-value,
+  or common odds ratio. Its `status_semantics` expected text still overstates
+  this by saying CMH was recomputed. Separate real-R/oracle fixtures do not
+  transform that row into production independent proof. Shared Step `09`
+  schemas/validators remain owned by flat Step `09c` under a private exact-file
+  bridge; this retained reverse dependency is not a public package API or
+  authority to move Step `09c`.
+- **Scheduler and evidence risks preserved:** the job does not preflight
+  Rscript or the selected R program, does not activate packages or record a
+  current attempt, and can falsely accept six stale outputs after an exit-`0`,
+  no-output child. Body-level `logs/` creation does not replace creating the
+  SLURM log directory before submission. Scheduler exit, file presence,
+  validator publication, artifact indexing, fake-R, guarded-real-R, and oracle
+  evidence remain distinct from cluster, production, scientific-review,
+  editing-site, and biological evidence.
+- **Rollback and lifecycle:** Git rollback is documentation close, executable
+  `50e1bb3`, scheduler `d35b674`, validator `1ba3001`, signal/concurrency
+  `7aced51`, publication order `3828496`, then runtime/input `fd015e4`.
+  Git cannot authenticate, restore, remove, or modify runtime outputs, locks,
+  backups, R state, or scheduler logs. Move only MIG-03N from `IN_PROGRESS` to
+  `COMPLETED`, repair every inbound lifecycle link, and leave no bounded
+  migration/review card selected; the program remainder remains frozen.
+- **Final documentation and aggregate acceptance:** `git diff --check` passed,
+  and the exact RUNBOOK `make -s documentation-check` reported `PASS
+  documentation structure (209 Markdown documents, 129 task cards, 6 Mermaid
+  sources)`. The exact network-enabled
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` rerun then passed
+  static preflight in `0.112s`, shell contracts in `55.795s`, guarded R in
+  `158.320s`, report runtime in `128.526s`, and Python coverage in `197.253s`;
+  the parallel summary reported status `0` in `197.374s`. No dependency
+  changed. This later green run is final local card evidence and does not
+  relabel the earlier documentation-blocked run or establish scheduler,
+  cluster, production, scientific-review, editing-site, or biological proof.
+  Complete status/name-status review, publish the separate documentation close,
+  and prove clean local/upstream/live-remote equality before any next JIT
+  selection.

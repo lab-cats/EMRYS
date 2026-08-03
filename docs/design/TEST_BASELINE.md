@@ -196,7 +196,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
-| Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/test_step_09_cmh_oracle.py`, its fixed corpus, and guarded real-R comparison |
+| Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py`, its owner-local fixed corpus, and guarded real-R comparison |
 | Python non-regression measurement | the tracked coverage snapshot and coverage tests |
 | Full dated entry-point matrices and regression dispositions | [historical Python matrix](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md#python-entry-points) and adjacent shell, R, SLURM, and Make sections |
 

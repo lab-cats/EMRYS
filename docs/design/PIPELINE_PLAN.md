@@ -80,7 +80,7 @@ a completed production review.
 | `codex/mig-03a-extract-validation-report-library` | Physical migration campaign through completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)–[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md), plus completed [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), and [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) | the first eleven units are complete through published documentation/lifecycle close `b73b12b`; the branch ends clean and published at usability completion `5a501df`, before MIG-03L execution. |
 | `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` | Fresh execution branch for completed [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md), completed [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md), and its completed [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) reviews | MIG-03M test baselines and executable checkpoint `5e51496` are published/equal; the documentation/lifecycle close is the commit containing this row. No Step `09` or later card is created or selected. |
 | `codex/post-mig-03m-completion` | Neutral remediation integration lane created at published MIG-03M documentation/lifecycle close `3f91fce` | authority synchronization `a6bd366`, health-runway activation `94a4ef7`, program decision `2df3e6c`, completed DOC-GATE-01 close `dc3ee2e`, completed TASK-LIFECYCLE-01 close `776dad3`, and recursive-Make fixture correction `10be692` are published. Guarded local R and the complete local gate are green after recoverable quarantine of the malformed ignored entry; the documentation close is the commit containing this row. Migration work and default-branch integration remain separate, and remote `master` is untouched pending a separate explicit decision. |
-| `codex/mig-03n-rank-cohort-candidates-with-paired-cmh` | Fresh migration lane rooted at published repository-health close `57d7ea4`; all three reviews are complete and [`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) is selected | execute exactly five small old-path test-only checkpoints, one atomic eleven-move/ten-integration cutover with the complete computational gate, and one separate documentation/lifecycle close. No executable/test mutation has begun, and Step `09c` remains uncreated/unselected as a migration unit. |
+| `codex/mig-03n-rank-cohort-candidates-with-paired-cmh` | Fresh migration lane rooted at published repository-health close `57d7ea4`; all three reviews and [`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) are complete | five published test-only checkpoints and atomic eleven-move/ten-integration executable cutover `50e1bb3` precede the separate documentation/lifecycle close containing this row. Focused final paths passed. The first exact aggregate gate was not green: `1,294` Python tests passed with `17` skips before its sole failure listed the twelve intentionally deferred Step `09` documentation links, and coverage did not run. After that repair, the exact aggregate rerun passed all lanes with summary status `0` in `197.374s`; the earlier run remains nonpassing. Step `09c` remains uncreated/unselected as a migration unit. |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), completed [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | DOC-GATE-01 supplies independent fixtures and the logic-free `documentation-check` Make wrapper. TASK-LIFECYCLE-01 validates the eight `UNREFINED` proposals plus their README and implements only the resolved asynchronous `INTEGRATION_REVIEW` boundary. No card was moved into review. CONCURRENCY-03 and TASK-EPIC-01 remain unselected. |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -117,7 +117,7 @@ a completed production review.
 | Thirteenth JIT-tranche reviews | completed [`REVIEW-ARCH-03M`](../tasks/COMPLETED/REVIEW-ARCH-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) → completed [`REVIEW-REL-03M`](../tasks/COMPLETED/REVIEW-REL-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) → completed [`REVIEW-UX-03M`](../tasks/COMPLETED/REVIEW-UX-03M-review-preprocess-and-annotate-cohort-candidates-migration.md) | all three same-agent committed-time passes are complete with exact cutover, reliability-oracle, final-command, split-root recovery, provisional-language, evidence-ceiling, and rollback boundaries; independent authorship is not claimed. |
 | Phase `03` thirteenth bounded package | Move `preprocess_and_annotate_cohort_candidates` through completed [`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md) | complete in published runtime/input `d29f87b`, transaction/recovery `44e649d`, signal/concurrency `6e2e2f6`, validator `3f02d19`, and scheduler `7a667ee` test baselines plus executable/test checkpoint `5e51496`; the final owner contains the shell/R producer, validator, mode-`0644` job, and four mirrored direct tests with exact neutral-report and flat-Step-`09c` bridges and no wrapper, alias, package, descriptor, schema, recovery marker, policy, or behavior redesign. Documentation/lifecycle closure is the commit containing this row. |
 | Fourteenth JIT-tranche reviews | completed [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) → completed [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) → completed [`REVIEW-UX-03N`](../tasks/COMPLETED/REVIEW-UX-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md) | all three same-agent committed-time passes are complete with exact cutover, five reliability checkpoints, final root/arbitrary-CWD commands, six-file recovery preservation, scientific/evidence language, findability, and rollback boundaries. Independent authorship is not claimed. |
-| Phase `03` fourteenth bounded package | Move `rank_cohort_candidates_with_paired_CMH` through selected [`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) | selected after three completed reviews; the fixed boundary is five test-only checkpoints, four native plus seven owner-specific protection moves, ten integration owners, one full executable card gate, and one separate documentation close. No executable/test file changed or ran at selection. |
+| Phase `03` fourteenth bounded package | Move `rank_cohort_candidates_with_paired_CMH` through completed [`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md) | complete in published runtime/input `fd015e4`, publication-order `3828496`, signal/concurrency `7aced51`, validator `1ba3001`, and scheduler `d35b674` test baselines plus executable/test checkpoint `50e1bb3`; the final owner contains four native assets and seven owner-specific protection assets with ten reviewed integrations, exact neutral-report and flat-Step-`09c` bridges, and no wrapper, alias, package, descriptor, schema, recovery redesign, scientific-policy change, or defect blessing. Documentation/lifecycle closure is the commit containing this row. |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -148,20 +148,19 @@ inspection and approval.
 
 ## Active critical runway
 
-The physical-migration campaign has resumed after completed MIG-03M. Slice `3` of
+The physical-migration campaign is complete through MIG-03N. Slice `3` of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 is complete. Completed
 [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
 implements the program-owned asynchronous `INTEGRATION_REVIEW` trigger and
 closes the authorized `UNREFINED` documentation findings. All three MIG-03N
-reviews are complete; MIG-03N alone is selected. The
+reviews and MIG-03N are complete. No migration or review card is selected. The
 repository-health campaign quarantined the exact malformed
 ignored R-library entry without changing dependencies, corrected one recursive-
 Make fixture expectation, and obtained a green complete local gate. No Step
 `09c` migration or later owner/review card is created or selected, and the
-preserved program remainder remains frozen. Execute only the seven reviewed
-MIG-03N boundaries. The chronology below records how the current physical-
-migration boundary was reached.
+preserved program remainder remains frozen. The chronology below records how
+the current physical-migration boundary was reached.
 
 `ARCH-02A` through `ARCH-02D` and the interposed `JIT-01` workflow bootstrap
 are complete. The user separately selected and completed `DOC-IA-01` and
@@ -413,7 +412,7 @@ predecessor is migrated, while Step `09c` remains blocked on the complete
 six-output Step `09` transaction.
 
 Definition `8bb27d4` created only unselected
-[`MIG-03N`](../tasks/IN_PROGRESS/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
+[`MIG-03N`](../tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
 and sequential unselected
 [`REVIEW-ARCH-03N`](../tasks/COMPLETED/REVIEW-ARCH-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
 → [`REVIEW-REL-03N`](../tasks/COMPLETED/REVIEW-REL-03N-review-rank-cohort-candidates-with-paired-cmh-migration.md)
@@ -425,9 +424,17 @@ projected hashes/modes, artifact/coverage path, and rollback before reliability
 review. Definition `8bb27d4`, architecture completion `e36cb94`, and
 reliability selection `6fc1868`, completion `f0160c4`, usability selection
 `cd8930c`, and usability completion `c6c4712` are published/equal. MIG-03N
-alone is selected in the checkpoint containing this plan; no executable/test
-file changed or ran, and no Step `09c` migration or later owner is created or
-preloaded. Remote `master`
+then published test-only checkpoints `fd015e4`, `3828496`, `7aced51`,
+`1ba3001`, and `d35b674`, followed by atomic executable checkpoint `50e1bb3`.
+The final owner has four native and seven direct protection assets; all ten
+reviewed integrations use final paths. Focused final paths passed. The first
+exact aggregate gate was not green because the one documentation-validator
+failure listed the twelve deferred migration links after `1,294` Python passes
+and `17` skips; coverage therefore did not run. The documentation/lifecycle
+close containing this plan repairs those links; its documentation gate passes,
+and the exact aggregate rerun passes all lanes with summary status `0` in
+`197.374s` without converting the earlier run into a pass. No Step `09c`
+migration or later owner is created or preloaded. Remote `master`
 remains untouched; no merge, lifecycle implementation, or runtime cleanup is
 implied.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
