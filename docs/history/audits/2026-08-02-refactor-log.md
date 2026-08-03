@@ -2031,10 +2031,6 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, harness, dependency, runtime, scheduler, production, scientific-review,
   or biological evidence changed or ran.
-- **Card-boundary gate:** `git diff --check` passed and the documentation
-  validator reported only the nine inherited `UNREFINED` card-location
-  findings. That expected-only result is not a green gate; no architecture-
-  review-caused finding remains.
 
 ## 2026-08-03T00:59:32-0400 — REVIEW-REL-03F selected
 
@@ -2753,3 +2749,24 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   the same campaign agent; independent authorship is not claimed. No source,
   test, harness, dependency, runtime, scheduler, production, scientific-review,
   or biological evidence changed or ran.
+- **Card-boundary gate:** `git diff --check` passed and the documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. That expected-only result is not a green gate; no architecture-
+  review-caused finding remains.
+
+## 2026-08-03T04:03:41-0400 — REVIEW-REL-03H selected
+
+- **Selection:** move only `REVIEW-REL-03H` to `IN_PROGRESS` and repair its
+  reciprocal dependency/status links after architecture-completion checkpoint
+  `350223f` was clean, tracked/untracked empty, published, and equal across
+  local `HEAD`, configured upstream, and the live remote branch.
+  `REVIEW-UX-03H` and `MIG-03H` remain unselected in `TODO`; Step `04` and later
+  owner cards remain uncreated.
+- **Review boundary:** this begins one read-only independent-in-time adversarial
+  pass over producer direct-final truncation and partial bytes, validator
+  structure/tolerance/publication, scheduler venv/tool/CWD/dry-run/stale-output
+  states, exact streams/exits/residue, artifact and coverage continuity, and
+  recoverable commit rollback. The same campaign agent performs the pass, so
+  independent authorship is not claimed. Executable/test mutation and
+  computational, real-RSeQC, scheduler, production, scientific-review, and
+  biological evidence remain out of scope.

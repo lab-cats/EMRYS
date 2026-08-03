@@ -25,7 +25,7 @@ or an undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03H](REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03H](../IN_PROGRESS/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 

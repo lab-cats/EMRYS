@@ -31,7 +31,7 @@ break the frozen topology.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03H](../TODO/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03H](../IN_PROGRESS/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md) — Fully: reliability review requires an architecture-corrected owner, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

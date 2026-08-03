@@ -98,5 +98,8 @@ without approving them.
 
 ## Completion record
 
-Not started. This will be an independent-in-time adversarial pass by the same
-campaign agent; independent authorship will not be claimed.
+Selected from clean, published, local/upstream/live-remote-equal architecture-
+completion checkpoint `350223f0fc43969416b481a8dc090f9d67273c41`. This is a
+read-only independent-in-time adversarial pass by the same campaign agent;
+independent authorship is not claimed. No executable/test mutation or
+computational test is part of review selection.
