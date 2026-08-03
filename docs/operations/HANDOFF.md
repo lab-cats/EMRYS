@@ -11,8 +11,8 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published usability-review
-  completion `5a501df76d51b422266054f98131807019c15bb8`.
+  exact SHA from live Git. Its frozen parent is published executable/test
+  checkpoint `60eb3561af2bf145133a27294c3a3c1df3c35f1a`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -28,25 +28,29 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   completion `ec7e8d9`, reliability selection `3d2b9c0`, and reliability
   completion `db33d9c`, and usability selection `3ec8307` are also published
   and equal. Usability completion `5a501df` is published/equal on both the
-  prior campaign branch and the fresh branch named above.
-- Current package: active
-  [`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+  prior campaign branch and the fresh branch named above. MIG-03L pipeline/
+  selector `c813ea3`, transaction/recovery `ed58fd3`, stability/provenance
+  `82d7049`, validator `65277f7`, and scheduler `523144e` test baselines plus
+  executable/test checkpoint `60eb356` are published and equal. The
+  documentation/lifecycle close is the commit containing this handoff.
+- Current package: completed
+  [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
   after completed
   [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
   completed
   [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md),
   and completed
   [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md).
-  All three reviews are complete; migration alone is selected. Step `08` and
-  later cards remain uncreated.
-- Package type at this checkpoint: documentation-only MIG-03L lifecycle
-  selection on the fresh branch. It fixes the five ordered test-only slices,
-  atomic cutover, complete computational card-boundary gate, and separate
-  documentation close without changing or running executable, test,
-  configuration, dependency, schema, fixture, or report-template behavior.
-- Remote publication and upstream equality: fresh-branch parent `5a501df` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before the first test-only slice.
+  All three reviews and the migration are complete. No Step `08` or later
+  owner/review card is selected or preloaded.
+- Package type at this checkpoint: documentation-only MIG-03L lifecycle close.
+  It batches canonical final paths and commands, current status/evidence,
+  retained-defect recovery guidance, migration links, and the audit record;
+  it changes no executable, test, configuration, dependency, schema, fixture,
+  or report-template behavior.
+- Remote publication and upstream equality: executable parent `60eb356` is
+  verified local/upstream/live-remote-equal. Publish and prove the
+  documentation/lifecycle checkpoint equal before refreshing the live DAG.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -61,8 +65,9 @@ at `src/norad/stages/construct_STAR_index/` and
 `src/norad/stages/split_N_cigar_reads_with_GATK/`, and
 `src/norad/stages/partition_BAM_by_mechanical_read_orientation/`, and
 `src/norad/evidence/collect_canonical_BAM_QC_evidence/`, and
-`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`. Their ten
-validators and the three remaining flat validators load the neutral report file
+`src/norad/evidence/collect_RSeQC_paired_orientation_evidence/`, and
+`src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/`. Their eleven
+validators and the two remaining flat validators load the neutral report file
 without package identity, a wrapper, or `sys.path` mutation. The FASTA-sidecar
 and Step `05` validators also use private exact-file bridges to unchanged
 public `scripts/reference_provenance.py`. The final Step `02`/`04`/`05`
@@ -448,7 +453,7 @@ refresh. Only `generate_partitioned_cohort_mpileup_VCFs` is eligible: its
 declared-sample Step `06` BAM/BAI and reference-FAI predecessors are migrated,
 while Step `08` still depends on Step `07`. Published/equal definition
 checkpoint `8dc6128` created only unselected
-[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+[`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and sequential
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
@@ -465,6 +470,55 @@ completion `5a501df` now bases fresh branch
 `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`; MIG-03L alone is
 selected there. No executable/test file changed or ran at selection, and no
 Step `08` or later owner/review card is preloaded.
+
+MIG-03L subsequently published old-path pipeline/selector `c813ea3`,
+transaction/recovery `ed58fd3`, stability/provenance `82d7049`, validator
+`65277f7`, and scheduler `523144e` test-only baselines before atomic final-
+owner cutover `60eb356`. The final mode-`0755` producer is `31,526` bytes /
+`893` lines / SHA-256
+`e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`;
+the mode-`0644` validator is `13,524` bytes / `334` lines /
+`3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`;
+and the mode-`0644` scheduler job is `4,421` bytes / `133` lines /
+`fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
+Exactly five files moved and nine reviewed integration owners changed; no
+wrapper, alias, compatibility copy, package identity, descriptor, schema,
+calling step, or DAG edge was added.
+
+Final-path acceptance passed the direct shell suite, `35` selected validator
+and scheduler tests with `142` unrelated cases deselected, `28` focused
+integration tests, the complete shell-contract lane, report runtime (`17`
+passes and `60` deselections), and isolated local-real-R Step `08` and Step
+`09` semantic suites. Serial coverage ran `1,199` passing tests and `17` skips
+before its sole documentation failure. The moved validator measured `177/198`
+lines and `51/72` branches; the committed global non-regression floors are
+`9561/11720` lines and `3351/4772` branches. Every non-target coverage row
+remained exact and the standalone policy comparison passed.
+
+The aggregate gate was not fully green. Static preflight passed, then guarded
+R stopped with status `2` on the inherited malformed ignored `macos` library
+entry and unavailable Bioconductor metadata; the orchestrator cancelled its
+other aggregate lanes. No dependency changed. The separately invoked shell,
+report-runtime, and local-real-R lanes above passed. Serial Python's sole
+failure listed exactly ten deliberately deferred MIG-03L links plus the same
+nine inherited `UNREFINED` card-location findings. This close repairs those
+ten migration links. The inherited nine remain expected-only and nonpassing,
+never a green-gate claim.
+
+The producer's receipt-visible-before-commit window, incomplete identity and
+hash binding, admitted-input mutation blindness, best-effort restoration, and
+absent durable recovery/attempt marker remain defects. The controlled
+publication-`67`/restore-`68` state leaves the prior FWD final absent while
+its backup survives, restores prior REV and receipt bytes, removes owned
+scratch/lock, and creates no marker; it requires preservation-first manual
+recovery. Validator exit-`0` failed rows, selector/semantic false passes, and
+producer/validator `regions_file` asymmetry remain characterized. So do the
+scheduler's warning-only missing/unusable tool behavior, version failure,
+submit-path and `logs/` effects, and stale-three-file false success. No real
+bcftools, scheduler, cluster, production, scientific-review, variant-calling,
+or biological evidence was created. MIG-03L is complete in the documentation/
+lifecycle checkpoint containing this handoff; a fresh live-DAG refresh is the
+next bounded action and no successor is selected or preloaded.
 
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
@@ -949,7 +1003,8 @@ closed before helper checkpoint `4726ad1` and executable/test checkpoint
 `13a2748`; documentation/lifecycle close is `543eb8f`. `MIG-03G` completed at
 baseline `0904faf`, executable/test checkpoint `2f186dd`, and documentation/
 lifecycle close `eafec29`. The commit containing this handoff defines only the
-four unselected Step `03` cards. Step `04` and later cards remain uncreated.
+completed MIG-03L documentation/lifecycle state. No successor migration or
+review card is selected or preloaded.
 
 The user has authorized one continuous physical-migration campaign on this
 branch: select, review, plan, execute, validate, document, commit, and publish
@@ -1050,7 +1105,7 @@ published child/count `3ae6e3e`, transaction `dafcd18`, stability/collision
 published executable/test checkpoint `1d5b76a`; documentation/lifecycle close
 is published at `b73b12b`. A fresh live-DAG check then supported only
 unselected
-[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+[`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and its sequential reviews, defined at published checkpoint `8dc6128`.
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 is published/equal at `ec7e8d9`;
@@ -1059,8 +1114,13 @@ is published/equal at `db33d9c`;
 [completed `REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 is published/equal at `5a501df`. Fresh branch
 `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` starts at that commit;
-[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
-alone is selected in the checkpoint containing this handoff. Step `08` and
-later cards remain uncreated.
+[`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+is complete at published pipeline/selector `c813ea3`, transaction/recovery
+`ed58fd3`, stability/provenance `82d7049`, validator `65277f7`, and scheduler
+`523144e` test baselines plus executable/test checkpoint `60eb356`; its
+documentation/lifecycle close is the commit containing this handoff. No Step
+`08` or later owner/review card is selected or preloaded. Refresh the live
+required-artifact DAG from the clean, published, equal close before defining
+only the next eligible unit and its sequential reviews.
 The unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and
 out of scope.

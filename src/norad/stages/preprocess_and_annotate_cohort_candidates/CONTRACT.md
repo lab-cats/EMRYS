@@ -8,13 +8,15 @@ Executables remain in `scripts/` and `jobs/`.
 
 ## Responsibility and execution dependencies
 
-Validate the complete declared Step `07` partition-by-orientation VCF set,
+Validate the complete declared
+[`generate_partitioned_cohort_mpileup_VCFs`](../generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md)
+partition-by-orientation VCF set,
 expand alternate alleles, retain supported SNVs, attach per-sample depth and
 allele measurements plus GTF overlaps, apply the fixed provisional legacy
 orientation mapping, and publish one deterministic cohort transaction for
 analysis.
 
-Step `08` is a cohort barrier: it requires one receipt and both VCFs for every
+Step `08` is a cohort barrier: it requires one upstream receipt and both VCFs for every
 partition in manifest order. It rejects overlaps across declared partitions,
 revalidates Step `07` receipts and VCF structure, and hashes the current
 receipts and VCFs into its own input receipt. Step `09` consumes the Step `08`

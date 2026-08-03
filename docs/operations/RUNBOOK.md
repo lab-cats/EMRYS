@@ -3711,14 +3711,22 @@ scheduler, cluster, production, scientific-review, or biological evidence.
 
 ## Step 07: bcftools mpileup
 
-No command in this section has yet produced inspected Step `07` cluster evidence. The prior compute-node probe confirmed bcftools `1.21` at `/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools` with exit code `0:0`; it did not validate this workflow.
+No command in this section has yet produced inspected Step `07` cluster
+evidence. The prior compute-node probe confirmed bcftools `1.21` at
+`/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools` with exit code `0:0`; it
+did not validate this workflow. MIG-03L only moved the locally characterized
+owner and preserved its defects. Supported journeys and the evidence ceiling
+are indexed by the adjacent
+[`README.md`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/README.md).
 
 Implemented files:
 
 ```text
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
-tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py
+src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_validate_step_07_mpileup_outputs.py
 configs/step_07_partitions.pilot.tsv
 configs/step_07_partitions.primary_contigs.tsv
 configs/step_07_partitions.example.tsv
@@ -3730,9 +3738,10 @@ is dry-run-first:
 ```bash
 cohort=<cohort_id>
 partition=<partition_id>
-partition_dir="results/mpileup/$cohort/$partition"
+partition_dir="$(pwd)/results/mpileup/$cohort/$partition"
 
-.venv/bin/python scripts/validate_step_07_mpileup_outputs.py \
+.venv/bin/python \
+  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py \
   --cohort-id "$cohort" \
   --partition-id "$partition" \
   --sample-manifest samples.tsv \
@@ -3747,6 +3756,10 @@ partition_dir="results/mpileup/$cohort/$partition"
 After inspecting the five printed checks, rerun the same command with
 `--execute`. Exact checks and limits remain in the
 [`generate_partitioned_cohort_mpileup_VCFs` contract](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md#validation-interface).
+If any transaction, lock, rollback, receipt, or stale-wrapper state is
+ambiguous, preserve it and follow the
+[`Step 07` recovery route](TROUBLESHOOTING.md#step-07-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-transaction)
+before cleanup or retry. Validator exit `0` may still publish failed rows.
 
 Partition manifest schema:
 
@@ -3885,14 +3898,15 @@ The script validates every selector against the FAI and will fail on spelling di
 Direct cluster dry-run for the one-row pilot:
 
 ```bash
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+output_root="$(pwd)/results/mpileup"
+src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.pilot.tsv \
   --partition-id pilot_1 \
   --orientation-root results/orientation \
   --reference-fasta refs/novogene_ref/genome.fa \
-  --output-root results/mpileup \
+  --output-root "$output_root" \
   --bcftools-bin /cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools
 ```
 
@@ -3904,7 +3918,7 @@ Planned pilot SLURM dry-run:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
 PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,\
 PARTITION_ID=pilot_1 \
-  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
 Inspect scheduler state and both logs before execute mode:
@@ -3921,7 +3935,7 @@ Only after the pilot dry-run is clean, submit the pilot execute job:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
 PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,\
 PARTITION_ID=pilot_1 \
-  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
 One primary chromosome is the next promotion gate:
@@ -3930,13 +3944,13 @@ One primary chromosome is the next promotion gate:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,\
 PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,\
 PARTITION_ID=1 \
-  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 
 # after inspection of the dry-run job:
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,\
 PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,\
 PARTITION_ID=1 \
-  jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
 Do not submit the remaining primary partitions until the one-chromosome outputs pass inspection. Submit each declared partition explicitly; Step `07` does not add a job array or generic dispatcher. The wrapper's `long` partition and eight-hour, one-CPU request are provisional and have not been cluster-proven.

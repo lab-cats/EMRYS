@@ -8,8 +8,8 @@ public Python import API; there is intentionally no `__init__.py`.
 `regular_snapshot`, `stable_text`, `render`, `validate_report`, and `publish`,
 plus internal `HEADER`. The thirteen validator entry points resolve that exact
 file through repeated caller-local loaders cached only as the private identity
-`_norad_validation_report`. Ten loaders now live with final functional owners
-through `partition_BAM_by_mechanical_read_orientation`; three remain with flat
+`_norad_validation_report`. Eleven loaders now live with final functional
+owners through `generate_partitioned_cohort_mpileup_VCFs`; two remain with flat
 validators. The loaders do not establish a generic loader or packaging
 convention.
 

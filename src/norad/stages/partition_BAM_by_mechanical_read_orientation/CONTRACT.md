@@ -16,9 +16,11 @@ publish the five outputs as one rollback-protected set.
 
 Step `05` normally supplies the required BAM plus exact `<bam>.bai`. Step `06`
 does not consume Step `03` RSeQC evidence, a manifest, or biological-
-orientation policy. Per-sample partitions may run independently. Step `07`
-requires both BAM/BAI pairs for every declared sample before a cohort partition
-can run; it does not consume the Step `06` counts or validation report.
+orientation policy. Per-sample partitions may run independently. The final
+[`generate_partitioned_cohort_mpileup_VCFs`](../generate_partitioned_cohort_mpileup_VCFs/README.md)
+owner requires both BAM/BAI pairs for every declared sample before a cohort
+partition can run; it does not consume the Step `06` counts or validation
+report.
 
 ## Mechanical contract, inputs, and outputs
 
@@ -97,8 +99,10 @@ failures exit `2`.
 
 ## Consumers and protected evidence
 
-- Step `07` consumes both orientation BAM/BAI pairs for every manifest sample
-  in manifest order.
+- The final
+  [`generate_partitioned_cohort_mpileup_VCFs`](../generate_partitioned_cohort_mpileup_VCFs/README.md)
+  owner consumes both orientation BAM/BAI pairs for every manifest sample in
+  manifest order.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.

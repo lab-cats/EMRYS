@@ -78,7 +78,7 @@ a completed production review.
 | `codex/reconciliation-consolidated-01-integration` | Direct canonical recovery of reviewed proposal material from consolidated source `5a35a057cd9ca259f83ee1dde3116fee63928d72` onto parent `0fd6348e6cfe54457fef5f65f3468bea106e61f9` | documentation-only integration package; eight TODO cards and eight nonselectable UNREFINED proposals are preserved without selection, priority, implementation, or evidence promotion; all 80 fragment requests receive terminal commit-trailer dispositions, the fragment is absent from the final tree, and publication/upstream equality must be resolved from live Git |
 | `codex/plan-02z-first-migration-readiness` | Rolling [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) checkpoint, tranche-specific reviews, and first migration-card readiness rooted at the verified integrated canonical tip | plan checkpoint `c45e748`, all three dedicated [`architecture`](../tasks/COMPLETED/REVIEW-ARCH-03A-review-validation-publication-migration.md), [`reliability`](../tasks/COMPLETED/REVIEW-REL-03A-review-validation-publication-migration.md), and [`usability`](../tasks/COMPLETED/REVIEW-UX-03A-review-validation-publication-migration.md) reviews, and the completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) task-specific plan remain the documentation-only readiness record; the branch is published/upstream-equal |
 | `codex/mig-03a-extract-validation-report-library` | Physical migration campaign through completed [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md)–[`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md), plus completed [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md), and [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) | the first eleven units are complete through published documentation/lifecycle close `b73b12b`; the branch ends clean and published at usability completion `5a501df`, before MIG-03L execution. |
-| `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` | Fresh execution branch for active [`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) | branched and published from clean/equal usability completion `5a501df`; MIG-03L alone is selected, its five ordered old-path test slices precede the atomic cutover, and Step `08` or later remains uncreated. |
+| `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` | Fresh execution branch for completed [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) | branched from clean/equal usability completion `5a501df`; five published old-path test baselines culminate in executable checkpoint `60eb356`, and the documentation/lifecycle close is the commit containing this row. No successor is selected or preloaded. |
 | Conditional fragment/lifecycle infrastructure | Complete independent characterization of the extracted documentation validator, enforce the proven fragment contract, complete proposal/review-state validation support, then add logical epic indexes; see [`DOC-GATE-01`](../tasks/TODO/DOC-GATE-01-extract-documentation-validator.md), [`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md), [`TASK-LIFECYCLE-01`](../tasks/TODO/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md), and [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md) | future separately planned packages in dependency-valid order after the post-`PROGRAM-01` reassessment; actionable-card workflow remains directory-owned, authorized UNREFINED preservation is nonselectable, and the validator still rejects its nine current Markdown locations and lacks the card's independent invalid-state fixture coverage and separately approved Make exposure |
 | `refactor-01c-validation-check-rosters` | Independent exact ordered check-roster characterization; see [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md) | implementation `8d58fc6` and separate docpatch complete locally; unpushed predecessor to completed `TEST-01D` |
 | `refactor-01d-public-cli-contracts` | Complete public CLI/direct-CWD/exit characterization; see [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md) | implementation `a003065` and separate docpatch complete locally; unpushed predecessor to the approved `TEST-01E` descendant |
@@ -111,7 +111,7 @@ a completed production review.
 | Eleventh JIT-tranche reviews | completed [`REVIEW-ARCH-03K`](../tasks/COMPLETED/REVIEW-ARCH-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) → completed [`REVIEW-REL-03K`](../tasks/COMPLETED/REVIEW-REL-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) → completed [`REVIEW-UX-03K`](../tasks/COMPLETED/REVIEW-UX-03K-review-partition-bam-by-mechanical-read-orientation-migration.md) | all three read-only independent-in-time passes completed before migration selection with exact cutover, child/count/transaction/collision/scheduler oracles, final-command, recovery, provenance, evidence-ceiling, and rollback boundaries; independent authorship is not claimed. |
 | Phase `03` eleventh bounded package | Move `partition_BAM_by_mechanical_read_orientation` through completed [`MIG-03K`](../tasks/COMPLETED/MIG-03K-migrate-partition-bam-by-mechanical-read-orientation-owner.md) | complete in published child/count `3ae6e3e`, transaction `dafcd18`, stability/collision `66e41fe`, validator `1332529`, and scheduler `e871d5c` test baselines plus executable/test checkpoint `1d5b76a`; the final owner contains the path-adjusted producer, validator, mode-`0755` job, and mirrored direct tests with an exact neutral-report bridge and no wrapper, alias, package, descriptor, schema, transaction, receipt, recovery marker, or behavior redesign. Documentation/lifecycle closure is the commit containing this row. |
 | Twelfth JIT-tranche reviews | completed [`REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) → completed [`REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) → completed [`REVIEW-UX-03L`](../tasks/COMPLETED/REVIEW-UX-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md) | all three read-only committed-time passes completed before migration selection with exact cutover, pipeline/transaction/provenance/validator/scheduler oracles, final-command, dry-run, recovery, provenance, evidence-ceiling, and rollback boundaries; independent authorship is not claimed. |
-| Phase `03` twelfth bounded package | Active move of `generate_partitioned_cohort_mpileup_VCFs` through [`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) | selected alone on fresh published branch `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`; five ordered old-path test-only checkpoints precede one atomic five-move/nine-update cutover, one complete computational card-boundary gate, and one separate documentation/lifecycle close. |
+| Phase `03` twelfth bounded package | Move `generate_partitioned_cohort_mpileup_VCFs` through completed [`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md) | complete in published pipeline/selector `c813ea3`, transaction/recovery `ed58fd3`, stability/provenance `82d7049`, validator `65277f7`, and scheduler `523144e` test baselines plus executable/test checkpoint `60eb356`; the final owner contains the path-adjusted producer, validator, mode-`0644` job, and mirrored direct tests with an exact neutral-report bridge and no wrapper, alias, package, descriptor, schema, calling step, recovery marker, or behavior redesign. Documentation/lifecycle closure is the commit containing this row. |
 | `refactor-99-final-audit` | Final finding/decision/card disposition, compatibility comparison, measured validation, documentation audit, and handoff; see [`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md) | future final local gate; workflow status is the linked card's directory |
 
 When reporting planning is explicitly reactivated, readiness order is corrected
@@ -310,7 +310,7 @@ That refresh leaves only `generate_partitioned_cohort_mpileup_VCFs` eligible:
 all declared-sample Step `06` BAM/BAI pairs and the reference FAI direct
 predecessors are migrated, while Step `08` still depends on Step `07`. The
 definition checkpoint containing this plan created only
-[`MIG-03L`](../tasks/IN_PROGRESS/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
+[`MIG-03L`](../tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
 and sequential
 [completed `REVIEW-ARCH-03L`](../tasks/COMPLETED/REVIEW-ARCH-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
 → [completed `REVIEW-REL-03L`](../tasks/COMPLETED/REVIEW-REL-03L-review-generate-partitioned-cohort-mpileup-vcfs-migration.md)
@@ -325,9 +325,35 @@ commands, distinct dry-run effects, recovery preservation, non-calling
 language, owner findability, evidence ceilings, and reverse rollback fixed.
 Usability completion `5a501df` is published/equal on the prior campaign branch
 and is also the clean published base of fresh branch
-`codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`. MIG-03L alone is now
-selected; no executable/test path changed or computational check ran at
-selection, and Step `08` and every later owner/review card remain absent.
+`codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs`. MIG-03L then
+published five test-only baselines and executable checkpoint `60eb356`; this
+documentation/lifecycle close completes the card. No Step `08` or later card
+is selected or preloaded. A fresh live-DAG check is the next bounded action.
+
+Final-path acceptance passed the direct shell suite, `35` selected validator
+and scheduler tests with `142` unrelated cases deselected, and `28` focused
+integration tests. The complete shell-contract lane and the isolated local-
+real-R Step `08` and Step `09` semantic suites also passed. Serial coverage
+ran `1,199` passing tests with `17` skips before its sole documentation-
+validator failure; the moved validator measured `177/198` lines and `51/72`
+branches, and the committed global non-regression floors are `9561/11720`
+lines and `3351/4772` branches. Every non-target row remained exact and the
+standalone coverage-policy comparison passed.
+
+The aggregate gate was not fully green. Static preflight passed, but the
+guarded-R lane stopped on the inherited malformed ignored `macos` library
+entry and unavailable Bioconductor metadata; the orchestrator cancelled the
+other aggregate lanes. Separately run shell contracts, report runtime, and
+local-real-R semantic suites passed. Serial Python's sole failure listed
+exactly ten deliberately deferred MIG-03L documentation links plus the nine
+inherited `UNREFINED` card-location findings. This close repairs the ten
+MIG-03L links; the inherited nine remain an expected-only nonpassing result.
+The receipt-visibility and identity gaps, best-effort rollback and absent
+recovery marker, admitted-input mutation blindness, validator exit-`0` failed
+rows and selector/semantic false passes, and scheduler warning/path/log/stale-
+output defects remain characterized rather than approved. No real bcftools,
+scheduler, cluster, production, scientific-review, calling, or biological
+evidence was created.
 Unrelated packages remain preserved but dead/out of scope under the temporary boundary in
 [`TASK_START.md`](../operations/TASK_START.md#temporary-critical-runway).
 

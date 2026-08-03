@@ -192,7 +192,9 @@ overrides; thread count; and selected samtools path/version. Record expected
 paths that are absent: absence does not prove a clean state or attempt
 identity.
 
-Rule out every active producer and Step `07` reader. Never combine members
+Rule out every active producer and
+[`generate_partitioned_cohort_mpileup_VCFs`](../generate_partitioned_cohort_mpileup_VCFs/README.md)
+reader. Never combine members
 from different attempts, infer identity from counts or timestamps, remove a
 foreign lock, reconstruct a missing file, or adopt stale wrapper success. A
 separately authorized diagnostic retry must use both an isolated output

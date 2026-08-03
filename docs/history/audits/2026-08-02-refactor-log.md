@@ -4287,6 +4287,144 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
 
+## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
+
+- **Sequential review and branch boundary:** architecture selection
+  `e34edb5` and completion `ec7e8d9`, reliability selection `3d2b9c0` and
+  completion `db33d9c`, and usability selection `3ec8307` and completion
+  `5a501df` were published in order. Each completed its own full documentation
+  gate before the next review was selected. Completion `5a501df` was verified
+  clean, tracked/untracked-empty, recovery/index-lock-free, and equal across
+  local, upstream, and live remote before the fresh branch
+  `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` was cut. Selection
+  checkpoint `7bf012c` moved only MIG-03L to `IN_PROGRESS`; no Step `08` or
+  later owner/review card was created, selected, or preloaded.
+- **Reviewed executable boundary:** move exactly the mode-`0755` producer,
+  mode-`0644` validator, mode-`0644` scheduler job, mode-`0755` direct shell
+  test, and mode-`0644` direct validator test into final source/test homes.
+  Change exactly nine integration owners: Make, artifact mapping/evidence,
+  public CLI contracts, scheduler contracts, validation roster, neutral
+  report-loader tests, coverage baseline, and literal Make expansion. Keep the
+  three partition TSVs as root-owned operator inputs. Add no wrapper, alias,
+  compatibility copy, package/import identity, descriptor, schema, calling
+  step, recovery marker, helper move, public library API, or semantic-DAG
+  change.
+- **Test-first checkpoints:** publish old-path pipeline/selector `c813ea3`,
+  transaction/recovery `ed58fd3`, stability/provenance `82d7049`, validator
+  `65277f7`, and scheduler `523144e` baselines. Slice checks were only the
+  smallest focused commands. They freeze producer child exit normalization,
+  tool/path/selector admission, exact pipeline construction, publish order,
+  rollback failure, lock/collision and signal behavior, mutation visibility,
+  receipt omissions, validator failed-row and false-pass ceilings, and
+  scheduler diagnostic/stale-output behavior without altering production.
+- **Atomic cutover:** published executable/test checkpoint
+  `60eb3561af2bf145133a27294c3a3c1df3c35f1a` performs exactly five moves and
+  nine reviewed updates. The final producer is `31,526` bytes / `893` lines /
+  SHA-256
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`
+  at mode `0755`; validator `13,524` / `334` /
+  `3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`
+  at `0644`; and job `4,421` / `133` /
+  `fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`
+  at `0644`. Exact legacy-path, basename, caller, artifact, mode, hash, and
+  final-path searches matched the reviewed ceiling.
+- **Producer decisions and risks:** preserve manifest order and hash rechecks,
+  FAI-bounded `region`/`regions_file` selectors, relative selector-file
+  resolution, exact mechanical `FWD_like`/`REV_like` pairs, depth/filter and
+  bcftools resolution, side-effect-free producer dry-run, same-scope lock,
+  run-token scratch/backups, all-three-or-none predecessor admission, VCF/VCF/
+  receipt publication, final revalidation, cleanup, and traps. Preserve rather
+  than approve receipt visibility before post-publication validation and the
+  in-memory commit flag; identity limited to the two manifests; undetected
+  admitted BAM/BAI/FASTA/FAI/regions mutations; unhashed tool, policy, and VCF
+  bytes; best-effort restoration; no durable recovery or attempt marker; and
+  relative-output-root versus validator-resolved-path disagreement.
+- **Rollback-failure decision:** controlled receipt publication exit `67`
+  followed by prior-FWD restoration exit `68` propagates `67`, leaves the
+  prior FWD final absent while its backup survives, restores prior REV and
+  receipt bytes, removes owned scratch/lock, preserves unrelated bytes, and
+  creates no recovery marker. This is an ambiguous manual-recovery state, not
+  successful rollback. Controlled `TERM` remains exit `143`; same-scope
+  concurrency admits one producer and rejects the other.
+- **Validator decisions and risks:** preserve the five exact check rows,
+  common report bytes, stable-input recheck, publication behavior, private
+  exact-file neutral-report loader, dry-run/execute/repeat parity, and exit
+  contracts. Preserve exit-`0` failed evidence; producer/validator compressed-
+  regions asymmetry; out-of-bounds BED and selector-external VCF false passes;
+  unchecked REF/ALT/FORMAT/filter semantics; relative receipt-path failure;
+  and absent bcftools, BAM/reference/policy, VCF-hash, biological, or current-
+  attempt proof. No duplicate helper or public report API was added.
+- **Scheduler decisions and risks:** preserve mode/directives, one requested
+  CPU, submit-directory fallback, exported `/tmp`, defaults and override,
+  tolerated module load, version diagnostic, explicit execute gate,
+  delegation, body-level `logs/` mutation, streams/exits, and three-nonempty-
+  file post-check. Missing/nonexecutable tool remains warning-only before
+  delegation; version failure stops before delegation; PATH-basename forwarding
+  remains; dry-run mutates `logs/`; and a zero-output child with three stale
+  nonempty files remains falsely accepted. None is hardened or blessed.
+- **Artifact and scientific meaning:** only the Step `07` producer path and
+  reviewed hash changed in artifact evidence. Status, evidence ID, Git
+  projection, VCF/receipt/report identities, schemas, order, reconciliation,
+  downstream Step `08` dependency, completion-marker interpretation,
+  consumers, and meaning remain unchanged. Step `07` performs pileup and
+  filtering, not `bcftools call`, variant calling, RNA-editing-site discovery,
+  transcript-strand assignment, scientific review, or biological readiness.
+- **Computational acceptance:** the final direct shell suite passed. The
+  selected validator/scheduler surface passed `35` tests with `142`
+  deselections, and `28` focused integration tests passed. The complete shell-
+  contract lane passed; report runtime passed `17` tests with `60`
+  deselections in `97.99s`; and isolated local-real-R Step `08` and Step `09`
+  semantic suites passed despite the inherited ignored malformed `macos`
+  warning. These are local fake-tool/fixture checks; no real bcftools,
+  scheduler, cluster, production, scientific-review, calling, or biological
+  evidence was created.
+- **Coverage decision:** serial coverage ran `1,199` passing tests with `17`
+  skips before its sole documentation-validator failure. The moved validator
+  measured `177/198` lines and `51/72` branches. Only that row and global
+  covered-count floors changed in `tests/baselines/python_coverage.json`; every
+  non-target row stayed exact. Committed global floors are `9561/11720` lines
+  and `3351/4772` branches, and the standalone policy comparison passed.
+  Higher transient raw totals included documentation-validator execution and
+  are deliberately not baseline evidence.
+- **Aggregate-gate truth:** `RSCRIPT_BIN=/usr/local/bin/Rscript make -s
+  all-checks` was attempted once. Static preflight passed; guarded R failed
+  status `2` after `5.559s` because the ignored project library contains a
+  malformed `macos` entry without `DESCRIPTION` and Bioconductor metadata was
+  unavailable through DNS. The orchestrator cancelled the other aggregate
+  lanes and ended status `2` after `5.785s`. No dependency was installed,
+  restored, removed, or changed. Separately passed lanes are recorded above
+  but do not make the aggregate gate green.
+- **Documentation/lifecycle close:** add one adjacent owner README with root
+  and arbitrary-CWD producer/validator/scheduler routes, distinct dry-run
+  effects, mechanical/non-calling meaning, selector/depth/filter/tool/output/
+  lock/receipt choices, focused tests, provenance, preservation-first
+  recovery, evidence ceiling, and Git rollback. Update the owner contract,
+  current architecture/inventory/coverage/ownership/status/handoff, Step `06`
+  predecessor and Step `08` consumer, neutral-library counts, Step `07`
+  runbook/troubleshooting routes, artifact and partition-manifest navigation,
+  and every inbound lifecycle link. Move only MIG-03L to `COMPLETED`. No
+  diagram changes because semantic identities, direct DAG edges, and public
+  data flow did not change.
+- **Documentation gate:** before this close, serial Python's sole failure
+  identified exactly ten intentionally stale MIG-03L links plus nine inherited
+  `UNREFINED` card-location findings. This close repairs all ten migration-
+  caused links. `git diff --check` passes, and the exact RUNBOOK documentation
+  validator retains only the nine inherited locations. That expected-only
+  output remains status `1` and nonpassing; it is not described as green and
+  grants no authority to change inherited lifecycle state.
+- **Recovery, rollback, and continuation:** preserve all finals, temps/backups,
+  locks/owners, manifests, BAM/BAIs, FASTA/FAI, regions file, unrelated bytes,
+  streams, scheduler evidence, checkout/submit CWD, bcftools path/version,
+  depth/filter, and environment before action. Never combine attempts,
+  reconstruct a member, remove a foreign lock, trust receipt presence/counts/
+  timestamps, or retry the same output root. A separately authorized
+  diagnostic retry uses an isolated output root after ruling out producer and
+  Step `08` readers. Git rollback order is documentation close, `60eb356`,
+  `523144e`, `65277f7`, `82d7049`, `ed58fd3`, then `c813ea3`; Git rollback does
+  not recover runtime artifacts. Publish and prove this close clean/upstream/
+  live-remote-equal, then refresh the required-artifact DAG before defining
+  only the next eligible owner and its sequential reviews.
+
 ## 2026-08-03T09:56:11-0400 — REVIEW-ARCH-03L completed
 
 - **Review basis:** complete a separate read-only architecture pass from clean,

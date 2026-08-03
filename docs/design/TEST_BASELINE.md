@@ -95,6 +95,16 @@ for the separate close. Every non-target row remained exact; global measurement
 is `9551/11720` lines and `3348/4772` branches, above the frozen covered-count
 floors, and the standalone policy comparison passed.
 
+The final MIG-03L measurement moved Step `07` to
+`src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py`
+at `177/198` covered lines and `51/72` branches. Python ran `1,199`
+passes with `17` skips before the sole documentation assertion reported ten
+intentionally deferred migration links plus nine inherited `UNREFINED`
+locations. The tracked target-only baseline keeps every non-target row exact;
+global covered-count floors are `9561/11720` lines and `3351/4772` branches,
+and the standalone policy comparison passed. This result is not a green
+aggregate gate.
+
 ## Current evidence vocabulary
 
 - `preserved contract` means independent regression evidence protects the
@@ -123,7 +133,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover the mixed flat/final-owner layout |
-| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `06` live under `tests/stages/`, while migrated Step `02b` and Step `03` evidence tests live under their owner directories in `tests/evidence/` |
+| SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `07` live under `tests/stages/`, while migrated Step `02b` and Step `03` evidence tests live under their owner directories in `tests/evidence/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |

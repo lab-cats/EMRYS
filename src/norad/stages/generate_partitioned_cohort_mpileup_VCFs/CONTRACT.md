@@ -1,10 +1,12 @@
 # `generate_partitioned_cohort_mpileup_VCFs` stage contract
 
-This is the observed contract of historical Step `07` for `ARCH-02A`. The
-exact public identity and historical alias are owned by the
+This is the observed contract of historical Step `07`, now implemented in this
+native owner directory. The exact public identity and historical alias are
+owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug; it is not yet an implemented source location.
-Executables remain in `scripts/` and `jobs/`.
+uses that public slug and owns the producer, validator, and scheduler assets.
+Supported journeys and migration evidence are in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
@@ -21,8 +23,10 @@ owner, but only checks those files' presence and nonemptiness; it does not
 require Step `06` counts, validation evidence, or a native completion marker.
 Distinct partitions may run
 independently when they use distinct output locks and immutable shared inputs.
-Step `08` is the cohort barrier and consumes the complete declared
-partition-by-orientation result set regardless of partition completion order.
+The
+[`preprocess_and_annotate_cohort_candidates`](../preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+owner is the cohort barrier and consumes the complete declared partition-by-
+orientation result set regardless of partition completion order.
 
 ## Inputs and selector contract
 
@@ -64,7 +68,7 @@ completion marker, but becomes visible before post-publication validation and
 the producer's in-memory committed flag; its mere presence is not independent
 proof of a successfully completed immutable computation.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+[`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
 is side-effect-free in dry-run. Execute mode hashes and later rechecks both
 manifests, uses a cohort/partition lock and run-token temporary/backup paths,
 rejects stale owned paths and partial prior sets, validates temporary VCF
@@ -77,16 +81,17 @@ recovery interface. Stable-input rechecks cover the two manifests only: BAMs,
 reference, FAI, regions file, tool identity, depth, and filter are not bound by
 hash in the receipt. The receipt also does not hash either output VCF.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](../../../../jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
+[`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
 owns cluster defaults, module loading, execution gating, delegation, and final
 path checks; it does not own pileup or publication logic.
 
 ## Validation interface
 
-[`validate_step_07_mpileup_outputs.py`](../../../../scripts/validate_step_07_mpileup_outputs.py)
+[`validate_step_07_mpileup_outputs.py`](validate_step_07_mpileup_outputs.py)
 accepts explicit cohort, partition, manifests, FAI, both VCFs, receipt, and
 report output. It does not invoke bcftools. Dry-run prints the common report;
-`--execute` snapshot-rechecks inputs and uses Step `00a`'s shared publisher.
+`--execute` snapshot-rechecks inputs and uses the neutral validation-report
+publisher.
 
 Exact checks are:
 
@@ -110,25 +115,41 @@ publication failures exit `2`.
 
 ## Consumers and protected evidence
 
-- Step `08` consumes the declared Step `07` VCF/receipt transactions; it does
+- The final
+  [`preprocess_and_annotate_cohort_candidates`](../preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+  contract consumes the declared Step `07` VCF/receipt transactions; it does
   not rediscover partitions or orientations from filenames.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/shell/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
   protects selector modes, manifest order, commands, dry-run, publication,
-  locking, stale paths, replacement, and ordinary rollback.
-- [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/test_validate_step_07_mpileup_outputs.py)
+  locking, stale paths, child failures, transaction ordering, replacement,
+  rollback failures, signals, mutation gaps, and provenance omissions.
+- [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_validate_step_07_mpileup_outputs.py)
   plus wrapper, roster, publication-fault, public-CLI, artifact, report, and
   coverage tests protect the independent evidence boundary.
 
 This is local mocked-runtime/fixture characterization, not real-runtime,
 cluster, scientific-review, or biological evidence.
 
-## Ownership gaps and deferred decisions
+## Current ownership boundaries and retained defects
 
 - Receipt, manifest, selector, and VCF reconciliation logic spans producer,
-  validator, downstream preprocessing, and artifact adapters.
-- Shared report publication remains owned by the Step `00a` validator.
-- Attempt identity, complete provenance, output hashes, recovery interface,
-  target files, and migration mechanics remain deferred.
+  validator, downstream preprocessing, and artifact adapters; this owner keeps
+  its native receipt and five-check roster.
+- Shared report publication remains in neutral
+  [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
+  under a private identity without package or `PYTHONPATH` support.
+- Attempt identity, complete provenance, output hashes, and an automated
+  recovery interface remain absent. Only manifests are hash-bound and stable-
+  rechecked; restoration is best-effort and receipt visibility precedes final
+  validation and the committed flag.
+- Producer/validator selector detail and relative-path semantics remain
+  asymmetric. The validator may publish failed rows with exit `0`, does not
+  invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
+  fields, filter compliance, immutable inputs, or current-attempt identity.
+- The scheduler retains warning-only unusable-tool preflight, submit-CWD and
+  body-level log mutations, version-command failure, one-CPU defaults, and
+  stale-three-file false success as characterized defects rather than
+  guarantees.

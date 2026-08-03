@@ -391,8 +391,75 @@ Selected as the sole active migration from clean, published,
 local/upstream/live-remote-equal fresh branch
 `codex/mig-03l-generate-partitioned-cohort-mpileup-vcfs` at usability-review
 completion `5a501df76d51b422266054f98131807019c15bb8`. Architecture,
-reliability, and usability reviews are complete. Execute only the five ordered
-old-path test checkpoints, then the atomic cutover with the complete
-computational card-boundary gate, then the separate documentation/lifecycle
-close. No executable/test path changed or ran at selection, and no Step `08` or
-later owner is preloaded.
+reliability, and usability reviews completed before execution. No Step `08` or
+later owner/review card was selected or preloaded.
+
+- Published test-only checkpoints are pipeline/selector `c813ea3`,
+  transaction/recovery `ed58fd3`, stability/provenance `82d7049`, validator
+  `65277f7`, and scheduler `523144e`. Atomic executable/test cutover
+  `60eb3561af2bf145133a27294c3a3c1df3c35f1a` moved exactly the five reviewed
+  files and changed exactly the nine reviewed integration owners. It added no
+  wrapper, alias, compatibility copy, package identity, descriptor, schema,
+  calling step, recovery marker, or DAG change.
+- Final native identities match review: the mode-`0755` producer is `31,526`
+  bytes / `893` lines / SHA-256
+  `e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`;
+  the mode-`0644` validator is `13,524` bytes / `334` lines /
+  `3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`;
+  and the mode-`0644` scheduler is `4,421` bytes / `133` lines /
+  `fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
+- Final-path acceptance passed the direct shell suite, `35` selected validator
+  and scheduler tests with `142` unrelated cases deselected, and `28` focused
+  integration tests. The complete shell-contract lane, report runtime (`17`
+  passes and `60` deselections), and isolated local-real-R Step `08` and Step
+  `09` semantic suites passed. These are local mocked-runtime or fixture
+  evidence, not real bcftools, scheduler, cluster, production, scientific-
+  review, variant-calling, or biological evidence.
+- Serial coverage ran `1,199` passing tests with `17` skips before its sole
+  documentation-validator failure. The moved validator measured `177/198`
+  lines and `51/72` branches. The committed global non-regression floors are
+  `9561/11720` lines and `3351/4772` branches; every non-target row remained
+  exact and the standalone coverage-policy comparison passed. Transient raw
+  totals included documentation-validator execution and are not the baseline.
+- The aggregate gate was not fully green. Static preflight passed; guarded R
+  then failed with status `2` after `5.559s` because the ignored project
+  library contains a malformed `macos` entry without `DESCRIPTION` and
+  Bioconductor metadata was unavailable through DNS. The orchestrator
+  cancelled its other lanes and ended status `2` after `5.785s`; no dependency
+  changed. The separately run lanes above are recorded independently, not as
+  an aggregate pass. Serial Python's sole failure listed exactly ten
+  deliberately deferred MIG-03L documentation links plus the nine inherited
+  `UNREFINED` card-location findings.
+- Preserved producer defects include normalized child failures, receipt
+  visibility before final validation/commit, manifest-only identity and
+  stability binding, admitted BAM/BAI/FASTA/FAI/regions mutation blindness,
+  best-effort rollback, and no durable recovery or attempt marker. The
+  controlled receipt-publication exit `67` plus FWD-restoration exit `68`
+  propagates `67`, leaves the prior FWD final absent while its backup survives,
+  restores prior REV and receipt bytes, removes owned scratch/lock, and writes
+  no marker. That is ambiguous preservation-first manual recovery, not a
+  successful rollback.
+- Preserved validator defects include exit-`0` failed rows, producer/validator
+  `regions_file` asymmetry, selector-bound and REF/ALT/FORMAT/filter false-
+  pass ceilings, relative receipt-path disagreement, and absent tool/input/
+  output/current-attempt identity. Preserved scheduler defects include
+  warning-only missing or unusable tools, version-command failure, submit-path
+  and `logs/` mutation effects, and stale-three-file false success. None is
+  fixed, approved, or evidence of readiness.
+- The separate documentation/lifecycle close adds the adjacent owner README,
+  repairs final commands and all ten migration-caused links, updates current
+  topology/status/evidence and recovery routes, records the audit evidence,
+  and moves this card to `COMPLETED`. No diagram changed because semantic
+  identities, direct DAG edges, and public data flow did not change. Exact
+  documentation validation retains only the nine inherited `UNREFINED`
+  locations; that expected-only result remains nonpassing, never green.
+- Git rollback order is documentation/lifecycle close, executable `60eb356`,
+  scheduler `523144e`, validator `65277f7`, stability/provenance `82d7049`,
+  transaction/recovery `ed58fd3`, then pipeline/selector `c813ea3`. Before any
+  runtime recovery or retry, preserve every final, scratch/backup, lock/owner,
+  manifest, BAM/BAI, FASTA/FAI, regions file, stream, scheduler record, CWD,
+  tool/version, depth/filter choice, and unrelated byte. Never combine
+  attempts, reconstruct a member, remove a foreign lock, trust receipt
+  presence/counts/timestamps, or retry the same output root. After publication
+  and live equality proof, refresh the required-artifact DAG before defining
+  only the next eligible migration and sequential reviews.

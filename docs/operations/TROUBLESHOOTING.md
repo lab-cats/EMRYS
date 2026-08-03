@@ -1209,7 +1209,12 @@ header-only VCF has zero records and is not itself a failure.
 
 Follow the [common response](#structured-validation-response). Inspect the
 exact receipt, two VCFs, manifests, FAI, producing job, and logs. A header-only
-VCF remains valid when its declared zero record count reconciles.
+VCF remains valid when its declared zero record count reconciles. Use only the
+final producer/validator paths and commands in the
+[Step `07` runbook](RUNBOOK.md#step-07-bcftools-mpileup), and follow the
+[partial/rollback/stale-transaction route](#step-07-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-transaction)
+before cleanup or same-name retry. Validator exit `0` may publish failed rows;
+exit `2` publishes nothing new and is not a failed-row synonym.
 
 ## Step 07 selector does not match the FASTA index
 
@@ -1321,40 +1326,83 @@ normal contracts. Never edit a receipt or summary hash to force acceptance.
 
 This is a documented promotion risk, not an observed cluster incident.
 
-## Step 07 finds a lock or an incomplete output set
+## Step 07 producer or wrapper leaves a partial rollback failure or stale transaction
 
 ### Symptom
 
-Step `07` reports an existing cohort/partition lock, or refuses to continue
-because only part of the expected VCF/VCF/receipt set exists.
+Step `07` reports an existing cohort/partition lock, stale run-token path, or
+incomplete VCF/VCF/receipt predecessor; a child or publication fails; a signal
+interrupts execution; a receipt is visible although the producer did not
+commit; a prior FWD VCF disappears during failed restoration; or the wrapper
+returns success although the child created no current outputs.
 
 ### Cause
 
-Another run may own:
+The final owner uses a cohort/partition lock, run-token temporary/backups,
+all-three-or-none predecessor admission, sequential FWD/REV/receipt
+publication, receipt-last ordering, final revalidation, best-effort
+restoration, and cleanup. Another run may own:
 
 ```text
 results/mpileup/<cohort>/<partition>/.<cohort>.<partition>.step07.lock
 ```
 
-Alternatively, files may have been copied or changed outside the transaction,
-or a prior run may have been interrupted in a way that left an incomplete
-stable set. The receipt is published last and is the commit marker for the two
-validated orientation VCFs.
+The receipt becomes visible before post-publication validation and the in-
+memory committed flag. There is no durable attempt or recovery marker. Only
+the two manifests are hash-bound and snapshot-rechecked; BAM/BAI, FASTA/FAI,
+regions file, bcftools identity, depth, filter, and VCF bytes are not. A
+controlled receipt-publication exit `67` followed by prior-FWD restoration
+exit `68` propagates `67`, leaves the prior FWD final absent while its backup
+survives, restores prior REV and receipt bytes, removes owned temps/lock, and
+creates no marker. This is ambiguous manual recovery, not successful rollback.
+
+The scheduler checks only three nonempty final paths after a zero-exit child.
+It can therefore rediscover a stale complete set and return success without a
+current producer transaction. Missing/nonexecutable bcftools is warning-only
+at the wrapper; a version-command failure happens before delegation. Scheduler
+dry-run changes CWD, creates `logs/`, and performs module/tool diagnostics.
+
+### Diagnose
+
+Before changing anything, preserve:
+
+- all three stable finals and every run-token temp/backup;
+- the lock directory and owner file, including paths that are unexpectedly
+  absent;
+- sample and partition manifests plus hashes;
+- every selected Step `06` BAM/BAI, the FASTA/FAI, and regions file;
+- unrelated bytes in the output directory;
+- producer and wrapper stdout/stderr, job ID/accounting, and scheduler logs;
+- checkout, invocation, and submit CWD plus environment overrides; and
+- exact bcftools path/version, maximum depth, and filter expression.
+
+Compare final, temp, and backup bytes without moving them. Inspect lock
+ownership and every potentially active local or scheduled producer. Do not use
+receipt presence, counts, timestamps, empty residue, or wrapper exit `0` to
+infer current-attempt identity. A relative producer output root can also place
+relative VCF paths in the receipt that disagree with the validator's resolved
+arguments; preserve the exact original invocation before diagnosing this as a
+data-content failure.
 
 ### Fix
 
-Inspect the lock `owner` file, SLURM state, logs, and all three stable output
-paths. Do not delete a foreign lock, remove one member of a published set, or
-manufacture a receipt merely to make the check pass. Resolve ownership and the
-state of any active job first. If recovery is required, treat it as an explicit
-operator action and preserve evidence before changing files.
+Rule out every producer and Step `08` reader before action. Never combine files
+from different attempts, reconstruct a missing member, manufacture or edit a
+receipt, remove a foreign lock, discard a surviving backup, or adopt stale
+wrapper success. Escalate the exact preserved state for manual recovery. Any
+separately authorized diagnostic retry must use an isolated absolute output
+root and must not be treated as production evidence.
 
-The script removes only its owned run-token temporary paths and lock, restores
-the prior complete output set when publication fails after backup, and refuses
-to overwrite an incomplete stable set.
+Use the final owner paths and supported commands in the
+[Step `07` runbook](RUNBOOK.md#step-07-bcftools-mpileup). Direct producer dry-
+run is side-effect-free; validator dry-run reads six inputs and writes nothing;
+scheduler dry-run is not side-effect-free. Git rollback changes tracked files
+only and cannot authenticate, restore, delete, or alter runtime outputs,
+backups, locks, logs, or recovery evidence.
 
-These are locally mocked lock/rollback guarantees; no Step `07` cluster lock or
-rollback incident has been observed.
+These are locally mocked failure and preservation states. No real bcftools,
+Step `07` cluster lock, rollback incident, scheduler recovery, production,
+scientific-review, or biological evidence was created by MIG-03L.
 
 For full primary-universe validation, require 25 primary receipts and 50
 primary VCFs. The separate `pilot_1` transaction adds one receipt/two VCFs
