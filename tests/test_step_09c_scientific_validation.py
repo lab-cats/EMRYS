@@ -1084,6 +1084,192 @@ def test_late_input_mutation_after_summary_restores_predecessor(
     assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
 
 
+def test_post_summary_first_publication_failure_removes_all_owned_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    final_dir.mkdir(parents=True)
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    observed_complete_new_set = False
+
+    def fail_first_final_read(label: str, *args: Any, **kwargs: Any) -> Any:
+        nonlocal observed_complete_new_set
+        if label.startswith("Published Step 09c"):
+            observed_complete_new_set = all(
+                path.is_file() for path in context.output_paths.values()
+            )
+            raise FIXTURES.CONTRACT.ContractError(
+                "synthetic post-summary final validation failure"
+            )
+        return original_read_tsv(label, *args, **kwargs)
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
+
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="post-summary final validation failure",
+    ):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert observed_complete_new_set
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert set(final_dir.iterdir()) == {unrelated}
+
+
+def test_post_summary_replacement_failure_restores_all_predecessors_summary_last(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    rewrite_field(fixture.review_plan, "notes", "Post-summary rollback.")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    key_by_name = {path.name: key for key, path in context.output_paths.items()}
+    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    original_replace = FIXTURES.CONTRACT.os.replace
+    observed_complete_new_set = False
+    restore_order: list[str] = []
+
+    def fail_first_final_read(label: str, *args: Any, **kwargs: Any) -> Any:
+        nonlocal observed_complete_new_set
+        if label.startswith("Published Step 09c"):
+            observed_complete_new_set = all(
+                path.is_file() for path in context.output_paths.values()
+            )
+            raise FIXTURES.CONTRACT.ContractError(
+                "synthetic post-summary replacement failure"
+            )
+        return original_read_tsv(label, *args, **kwargs)
+
+    def observe_restore(source: Any, destination: Any) -> None:
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if source_path.parent.name.endswith(".previous"):
+            restore_order.append(key_by_name[destination_path.name])
+        original_replace(source, destination)
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_restore)
+
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="post-summary replacement failure",
+    ):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert observed_complete_new_set
+    expected_restore_order = [
+        key
+        for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES
+        if key != "review_summary"
+    ] + ["review_summary"]
+    assert restore_order == expected_restore_order
+    assert {
+        path.name: path.read_bytes()
+        for path in final_dir.iterdir()
+        if path.name in predecessor_bytes
+    } == predecessor_bytes
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
+
+
+def test_incomplete_post_summary_restore_retains_exact_recovery_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    first = run_validator(fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    final_dir = output_directory(fixture.output_root, fixture.review_id)
+    predecessor_bytes = {
+        path.name: path.read_bytes() for path in final_dir.iterdir()
+    }
+    unrelated = final_dir / "unrelated.keep"
+    unrelated.write_bytes(b"preserve unrelated bytes\n")
+    rewrite_field(fixture.review_plan, "notes", "Incomplete restore.")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    failed_key = "qc_funnel"
+    failed_final = context.output_paths[failed_key]
+    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    original_replace = FIXTURES.CONTRACT.os.replace
+    final_failure_injected = False
+    restore_failure_injected = False
+
+    def fail_first_final_read(label: str, *args: Any, **kwargs: Any) -> Any:
+        nonlocal final_failure_injected
+        if label.startswith("Published Step 09c"):
+            final_failure_injected = True
+            raise FIXTURES.CONTRACT.ContractError(
+                "synthetic post-summary incomplete-restore trigger"
+            )
+        return original_read_tsv(label, *args, **kwargs)
+
+    def fail_one_restore(source: Any, destination: Any) -> None:
+        nonlocal restore_failure_injected
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if (
+            not restore_failure_injected
+            and source_path.parent.name.endswith(".previous")
+            and destination_path == failed_final
+        ):
+            restore_failure_injected = True
+            raise OSError("synthetic predecessor restore failure")
+        original_replace(source, destination)
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
+    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", fail_one_restore)
+
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="rollback was incomplete",
+    ):
+        FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert final_failure_injected
+    assert restore_failure_injected
+    assert not failed_final.exists()
+    for key, path in context.output_paths.items():
+        if key != failed_key:
+            assert path.read_bytes() == predecessor_bytes[path.name]
+    lock = final_dir / f".{fixture.review_id}.step09c.lock"
+    temp_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
+    backup_dirs = list(
+        final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
+    )
+    recovery_notices = list(
+        final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
+    )
+    assert lock.is_file()
+    assert len(temp_dirs) == 1
+    assert list(temp_dirs[0].iterdir()) == []
+    assert len(backup_dirs) == 1
+    assert {path.name for path in backup_dirs[0].iterdir()} == {
+        failed_final.name
+    }
+    assert (
+        backup_dirs[0] / failed_final.name
+    ).read_bytes() == predecessor_bytes[failed_final.name]
+    assert len(recovery_notices) == 1
+    assert "synthetic predecessor restore failure" in recovery_notices[0].read_text()
+    assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
+
+
 def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
