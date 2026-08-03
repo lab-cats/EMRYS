@@ -144,6 +144,26 @@ actionable task cards, and `6` Mermaid sources. This closes the nine lifecycle
 findings; it is documentation-structure evidence only and supplies no guarded-
 R, cluster, production, scientific-review, or biological-readiness evidence.
 
+The repository-health continuation moved the exact ignored malformed
+`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` directory tree to a
+recoverable `/private/tmp` quarantine; it contained only nested empty
+directories (`0B`). Sandboxed `make -s r-check` then failed only on Bioconductor
+metadata DNS, while the authorized network-enabled rerun reported no project-
+library issue and passed with R `4.6.1` and Bioconductor `3.23`. No dependency
+was installed, restored, removed, or updated.
+
+The first exact full gate at published lifecycle close `776dad3` passed static,
+shell, guarded-R, and report-runtime lanes, then failed only because the
+documentation-wrapper fixture expected direct-run `make` while recursive GNU
+Make correctly emitted `make[2]`. The retained log is
+`/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-3vtydtkj.log`.
+Test-only checkpoint `10be692` derives the exact native label from inherited
+`MAKELEVEL`; direct and explicit level-`2` focused cases passed. The exact full-
+gate rerun passed with static `0.120s`, shell `53.922s`, guarded R `163.293s`,
+report runtime `128.434s`, Python coverage `198.164s`, and overall parallel
+status `0` in `198.291s`. This is complete local repository-gate evidence, not
+cluster, production, scientific-review, or biological-readiness evidence.
+
 ## Current evidence vocabulary
 
 - `preserved contract` means independent regression evidence protects the

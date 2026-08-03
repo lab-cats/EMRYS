@@ -5537,3 +5537,58 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validation rule, no computational suite or complete documentation validator
   runs at selection; the complete documentation gate belongs to architecture-
   review completion.
+
+## 2026-08-03T14:42:36-0400 — repository-health quarantine and full gate closed
+
+- **Recoverable local quarantine:** inspect only
+  `renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/`, prove it is ignored
+  by `renv/.gitignore`, and find only nested empty
+  `R-4.6/aarch64-apple-darwin23` directories with total size `0B`. Move that
+  exact tree, without deletion or byte change, to
+  `/private/tmp/norad-r-library-quarantine.Z645n8/macos`; prove the source is
+  absent, the quarantine remains present with the same nested tree and size,
+  and Git remains clean/upstream-equal. No other cache, runtime, package, or
+  recovery path changed.
+- **Guarded-R result:** the first exact sandboxed
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s r-check` retained a truthful DNS-
+  only failure resolving Bioconductor metadata and exited through Make with
+  status `2`. The authorized metadata-access rerun reported a consistent
+  project and passed with R `4.6.1`, Bioconductor `3.23`, renv `1.2.3`,
+  BiocManager `1.30.27`, VariantAnnotation `1.58.0`, GenomicRanges `1.64.0`,
+  IRanges `2.46.0`, S4Vectors `0.50.1`, SummarizedExperiment `1.42.0`,
+  GenomeInfoDb `1.48.0`, BiocGenerics `0.58.1`, and rtracklayer `1.72.0`. No
+  dependency was installed, restored, removed, or updated.
+- **First complete-gate result, not green:** on published lifecycle close
+  `776dad3`, exact `RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks`
+  passed static preflight in `0.120s`, shell contracts in `52.653s`, guarded R
+  in `158.375s`, and report runtime in `124.156s`. Python ran `1,267` passes
+  with `17` skips before one documentation-wrapper fixture failed: nested GNU
+  Make emitted native `make[2]: *** [documentation-check] Error 1` while the
+  fixture required direct-run `make: ...`. Python ended status `2` in
+  `190.921s`, and overall status was `2` in `191.046s`. The complete retained
+  failure log remains at
+  `/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-3vtydtkj.log`.
+- **Bounded correction decision:** this is inherited Make-level context, not a
+  documentation engine, Makefile, runtime, or validator failure. Preserve the
+  exact direct and recursive native diagnostics by deriving only the expected
+  Make label from inherited `MAKELEVEL`; do not weaken the engine diagnostic,
+  target text, Make exit `2`, or direct engine exit `1`. Test-only checkpoint
+  `10be692` changes one fixture; direct level `0` and explicit recursive level
+  `2` focused cases each pass. No production behavior changes and no new card
+  is created because this is a direct gate correction inside the already
+  approved repository-health package.
+- **Green full boundary:** the exact full-gate rerun on published `10be692`
+  passed static preflight in `0.120s`, shell contracts in `53.922s`, guarded R
+  in `163.293s`, report runtime in `128.434s`, and Python coverage in
+  `198.164s`; overall parallel status was `0` in `198.291s`. The final
+  documentation-only close reruns `git diff --check` and
+  `make -s documentation-check` without repeating computational lanes because
+  it changes only non-consuming current-state/evidence/audit prose.
+- **Evidence and stop boundary:** the local documentation, Python, shell,
+  guarded-R, and report-runtime repository gate is green. This does not prove
+  cluster execution, production inputs/outputs, CSU batch-visible packages,
+  scientific review, or biological readiness, and it does not fix or bless
+  any characterized workflow/scheduler defect. No Step `09` or later owner,
+  CONCURRENCY-03, TASK-EPIC-01, program remainder, or default-branch action is
+  selected. Publish this documentation close and stop with a clean upstream-
+  equal branch.

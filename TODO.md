@@ -17,11 +17,11 @@ Completed [`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation
 and completed
 [`TASK-LIFECYCLE-01`](docs/tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
 now supply the tested documentation gate and flat lifecycle/proposal support.
-No follow-on card is selected. The already-approved repository-health campaign
-next quarantines only the malformed ignored R-library entry and rechecks the
-guarded environment without dependency installation or restoration. Unrelated
-work and the preserved program remainder remain frozen. Roadmap order is not
-blocker metadata.
+The repository-health campaign is complete: the malformed ignored R-library
+entry is preserved outside the worktree, guarded R is consistent, and the
+complete local gate passed on the published executable/test checkpoint. No
+follow-on card is selected. Unrelated work and the preserved program remainder
+remain frozen. Roadmap order is not blocker metadata.
 
 ## Canonical routes
 

@@ -12,7 +12,7 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git. Its frozen executable/test parent is published
-  TASK-LIFECYCLE-01 fixture-review checkpoint `c737ba0`.
+  recursive-Make fixture checkpoint `10be692`.
 - Recorded package state: MIG-03J transaction `42bf851`, admission/signal
   `3913215`, validator `8eb3a0b`, and scheduler `ec240ae` test baselines,
   executable/test checkpoint `ef4cad7`, and documentation close `db60dfa` are
@@ -52,19 +52,20 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   TASK-LIFECYCLE-01 selection `5766a65`, approved plan `c98179e`, rejected-
   location baseline `d45e2a3`, proposal implementation `3a87bb8`, integration-
   review implementation `b54a2ed`, and fixture-review correction `c737ba0`
-  are also published and equal.
-- Current package: completed
-  [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md).
-  No follow-on card is selected. The next already-approved health slice is the
-  exact ignored R-library quarantine and guarded-environment recheck;
-  `PROGRAM-01` remains in progress as the frozen program owner.
-- Package type at this checkpoint: separate lifecycle documentation close
-  following the executable/test-affecting implementation. It changes no
-  dependency edge, proposal content, candidate status, runtime package,
-  migration owner, or default branch.
-- Remote publication and upstream equality: fixture-review checkpoint
-  `c737ba0` is verified local/upstream/live-remote-equal; publish and verify
-  this lifecycle close from live Git. The configured `origin` is
+  are also published and equal. Lifecycle documentation close `776dad3` and
+  recursive-Make fixture correction `10be692` are published and local/
+  upstream/live-remote-equal.
+- Current package: repository-health campaign complete. Completed
+  [`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
+  remains the last selected card; no follow-on card is selected. `PROGRAM-01`
+  remains in progress as the frozen program owner.
+- Package type at this checkpoint: documentation-only health close after one
+  recoverable ignored-local-environment quarantine and one test-only fixture
+  correction. No dependency byte, workflow behavior, card status, migration
+  owner, cluster/production state, or default branch changed.
+- Remote publication and upstream equality: correction checkpoint `10be692`
+  is verified local/upstream/live-remote-equal; publish and verify this health
+  close from live Git. The configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
   branch requires a separate explicit decision. Resolve this state-sync tip
@@ -972,21 +973,18 @@ approved policy defines and unlocks stricter exit criteria.
 
 An earlier sibling-worktree `renv` activation attempted automatic bootstrap
 before failing on missing packages and may have left ignored local cache
-material. Do not delete, repair, normalize, or reuse that cache. The separately
-approved next health slice may inventory and move only the exact malformed
-ignored entry to a timestamped `/private/tmp` quarantine, preserving its bytes;
-it may not install, restore, or change any package. The later successful gate
-referenced the already-restored primary project library through
-`RENV_PATHS_LIBRARY`; it did not restore or update packages, and its temporary
-Python-environment symlink was removed.
+material. The exact malformed ignored path
+`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` contained only nested
+empty `R-4.6/aarch64-apple-darwin23` directories (`0B`) and is now absent from
+the worktree. Its original directory tree is preserved at
+`/private/tmp/norad-r-library-quarantine.Z645n8/macos`. Do not delete, repair,
+reuse, or automatically restore that quarantine. No package was installed,
+restored, removed, or updated. The successful guarded checks use the existing
+primary project library through `RENV_PATHS_LIBRARY`; the earlier temporary
+Python-environment symlink remains removed.
 
 ## Current blockers
 
-- The guarded-R lane is not green in this checkout. It reports the inherited
-  ignored malformed
-  `renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` entry and, in the
-  sandboxed card-boundary run, could not resolve Bioconductor metadata. No
-  package mutation or dependency restoration was attempted.
 - The full production `samples.tsv` is not in this checkout. Its immutable
   cluster copy, explicit replicate values, persistence, and hash require
   inspection.
@@ -1013,17 +1011,26 @@ Python-environment symlink was removed.
 
 ## Immediate resume point
 
-Completed
-[`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-passed its complete focused documentation/public-command set (`197` tests),
-and `make -s documentation-check` passed with `204` Markdown documents, `125`
-actionable task cards, and `6` Mermaid sources before this close. The next
-bounded slice inventories and moves only
-`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` to a timestamped
-`/private/tmp` quarantine, then reruns `make -s r-check`. Preserve original
-bytes, install or restore nothing, and retain truthful DNS/runtime failures.
-Do not select `CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the
-frozen program remainder.
+No repository-health package or newly selected card is active. Standalone
+guarded-R validation first failed only under sandboxed DNS, then passed with
+metadata access and reported a consistent R `4.6.1`/Bioconductor `3.23`
+project environment. The first exact full gate on
+published lifecycle close `776dad3` passed static, shell, guarded-R, and report
+lanes but truthfully failed Python because GNU Make rendered its native nested
+target diagnostic as `make[2]` while one fixture required direct-run `make`.
+The retained failure log is
+`/var/folders/y0/bg0yx6g54bs0403dn0x_k28w0000gn/T/norad-validation-python-coverage-3vtydtkj.log`.
+
+Test-only checkpoint `10be692` binds the expected Make label to inherited
+`MAKELEVEL`; the direct and explicit level-`2` focused cases both pass. The
+exact network-enabled rerun
+`RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks` then passed: static
+`0.120s`, shell `53.922s`, guarded R `163.293s`, report runtime `128.434s`,
+Python coverage `198.164s`, and overall parallel summary status `0` in
+`198.291s`. This is local repository evidence, not cluster, production,
+scientific-review, or biological-readiness proof. Do not select
+`CONCURRENCY-03`, `TASK-EPIC-01`, a migration owner, or the frozen program
+remainder without a new JIT selection.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are
