@@ -34,7 +34,7 @@ package preload.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03O](REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: reliability review requires an architecture-corrected owner, asset, loader, consumer, artifact, coverage, and rollback boundary.
+- [REVIEW-REL-03O](../TODO/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md) — Fully: reliability review requires an architecture-corrected owner, asset, loader, consumer, artifact, coverage, and rollback boundary.
 
 ## Prerequisites
 
@@ -105,5 +105,6 @@ package preload.
 
 ## Completion record
 
-Not selected. Defined from clean, published MIG-03N close `68fd2a9`; no
-executable/test/configuration file changed or ran.
+Selected alone from clean, published, local/upstream/live-remote-equal
+definition checkpoint `86b888804c8f6a124c2a431665105814c4768e7a`. Review
+remains read-only; no executable/test/configuration file changed or ran.

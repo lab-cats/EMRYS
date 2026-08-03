@@ -61,20 +61,21 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   local/upstream/live-remote-equal.
 - Current package: unselected
   [`MIG-03O`](../tasks/TODO/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
-  with sequential unselected
-  [`REVIEW-ARCH-03O`](../tasks/TODO/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md)
-  → [`REVIEW-REL-03O`](../tasks/TODO/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md)
+  with selected
+  [`REVIEW-ARCH-03O`](../tasks/IN_PROGRESS/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md),
+  followed by unselected
+  [`REVIEW-REL-03O`](../tasks/TODO/REVIEW-REL-03O-review-assemble-scientific-review-evidence-package-migration.md)
   → [`REVIEW-UX-03O`](../tasks/TODO/REVIEW-UX-03O-review-assemble-scientific-review-evidence-package-migration.md).
-  No bounded migration/review card is selected. No later owner or final-audit
-  package is created or preloaded; the active program remainder stays frozen.
-- Package type at this checkpoint: documentation-only MIG-03O and review-card
-  definition from a read-only live-DAG and caller refresh. No executable, test,
-  configuration, dependency, schema, fixture, report template, scheduler,
-  cluster, production, scientific-review, or biological surface changed or
-  ran.
-- Remote publication and upstream equality: parent `68fd2a9` is verified
-  local/upstream/live-remote-equal. Publish and prove the definition tip
-  containing this handoff equal before selecting architecture alone. The
+  Architecture is the only bounded selected card. No later owner or final-
+  audit package is created or preloaded; the active program remainder stays
+  frozen.
+- Package type at this checkpoint: documentation-only architecture-review
+  selection after read-only definition. No executable, test, configuration,
+  dependency, schema, fixture, report template, scheduler, cluster, production,
+  scientific-review, or biological surface changed or ran.
+- Remote publication and upstream equality: definition `86b8888` is verified
+  local/upstream/live-remote-equal. Publish and prove the architecture-selection
+  tip containing this handoff equal before beginning the read-only review. The
   configured `origin` is
   `https://github.com/lab-cats/norad.git`. Remote `master` remains untouched at
   `3d761a596d6cdf6595087bcfa9645af3d4b4b758`; integration into the default
@@ -1090,12 +1091,13 @@ the exact documentation gate passes. The final exact aggregate rerun passes
 all lanes with summary status `0` in `197.374s`; it does not relabel the
 earlier run.
 
-Unselected MIG-03O and its architecture, reliability, and usability reviews
-are now defined from that evidence. Publish and prove this definition clean and
-equal across local `HEAD`, configured upstream, and live remote, then select
-only `REVIEW-ARCH-03O`. Do not run executable/test/configuration work in the
-definition or select reliability, usability, migration, `CONCURRENCY-03`,
-`TASK-EPIC-01`, the frozen program remainder, or a final-audit package.
+MIG-03O and its architecture, reliability, and usability reviews were defined
+at published/equal `86b8888`. Architecture alone is now selected. Publish and
+prove this selection clean and equal across local `HEAD`, configured upstream,
+and live remote, then perform only the read-only architecture review. Do not
+run executable/test/configuration work or select reliability, usability,
+migration, `CONCURRENCY-03`, `TASK-EPIC-01`, the frozen program remainder, or
+a final-audit package.
 
 [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
 [`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md) are

@@ -6119,3 +6119,22 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
 - **Minimal definition validation:** run `git diff --check` only. Publish and
   prove the definition checkpoint clean/upstream/live-remote-equal before
   selecting architecture alone.
+
+## 2026-08-03T18:07:23-0400 — REVIEW-ARCH-03O selected
+
+- **Selection:** definition `86b888804c8f6a124c2a431665105814c4768e7a`
+  was clean, tracked/untracked-empty, recovery/index-lock-free, published, and
+  equal across local `HEAD`, configured upstream, and live remote. Move only
+  `REVIEW-ARCH-03O` from `TODO` to `IN_PROGRESS` and repair its direct
+  lifecycle/status links. MIG-03O, reliability, usability, later packages, and
+  the final audit remain unselected.
+- **Read-only plan:** prove the exact native/test/example/schema asset boundary,
+  imports/callers, final evidence/test placement, private loader identities,
+  artifact/run-summary/report provenance, public CLI/Make routes, coverage,
+  atomic cutover, and reverse rollback. Record findings only in the selected
+  review, MIG-03O, current status, and audit owners. Run no executable, test,
+  configuration, dependency, scheduler, cluster, production, scientific-
+  review, or biological workload.
+- **Minimal selection validation:** run `git diff --check` only. Publish and
+  prove this selection checkpoint clean/upstream/live-remote-equal before the
+  review begins.

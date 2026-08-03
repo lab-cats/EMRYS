@@ -29,7 +29,7 @@ focused oracles without redesigning those concerns.
 
 ## Blocked by
 
-- [REVIEW-ARCH-03O](REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: reliability review needs the architecture-corrected cutover and import/asset boundary.
+- [REVIEW-ARCH-03O](../IN_PROGRESS/REVIEW-ARCH-03O-review-assemble-scientific-review-evidence-package-migration.md) — Required: reliability review needs the architecture-corrected cutover and import/asset boundary.
 
 ## Completion unblocks
 
