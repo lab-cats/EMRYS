@@ -310,8 +310,8 @@ eligible owner remains uncreated and unselected.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03G` documentation checkpoint `eafec29`. `REVIEW-ARCH-03H`,
-`REVIEW-REL-03H`, and `REVIEW-UX-03H` are complete; the migration remains in
-`TODO` pending its own selection and task-specific plan. No executable/test
-path changed, no computational test ran, and no later owner is preloaded.
+Selected from clean, published, local/upstream/live-remote-equal usability-
+completion checkpoint `76923e14c3da42b9adacea2bf506f139ecc0b3e8` after all
+three reviews closed. This selection changes lifecycle documentation only; no
+executable/test path changed, no computational test ran, and no later owner is
+preloaded. Task-specific planning is the next bounded slice.

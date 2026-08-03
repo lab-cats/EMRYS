@@ -29,7 +29,7 @@ or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03H](../TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03H](../IN_PROGRESS/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md) — Fully: migration selection began after all three reviews closed.
 
 ## Prerequisites
 

@@ -12,18 +12,17 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
   exact SHA from live Git.
-- Recorded package state: `REVIEW-UX-03H` selection checkpoint
-  `c0c60da38c3c2f3d254faa48aa675e975a9454c7` is clean, published, and
+- Recorded package state: `REVIEW-UX-03H` completion checkpoint
+  `76923e14c3da42b9adacea2bf506f139ecc0b3e8` is clean, published, and
   local/upstream/live-remote-equal; completed `MIG-03G` close is `eafec29`.
-- Current package: completed
-  [`REVIEW-UX-03H`](../tasks/COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-  usability pass in the commit containing this handoff. Migration remains
-  unselected.
-- Package type at this checkpoint: documentation-only usability-review
-  completion; no executable/test path changed and no computational test ran.
-- Remote publication and upstream equality: selection checkpoint `c0c60da` is
-  verified local/upstream/live-remote-equal. Publish and prove this usability-
-  completion checkpoint equal before migration selection.
+- Current package: selected
+  [`MIG-03H`](../tasks/IN_PROGRESS/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
+  in the commit containing this handoff. No later owner is selected.
+- Package type at this checkpoint: documentation-only migration selection; no
+  executable/test path changed and no computational test ran.
+- Remote publication and upstream equality: usability-completion checkpoint
+  `76923e1` is verified local/upstream/live-remote-equal. Publish and prove this
+  migration-selection checkpoint equal before task-specific planning.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -189,9 +188,9 @@ is complete at published checkpoint `350223f`.
 [`REVIEW-REL-03H`](../tasks/COMPLETED/REVIEW-REL-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 is complete at published checkpoint `1d1de19`, and
 [`REVIEW-UX-03H`](../tasks/COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
-is complete in the commit containing this handoff. `MIG-03H` remains
-unselected. Step `04` and every later owner/review card remain uncreated and
-unselected.
+is complete at published checkpoint `76923e1`. `MIG-03H` alone is selected in
+the commit containing this handoff. Step `04` and every later owner/review card
+remain uncreated and unselected.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -726,7 +725,7 @@ and its reviews
 are complete. `MIG-03G` is complete at published test-only baseline `0904faf`,
 published executable/test checkpoint `2f186dd`, and documentation/lifecycle
 close `eafec29`. The next migration card,
-[`MIG-03H`](../tasks/TODO/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
+[`MIG-03H`](../tasks/IN_PROGRESS/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md),
 and its reviews
 [`REVIEW-ARCH-03H`](../tasks/COMPLETED/REVIEW-ARCH-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 →
@@ -734,8 +733,9 @@ and its reviews
 →
 [`REVIEW-UX-03H`](../tasks/COMPLETED/REVIEW-UX-03H-review-collect-rseqc-paired-orientation-evidence-migration.md)
 are defined at published checkpoint `0cd872e`; architecture is complete at
-`350223f`, reliability is complete at `1d1de19`, and usability is complete in
-the commit containing this handoff. Publish and prove that checkpoint equal
-before selecting migration; Step `04` and all later owner cards remain
-unselected. The unsliced `PROGRAM-01` remainder and unrelated roadmap remain
-preserved and out of scope.
+`350223f`, reliability is complete at `1d1de19`, and usability is complete at
+published checkpoint `76923e1`. Migration alone is selected in the commit
+containing this handoff; publish and prove that checkpoint equal before task-
+specific planning. Step `04` and all later owner cards remain unselected. The
+unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
+of scope.

@@ -2869,3 +2869,16 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   validator on the assembled review close. Report the inherited nine
   `UNREFINED` card-location findings as a nonpassing expected-only ceiling, not
   a green gate, and leave them unchanged.
+
+## 2026-08-03T04:24:18-0400 — MIG-03H selected
+
+- **Selection:** move only `MIG-03H` to `IN_PROGRESS` and repair its reciprocal
+  lifecycle/status links after usability-completion checkpoint `76923e1` was
+  clean, tracked/untracked empty, published, and equal across local `HEAD`,
+  configured upstream, and the live remote branch. Step `04` and every later
+  owner/review card remain uncreated and unselected.
+- **Execution boundary:** task-specific planning is next. No source, test,
+  fixture, Make, coverage, artifact, dependency, runtime, scheduler,
+  production, scientific-review, or biological evidence changed or ran in
+  this selection slice. The reviewed five-move/nine-update ceiling and three-
+  checkpoint delivery sequence remain binding.
