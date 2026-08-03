@@ -3153,3 +3153,25 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   location findings. This remains a nonpassing expected-only ceiling, not a
   green gate; no architecture-review path, lifecycle, dependency, or anchor
   finding remains.
+
+## 2026-08-03T05:34:25-0400 — REVIEW-REL-03I selected
+
+- **Selection:** after published architecture-completion checkpoint `403fdf5`
+  was clean, tracked/untracked empty, and equal across local `HEAD`, configured
+  upstream, and the live remote branch, move only `REVIEW-REL-03I` to
+  `IN_PROGRESS` and repair both reciprocal lifecycle links. `REVIEW-UX-03I`
+  and `MIG-03I` remain unselected in `TODO`; Step `05` and all later owner cards
+  remain uncreated.
+- **Review boundary:** select one documentation-only independent-in-time
+  adversarial pass over direct-final three-output fault residue, tool and temp
+  selection, stable-input enforcement, validator parity, scheduler behavior,
+  evidence limits, and reverse-order rollback. The same campaign agent performs
+  the pass, so independent authorship is not claimed. Reliability findings,
+  executable/test edits, and computational, scheduler, cluster, production,
+  scientific-review, and biological evidence remain out of this selection
+  slice.
+- **Selection gate:** `git diff --check` passed and the complete documentation
+  validator reported only the nine inherited `UNREFINED` card-location
+  findings. No reliability-selection path, lifecycle, dependency, cycle,
+  orphan, or anchor finding remains. The inherited result is still nonpassing,
+  not green and not authority to modify those preserved cards.

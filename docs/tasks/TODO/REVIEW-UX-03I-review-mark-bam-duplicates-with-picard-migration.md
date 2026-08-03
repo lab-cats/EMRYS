@@ -26,7 +26,7 @@ undiscoverable final owner.
 
 ## Blocked by
 
-- [REVIEW-REL-03I](REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
+- [REVIEW-REL-03I](../IN_PROGRESS/REVIEW-REL-03I-review-mark-bam-duplicates-with-picard-migration.md) — Required: usability review needs the corrected architecture and reliability obligations.
 
 ## Completion unblocks
 
