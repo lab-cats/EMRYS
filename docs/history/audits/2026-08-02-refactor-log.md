@@ -3677,3 +3677,60 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   reports only the nine inherited `UNREFINED` card-location findings. No
   selection-caused finding remains; the expected-only result is nonpassing and
   is not called green.
+
+## 2026-08-03T07:06:36-0400 — REVIEW-REL-03J completed
+
+- **Verified parent:** reliability-selection checkpoint
+  `5785b87660d4274b07e39fba07590fb50f75f6d2` was clean, tracked/untracked
+  empty, published, and equal across local `HEAD`, configured upstream, and the
+  live remote branch before this read-only pass.
+- **High decision — restoration failure needs an exact recoverability oracle:**
+  in the old-path direct shell owner, freeze lone-final rejection with byte-
+  exact preservation, final-path revalidation failure with byte-exact
+  predecessor restoration, and BAI-publication exit `67` followed by BAM-
+  restoration exit `68`. The last state propagates `67`, leaves the prior BAM
+  missing and prior BAI restored, preserves an unrelated file, and exposes the
+  current deletion of backups, lock, scratch, and recovery evidence. This
+  ambiguous/data-loss behavior remains a defect, not an approved transaction.
+- **High decision — admission, input mutation, and signal behavior need a
+  separate producer slice:** freeze missing explicit samtools before output-
+  directory creation; controlled GATK-time mutation of admitted BAM, BAI,
+  FASTA, FAI, and DICT while the producer still exits `0`; and controlled TERM
+  exit `143` with predecessor/unrelated bytes preserved and owned lock/scratch
+  removed. Assert that no receipt/recovery marker exists without adding one.
+- **High decision — validator parity and bridge states need named ownership:**
+  the old-path direct validator adds arbitrary-CWD dry-run/execute/repeat byte
+  parity with unchanged inputs, quickcheck nonzero as exit-`0` failed evidence,
+  header-tool failure as exit-`2` nonpublication, and post-build input mutation
+  as exit `2` preserving a valid predecessor. Cutover adds owner-local exact-
+  reference bridge cases for cache reuse without `sys.path` mutation, missing
+  owner/spec cleanup, foreign-cache preservation, correct-path incomplete-API
+  preservation, and execution-failure owned-partial cleanup. Neutral report
+  and BAM-helper suites retain their existing matrices.
+- **High decision — Step 05 scheduler states need direct selection:** in the
+  central scheduler owner, add `JAVA_HOME/bin/java`, PATH fallback after
+  unusable `JAVA_HOME`, missing/unusable override, Java command failure,
+  unparseable/under-17 output, GATK/samtools version failure, missing/unusable
+  tool warning with unchanged delegation, dynamic absent-`SLURM_SUBMIT_DIR`
+  fallback, dry-run `logs/`-only mutation, and stale-pair false success.
+  Existing generic cases continue to own directives/mode, overrides, module
+  tolerance, invalid mode, child exit, missing output, and Bash `3.2`.
+- **Bounded implementation decision:** publish exactly four small sequential
+  old-path test-only checkpoints—producer transaction, producer admission/
+  signal, validator, then scheduler—before the atomic five-move/ten-update
+  cutover. Use only the existing direct shell, direct validator, and central
+  scheduler owners; add no fixture, fourth test owner, production edit,
+  coverage-baseline edit, documentation batch, dependency, or future owner.
+  Coverage may rise but must preserve target rates and global covered-count
+  floors.
+- **Evidence boundary:** this was a separate committed-time read-only pass by
+  the same campaign agent, so independent authorship is not claimed. No source,
+  test, harness, runtime, scheduler, production, scientific-review, or
+  biological evidence changed or ran. Planned evidence is local fake-tool/
+  fixture characterization; real GATK, Java, samtools, scheduler, cluster, and
+  production behavior remain outside migration proof.
+- **Card-boundary gate:** `git diff --check` passed and the exact RUNBOOK
+  documentation validator reported only the nine inherited `UNREFINED` card-
+  location findings. No reliability-review path, lifecycle, dependency, cycle,
+  orphan, anchor, or diagram finding remains. This expected-only ceiling is
+  nonpassing, not green, and not authority to alter inherited lifecycle state.

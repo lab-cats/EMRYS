@@ -33,7 +33,7 @@ second functional-owner migration.
 
 ## Completion unblocks
 
-- [REVIEW-REL-03J](../IN_PROGRESS/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: active reliability review uses the architecture-corrected owner, exact-loader, caller, artifact, test, and rollback boundary.
+- [REVIEW-REL-03J](REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md) — Fully: completed reliability review uses the architecture-corrected owner, exact-loader, caller, artifact, test, and rollback boundary.
 
 ## Prerequisites
 

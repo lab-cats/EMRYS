@@ -91,12 +91,34 @@ Step `05` as the smallest next JIT unit but does not select it.
   can delete backups and the lock after a failure inside rollback. Reliability
   review owns exact predecessor/recovery-residue and input-mutation oracles and
   may not repair or bless these behaviors.
+- Publish two small old-path producer test-only baselines in the existing shell
+  owner. The transaction slice adds: lone-final rejection with byte-exact
+  preservation; final-path revalidation failure with byte-exact predecessor
+  restoration; and injected BAI-publication exit `67` followed by injected
+  BAM-restoration exit `68`, which must propagate `67`, leave the prior BAM
+  missing and prior BAI restored, preserve an unrelated file, and expose the
+  current deletion of backups, lock, scratch, and recovery evidence. The
+  admission/signal slice adds: missing explicit samtools rejection before
+  output-directory creation; controlled GATK-time mutation of admitted BAM,
+  BAI, FASTA, FAI, and DICT that still exits `0`; and controlled `TERM` exit
+  `143` with predecessor/unrelated bytes preserved and owned lock/scratch
+  removed. Assert the absence of a receipt/recovery marker without adding one.
 - Preserve producer/validator asymmetry. Producer structural success does not
   prove the GATK split-N-cigar transformation or bind output to an input/tool
   attempt. Validator exit `0` may publish failed rows and does not prove the
   transform. Preserve five check IDs, BAM/header/quickcheck semantics, exact
   reference contig/length agreement, stable-input recheck, report bytes,
   streams, and exits.
+- Publish one old-path validator test-only baseline in the existing direct
+  owner: arbitrary-CWD dry-run/execute/repeat with byte-identical reports and
+  unchanged inputs; quickcheck nonzero as exit-`0` failed evidence; header-tool
+  failure as exit `2` with no new publication; and a tool-induced post-build
+  input mutation that exits `2` while preserving a valid predecessor report.
+  During cutover, add the five owner-local exact-reference-loader cases: cache
+  reuse without `sys.path` change, missing owner/spec cleanup, foreign-cache
+  preservation, correct-path incomplete-API preservation, and execution-
+  failure owned-partial cleanup. Neutral report/BAM fault suites remain the
+  owners of their existing loader/publication matrices.
 - The validator continues to privately exact-load neutral
   `src/norad/libraries/validation_report.py` and
   `src/norad/libraries/bam_validation.py` and must privately resolve unchanged
@@ -121,6 +143,16 @@ Step `05` as the smallest next JIT unit but does not select it.
   Bash `3.2` empty-array defect. Reliability review must disposition stale
   output, missing/unusable tool, module, version, and child states without
   hardening them.
+- Publish one old-path central-scheduler test-only baseline for Step `05`:
+  `JAVA_HOME/bin/java` selection; PATH fallback after unusable `JAVA_HOME`;
+  missing/unusable Java override; Java command failure, unparseable output, and
+  under-17 rejection; GATK and samtools version-command failure; missing/
+  unusable GATK or samtools warning plus unchanged delegation; dynamic absent-
+  `SLURM_SUBMIT_DIR` fallback; dry-run `logs/`-only mutation; and zero-exit child
+  with two stale nonempty outputs falsely accepted byte-exactly. Existing
+  generic cases retain exact directives/mode, override priority, tolerated
+  list/load failures, invalid mode, child exit, missing outputs, and the local
+  Bash-`3.2` empty-array disposition.
 - `STEP_PRODUCERS["05"]` changes only to final path
   `src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh`
   with projected hash
@@ -210,10 +242,10 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Deliverables
 
-- One or more small reviewed old-path reliability checkpoints only where
-  required, one exact final-owner/caller/test cutover checkpoint, and one
-  separate documentation/lifecycle close, sequentially published on the same
-  branch.
+- Exactly four small reviewed old-path test-only checkpoints—producer
+  transaction, producer admission/signal, validator, then scheduler—one exact
+  final-owner/caller/test cutover checkpoint, and one separate documentation/
+  lifecycle close, sequentially published on the same branch.
 - Final native assets under `src/norad/stages/split_N_cigar_reads_with_GATK/`,
   direct tests under `tests/stages/split_N_cigar_reads_with_GATK/`, and no live
   legacy path, duplicate, wrapper, or compatibility owner.
@@ -263,7 +295,7 @@ Step `05` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Architecture review is complete in the commit containing
-`REVIEW-ARCH-03J`; reliability and usability remain unselected in `TODO`. No
+Not selected. Architecture and reliability reviews are complete in their
+respective completed cards; usability remains unselected in `TODO`. No
 executable/test path changed, no computational test ran, and no Step `06` or
 later owner is preloaded.

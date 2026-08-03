@@ -11,24 +11,25 @@ commands live in [`RUNBOOK.md`](RUNBOOK.md).
 - Package base:
   `1966d03a9906f1fe8afbe21d8373d877569182ad`
 - Current documentation tip: the commit containing this handoff; resolve its
-  exact SHA from live Git. Its frozen parent is published architecture-review
-  completion checkpoint `e40fb3b90462b0f0bf77410b8e035995ce03a13d`.
+  exact SHA from live Git. Its frozen parent is published reliability-review
+  selection checkpoint `5785b87660d4274b07e39fba07590fb50f75f6d2`.
 - Recorded package state: `MIG-03I` executable/test checkpoint `803fcc4` and
   documentation/lifecycle close `c6814e0` are published and local/upstream/
   live-remote-equal.
-- Current package: active [`REVIEW-REL-03J`](../tasks/IN_PROGRESS/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md),
-  after completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md).
+- Current package: completed [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+  and [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md).
   [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md),
   and [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
   remain unselected. Only Step `05` is live-DAG-eligible; Step `06` and later
   cards remain uncreated.
 - Package type at this checkpoint: documentation-only reliability-review
-  selection. It records no reliability finding and changes no executable,
-  configuration, dependency, schema, fixture, report template, or test
-  behavior, and runs no computational, scheduler, cluster, or production work.
-- Remote publication and upstream equality: architecture parent `e40fb3b` is
-  verified local/upstream/live-remote-equal. Publish and prove this selection
-  checkpoint equal before performing only `REVIEW-REL-03J`.
+  completion. It records exact producer transaction/admission/signal,
+  validator, and scheduler dispositions as four future test-only slices while
+  changing no executable, configuration, dependency, schema, fixture, report
+  template, or test behavior and running no computational work.
+- Remote publication and upstream equality: reliability selection parent
+  `5785b87` is verified local/upstream/live-remote-equal. Publish and prove this
+  completion checkpoint equal before selecting only `REVIEW-UX-03J`.
 
 This package descends directly from verified planning tip
 `1966d03a9906f1fe8afbe21d8373d877569182ad`, which in turn descends from the
@@ -304,14 +305,15 @@ migrated. Published definition checkpoint `f88f56e` created only unselected
 [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
 and its sequential
 [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-→ [`REVIEW-REL-03J`](../tasks/IN_PROGRESS/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+→ [`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 → [`REVIEW-UX-03J`](../tasks/TODO/REVIEW-UX-03J-review-split-n-cigar-reads-with-gatk-migration.md).
 Architecture is complete with the exact private reference bridge, neutral-
 loader depths, five-move/ten-update ceiling, moved-test roots, projected native
 hashes, artifact/coverage ownership, and reverse rollback recorded. Reliability
-alone is now selected; usability and migration remain unselected. No
-executable/test path changes, finding, or computational checks belong to this
-selection checkpoint, and no Step `06` or later card is preloaded.
+is complete with exactly four bounded old-path test-only checkpoints and exact
+fault/parity/scheduler dispositions. Usability and migration remain unselected.
+No executable/test path changed or computational check ran in either review,
+and no Step `06` or later card is preloaded.
 [`REVIEW-ARCH-03G`](../tasks/COMPLETED/REVIEW-ARCH-03G-review-collect-canonical-bam-qc-evidence-migration.md)
 is complete and
 [`REVIEW-REL-03G`](../tasks/COMPLETED/REVIEW-REL-03G-review-collect-canonical-bam-qc-evidence-migration.md)
@@ -874,8 +876,8 @@ supports only unselected [`MIG-03J`](../tasks/TODO/MIG-03J-migrate-split-n-cigar
 and its sequential reviews, defined at published checkpoint `f88f56e`.
 [`REVIEW-ARCH-03J`](../tasks/COMPLETED/REVIEW-ARCH-03J-review-split-n-cigar-reads-with-gatk-migration.md)
 is complete at published checkpoint `e40fb3b`;
-[`REVIEW-REL-03J`](../tasks/IN_PROGRESS/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
-alone is selected in the commit containing this handoff. Usability and
-migration remain unselected. Step `06` and later cards remain uncreated. The
+[`REVIEW-REL-03J`](../tasks/COMPLETED/REVIEW-REL-03J-review-split-n-cigar-reads-with-gatk-migration.md)
+is complete in the commit containing this handoff. Usability and migration
+remain unselected. Step `06` and later cards remain uncreated. The
 unsliced `PROGRAM-01` remainder and unrelated roadmap remain preserved and out
 of scope.
