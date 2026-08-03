@@ -4611,6 +4611,32 @@ roadmap truth remain in `HANDOFF.md` and `PIPELINE_PLAN.md`.
   status `1`, nonpassing, and not green. Publish and prove this completion
   equal before selecting migration alone.
 
+## 2026-08-03T11:57:00-0400 — MIG-03M selected
+
+- **Selection parent:** published usability-review completion
+  `a8e7f0aa32e62cc9771277b9b6def7e08d8bd59e` was clean, tracked/untracked-
+  empty, free of recovery/index-lock state, and equal across local `HEAD`, its
+  configured upstream, and the live remote before selection.
+- **Selection:** move only `MIG-03M` from `TODO` to `IN_PROGRESS`, repair its
+  direct completed-usability lifecycle link, and make it the sole active
+  migration. All three dedicated reviews are complete. Step `09` and every
+  later owner/review card remain uncreated and unselected.
+- **Seven-slice boundary:** execute exactly five old-path test-only checkpoints
+  in order—runtime/input provenance, transaction/recovery, signal/concurrency,
+  validator, then scheduler—followed by one atomic eight-move/ten-update
+  executable/test cutover with the single complete computational card-boundary
+  gate, then one separate canonical documentation/lifecycle close. Each slice
+  is independently revertible and is published/proven equal before the next.
+- **Boundary:** this checkpoint selects migration work but changes or runs no
+  executable, test, harness, configuration, dependency, schema, fixture,
+  report-template, R runtime, scheduler, cluster, production, scientific-
+  review, provisional-policy, variant/editing-site, or biological state. It
+  creates no compatibility surface and preloads no future card.
+- **Minimal slice check:** `git diff --check` passes. Per the card-boundary-only
+  validation rule, no computational suite or complete documentation validator
+  runs at selection; the complete computational gate belongs to the assembled
+  executable cutover and the complete documentation gate to lifecycle close.
+
 ## 2026-08-03T11:13:17-0400 — MIG-03L reviewed, executed, validated, documented, and closed
 
 - **Sequential review and branch boundary:** architecture selection

@@ -435,7 +435,11 @@ defines Step `08` as the smallest next JIT unit but does not select it.
 
 ## Completion record
 
-Not selected. Defined from clean, published, local/upstream/live-remote-equal
-`MIG-03L` documentation checkpoint `4562ec3`. All three dedicated review cards
-remain unselected in `TODO`; no executable/test path changed, no computational
-test ran, and no Step `09` or later owner is preloaded.
+Selected as the sole active migration from clean, published,
+local/upstream/live-remote-equal usability-review completion
+`a8e7f0aa32e62cc9771277b9b6def7e08d8bd59e`. Architecture, reliability, and
+usability reviews are complete. Execute only the five ordered old-path test
+checkpoints, then the atomic cutover with the complete computational card-
+boundary gate, then the separate documentation/lifecycle close. No executable/
+test path changed or ran at selection, and no Step `09` or later owner is
+preloaded.

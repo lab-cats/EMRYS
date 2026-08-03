@@ -31,7 +31,7 @@ retry guidance, biological overclaim, or an undiscoverable final owner.
 
 ## Completion unblocks
 
-- [MIG-03M](../TODO/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md) — Fully: migration selection may begin after all three reviews close.
+- [MIG-03M](../IN_PROGRESS/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md) — Fully: selected after all three reviews closed.
 
 ## Prerequisites
 
