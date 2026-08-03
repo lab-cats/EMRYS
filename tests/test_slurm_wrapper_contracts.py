@@ -1591,6 +1591,224 @@ def test_step_04_mark_duplicates_unset_java_home_aborts_before_delegation(
     assert not prepared.delegate_log.exists()
 
 
+def test_step_05_split_n_cigar_reads_selects_java_home_executable(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    java_home = tmp_path / "java-home"
+    home_java = java_home / "bin" / "java"
+    write_executable(
+        home_java,
+        "#!/bin/bash\nprintf 'openjdk version \\\"17.0.99\\\"\\n' >&2\n",
+    )
+    prepared.environment.pop("JAVA_BIN_OVERRIDE")
+    prepared.environment["JAVA_HOME"] = str(java_home)
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == (
+        prepared.expected_args[:-1] + (str(home_java), "--execute")
+    )
+    assert f"Java: {home_java}" in result.stdout
+
+
+def test_step_05_split_n_cigar_reads_falls_back_to_path_after_unusable_java_home(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    prepared.environment.pop("JAVA_BIN_OVERRIDE")
+    prepared.environment["JAVA_HOME"] = str(tmp_path / "missing-java-home")
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert f"Java: {prepared.expected_args[-1]}" in result.stdout
+
+
+@pytest.mark.parametrize("override_state", ("missing", "nonexecutable"))
+def test_step_05_split_n_cigar_reads_rejects_unusable_java_override(
+    tmp_path: Path,
+    override_state: str,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    java_override = tmp_path / f"{override_state}-java"
+    if override_state == "nonexecutable":
+        touch(java_override, "not executable\n")
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"JAVA_BIN_OVERRIDE": str(java_override)},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "No usable Java executable was found" in result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+def test_step_05_split_n_cigar_reads_propagates_java_version_command_failure(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": "java", "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize(
+    ("version_output", "diagnostic"),
+    (
+        ('openjdk version "11.0.24"', "GATK SplitNCigarReads requires Java 17"),
+        ("unparseable java output", "Could not determine Java version"),
+    ),
+)
+def test_step_05_split_n_cigar_reads_rejects_unsupported_java_version_output(
+    tmp_path: Path,
+    version_output: str,
+    diagnostic: str,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_JAVA_VERSION_OUTPUT": version_output},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert diagnostic in result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize("tool", ("gatk", "samtools"))
+def test_step_05_split_n_cigar_reads_propagates_tool_version_command_failure(
+    tmp_path: Path,
+    tool: str,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": tool, "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize("tool", ("gatk", "samtools"))
+@pytest.mark.parametrize("tool_state", ("missing", "nonexecutable"))
+def test_step_05_split_n_cigar_reads_warns_and_delegates_unusable_tool(
+    tmp_path: Path,
+    tool: str,
+    tool_state: str,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    tool_path = tmp_path / f"{tool_state}-{tool}"
+    if tool_state == "nonexecutable":
+        touch(tool_path, "not executable\n")
+    environment_key = f"{tool.upper()}_BIN_OVERRIDE"
+    option = f"--{tool}-bin"
+    expected_args = list(prepared.expected_args)
+    expected_args[expected_args.index(option) + 1] = str(tool_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={environment_key: str(tool_path)},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    label = "GATK" if tool == "gatk" else "samtools"
+    assert (
+        f"WARNING: {label} path is not executable before script validation: "
+        f"{tool_path}"
+    ) in result.stdout
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
+        "--execute",
+    )
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n"
+        for output in prepared.outputs
+    )
+
+
+def test_step_05_split_n_cigar_reads_uses_dynamic_cwd_without_submit_directory(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_removals=("SLURM_SUBMIT_DIR",),
+        cwd=prepared.launch,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
+        prepared.launch
+    )
+    assert (prepared.launch / "logs").is_dir()
+
+
+def test_step_05_split_n_cigar_reads_dry_run_creates_logs_only(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+
+    result = run_prepared(prepared)
+
+    assert (prepared.submit / "logs").is_dir()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
+    if local_bash_major() < 4:
+        assert result.returncode != 0
+        assert "execute_args[@]: unbound variable" in result.stderr
+        assert not prepared.delegate_log.exists()
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert read_nul_args(prepared.delegate_log) == prepared.expected_args
+
+
+def test_step_05_split_n_cigar_reads_stale_pair_masks_missing_child_outputs(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
+    stale_bytes = (b"stale split-N-cigar BAM\n", b"stale split-N-cigar BAI\n")
+    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
+    assert "Validated Step 05 SplitNCigarReads outputs:" in result.stdout
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_module_failure_policy_is_observable(
     name: str,
