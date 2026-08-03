@@ -42,6 +42,45 @@ assert_fails() {
     fi
 }
 
+assert_file_equals() {
+    local file="$1"
+    local expected="$2"
+    local expected_file="$tmp_dir/expected-file.txt"
+
+    printf '%s' "$expected" >"$expected_file"
+    if ! cmp -s "$expected_file" "$file"; then
+        printf 'Expected exact content:\n' >&2
+        cat "$expected_file" >&2
+        printf 'Actual exact content:\n' >&2
+        cat "$file" >&2
+        fail "unexpected file content: $file"
+    fi
+}
+
+assert_only_entries() {
+    local directory="$1"
+    shift
+    local path
+    local expected
+    local matched
+    local actual_count=0
+
+    while IFS= read -r path; do
+        actual_count=$((actual_count + 1))
+        matched=false
+        for expected in "$@"; do
+            if [[ "${path##*/}" == "$expected" ]]; then
+                matched=true
+                break
+            fi
+        done
+        [[ "$matched" == true ]] || fail "unexpected entry in $directory: $path"
+    done < <(find "$directory" -mindepth 1 -maxdepth 1 -print)
+
+    [[ "$actual_count" -eq "$#" ]] ||
+        fail "expected $# entries in $directory; found $actual_count"
+}
+
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -69,6 +108,15 @@ case "\$mode" in
         ;;
     empty_success)
         exit 0
+        ;;
+    partial_fail)
+        printf 'partial RSeQC child bytes\\n'
+        printf 'partial RSeQC failure diagnostic\\n' >&2
+        exit 42
+        ;;
+    malformed_success)
+        printf 'This is PairEnd Data\\n'
+        printf 'nonempty malformed orientation evidence\\n'
         ;;
     fail)
         printf 'fake infer_experiment.py failure\\n' >&2
@@ -184,6 +232,27 @@ command_name_output_file="$command_name_output_dir/sample_command_name.infer_exp
 [[ -s "$command_name_output_file" ]] || fail "command-name execute did not create output"
 assert_contains "$command_name_output" "infer_experiment.py: infer_experiment.py"
 
+printf 'Running explicit-binary arbitrary-CWD check...\n'
+arbitrary_cwd="$tmp_dir/arbitrary-cwd"
+mkdir -p "$arbitrary_cwd"
+arbitrary_output="$tmp_dir/arbitrary.out"
+arbitrary_output_dir="$tmp_dir/results/arbitrary"
+(
+    cd "$arbitrary_cwd"
+    bash "$SCRIPT" \
+        --sample-id sample_arbitrary \
+        --input-bam "$bam" \
+        --bed12 "$bed12" \
+        --output-dir "$arbitrary_output_dir" \
+        --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+        --execute \
+        >"$arbitrary_output"
+)
+arbitrary_output_file="$arbitrary_output_dir/sample_arbitrary.infer_experiment.txt"
+[[ -s "$arbitrary_output_file" ]] || fail "arbitrary-CWD execute did not create output"
+assert_contains "$arbitrary_output" "infer_experiment.py: $fake_bin/infer_experiment.py"
+assert_only_entries "$arbitrary_cwd"
+
 printf 'Running missing BAM failure check...\n'
 missing_bam_output="$tmp_dir/missing_bam.out"
 assert_fails "$missing_bam_output" bash "$SCRIPT" \
@@ -246,5 +315,86 @@ assert_fails "$empty_output" env FAKE_INFER_MODE=empty_success bash "$SCRIPT" \
 empty_output_file="$empty_output_dir/sample_empty.infer_experiment.txt"
 [[ ! -s "$empty_output_file" ]] || fail "empty output test unexpectedly created non-empty output"
 assert_contains "$empty_output" "infer_experiment.py output is missing or empty"
+
+printf 'Running nonempty malformed producer-success check...\n'
+malformed_stdout="$tmp_dir/malformed.stdout"
+malformed_stderr="$tmp_dir/malformed.stderr"
+malformed_output_dir="$tmp_dir/results/malformed"
+FAKE_INFER_MODE=malformed_success bash "$SCRIPT" \
+    --sample-id sample_malformed \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$malformed_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --execute \
+    >"$malformed_stdout" 2>"$malformed_stderr"
+malformed_output_file="$malformed_output_dir/sample_malformed.infer_experiment.txt"
+assert_file_equals "$malformed_output_file" \
+    $'This is PairEnd Data\nnonempty malformed orientation evidence\n'
+assert_file_equals "$malformed_stderr" ''
+
+printf 'Running predecessor-bearing partial child failure check...\n'
+partial_stdout="$tmp_dir/partial.stdout"
+partial_stderr="$tmp_dir/partial.stderr"
+partial_output_dir="$tmp_dir/results/partial"
+mkdir -p "$partial_output_dir"
+partial_output_file="$partial_output_dir/sample_partial.infer_experiment.txt"
+partial_unrelated="$partial_output_dir/unrelated.txt"
+printf 'prior complete orientation report\n' >"$partial_output_file"
+printf 'unrelated predecessor\n' >"$partial_unrelated"
+
+set +e
+FAKE_INFER_MODE=partial_fail bash "$SCRIPT" \
+    --sample-id sample_partial \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$partial_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --execute \
+    >"$partial_stdout" 2>"$partial_stderr"
+partial_status=$?
+set -e
+
+[[ "$partial_status" -eq 42 ]] ||
+    fail "partial child exit 42 was not propagated: $partial_status"
+assert_file_equals "$partial_output_file" $'partial RSeQC child bytes\n'
+assert_file_equals "$partial_stderr" $'partial RSeQC failure diagnostic\n'
+assert_file_equals "$partial_unrelated" $'unrelated predecessor\n'
+assert_only_entries "$partial_output_dir" \
+    "sample_partial.infer_experiment.txt" \
+    "unrelated.txt"
+
+printf 'Running predecessor-bearing empty-success truncation check...\n'
+truncated_stdout="$tmp_dir/truncated.stdout"
+truncated_stderr="$tmp_dir/truncated.stderr"
+truncated_output_dir="$tmp_dir/results/truncated"
+mkdir -p "$truncated_output_dir"
+truncated_output_file="$truncated_output_dir/sample_truncated.infer_experiment.txt"
+truncated_unrelated="$truncated_output_dir/unrelated.txt"
+printf 'prior complete orientation report\n' >"$truncated_output_file"
+printf 'unrelated predecessor\n' >"$truncated_unrelated"
+
+set +e
+FAKE_INFER_MODE=empty_success bash "$SCRIPT" \
+    --sample-id sample_truncated \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$truncated_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --execute \
+    >"$truncated_stdout" 2>"$truncated_stderr"
+truncated_status=$?
+set -e
+
+[[ "$truncated_status" -eq 1 ]] ||
+    fail "empty child success did not become producer exit 1: $truncated_status"
+[[ -f "$truncated_output_file" ]] || fail "empty child success removed the final path"
+[[ ! -s "$truncated_output_file" ]] || fail "empty child success did not truncate predecessor"
+assert_file_equals "$truncated_stderr" \
+    "ERROR: infer_experiment.py output is missing or empty: $truncated_output_file"$'\n'
+assert_file_equals "$truncated_unrelated" $'unrelated predecessor\n'
+assert_only_entries "$truncated_output_dir" \
+    "sample_truncated.infer_experiment.txt" \
+    "unrelated.txt"
 
 printf 'All step_03 RSeQC strandedness smoke tests passed.\n'

@@ -1300,6 +1300,97 @@ def test_step_02b_bam_qc_stale_named_outputs_mask_missing_child_outputs(
     assert "Validated Step 02b QC outputs:" in result.stdout
 
 
+def test_step_03_prefers_repository_venv_and_sources_activation(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_03_infer_strandedness_and_orientation.slurm",
+        tmp_path,
+    )
+    prepared.environment.pop("INFER_EXPERIMENT_BIN")
+    venv_bin = prepared.submit / ".venv" / "bin"
+    write_executable(venv_bin / "infer_experiment.py", "#!/bin/bash\nexit 0\n")
+    activation_log = tmp_path / "activation.log"
+    (venv_bin / "activate").write_text(
+        'printf \'activated\\n\' > "${FAKE_ACTIVATION_LOG:?}"\n',
+        encoding="utf-8",
+    )
+    prepared.environment["FAKE_ACTIVATION_LOG"] = str(activation_log)
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert activation_log.read_text(encoding="utf-8") == "activated\n"
+    assert read_nul_args(prepared.delegate_log) == (
+        prepared.expected_args[:-1]
+        + (".venv/bin/infer_experiment.py", "--execute")
+    )
+    assert all(output.is_file() and output.stat().st_size > 0 for output in prepared.outputs)
+
+
+def test_step_03_without_repository_venv_delegates_path_command(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_03_infer_strandedness_and_orientation.slurm",
+        tmp_path,
+    )
+    prepared.environment.pop("INFER_EXPERIMENT_BIN")
+
+    result = run_prepared(prepared, execute="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == (
+        prepared.expected_args[:-1] + ("infer_experiment.py", "--execute")
+    )
+
+
+def test_step_03_dry_run_creates_logs_but_no_scientific_output(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_03_infer_strandedness_and_orientation.slurm",
+        tmp_path,
+    )
+
+    result = run_prepared(prepared)
+
+    assert (prepared.submit / "logs").is_dir()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
+    if local_bash_major() < 4:
+        assert result.returncode != 0
+        assert "execute_args[@]: unbound variable" in result.stderr
+        assert not prepared.delegate_log.exists()
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert read_nul_args(prepared.delegate_log) == prepared.expected_args
+
+
+def test_step_03_stale_named_report_masks_missing_child_output(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(
+        "step_03_infer_strandedness_and_orientation.slurm",
+        tmp_path,
+    )
+    stale_bytes = b"stale paired-orientation evidence\n"
+    prepared.outputs[0].parent.mkdir(parents=True, exist_ok=True)
+    prepared.outputs[0].write_bytes(stale_bytes)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
+    assert prepared.outputs[0].read_bytes() == stale_bytes
+    assert "Validated Step 03 strandedness output:" in result.stdout
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_module_failure_policy_is_observable(
     name: str,
