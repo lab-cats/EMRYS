@@ -76,6 +76,12 @@ completed slices. `CONCURRENCY-03`, `TASK-EPIC-01`, `AUDIT-99`, recovered TODO
 work, UNREFINED proposals, default-branch integration, and remote runtime or
 cluster work remain unselected and outside this package.
 
+Documentation-only
+[`PLAN-03A`](../tasks/TODO/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
+is the registered residual source-topology planning package. Registration does
+not select it, authorize physical movement, or reopen the completed fourteen-
+owner migration campaign.
+
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
 and frozen proposal presence does not authorize selection or implementation.
