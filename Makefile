@@ -51,7 +51,7 @@ validation-shell-contracts:
 	bash tests/reporting/test_render_run_report.sh
 
 shell-test: validation-shell-contracts
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_runtime_preflight.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py

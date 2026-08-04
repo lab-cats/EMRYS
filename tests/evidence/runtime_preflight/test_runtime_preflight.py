@@ -10,8 +10,15 @@ from pathlib import Path
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "runtime_preflight.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "evidence"
+    / "runtime_preflight"
+    / "runtime_preflight.py"
+)
 EXAMPLE_PROFILE = REPO_ROOT / "configs" / "runtime_preflight.example.tsv"
 SPEC = importlib.util.spec_from_file_location("runtime_preflight", SCRIPT)
 assert SPEC and SPEC.loader
@@ -108,6 +115,61 @@ def test_help_and_dry_run_are_side_effect_free(tmp_path: Path) -> None:
     assert "not runtime validation or cluster proof" in result.stdout
     assert "Dry-run complete" in result.stdout
     assert not output.parent.exists()
+
+
+def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
+    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    output_parent = tmp_path / "output"
+    output_parent.mkdir()
+    output = output_parent / "preflight.tsv"
+    invocation = tmp_path / "invocation"
+    invocation.mkdir()
+    command = [
+        sys.executable,
+        str(SCRIPT),
+        "--profile",
+        str(profile),
+        "--output",
+        str(output),
+        "--runtime-context",
+        "local",
+    ]
+
+    dry_run = subprocess.run(
+        command,
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert "Dry-run complete" in dry_run.stdout
+    assert not output.exists()
+
+    first = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert first.returncode == 0, first.stderr
+    report = output.read_bytes()
+    repeated = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert repeated.returncode == 0, repeated.stderr
+    assert first.stdout == repeated.stdout
+    assert first.stderr == repeated.stderr == ""
+    assert output.read_bytes() == report
+    assert not any(invocation.iterdir())
+    assert sorted(path.name for path in output_parent.iterdir()) == [
+        "preflight.tsv"
+    ]
 
 
 def test_tracked_example_profile_is_valid_and_locally_honest() -> None:

@@ -232,7 +232,7 @@
     "bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh",
     "bash tests/shell/test_local_r_environment.sh",
     "bash tests/reporting/test_render_run_report.sh",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_runtime_preflight.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_reference_contigs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_storage_inventory.py",

@@ -46,15 +46,6 @@
       "path": "scripts/restore_quarto.py"
     },
     {
-      "branch_rate": "0.728571",
-      "covered_branches": 102,
-      "covered_lines": 311,
-      "line_rate": "0.861496",
-      "num_branches": 140,
-      "num_statements": 361,
-      "path": "scripts/runtime_preflight.py"
-    },
-    {
       "branch_rate": "0.698113",
       "covered_branches": 74,
       "covered_lines": 240,
@@ -152,6 +143,15 @@
       "num_branches": 142,
       "num_statements": 379,
       "path": "src/norad/evidence/reference_provenance/reference_provenance.py"
+    },
+    {
+      "branch_rate": "0.728571",
+      "covered_branches": 102,
+      "covered_lines": 311,
+      "line_rate": "0.861496",
+      "num_branches": 140,
+      "num_statements": 361,
+      "path": "src/norad/evidence/runtime_preflight/runtime_preflight.py"
     },
     {
       "branch_rate": "1.000000",

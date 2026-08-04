@@ -40,7 +40,9 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/reporting/render_run_report_bundle.py"
     ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
-    "runtime_preflight.py": Path("scripts/runtime_preflight.py"),
+    "runtime_preflight.py": Path(
+        "src/norad/evidence/runtime_preflight/runtime_preflight.py"
+    ),
     "step_09c_scientific_validation.py": Path(
         "src/norad/evidence/assemble_scientific_review_evidence_package/"
         "step_09c_scientific_validation.py"
