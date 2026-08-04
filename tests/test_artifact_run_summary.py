@@ -102,15 +102,24 @@ def test_review_package_private_loaders_share_exact_ready_owner() -> None:
     )
 
 
-def test_step09c_private_loader_uses_exact_ready_owner() -> None:
-    name = SCIENCE._CONTRACTS_MODULE_NAME
+def test_run_summary_science_has_no_private_step09c_dependency() -> None:
+    source = Path(SCIENCE.__file__).read_text(encoding="utf-8")
 
-    assert sys.modules[name] is SCIENCE.step09c
-    assert Path(SCIENCE.step09c.__file__).resolve() == (
-        SCIENCE._CONTRACTS_MODULE_PATH
-    )
-    assert getattr(SCIENCE.step09c, SCIENCE._CONTRACTS_READY_ATTRIBUTE) is True
-    assert SCIENCE.step09c.review_package is SCIENCE.review_package
+    for attribute in (
+        "step09c",
+        "_load_step09c_contracts",
+        "_CONTRACTS_MODULE_NAME",
+        "_CONTRACTS_MODULE_PATH",
+        "_CONTRACTS_READY_ATTRIBUTE",
+    ):
+        assert not hasattr(SCIENCE, attribute)
+    for private_symbol in (
+        "step_09c_scientific_validation.py",
+        "_norad_step_09c_scientific_validation_contracts",
+        ".build_context",
+        ".ReviewContext",
+    ):
+        assert private_symbol not in source
 
 
 def test_review_package_science_loader_does_not_mutate_sys_path(
@@ -240,92 +249,7 @@ def test_review_package_science_loader_failure_is_sanitized_one_line(
     assert list(invocation_cwd.iterdir()) == []
 
 
-def test_step09c_science_loader_does_not_mutate_sys_path(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = SCIENCE._CONTRACTS_MODULE_NAME
-    before_sys_path = list(sys.path)
-    monkeypatch.delitem(sys.modules, name, raising=False)
-
-    loaded = SCIENCE._load_step09c_contracts()
-
-    assert Path(loaded.__file__).resolve() == SCIENCE._CONTRACTS_MODULE_PATH
-    assert getattr(loaded, SCIENCE._CONTRACTS_READY_ATTRIBUTE) is True
-    assert sys.modules[name] is loaded
-    assert sys.path == before_sys_path
-
-
-@pytest.mark.parametrize(
-    "cache_kind", ("foreign", "partial", "split-review-package")
-)
-def test_step09c_science_loader_rejects_foreign_or_partial_cache(
-    cache_kind: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = SCIENCE._CONTRACTS_MODULE_NAME
-    cached = ModuleType(name)
-    if cache_kind == "foreign":
-        cached.__file__ = str(tmp_path / "foreign_step09c.py")
-        setattr(cached, SCIENCE._CONTRACTS_READY_ATTRIBUTE, True)
-        expected = "resolves to"
-    elif cache_kind == "partial":
-        cached.__file__ = str(SCIENCE._CONTRACTS_MODULE_PATH)
-        expected = "partially initialized"
-    else:
-        cached.__file__ = str(SCIENCE._CONTRACTS_MODULE_PATH)
-        setattr(cached, SCIENCE._CONTRACTS_READY_ATTRIBUTE, True)
-        cached.review_package = ModuleType("_split_review_package_contract")
-        expected = "different review-package contract object"
-    monkeypatch.setitem(sys.modules, name, cached)
-
-    with pytest.raises(ImportError, match=expected):
-        SCIENCE._load_step09c_contracts()
-
-
-@pytest.mark.parametrize(
-    "specification",
-    (None, SimpleNamespace(loader=None)),
-    ids=("missing-spec", "missing-loader"),
-)
-def test_step09c_science_loader_fails_without_usable_specification(
-    specification: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = SCIENCE._CONTRACTS_MODULE_NAME
-    monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(
-        SCIENCE.importlib.util,
-        "spec_from_file_location",
-        lambda *_args, **_kwargs: specification,
-    )
-
-    with pytest.raises(ImportError, match="module specification"):
-        SCIENCE._load_step09c_contracts()
-
-    assert name not in sys.modules
-
-
-def test_step09c_science_loader_cleans_partial_after_execution_failure(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = SCIENCE._CONTRACTS_MODULE_NAME
-    failing_owner = tmp_path / "step_09c_scientific_validation.py"
-    failing_owner.write_text(
-        "raise RuntimeError('injected Step 09c execution failure')\n",
-        encoding="utf-8",
-    )
-    monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(SCIENCE, "_CONTRACTS_MODULE_PATH", failing_owner)
-
-    with pytest.raises(RuntimeError, match="injected Step 09c execution failure"):
-        SCIENCE._load_step09c_contracts()
-
-    assert name not in sys.modules
-
-
-def test_step09c_science_loader_failure_is_sanitized_one_line(
+def test_run_summary_science_ignores_foreign_step09c_cache(
     tmp_path: Path,
 ) -> None:
     invocation_cwd = tmp_path / "invocation"
@@ -337,15 +261,12 @@ def test_step09c_science_loader_failure_is_sanitized_one_line(
         import sys
         from types import ModuleType
 
-        class InvalidPath:
-            def __fspath__(self):
-                raise RuntimeError("injected\\n" + chr(0) + " Step 09c path")
-
         cached = ModuleType("_norad_step_09c_scientific_validation_contracts")
-        cached.__file__ = InvalidPath()
+        cached.__file__ = "foreign-step09c.py"
         sys.modules[cached.__name__] = cached
         sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
         runpy.run_path({str(science_script)!r}, run_name="__main__")
+        print("loaded-without-step09c")
         """
     )
     environment = dict(os.environ)
@@ -359,13 +280,9 @@ def test_step09c_science_loader_failure_is_sanitized_one_line(
         check=False,
     )
 
-    assert result.returncode == 2
-    assert result.stdout == ""
-    assert "\x00" not in result.stderr
-    assert result.stderr.splitlines() == [
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{SCIENCE._CONTRACTS_MODULE_PATH}: RuntimeError: injected Step 09c path"
-    ]
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "loaded-without-step09c\n"
+    assert result.stderr == ""
     assert list(invocation_cwd.iterdir()) == []
 
 
@@ -1135,6 +1052,250 @@ def test_multi_scope_computational_evidence_preserves_underlying_paths(
         assert path.is_file()
         assert reference["sha256"] == sha256_file(path)
         assert "computational_evidence" in path.parts
+
+
+def test_reporting_reader_does_not_reconstruct_step09c_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / "no-reconstruction",
+        science_status="evidence_incomplete",
+    )
+    summary_row = read_tsv(fixture.science_review_summary)[0]
+
+    def reject_reconstruction(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("reporting attempted Step 09c reconstruction")
+
+    monkeypatch.setattr(FIXTURE.STEP09C, "build_context", reject_reconstruction)
+
+    context, tables = SCIENCE._read_committed_review_package(
+        summary_path=fixture.science_review_summary,
+        summary_row=summary_row,
+    )
+
+    assert context.plan["review_id"] == fixture.step09c_fixture.review_id
+    assert tuple(tables) == tuple(
+        key for key, _suffix in SCIENCE.review_package.OUTPUT_SUFFIXES
+    )
+
+
+def test_science_normalization_does_not_require_private_step09c_inputs(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / "private-inputs-removed",
+        science_status="evidence_incomplete",
+    )
+    artifacts = [
+        read_json(Path(row["record_path"]))
+        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
+    ]
+    run_contract = read_json(fixture.adapter_fixture.run_contract)
+    arguments = {
+        "summary_path": fixture.science_review_summary,
+        "artifacts": artifacts,
+        "run_id": fixture.run_id,
+        "run_contract": run_contract,
+        "generated_at": "2020-01-01T00:00:00Z",
+        "git_commit": "a" * 40,
+    }
+    before = SCIENCE.normalize_scientific_review(**arguments)
+
+    private_inputs = (
+        fixture.step09c_fixture.review_plan,
+        fixture.step09c_fixture.evidence_manifest,
+        fixture.step09c_fixture.step08_sites,
+    )
+    for path in private_inputs:
+        path.unlink()
+
+    after = SCIENCE.normalize_scientific_review(**arguments)
+
+    assert all(not path.exists() for path in private_inputs)
+    assert canonical_json_bytes(after) == canonical_json_bytes(before)
+
+
+def test_science_normalization_requires_the_fixed_indexed_package_roster(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / "missing-package-record",
+        science_status="evidence_incomplete",
+    )
+    artifacts = [
+        read_json(Path(row["record_path"]))
+        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
+    ]
+    artifacts = [
+        artifact
+        for artifact in artifacts
+        if artifact["adapter"] != "step09c_decisions_v1"
+    ]
+
+    with pytest.raises(
+        SCIENCE.RunSummaryScienceError,
+        match="exactly the 13 fixed",
+    ):
+        SCIENCE.normalize_scientific_review(
+            summary_path=fixture.science_review_summary,
+            artifacts=artifacts,
+            run_id=fixture.run_id,
+            run_contract=read_json(fixture.adapter_fixture.run_contract),
+            generated_at="2020-01-01T00:00:00Z",
+            git_commit="a" * 40,
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_error"),
+    (
+        ("scope", "exactly the 13 fixed"),
+        ("science-state", "mismatched propagated science state"),
+    ),
+)
+def test_science_normalization_rejects_wrong_package_identity_or_state(
+    tmp_path: Path,
+    mutation: str,
+    expected_error: str,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / mutation,
+        science_status="evidence_incomplete",
+    )
+    artifacts = [
+        read_json(Path(row["record_path"]))
+        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
+    ]
+    target = next(
+        artifact
+        for artifact in artifacts
+        if artifact["adapter"] == "step09c_decisions_v1"
+    )
+    if mutation == "scope":
+        target["scope"]["scope_id"] = "foreign_review"
+    else:
+        target["scientific_state"]["review_id"] = "foreign_review"
+
+    with pytest.raises(
+        SCIENCE.RunSummaryScienceError,
+        match=expected_error,
+    ):
+        SCIENCE.normalize_scientific_review(
+            summary_path=fixture.science_review_summary,
+            artifacts=artifacts,
+            run_id=fixture.run_id,
+            run_contract=read_json(fixture.adapter_fixture.run_contract),
+            generated_at="2020-01-01T00:00:00Z",
+            git_commit="a" * 40,
+        )
+
+
+def test_committed_public_review_package_mutation_fails_closed(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / "public-package-mutation",
+        science_status="evidence_incomplete",
+    )
+    decisions_path = fixture.science_review_summary.with_name(
+        f"{fixture.step09c_fixture.review_id}.step09c_decisions.tsv"
+    )
+    decisions = read_tsv(decisions_path)
+    decisions[0]["rationale"] += " mutated"
+    write_tsv(decisions_path, read_tsv_header(decisions_path), decisions)
+
+    result = run_cli(fixture)
+
+    assert result.returncode != 0
+    assert (
+        "Published Step 09c decisions rows differ from reconstruction."
+        in result.stderr
+    )
+    assert_no_summary_outputs(fixture)
+
+
+def test_committed_public_review_package_change_during_normalization_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / "public-package-in-flight-mutation",
+        science_status="evidence_incomplete",
+    )
+    artifacts = [
+        read_json(Path(row["record_path"]))
+        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
+    ]
+    decisions_path = fixture.science_review_summary.with_name(
+        f"{fixture.step09c_fixture.review_id}.step09c_decisions.tsv"
+    )
+    real_normalize = SCIENCE._normalize_limitations
+    mutated = False
+
+    def normalize_then_mutate(
+        context: Any,
+    ) -> list[dict[str, Any]]:
+        nonlocal mutated
+        normalized = real_normalize(context)
+        decisions_path.write_bytes(decisions_path.read_bytes() + b"\n")
+        mutated = True
+        return normalized
+
+    monkeypatch.setattr(SCIENCE, "_normalize_limitations", normalize_then_mutate)
+
+    with pytest.raises(
+        SCIENCE.RunSummaryScienceError,
+        match="changed during normalization",
+    ):
+        SCIENCE.normalize_scientific_review(
+            summary_path=fixture.science_review_summary,
+            artifacts=artifacts,
+            run_id=fixture.run_id,
+            run_contract=read_json(fixture.adapter_fixture.run_contract),
+            generated_at="2020-01-01T00:00:00Z",
+            git_commit="a" * 40,
+        )
+
+    assert mutated
+
+
+@pytest.mark.parametrize("target_kind", ("wrapper", "nested-payload"))
+def test_referenced_computational_evidence_mutation_fails_closed(
+    tmp_path: Path,
+    target_kind: str,
+) -> None:
+    fixture = FIXTURE.build_explicit_science_fixture(
+        tmp_path / target_kind,
+        science_status="evidence_incomplete",
+        computational_scope_bundle=True,
+    )
+    evidence_index_path = fixture.science_review_summary.with_name(
+        f"{fixture.step09c_fixture.review_id}.step09c_evidence_index.tsv"
+    )
+    computational = next(
+        row
+        for row in read_tsv(evidence_index_path)
+        if row["evidence_category"] == "computational_validation"
+        and row["evidence_status"] == "complete"
+    )
+    wrapper_path = Path(computational["source_path"])
+    if target_kind == "wrapper":
+        target = wrapper_path
+    else:
+        payload = next(
+            row
+            for row in read_tsv(wrapper_path)
+            if row["evidence_path"] != "NA"
+        )
+        target = Path(payload["evidence_path"])
+    target.write_bytes(target.read_bytes() + b"mutated\n")
+
+    result = run_cli(fixture)
+
+    assert result.returncode != 0
+    assert "hash differs" in result.stderr
+    assert_no_summary_outputs(fixture)
 
 
 def test_explicit_missing_science_categories_remain_missing_without_invented_dates(
@@ -2010,7 +2171,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._rebuild_step09c(
+    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )
@@ -2120,7 +2281,7 @@ def test_pending_science_decision_with_evidence_fails_closed(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._rebuild_step09c(
+    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )
@@ -2143,7 +2304,7 @@ def test_pending_science_decision_preserves_rationale_owner_and_policy(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._rebuild_step09c(
+    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )

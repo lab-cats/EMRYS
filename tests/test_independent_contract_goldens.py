@@ -38,17 +38,28 @@ STEP08_CONTRACT = ARTIFACT_INDEX.step08
 STEP09_CONTRACT = ARTIFACT_INDEX.step09
 SHARED_SCIENCE = RUN_SUMMARY.science
 REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
-SCIENTIFIC_REVIEW = SHARED_SCIENCE.step09c
 
 
 def load_exact_test_module(name: str, path: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if sys.modules.get(name) is module:
+            del sys.modules[name]
+        raise
     return module
 
 
+SCIENTIFIC_REVIEW = load_exact_test_module(
+    "_independent_step09c_producer",
+    REPO_ROOT
+    / "src/norad/evidence/assemble_scientific_review_evidence_package"
+    / "step_09c_scientific_validation.py",
+)
 STEP08_VALIDATOR = load_exact_test_module(
     "_independent_step08_validator",
     REPO_ROOT
@@ -671,10 +682,10 @@ def test_mutated_shared_decision_dimension_constant_is_rejected(
 def test_mutated_computational_scope_policy_constant_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    mutated = dict(SCIENTIFIC_REVIEW.COMPUTATIONAL_SCOPE_PLAN_FIELDS)
+    mutated = dict(SHARED_SCIENCE.COMPUTATIONAL_SCOPE_PLAN_FIELDS)
     mutated["local_fixture_tests"] = "cluster_proof_status"
     monkeypatch.setattr(
-        SCIENTIFIC_REVIEW,
+        SHARED_SCIENCE,
         "COMPUTATIONAL_SCOPE_PLAN_FIELDS",
         mutated,
     )

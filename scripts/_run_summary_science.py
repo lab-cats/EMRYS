@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-import argparse
 import csv
 import importlib.util
 import io
 import os
 import stat
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -145,78 +145,76 @@ except Exception as exc:
     raise SystemExit(2) from None
 
 
-_CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
-_CONTRACTS_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py"
-).resolve(strict=False)
-_CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"
+NA_VALUE = "NA"
+COMPUTATIONAL_SCOPE_ROLES = {
+    "local_fixture_tests": "local_test",
+    "local_test": "local_test",
+    "runtime_validation": "runtime_output",
+    "runtime_log": "runtime_log",
+    "runtime_output": "runtime_output",
+    "cluster_dry_run": "cluster_dry_run",
+    "cluster_proof": "cluster_output",
+    "cluster_scheduler": "cluster_scheduler",
+    "cluster_log": "cluster_log",
+    "cluster_output": "cluster_output",
+}
+COMPUTATIONAL_SCOPE_PLAN_FIELDS = {
+    "local_fixture_tests": "local_test_status",
+    "local_test": "local_test_status",
+    "runtime_validation": "runtime_validation_status",
+    "runtime_log": "runtime_validation_status",
+    "runtime_output": "runtime_validation_status",
+    "cluster_dry_run": "cluster_dry_run_status",
+    "cluster_proof": "cluster_proof_status",
+    "cluster_scheduler": "cluster_proof_status",
+    "cluster_log": "cluster_proof_status",
+    "cluster_output": "cluster_proof_status",
+}
+COMPUTATIONAL_VALIDATION_HEADER = (
+    "review_id",
+    "evidence_id",
+    "analysis_id",
+    "validation_scope",
+    "validation_status",
+    "evidence_path",
+    "evidence_sha256",
+    "scheduler_state",
+    "exit_code",
+    "reviewer",
+    "evidence_date",
+    "notes",
+)
 
 
-def _validated_step09c_contracts(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached Step 09c contract owner has no valid file path"
-        ) from exc
-    if module_path != _CONTRACTS_MODULE_PATH:
-        raise ImportError(
-            f"cached Step 09c contract owner resolves to {module_path}, "
-            f"expected {_CONTRACTS_MODULE_PATH}"
-        )
-    if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
-        raise ImportError(
-            "cached Step 09c contract owner is partially initialized"
-        )
-    if getattr(module, "review_package", None) is not review_package:
-        raise ImportError(
-            "cached Step 09c contract owner resolved a different "
-            "review-package contract object"
-        )
-    return module
+@dataclass(frozen=True)
+class ReviewInput:
+    """One source descriptor committed into the public review summary."""
+
+    path: Path
+    sha256: str
+    row_count: str
 
 
-def _load_step09c_contracts() -> object:
-    cached = sys.modules.get(_CONTRACTS_MODULE_NAME)
-    if cached is not None:
-        return _validated_step09c_contracts(cached)
-    spec = importlib.util.spec_from_file_location(
-        _CONTRACTS_MODULE_NAME, _CONTRACTS_MODULE_PATH
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError(
-            "unable to create an exact-file Step 09c module specification"
-        )
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_CONTRACTS_MODULE_NAME, module)
-    if existing is not module:
-        return _validated_step09c_contracts(existing)
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, _CONTRACTS_READY_ATTRIBUTE, True)
-        _validated_step09c_contracts(module)
-    except BaseException:
-        if sys.modules.get(_CONTRACTS_MODULE_NAME) is module:
-            del sys.modules[_CONTRACTS_MODULE_NAME]
-        raise
-    return module
+@dataclass(frozen=True)
+class TableData:
+    """One strict UTF-8 TSV read by the reporting-local package reader."""
+
+    header: tuple[str, ...]
+    rows: list[dict[str, str]]
+    path: Path
 
 
-try:
-    step09c = _load_step09c_contracts()
-except Exception as exc:
-    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
-    print(
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{_CONTRACTS_MODULE_PATH}: {type(exc).__name__}: {reason}",
-        file=sys.stderr,
-    )
-    raise SystemExit(2) from None
+@dataclass
+class ReviewPackageContext:
+    """The public package projection required by run-summary reporting."""
+
+    plan: dict[str, str]
+    evidence_rows: list[dict[str, str]]
+    category_rows: dict[str, list[dict[str, str]]]
+    evidence_index_rows: list[dict[str, str]]
+    artifacts: dict[str, ReviewInput]
+    input_hashes: dict[Path, str]
+    output_paths: dict[str, Path]
 
 
 SCIENCE_SCHEMA_VERSION = "1.1.0"
@@ -275,6 +273,61 @@ def _require_contract_file(label: str, value: str) -> Path:
     return _require_regular_file(label, contracts.resolve_contract_path(value))
 
 
+def _sha256_file(path: Path) -> str:
+    return contracts.sha256_file(path)
+
+
+def _read_tsv(
+    label: str,
+    value: str | Path,
+    expected_header: Sequence[str],
+) -> TableData:
+    path = _require_regular_file(label, value)
+    try:
+        with path.open("r", encoding="utf-8", newline="") as stream:
+            reader = csv.reader(stream, delimiter="\t", strict=True)
+            raw_rows = list(reader)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        _fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
+    if not raw_rows:
+        _fail(f"{label} is empty: {path}")
+    header = tuple(raw_rows[0])
+    if any(not column for column in header):
+        _fail(f"{label} contains an empty header field: {path}")
+    if len(header) != len(set(header)):
+        _fail(f"{label} contains duplicate header fields: {path}")
+    if header != tuple(expected_header):
+        _fail(
+            f"{label} header is invalid: {path}\n"
+            f"Expected: {' | '.join(expected_header)}\n"
+            f"Observed: {' | '.join(header)}"
+        )
+    rows: list[dict[str, str]] = []
+    for index, values in enumerate(raw_rows[1:], start=2):
+        if len(values) != len(header):
+            _fail(
+                f"{label} row {index} has {len(values)} fields; "
+                f"expected {len(header)}: {path}"
+            )
+        rows.append(dict(zip(header, values, strict=True)))
+    return TableData(header=header, rows=rows, path=path)
+
+
+def _resolve_recorded_path(value: str) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path.resolve()
+
+
+def _confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
+    for path, expected_hash in input_hashes.items():
+        if not path.is_file():
+            _fail(f"A reporting input disappeared during normalization: {path}")
+        if _sha256_file(path) != expected_hash:
+            _fail(f"A reporting input changed during normalization: {path}")
+
+
 def _artifact_scope(artifact: Mapping[str, Any]) -> tuple[str, str, str]:
     scope = artifact.get("scope")
     if not isinstance(scope, Mapping):
@@ -301,7 +354,7 @@ def _artifact_source(
 
 
 def _parse_row_count(label: str, value: str) -> int | None:
-    if value == step09c.NA_VALUE:
+    if value == NA_VALUE:
         return None
     if not value.isdigit():
         _fail(f"{label} is not a non-negative integer or NA: {value!r}")
@@ -309,13 +362,13 @@ def _parse_row_count(label: str, value: str) -> int | None:
 
 
 def _split_ids(value: str) -> list[str]:
-    if value == step09c.NA_VALUE:
+    if value == NA_VALUE:
         return []
     return value.split(",")
 
 
 def _nullable(value: str) -> str | None:
-    return None if value == step09c.NA_VALUE else value
+    return None if value == NA_VALUE else value
 
 
 def _tsv_bytes(
@@ -483,7 +536,7 @@ def _validate_published_artifacts(
                 "match its indexed source path."
             )
         header, rows = output_tables[key]
-        observed_table = step09c.read_tsv(
+        observed_table = _read_tsv(
             f"Published Step 09c {key}", actual_path, header
         )
         if observed_table.rows != rows:
@@ -499,7 +552,9 @@ def _validate_published_artifacts(
             )
         observed_hash = contracts.sha256_file(actual_path)
         if source.get("sha256") != observed_hash:
-            _fail(f"Indexed Step 09c artifact {adapter} hash differs.")
+            _fail(
+                f"Published Step 09c {key} rows differ from reconstruction."
+            )
         if source.get("size_bytes") != len(observed_bytes):
             _fail(f"Indexed Step 09c artifact {adapter} byte size differs.")
         if source.get("row_count") != len(rows):
@@ -510,44 +565,144 @@ def _validate_published_artifacts(
     return by_key
 
 
-def _rebuild_step09c(
+def _read_committed_review_package(
     *,
     summary_path: Path,
     summary_row: Mapping[str, str],
 ) -> tuple[
-    step09c.ReviewContext,
+    ReviewPackageContext,
     dict[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ]:
-    output_root = summary_path.parent.parent
-    arguments = argparse.Namespace(
-        review_id=summary_row["review_id"],
-        sample_manifest=Path(summary_row["sample_manifest_path"]),
-        partition_manifest=Path(summary_row["partition_manifest_path"]),
-        step08_sites=Path(summary_row["step08_sites_path"]),
-        step08_inputs=Path(summary_row["step08_inputs_path"]),
-        step08_summary=Path(summary_row["step08_summary_path"]),
-        step09_analysis_dir=Path(summary_row["step09_analysis_dir"]),
-        review_plan=Path(summary_row["review_plan_path"]),
-        evidence_manifest=Path(summary_row["evidence_manifest_path"]),
-        output_root=output_root,
-        execute=False,
-    )
-    try:
-        context, output_tables = step09c.build_context(arguments)
-    except step09c.ContractError as exc:
-        _fail(f"Step 09c package reconstruction failed: {exc}")
-    if context.output_paths["review_summary"] != summary_path:
+    review_id = summary_row["review_id"]
+    output_paths = {
+        key: summary_path.parent / f"{review_id}.{suffix}"
+        for key, suffix in review_package.OUTPUT_SUFFIXES
+    }
+    if output_paths["review_summary"] != summary_path:
         _fail(
-            "The summary-declared Step 09c identity reconstructs a different "
+            "The summary-declared Step 09c identity names a different "
             "review-summary path."
         )
+
+    output_tables: dict[
+        str, tuple[tuple[str, ...], list[dict[str, str]]]
+    ] = {}
+    input_hashes: dict[Path, str] = {}
+
+    def remember_input(path: Path, observed_hash: str) -> None:
+        previous = input_hashes.get(path)
+        if previous is not None and previous != observed_hash:
+            _fail(f"Reporting input has conflicting committed hashes: {path}")
+        input_hashes[path] = observed_hash
+
+    for key, _suffix in review_package.OUTPUT_SUFFIXES:
+        if key == "review_plan":
+            header = review_package.REVIEW_PLAN_HEADER
+        elif key == "evidence_index":
+            header = review_package.EVIDENCE_INDEX_HEADER
+        elif key == "review_summary":
+            header = review_package.REVIEW_SUMMARY_HEADER
+        else:
+            header = review_package.CATEGORY_HEADERS[key]
+        table = _read_tsv(
+            f"Committed Step 09c {key}",
+            output_paths[key],
+            header,
+        )
+        output_tables[key] = (header, table.rows)
+        remember_input(table.path, _sha256_file(table.path))
+
+    plan_rows = output_tables["review_plan"][1]
+    if len(plan_rows) != 1:
+        _fail("The committed Step 09c review plan must contain one row.")
+    committed_summary_rows = output_tables["review_summary"][1]
+    if committed_summary_rows != [dict(summary_row)]:
+        _fail("The committed Step 09c review summary changed while loading.")
+
+    input_artifacts: dict[str, ReviewInput] = {}
+    for key in review_package.INPUT_ARTIFACT_KEYS:
+        input_artifacts[key] = ReviewInput(
+            path=contracts.resolve_contract_path(summary_row[f"{key}_path"]),
+            sha256=summary_row[f"{key}_sha256"],
+            row_count=summary_row[f"{key}_row_count"],
+        )
+
+    evidence_index_rows = output_tables["evidence_index"][1]
+    category_rows = {
+        category: output_tables[category][1]
+        for category in review_package.CATEGORY_ORDER
+    }
+    category_rows["computational_validation"] = []
+    for row in evidence_index_rows:
+        if row["evidence_status"] not in ("complete", "incomplete"):
+            continue
+        evidence_id = row["evidence_id"]
+        source_path = _require_regular_file(
+            f"Scientific evidence {evidence_id}", row["source_path"]
+        )
+        observed_hash = _sha256_file(source_path)
+        if observed_hash != row["observed_sha256"]:
+            _fail(f"Scientific evidence {evidence_id} hash differs.")
+        expected_header = (
+            COMPUTATIONAL_VALIDATION_HEADER
+            if row["evidence_category"] == "computational_validation"
+            else review_package.CATEGORY_HEADERS[row["evidence_category"]]
+        )
+        source_table = _read_tsv(
+            f"Scientific evidence {evidence_id}",
+            source_path,
+            expected_header,
+        )
+        expected_row_count = _parse_row_count(
+            f"Scientific evidence {evidence_id} row count",
+            row["observed_row_count"],
+        )
+        if expected_row_count != len(source_table.rows):
+            _fail(f"Scientific evidence {evidence_id} row count differs.")
+        remember_input(source_path, observed_hash)
+        if row["evidence_category"] != "computational_validation":
+            continue
+        for payload in source_table.rows:
+            if (
+                payload["review_id"] != review_id
+                or payload["evidence_id"] != evidence_id
+                or payload["analysis_id"] != row["analysis_id"]
+            ):
+                _fail(
+                    f"Computational evidence {evidence_id} identity differs "
+                    "from its committed evidence-index record."
+                )
+            if payload["evidence_path"] != NA_VALUE:
+                payload_path = _require_regular_file(
+                    f"Computational payload {evidence_id} "
+                    f"{payload['validation_scope']}",
+                    _resolve_recorded_path(payload["evidence_path"]),
+                )
+                payload_hash = _sha256_file(payload_path)
+                if payload_hash != payload["evidence_sha256"]:
+                    _fail(
+                        f"Computational payload {evidence_id} "
+                        f"{payload['validation_scope']} hash differs."
+                    )
+                remember_input(payload_path, payload_hash)
+        category_rows["computational_validation"].extend(source_table.rows)
+
+    context = ReviewPackageContext(
+        plan=dict(plan_rows[0]),
+        evidence_rows=[dict(row) for row in evidence_index_rows],
+        category_rows=category_rows,
+        evidence_index_rows=evidence_index_rows,
+        artifacts=input_artifacts,
+        input_hashes=input_hashes,
+        output_paths=output_paths,
+    )
     return context, output_tables
 
 
 def _match_upstream_artifact(
     *,
     role: str,
-    step09c_artifact: step09c.Artifact,
+    step09c_artifact: ReviewInput,
     artifacts: Sequence[Mapping[str, Any]],
 ) -> Mapping[str, Any]:
     step_id, scope_type, adapter, suffix = (
@@ -574,12 +729,7 @@ def _match_upstream_artifact(
             continue
         if not Path(source_value).name.endswith(suffix):
             continue
-        try:
-            indexed_path = _require_contract_file(
-                f"Indexed scientific input {role}", source_value
-            )
-        except RunSummaryScienceError:
-            continue
+        indexed_path = contracts.resolve_contract_path(source_value)
         if indexed_path != step09c_artifact.path:
             continue
         if (
@@ -598,7 +748,7 @@ def _match_upstream_artifact(
 
 def _normalize_input_artifacts(
     *,
-    context: step09c.ReviewContext,
+    context: ReviewPackageContext,
     artifacts: Sequence[Mapping[str, Any]],
     review_id: str,
     run_contract: Mapping[str, Any],
@@ -652,7 +802,7 @@ def _normalize_input_artifacts(
 
 
 def _normalize_evidence(
-    context: step09c.ReviewContext,
+    context: ReviewPackageContext,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     records: list[dict[str, Any]] = []
     represented_ids: set[str] = set()
@@ -746,7 +896,7 @@ def _validate_computational_payload_status(
     validation_status: str,
     plan: Mapping[str, str],
 ) -> None:
-    plan_field = step09c.COMPUTATIONAL_SCOPE_PLAN_FIELDS[validation_scope]
+    plan_field = COMPUTATIONAL_SCOPE_PLAN_FIELDS[validation_scope]
     expected = plan[plan_field]
     if validation_status != expected:
         _fail(
@@ -759,7 +909,7 @@ def _validate_computational_payload_status(
 
 def _normalize_computational_evidence(
     *,
-    context: step09c.ReviewContext,
+    context: ReviewPackageContext,
     evidence_records: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, str]]:
     record_index = {
@@ -794,29 +944,26 @@ def _normalize_computational_evidence(
             )
         for payload in payload_rows:
             validation_scope = payload["validation_scope"]
-            role = step09c.COMPUTATIONAL_SCOPE_ROLES[validation_scope]
+            role = COMPUTATIONAL_SCOPE_ROLES[validation_scope]
             _validate_computational_payload_status(
                 evidence_id=evidence_id,
                 validation_scope=validation_scope,
                 validation_status=payload["validation_status"],
                 plan=context.plan,
             )
-            if payload["evidence_path"] == step09c.NA_VALUE:
+            if payload["evidence_path"] == NA_VALUE:
                 evidence_path = wrapper_source["path"]
                 evidence_sha256 = wrapper_source["sha256"]
             else:
                 evidence_path_object = _require_regular_file(
                     f"Computational payload {evidence_id} "
                     f"{validation_scope}",
-                    step09c.resolve_recorded_path(
-                        payload["evidence_path"]
-                    ),
+                    _resolve_recorded_path(payload["evidence_path"]),
                 )
                 evidence_path = str(evidence_path_object)
                 evidence_sha256 = payload["evidence_sha256"]
                 if (
-                    step09c.sha256_file(evidence_path_object)
-                    != evidence_sha256
+                    _sha256_file(evidence_path_object) != evidence_sha256
                 ):
                     _fail(
                         f"Computational payload {evidence_id} "
@@ -835,7 +982,7 @@ def _normalize_computational_evidence(
 
 
 def _normalize_decisions(
-    context: step09c.ReviewContext,
+    context: ReviewPackageContext,
 ) -> dict[str, dict[str, Any]]:
     by_dimension = {
         row["decision_dimension"]: row
@@ -847,7 +994,7 @@ def _normalize_decisions(
         if row is None or row["decision_status"] == "pending":
             if (
                 row is not None
-                and row["supporting_evidence_ids"] != step09c.NA_VALUE
+                and row["supporting_evidence_ids"] != NA_VALUE
             ):
                 _fail(
                     f"Pending decision {dimension} cannot carry supporting "
@@ -900,7 +1047,7 @@ def _normalize_decisions(
 
 
 def _normalize_limitations(
-    context: step09c.ReviewContext,
+    context: ReviewPackageContext,
 ) -> list[dict[str, Any]]:
     statuses = {
         "active": "open",
@@ -980,7 +1127,7 @@ def normalize_scientific_review(
         normalized_summary_path = _require_regular_file(
             "Explicit Step 09c review summary", summary_path
         )
-        summary_table = step09c.read_tsv(
+        summary_table = _read_tsv(
             "Explicit Step 09c review summary",
             normalized_summary_path,
             review_package.REVIEW_SUMMARY_HEADER,
@@ -1025,7 +1172,7 @@ def normalize_scientific_review(
             summary_sha256=summary_sha256,
         )
 
-        context, output_tables = _rebuild_step09c(
+        context, output_tables = _read_committed_review_package(
             summary_path=normalized_summary_path,
             summary_row=summary_row,
         )
@@ -1150,18 +1297,11 @@ def normalize_scientific_review(
                 "created_at": generated_at,
             },
         }
-        try:
-            step09c.confirm_inputs_unchanged(context.input_hashes)
-        except step09c.ContractError as exc:
-            _fail(f"A Step 09c input changed during normalization: {exc}")
+        _confirm_inputs_unchanged(context.input_hashes)
         _validate_normalized_record(document)
         return document
     except RunSummaryScienceError:
         raise
-    except step09c.ContractError as exc:
-        raise RunSummaryScienceError(
-            f"Step 09c validation failed during normalization: {exc}"
-        ) from exc
     except contracts.ContractValidationError as exc:
         raise RunSummaryScienceError(
             f"Artifact-contract validation failed during normalization: {exc}"
