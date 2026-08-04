@@ -34,6 +34,10 @@ evidence owner.
 - Give reference provenance and the Step `00c`/`05` validators one validated,
   ready-marked, cached exact-file module identity without package discovery,
   installation, `PYTHONPATH`, or `sys.path` mutation.
+- Loader-integrity failures may substitute only the truthful neutral owner name
+  and final path in their diagnostics. Preserve exit status, empty stdout, no-
+  traceback behavior, normalized reason text, cache/partial cleanup, and all
+  other public bytes.
 - Reference provenance retains inventory, hashing, STAR/GTF/BED parsing,
   agreement, evidence assembly, CLI, stable-input checks, publication, locking,
   rollback, and recovery. Its per-role parser aggregation continues after a
@@ -105,7 +109,8 @@ evidence owner.
 - Frozen pre/post parity proves exact ordered parser outputs, messages,
   `RuntimeError` failure behavior and raw exceptions, encoding behavior,
   accepted/rejected edge cases, consumer aggregation, public CLI bytes, and
-  arbitrary-CWD behavior, apart from the approved neutral error owner/name.
+  arbitrary-CWD behavior, apart from the approved neutral error owner/name and
+  exact truthful loader owner/path substitutions.
 - Exact searches and import-isolation tests prove one neutral identity, no
   duplicate parser definitions, no reference-provenance load from either
   validator, no compatibility owner, and no package/path mutation.
@@ -128,7 +133,8 @@ evidence owner.
   beyond the approved neutral error owner/name, raw-read behavior,
   duplicate/empty rules, Step `00c` per-role aggregation, Step
   `05` short-circuit aggregation, agreement/evidence rows, CLI/help/output
-  bytes, hashing, snapshots, publication, or recovery; any external consumer,
+  bytes beyond the exact truthful neutral loader owner/path substitutions,
+  hashing, snapshots, publication, or recovery; any external consumer,
   wrapper or compatibility owner, package/import-path/install need, split
   neutral identity, missing independent parity oracle, or scope into reference-
   evidence relocation or a deferred domain.
