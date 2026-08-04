@@ -17,7 +17,15 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "scripts"
 GOLDENS = REPO_ROOT / "tests" / "fixtures" / "independent_contract_goldens"
-SCHEMAS = REPO_ROOT / "schemas" / "artifacts" / "v1"
+SCHEMAS = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "schemas"
+    / "artifacts"
+    / "v1"
+)
 
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
@@ -34,6 +42,145 @@ HEADER_MODULES: Mapping[str, ModuleType] = {
     "render_run_report_bundle": REPORT_BUNDLE,
     "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
 }
+ARTIFACT_CONTRACT_LOADERS = (
+    ARTIFACT_INDEX,
+    SHARED_SCIENCE,
+    REPORT_BUNDLE.html_report,
+)
+
+
+def test_artifact_contract_consumers_share_one_exact_ready_owner() -> None:
+    owner = ARTIFACT_INDEX.contracts
+
+    assert RUN_SUMMARY.contracts is owner
+    assert SHARED_SCIENCE.contracts is owner
+    assert REPORT_BUNDLE.contracts is owner
+    assert REPORT_BUNDLE.html_report.contracts is owner
+    assert sys.modules[ARTIFACT_INDEX._ARTIFACT_CONTRACTS_MODULE_NAME] is owner
+    assert Path(owner.__file__).resolve() == (
+        ARTIFACT_INDEX._ARTIFACT_CONTRACTS_MODULE_PATH
+    )
+    assert (
+        getattr(owner, ARTIFACT_INDEX._ARTIFACT_CONTRACTS_READY_ATTRIBUTE)
+        is True
+    )
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    ARTIFACT_CONTRACT_LOADERS,
+    ids=("artifact-index", "run-summary-science", "report-renderer"),
+)
+def test_artifact_contract_loaders_use_exact_owner_without_mutating_sys_path(
+    loader_owner: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
+    before_sys_path = list(sys.path)
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+    loaded = loader_owner._load_artifact_contracts()
+
+    assert Path(loaded.__file__).resolve() == (
+        loader_owner._ARTIFACT_CONTRACTS_MODULE_PATH
+    )
+    assert (
+        getattr(loaded, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE) is True
+    )
+    assert sys.modules[name] is loaded
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    ARTIFACT_CONTRACT_LOADERS,
+    ids=("artifact-index", "run-summary-science", "report-renderer"),
+)
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
+def test_artifact_contract_loaders_reject_invalid_cache(
+    loader_owner: ModuleType,
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_artifact_contracts.py")
+        setattr(cached, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    elif cache_kind == "partial":
+        cached.__file__ = str(loader_owner._ARTIFACT_CONTRACTS_MODULE_PATH)
+        expected = "partially initialized"
+    else:
+        cached.__file__ = None
+        setattr(cached, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
+        expected = "no valid file path"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        loader_owner._load_artifact_contracts()
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    ARTIFACT_CONTRACT_LOADERS,
+    ids=("artifact-index", "run-summary-science", "report-renderer"),
+)
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_artifact_contract_loaders_fail_without_usable_specification(
+    loader_owner: ModuleType,
+    specification: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        loader_owner.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        loader_owner._load_artifact_contracts()
+
+    assert name not in sys.modules
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    ARTIFACT_CONTRACT_LOADERS,
+    ids=("artifact-index", "run-summary-science", "report-renderer"),
+)
+def test_artifact_contract_loaders_clean_owned_partial_after_execution_failure(
+    loader_owner: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
+    failing_owner = tmp_path / "validate_artifact_contracts.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected artifact-contract execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        loader_owner,
+        "_ARTIFACT_CONTRACTS_MODULE_PATH",
+        failing_owner,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="injected artifact-contract execution failure",
+    ):
+        loader_owner._load_artifact_contracts()
+
+    assert name not in sys.modules
 
 
 def load_json(path: Path) -> Any:

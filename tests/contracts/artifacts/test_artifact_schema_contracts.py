@@ -17,10 +17,33 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "validate_artifact_contracts.py"
-SCHEMA_ROOT = REPO_ROOT / "schemas" / "artifacts" / "v1"
-FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "artifact_schema_v1" / "valid"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "artifacts"
+    / "validate_artifact_contracts.py"
+)
+SCHEMA_ROOT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "schemas"
+    / "artifacts"
+    / "v1"
+)
+FIXTURE_ROOT = (
+    REPO_ROOT
+    / "tests"
+    / "contracts"
+    / "artifacts"
+    / "fixtures"
+    / "artifact_schema_v1"
+    / "valid"
+)
 INVENTORY = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
@@ -348,7 +371,7 @@ def test_artifact_cluster_proof_requires_typed_inspected_evidence() -> None:
             {
                 "evidence_id": "local_test_only",
                 "role": "local_test",
-                "path": "tests/test_artifact_schema_contracts.py",
+                "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
                 "sha256": "c" * 64,
             }
         ],

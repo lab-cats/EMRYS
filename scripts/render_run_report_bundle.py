@@ -30,7 +30,9 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
 
 import render_run_report as html_report
-import validate_artifact_contracts as contracts
+
+
+contracts = html_report.contracts
 
 
 PRODUCER = "render_run_report"

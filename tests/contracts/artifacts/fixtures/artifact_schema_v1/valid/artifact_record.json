@@ -51,7 +51,7 @@
       {
         "evidence_id": "artifact_schema_test",
         "role": "local_test",
-        "path": "tests/test_artifact_schema_contracts.py",
+        "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
         "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       }
     ]

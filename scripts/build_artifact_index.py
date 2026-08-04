@@ -33,7 +33,64 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-import validate_artifact_contracts as contracts
+
+_ARTIFACT_CONTRACTS_MODULE_NAME = "_norad_artifact_contracts"
+_ARTIFACT_CONTRACTS_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "contracts"
+    / "artifacts"
+    / "validate_artifact_contracts.py"
+).resolve(strict=False)
+_ARTIFACT_CONTRACTS_READY_ATTRIBUTE = "_NORAD_ARTIFACT_CONTRACTS_READY"
+
+
+def _validated_artifact_contracts(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached artifact-contract owner has no valid file path"
+        ) from exc
+    if module_path != _ARTIFACT_CONTRACTS_MODULE_PATH:
+        raise ImportError(
+            f"cached artifact-contract owner resolves to {module_path}, "
+            f"expected {_ARTIFACT_CONTRACTS_MODULE_PATH}"
+        )
+    if getattr(module, _ARTIFACT_CONTRACTS_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached artifact-contract owner is partially initialized")
+    return module
+
+
+def _load_artifact_contracts() -> object:
+    cached = sys.modules.get(_ARTIFACT_CONTRACTS_MODULE_NAME)
+    if cached is not None:
+        return _validated_artifact_contracts(cached)
+    spec = importlib.util.spec_from_file_location(
+        _ARTIFACT_CONTRACTS_MODULE_NAME,
+        _ARTIFACT_CONTRACTS_MODULE_PATH,
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file artifact-contract module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_ARTIFACT_CONTRACTS_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_artifact_contracts(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
+        _validated_artifact_contracts(module)
+    except BaseException:
+        if sys.modules.get(_ARTIFACT_CONTRACTS_MODULE_NAME) is module:
+            del sys.modules[_ARTIFACT_CONTRACTS_MODULE_NAME]
+        raise
+    return module
+
+
+contracts = _load_artifact_contracts()
 
 
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"

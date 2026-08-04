@@ -40,7 +40,9 @@ PYTHON_ENTRYPOINT_PATHS = {
         "step_09c_scientific_validation.py"
     ),
     "storage_inventory.py": Path("scripts/storage_inventory.py"),
-    "validate_artifact_contracts.py": Path("scripts/validate_artifact_contracts.py"),
+    "validate_artifact_contracts.py": Path(
+        "src/norad/contracts/artifacts/validate_artifact_contracts.py"
+    ),
     "validate_manifest.py": Path("scripts/validate_manifest.py"),
     "validate_step_00a_star_index.py": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"

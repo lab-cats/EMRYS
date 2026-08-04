@@ -1,30 +1,30 @@
 {
   "files": [
     {
-      "branch_rate": "0.631250",
-      "covered_branches": 101,
-      "covered_lines": 283,
-      "line_rate": "0.779614",
-      "num_branches": 160,
-      "num_statements": 363,
+      "branch_rate": "0.657609",
+      "covered_branches": 121,
+      "covered_lines": 353,
+      "line_rate": "0.809633",
+      "num_branches": 184,
+      "num_statements": 436,
       "path": "scripts/_run_summary_science.py"
     },
     {
-      "branch_rate": "0.709446",
-      "covered_branches": 691,
-      "covered_lines": 1621,
-      "line_rate": "0.798522",
-      "num_branches": 974,
-      "num_statements": 2030,
+      "branch_rate": "0.712425",
+      "covered_branches": 711,
+      "covered_lines": 1690,
+      "line_rate": "0.803996",
+      "num_branches": 998,
+      "num_statements": 2102,
       "path": "scripts/build_artifact_index.py"
     },
     {
-      "branch_rate": "0.741294",
-      "covered_branches": 298,
-      "covered_lines": 873,
-      "line_rate": "0.845111",
-      "num_branches": 402,
-      "num_statements": 1033,
+      "branch_rate": "0.740099",
+      "covered_branches": 299,
+      "covered_lines": 874,
+      "line_rate": "0.844444",
+      "num_branches": 404,
+      "num_statements": 1035,
       "path": "scripts/build_run_summary.py"
     },
     {
@@ -73,12 +73,12 @@
       "path": "scripts/reference_provenance.py"
     },
     {
-      "branch_rate": "0.763636",
-      "covered_branches": 336,
-      "covered_lines": 1037,
-      "line_rate": "0.842405",
-      "num_branches": 440,
-      "num_statements": 1231,
+      "branch_rate": "0.765487",
+      "covered_branches": 346,
+      "covered_lines": 1070,
+      "line_rate": "0.845850",
+      "num_branches": 452,
+      "num_statements": 1265,
       "path": "scripts/render_run_report.py"
     },
     {
@@ -118,15 +118,6 @@
       "path": "scripts/storage_inventory.py"
     },
     {
-      "branch_rate": "0.764831",
-      "covered_branches": 361,
-      "covered_lines": 658,
-      "line_rate": "0.846847",
-      "num_branches": 472,
-      "num_statements": 777,
-      "path": "scripts/validate_artifact_contracts.py"
-    },
-    {
       "branch_rate": "0.769231",
       "covered_branches": 40,
       "covered_lines": 100,
@@ -143,6 +134,15 @@
       "num_branches": 40,
       "num_statements": 158,
       "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
+    },
+    {
+      "branch_rate": "0.764831",
+      "covered_branches": 361,
+      "covered_lines": 658,
+      "line_rate": "0.846847",
+      "num_branches": 472,
+      "num_statements": 777,
+      "path": "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     },
     {
       "branch_rate": "0.711929",
@@ -322,11 +322,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.703804",
-    "covered_branches": 3367,
-    "covered_lines": 9601,
-    "line_rate": "0.816550",
-    "num_branches": 4784,
-    "num_statements": 11758
+    "branch_rate": "0.705324",
+    "covered_branches": 3418,
+    "covered_lines": 9774,
+    "line_rate": "0.818662",
+    "num_branches": 4846,
+    "num_statements": 11939
   }
 }

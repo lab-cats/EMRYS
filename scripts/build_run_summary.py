@@ -29,7 +29,11 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 import _run_summary_science as science
 import build_artifact_index as adapter
-import validate_artifact_contracts as contracts
+
+
+if science.contracts is not adapter.contracts:
+    raise ImportError("artifact-contract consumers did not resolve one exact owner")
+contracts = adapter.contracts
 
 
 PRODUCER = "build_run_summary"

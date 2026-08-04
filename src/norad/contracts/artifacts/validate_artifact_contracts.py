@@ -25,8 +25,10 @@ from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_ROOT = REPO_ROOT / "schemas" / "artifacts" / "v1"
+REPO_ROOT = Path(__file__).resolve().parents[4]
+SCHEMA_ROOT = (
+    Path(__file__).resolve().parents[1] / "schemas" / "artifacts" / "v1"
+)
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "artifact_record.schema.json",

@@ -137,6 +137,9 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 python_script="$script_dir/render_run_report.py"
 [[ -f "$python_script" && -r "$python_script" ]] ||
     die "Report Python implementation is missing or unreadable: $python_script"
+artifact_contracts="$repo_root/src/norad/contracts/artifacts/validate_artifact_contracts.py"
+[[ -f "$artifact_contracts" && -r "$artifact_contracts" ]] ||
+    die "Artifact-contract validator is missing or unreadable: $artifact_contracts"
 
 if [[ "${PYTHON_BIN_OVERRIDE+x}" == "x" ]]; then
     [[ -n "$PYTHON_BIN_OVERRIDE" ]] ||
@@ -150,15 +153,21 @@ fi
 python_bin="$(resolve_executable "$python_value")"
 
 preflight_code='
+import importlib.util
 import sys
-sys.path.insert(0, sys.argv[1])
 import jsonschema
 import pypdf
 import yaml
-import validate_artifact_contracts
+spec = importlib.util.spec_from_file_location(
+    "_norad_artifact_contracts_preflight", sys.argv[1]
+)
+if spec is None or spec.loader is None:
+    raise ImportError("unable to load artifact-contract validator")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
 '
 if ! preflight_output="$(
-    "$python_bin" -c "$preflight_code" "$script_dir" 2>&1
+    "$python_bin" -c "$preflight_code" "$artifact_contracts" 2>&1
 )"; then
     printf '%s\n' \
         "ERROR: Selected Python cannot import required report dependencies" \
