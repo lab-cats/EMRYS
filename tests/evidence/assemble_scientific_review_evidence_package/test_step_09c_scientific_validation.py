@@ -36,6 +36,14 @@ STEP08_PATH = (
     / "scientific_evidence"
     / "step08.py"
 )
+STEP09_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step09.py"
+)
 
 
 def load_fixture_builder() -> ModuleType:
@@ -53,14 +61,18 @@ def load_fixture_builder() -> ModuleType:
 FIXTURES = load_fixture_builder()
 
 
-def test_step08_contract_identity_is_shared_with_step09c() -> None:
+def test_neutral_contract_identities_are_shared_with_step09c() -> None:
     contract = FIXTURES.CONTRACT
     before_sys_path = list(sys.path)
 
     assert contract._load_step08_contract() is FIXTURES.STEP08
+    assert contract._load_step09_contract() is FIXTURES.STEP09
     assert contract.step08 is FIXTURES.STEP08
+    assert contract.step09 is FIXTURES.STEP09
+    assert FIXTURES.STEP09.step08 is FIXTURES.STEP08
     assert contract.ContractError is FIXTURES.STEP08.ContractError
     assert contract.Table is FIXTURES.STEP08.Table
+    assert contract.resolve_recorded_path is FIXTURES.STEP09.resolve_recorded_path
     for name in (
         "NA_VALUE",
         "values_close",
@@ -84,6 +96,26 @@ def test_step08_contract_identity_is_shared_with_step09c() -> None:
         "validate_step08_inputs",
         "validate_step08_sites",
         "validate_step08_summary",
+    ):
+        assert not hasattr(contract, name)
+    for name in (
+        "STEP09_RESULT_HEADER",
+        "STEP09_SUMMARY_HEADER",
+        "STEP09_MUTATION_HEADER",
+        "CANONICAL_MUTATIONS",
+        "STEP09_TEST_STATUSES",
+        "STEP09_CALL_STATUSES",
+        "STEP09_BACKGROUND_STATUSES",
+        "STEP09_STATUS_COUNT_FIELDS",
+        "parse_nonnegative_or_infinite",
+        "validate_pdf",
+        "count_status",
+        "paired_samples",
+        "validate_step09_results",
+        "validate_step09_summary",
+        "validate_step09_result_semantics",
+        "validate_significant_subset",
+        "validate_mutation_spectrum",
     ):
         assert not hasattr(contract, name)
     assert sys.path == before_sys_path
@@ -193,6 +225,114 @@ def test_step08_public_loader_failure_is_sanitized_one_line(tmp_path: Path) -> N
     assert result.stderr.splitlines() == [
         "ERROR: unable to load Step 08 scientific-evidence contract at "
         f"{STEP08_PATH}: RuntimeError: injected Step 08 path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_step09_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP09_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step09.py")
+        setattr(cached, contract._STEP09_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(STEP09_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        contract._load_step09_contract()
+
+    assert sys.modules[name] is cached
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_step09_loader_fails_closed_without_usable_specification(
+    specification: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP09_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        contract.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        contract._load_step09_contract()
+
+    assert name not in sys.modules
+
+
+def test_step09_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP09_MODULE_NAME
+    failing_owner = tmp_path / "step09.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 09 execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(contract, "_STEP09_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 09 execution failure"):
+        contract._load_step09_contract()
+
+    assert name not in sys.modules
+
+
+def test_step09_public_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError("injected\\n" + chr(0) + " Step 09 path")
+
+        cached = ModuleType("_norad_step09_scientific_evidence_contract")
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load Step 09 scientific-evidence contract at "
+        f"{STEP09_PATH}: RuntimeError: injected Step 09 path"
     ]
     assert list(invocation_cwd.iterdir()) == []
 
@@ -1949,7 +2089,7 @@ def test_step09_target_status_inconsistency_is_rejected_mechanically(
     non_target["call_status"] = "effect_not_met"
 
     with pytest.raises(FIXTURES.CONTRACT.ContractError, match="target change"):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             rows,
             context.step09_summary,
             context.sample_rows,
@@ -1968,7 +2108,7 @@ def test_step09_target_status_inconsistency_is_rejected_mechanically(
         FIXTURES.CONTRACT.ContractError,
         match="availability/coverage",
     ):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             rows,
             context.step09_summary,
             context.sample_rows,
@@ -1986,7 +2126,7 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
     tested = next(row for row in wrong_depth if row["test_status"] == "tested")
     tested["mean_analysis_dp"] = "999"
     with pytest.raises(FIXTURES.CONTRACT.ContractError, match="depth metrics"):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             wrong_depth,
             context.step09_summary,
             context.sample_rows,
@@ -2006,7 +2146,7 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
         }
     )
     with pytest.raises(FIXTURES.CONTRACT.ContractError, match="must use"):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             false_cmh,
             context.step09_summary,
             context.sample_rows,
@@ -2060,7 +2200,7 @@ def test_step09_enabled_background_reconciles_from_immutable_counts(
         ):
             row["call_status"] = "background_not_passed"
 
-    FIXTURES.CONTRACT.validate_step09_result_semantics(
+    FIXTURES.STEP09.validate_step09_result_semantics(
         rows, summary, sample_rows
     )
 
@@ -2071,7 +2211,7 @@ def test_step09_enabled_background_reconciles_from_immutable_counts(
         FIXTURES.CONTRACT.ContractError,
         match="enabled-background",
     ):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             rows, summary, sample_rows
         )
 
@@ -2100,7 +2240,7 @@ def test_step09_native_threshold_boundaries_are_enforced(
         FIXTURES.CONTRACT.ContractError,
         match="thresholds",
     ):
-        FIXTURES.CONTRACT.validate_step09_result_semantics(
+        FIXTURES.STEP09.validate_step09_result_semantics(
             context.step09_all_rows,
             summary,
             context.sample_rows,

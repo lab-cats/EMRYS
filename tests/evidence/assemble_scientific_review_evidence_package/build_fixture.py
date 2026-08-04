@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Build a deterministic synthetic Step 09c input/evidence package.
 
-The fixture imports the neutral Step 08 and production Step 09c schema
-constants so tests fail immediately when a contract changes without a
-corresponding fixture update. All paths and SHA-256 values are generated for
-the requested temporary root.
+The fixture imports the neutral Step 08 and Step 09 contracts plus production
+Step 09c schema constants so tests fail immediately when a contract changes
+without a corresponding fixture update. All paths and SHA-256 values are
+generated for the requested temporary root.
 """
 
 from __future__ import annotations
@@ -30,6 +30,16 @@ STEP08_PATH = (
     / "contracts"
     / "scientific_evidence"
     / "step08.py"
+)
+STEP09_MODULE_NAME = "_norad_step09_scientific_evidence_contract"
+STEP09_READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
+STEP09_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step09.py"
 )
 CONTRACT_PATH = (
     REPO_ROOT
@@ -86,6 +96,31 @@ def load_step08_contract() -> ModuleType:
     return module
 
 
+def load_step09_contract() -> ModuleType:
+    cached = sys.modules.get(STEP09_MODULE_NAME)
+    if cached is not None:
+        if Path(cached.__file__).resolve(strict=False) != STEP09_PATH.resolve(
+            strict=False
+        ):
+            raise RuntimeError("Cached Step 09 contract has the wrong path")
+        if getattr(cached, STEP09_READY_ATTRIBUTE, False) is not True:
+            raise RuntimeError("Cached Step 09 contract is partially initialized")
+        return cached
+    spec = importlib.util.spec_from_file_location(STEP09_MODULE_NAME, STEP09_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load Step 09 contract: {STEP09_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, STEP09_READY_ATTRIBUTE, True)
+    except BaseException:
+        if sys.modules.get(spec.name) is module:
+            del sys.modules[spec.name]
+        raise
+    return module
+
+
 def load_contract() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "norad_step09c_contract", CONTRACT_PATH
@@ -99,9 +134,14 @@ def load_contract() -> ModuleType:
 
 
 STEP08 = load_step08_contract()
+STEP09 = load_step09_contract()
 CONTRACT = load_contract()
+if STEP09.step08 is not STEP08:
+    raise RuntimeError("Step 09 fixture resolved a different Step 08 contract")
 if CONTRACT.step08 is not STEP08:
     raise RuntimeError("Step 09c fixture resolved a different Step 08 contract")
+if CONTRACT.step09 is not STEP09:
+    raise RuntimeError("Step 09c fixture resolved a different Step 09 contract")
 
 
 @dataclass(frozen=True)
@@ -519,7 +559,7 @@ def write_step09_summary(
     absolute_difference_threshold: str = "0.005",
 ) -> None:
     row = table_row(
-        CONTRACT.STEP09_SUMMARY_HEADER,
+        STEP09.STEP09_SUMMARY_HEADER,
         analysis_id=analysis_id,
         cohort_id=COHORT_ID,
         control_condition="EV",
@@ -560,7 +600,7 @@ def write_step09_summary(
         continuity_correction="TRUE",
         orientation_policy="legacy_provisional_v1",
     )
-    write_tsv(path, CONTRACT.STEP09_SUMMARY_HEADER, [row])
+    write_tsv(path, STEP09.STEP09_SUMMARY_HEADER, [row])
 
 
 def write_evidence_tables(
@@ -1307,7 +1347,7 @@ def build_fixture(
 
     step09_root = root / "step09"
     step09_analysis_dir = step09_root / PRIMARY_ANALYSIS_ID
-    result_header = tuple(CONTRACT.STEP09_RESULT_HEADER) + tuple(
+    result_header = tuple(STEP09.STEP09_RESULT_HEADER) + tuple(
         f"DP__{sample}" for sample in SAMPLE_IDS
     ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
         f"AF__{sample}" for sample in SAMPLE_IDS
@@ -1343,7 +1383,7 @@ def build_fixture(
         step08_inputs,
     )
     mutation_rows = []
-    for mutation_type in CONTRACT.CANONICAL_MUTATIONS:
+    for mutation_type in STEP09.CANONICAL_MUTATIONS:
         count = "5" if mutation_type == "A>G" else (
             "1" if mutation_type == "C>T" else "0"
         )
@@ -1354,7 +1394,7 @@ def build_fixture(
         )
         mutation_rows.append(
             table_row(
-                CONTRACT.STEP09_MUTATION_HEADER,
+                STEP09.STEP09_MUTATION_HEADER,
                 analysis_id=PRIMARY_ANALYSIS_ID,
                 rna_ref=mutation_type[0],
                 rna_alt=mutation_type[2],
@@ -1372,7 +1412,7 @@ def build_fixture(
                 ),
             )
         )
-    write_tsv(mutation, CONTRACT.STEP09_MUTATION_HEADER, mutation_rows)
+    write_tsv(mutation, STEP09.STEP09_MUTATION_HEADER, mutation_rows)
     write_pdf(
         step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.pdf"
     )

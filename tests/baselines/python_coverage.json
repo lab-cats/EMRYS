@@ -10,12 +10,12 @@
       "path": "scripts/_run_summary_science.py"
     },
     {
-      "branch_rate": "0.713439",
-      "covered_branches": 722,
-      "covered_lines": 1729,
-      "line_rate": "0.806813",
-      "num_branches": 1012,
-      "num_statements": 2143,
+      "branch_rate": "0.713450",
+      "covered_branches": 732,
+      "covered_lines": 1766,
+      "line_rate": "0.808978",
+      "num_branches": 1026,
+      "num_statements": 2183,
       "path": "scripts/build_artifact_index.py"
     },
     {
@@ -127,12 +127,12 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.848485",
-      "covered_branches": 56,
-      "covered_lines": 230,
-      "line_rate": "0.970464",
-      "num_branches": 66,
-      "num_statements": 237,
+      "branch_rate": "0.838235",
+      "covered_branches": 57,
+      "covered_lines": 232,
+      "line_rate": "0.970711",
+      "num_branches": 68,
+      "num_statements": 239,
       "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
     },
     {
@@ -154,12 +154,21 @@
       "path": "src/norad/contracts/scientific_evidence/step08.py"
     },
     {
-      "branch_rate": "0.725373",
-      "covered_branches": 486,
-      "covered_lines": 1134,
-      "line_rate": "0.842496",
-      "num_branches": 670,
-      "num_statements": 1346,
+      "branch_rate": "0.949438",
+      "covered_branches": 169,
+      "covered_lines": 319,
+      "line_rate": "0.960843",
+      "num_branches": 178,
+      "num_statements": 332,
+      "path": "src/norad/contracts/scientific_evidence/step09.py"
+    },
+    {
+      "branch_rate": "0.730769",
+      "covered_branches": 380,
+      "covered_lines": 941,
+      "line_rate": "0.849278",
+      "num_branches": 520,
+      "num_statements": 1108,
       "path": "src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py"
     },
     {
@@ -331,11 +340,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.715598",
-    "covered_branches": 3505,
-    "covered_lines": 10000,
-    "line_rate": "0.825627",
-    "num_branches": 4898,
-    "num_statements": 12112
+    "branch_rate": "0.724201",
+    "covered_branches": 3579,
+    "covered_lines": 10165,
+    "line_rate": "0.829931",
+    "num_branches": 4942,
+    "num_statements": 12248
   }
 }

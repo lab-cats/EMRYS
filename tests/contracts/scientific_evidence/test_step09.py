@@ -1,0 +1,792 @@
+"""Independent API and behavior tests for the neutral Step 09 contract."""
+
+from __future__ import annotations
+
+import copy
+import csv
+import hashlib
+import importlib.util
+import inspect
+import json
+import math
+import sys
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Callable
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[3]
+OWNER = ROOT / "src/norad/contracts/scientific_evidence/step09.py"
+FIXTURE_BUILDER = (
+    ROOT
+    / "tests/evidence/assemble_scientific_review_evidence_package"
+    / "build_fixture.py"
+)
+MODULE_NAME = "_norad_step09_scientific_evidence_contract"
+READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
+
+
+def load_contract() -> ModuleType:
+    cached = sys.modules.get(MODULE_NAME)
+    if cached is not None:
+        assert Path(cached.__file__).resolve() == OWNER.resolve()
+        assert getattr(cached, READY_ATTRIBUTE) is True
+        return cached
+    spec = importlib.util.spec_from_file_location(MODULE_NAME, OWNER)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[MODULE_NAME] = module
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, READY_ATTRIBUTE, True)
+    except BaseException:
+        if sys.modules.get(MODULE_NAME) is module:
+            del sys.modules[MODULE_NAME]
+        raise
+    return module
+
+
+def load_fixture_builder() -> ModuleType:
+    name = "_norad_direct_step09_fixture_builder"
+    spec = importlib.util.spec_from_file_location(name, FIXTURE_BUILDER)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if sys.modules.get(name) is module:
+            del sys.modules[name]
+        raise
+    return module
+
+
+STEP09 = load_contract()
+FIXTURES = load_fixture_builder()
+
+
+def read_tsv(path: Path) -> tuple[tuple[str, ...], list[dict[str, str]]]:
+    with path.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream, delimiter="\t")
+        assert reader.fieldnames is not None
+        return tuple(reader.fieldnames), list(reader)
+
+
+def write_tsv(
+    path: Path,
+    header: tuple[str, ...],
+    rows: list[dict[str, str]],
+) -> None:
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(
+            stream,
+            fieldnames=list(header),
+            delimiter="\t",
+            lineterminator="\n",
+            extrasaction="raise",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def replace_cell(path: Path, row_index: int, column: str, value: str) -> None:
+    header, rows = read_tsv(path)
+    rows[row_index][column] = value
+    write_tsv(path, header, rows)
+
+
+def public_fingerprint(module: ModuleType) -> bytes:
+    constants = [
+        "NA_VALUE",
+        "STEP09_RESULT_HEADER",
+        "STEP09_SUMMARY_HEADER",
+        "STEP09_MUTATION_HEADER",
+        "CANONICAL_MUTATIONS",
+        "STEP09_TEST_STATUSES",
+        "STEP09_CALL_STATUSES",
+        "STEP09_BACKGROUND_STATUSES",
+        "STEP09_STATUS_COUNT_FIELDS",
+    ]
+    functions = [
+        "validate_step09_results",
+        "validate_step09_summary",
+        "validate_step09_result_semantics",
+        "validate_significant_subset",
+        "validate_mutation_spectrum",
+        "validate_pdf",
+    ]
+    private_closure = [
+        "parse_nonnegative_or_infinite",
+        "resolve_recorded_path",
+        "count_status",
+        "paired_samples",
+    ]
+    document = {
+        "constants": {name: getattr(module, name) for name in constants},
+        "functions": {
+            name: str(inspect.signature(getattr(module, name)))
+            for name in functions
+        },
+        "private_closure": {
+            name: str(inspect.signature(getattr(module, name)))
+            for name in private_closure
+        },
+        "shared_identity": {
+            "contract_error_is_step08": (
+                module.ContractError is module.step08.ContractError
+            ),
+            "table_is_step08": module.Table is module.step08.Table,
+        },
+        "table_fields": list(module.Table.__dataclass_fields__),
+        "error_base": [value.__name__ for value in module.ContractError.__mro__],
+    }
+    return (json.dumps(document, indent=2, sort_keys=True) + "\n").encode()
+
+
+def build_valid(root: Path) -> SimpleNamespace:
+    built = FIXTURES.build_fixture(root)
+    step08 = STEP09.step08
+    sample_hash = step08.sha256_file(built.sample_manifest)
+    partition_hash = step08.sha256_file(built.partition_manifest)
+    sites_hash = step08.sha256_file(built.step08_sites)
+    inputs_hash = step08.sha256_file(built.step08_inputs)
+    sample_table, sample_ids, sample_rows = step08.validate_sample_manifest(
+        built.sample_manifest
+    )
+    partitions = step08.validate_partition_manifest(built.partition_manifest)
+    inputs = step08.validate_step08_inputs(
+        built.step08_inputs,
+        sample_ids,
+        partitions.rows,
+        sample_hash,
+        partition_hash,
+    )
+    sites = step08.validate_step08_sites(
+        built.step08_sites,
+        sample_ids,
+        partitions.rows,
+        inputs.rows,
+    )
+    analysis_id = FIXTURES.PRIMARY_ANALYSIS_ID
+    all_sites_path = built.step09_analysis_dir / f"{analysis_id}.cmh_all_sites.tsv"
+    significant_path = (
+        built.step09_analysis_dir / f"{analysis_id}.cmh_significant_sites.tsv"
+    )
+    summary_path = built.step09_analysis_dir / f"{analysis_id}.cmh_summary.tsv"
+    mutation_path = (
+        built.step09_analysis_dir / f"{analysis_id}.mutation_spectrum.tsv"
+    )
+    mutation_pdf = (
+        built.step09_analysis_dir / f"{analysis_id}.mutation_spectrum.pdf"
+    )
+    depth_pdf = built.step09_analysis_dir / f"{analysis_id}.depth_delta.pdf"
+    return SimpleNamespace(
+        built=built,
+        analysis_id=analysis_id,
+        sample_hash=sample_hash,
+        partition_hash=partition_hash,
+        sites_hash=sites_hash,
+        inputs_hash=inputs_hash,
+        sample_table=sample_table,
+        sample_ids=sample_ids,
+        sample_rows=sample_rows,
+        partitions=partitions,
+        inputs=inputs,
+        sites=sites,
+        all_sites_path=all_sites_path,
+        significant_path=significant_path,
+        summary_path=summary_path,
+        mutation_path=mutation_path,
+        mutation_pdf=mutation_pdf,
+        depth_pdf=depth_pdf,
+    )
+
+
+@pytest.fixture
+def valid(tmp_path: Path) -> SimpleNamespace:
+    return build_valid(tmp_path / "fixture")
+
+
+def validate_results(valid: SimpleNamespace, path: Path | None = None):
+    return STEP09.validate_step09_results(
+        "Step 09 all-sites",
+        valid.all_sites_path if path is None else path,
+        valid.sample_ids,
+        valid.analysis_id,
+        valid.sites.rows,
+    )
+
+
+def validate_summary(
+    valid: SimpleNamespace,
+    all_rows: list[dict[str, str]],
+    path: Path | None = None,
+):
+    return STEP09.validate_step09_summary(
+        valid.summary_path if path is None else path,
+        valid.analysis_id,
+        FIXTURES.COHORT_ID,
+        valid.sample_ids,
+        valid.sample_rows,
+        all_rows,
+        valid.built.sample_manifest,
+        valid.built.partition_manifest,
+        valid.built.step08_sites,
+        valid.built.step08_inputs,
+        valid.sample_hash,
+        valid.partition_hash,
+        valid.sites_hash,
+        valid.inputs_hash,
+        valid.inputs.rows[0]["orientation_policy"],
+    )
+
+
+def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
+    payload = public_fingerprint(STEP09)
+
+    assert len(payload) == 6118
+    assert hashlib.sha256(payload).hexdigest() == (
+        "e4cc56f8cf226e3eb8759fa3438dd1d"
+        "3ffdfca6796f5851f9fc2bb5f113cdc36"
+    )
+
+
+def test_step08_contract_and_shared_type_identities_are_exact() -> None:
+    before_sys_path = list(sys.path)
+
+    assert STEP09._load_step08_contract() is STEP09.step08
+    assert STEP09.step08 is FIXTURES.STEP08
+    assert STEP09.ContractError is STEP09.step08.ContractError
+    assert STEP09.Table is STEP09.step08.Table
+    assert STEP09.ContractError.__mro__[:2] == (
+        STEP09.ContractError,
+        RuntimeError,
+    )
+    assert tuple(STEP09.Table.__dataclass_fields__) == ("header", "rows", "path")
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
+def test_step08_loader_rejects_and_preserves_invalid_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = STEP09._STEP08_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step08.py")
+        setattr(cached, STEP09._STEP08_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    elif cache_kind == "partial":
+        cached.__file__ = str(STEP09._STEP08_MODULE_PATH)
+        expected = "partially initialized"
+    else:
+        cached.__file__ = None
+        setattr(cached, STEP09._STEP08_READY_ATTRIBUTE, True)
+        expected = "no valid file path"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        STEP09._load_step08_contract()
+
+    assert sys.modules[name] is cached
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_step08_loader_fails_closed_without_usable_specification(
+    specification: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = STEP09._STEP08_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        STEP09.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        STEP09._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_step08_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = STEP09._STEP08_MODULE_NAME
+    failing_owner = tmp_path / "step08.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 08 execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(STEP09, "_STEP08_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 08 execution failure"):
+        STEP09._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_valid_fixture_passes_every_public_validator_with_exact_results(
+    valid: SimpleNamespace,
+) -> None:
+    all_sites = validate_results(valid)
+    significant = STEP09.validate_step09_results(
+        "Step 09 significant-sites",
+        valid.significant_path,
+        valid.sample_ids,
+        valid.analysis_id,
+        valid.sites.rows,
+    )
+    summary = validate_summary(valid, all_sites.rows)
+    mutation = STEP09.validate_mutation_spectrum(
+        valid.mutation_path,
+        valid.analysis_id,
+        all_sites.rows,
+    )
+
+    assert type(all_sites) is STEP09.Table
+    assert all_sites.path == valid.all_sites_path.resolve()
+    assert len(all_sites.rows) == 6
+    assert [row["candidate_id"] for row in all_sites.rows] == [
+        row["candidate_id"] for row in valid.sites.rows
+    ]
+    assert type(summary) is STEP09.Table
+    assert summary.rows[0]["successfully_tested_count"] == "3"
+    assert [row["call_status"] for row in significant.rows] == [
+        "significant_up",
+        "significant_down",
+    ]
+    assert [row["mutation_type"] for row in mutation.rows] == list(
+        STEP09.CANONICAL_MUTATIONS
+    )
+    assert STEP09.validate_step09_result_semantics(
+        all_sites.rows,
+        summary.rows[0],
+        valid.sample_rows,
+    ) is None
+    assert STEP09.validate_significant_subset(
+        all_sites.rows,
+        significant.rows,
+    ) is None
+    assert STEP09.validate_pdf("Mutation PDF", valid.mutation_pdf) is None
+    assert STEP09.validate_pdf("Depth PDF", valid.depth_pdf) is None
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "expected"),
+    (
+        ("analysis_id", "other", "wrong analysis_id"),
+        ("candidate_id", "unknown", "unknown Step 08 candidate"),
+        ("chromosome", "other", "differs from the Step 08 candidate"),
+        ("test_status", "unknown", "must be one of"),
+        ("call_status", "unknown", "must be one of"),
+        ("replicate_count", "01", "non-negative integer"),
+    ),
+)
+def test_result_contract_rejects_core_row_mutations(
+    valid: SimpleNamespace,
+    column: str,
+    value: str,
+    expected: str,
+) -> None:
+    replace_cell(valid.all_sites_path, 0, column, value)
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        validate_results(valid)
+
+
+def test_result_contract_rejects_header_and_duplicate_candidate_mutations(
+    valid: SimpleNamespace,
+) -> None:
+    header, rows = read_tsv(valid.all_sites_path)
+    duplicate_path = valid.all_sites_path.with_name("duplicate.tsv")
+    write_tsv(duplicate_path, header, [rows[0], rows[0]])
+    with pytest.raises(STEP09.ContractError, match="duplicate candidate_id"):
+        validate_results(valid, duplicate_path)
+
+    bad_header_path = valid.all_sites_path.with_name("bad-header.tsv")
+    bad_header = (*header[:-1], "unexpected")
+    bad_rows = [
+        {new: row.get(old, "NA") for new, old in zip(bad_header, header, strict=True)}
+        for row in rows
+    ]
+    write_tsv(bad_header_path, bad_header, bad_rows)
+    with pytest.raises(STEP09.ContractError, match="header is invalid"):
+        validate_results(valid, bad_header_path)
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "expected"),
+    (
+        ("analysis_id", "other", "analysis_id differs"),
+        ("cohort_id", "other", "cohort_id differs"),
+        ("multiple_testing_method", "BY", "approved CMH contract"),
+        ("sample_manifest_path", "/wrong", "differs from the explicit input"),
+        ("sample_manifest_sha256", "b" * 64, "is stale"),
+        ("sample_count", "7", "sample_count differs"),
+        ("candidate_count", "7", "candidate_count differs"),
+        ("target_rna_change", "A>N", "canonical SNV"),
+        ("target_candidate_count", "4", "target candidate count"),
+        ("successfully_tested_count", "2", "does not reconcile"),
+        ("replicate_count", "2", "replicate_count differs"),
+        ("orientation_policy", "other", "legacy_provisional_v1"),
+        ("background_condition", "EV", "must be independent"),
+        ("background_condition", "MISSING", "absent from the manifest"),
+    ),
+)
+def test_summary_contract_rejects_core_mutations(
+    valid: SimpleNamespace,
+    column: str,
+    value: str,
+    expected: str,
+) -> None:
+    all_rows = validate_results(valid).rows
+    replace_cell(valid.summary_path, 0, column, value)
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        validate_summary(valid, all_rows)
+
+
+def test_summary_contract_rejects_row_count_and_result_context(
+    valid: SimpleNamespace,
+) -> None:
+    all_rows = validate_results(valid).rows
+    header, rows = read_tsv(valid.summary_path)
+    write_tsv(valid.summary_path, header, [rows[0], rows[0]])
+    with pytest.raises(STEP09.ContractError, match="exactly one data row"):
+        validate_summary(valid, all_rows)
+
+    write_tsv(valid.summary_path, header, rows)
+    changed = copy.deepcopy(all_rows)
+    changed[0]["control_condition"] = "OTHER"
+    with pytest.raises(STEP09.ContractError, match="control_condition differs"):
+        validate_summary(valid, changed)
+
+
+def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) -> None:
+    all_rows = validate_results(valid).rows
+    summary = validate_summary(valid, all_rows).rows[0]
+
+    def rejected(
+        mutate: Callable[[list[dict[str, str]], dict[str, str]], None],
+        expected: str,
+    ) -> None:
+        rows = copy.deepcopy(all_rows)
+        summary_row = dict(summary)
+        mutate(rows, summary_row)
+        with pytest.raises(STEP09.ContractError, match=expected):
+            STEP09.validate_step09_result_semantics(
+                rows,
+                summary_row,
+                valid.sample_rows,
+            )
+
+    rejected(
+        lambda rows, _summary: rows[2].update(
+            test_status="tested", call_status="effect_not_met"
+        ),
+        "declared target change",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(max_background_af="0"),
+        "background-disabled",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(mean_analysis_dp="999"),
+        "depth metrics",
+    )
+    rejected(
+        lambda rows, _summary: rows[2].update(call_status="effect_not_met"),
+        "untested Step 09 candidate",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(call_status="not_tested"),
+        "tested Step 09 candidate",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(cmh_degrees_freedom="2"),
+        "statistics are malformed",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(call_status="effect_not_met"),
+        "declared strict thresholds",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(cmh_fdr_bh="0.0014"),
+        "global BH adjustment",
+    )
+    rejected(
+        lambda _rows, summary_row: summary_row.update(fdr_threshold="0"),
+        "thresholds are outside",
+    )
+
+
+def test_semantic_contract_accepts_missing_counts_and_strict_threshold_edges(
+    valid: SimpleNamespace,
+) -> None:
+    all_rows = validate_results(valid).rows
+    summary = validate_summary(valid, all_rows).rows[0]
+
+    missing_rows = copy.deepcopy(all_rows)
+    missing_rows[3].update(
+        {
+            f"{prefix}__{valid.sample_ids[0]}": "NA"
+            for prefix in ("DP", "AD", "AF")
+        }
+    )
+    missing_rows[3].update(
+        {
+            column: "NA"
+            for column in (
+                "min_analysis_dp",
+                "mean_analysis_dp",
+                "mean_control_af",
+                "mean_treatment_af",
+                "treatment_control_difference",
+                "cmh_statistic",
+                "cmh_degrees_freedom",
+                "cmh_p_value",
+                "cmh_fdr_bh",
+                "common_odds_ratio",
+            )
+        }
+    )
+    missing_rows[3]["test_status"] = "missing_counts"
+    assert STEP09.validate_step09_result_semantics(
+        missing_rows,
+        summary,
+        valid.sample_rows,
+    ) is None
+
+    for column, value, expected_call in (
+        ("mean_dp_threshold", "100", "below_mean_dp"),
+        ("fdr_threshold", "0.0015", "fdr_not_met"),
+        ("common_or_threshold", "3.5", "effect_not_met"),
+        ("absolute_difference_threshold", "0.20", "effect_not_met"),
+    ):
+        rows = copy.deepcopy(all_rows)
+        summary_row = dict(summary)
+        summary_row[column] = value
+        for row in rows:
+            if row["test_status"] == "tested":
+                row["call_status"] = expected_call
+        STEP09.validate_step09_result_semantics(
+            rows,
+            summary_row,
+            valid.sample_rows,
+        )
+
+
+@pytest.mark.parametrize(
+    ("background_status", "dp", "ad", "maximum"),
+    (
+        ("pass", "100", "0", "0"),
+        ("fail_fraction", "100", "5", "0.05"),
+        ("missing_counts", "NA", "NA", "NA"),
+        ("low_coverage", "0", "0", "NA"),
+    ),
+)
+def test_enabled_background_reconciles_from_immutable_counts(
+    valid: SimpleNamespace,
+    background_status: str,
+    dp: str,
+    ad: str,
+    maximum: str,
+) -> None:
+    all_rows = validate_results(valid).rows
+    summary = dict(validate_summary(valid, all_rows).rows[0])
+    summary["background_condition"] = "BACKGROUND"
+    background_sample = dict(valid.sample_rows[0])
+    background_sample.update(
+        sample_id="BACKGROUND_1",
+        condition="BACKGROUND",
+        replicate="1",
+    )
+    sample_rows = [*valid.sample_rows, background_sample]
+    rows = copy.deepcopy(all_rows)
+    for row in rows:
+        row.update(
+            {
+                "background_condition": "BACKGROUND",
+                "background_status": background_status,
+                "max_background_af": maximum,
+                "DP__BACKGROUND_1": dp,
+                "AD__BACKGROUND_1": ad,
+            }
+        )
+        if row["test_status"] == "tested" and background_status != "pass":
+            row["call_status"] = "background_not_passed"
+
+    assert STEP09.validate_step09_result_semantics(
+        rows,
+        summary,
+        sample_rows,
+    ) is None
+
+    rows[0]["max_background_af"] = "0.5" if maximum != "NA" else "0"
+    with pytest.raises(STEP09.ContractError, match="enabled-background"):
+        STEP09.validate_step09_result_semantics(rows, summary, sample_rows)
+
+
+def test_significant_subset_requires_exact_order_and_rows(valid: SimpleNamespace) -> None:
+    all_rows = validate_results(valid).rows
+    significant = STEP09.validate_step09_results(
+        "Step 09 significant-sites",
+        valid.significant_path,
+        valid.sample_ids,
+        valid.analysis_id,
+        valid.sites.rows,
+    ).rows
+    assert STEP09.validate_significant_subset(all_rows, significant) is None
+
+    for changed in (
+        list(reversed(significant)),
+        significant[:-1],
+        [*significant, all_rows[-1]],
+    ):
+        with pytest.raises(STEP09.ContractError, match="exact ordered"):
+            STEP09.validate_significant_subset(all_rows, changed)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    (
+        ("order", "canonical 12 SNVs"),
+        ("identity", "identity columns"),
+        ("count", "candidate_count does not reconcile"),
+        ("fraction", "candidate_fraction is invalid"),
+    ),
+)
+def test_mutation_spectrum_rejects_core_mutations(
+    valid: SimpleNamespace,
+    mutation: str,
+    expected: str,
+) -> None:
+    all_rows = validate_results(valid).rows
+    header, rows = read_tsv(valid.mutation_path)
+    if mutation == "order":
+        rows[0], rows[1] = rows[1], rows[0]
+    elif mutation == "identity":
+        rows[0]["rna_ref"] = "T"
+    elif mutation == "count":
+        rows[0]["candidate_count"] = "1"
+    else:
+        rows[0]["candidate_fraction"] = "0.5"
+    write_tsv(valid.mutation_path, header, rows)
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        STEP09.validate_mutation_spectrum(
+            valid.mutation_path,
+            valid.analysis_id,
+            all_rows,
+        )
+
+
+def test_mutation_spectrum_accepts_empty_candidate_universe(tmp_path: Path) -> None:
+    path = tmp_path / "empty-universe.tsv"
+    rows = []
+    for mutation_type in STEP09.CANONICAL_MUTATIONS:
+        ref, alt = mutation_type.split(">")
+        rows.append(
+            {
+                "analysis_id": "analysis",
+                "rna_ref": ref,
+                "rna_alt": alt,
+                "mutation_type": mutation_type,
+                "candidate_count": "0",
+                "candidate_fraction": "0",
+                "successfully_tested_count": "0",
+                "significant_up_count": "0",
+                "significant_down_count": "0",
+            }
+        )
+    write_tsv(path, STEP09.STEP09_MUTATION_HEADER, rows)
+
+    table = STEP09.validate_mutation_spectrum(path, "analysis", [])
+
+    assert type(table) is STEP09.Table
+    assert len(table.rows) == 12
+
+
+def test_pdf_validation_rejects_signature_eof_and_read_failures(
+    valid: SimpleNamespace,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bad_signature = tmp_path / "bad-signature.pdf"
+    bad_signature.write_bytes(b"not-a-pdf\n%%EOF\n")
+    with pytest.raises(STEP09.ContractError, match="lacks a %PDF- signature"):
+        STEP09.validate_pdf("Bad PDF", bad_signature)
+
+    missing_eof = tmp_path / "missing-eof.pdf"
+    missing_eof.write_bytes(b"%PDF-1.4\n")
+    with pytest.raises(STEP09.ContractError, match="trailing %%EOF marker"):
+        STEP09.validate_pdf("Bad PDF", missing_eof)
+
+    with pytest.raises(STEP09.ContractError, match="does not exist"):
+        STEP09.validate_pdf("Missing PDF", tmp_path / "missing.pdf")
+
+    original_read_bytes = Path.read_bytes
+
+    def fail_read(path: Path) -> bytes:
+        if path == valid.mutation_pdf.resolve():
+            raise OSError("injected read failure")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", fail_read)
+    with pytest.raises(STEP09.ContractError, match="Could not read Mutation PDF"):
+        STEP09.validate_pdf("Mutation PDF", valid.mutation_pdf)
+
+
+def test_private_parsing_path_count_and_pairing_edges(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert STEP09.parse_nonnegative_or_infinite("value", "0") == 0
+    assert math.isinf(STEP09.parse_nonnegative_or_infinite("value", "inf"))
+    for value, expected in (
+        ("not-a-number", "must be numeric"),
+        ("nan", "non-negative and not NaN"),
+        ("-1", "non-negative and not NaN"),
+    ):
+        with pytest.raises(STEP09.ContractError, match=expected):
+            STEP09.parse_nonnegative_or_infinite("value", value)
+
+    monkeypatch.chdir(tmp_path)
+    assert STEP09.resolve_recorded_path("nested/../record.tsv") == (
+        tmp_path / "record.tsv"
+    ).resolve()
+    absolute = (tmp_path / "absolute.tsv").resolve()
+    assert STEP09.resolve_recorded_path(str(absolute)) == absolute
+    assert STEP09.count_status(
+        ({"status": "pass"}, {"status": "fail"}, {"status": "pass"}),
+        "status",
+        "pass",
+    ) == 2
+
+    sample_rows = FIXTURES.sample_rows()
+    replicates, pairs = STEP09.paired_samples(sample_rows, "EV", "PUM1")
+    assert replicates == ["2", "3", "4"]
+    assert pairs == {
+        replicate: (control, treatment)
+        for replicate, control, treatment in FIXTURES.PAIRINGS
+    }
+    with pytest.raises(STEP09.ContractError, match="conditions must differ"):
+        STEP09.paired_samples(sample_rows, "EV", "EV")
+    with pytest.raises(STEP09.ContractError, match="at least two strata"):
+        STEP09.paired_samples(sample_rows[:1] + sample_rows[3:4], "EV", "PUM1")
+    duplicate = [dict(row) for row in sample_rows]
+    duplicate.append({**sample_rows[0], "sample_id": "DUPLICATE"})
+    with pytest.raises(STEP09.ContractError, match="exactly one control"):
+        STEP09.paired_samples(duplicate, "EV", "PUM1")

@@ -162,6 +162,85 @@ except Exception as exc:
     raise SystemExit(2) from None
 
 
+_STEP09_MODULE_NAME = "_norad_step09_scientific_evidence_contract"
+_STEP09_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step09.py"
+).resolve(strict=False)
+_STEP09_READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
+
+
+def _validated_step09_contract(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached Step 09 scientific-evidence contract has no valid file path"
+        ) from exc
+    if module_path != _STEP09_MODULE_PATH:
+        raise ImportError(
+            "cached Step 09 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP09_MODULE_PATH}"
+        )
+    if getattr(module, _STEP09_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached Step 09 scientific-evidence contract is partially initialized"
+        )
+    return module
+
+
+def _load_step09_contract() -> object:
+    cached = sys.modules.get(_STEP09_MODULE_NAME)
+    if cached is not None:
+        return _validated_step09_contract(cached)
+    spec = importlib.util.spec_from_file_location(
+        _STEP09_MODULE_NAME, _STEP09_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file Step 09 module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_STEP09_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_step09_contract(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _STEP09_READY_ATTRIBUTE, True)
+        _validated_step09_contract(module)
+    except BaseException:
+        if sys.modules.get(_STEP09_MODULE_NAME) is module:
+            del sys.modules[_STEP09_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    step09 = _load_step09_contract()
+    if step09.step08 is not step08:
+        raise ImportError(
+            "Step 09 contract and artifact indexing resolved different Step 08 "
+            "objects"
+        )
+    if (
+        step09.ContractError is not step08.ContractError
+        or step09.Table is not step08.Table
+    ):
+        raise ImportError("Step 09 contract resolved different shared identities")
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load Step 09 scientific-evidence contract at "
+        f"{_STEP09_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
 _CONTRACTS_MODULE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -224,6 +303,11 @@ try:
     if step09c.step08 is not step08:
         raise ImportError(
             "Step 09c and artifact indexing resolved different Step 08 "
+            "contract objects"
+        )
+    if step09c.step09 is not step09:
+        raise ImportError(
+            "Step 09c and artifact indexing resolved different Step 09 "
             "contract objects"
         )
 except Exception as exc:
@@ -889,7 +973,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "sample_blocks_tsv",
             "text/tab-separated-values",
             suffixes=(suffix,),
-            expected_header=step09c.STEP09_RESULT_HEADER,
+            expected_header=step09.STEP09_RESULT_HEADER,
         )
     add_spec(
         registry,
@@ -899,7 +983,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "tsv",
         "text/tab-separated-values",
         suffixes=(".cmh_summary.tsv",),
-        expected_header=step09c.STEP09_SUMMARY_HEADER,
+        expected_header=step09.STEP09_SUMMARY_HEADER,
         exact_data_rows=1,
         allow_header_only=False,
     )
@@ -911,7 +995,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "tsv",
         "text/tab-separated-values",
         suffixes=(".mutation_spectrum.tsv",),
-        expected_header=step09c.STEP09_MUTATION_HEADER,
+        expected_header=step09.STEP09_MUTATION_HEADER,
     )
     for adapter_id, suffix in (
         ("step09_mutation_spectrum_pdf_v1", ".mutation_spectrum.pdf"),
@@ -3251,22 +3335,8 @@ def validate_significant_exact_subset(
 def validate_step09_statuses(
     all_value_counts: Mapping[str, Mapping[str, int]],
 ) -> None:
-    allowed_test_statuses = {
-        "not_target_change",
-        "missing_counts",
-        "low_coverage",
-        "degenerate_table",
-        "tested",
-    }
-    allowed_call_statuses = {
-        "not_tested",
-        "below_mean_dp",
-        "background_not_passed",
-        "fdr_not_met",
-        "effect_not_met",
-        "significant_up",
-        "significant_down",
-    }
+    allowed_test_statuses = set(step09.STEP09_TEST_STATUSES)
+    allowed_call_statuses = set(step09.STEP09_CALL_STATUSES)
     unknown_test = set(all_value_counts.get("test_status", {})) - (
         allowed_test_statuses
     )
@@ -3287,7 +3357,7 @@ def validate_step09_mutation_spectrum(
     analysis_id: str,
 ) -> None:
     if [row["mutation_type"] for row in mutation_rows] != list(
-        step09c.CANONICAL_MUTATIONS
+        step09.CANONICAL_MUTATIONS
     ):
         raise ArtifactIndexError(
             "Step 09 mutation spectrum must contain the canonical ordered "
@@ -3396,31 +3466,9 @@ def reconcile_step09(
     all_value_counts = all_sites.native.get("value_counts", {})
     significant_value_counts = significant.native.get("value_counts", {})
     validate_step09_statuses(all_value_counts)
-    test_bindings = {
-        "successfully_tested_count": "tested",
-        "not_target_change_count": "not_target_change",
-        "missing_counts_count": "missing_counts",
-        "low_coverage_count": "low_coverage",
-        "degenerate_table_count": "degenerate_table",
-    }
-    for summary_field, status in test_bindings.items():
+    for summary_field, column, status in step09.STEP09_STATUS_COUNT_FIELDS:
         if native_int(summary_row, summary_field) != (
-            all_value_counts.get("test_status", {}).get(status, 0)
-        ):
-            raise ArtifactIndexError(
-                f"Step 09 summary {summary_field} disagrees with all-sites"
-            )
-    call_bindings = {
-        "below_mean_dp_count": "below_mean_dp",
-        "background_not_passed_count": "background_not_passed",
-        "fdr_not_met_count": "fdr_not_met",
-        "effect_not_met_count": "effect_not_met",
-        "significant_up_count": "significant_up",
-        "significant_down_count": "significant_down",
-    }
-    for summary_field, status in call_bindings.items():
-        if native_int(summary_row, summary_field) != (
-            all_value_counts.get("call_status", {}).get(status, 0)
+            all_value_counts.get(column, {}).get(status, 0)
         ):
             raise ArtifactIndexError(
                 f"Step 09 summary {summary_field} disagrees with all-sites"

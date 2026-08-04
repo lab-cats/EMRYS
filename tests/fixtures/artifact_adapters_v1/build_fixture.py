@@ -701,7 +701,7 @@ def tsv_rows_for(
     elif adapter == "step09_mutation_spectrum_tsv_v1":
         for output_row, mutation_type in zip(
             rows,
-            ADAPTER.step09c.CANONICAL_MUTATIONS,
+            ADAPTER.step09.CANONICAL_MUTATIONS,
             strict=True,
         ):
             ref, alt = mutation_type.split(">")

@@ -36,6 +36,7 @@ RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 SCIENTIFIC_REVIEW = ARTIFACT_INDEX.step09c
 STEP08_CONTRACT = ARTIFACT_INDEX.step08
+STEP09_CONTRACT = ARTIFACT_INDEX.step09
 SHARED_SCIENCE = RUN_SUMMARY.science
 
 
@@ -72,8 +73,14 @@ ARTIFACT_CONTRACT_LOADERS = (
     REPORT_BUNDLE.html_report,
 )
 STEP08_CONTRACT_LOADERS = (
+    STEP09_CONTRACT,
     SCIENTIFIC_REVIEW,
     STEP08_VALIDATOR,
+    STEP09_VALIDATOR,
+    ARTIFACT_INDEX,
+)
+STEP09_CONTRACT_LOADERS = (
+    SCIENTIFIC_REVIEW,
     STEP09_VALIDATOR,
     ARTIFACT_INDEX,
 )
@@ -86,7 +93,8 @@ def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
     assert STEP08_VALIDATOR.step08 is owner
     assert STEP09_VALIDATOR.step08 is owner
     assert ARTIFACT_INDEX.step08 is owner
-    assert STEP09_VALIDATOR.contracts is SCIENTIFIC_REVIEW
+    assert STEP09_CONTRACT.step08 is owner
+    assert STEP09_VALIDATOR.step09 is STEP09_CONTRACT
     assert ARTIFACT_INDEX.step09c is SCIENTIFIC_REVIEW
     assert SCIENTIFIC_REVIEW.ContractError is owner.ContractError
     assert SCIENTIFIC_REVIEW.Table is owner.Table
@@ -98,7 +106,13 @@ def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
 @pytest.mark.parametrize(
     "loader_owner",
     STEP08_CONTRACT_LOADERS,
-    ids=("step09c", "step08-validator", "step09-validator", "artifact-index"),
+    ids=(
+        "step09",
+        "step09c",
+        "step08-validator",
+        "step09-validator",
+        "artifact-index",
+    ),
 )
 def test_step08_contract_loaders_reuse_owner_without_mutating_sys_path(
     loader_owner: ModuleType,
@@ -116,7 +130,13 @@ def test_step08_contract_loaders_reuse_owner_without_mutating_sys_path(
 @pytest.mark.parametrize(
     "loader_owner",
     STEP08_CONTRACT_LOADERS,
-    ids=("step09c", "step08-validator", "step09-validator", "artifact-index"),
+    ids=(
+        "step09",
+        "step09c",
+        "step08-validator",
+        "step09-validator",
+        "artifact-index",
+    ),
 )
 @pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
 def test_step08_contract_loaders_reject_invalid_cache(
@@ -142,6 +162,70 @@ def test_step08_contract_loaders_reject_invalid_cache(
 
     with pytest.raises(ImportError, match=expected):
         loader_owner._load_step08_contract()
+
+
+def test_step09_contract_consumers_share_one_exact_ready_owner() -> None:
+    owner = STEP09_CONTRACT
+
+    assert SCIENTIFIC_REVIEW.step09 is owner
+    assert STEP09_VALIDATOR.step09 is owner
+    assert ARTIFACT_INDEX.step09 is owner
+    assert owner.step08 is STEP08_CONTRACT
+    assert owner.ContractError is STEP08_CONTRACT.ContractError
+    assert owner.Table is STEP08_CONTRACT.Table
+    assert SCIENTIFIC_REVIEW.resolve_recorded_path is owner.resolve_recorded_path
+    assert sys.modules[ARTIFACT_INDEX._STEP09_MODULE_NAME] is owner
+    assert Path(owner.__file__).resolve() == ARTIFACT_INDEX._STEP09_MODULE_PATH
+    assert getattr(owner, ARTIFACT_INDEX._STEP09_READY_ATTRIBUTE) is True
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    STEP09_CONTRACT_LOADERS,
+    ids=("step09c", "step09-validator", "artifact-index"),
+)
+def test_step09_contract_loaders_reuse_owner_without_mutating_sys_path(
+    loader_owner: ModuleType,
+) -> None:
+    before_sys_path = list(sys.path)
+
+    loaded = loader_owner._load_step09_contract()
+
+    assert loaded is STEP09_CONTRACT
+    assert Path(loaded.__file__).resolve() == loader_owner._STEP09_MODULE_PATH
+    assert getattr(loaded, loader_owner._STEP09_READY_ATTRIBUTE) is True
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    STEP09_CONTRACT_LOADERS,
+    ids=("step09c", "step09-validator", "artifact-index"),
+)
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
+def test_step09_contract_loaders_reject_invalid_cache(
+    loader_owner: ModuleType,
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._STEP09_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step09.py")
+        setattr(cached, loader_owner._STEP09_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    elif cache_kind == "partial":
+        cached.__file__ = str(loader_owner._STEP09_MODULE_PATH)
+        expected = "partially initialized"
+    else:
+        cached.__file__ = None
+        setattr(cached, loader_owner._STEP09_READY_ATTRIBUTE, True)
+        expected = "no valid file path"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        loader_owner._load_step09_contract()
 
 
 def test_artifact_contract_consumers_share_one_exact_ready_owner() -> None:

@@ -224,6 +224,10 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
         in makefile
     )
     assert (
+        "--new-shared-module src/norad/contracts/scientific_evidence/step09.py"
+        in makefile
+    )
+    assert (
         "--new-shared-module src/norad/libraries/validation_report.py" in makefile
     )
     assert "compileall -q scripts src/norad tests" in makefile

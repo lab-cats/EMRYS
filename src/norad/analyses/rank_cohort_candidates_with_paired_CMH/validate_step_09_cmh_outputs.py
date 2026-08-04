@@ -140,74 +140,79 @@ except Exception as exc:
     )
     raise SystemExit(2) from None
 
-_CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
-_CONTRACTS_MODULE_PATH = (
+_STEP09_MODULE_NAME = "_norad_step09_scientific_evidence_contract"
+_STEP09_MODULE_PATH = (
     Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py"
+    / "contracts"
+    / "scientific_evidence"
+    / "step09.py"
 ).resolve(strict=False)
-_CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"
+_STEP09_READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
 
 
-def _validated_step09c_contracts(module: object) -> object:
+def _validated_step09_contract(module: object) -> object:
     try:
         module_path = Path(getattr(module, "__file__")).resolve(strict=False)
     except (OSError, TypeError) as exc:
         raise ImportError(
-            "cached Step 09c contract owner has no valid file path"
+            "cached Step 09 scientific-evidence contract has no valid file path"
         ) from exc
-    if module_path != _CONTRACTS_MODULE_PATH:
+    if module_path != _STEP09_MODULE_PATH:
         raise ImportError(
-            f"cached Step 09c contract owner resolves to {module_path}, "
-            f"expected {_CONTRACTS_MODULE_PATH}"
+            "cached Step 09 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP09_MODULE_PATH}"
         )
-    if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
+    if getattr(module, _STEP09_READY_ATTRIBUTE, False) is not True:
         raise ImportError(
-            "cached Step 09c contract owner is partially initialized"
+            "cached Step 09 scientific-evidence contract is partially initialized"
         )
     return module
 
 
-def _load_step09c_contracts() -> object:
-    cached = sys.modules.get(_CONTRACTS_MODULE_NAME)
+def _load_step09_contract() -> object:
+    cached = sys.modules.get(_STEP09_MODULE_NAME)
     if cached is not None:
-        return _validated_step09c_contracts(cached)
+        return _validated_step09_contract(cached)
     spec = importlib.util.spec_from_file_location(
-        _CONTRACTS_MODULE_NAME, _CONTRACTS_MODULE_PATH
+        _STEP09_MODULE_NAME, _STEP09_MODULE_PATH
     )
     if spec is None or spec.loader is None:
         raise ImportError(
-            "unable to create an exact-file Step 09c module specification"
+            "unable to create an exact-file Step 09 module specification"
         )
     module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_CONTRACTS_MODULE_NAME, module)
+    existing = sys.modules.setdefault(_STEP09_MODULE_NAME, module)
     if existing is not module:
-        return _validated_step09c_contracts(existing)
+        return _validated_step09_contract(existing)
     try:
         spec.loader.exec_module(module)
-        setattr(module, _CONTRACTS_READY_ATTRIBUTE, True)
-        _validated_step09c_contracts(module)
+        setattr(module, _STEP09_READY_ATTRIBUTE, True)
+        _validated_step09_contract(module)
     except BaseException:
-        if sys.modules.get(_CONTRACTS_MODULE_NAME) is module:
-            del sys.modules[_CONTRACTS_MODULE_NAME]
+        if sys.modules.get(_STEP09_MODULE_NAME) is module:
+            del sys.modules[_STEP09_MODULE_NAME]
         raise
     return module
 
 
 try:
-    contracts = _load_step09c_contracts()
-    if contracts.step08 is not step08:
+    step09 = _load_step09_contract()
+    if step09.step08 is not step08:
         raise ImportError(
-            "Step 09c and Step 09 resolved different Step 08 contract objects"
+            "Step 09 contract and validator resolved different Step 08 objects"
         )
+    if (
+        step09.ContractError is not step08.ContractError
+        or step09.Table is not step08.Table
+    ):
+        raise ImportError("Step 09 contract resolved different shared identities")
 except Exception as exc:
     reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
     print(
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{_CONTRACTS_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        "ERROR: unable to load Step 09 scientific-evidence contract at "
+        f"{_STEP09_MODULE_PATH}: {type(exc).__name__}: {reason}",
         file=sys.stderr,
     )
     raise SystemExit(2) from None
@@ -354,7 +359,7 @@ def build(args: argparse.Namespace):
     expected_result_header = None
     if sample_result is not None:
         expected_result_header = (
-            contracts.STEP09_RESULT_HEADER
+            step09.STEP09_RESULT_HEADER
             + tuple(f"DP__{sample}" for sample in sample_result[1])
             + tuple(f"AD__{sample}" for sample in sample_result[1])
             + tuple(f"AF__{sample}" for sample in sample_result[1])
@@ -374,8 +379,8 @@ def build(args: argparse.Namespace):
         == (
             expected_result_header,
             expected_result_header,
-            contracts.STEP09_SUMMARY_HEADER,
-            contracts.STEP09_MUTATION_HEADER,
+            step09.STEP09_SUMMARY_HEADER,
+            step09.STEP09_MUTATION_HEADER,
         )
     )
 
@@ -384,7 +389,7 @@ def build(args: argparse.Namespace):
     result_detail = "Step 08 prerequisite failed"
     if sample_result is not None and step08_sites is not None:
         all_sites, all_detail = attempt(
-            lambda: contracts.validate_step09_results(
+            lambda: step09.validate_step09_results(
                 "Step 09 all-sites",
                 paths["all_sites"],
                 sample_result[1],
@@ -393,7 +398,7 @@ def build(args: argparse.Namespace):
             )
         )
         significant_sites, significant_detail = attempt(
-            lambda: contracts.validate_step09_results(
+            lambda: step09.validate_step09_results(
                 "Step 09 significant-sites",
                 paths["significant_sites"],
                 sample_result[1],
@@ -421,7 +426,7 @@ def build(args: argparse.Namespace):
         and all_sites is not None
     ):
         summary, summary_detail = attempt(
-            lambda: contracts.validate_step09_summary(
+            lambda: step09.validate_step09_summary(
                 paths["summary"],
                 args.analysis_id,
                 args.cohort_id,
@@ -443,7 +448,7 @@ def build(args: argparse.Namespace):
     semantic_detail = "result or summary prerequisite failed"
     if summary is not None and all_sites is not None and sample_result is not None:
         _, semantic_detail = attempt(
-            lambda: contracts.validate_step09_result_semantics(
+            lambda: step09.validate_step09_result_semantics(
                 all_sites.rows, summary.rows[0], sample_result[2]
             )
         )
@@ -453,7 +458,7 @@ def build(args: argparse.Namespace):
     subset_detail = "result prerequisite failed"
     if all_sites is not None and significant_sites is not None:
         subset_result, subset_detail = attempt(
-            lambda: contracts.validate_significant_subset(
+            lambda: step09.validate_significant_subset(
                 all_sites.rows, significant_sites.rows
             )
         )
@@ -463,18 +468,18 @@ def build(args: argparse.Namespace):
     mutation_detail = "all-sites prerequisite failed"
     if all_sites is not None:
         mutation, mutation_detail = attempt(
-            lambda: contracts.validate_mutation_spectrum(
+            lambda: step09.validate_mutation_spectrum(
                 paths["mutation_spectrum"], args.analysis_id, all_sites.rows
             )
         )
 
     _, mutation_pdf_detail = attempt(
-        lambda: contracts.validate_pdf(
+        lambda: step09.validate_pdf(
             "Step 09 mutation-spectrum PDF", paths["mutation_spectrum_pdf"]
         )
     )
     _, depth_pdf_detail = attempt(
-        lambda: contracts.validate_pdf(
+        lambda: step09.validate_pdf(
             "Step 09 depth-delta PDF", paths["depth_delta_pdf"]
         )
     )

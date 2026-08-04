@@ -232,6 +232,7 @@ python-coverage-check: python-coverage-measure
 		--current "$(PYTHON_COVERAGE_CURRENT)" \
 		--new-shared-module scripts/git_orchestration/_common.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/step08.py \
+		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
 		--new-shared-module src/norad/libraries/validation_report.py \
 		--new-shared-module src/norad/libraries/bam_validation.py
 
