@@ -21,7 +21,8 @@ sys.modules[MODULE_NAME] = REFERENCE_CONTIGS
 SPEC.loader.exec_module(REFERENCE_CONTIGS)
 
 CONSUMERS = (
-    ROOT / "scripts/reference_provenance.py",
+    ROOT
+    / "src/norad/evidence/reference_provenance/reference_provenance.py",
     ROOT
     / "src/norad/stages/construct_FASTA_sidecars/"
     "validate_step_00c_reference_sidecars.py",

@@ -37,15 +37,6 @@
       "path": "scripts/git_orchestration/validate_fragment_target.py"
     },
     {
-      "branch_rate": "0.753521",
-      "covered_branches": 107,
-      "covered_lines": 332,
-      "line_rate": "0.875989",
-      "num_branches": 142,
-      "num_statements": 379,
-      "path": "scripts/reference_provenance.py"
-    },
-    {
       "branch_rate": "0.661538",
       "covered_branches": 86,
       "covered_lines": 318,
@@ -152,6 +143,15 @@
       "num_branches": 30,
       "num_statements": 110,
       "path": "src/norad/evidence/collect_canonical_BAM_QC_evidence/validate_step_02b_bam_qc.py"
+    },
+    {
+      "branch_rate": "0.753521",
+      "covered_branches": 107,
+      "covered_lines": 332,
+      "line_rate": "0.875989",
+      "num_branches": 142,
+      "num_statements": 379,
+      "path": "src/norad/evidence/reference_provenance/reference_provenance.py"
     },
     {
       "branch_rate": "1.000000",

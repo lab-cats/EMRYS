@@ -32,7 +32,9 @@ PYTHON_ENTRYPOINT_PATHS = {
     "gtf_to_bed12.py": Path(
         "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
     ),
-    "reference_provenance.py": Path("scripts/reference_provenance.py"),
+    "reference_provenance.py": Path(
+        "src/norad/evidence/reference_provenance/reference_provenance.py"
+    ),
     "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
     "render_run_report_bundle.py": Path(
         "src/norad/reporting/render_run_report_bundle.py"

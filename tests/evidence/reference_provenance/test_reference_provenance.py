@@ -9,8 +9,11 @@ from types import ModuleType
 import pytest
 
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "reference_provenance.py"
+ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    ROOT
+    / "src/norad/evidence/reference_provenance/reference_provenance.py"
+)
 HEADER = ["reference_id", "artifact_id", "role", "path", "required", "expected_sha256", "provenance_source", "provenance_release", "notes"]
 SPEC = importlib.util.spec_from_file_location(
     "norad_reference_provenance_faults",
@@ -81,6 +84,60 @@ def test_help_and_dry_run_side_effect_free(tmp_path):
     assert result.returncode == 0
     assert "Dry-run complete" in result.stdout
     assert not output.exists()
+
+
+def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
+    fixture = tmp_path / "fixture"
+    fixture.mkdir()
+    inventory = make_fixture(fixture)
+    output = tmp_path / "out"
+    output.mkdir()
+    invocation = tmp_path / "invocation"
+    invocation.mkdir()
+    command = [
+        sys.executable,
+        str(SCRIPT),
+        "--inventory",
+        str(inventory),
+        "--base-dir",
+        str(fixture),
+        "--output-root",
+        str(output),
+    ]
+
+    dry_run = subprocess.run(
+        command,
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+    )
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert "Dry-run complete" in dry_run.stdout
+    assert not (output / "ref1").exists()
+
+    first = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+    )
+    assert first.returncode == 0, first.stderr
+    before = {
+        path.name: path.read_bytes() for path in (output / "ref1").iterdir()
+    }
+    repeated = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+    )
+    assert repeated.returncode == 0, repeated.stderr
+    assert first.stdout == repeated.stdout
+    assert first.stderr == repeated.stderr == ""
+    assert before == {
+        path.name: path.read_bytes() for path in (output / "ref1").iterdir()
+    }
+    assert not any(invocation.iterdir())
 
 
 def test_execute_publishes_summary_last_contract(tmp_path):

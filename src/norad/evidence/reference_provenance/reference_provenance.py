@@ -53,9 +53,7 @@ class ProvenanceError(RuntimeError):
 
 _REFERENCE_CONTIGS_MODULE_NAME = "_norad_reference_contigs"
 _REFERENCE_CONTIGS_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "norad"
+    Path(__file__).resolve().parents[2]
     / "libraries"
     / "reference_contigs.py"
 ).resolve(strict=False)
