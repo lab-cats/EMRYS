@@ -118,5 +118,7 @@ relocation does not preserve that prohibited dependency direction.
 
 ## Completion record
 
-Not started. This card is the next unselected JIT candidate after completed
-MIG-04A; lifecycle selection begins read-only plan/review before implementation.
+Selected from clean, published, live-remote-equal MIG-04A documentation close
+`ec0b00f545b8272eaf19b3cebee7c608a20139e7`. Selection begins bounded read-only
+plan/review; no neutral module, test, consumer, coverage, or documentation
+surface has changed.

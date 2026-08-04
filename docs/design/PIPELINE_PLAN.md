@@ -94,10 +94,9 @@ complete as the first decision package in the explicitly authorized residual
 convergence campaign. It settled the two observed prohibited peer-
 implementation seams. Completed
 [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-performed the first executable move. No package is selected at this lifecycle
-close; unselected
-[`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
-is the next JIT candidate.
+performed the first executable move. The sole selected package is
+[`LIB-02G`](../tasks/IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md),
+the bounded Step `08` neutral scientific-evidence contract extraction.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -136,7 +135,7 @@ Preferred one-owner order is:
 
 1. completed `LIB-02F` settles only the two observed shared seams;
 2. completed `MIG-04A` performs the neutral artifact-contract move;
-3. select and execute unselected `LIB-02G`, then create later bottom-up
+3. execute selected `LIB-02G`, then create later bottom-up
    scientific-evidence slices only just in time: Step `09`, the public review-
    package contract, and reporting-local reader removal;
 4. execute `RPT-05A` only after those concrete blockers close;
@@ -147,9 +146,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected at this lifecycle close. `LIB-02G` is the sole
-pre-created next JIT candidate; later seam-extraction cards, the final audit,
-and deferred domains remain uncreated or unbegun.
+`LIB-02G` is the sole selected residual package. Later seam-extraction cards,
+the final audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -201,14 +199,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                             └── MIG-04A selection ca5497f
                                 └── MIG-04A executable cutover 17090ac
                                     └── MIG-04A documentation/lifecycle close
-                                        + LIB-02G registration
-                                        (commit containing this plan)
+                                        + LIB-02G registration ec0b00f
+                                        └── LIB-02G selection
+                                            (commit containing this plan)
 ```
 
-The final node is the current lifecycle-close tip represented by this plan. It
-creates unselected `LIB-02G` as the next JIT candidate but selects no package;
-no later extraction, final audit, default-branch integration, runtime, or
-cluster action is implied.
+The final node is the current selection tip represented by this plan. It
+selects only `LIB-02G`; no implementation, later extraction, final audit,
+default-branch integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02G](../TODO/LIB-02G-extract-step08-scientific-evidence-contract.md) — Required: begin the concrete bottom-up scientific-contract extraction before later Step `09`/`09c` and reporting-local dependency-removal slices replace this JIT edge.
+- [LIB-02G](../IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md) — Required: begin the concrete bottom-up scientific-contract extraction before later Step `09`/`09c` and reporting-local dependency-removal slices replace this JIT edge.
 
 ## Completion unblocks
 

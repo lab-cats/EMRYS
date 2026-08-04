@@ -13,8 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Current package predecessor:
-  `17090acb523d1a882bfae51ff738b5f8b9e391c9`, the local executable/test
-  `MIG-04A` cutover checkpoint awaiting this documentation/lifecycle close.
+  `ec0b00f545b8272eaf19b3cebee7c608a20139e7`, the clean, published,
+  live-remote-equal `MIG-04A` documentation/lifecycle close and `LIB-02G`
+  registration checkpoint.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -35,10 +36,12 @@ and delivery-required lineage live in
   [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
   moved the neutral artifact validator, five schemas, direct test, and four
   valid fixtures to their permanent owners and cut over all reviewed consumers
-  without a wrapper or schema/behavior change. No package is selected at this
-  lifecycle close. Unselected
-  [`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
-  is the next JIT candidate.
+  without a wrapper or schema/behavior change.
+- Selected package:
+  [`LIB-02G`](../tasks/IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md)
+  extracts only the public Step `08` table/manifest contract into its neutral
+  owner and cuts over its repository-owned Python consumers. Selection begins
+  bounded plan/review; no executable or test change has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -187,16 +190,14 @@ that drift.
 
 ## Immediate resume point
 
-Completed
-[`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-owns the final artifact-contract cutover and exact evidence ceiling. After this
-documentation close is clean, published, and live-remote equal, select only
-unselected
-[`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
-and begin its read-only JIT plan/review. That card extracts only the public
-Step `08` neutral scientific-evidence contract; later Step `09`, public Step
-`09c`, reporting-local reader, reporting migration, reference/evidence moves,
-and final audit remain uncreated or unselected.
+Selected
+[`LIB-02G`](../tasks/IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md)
+is the sole active residual package. Inspect only its direct Step `08` public
+surface, consumers, exception/module/table identities, tests, goldens, and
+coverage; freeze focused behavior; then execute its neutral exact-file cutover
+inside the existing campaign authorization. Later Step `09`, public Step `09c`,
+reporting-local reader, reporting migration, reference/evidence moves, and
+final audit remain uncreated or unselected.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is
