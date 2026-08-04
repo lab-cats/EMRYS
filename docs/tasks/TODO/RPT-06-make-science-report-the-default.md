@@ -20,6 +20,7 @@ happen only after content, UX, relocation, and decomposition are stable.
 
 ## Blocked by
 
+- [RPT-04](../TODO/RPT-04-implement-science-report-usability.md) — Required: the science presentation and cross-format usability contract must be implemented before it becomes the default.
 - [RPT-05B](../TODO/RPT-05B-decompose-report-rendering-modules.md) — Required: report ownership and internals must be stable before the public default changes.
 
 ## Completion unblocks

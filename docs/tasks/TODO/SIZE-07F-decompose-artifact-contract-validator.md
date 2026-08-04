@@ -33,6 +33,9 @@ producers would create common-mode defects.
 
 - Complete independent roster/golden/CLI characterization and refresh the
   validator's schema/status/consumer matrix.
+- Verify that the validator and its five public schemas occupy the final
+  neutral-contract homes fixed by `SOURCE_TOPOLOGY.md`. If they do not, leave
+  this card unselected and create the one-owner relocation card just in time.
 
 ## Required context
 
@@ -50,8 +53,8 @@ producers would create common-mode defects.
 
 ## Out of scope
 
-- Changing schemas/evidence states, sharing producer rules, normalizing all
-  validator exits, or building a generic validator framework.
+- Source relocation, changing schemas/evidence states, sharing producer rules,
+  normalizing all validator exits, or building a generic validator framework.
 
 ## Deliverables
 

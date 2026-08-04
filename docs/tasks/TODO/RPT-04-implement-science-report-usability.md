@@ -27,7 +27,7 @@ behavior.
 
 ## Completion unblocks
 
-- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Fully: the science behavior can move with a complete usability contract.
+- [RPT-06](../TODO/RPT-06-make-science-report-the-default.md) — Partially: default activation also requires stable decomposed reporting internals.
 
 ## Prerequisites
 

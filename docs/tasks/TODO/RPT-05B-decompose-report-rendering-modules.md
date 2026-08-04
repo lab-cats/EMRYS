@@ -27,7 +27,7 @@ changing public/report contracts or duplicating the relocation concern.
 
 ## Completion unblocks
 
-- [RPT-06](../TODO/RPT-06-make-science-report-the-default.md) — Fully: the stable decomposed domain can safely expose the new default.
+- [RPT-06](../TODO/RPT-06-make-science-report-the-default.md) — Partially: default activation also requires completed science-report usability.
 
 ## Prerequisites
 

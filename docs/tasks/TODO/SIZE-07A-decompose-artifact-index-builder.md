@@ -26,6 +26,7 @@ change surface.
 
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
+- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decompose the builder inside the final reporting owner rather than creating more temporary flat implementation.
 
 ## Completion unblocks
 
@@ -47,18 +48,20 @@ change surface.
 
 ## In scope
 
-- Neutral models/registry, native readers, evidence assembly, publication, CLI
-  seams, caller migration, and bounded child-card creation.
+- Reporting-local models/registry, native readers, evidence assembly,
+  publication, CLI seams, internal caller migration, and bounded child-card
+  creation inside the final reporting owner.
 
 ## Out of scope
 
-- Changing stage semantics, public schemas/bytes, universal transaction
-  abstraction, report redesign, or unrelated artifact pipeline features.
+- Source relocation, changing stage semantics, public schemas/bytes, universal
+  transaction abstraction, report redesign, or unrelated artifact pipeline
+  features.
 
 ## Deliverables
 
-- Cohesive modules in final owners, narrowed tests, removed monolith, and a
-  complete disposition for any temporary wrapper.
+- Cohesive reporting-owner modules, narrowed tests, and a removed monolith;
+  relocation wrappers and legacy-path caller cutover remain `RPT-05A` scope.
 
 ## Acceptance evidence
 

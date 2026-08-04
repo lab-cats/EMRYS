@@ -17,10 +17,12 @@ and prohibited reverse dependencies unresolved.
 
 ## Fixed decisions
 
+- Semantic planning category: `behavior or architecture planning`.
+- Validation impact: `documentation-only/non-consuming`.
 - Give every tracked path in the bounded residual roots exactly one disposition:
-  move to an exact final owner, retain intentionally at repository level,
-  retire through separately approved cleanup, or defer to a named unimplemented
-  domain.
+  `MOVE` to an exact final owner, `RETAIN_ROOT` under an intentional repository
+  owner, `RETIRE` through separately approved cleanup, or `DEFER` to a named
+  unimplemented domain.
 - Defer scheduler, ingestion, and scientific-workflow orchestration/profile
   implementation. Repository Git orchestration is developer tooling, not that
   runtime domain.
@@ -141,10 +143,22 @@ and prohibited reverse dependencies unresolved.
 
 ## Completion record
 
-Selected from clean upstream-equal parent
-`a8aa28b6d5331c9c7f9cec9d50c6f774ba0d8bf8` on the dedicated
-`codex/plan-03a-residual-source-topology-convergence` branch after approval of
-the documentation-only/non-consuming plan. The approved envelope changes only
-the named documentation, task-lifecycle, and mutable dependency surfaces;
-physical movement, successor selection, publication, and computational or
-cluster validation remain outside it.
+Completed as a local documentation-only/non-consuming candidate from clean,
+upstream-equal parent `a8aa28b6d5331c9c7f9cec9d50c6f774ba0d8bf8` after registration
+checkpoint `0e6b4cb` and selection checkpoint `b84bf55`. Exact tracked searches
+partitioned 133 scoped residual paths once across `MOVE`, `RETAIN_ROOT`,
+`DEFER`, and `RETIRE`; fixed exact cross-cutting target homes; preserved public
+configuration and repository-development ownership; and kept scheduler,
+ingestion, and runtime orchestration/profile work deferred.
+
+The package corrected the report dependency graph so relocation precedes
+feature implementation and decomposition, approved only the exact truthful
+old-to-new physical-path substitutions and product template/style provenance
+delta for that future move, and refined `LIB-02F` as the next eligible read-
+only decision card without selecting it or creating executable children.
+Semantic no-loss review,
+`git diff --check`, and the complete documentation gate passed. No executable,
+schema, configuration, fixture, template, style, dependency, Make, or test-
+harness file changed; computational, report-runtime, R, shell, cluster, and
+scientific validation were not applicable. Branch publication and successor
+selection remain separately authorized actions.

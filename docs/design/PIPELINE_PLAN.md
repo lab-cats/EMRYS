@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic owners, final homes, direct-migration mechanics, and neutral reporting library | complete; current owners in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and completed `MIG-03A` through `MIG-03O` cards |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, and neutral validation-report library | pipeline-owner migration complete through `MIG-03O`; residual cross-cutting convergence is dispositioned by `PLAN-03A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -54,12 +54,15 @@ completed cards rather than this current matrix.
 
 ## Active critical runway
 
-Physical migration is complete through `MIG-03O`; all fourteen functional
-owners occupy their frozen final homes. The required-artifact DAG contains no
-unmigrated owner in that topology. The repository-health runway completed its
-documentation-gate and lifecycle packages, preserved the quarantined malformed
-local R-library entry, corrected the bounded recursive-Make fixture issue, and
-reached a green complete local gate without changing dependencies.
+The neutral validation-report concern and all fourteen semantic DAG owners are
+physically migrated through `MIG-03O`; the required-artifact DAG contains no
+unmigrated owner in that frozen topology. Cross-cutting artifact contracts,
+reporting, evidence helpers, and shared tests remain at legacy root paths and
+are not covered by that narrower completion claim. The repository-health
+runway completed its documentation-gate and lifecycle packages, preserved the
+quarantined malformed local R-library entry, corrected the bounded recursive-
+Make fixture issue, and reached a green complete local gate without changing
+dependencies.
 
 Documentation-only
 [`DOC-CONS-08E`](../tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
@@ -77,14 +80,60 @@ work, UNREFINED proposals, default-branch integration, and remote runtime or
 cluster work remain unselected and outside this package.
 
 Documentation-only
-[`PLAN-03A`](../tasks/IN_PROGRESS/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
-is selected for its approved residual source-topology documentation package.
-Selection does not authorize physical movement, select a successor, or reopen
-the completed fourteen-owner migration campaign.
+[`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
+is locally complete as the residual source-topology documentation package. It
+changed no consumed or executable surface, selected no successor, and did not
+reopen the completed fourteen-owner migration campaign. Publication remains a
+separate explicit action.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
 and frozen proposal presence does not authorize selection or implementation.
+
+### Residual source-topology convergence
+
+The exact 133-path current roster is owned by the
+[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
+and exact final homes are owned by
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
+This roadmap owns only disposition and preferred JIT order. `MOVE`,
+`RETAIN_ROOT`, `DEFER`, and `RETIRE` are terminal planning dispositions; none
+authorizes mutation or creates a future card. The `LIB-02F` semantic comparison
+is a prerequisite decision for affected `MOVE` rows, not a fifth path
+disposition.
+
+| Residual group | Disposition | JIT route or boundary |
+| --- | --- | --- |
+| Artifact schemas and contract validator | `MOVE` | One neutral-contract migration card moves the validator, five schemas, direct test, and fixtures together. |
+| Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Start only after artifact contracts and every concrete prohibited-dependency extraction it needs; move current behavior before feature work or decomposition. |
+| Reference provenance evidence | `MOVE` | Start only after its Step `00c`/Step `05` shared-parser direction is resolved. |
+| Runtime preflight | `MOVE` | One evidence-owner migration card. |
+| Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
+| Independent contract goldens and validation-roster agreement | `MOVE` | Update as direct consumers during owner moves, then converge their paths under `tests/contract_integration/` near campaign close. |
+| Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
+| Public config examples, operator selections, and reference schemas | `RETAIN_ROOT` | Move only if a later inspected contract proves that one is implementation-native rather than an explicit user input. |
+| Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
+| Legacy Step `05` data checker and pending Step `04` scaffold | `RETAIN_ROOT` | Preserve the checker's unique scheduler/status/TSV behavior and the intentional pending scaffold until a separate no-loss owner/retirement review. |
+| Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Preserve its two unique cleanup entries in authorized owners before removing the record; this is documentation cleanup, not source migration. |
+| Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
+| Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
+| Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
+
+Preferred one-owner order is:
+
+1. select `LIB-02F` and settle only the two observed shared seams;
+2. create and execute the neutral artifact-contract move;
+3. create and execute only the justified neutral extraction needed by the next
+   application owner;
+4. execute `RPT-05A`, then reference provenance, runtime preflight, and storage
+   inventory as separate owner cards;
+5. converge the residual cross-owner contract tests and separately review the
+   two retained legacy test/data-check paths; and
+6. create one residual-layout audit only after the final executable move.
+
+Within this residual convergence campaign, only `LIB-02F` is the next eligible
+read-only selection. It remains unselected; no executable migration, successor
+card, final audit, deferred domain, or publication action begins automatically.
 
 ### Recovered proposal families
 
@@ -127,13 +176,18 @@ completion claim.
 ```text
 MIG-03O documentation/lifecycle close 9cb4bb8
 └── DOC-CONS-08E selection 9bb7a1a
-    └── DOC-CONS-08E documentation/lifecycle close (commit containing this plan)
+    └── DOC-CONS-08E documentation/lifecycle close a8aa28b
+        └── PLAN-03A registration 0e6b4cb
+            └── PLAN-03A selection b84bf55
+                └── PLAN-03A local documentation/lifecycle close
+                    (commit containing this plan; publication pending)
 ```
 
-The final node is the current documentation tip represented by this plan. No
-follow-on branch, card, final audit, default-branch integration, runtime, or
-cluster action is implied. The complete legacy lineage and frozen source
-identities are indexed in [operations history](../history/operations/).
+The final node is the local documentation tip represented by this plan. No
+successor card, executable migration, final audit, default-branch integration,
+runtime, cluster, or publication action is implied. The complete legacy
+lineage and frozen source identities are indexed in
+[operations history](../history/operations/).
 
 ## Package acceptance criteria
 

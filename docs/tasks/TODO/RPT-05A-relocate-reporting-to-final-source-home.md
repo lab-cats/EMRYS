@@ -14,23 +14,40 @@ logic, while report assets remain explicitly owned and inspectable.
 ## Fixed decisions
 
 - Target `src/norad/reporting`, not a root-level reporting implementation tree.
-- Root wrappers are temporary migration scaffolding only.
+- Use a direct cutover when every known repository caller can move atomically;
+  a root wrapper is allowed only for a named temporarily unmovable caller and
+  must be removed inside this card.
 - Preserve comprehensive/science behavior, explicit inputs, deterministic
   outputs, transaction/recovery semantics, and direct/Make invocation parity.
 - Do not combine relocation with internal decomposition.
+- Preserve QMD/CSS content hashes while recording their truthful new physical
+  paths. Exact old-to-new physical-path substitutions in repository callers,
+  help/usage and path diagnostics, delegated-command output, Make-expansion
+  goldens, and path-bearing fixtures are approved relocation deltas. Product
+  report bytes may change only through the exact path-valued QMD/CSS provenance
+  fields derived from that substitution; every non-path byte or behavior
+  change stops the card.
 
 ## Blocked by
 
-- [RPT-04](../TODO/RPT-04-implement-science-report-usability.md) — Required: both report profiles and their usability behavior must be complete before relocation.
+- [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Required: reporting's current private Step `09c` dependency needs an approved neutral or owner-local removal direction before relocation can be planned safely.
 
 ## Completion unblocks
 
+- [RPT-03](../TODO/RPT-03-build-format-neutral-report-projection.md) — Partially: feature implementation also requires its approved science contract and independent review.
 - [RPT-05B](../TODO/RPT-05B-decompose-report-rendering-modules.md) — Fully: decomposition can occur inside the final ownership boundary.
+- [SIZE-07A](../TODO/SIZE-07A-decompose-artifact-index-builder.md) — Partially: decomposition also requires its live size refresh and independent review.
+- [SIZE-07D](../TODO/SIZE-07D-decompose-run-summary-builder.md) — Partially: decomposition also requires its live size refresh and independent review.
 
 ## Prerequisites
 
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
-  Quarto inputs, arbitrary-CWD cases, and packaged-asset constraints.
+  Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
+  artifact-schema receipt fixture that embeds the current QMD path.
+- Verify that neutral artifact contracts occupy their final home and that no
+  reporting module imports Step `09c` or another functional owner's private
+  implementation. Stop and create the required neutral extraction card if the
+  direction leak still exists.
 
 ## Required context
 
@@ -61,6 +78,11 @@ logic, while report assets remain explicitly owned and inspectable.
 - Old/new behavior parity is demonstrated for every supported invocation,
   profile, format, transaction, fault, and arbitrary-CWD case.
 - No report implementation has dual permanent ownership.
+- Exact before/after evidence isolates the approved QMD/CSS physical-path
+  provenance delta and every repository-facing old-to-new path substitution;
+  template/style hashes and all non-path semantics remain unchanged.
+- No final reporting source imports a stage, analysis, or evidence
+  implementation.
 
 ## Canonical documentation updates
 
@@ -70,7 +92,9 @@ logic, while report assets remain explicitly owned and inspectable.
 ## Escalation conditions
 
 - Stop if non-Python assets require premature packaging/versioning, a wrapper
-  becomes indefinite, or relocation changes report bytes/behavior unexpectedly.
+  becomes indefinite, or relocation changes bytes or behavior beyond the exact
+  approved physical-path substitutions and their report-provenance-derived
+  output delta.
 
 ## Completion record
 

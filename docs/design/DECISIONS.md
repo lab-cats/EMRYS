@@ -843,6 +843,55 @@ through
 [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md).
 Current flat-layout documentation remains current truth until migrations land.
 
+### Converge cross-cutting source without misclassifying repository surfaces
+
+Context: the first physical campaign moved the neutral validation-report
+concern and fourteen semantic DAG owners. Artifact contracts, reporting,
+reference/runtime/storage evidence commands, shared tests, public examples,
+dependency restoration, and repository-development tooling remain mixed under
+root paths. Directory age alone does not show whether a path is application
+implementation or an intentional repository interface.
+
+Decision: move the remaining implemented application concerns to the exact
+cross-cutting homes in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes),
+one functional owner or neutral concern at a time. Reference provenance,
+runtime preflight, and storage inventory become distinct evidence owners;
+artifact schemas/validation become neutral contracts; and artifact indexing,
+canonical summary construction, renderers, templates, and styles become the
+reporting owner. Correct any prohibited peer-implementation dependency through
+a separately reviewed neutral extraction before moving the affected owner.
+
+Keep explicit user/operator starter configurations and reference tables under
+root `configs/`, and keep Git/documentation orchestration, quality tooling, R
+and Quarto restoration, project `renv` state, and other developer/operator
+interfaces at repository level. Those surfaces do not become runtime
+orchestration, a generic library, or a speculative new `setup/` domain.
+Scheduler, ingestion, and runtime orchestration/profile implementation remain
+deferred.
+
+Reporting relocation preserves template and style content hashes but continues
+to record truthful physical template/style paths. Repository-facing callers,
+help/usage text, path diagnostics, delegated-command output, Make-expansion
+goldens, and path-bearing fixtures may receive only exact old-to-new physical-
+path substitutions. Product report bytes may change only through their exact
+path-valued QMD/CSS provenance fields, with before/after characterization and
+reviewed golden updates. The move must not preserve an obsolete root path as a
+logical alias, falsify physical provenance, or treat any non-path byte or
+semantic difference as relocation parity.
+
+Rationale: application ownership converges without moving public inputs or
+repository controls into invented runtime domains. The explicit provenance
+delta is narrower and more truthful than either indefinite compatibility paths
+or a simultaneous report-interface redesign.
+
+Consequences: completed
+[`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
+owns the planning record; current paths remain in the functional-owner
+inventory and preferred JIT order remains in `PIPELINE_PLAN.md`. Each
+executable move still requires its own selected card, live caller graph,
+approved plan, parity evidence, and documentation close.
+
 ### Identify stages semantically and order them with a DAG
 
 Context: numeric names such as `00c`, `02b`, and `09c` convey historical order

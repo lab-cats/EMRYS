@@ -30,7 +30,7 @@ src/norad/
 | `cli/` | Public command interfaces and argument-to-contract translation. |
 | `orchestration/` | Workflow coordination through declared contracts and owner entry points. |
 | `scheduler/` | Scheduler-facing adapters and templates that delegate functional work. |
-| `contracts/` | Neutral cross-stage identities, DAG and topology contracts, public schemas, and shared vocabularies. |
+| `contracts/` | Neutral cross-stage identities, DAG and topology contracts, public schemas, shared vocabularies, and independently owned executable validation of those neutral contracts. |
 | `libraries/` | Proven shared implementation with an explicitly approved neutral owner; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the public stage slugs in [`STAGE_MAP.md`](STAGE_MAP.md#identity-map). |
 | `analyses/` | First-class scientific analysis modules, distinct from preprocessing stages. |
@@ -164,6 +164,43 @@ ownership only; no listed file is moved by this topology contract.
 | `rank_cohort_candidates_with_paired_CMH` | `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/` | `analysis.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/analyses/rank_cohort_candidates_with_paired_CMH/` |
 | `assemble_scientific_review_evidence_package` | `src/norad/evidence/assemble_scientific_review_evidence_package/` | `evidence.v1.yaml` | Python validation/publication implementation; shell launcher | `tests/evidence/assemble_scientific_review_evidence_package/` |
 
+## Cross-cutting implemented target homes
+
+The numbered-owner roster above does not classify the implemented cross-cutting
+concerns that remain at legacy root paths. Their final homes are fixed here so
+later movement can use the same direct, one-owner mechanics without inventing a
+new top-level domain.
+
+| Current functional owner | Exact target source home | Owned native assets | Mirrored test home |
+| --- | --- | --- | --- |
+| Artifact contract validation | `src/norad/contracts/artifacts/validate_artifact_contracts.py`; the five existing schema basenames under `src/norad/contracts/schemas/artifacts/v1/` | The five artifact JSON Schemas; no reporting template or producer-local schema | `tests/contracts/artifacts/test_artifact_schema_contracts.py`; current valid fixtures under `tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/` |
+| Artifact indexing, canonical run-summary assembly, and static reporting | The six existing script basenames under `src/norad/reporting/`; `src/norad/reporting/templates/{run_report.qmd,run_report_pdf.qmd}`; `src/norad/reporting/styles/run_report.css` | Artifact index and summary implementation, renderer/bundle/shell launcher, two QMD templates, and one CSS style | Existing direct suite basenames under `tests/reporting/`; fixture groups under `tests/reporting/fixtures/{artifact_adapters_v1,artifact_run_summary_v1,report_html_v1}/` |
+| Reference provenance evidence | `src/norad/evidence/reference_provenance/reference_provenance.py` | The current public evidence command; shared parsers move first only if separately approved as a neutral seam | `tests/evidence/reference_provenance/test_reference_provenance.py` |
+| Structured runtime inspection | `src/norad/evidence/runtime_preflight/runtime_preflight.py` | The current explicit-profile, read-only inspection command | `tests/evidence/runtime_preflight/test_runtime_preflight.py` |
+| Storage evidence | `src/norad/evidence/storage_inventory/storage_inventory.py` | The current read-only inventory command; retention action remains prohibited | `tests/evidence/storage_inventory/test_storage_inventory.py` |
+
+These homes do not approve descriptors, package imports, console scripts, or
+distribution. Reporting must not retain its current private implementation
+dependency on the Step `09c` evidence owner, and the reference-evidence move
+must not leave Step `00c` or Step `05` importing a peer implementation. Any
+neutral extraction needed to correct those directions is a separate reviewed
+unit completed before the affected owner moves.
+
+Public starter profiles, examples, operator selections, and reference tables
+remain under root `configs/` when callers receive them as explicit inputs.
+They are not owner-native implementation assets merely because one command
+documents or tests them. Neutral JSON Schemas enforced as executable contracts,
+private templates/styles, and other assets loaded as part of implementation
+move with their final owner; public example/reference TSVs do not become
+implementation assets by being schema-shaped.
+
+Dependency restoration and repository-development commands remain explicit
+repository-level interfaces under root `scripts/`. In particular, the R and
+Quarto check/restore commands, their project-root `renv` surfaces, and
+documentation/Git orchestration do not become runtime `cli/`, `libraries/`, or
+scientific-workflow `orchestration/` implementation. A later setup design may
+reconsider that boundary without creating a speculative `setup/` domain here.
+
 ## Mirrored test ownership
 
 ```text
@@ -188,16 +225,29 @@ specific runners may remain below the owner home, but `tests/shell/` or
 `tests/r/` is not the durable functional owner merely because it selects an
 interpreter.
 
-`tests/contracts/` independently tests neutral schemas and shared
-vocabularies. `tests/contract_integration/` checks producer/consumer agreement
-at public artifact boundaries without importing either implementation to
-construct expected results. `tests/workflow_integration/` exercises multiple
-owners only through their public entry points and explicit contracts.
+`tests/contracts/` independently tests neutral schemas, shared vocabularies,
+and executable validation owned by the neutral contract domain.
+`tests/contract_integration/` checks producer/consumer agreement at public
+artifact boundaries without importing either implementation to construct
+expected results. `tests/workflow_integration/` exercises multiple owners only
+through their public entry points and explicit contracts.
 
 Fixtures and goldens remain local to the narrowest test owner. A fixture moves
 to a neutral contract suite only when it represents the shared public contract
 rather than one producer's serialization helper. Test code and fixture
 placement do not create runtime dependency edges.
+
+The independent contract goldens and validation-roster agreement converge
+under `tests/contract_integration/independent_contract_goldens/` and
+`tests/contract_integration/validation_rosters/`, respectively. Cross-entry-
+point public-command characterization remains a repository-development suite
+because it spans Make, Git tooling, modes, and several runtime domains. The
+repository-wide SLURM-wrapper characterization converges under
+`tests/workflow_integration/scheduler/` only when scheduler work resumes; until
+then it remains a deferred mixed suite.
+Coverage enforcement, validation-gate orchestration, and documentation/Git
+orchestration tests remain repository-development protections rather than
+runtime-domain tests.
 
 ## CLI boundary
 

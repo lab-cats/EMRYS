@@ -24,6 +24,7 @@ central evidence role makes broad edits difficult to review.
 
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
+- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decompose the builder inside the final reporting owner rather than creating more temporary flat implementation.
 
 ## Completion unblocks
 
@@ -45,17 +46,19 @@ central evidence role makes broad edits difficult to review.
 
 ## In scope
 
-- Input adapters, neutral internal models, science-policy projection boundary,
-  serializers, publication, CLI orchestration, tests, and child-card split.
+- Reporting-local input adapters and internal models, science-policy projection
+  boundary, serializers, publication, CLI orchestration, tests, and child-card
+  split inside the final reporting owner.
 
 ## Out of scope
 
-- Public schema redesign, report field selection, evidence-state promotion,
-  intake identity, or generic artifact frameworks.
+- Source relocation, public schema redesign, report field selection, evidence-
+  state promotion, intake identity, or generic artifact frameworks.
 
 ## Deliverables
 
-- Cohesive modules, narrower tests, eliminated monolith, and stable consumer APIs.
+- Cohesive reporting-owner modules, narrower tests, an eliminated monolith, and
+  stable internal consumer APIs; legacy-path cutover remains `RPT-05A` scope.
 
 ## Acceptance evidence
 

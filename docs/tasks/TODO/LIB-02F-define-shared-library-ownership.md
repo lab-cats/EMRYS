@@ -20,6 +20,13 @@ test defects.
   depends on stages.
 - Require independent API and consumer tests; do not force cross-language DRY.
 - Preserve intentionally independent validation and transaction logic.
+- Decide the two observed direction leaks first: reporting and the Step `08`/
+  `09` validators exact-load Step `09c` implementation, while the Step `00c`
+  and Step `05` validators exact-load the public reference-provenance command.
+  Similar nearby code remains outside the first JIT decision.
+- Neither peer exact-file dependency is an allowed final retention outcome.
+  Approve a neutral seam or an independently tested owner-local dependency
+  removal; otherwise keep the affected migration explicitly blocked.
 
 ## Blocked by
 
@@ -28,7 +35,7 @@ test defects.
 
 ## Completion unblocks
 
-- None.
+- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: this card settles the reporting/Step `09c` ownership decision, but any concrete extraction and artifact-contract relocation must also complete before reporting moves.
 
 ## Prerequisites
 
@@ -38,7 +45,12 @@ test defects.
 ## Required context
 
 - `REFACTOR_AUDIT.md` findings `RA-007`, `RA-009`, `RA-020`, `RA-022`, and
-  `RA-024`, the functional inventory, import graph, tests, and target topology.
+  `RA-024`, the functional inventory, import graph, tests, target topology, and
+  completed `PLAN-03A` residual disposition.
+- `scripts/build_artifact_index.py`, `scripts/_run_summary_science.py`, the Step
+  `08`/`09` validators, and the Step `09c` evidence implementation and direct
+  tests; `scripts/reference_provenance.py`, the Step `00c`/`05` validators, and
+  their direct and neutral-library tests.
 
 ## Questions owned by this card
 
@@ -48,6 +60,9 @@ test defects.
 
 - Candidate ownership matrix, promotion/retention rationale, allowed APIs,
   dependency constraints, and test obligations.
+- Full-semantic comparison of the Step `09c` contract/policy consumers and the
+  reference parsing/provenance consumers, including failure, bytes,
+  independence, and characterized-defect boundaries.
 
 ## Out of scope
 
@@ -56,14 +71,20 @@ test defects.
 
 ## Deliverables
 
-- A reviewed shared-library promotion matrix and concrete extraction or
-  retention cards where justified.
+- A reviewed shared-library promotion matrix for both observed seams and only
+  the first dependency-valid neutral-extraction or owner-local dependency-
+  removal card justified by that matrix. If neither is safe, record the
+  affected migration as blocked. Later cards remain JIT rather than pre-
+  authored.
 
 ## Acceptance evidence
 
 - Every proposed shared seam demonstrates equivalent semantics and a narrower
   owner; every retained duplicate states the independence or locality value.
 - No proposed shared library imports a stage or erases language boundaries.
+- The first generated card has one neutral concern, exact consumers/tests, and
+  a stop condition; no reporting, provenance, scheduler, ingestion, or
+  orchestration implementation is selected or moved by this decision card.
 
 ## Canonical documentation updates
 
