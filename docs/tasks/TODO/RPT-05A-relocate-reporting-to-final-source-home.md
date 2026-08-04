@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02F](../TODO/LIB-02F-define-shared-library-ownership.md) — Required: reporting's current private Step `09c` dependency needs an approved neutral or owner-local removal direction before relocation can be planned safely.
+- [LIB-02F](../IN_PROGRESS/LIB-02F-define-shared-library-ownership.md) — Required: reporting's current private Step `09c` dependency needs an approved neutral or owner-local removal direction before relocation can be planned safely.
 
 ## Completion unblocks
 

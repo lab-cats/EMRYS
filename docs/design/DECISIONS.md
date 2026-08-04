@@ -948,7 +948,7 @@ deferred.
 Consequences: intentional independent validation and heterogeneous
 transactions stay local. The remaining candidate inventory and promotion or
 retention decisions belong to
-[`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md).
+[`LIB-02F`](../tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md).
 
 ### Apply risk-based source-size thresholds
 

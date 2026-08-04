@@ -81,10 +81,16 @@ cluster work remain unselected and outside this package.
 
 Documentation-only
 [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
-is locally complete as the residual source-topology documentation package. It
+is published and complete as the residual source-topology documentation
+package. It
 changed no consumed or executable surface, selected no successor, and did not
-reopen the completed fourteen-owner migration campaign. Publication remains a
-separate explicit action.
+reopen the completed fourteen-owner migration campaign.
+
+[`LIB-02F`](../tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md) is
+now selected as the first decision package in the explicitly authorized
+residual convergence campaign. It settles only the two observed prohibited
+peer-implementation seams before the first executable migration card is
+created just in time.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -131,9 +137,10 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 6. create one residual-layout audit only after the final executable move.
 
-Within this residual convergence campaign, only `LIB-02F` is the next eligible
-read-only selection. It remains unselected; no executable migration, successor
-card, final audit, deferred domain, or publication action begins automatically.
+Within this residual convergence campaign, `LIB-02F` is the sole selected
+package. No executable migration, successor card, final audit, or deferred
+domain begins until that decision package creates the first dependency-valid
+child just in time.
 
 ### Recovered proposal families
 
@@ -179,13 +186,15 @@ MIG-03O documentation/lifecycle close 9cb4bb8
     └── DOC-CONS-08E documentation/lifecycle close a8aa28b
         └── PLAN-03A registration 0e6b4cb
             └── PLAN-03A selection b84bf55
-                └── PLAN-03A local documentation/lifecycle close
-                    (commit containing this plan; publication pending)
+                └── PLAN-03A documentation/lifecycle close 3efe461
+                    └── LIB-02F selection
+                        (commit containing this plan)
 ```
 
-The final node is the local documentation tip represented by this plan. No
-successor card, executable migration, final audit, default-branch integration,
-runtime, cluster, or publication action is implied. The complete legacy
+The final node is the current selection tip represented by this plan. It
+selects only the shared-ownership decision package; no executable migration,
+final audit, default-branch integration, runtime, or cluster action is implied.
+The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
 

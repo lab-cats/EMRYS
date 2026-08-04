@@ -8,24 +8,25 @@ and delivery-required lineage live in
 
 ## Checkout
 
-- Branch: `codex/plan-03a-residual-source-topology-convergence`.
+- Branch: `codex/residual-source-topology-convergence`.
 - Package base:
-  `a8aa28b6d5331c9c7f9cec9d50c6f774ba0d8bf8`, the clean, published,
-  upstream-equal `DOC-CONS-08E` documentation/lifecycle close.
-- Registration checkpoint:
-  `0e6b4cb`, local and unpushed.
-- Selection checkpoint:
-  `b84bf55`, local and unpushed before authoring.
-- Current documentation tip: the commit containing this handoff; resolve its
-  exact local identity from Git. This branch has not been published and has no
-  configured upstream.
-- Local completion candidate: documentation-only/non-consuming
+  `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
+  upstream-equal `PLAN-03A` documentation/lifecycle close.
+- Current tip and upstream relationship: resolve the exact identity and
+  equality from Git; this handoff owns the branch and selected package rather
+  than duplicating a moving commit ID.
+- Completed planning predecessor: documentation-only/non-consuming
   [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md).
   It partitions the residual source/test roster, fixes cross-cutting target
   homes and JIT order, corrects mutable report dependencies, and changes no
   executable, configuration, dependency, schema, fixture, report template,
   test-selection, scheduler, runtime, cluster, scientific-review, or biological
-  surface. No successor card is selected.
+  surface.
+- Selected package:
+  [`LIB-02F`](../tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md)
+  compares only the two observed peer-implementation seams and creates only
+  the first justified dependency-removal/migration card just in time. No
+  executable source move has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. Residual artifact-contract, reporting,
@@ -41,8 +42,8 @@ and delivery-required lineage live in
 ## Active concurrent lanes
 
 No mutable concurrent lane shares this worktree, branch, card, or write set.
-The branch above is the sole integration/control lane for the local `PLAN-03A`
-candidate. Frozen recovery sources, completed synthetic-exchange
+The branch above is the sole integration/control lane for the residual source-
+topology campaign. Frozen recovery sources, completed synthetic-exchange
 identities, and preserved unmanaged worktrees are historical state, not active
 lanes; their exact identities and cautions remain in the
 [`operations-history record`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md#frozen-coordination-and-recovery-identities).
@@ -70,7 +71,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest documentation package | `PLAN-03A` is a local, unpublished documentation-only candidate. It fixes exact residual dispositions and order but moves no file, selects no executable card, and creates no runtime, cluster, scientific-review, or biological evidence. Its applicable acceptance is semantic no-loss review plus Git and documentation validation; computational and cluster suites are not applicable. |
+| Latest documentation package | Published `PLAN-03A` fixes exact residual dispositions and order but moves no file and creates no runtime, cluster, scientific-review, or biological evidence. `LIB-02F` is selected only for the first ownership decision; no executable move has begun. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -167,25 +168,22 @@ earlier temporary Python-environment symlink remains removed.
 
 ## Immediate resume point
 
-`PLAN-03A` is locally complete in the commit containing this handoff. Its one
-substantive documentation commit contains the residual disposition, exact
-cross-cutting target homes, JIT order, mutable report-card correction, current-
-state repairs, lifecycle close, and complete documentation gate result. No
-computational or cluster suite was applicable because the predecessor-to-final
-diff is non-consuming Markdown.
+Published `PLAN-03A` is the clean campaign predecessor. Selected
+[`LIB-02F`](../tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md)
+now owns the bounded semantic comparison of the reporting/Step `09c` and
+reference-provenance/Step `00c`/`05` direction leaks. Complete that decision,
+create only its first dependency-valid child card, commit and publish the
+documentation close, and then select that child just in time under the
+campaign authorization.
 
-The branch is not pushed and has no configured upstream. Publication is the
-next required delivery action but needs separate authority. After a clean,
-published, upstream-equal checkpoint, existing
-[`LIB-02F`](../tasks/TODO/LIB-02F-define-shared-library-ownership.md) is the next
-eligible read-only selection; it is not selected now. No executable migration,
-final audit, scheduler, ingestion, orchestration/profile, runtime, cluster, or
-default-branch package is preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
+No executable migration, final audit, scheduler, ingestion,
+orchestration/profile, runtime, cluster, or default-branch package is
+preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
-upstream, cleanliness including untracked files, and recovery/lock state. Any
-successor begins with one dependency-valid JIT selection and a separately
-approved task-specific plan; the completed planning record does not authorize
-it.
+upstream, cleanliness including untracked files, and recovery/lock state. The
+explicit whole-campaign approval covers routine one-card-at-a-time migration,
+validation, commits, and publication inside the `PLAN-03A` boundary; scope,
+semantic, evidence, safety, or destructive-action expansion still stops.

@@ -14,16 +14,16 @@ and all fourteen frozen owners occupy their final homes. Completed
 and
 [`DOC-CONS-08E`](docs/tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
 leave the repository-health and first live-state compression boundaries
-closed. Locally completed documentation-only
+closed. Published documentation-only
 [`PLAN-03A`](docs/tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
 dispositions the remaining cross-cutting source/test convergence without moving
-files. For that campaign, existing
-[`LIB-02F`](docs/tasks/TODO/LIB-02F-define-shared-library-ownership.md) is the
-next eligible read-only selection, but it remains unselected. No
-executable migration, final audit, runtime, cluster, publication, or default-
-branch integration is selected. `PROGRAM-01` and unrelated work remain frozen
-outside their completed slices. Select only one dependency-valid package at a
-time under the
+files. For that campaign,
+[`LIB-02F`](docs/tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md)
+is selected to settle the two observed peer-implementation seams before any
+affected source move. No executable migration, final audit, runtime, cluster,
+or default-branch integration has begun. `PROGRAM-01` and unrelated work
+remain frozen outside their completed slices. Execute only one dependency-
+valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 
