@@ -53,10 +53,14 @@ Completed
 then directly moved the public reference-provenance command and direct suite to
 their fixed evidence-owner homes at executable checkpoint `bbc09c9`, cut over
 all repository path consumers, and retained the public starter config at root
-without a wrapper. No residual-convergence package is selected. The next
-preferred unit is the still-unselected direct relocation of runtime preflight.
-Scheduler, ingestion, orchestration/profile, cluster, and default-branch work
-remain deferred; later residual units remain unselected.
+without a wrapper. Selected
+[`MIG-04C`](docs/tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
+is the sole residual-convergence package: it directly moves only the public
+runtime-preflight command and direct suite to their fixed evidence-owner homes,
+cuts over all repository path consumers, and retains the public starter profile
+at root without a wrapper. Scheduler, ingestion, orchestration/profile,
+cluster, and default-branch work remain deferred; later residual units remain
+unselected.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);

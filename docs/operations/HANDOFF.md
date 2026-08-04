@@ -15,10 +15,10 @@ and delivery-required lineage live in
 - Latest executable/test checkpoint:
   `bbc09c9b52f365e46c9e28711efa1cd0ce90ccfe`, the `MIG-04B` direct
   reference-provenance source/test relocation and repository path cutover, and
-  the frozen executable basis for this documentation/lifecycle close.
+  the frozen executable basis for selected `MIG-04C`.
 - Current package predecessor:
-  `696d403947cf28a97d7a9ce2f9b441ee83cbd72e`, the clean, published,
-  live-remote-equal `LIB-02K` documentation/lifecycle close.
+  `ad5a2bf239ba09c0e958e0df5957094e9b261f45`, the clean, published,
+  live-remote-equal `MIG-04B` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -72,7 +72,12 @@ and delivery-required lineage live in
   into their fixed final evidence-owner homes, repaired only their self-
   relative anchors, and cut over every repository path consumer without a
   wrapper or public starter-config move.
-- Selected package: none.
+- Selected package:
+  [`MIG-04C`](../tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
+  directly moves only the public runtime-preflight command and mirrored suite
+  into their fixed final evidence-owner homes, repairs only the suite's self-
+  relative anchors, and cuts over every repository path consumer without a
+  wrapper or public starter-profile move.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -227,13 +232,15 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. The next preferred unit is a direct atomic
-move of runtime preflight and its direct suite into the exact evidence-owner
-paths fixed by `SOURCE_TOPOLOGY.md`. Select and bound that card only after
-verifying all live callers, public command/path bytes, Make/config/documentation
-routes, modes, hashes, arbitrary-CWD behavior, transaction semantics, and
-coverage identities. Do not preload storage inventory or move the public
-starter config.
+Selected
+[`MIG-04C`](../tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
+is the sole active residual package. Move the public runtime-preflight command
+and direct suite atomically to the exact `SOURCE_TOPOLOGY.md` homes; repair only
+the moved suite's self-relative anchors and cut over Make/golden, public-CLI,
+coverage, and current documentation paths. Preserve exact CLI/profile/result,
+probe/status, deterministic-byte, transaction, and characterized recovery-
+defect behavior and modes, leave the public starter profile at root, and add no
+compatibility path.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

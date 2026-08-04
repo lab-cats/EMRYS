@@ -121,8 +121,11 @@ then extracted the exact reference-contig parser seam into its neutral final
 owner and cut over all three consumers. Completed
 [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
 then directly relocated reference provenance and its mirrored suite into their
-final evidence-owner homes without a wrapper or public starter-config move. No
-residual-convergence package is selected.
+final evidence-owner homes without a wrapper or public starter-config move.
+Selected
+[`MIG-04C`](../tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
+is the sole residual-convergence package and owns only the direct runtime-
+preflight source/test relocation and repository path cutover.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -145,7 +148,7 @@ disposition.
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
 | Reference provenance evidence | `MOVE` complete through [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md); neutral prerequisite complete through [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; the public starter config remains at root and no wrapper exists. |
-| Runtime preflight | `MOVE` | One evidence-owner migration card. |
+| Runtime preflight | `MOVE` selected through [`MIG-04C`](../tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md) | `MIG-04C` owns only the command/direct-suite move and repository path cutover; the public starter profile remains at root and no wrapper is permitted. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
 | Independent contract goldens and validation-roster agreement | `MOVE` | Update as direct consumers during owner moves, then converge their paths under `tests/contract_integration/` near campaign close. |
 | Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
@@ -166,15 +169,14 @@ Preferred one-owner order is:
    reporting's private Step `09c` dependency;
 4. completed `RPT-05A` moves reporting directly into its final owners;
 5. completed `LIB-02K` extracts the neutral `reference_contigs` parser seam;
-   completed `MIG-04B` moves reference provenance; next move runtime preflight
-   and storage inventory as two separate owner cards;
+   completed `MIG-04B` moves reference provenance; selected `MIG-04C` moves
+   runtime preflight; then move storage inventory as a separate owner card;
 6. converge the residual cross-owner contract tests and separately review the
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. Runtime preflight is the next preferred
-still-unselected owner move. Later owner moves, the final audit, and deferred
-domains remain uncreated or unbegun.
+`MIG-04C` is the sole selected residual package. Later owner moves, the final
+audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -269,13 +271,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                         └── MIG-04B executable
                                                                                                                             relocation bbc09c9
                                                                                                                             └── MIG-04B documentation/
-                                                                                                                                lifecycle close
-                                                                                                                                (commit containing this plan)
+                                                                                                                                lifecycle close ad5a2bf
+                                                                                                                                └── MIG-04C selection
+                                                                                                                                    (commit containing this plan)
 ```
 
-The final node is the current documentation/lifecycle close represented by
-this plan. It selects no successor; no later owner move, final audit, default-
-branch integration, runtime execution, or cluster action is implied.
+The final node is the current selection represented by this plan. It selects
+only `MIG-04C`; no later owner move, final audit, default-branch integration,
+runtime execution, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
