@@ -141,5 +141,10 @@ and prohibited reverse dependencies unresolved.
 
 ## Completion record
 
-Not started. On completion, link the inspected evidence and summarize only
-stable historical facts.
+Selected from clean upstream-equal parent
+`a8aa28b6d5331c9c7f9cec9d50c6f774ba0d8bf8` on the dedicated
+`codex/plan-03a-residual-source-topology-convergence` branch after approval of
+the documentation-only/non-consuming plan. The approved envelope changes only
+the named documentation, task-lifecycle, and mutable dependency surfaces;
+physical movement, successor selection, publication, and computational or
+cluster validation remain outside it.
