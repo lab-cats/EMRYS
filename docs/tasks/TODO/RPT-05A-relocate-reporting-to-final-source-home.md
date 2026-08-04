@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- None.
+- [LIB-02I](../IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md) — Required: move the public Step `09c` review-package roster, headers, vocabularies, and closed state reduction out of the private evidence implementation before reporting removes its owner-private dependency.
 
 ## Completion unblocks
 
@@ -51,9 +51,11 @@ logic, while report assets remain explicitly owned and inspectable.
   final neutral owner; and completed
   [LIB-02H](../COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
   places the public Step `09` output contract in its final neutral owner.
-- The public Step `09c` review-package contract and reporting-local dependency-
-  removal slices remain required, uncreated, and unselected. Complete them just
-  in time before selecting this relocation card.
+- Selected
+  [LIB-02I](../IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
+  owns the public Step `09c` review-package contract extraction. The reporting-
+  local dependency-removal slice remains required and uncreated; complete it
+  just in time after `LIB-02I` and before selecting this relocation card.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.

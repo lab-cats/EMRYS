@@ -16,6 +16,9 @@ and delivery-required lineage live in
   `97f91690aa1d5e7a67c96d407ab6e3b0e9c1e68f`, the `LIB-02H` neutral Step `09`
   contract cutover and frozen executable basis for its documentation/lifecycle
   close.
+- Current package predecessor:
+  `524bfd1e1a055a5616afeeaa66a56fce095a5da4`, the clean, published,
+  live-remote-equal `LIB-02H` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -45,14 +48,19 @@ and delivery-required lineage live in
   [`LIB-02H`](../tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
   did the same for the public Step `09` output contract without changing the
   Step `09c` review-package policy or publication behavior.
-- Selected package: none. No successor is preloaded.
+- Selected package:
+  [`LIB-02I`](../tasks/IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
+  extracts only the public thirteen-file Step `09c` roster, headers,
+  vocabularies, and closed state reduction into their neutral owner. The exact
+  read-only boundary audit is complete; no executable or test change has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
   migrated through `MIG-04A`, and the neutral Step `08` and Step `09` contracts
-  are extracted through `LIB-02G` and `LIB-02H`. The public review-package,
-  reporting, reference/runtime/storage evidence, and cross-owner test paths
-  remain in their current locations pending separately selected JIT moves.
+  are extracted through `LIB-02G` and `LIB-02H`. Public review-package
+  extraction is selected through `LIB-02I`; reporting,
+  reference/runtime/storage evidence, and cross-owner test paths remain in
+  their current locations pending separately selected JIT moves.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -196,12 +204,15 @@ that drift.
 
 ## Immediate resume point
 
-No residual-convergence package is selected. Completed
-[`LIB-02H`](../tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
-owns the latest executable and close evidence. The public Step `09c` contract,
-reporting-local reader, reporting migration, reference/evidence moves, and final
-audit remain uncreated or unselected. Select the next dependency-valid package
-only just in time; none is preloaded.
+Selected
+[`LIB-02I`](../tasks/IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
+is the sole active residual package. Extract only the public thirteen-file
+review-package roster, headers, vocabularies, and closed state reduction into
+`src/norad/contracts/scientific_evidence/review_package.py`; cut over Step
+`09c`, artifact indexing, and only the public references in run-summary
+science. Keep all review/input policy, source reconstruction, context,
+validation, publication, recovery, and the reporting-local reader outside this
+slice. The latter remains the next uncreated JIT dependency.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is
