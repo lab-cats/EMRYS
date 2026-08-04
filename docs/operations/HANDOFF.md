@@ -15,10 +15,10 @@ and delivery-required lineage live in
 - Latest executable/test checkpoint:
   `d9312142aab7f76fedc6c444d0ab6d10880d790a`, the `LIB-02K` neutral
   reference-contig parser extraction and three-consumer cutover, and the frozen
-  executable basis for this documentation/lifecycle close.
+  executable basis for selected `MIG-04B`.
 - Current package predecessor:
-  `8a5cf28df6d5f595ef74bde6f22ad376dc41c374`, the clean, published,
-  live-remote-equal `RPT-05A` documentation/lifecycle close.
+  `696d403947cf28a97d7a9ce2f9b441ee83cbd72e`, the clean, published,
+  live-remote-equal `LIB-02K` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -66,7 +66,12 @@ and delivery-required lineage live in
   suite, cut over reference provenance plus the final Step `00c`/`05`
   validators, and removed both peer-owner bridges without moving the evidence
   command.
-- Selected package: none.
+- Selected package:
+  [`MIG-04B`](../tasks/IN_PROGRESS/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
+  directly moves only the public reference-provenance command and direct suite
+  into their fixed final evidence-owner homes, repairs their two self-relative
+  anchors, and cuts over all repository path consumers without a wrapper or
+  public starter-config move.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -220,13 +225,14 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. The next preferred unit is a direct atomic
-move of the now-decoupled reference-provenance command and direct suite into
-the exact evidence-owner paths fixed by `SOURCE_TOPOLOGY.md`. Select and bound
-that card only after verifying all live callers, public command/path bytes,
-Make/config/documentation routes, modes, hashes, arbitrary-CWD behavior,
-transaction semantics, and coverage identities. Do not reopen parser semantics
-or move the public starter config.
+Selected
+[`MIG-04B`](../tasks/IN_PROGRESS/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
+is the sole active residual package. Move the public reference-provenance
+command and direct suite atomically to the exact `SOURCE_TOPOLOGY.md` homes;
+repair only their self-relative anchors and cut over Make/golden, public-CLI,
+neutral-parser, coverage, and current documentation paths. Preserve exact
+CLI/evidence/transaction/recovery behavior and modes, leave the public starter
+config at root, and add no compatibility path.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

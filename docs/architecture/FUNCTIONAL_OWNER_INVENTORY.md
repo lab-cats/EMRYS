@@ -173,7 +173,7 @@ The protected current roster contains 25 public Python entry points (five under
 entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
 (three under `jobs/` and 13 final owner-local jobs), and 24 public Make targets.
 Every member is assigned once
-above. The reporting-private Python module, two neutral library sources, four
+above. The reporting-private Python module, three neutral library sources, four
 neutral contract implementation sources, and three private orchestration files
 are classified separately. No current
 autonomous pipeline orchestrator,
