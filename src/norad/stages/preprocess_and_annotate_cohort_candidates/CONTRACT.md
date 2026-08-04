@@ -146,7 +146,8 @@ production, cluster, scientific-review, or biological evidence.
 
 - Shared Step `08` manifest/table schemas and reconciliation belong to neutral
   [`step08.py`](../../contracts/scientific_evidence/step08.py). The validator
-  exact-loads that file under the same private identity used by the Step `09`
+  exact-loads that file under the same private identity used by neutral
+  [`step09.py`](../../contracts/scientific_evidence/step09.py), the Step `09`
   validator, Step `09c` implementation, and artifact index, preserving one
   `ContractError` and `Table` identity without package or `sys.path` behavior.
 - The producer declares the input receipt as its commit marker, while the

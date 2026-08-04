@@ -77,20 +77,35 @@ parsing and check rosters remain with their functional owners.
 [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py) owns the
 public Step `08` manifest/table headers, closed vocabularies, validation
 exception and table identity, and manifest/inputs/sites/summary validation.
-The Step `08` and Step `09` validators, final Step `09c` evidence
-implementation, and artifact index exact-load that exact file under the shared
-private identity `_norad_step08_scientific_evidence_contract`; they reject a
-foreign-path or partially initialized cached module and do not mutate
-`sys.path`. Step `09` and artifact indexing additionally reject a split object
-identity between their direct neutral load and Step `09c`. Mirrored direct
-protection lives in
+The Step `08` validator, neutral Step `09` contract, Step `09` validator, final
+Step `09c` evidence implementation, and artifact index exact-load that exact
+file under the shared private identity
+`_norad_step08_scientific_evidence_contract`; they reject a foreign-path or
+partially initialized cached module and do not mutate `sys.path`. The higher-
+level consumers additionally reject a split Step `08` object identity. Mirrored
+direct protection lives in
 [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py).
 
-The Step `09` validator and artifact index still exact-load the final Step
-`09c` implementation for Step `09` and review-package surfaces, while the
-run-summary science helper consumes Step `09c` review context and policy. Those
-remaining dependencies are not package APIs and are deferred to the separate
-bottom-up Step `09`, public review-package, and reporting-local-reader slices.
+### Neutral Step 09 scientific-evidence contract
+
+[`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py) owns the
+public Step `09` result, summary, and mutation-spectrum headers; canonical
+mutation order; status vocabularies and count bindings; and reusable result,
+summary, statistical-state, significant-subset, mutation-spectrum, and PDF
+validation. It exact-loads the neutral Step `08` contract and reuses its
+`ContractError` and `Table` identities. The Step `09` validator, final Step
+`09c` evidence implementation, and artifact index exact-load the Step `09`
+owner under `_norad_step09_scientific_evidence_contract` and reject a foreign,
+partial, or split neutral identity without package discovery or `sys.path`
+mutation. Mirrored direct protection lives in
+[`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py).
+
+The Step `09` validator no longer loads Step `09c`. The artifact index still
+exact-loads Step `09c` for review-package surfaces, while the run-summary
+science helper consumes Step `09c` review context and policy. Those retained
+dependencies are private checkout-relative bridges, not package APIs, and are
+deferred to the separate public-review-package and reporting-local-reader
+slices.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
 shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step

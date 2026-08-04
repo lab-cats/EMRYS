@@ -4144,10 +4144,10 @@ tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_pre
 
 The Python validator exact-loads the neutral Step `08` table/manifest contract
 from the tracked file shown above under one canonical internal module name.
-The Step `09` validator, Step `09c` Python owner, and artifact index use the
-same exact neutral file and shared module/error/table identity. These loads are
-checkout-relative and package-independent: they do not install or discover a
-package, alter `PYTHONPATH`, or mutate `sys.path`.
+Neutral Step `09`, the Step `09` validator, Step `09c` Python owner, and artifact
+index use the same exact Step `08` file and shared module/error/table identity.
+These loads are checkout-relative and package-independent: they do not install
+or discover a package, alter `PYTHONPATH`, or mutate `sys.path`.
 
 Structured validation consumes the exact published three-TSV transaction and
 is dry-run-first:
@@ -4347,10 +4347,12 @@ step before Step `08` is cluster-proven.
 Implemented files:
 
 ```text
+src/norad/contracts/scientific_evidence/step09.py
 src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh
 src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R
 src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py
 src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
+tests/contracts/scientific_evidence/test_step09.py
 tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 tests/analyses/rank_cohort_candidates_with_paired_CMH/run_step_09_cmh_tests.sh
 tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.R
@@ -4364,6 +4366,13 @@ configs/step_09_pairs.NORAD_EV_PUM1.tsv
 The adjacent [owner README](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md)
 owns the compact root/arbitrary-CWD, recovery, artifact-provenance, and
 migration-evidence routes.
+
+The validator exact-loads the tracked neutral Step `09` contract shown above
+under one canonical internal module name. Step `09c` and artifact indexing use
+the same exact module; all three require one shared ready-owner identity, and
+the neutral Step `09` owner reuses the exact Step `08` module, `ContractError`,
+and `Table`. These bridges are checkout-relative and package-independent and do
+not load Step `09c` into the Step `09` validator.
 
 The structured Step `09` validator consumes the exact six native outputs and
 their explicit Step `08`/manifest inputs without invoking R:
@@ -4428,6 +4437,7 @@ Focused final-owner protection:
 ```bash
 bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 .venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step09.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
@@ -4761,12 +4771,13 @@ tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scienti
 tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 ```
 
-The neutral Step `08` owner and its direct suite are listed under
-[Step `08`](#step-08-vcf-preprocessing); Step `09c` consumes that contract but
-does not own or re-export its Step `08` headers and validators. The Python
-evidence owner exact-loads the tracked neutral file without package discovery,
-`PYTHONPATH` changes, or `sys.path` mutation. Its public shell and direct Python
-commands remain unchanged.
+The neutral Step `08` and Step `09` owners and direct suites are listed under
+[Step `08`](#step-08-vcf-preprocessing) and
+[Step `09`](#step-09-cmh-editing-site-calling). Step `09c` consumes both
+contracts but does not own or re-export their headers and validators. The
+Python evidence owner exact-loads the tracked neutral files under their shared
+ready identities without package discovery, `PYTHONPATH` changes, or `sys.path`
+mutation. Its public shell and direct Python commands remain unchanged.
 
 The local dry-run-first Python/shell evidence package has this public
 interface:
@@ -4978,6 +4989,7 @@ Local fixture gate:
 bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
+  tests/contracts/scientific_evidence/test_step09.py \
   tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 .venv/bin/python -m pytest -q \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
@@ -4991,8 +5003,9 @@ The active fixtures cover exact 13-file publication, side-effect-free dry-run,
 incomplete and exploratory evidence, reserved-state rejection, unrelated-file
 immunity, the 32-input identity ceiling, ordered publication, hash mutation,
 locks, cleanup, restoration, signals, and concurrency. The cross-consumer
-suites protect final private-loader, artifact, run-summary, and public-command
-routes. A local pass means implemented and fixture-tested only. It does not
+suites protect neutral Step `08`/`09`, retained Step `09c`, artifact,
+run-summary, and public-command routes. A local pass means implemented and
+fixture-tested only. It does not
 establish a production review, scheduler/runtime evidence, cluster proof,
 validated editing sites, or biological readiness.
 

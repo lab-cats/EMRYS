@@ -126,6 +126,51 @@ reporting-local dependency removal can proceed.
 ## Completion record
 
 Selected from clean, published, live-remote-equal LIB-02G documentation close
-`d38f782a65de96fff6e7f138fba16eb3d0066267`. Selection begins bounded
-read-only plan/review; no Step `09` implementation, test, coverage, or later
-seam-extraction package has changed.
+`d38f782a65de96fff6e7f138fba16eb3d0066267`; status-only selection checkpoint
+`7bde6f4f4e871ef3d61da7bd4554f31289881124` was the frozen implementation
+parent. Executable/test checkpoint
+`97f91690aa1d5e7a67c96d407ab6e3b0e9c1e68f` then extracted the bounded public
+Step `09` contract into its permanent neutral owner, added its mirrored direct
+suite, and cut over Step `09c`, the Step `09` Python validator, artifact
+indexing, and their direct fixtures/tests. `_run_summary_science.py` had no
+direct Step `09` public-symbol dependency and remained unchanged. No wrapper,
+copy, symlink, package import, `PYTHONPATH` mutation, installation metadata,
+schema, shell/R, reporting, review-policy, publication, or scientific/runtime
+behavior change was added.
+
+- The neutral owner and mirrored suite are mode `0644` with SHA-256 values
+  `bf43bb6fffe765534570e06c0ef9d3b5eb722f13c6a100238824c77a5d834b5f`
+  and `f6bfa41604ee05ab092e250624a72186b1a736980fde382085242e2d435a1ff7`,
+  respectively. The retained Step `09c` owner is mode `0644` with SHA-256
+  `f2917f08c64c1df61e6888b8c6d0484f2cc0b4ee6f302d3359409709cf5bddcb`.
+- Frozen comparison proved all eight constants, six validators, and four
+  subordinate helpers AST-identical to the selection parent. The `6118`-byte
+  public API fingerprint is
+  `e4cc56f8cf226e3eb8759fa3438dd1d3ffdfca6796f5851f9fc2bb5f113cdc36`;
+  exact signatures, headers, status vocabularies, count bindings, exceptions,
+  messages, thresholds, ordering, paths, object identities, and deterministic
+  bytes remained unchanged. Exact searches found no stale repository-owned
+  Step `09` public-symbol consumer or duplicate implementation.
+- The pre-extraction focused scope passed `509` tests. At the final executable
+  state, the direct neutral Step `09` suite passed `45` tests and the same
+  focused scope plus that direct suite passed `584`. Focused Step `08`, Step
+  `09`, and Step `09c` shell contracts all passed.
+- The repository coverage run passed `1,500` tests with `17` skips and measured
+  `0.844007` line and `0.745770` branch coverage across `34` files. The new
+  neutral owner measured `319/332` lines and `169/178` branches. The committed
+  affected-only floor is `0.829931` line and `0.724201` branch; no unrelated
+  transient coverage gain was promoted.
+- The project-local real-R route passed both Step `08` and Step `09` semantic
+  fixture suites. The pinned report-runtime route passed `17` tests with `60`
+  deselected.
+- The full serial aggregate reported static preflight, Python coverage, and
+  shell contracts green. Its guarded-R lane remained expected environment
+  drift, not green, solely because `renv.lock` and the installed library remain
+  at `renv 1.2.3` while CRAN advertises `1.2.4`. No package install, update,
+  lockfile, cache, dependency, or runtime mutation was performed. This is not a
+  LIB-02H regression or a passing aggregate claim.
+- Documentation validation and `git diff --check` passed at lifecycle close.
+  These results are local contract-preserving engineering evidence only; they
+  add no runtime, cluster, production, scientific-review, or biological-
+  readiness proof. Public Step `09c` review-package extraction and reporting-
+  local dependency removal remain separate, uncreated JIT slices.

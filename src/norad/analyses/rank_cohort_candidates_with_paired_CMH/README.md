@@ -143,12 +143,12 @@ turns the production validator into independent statistical proof.
 The validator privately exact-loads neutral
 [`validation_report.py`](../../libraries/validation_report.py), neutral
 [`step08.py`](../../contracts/scientific_evidence/step08.py) for manifests and
-the Step `08` inputs/sites contract, and final
-[`step_09c_scientific_validation.py`](../../evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py)
-for the still-owner-local Step `09` contract. Step `09c` must resolve the same
-Step `08` object before the validator continues. None of these exact-file
-bridges creates a package API; only the remaining Step `09` dependency retains
-the ownership inversion.
+the Step `08` inputs/sites contract, and neutral
+[`step09.py`](../../contracts/scientific_evidence/step09.py) for the public Step
+`09` output contract. The validator's direct Step `08` load and neutral Step
+`09`'s Step `08` dependency must resolve the same object before the validator
+continues. None of these exact-file bridges creates a package API, and the
+validator no longer loads the Step `09c` implementation.
 
 ## Guarded R and scheduler
 
@@ -209,6 +209,7 @@ Focused local protection is:
 bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
+  tests/contracts/scientific_evidence/test_step09.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \

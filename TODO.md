@@ -27,16 +27,17 @@ over every reviewed consumer. Completed
 [`LIB-02G`](docs/tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
 then moved the public Step `08` scientific-evidence contract and direct suite
 to their permanent neutral owners at executable checkpoint `f72cc0f`, with all
-reviewed consumers cut over and no compatibility owner. The sole selected
-residual package is
-[`LIB-02H`](docs/tasks/IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md),
-the bottom-up Step `09` contract extraction required before public Step `09c`
-and reporting dependency removal. Selection begins bounded plan/review; no
-LIB-02H executable or test change has begun. Scheduler, ingestion,
-orchestration/profile, runtime, cluster, and default-branch work remain
-deferred or unselected. `PROGRAM-01` and unrelated work remain frozen outside
-their completed slices. Execute only one dependency-valid package at a time
-under the
+reviewed consumers cut over and no compatibility owner. Completed
+[`LIB-02H`](docs/tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
+then moved the public Step `09` scientific-evidence contract and direct suite
+to their permanent neutral owners at executable checkpoint `97f9169`, again
+with all reviewed consumers cut over and no compatibility owner. No residual-
+convergence package is selected. Public Step `09c` review-package extraction
+and reporting-local dependency removal remain later, uncreated JIT slices.
+Scheduler, ingestion, orchestration/profile, runtime, cluster, and default-
+branch work remain deferred or unselected. `PROGRAM-01` and unrelated work
+remain frozen outside their completed slices. Execute only one dependency-valid
+package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 

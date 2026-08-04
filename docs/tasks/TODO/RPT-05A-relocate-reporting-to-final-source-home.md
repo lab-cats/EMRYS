@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02H](../IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md) — Required: move the public Step `09` output contract out of the private Step `09c` implementation before the later public Step `09c` and reporting-local dependency-removal slices can close the direction leak.
+- None.
 
 ## Completion unblocks
 
@@ -48,7 +48,12 @@ logic, while report assets remain explicitly owned and inspectable.
   places neutral artifact contracts in their permanent owner; and completed
   [LIB-02G](../COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
   places the public Step `08` contract and shared error/table identity in their
-  final neutral owner.
+  final neutral owner; and completed
+  [LIB-02H](../COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
+  places the public Step `09` output contract in its final neutral owner.
+- The public Step `09c` review-package contract and reporting-local dependency-
+  removal slices remain required, uncreated, and unselected. Complete them just
+  in time before selecting this relocation card.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.

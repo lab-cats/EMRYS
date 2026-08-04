@@ -164,22 +164,25 @@ a new isolated absolute output root. See the dedicated
 
 ## Private consumers and downstream provenance
 
-This implementation, the final Step `08` and Step `09` validators, and
+The final Step `09` validator, this implementation, and
 [`build_artifact_index.py`](../../../../scripts/build_artifact_index.py)
-privately exact-load neutral
+privately exact-load both neutral
 [`step08.py`](../../contracts/scientific_evidence/step08.py) under
-`_norad_step08_scientific_evidence_contract`. They share its exact module,
-`ContractError`, and `Table` identities and fail closed if Step `09c` and a
-downstream consumer resolve different objects.
+`_norad_step08_scientific_evidence_contract` and neutral
+[`step09.py`](../../contracts/scientific_evidence/step09.py) under
+`_norad_step09_scientific_evidence_contract`. The Step `09` contract reuses the
+Step `08` `ContractError` and `Table`; all three consumers fail closed if any
+shared owner identity splits.
 
-The Step `09` validator, artifact index, and
+The artifact index and
 [`_run_summary_science.py`](../../../../scripts/_run_summary_science.py) still
 exact-load this final Python file under
-`_norad_step_09c_scientific_validation_contracts` for Step `09` and public
-review-package/policy surfaces. Both private-loader families validate cached-
-owner identity and readiness, insert before execution, clean only their own
-partial cache entry, leave `sys.path` unchanged, and expose no public package
-identity.
+`_norad_step_09c_scientific_validation_contracts` for public review-package and
+policy surfaces. These private-loader families validate cached-owner identity
+and readiness, insert before execution, clean only their own partial cache
+entry, leave `sys.path` unchanged, and expose no public package identity. The
+Step `09` validator now consumes the neutral Step `09` owner directly and does
+not load this review implementation.
 
 Artifact indexing treats this final Python file as the Step `09c` producer and
 `step09c_review_summary_v1` as the failure marker while validating all thirteen
@@ -198,6 +201,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
   tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
+  tests/contracts/scientific_evidence/test_step09.py \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
