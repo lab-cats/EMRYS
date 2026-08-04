@@ -6,11 +6,13 @@ import csv
 import hashlib
 import importlib.util
 import multiprocessing
+import os
 import signal
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -26,6 +28,14 @@ OWNER_ROOT = (
 )
 SCRIPT = OWNER_ROOT / "step_09c_scientific_validation.py"
 FIXTURE_BUILDER = Path(__file__).with_name("build_fixture.py")
+STEP08_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
+)
 
 
 def load_fixture_builder() -> ModuleType:
@@ -41,6 +51,150 @@ def load_fixture_builder() -> ModuleType:
 
 
 FIXTURES = load_fixture_builder()
+
+
+def test_step08_contract_identity_is_shared_with_step09c() -> None:
+    contract = FIXTURES.CONTRACT
+    before_sys_path = list(sys.path)
+
+    assert contract._load_step08_contract() is FIXTURES.STEP08
+    assert contract.step08 is FIXTURES.STEP08
+    assert contract.ContractError is FIXTURES.STEP08.ContractError
+    assert contract.Table is FIXTURES.STEP08.Table
+    for name in (
+        "NA_VALUE",
+        "values_close",
+        "sha256_file",
+        "read_tsv",
+    ):
+        assert getattr(contract, name) is getattr(FIXTURES.STEP08, name)
+    for name in (
+        "SAFE_ID_RE",
+        "SHA256_RE",
+        "ORIENTATIONS",
+        "SAMPLE_MANIFEST_REQUIRED",
+        "SAMPLE_MANIFEST_ALLOWED",
+        "PARTITION_MANIFEST_HEADER",
+        "STEP08_METADATA_HEADER",
+        "STEP08_INPUTS_HEADER",
+        "STEP08_SUMMARY_HEADER",
+        "validate_safe_id",
+        "validate_sample_manifest",
+        "validate_partition_manifest",
+        "validate_step08_inputs",
+        "validate_step08_sites",
+        "validate_step08_summary",
+    ):
+        assert not hasattr(contract, name)
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_step08_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP08_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step08.py")
+        setattr(cached, contract._STEP08_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(STEP08_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        contract._load_step08_contract()
+
+    assert sys.modules[name] is cached
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_step08_loader_fails_closed_without_usable_specification(
+    specification: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP08_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        contract.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        contract._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_step08_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._STEP08_MODULE_NAME
+    failing_owner = tmp_path / "step08.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 08 execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(contract, "_STEP08_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 08 execution failure"):
+        contract._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_step08_public_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError("injected\\n" + chr(0) + " Step 08 path")
+
+        cached = ModuleType("_norad_step08_scientific_evidence_contract")
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{STEP08_PATH}: RuntimeError: injected Step 08 path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
 
 
 def build_fixture(

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
+import importlib.util
 import math
 import os
 import re
@@ -25,14 +25,75 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 
-class ContractError(RuntimeError):
-    """Raised when an explicit scientific-review contract is invalid."""
+_STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
+_STEP08_MODULE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
+).resolve(strict=False)
+_STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
 
 
-SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-NA_VALUE = "NA"
-ORIENTATIONS = ("FWD_like", "REV_like")
+def _validated_step08_contract(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract has no valid file path"
+        ) from exc
+    if module_path != _STEP08_MODULE_PATH:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP08_MODULE_PATH}"
+        )
+    if getattr(module, _STEP08_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract is partially initialized"
+        )
+    return module
+
+
+def _load_step08_contract() -> object:
+    cached = sys.modules.get(_STEP08_MODULE_NAME)
+    if cached is not None:
+        return _validated_step08_contract(cached)
+    spec = importlib.util.spec_from_file_location(
+        _STEP08_MODULE_NAME, _STEP08_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file Step 08 module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_STEP08_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_step08_contract(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _STEP08_READY_ATTRIBUTE, True)
+        _validated_step08_contract(module)
+    except BaseException:
+        if sys.modules.get(_STEP08_MODULE_NAME) is module:
+            del sys.modules[_STEP08_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    step08 = _load_step08_contract()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{_STEP08_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
+ContractError = step08.ContractError
+NA_VALUE = step08.NA_VALUE
 SCIENCE_STATUSES = (
     "evidence_incomplete",
     "science_review_complete_exploratory",
@@ -442,75 +503,6 @@ EVIDENCE_INDEX_HEADER = (
     "policy_version",
 )
 
-STEP08_METADATA_HEADER = (
-    "partition_id",
-    "candidate_id",
-    "orientation",
-    "chromosome",
-    "position",
-    "alt_index",
-    "genomic_ref",
-    "genomic_alt",
-    "rna_ref",
-    "rna_alt",
-    "annotation_strand",
-    "gene_ids",
-    "transcript_ids",
-    "is_cds",
-    "is_five_prime_utr",
-    "is_three_prime_utr",
-    "is_exon",
-    "is_intron",
-    "qual",
-    "filter",
-    "info_alt_depth",
-    "orientation_policy",
-)
-
-STEP08_INPUTS_HEADER = (
-    "cohort_id",
-    "partition_id",
-    "selector_type",
-    "selector_value",
-    "orientation",
-    "step07_receipt_path",
-    "step07_receipt_sha256",
-    "vcf_path",
-    "vcf_sha256",
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-    "annotation_gtf",
-    "annotation_gtf_sha256",
-    "sample_count",
-    "declared_vcf_record_count",
-    "observed_vcf_record_count",
-    "observed_alt_allele_count",
-    "supported_snv_count",
-    "skipped_symbolic_count",
-    "skipped_non_snv_count",
-    "published_candidate_count",
-    "orientation_policy",
-)
-
-STEP08_SUMMARY_HEADER = (
-    "cohort_id",
-    "partition_count",
-    "step07_receipt_count",
-    "input_vcf_count",
-    "sample_count",
-    "observed_vcf_record_count",
-    "observed_alt_allele_count",
-    "supported_snv_count",
-    "skipped_symbolic_count",
-    "skipped_non_snv_count",
-    "published_candidate_count",
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-    "annotation_gtf",
-    "annotation_gtf_sha256",
-    "orientation_policy",
-)
-
 STEP09_RESULT_HEADER = (
     "analysis_id",
     "partition_id",
@@ -730,20 +722,6 @@ REVIEW_SUMMARY_HEADER = (
     + REVIEW_SUMMARY_TRAILING_HEADER
 )
 
-SAMPLE_MANIFEST_REQUIRED = (
-    "sample_id",
-    "r1_fastq",
-    "r2_fastq",
-    "strandedness",
-    "condition",
-    "replicate",
-)
-SAMPLE_MANIFEST_ALLOWED = SAMPLE_MANIFEST_REQUIRED + ("notes",)
-PARTITION_MANIFEST_HEADER = (
-    "partition_id",
-    "selector_type",
-    "selector_value",
-)
 STEP09_TEST_STATUSES = (
     "tested",
     "not_target_change",
@@ -815,11 +793,10 @@ STEP09_STATUS_COUNT_FIELDS = (
 )
 
 
-@dataclass
-class Table:
-    header: tuple[str, ...]
-    rows: list[dict[str, str]]
-    path: Path
+Table = step08.Table
+values_close = step08.values_close
+sha256_file = step08.sha256_file
+read_tsv = step08.read_tsv
 
 
 @dataclass
@@ -850,75 +827,31 @@ class ReviewContext:
     output_paths: dict[str, Path]
 
 
-def fail(message: str) -> None:
-    raise ContractError(message)
-
-
-def validate_safe_id(label: str, value: str) -> None:
-    if not SAFE_ID_RE.fullmatch(value):
-        fail(
-            f"{label} must match [A-Za-z0-9][A-Za-z0-9._-]*; got: {value}"
-        )
-
-
-def validate_enum(label: str, value: str, allowed: Sequence[str]) -> None:
-    if value not in allowed:
-        fail(f"{label} must be one of {', '.join(allowed)}; got: {value}")
-
-
 def validate_iso_date(label: str, value: str, *, allow_na: bool = False) -> None:
     if allow_na and value == NA_VALUE:
         return
     try:
         parsed = date.fromisoformat(value)
     except ValueError:
-        fail(f"{label} must be an ISO date (YYYY-MM-DD); got: {value}")
+        step08.fail(f"{label} must be an ISO date (YYYY-MM-DD); got: {value}")
     if parsed.isoformat() != value:
-        fail(f"{label} must be an ISO date (YYYY-MM-DD); got: {value}")
-
-
-def parse_nonnegative_int(label: str, value: str) -> int:
-    if not re.fullmatch(r"0|[1-9][0-9]*", value):
-        fail(f"{label} must be a non-negative integer; got: {value}")
-    return int(value)
-
-
-def parse_number(
-    label: str, value: str, *, allow_na: bool = False, nonnegative: bool = False
-) -> float | None:
-    if allow_na and value == NA_VALUE:
-        return None
-    try:
-        parsed = float(value)
-    except ValueError:
-        fail(f"{label} must be numeric; got: {value}")
-    if not math.isfinite(parsed):
-        fail(f"{label} must be finite; got: {value}")
-    if nonnegative and parsed < 0:
-        fail(f"{label} must be non-negative; got: {value}")
-    return parsed
+        step08.fail(f"{label} must be an ISO date (YYYY-MM-DD); got: {value}")
 
 
 def parse_nonnegative_or_infinite(label: str, value: str) -> float:
     try:
         parsed = float(value)
     except ValueError:
-        fail(f"{label} must be numeric; got: {value}")
+        step08.fail(f"{label} must be numeric; got: {value}")
     if math.isnan(parsed) or parsed < 0:
-        fail(f"{label} must be non-negative and not NaN; got: {value}")
+        step08.fail(f"{label} must be non-negative and not NaN; got: {value}")
     return parsed
-
-
-def values_close(left: float | None, right: float | None) -> bool:
-    if left is None or right is None:
-        return left is right
-    return math.isclose(left, right, rel_tol=1.5e-8, abs_tol=1.5e-8)
 
 
 def complement_base(value: str) -> str:
     complements = {"A": "T", "C": "G", "G": "C", "T": "A"}
     if value not in complements:
-        fail(f"Expected a canonical DNA base; got: {value}")
+        step08.fail(f"Expected a canonical DNA base; got: {value}")
     return complements[value]
 
 
@@ -927,75 +860,19 @@ def split_ids(label: str, value: str) -> list[str]:
         return []
     parts = value.split(",")
     if any(not part or part.strip() != part for part in parts):
-        fail(f"{label} must be comma-separated safe IDs or NA; got: {value}")
+        step08.fail(f"{label} must be comma-separated safe IDs or NA; got: {value}")
     for part in parts:
-        validate_safe_id(label, part)
+        step08.validate_safe_id(label, part)
     if len(parts) != len(set(parts)):
-        fail(f"{label} contains duplicate IDs: {value}")
+        step08.fail(f"{label} contains duplicate IDs: {value}")
     return parts
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    try:
-        with path.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
-    except OSError as exc:
-        fail(f"Could not hash {path}: {exc}")
-    return digest.hexdigest()
-
-
-def require_file(label: str, value: str | Path) -> Path:
-    path = Path(value).expanduser()
-    if not path.is_file():
-        fail(f"{label} does not exist or is not a regular file: {path}")
-    if path.stat().st_size == 0:
-        fail(f"{label} is empty: {path}")
-    return path.resolve()
 
 
 def require_directory(label: str, value: str | Path) -> Path:
     path = Path(value).expanduser()
     if not path.is_dir():
-        fail(f"{label} does not exist or is not a directory: {path}")
+        step08.fail(f"{label} does not exist or is not a directory: {path}")
     return path.resolve()
-
-
-def read_tsv(
-    label: str,
-    value: str | Path,
-    expected_header: Sequence[str] | None = None,
-) -> Table:
-    path = require_file(label, value)
-    try:
-        with path.open("r", encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            raw_rows = list(reader)
-    except (OSError, UnicodeError, csv.Error) as exc:
-        fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
-    if not raw_rows:
-        fail(f"{label} is empty: {path}")
-    header = tuple(raw_rows[0])
-    if any(not column for column in header):
-        fail(f"{label} contains an empty header field: {path}")
-    if len(header) != len(set(header)):
-        fail(f"{label} contains duplicate header fields: {path}")
-    if expected_header is not None and header != tuple(expected_header):
-        fail(
-            f"{label} header is invalid: {path}\n"
-            f"Expected: {' | '.join(expected_header)}\n"
-            f"Observed: {' | '.join(header)}"
-        )
-    rows: list[dict[str, str]] = []
-    for index, values in enumerate(raw_rows[1:], start=2):
-        if len(values) != len(header):
-            fail(
-                f"{label} row {index} has {len(values)} fields; "
-                f"expected {len(header)}: {path}"
-            )
-        rows.append(dict(zip(header, values, strict=True)))
-    return Table(header=header, rows=rows, path=path)
 
 
 def write_tsv(path: Path, header: Sequence[str], rows: Iterable[Mapping[str, str]]) -> None:
@@ -1030,17 +907,6 @@ def artifact_from_binary(label: str, path: Path) -> Artifact:
     )
 
 
-def ensure_unique(rows: Sequence[Mapping[str, str]], column: str, label: str) -> None:
-    seen: set[str] = set()
-    for row_number, row in enumerate(rows, start=2):
-        value = row[column]
-        if not value:
-            fail(f"{label} row {row_number} has an empty {column}.")
-        if value in seen:
-            fail(f"{label} contains duplicate {column}: {value}")
-        seen.add(value)
-
-
 def resolve_declared_path(value: str, source_file: Path) -> Path:
     path = Path(value).expanduser()
     if not path.is_absolute():
@@ -1056,27 +922,15 @@ def resolve_recorded_path(value: str) -> Path:
 
 
 def validate_pdf(label: str, path: Path) -> None:
-    path = require_file(label, path)
+    path = step08.require_file(label, path)
     try:
         data = path.read_bytes()
     except OSError as exc:
-        fail(f"Could not read {label}: {exc}")
+        step08.fail(f"Could not read {label}: {exc}")
     if not data.startswith(b"%PDF-"):
-        fail(f"{label} lacks a %PDF- signature: {path}")
+        step08.fail(f"{label} lacks a %PDF- signature: {path}")
     if b"%%EOF" not in data[-2048:]:
-        fail(f"{label} lacks a trailing %%EOF marker: {path}")
-
-
-def require_text(label: str, value: str, *, allow_na: bool = False) -> None:
-    if allow_na and value == NA_VALUE:
-        return
-    if not value or value.strip() != value:
-        fail(f"{label} must be non-empty and have no surrounding whitespace.")
-
-
-def validate_hash(label: str, value: str) -> None:
-    if not SHA256_RE.fullmatch(value):
-        fail(f"{label} must be a lowercase SHA-256 value; got: {value}")
+        step08.fail(f"{label} lacks a trailing %%EOF marker: {path}")
 
 
 def count_status(
@@ -1092,326 +946,9 @@ def register_artifact(
     artifact: Artifact,
 ) -> None:
     if key in artifacts:
-        fail(f"Internal artifact key was registered twice: {key}")
+        step08.fail(f"Internal artifact key was registered twice: {key}")
     artifacts[key] = artifact
     input_hashes[artifact.path] = artifact.sha256
-
-
-def validate_sample_manifest(
-    value: str | Path,
-) -> tuple[Table, list[str], list[dict[str, str]]]:
-    table = read_tsv("Sample manifest", value)
-    if table.header not in (SAMPLE_MANIFEST_REQUIRED, SAMPLE_MANIFEST_ALLOWED):
-        fail(
-            "Sample manifest must have the exact Step 09 schema, with optional "
-            "notes as the final column."
-        )
-    if not table.rows:
-        fail("Sample manifest contains no sample rows.")
-    ensure_unique(table.rows, "sample_id", "Sample manifest")
-    for row_number, row in enumerate(table.rows, start=2):
-        for column in SAMPLE_MANIFEST_REQUIRED:
-            require_text(
-                f"Sample manifest row {row_number} {column}", row[column]
-            )
-        validate_safe_id("sample_id", row["sample_id"])
-        validate_safe_id("replicate", row["replicate"])
-        if row["strandedness"] not in (
-            "forward",
-            "reverse",
-            "unstranded",
-            "unknown",
-        ):
-            fail(
-                "Sample manifest row "
-                f"{row_number} has invalid strandedness: {row['strandedness']}"
-            )
-    return table, [row["sample_id"] for row in table.rows], table.rows
-
-
-def validate_partition_manifest(value: str | Path) -> Table:
-    table = read_tsv(
-        "Partition manifest", value, PARTITION_MANIFEST_HEADER
-    )
-    if not table.rows:
-        fail("Partition manifest contains no partition rows.")
-    ensure_unique(table.rows, "partition_id", "Partition manifest")
-    for row_number, row in enumerate(table.rows, start=2):
-        for column in PARTITION_MANIFEST_HEADER:
-            require_text(
-                f"Partition manifest row {row_number} {column}", row[column]
-            )
-        validate_safe_id("partition_id", row["partition_id"])
-        validate_enum(
-            f"Partition manifest row {row_number} selector_type",
-            row["selector_type"],
-            ("region", "regions_file"),
-        )
-    return table
-
-
-def validate_step08_inputs(
-    value: str | Path,
-    sample_ids: Sequence[str],
-    partitions: Sequence[Mapping[str, str]],
-    sample_hash: str,
-    partition_hash: str,
-) -> Table:
-    table = read_tsv("Step 08 input receipt", value, STEP08_INPUTS_HEADER)
-    expected = [
-        (partition, orientation)
-        for partition in partitions
-        for orientation in ORIENTATIONS
-    ]
-    if len(table.rows) != len(expected):
-        fail(
-            "Step 08 input receipt is not the complete declared partition "
-            "x orientation set."
-        )
-    cohort_ids: set[str] = set()
-    annotation_paths: set[str] = set()
-    annotation_hashes: set[str] = set()
-    for index, (row, (partition, orientation)) in enumerate(
-        zip(table.rows, expected, strict=True), start=2
-    ):
-        if (
-            row["partition_id"] != partition["partition_id"]
-            or row["selector_type"] != partition["selector_type"]
-            or row["selector_value"] != partition["selector_value"]
-            or row["orientation"] != orientation
-        ):
-            fail(
-                "Step 08 input receipt is not ordered as the declared "
-                "partition x {FWD_like, REV_like} universe."
-            )
-        cohort_ids.add(row["cohort_id"])
-        annotation_paths.add(row["annotation_gtf"])
-        annotation_hashes.add(row["annotation_gtf_sha256"])
-        require_text(f"Step 08 input receipt row {index} cohort_id", row["cohort_id"])
-        validate_safe_id("cohort_id", row["cohort_id"])
-        for path_column in ("step07_receipt_path", "vcf_path", "annotation_gtf"):
-            require_text(
-                f"Step 08 input receipt row {index} {path_column}",
-                row[path_column],
-            )
-        for hash_column in (
-            "step07_receipt_sha256",
-            "vcf_sha256",
-            "sample_manifest_sha256",
-            "partition_manifest_sha256",
-            "annotation_gtf_sha256",
-        ):
-            validate_hash(
-                f"Step 08 input receipt row {index} {hash_column}",
-                row[hash_column],
-            )
-        if row["sample_manifest_sha256"] != sample_hash:
-            fail("Step 08 input receipt sample manifest hash is stale.")
-        if row["partition_manifest_sha256"] != partition_hash:
-            fail("Step 08 input receipt partition manifest hash is stale.")
-        counts = {
-            column: parse_nonnegative_int(
-                f"Step 08 input receipt row {index} {column}", row[column]
-            )
-            for column in (
-                "sample_count",
-                "declared_vcf_record_count",
-                "observed_vcf_record_count",
-                "observed_alt_allele_count",
-                "supported_snv_count",
-                "skipped_symbolic_count",
-                "skipped_non_snv_count",
-                "published_candidate_count",
-            )
-        }
-        if counts["sample_count"] != len(sample_ids):
-            fail("Step 08 input receipt sample_count differs from the manifest.")
-        if counts["declared_vcf_record_count"] != counts["observed_vcf_record_count"]:
-            fail("Step 08 declared and observed VCF record counts differ.")
-        if counts["observed_alt_allele_count"] != (
-            counts["supported_snv_count"]
-            + counts["skipped_symbolic_count"]
-            + counts["skipped_non_snv_count"]
-        ):
-            fail("Step 08 alternate-allele counts do not reconcile.")
-        if counts["published_candidate_count"] != counts["supported_snv_count"]:
-            fail("Step 08 published and supported SNV counts do not reconcile.")
-        require_text(
-            f"Step 08 input receipt row {index} orientation_policy",
-            row["orientation_policy"],
-        )
-    if len(cohort_ids) != 1:
-        fail("Step 08 input receipt contains multiple cohort IDs.")
-    if len(annotation_paths) != 1 or len(annotation_hashes) != 1:
-        fail("Step 08 input receipt contains inconsistent annotation provenance.")
-    if len({row["orientation_policy"] for row in table.rows}) != 1:
-        fail("Step 08 input receipt contains multiple orientation policies.")
-    return table
-
-
-def validate_step08_sites(
-    value: str | Path,
-    sample_ids: Sequence[str],
-    partitions: Sequence[Mapping[str, str]],
-    step08_inputs: Sequence[Mapping[str, str]],
-) -> Table:
-    expected_header = (
-        STEP08_METADATA_HEADER
-        + tuple(f"DP__{sample}" for sample in sample_ids)
-        + tuple(f"AD__{sample}" for sample in sample_ids)
-        + tuple(f"AF__{sample}" for sample in sample_ids)
-    )
-    table = read_tsv("Step 08 sites table", value, expected_header)
-    ensure_unique(table.rows, "candidate_id", "Step 08 sites table")
-    partition_ids = {row["partition_id"] for row in partitions}
-    policies = {row["orientation_policy"] for row in step08_inputs}
-    published_by_scope = {
-        (row["partition_id"], row["orientation"]): parse_nonnegative_int(
-            "Step 08 published_candidate_count",
-            row["published_candidate_count"],
-        )
-        for row in step08_inputs
-    }
-    observed_by_scope = {key: 0 for key in published_by_scope}
-    for row_number, row in enumerate(table.rows, start=2):
-        require_text(
-            f"Step 08 sites row {row_number} candidate_id",
-            row["candidate_id"],
-        )
-        if row["partition_id"] not in partition_ids:
-            fail(
-                f"Step 08 sites row {row_number} references an unknown partition."
-            )
-        validate_enum(
-            f"Step 08 sites row {row_number} orientation",
-            row["orientation"],
-            ORIENTATIONS,
-        )
-        scope = (row["partition_id"], row["orientation"])
-        observed_by_scope[scope] += 1
-        if row["orientation_policy"] not in policies:
-            fail("Step 08 sites table orientation policy differs from its receipt.")
-        parse_nonnegative_int(
-            f"Step 08 sites row {row_number} position", row["position"]
-        )
-        alt_index = parse_nonnegative_int(
-            f"Step 08 sites row {row_number} alt_index", row["alt_index"]
-        )
-        if alt_index < 1:
-            fail("Step 08 alt_index must be at least 1.")
-        for sample in sample_ids:
-            dp_value = row[f"DP__{sample}"]
-            ad_value = row[f"AD__{sample}"]
-            dp = (
-                None
-                if dp_value == NA_VALUE
-                else parse_nonnegative_int(
-                    f"Step 08 sites row {row_number} DP__{sample}",
-                    dp_value,
-                )
-            )
-            ad = (
-                None
-                if ad_value == NA_VALUE
-                else parse_nonnegative_int(
-                    f"Step 08 sites row {row_number} AD__{sample}",
-                    ad_value,
-                )
-            )
-            af = parse_number(
-                f"Step 08 sites row {row_number} AF__{sample}",
-                row[f"AF__{sample}"],
-                allow_na=True,
-                nonnegative=True,
-            )
-            if (dp is None) != (ad is None):
-                fail(
-                    f"Step 08 sites row {row_number} has one-sided DP/AD "
-                    f"missingness for sample {sample}."
-                )
-            if dp is None:
-                if af is not None:
-                    fail(
-                        f"Step 08 sites row {row_number} has AF without "
-                        f"DP/AD for sample {sample}."
-                    )
-                continue
-            assert ad is not None
-            if ad > dp or (af is not None and af > 1):
-                fail(
-                    f"Step 08 sites row {row_number} has inconsistent counts "
-                    f"for sample {sample}."
-                )
-            if dp == 0:
-                if ad != 0 or af is not None:
-                    fail(
-                        f"Step 08 sites row {row_number} has invalid zero-depth "
-                        f"counts for sample {sample}."
-                    )
-                continue
-            if af is None or not values_close(af, ad / dp):
-                fail(
-                    f"Step 08 sites row {row_number} AF__{sample} does not "
-                    "equal AD/DP."
-                )
-    if observed_by_scope != published_by_scope:
-        fail(
-            "Step 08 sites counts do not reconcile by partition and orientation."
-        )
-    return table
-
-
-def validate_step08_summary(
-    value: str | Path,
-    sample_ids: Sequence[str],
-    partitions: Sequence[Mapping[str, str]],
-    step08_inputs: Sequence[Mapping[str, str]],
-    step08_sites: Sequence[Mapping[str, str]],
-    sample_hash: str,
-    partition_hash: str,
-) -> Table:
-    table = read_tsv("Step 08 summary", value, STEP08_SUMMARY_HEADER)
-    if len(table.rows) != 1:
-        fail("Step 08 summary must contain exactly one data row.")
-    row = table.rows[0]
-    if row["sample_manifest_sha256"] != sample_hash:
-        fail("Step 08 summary sample manifest hash is stale.")
-    if row["partition_manifest_sha256"] != partition_hash:
-        fail("Step 08 summary partition manifest hash is stale.")
-    expected_counts = {
-        "partition_count": len(partitions),
-        "step07_receipt_count": len(partitions),
-        "input_vcf_count": len(step08_inputs),
-        "sample_count": len(sample_ids),
-        "published_candidate_count": len(step08_sites),
-    }
-    aggregate_columns = (
-        "observed_vcf_record_count",
-        "observed_alt_allele_count",
-        "supported_snv_count",
-        "skipped_symbolic_count",
-        "skipped_non_snv_count",
-    )
-    for column in aggregate_columns:
-        expected_counts[column] = sum(
-            parse_nonnegative_int(
-                f"Step 08 input receipt {column}", input_row[column]
-            )
-            for input_row in step08_inputs
-        )
-    for column, expected in expected_counts.items():
-        if parse_nonnegative_int(f"Step 08 summary {column}", row[column]) != expected:
-            fail(f"Step 08 summary {column} does not reconcile.")
-    first = step08_inputs[0]
-    for column in (
-        "cohort_id",
-        "annotation_gtf",
-        "annotation_gtf_sha256",
-        "orientation_policy",
-    ):
-        if row[column] != first[column]:
-            fail(f"Step 08 summary {column} differs from the input receipt.")
-    return table
 
 
 def paired_samples(
@@ -1420,7 +957,7 @@ def paired_samples(
     treatment: str,
 ) -> tuple[list[str], dict[str, tuple[str, str]]]:
     if control == treatment:
-        fail("Step 09 control and treatment conditions must differ.")
+        step08.fail("Step 09 control and treatment conditions must differ.")
     analysis_rows = [
         row for row in sample_rows if row["condition"] in (control, treatment)
     ]
@@ -1441,7 +978,7 @@ def paired_samples(
             if row["condition"] == treatment and row["replicate"] == replicate
         ]
         if len(controls) != 1 or len(treatments) != 1:
-            fail(
+            step08.fail(
                 "Sample manifest must define exactly one control and one "
                 f"treatment for replicate {replicate}."
             )
@@ -1453,7 +990,7 @@ def paired_samples(
         row["replicate"] for row in sample_rows if row["condition"] == treatment
     }
     if control_replicates != treatment_replicates or len(replicates) < 2:
-        fail(
+        step08.fail(
             "Sample manifest must define identical control/treatment replicate "
             "sets with at least two strata."
         )
@@ -1493,9 +1030,9 @@ def validate_step09_results(
         + tuple(f"AF__{sample}" for sample in sample_ids)
     )
     table = read_tsv(label, value, expected_header)
-    ensure_unique(table.rows, "candidate_id", label)
+    step08.ensure_unique(table.rows, "candidate_id", label)
     sites_by_id = {row["candidate_id"]: row for row in step08_sites}
-    metadata_columns = STEP08_METADATA_HEADER
+    metadata_columns = step08.STEP08_METADATA_HEADER
     sample_columns = tuple(
         f"{prefix}__{sample}"
         for prefix in ("DP", "AD", "AF")
@@ -1503,27 +1040,27 @@ def validate_step09_results(
     )
     for row_number, row in enumerate(table.rows, start=2):
         if row["analysis_id"] != analysis_id:
-            fail(f"{label} row {row_number} has the wrong analysis_id.")
+            step08.fail(f"{label} row {row_number} has the wrong analysis_id.")
         site = sites_by_id.get(row["candidate_id"])
         if site is None:
-            fail(f"{label} references an unknown Step 08 candidate.")
+            step08.fail(f"{label} references an unknown Step 08 candidate.")
         for column in metadata_columns + sample_columns:
             if row[column] != site[column]:
-                fail(
+                step08.fail(
                     f"{label} row {row_number} {column} differs from "
                     "the Step 08 candidate."
                 )
-        validate_enum(
+        step08.validate_enum(
             f"{label} row {row_number} test_status",
             row["test_status"],
             STEP09_TEST_STATUSES,
         )
-        validate_enum(
+        step08.validate_enum(
             f"{label} row {row_number} call_status",
             row["call_status"],
             STEP09_CALL_STATUSES,
         )
-        parse_nonnegative_int(
+        step08.parse_nonnegative_int(
             f"{label} row {row_number} replicate_count",
             row["replicate_count"],
         )
@@ -1547,26 +1084,26 @@ def validate_step09_summary(
     inputs_hash: str,
     step08_orientation_policy: str,
 ) -> Table:
-    validate_safe_id("analysis_id", analysis_id)
-    validate_safe_id("cohort_id", cohort_id)
+    step08.validate_safe_id("analysis_id", analysis_id)
+    step08.validate_safe_id("cohort_id", cohort_id)
     table = read_tsv("Step 09 summary", value, STEP09_SUMMARY_HEADER)
     if len(table.rows) != 1:
-        fail("Step 09 summary must contain exactly one data row.")
+        step08.fail("Step 09 summary must contain exactly one data row.")
     row = table.rows[0]
     if row["analysis_id"] != analysis_id:
-        fail("Step 09 summary analysis_id differs from its directory.")
+        step08.fail("Step 09 summary analysis_id differs from its directory.")
     if row["cohort_id"] != cohort_id:
-        fail("Step 09 summary cohort_id differs from the Step 08 receipt.")
-    validate_safe_id("control_condition", row["control_condition"])
-    validate_safe_id("treatment_condition", row["treatment_condition"])
+        step08.fail("Step 09 summary cohort_id differs from the Step 08 receipt.")
+    step08.validate_safe_id("control_condition", row["control_condition"])
+    step08.validate_safe_id("treatment_condition", row["treatment_condition"])
     if row["background_condition"] != NA_VALUE:
-        validate_safe_id("background_condition", row["background_condition"])
+        step08.validate_safe_id("background_condition", row["background_condition"])
     if (
         row["multiple_testing_method"] != "BH"
         or row["cmh_alternative"] != "two.sided"
         or row["continuity_correction"] != "TRUE"
     ):
-        fail("Step 09 summary does not declare the approved CMH contract.")
+        step08.fail("Step 09 summary does not declare the approved CMH contract.")
     expected_paths = {
         "sample_manifest_path": sample_manifest,
         "partition_manifest_path": partition_manifest,
@@ -1575,7 +1112,7 @@ def validate_step09_summary(
     }
     for column, expected in expected_paths.items():
         if resolve_recorded_path(row[column]) != expected:
-            fail(f"Step 09 summary {column} differs from the explicit input.")
+            step08.fail(f"Step 09 summary {column} differs from the explicit input.")
     expected_hashes = {
         "sample_manifest_sha256": sample_hash,
         "partition_manifest_sha256": partition_hash,
@@ -1583,48 +1120,48 @@ def validate_step09_summary(
         "step08_inputs_sha256": inputs_hash,
     }
     for column, expected in expected_hashes.items():
-        validate_hash(f"Step 09 summary {column}", row[column])
+        step08.validate_hash(f"Step 09 summary {column}", row[column])
         if row[column] != expected:
-            fail(f"Step 09 summary {column} is stale.")
-    if parse_nonnegative_int(
+            step08.fail(f"Step 09 summary {column} is stale.")
+    if step08.parse_nonnegative_int(
         "Step 09 summary sample_count", row["sample_count"]
     ) != len(sample_ids):
-        fail("Step 09 summary sample_count differs from the sample manifest.")
-    if parse_nonnegative_int(
+        step08.fail("Step 09 summary sample_count differs from the sample manifest.")
+    if step08.parse_nonnegative_int(
         "Step 09 summary candidate_count", row["candidate_count"]
     ) != len(all_rows):
-        fail("Step 09 summary candidate_count differs from all-sites.")
+        step08.fail("Step 09 summary candidate_count differs from all-sites.")
     target_change = row["target_rna_change"]
     if not re.fullmatch(r"[ACGT]>[ACGT]", target_change):
-        fail("Step 09 summary target_rna_change must be a canonical SNV.")
+        step08.fail("Step 09 summary target_rna_change must be a canonical SNV.")
     target_ref, target_alt = target_change.split(">")
     expected_target_count = sum(
         result["rna_ref"] == target_ref and result["rna_alt"] == target_alt
         for result in all_rows
     )
-    if parse_nonnegative_int(
+    if step08.parse_nonnegative_int(
         "Step 09 summary target_candidate_count",
         row["target_candidate_count"],
     ) != expected_target_count:
-        fail("Step 09 summary target candidate count does not reconcile.")
+        step08.fail("Step 09 summary target candidate count does not reconcile.")
     for summary_column, result_column, status in STEP09_STATUS_COUNT_FIELDS:
         expected = count_status(all_rows, result_column, status)
-        if parse_nonnegative_int(
+        if step08.parse_nonnegative_int(
             f"Step 09 summary {summary_column}", row[summary_column]
         ) != expected:
-            fail(f"Step 09 summary {summary_column} does not reconcile.")
+            step08.fail(f"Step 09 summary {summary_column} does not reconcile.")
     replicates, _ = paired_samples(
         sample_rows, row["control_condition"], row["treatment_condition"]
     )
-    if parse_nonnegative_int(
+    if step08.parse_nonnegative_int(
         "Step 09 summary replicate_count", row["replicate_count"]
     ) != len(replicates):
-        fail("Step 09 summary replicate_count differs from the sample manifest.")
+        step08.fail("Step 09 summary replicate_count differs from the sample manifest.")
     if (
         step08_orientation_policy != "legacy_provisional_v1"
         or row["orientation_policy"] != step08_orientation_policy
     ):
-        fail(
+        step08.fail(
             "Step 09 summary and Step 08 must use "
             "orientation_policy=legacy_provisional_v1."
         )
@@ -1632,13 +1169,13 @@ def validate_step09_summary(
         result["orientation_policy"] != row["orientation_policy"]
         for result in all_rows
     ):
-        fail("Step 09 results contain an inconsistent orientation policy.")
+        step08.fail("Step 09 results contain an inconsistent orientation policy.")
     background = row["background_condition"]
     if background != NA_VALUE:
         if background in (row["control_condition"], row["treatment_condition"]):
-            fail("Step 09 background condition must be independent.")
+            step08.fail("Step 09 background condition must be independent.")
         if not any(sample["condition"] == background for sample in sample_rows):
-            fail("Step 09 background condition is absent from the manifest.")
+            step08.fail("Step 09 background condition is absent from the manifest.")
     expected_result_context = {
         "control_condition": row["control_condition"],
         "treatment_condition": row["treatment_condition"],
@@ -1650,7 +1187,7 @@ def validate_step09_summary(
     for result in all_rows:
         for column, expected in expected_result_context.items():
             if result[column] != expected:
-                fail(
+                step08.fail(
                     f"Step 09 all-sites {column} differs from the summary "
                     f"for candidate {result['candidate_id']}."
                 )
@@ -1663,28 +1200,28 @@ def validate_step09_result_semantics(
     sample_rows: Sequence[Mapping[str, str]],
 ) -> None:
     target_ref, target_alt = summary["target_rna_change"].split(">")
-    min_sample_dp = parse_nonnegative_int(
+    min_sample_dp = step08.parse_nonnegative_int(
         "Step 09 min_sample_dp", summary["min_sample_dp"]
     )
-    mean_dp_threshold = parse_number(
+    mean_dp_threshold = step08.parse_number(
         "Step 09 mean_dp_threshold",
         summary["mean_dp_threshold"],
         nonnegative=True,
     )
-    fdr_threshold = parse_number(
+    fdr_threshold = step08.parse_number(
         "Step 09 fdr_threshold", summary["fdr_threshold"], nonnegative=True
     )
-    odds_threshold = parse_number(
+    odds_threshold = step08.parse_number(
         "Step 09 common_or_threshold",
         summary["common_or_threshold"],
         nonnegative=True,
     )
-    difference_threshold = parse_number(
+    difference_threshold = step08.parse_number(
         "Step 09 absolute_difference_threshold",
         summary["absolute_difference_threshold"],
         nonnegative=True,
     )
-    background_threshold = parse_number(
+    background_threshold = step08.parse_number(
         "Step 09 background_max_fraction",
         summary["background_max_fraction"],
         nonnegative=True,
@@ -1701,7 +1238,7 @@ def validate_step09_result_semantics(
         or background_threshold is None
         or not 0 < background_threshold < 1
     ):
-        fail("Step 09 summary thresholds are outside the supported contract.")
+        step08.fail("Step 09 summary thresholds are outside the supported contract.")
     _, pairs = paired_samples(
         sample_rows,
         summary["control_condition"],
@@ -1723,11 +1260,11 @@ def validate_step09_result_semantics(
             row["rna_ref"] == target_ref and row["rna_alt"] == target_alt
         )
         if is_target == (row["test_status"] == "not_target_change"):
-            fail(
+            step08.fail(
                 "Step 09 test_status does not match the declared target "
                 f"change for candidate {row['candidate_id']}."
             )
-        validate_enum(
+        step08.validate_enum(
             "Step 09 background_status",
             row["background_status"],
             STEP09_BACKGROUND_STATUSES,
@@ -1737,7 +1274,7 @@ def validate_step09_result_semantics(
                 row["background_status"] != "disabled"
                 or row["max_background_af"] != NA_VALUE
             ):
-                fail(
+                step08.fail(
                     "Step 09 background-disabled result contains a "
                     "background claim."
                 )
@@ -1778,7 +1315,7 @@ def validate_step09_result_semantics(
                     max(background_af) if background_af else None
                 )
             elif not background_af:
-                fail(
+                step08.fail(
                     "Step 09 enabled background has zero depth at or above "
                     "the minimum depth threshold."
                 )
@@ -1789,7 +1326,7 @@ def validate_step09_result_semantics(
                     if all(value < background_threshold for value in background_af)
                     else "fail_fraction"
                 )
-            observed_background_max = parse_number(
+            observed_background_max = step08.parse_number(
                 "Step 09 max_background_af",
                 row["max_background_af"],
                 allow_na=True,
@@ -1801,7 +1338,7 @@ def validate_step09_result_semantics(
                     observed_background_max, expected_background_max
                 )
             ):
-                fail(
+                step08.fail(
                     "Step 09 enabled-background status or maximum AF does "
                     f"not reconcile for candidate {row['candidate_id']}."
                 )
@@ -1823,18 +1360,18 @@ def validate_step09_result_semantics(
                 "treatment_control_difference",
             ):
                 if row[column] != NA_VALUE:
-                    fail(
+                    step08.fail(
                         f"Step 09 {column} must be NA when analysis counts "
                         f"are missing for candidate {row['candidate_id']}."
                     )
         else:
             dp_values = [int(value) for value in sample_dp]
-            observed_min_dp = parse_number(
+            observed_min_dp = step08.parse_number(
                 "Step 09 min_analysis_dp",
                 row["min_analysis_dp"],
                 nonnegative=True,
             )
-            observed_mean_dp = parse_number(
+            observed_mean_dp = step08.parse_number(
                 "Step 09 mean_analysis_dp",
                 row["mean_analysis_dp"],
                 nonnegative=True,
@@ -1846,7 +1383,7 @@ def validate_step09_result_semantics(
                     sum(dp_values) / len(dp_values),
                 )
             ):
-                fail(
+                step08.fail(
                     "Step 09 depth metrics do not reconcile with immutable "
                     f"sample counts for candidate {row['candidate_id']}."
                 )
@@ -1866,17 +1403,17 @@ def validate_step09_result_semantics(
                     treatment_af_values
                 )
                 expected_delta = expected_treatment_af - expected_control_af
-                observed_control_af = parse_number(
+                observed_control_af = step08.parse_number(
                     "Step 09 mean_control_af",
                     row["mean_control_af"],
                     nonnegative=True,
                 )
-                observed_treatment_af = parse_number(
+                observed_treatment_af = step08.parse_number(
                     "Step 09 mean_treatment_af",
                     row["mean_treatment_af"],
                     nonnegative=True,
                 )
-                observed_delta = parse_number(
+                observed_delta = step08.parse_number(
                     "Step 09 treatment_control_difference",
                     row["treatment_control_difference"],
                 )
@@ -1887,7 +1424,7 @@ def validate_step09_result_semantics(
                     )
                     or not values_close(observed_delta, expected_delta)
                 ):
-                    fail(
+                    step08.fail(
                         "Step 09 AF/delta metrics do not reconcile with "
                         "immutable sample counts for candidate "
                         f"{row['candidate_id']}."
@@ -1899,7 +1436,7 @@ def validate_step09_result_semantics(
                     "treatment_control_difference",
                 ):
                     if row[column] != NA_VALUE:
-                        fail(
+                        step08.fail(
                             f"Step 09 {column} must be NA with zero analysis "
                             f"depth for candidate {row['candidate_id']}."
                         )
@@ -1911,13 +1448,13 @@ def validate_step09_result_semantics(
             else:
                 expected_pretest_statuses = {"degenerate_table", "tested"}
             if row["test_status"] not in expected_pretest_statuses:
-                fail(
+                step08.fail(
                     "Step 09 test_status conflicts with observed target "
                     "candidate count availability/coverage."
                 )
         if row["test_status"] != "tested":
             if row["call_status"] != "not_tested":
-                fail(
+                step08.fail(
                     "An untested Step 09 candidate must use "
                     "call_status=not_tested."
                 )
@@ -1929,46 +1466,46 @@ def validate_step09_result_semantics(
                 "common_odds_ratio",
             ):
                 if row[column] != NA_VALUE:
-                    fail(
+                    step08.fail(
                         f"Untested Step 09 candidate {row['candidate_id']} "
                         f"must use {column}=NA."
                     )
             continue
         if row["call_status"] == "not_tested":
-            fail("A tested Step 09 candidate cannot use call_status=not_tested.")
-        statistic = parse_number(
+            step08.fail("A tested Step 09 candidate cannot use call_status=not_tested.")
+        statistic = step08.parse_number(
             "Step 09 cmh_statistic", row["cmh_statistic"], nonnegative=True
         )
-        degrees = parse_number(
+        degrees = step08.parse_number(
             "Step 09 cmh_degrees_freedom",
             row["cmh_degrees_freedom"],
             nonnegative=True,
         )
-        p_value = parse_number(
+        p_value = step08.parse_number(
             "Step 09 cmh_p_value", row["cmh_p_value"], nonnegative=True
         )
-        fdr = parse_number(
+        fdr = step08.parse_number(
             "Step 09 cmh_fdr_bh", row["cmh_fdr_bh"], nonnegative=True
         )
         odds = parse_nonnegative_or_infinite(
             "Step 09 common_odds_ratio", row["common_odds_ratio"]
         )
-        mean_dp = parse_number(
+        mean_dp = step08.parse_number(
             "Step 09 mean_analysis_dp",
             row["mean_analysis_dp"],
             nonnegative=True,
         )
-        control_af = parse_number(
+        control_af = step08.parse_number(
             "Step 09 mean_control_af",
             row["mean_control_af"],
             nonnegative=True,
         )
-        treatment_af = parse_number(
+        treatment_af = step08.parse_number(
             "Step 09 mean_treatment_af",
             row["mean_treatment_af"],
             nonnegative=True,
         )
-        delta = parse_number(
+        delta = step08.parse_number(
             "Step 09 treatment_control_difference",
             row["treatment_control_difference"],
         )
@@ -1987,7 +1524,7 @@ def validate_step09_result_semantics(
             or delta is None
             or not values_close(delta, treatment_af - control_af)
         ):
-            fail("Step 09 tested-candidate statistics are malformed.")
+            step08.fail("Step 09 tested-candidate statistics are malformed.")
         tested_statistics.append((row["candidate_id"], p_value, fdr))
         if mean_dp <= mean_dp_threshold:
             expected_call = "below_mean_dp"
@@ -2002,7 +1539,7 @@ def validate_step09_result_semantics(
         else:
             expected_call = "effect_not_met"
         if row["call_status"] != expected_call:
-            fail(
+            step08.fail(
                 "Step 09 call_status conflicts with the declared strict "
                 f"thresholds for candidate {row['candidate_id']}."
             )
@@ -2023,7 +1560,7 @@ def validate_step09_result_semantics(
             tested_statistics, adjusted, strict=True
         ):
             if observed < p_value or not values_close(observed, expected):
-                fail(
+                step08.fail(
                     "Step 09 cmh_fdr_bh does not match global BH adjustment "
                     f"for candidate {candidate_id}."
                 )
@@ -2039,7 +1576,7 @@ def validate_significant_subset(
         if row["call_status"] in ("significant_up", "significant_down")
     ]
     if list(significant_rows) != expected:
-        fail(
+        step08.fail(
             "Step 09 significant-sites table is not the exact ordered "
             "significant subset of all-sites."
         )
@@ -2054,7 +1591,7 @@ def validate_mutation_spectrum(
         "Step 09 mutation spectrum", value, STEP09_MUTATION_HEADER
     )
     if [row["mutation_type"] for row in table.rows] != list(CANONICAL_MUTATIONS):
-        fail("Step 09 mutation spectrum must contain the canonical 12 SNVs.")
+        step08.fail("Step 09 mutation spectrum must contain the canonical 12 SNVs.")
     total = len(all_rows)
     for row in table.rows:
         mutation_type = row["mutation_type"]
@@ -2064,7 +1601,7 @@ def validate_mutation_spectrum(
             or row["rna_ref"] != ref
             or row["rna_alt"] != alt
         ):
-            fail("Step 09 mutation spectrum identity columns do not reconcile.")
+            step08.fail("Step 09 mutation spectrum identity columns do not reconcile.")
         selected = [
             result
             for result in all_rows
@@ -2083,11 +1620,11 @@ def validate_mutation_spectrum(
             ),
         }
         for column, expected in expected_counts.items():
-            if parse_nonnegative_int(
+            if step08.parse_nonnegative_int(
                 f"Step 09 mutation spectrum {column}", row[column]
             ) != expected:
-                fail(f"Step 09 mutation spectrum {column} does not reconcile.")
-        fraction = parse_number(
+                step08.fail(f"Step 09 mutation spectrum {column} does not reconcile.")
+        fraction = step08.parse_number(
             "Step 09 mutation spectrum candidate_fraction",
             row["candidate_fraction"],
             nonnegative=True,
@@ -2096,7 +1633,7 @@ def validate_mutation_spectrum(
         if fraction is None or fraction > 1 or not values_close(
             fraction, expected_fraction
         ):
-            fail("Step 09 mutation spectrum candidate_fraction is invalid.")
+            step08.fail("Step 09 mutation spectrum candidate_fraction is invalid.")
     return table
 
 
@@ -2105,45 +1642,45 @@ def validate_review_plan(
 ) -> tuple[Table, dict[str, str], set[str]]:
     table = read_tsv("Scientific review plan", value, REVIEW_PLAN_HEADER)
     if len(table.rows) != 1:
-        fail("Scientific review plan must contain exactly one data row.")
+        step08.fail("Scientific review plan must contain exactly one data row.")
     plan = table.rows[0]
     if plan["review_id"] != review_id:
-        fail("Scientific review plan review_id differs from --review-id.")
-    validate_safe_id("review_id", plan["review_id"])
-    validate_safe_id("primary_analysis_id", plan["primary_analysis_id"])
+        step08.fail("Scientific review plan review_id differs from --review-id.")
+    step08.validate_safe_id("review_id", plan["review_id"])
+    step08.validate_safe_id("primary_analysis_id", plan["primary_analysis_id"])
     requested_status = plan["overall_science_status"]
     if requested_status == RESERVED_SCIENCE_STATUS:
-        fail(
+        step08.fail(
             "biological_interpretation_ready is reserved and cannot be "
             "produced by Step 09c."
         )
-    validate_enum(
+    step08.validate_enum(
         "overall_science_status", requested_status, SCIENCE_STATUSES
     )
-    validate_enum(
+    step08.validate_enum(
         "implementation_status",
         plan["implementation_status"],
         IMPLEMENTATION_STATUSES,
     )
-    validate_enum(
+    step08.validate_enum(
         "local_test_status", plan["local_test_status"], LOCAL_TEST_STATUSES
     )
-    validate_enum(
+    step08.validate_enum(
         "runtime_validation_status",
         plan["runtime_validation_status"],
         RUNTIME_VALIDATION_STATUSES,
     )
-    validate_enum(
+    step08.validate_enum(
         "cluster_dry_run_status",
         plan["cluster_dry_run_status"],
         CLUSTER_DRY_RUN_STATUSES,
     )
-    validate_enum(
+    step08.validate_enum(
         "cluster_proof_status",
         plan["cluster_proof_status"],
         CLUSTER_PROOF_STATUSES,
     )
-    validate_enum(
+    step08.validate_enum(
         "orientation_status",
         plan["orientation_status"],
         ORIENTATION_STATUSES,
@@ -2166,7 +1703,7 @@ def validate_review_plan(
         "annotation_policy_version",
         "adjudication_policy_version",
     ):
-        validate_safe_id(
+        step08.validate_safe_id(
             f"Scientific review plan {column}",
             plan[column],
         )
@@ -2180,7 +1717,7 @@ def validate_review_plan(
         "software_versions",
         "notes",
     ):
-        require_text(f"Scientific review plan {column}", plan[column])
+        step08.require_text(f"Scientific review plan {column}", plan[column])
     for column in (
         "locus_target_count",
         "top_up_count",
@@ -2188,19 +1725,19 @@ def validate_review_plan(
         "discordant_count",
         "near_threshold_count",
     ):
-        parse_nonnegative_int(f"Scientific review plan {column}", plan[column])
+        step08.parse_nonnegative_int(f"Scientific review plan {column}", plan[column])
     required_orientations = split_ids(
         "required_orientations", plan["required_orientations"]
     )
-    if required_orientations != list(ORIENTATIONS):
-        fail(
+    if required_orientations != list(step08.ORIENTATIONS):
+        step08.fail(
             "required_orientations must be exactly "
             "FWD_like,REV_like in that order."
         )
     required_strands = plan["required_annotation_strands"].split(",")
     if required_strands != ["+", "-"]:
-        fail("required_annotation_strands must be exactly +,-.")
-    require_text(
+        step08.fail("required_annotation_strands must be exactly +,-.")
+    step08.require_text(
         "required_annotation_cases", plan["required_annotation_cases"]
     )
     superseded = split_ids(
@@ -2210,10 +1747,10 @@ def validate_review_plan(
         "sensitivity_analysis_ids", plan["sensitivity_analysis_ids"]
     )
     if plan["primary_analysis_id"] in superseded + sensitivity:
-        fail("The primary analysis cannot also be superseded or a sensitivity run.")
+        step08.fail("The primary analysis cannot also be superseded or a sensitivity run.")
     overlap = sorted(set(superseded) & set(sensitivity))
     if overlap:
-        fail(
+        step08.fail(
             "Superseded and sensitivity analysis IDs must be disjoint; "
             f"overlap: {','.join(overlap)}."
         )
@@ -2226,18 +1763,18 @@ def validate_review_plan(
         plan["runtime_validation_status"] != "passed"
         or plan["cluster_dry_run_status"] != "passed"
     ):
-        fail(
+        step08.fail(
             "cluster_proof_status=proven requires runtime and cluster "
             "dry-run status passed."
         )
     if requested_status == "science_review_complete_exploratory":
         if plan["review_completed_date"] == NA_VALUE:
-            fail(
+            step08.fail(
                 "An exploratory-complete science review requires "
                 "review_completed_date."
             )
     elif plan["review_completed_date"] != NA_VALUE:
-        fail(
+        step08.fail(
             "evidence_incomplete must use review_completed_date=NA so that "
             "review completion is not overstated."
         )
@@ -2276,12 +1813,12 @@ def validate_evidence_manifest(
     manifest = read_tsv(
         "Scientific evidence manifest", value, EVIDENCE_MANIFEST_HEADER
     )
-    ensure_unique(manifest.rows, "evidence_id", "Scientific evidence manifest")
+    step08.ensure_unique(manifest.rows, "evidence_id", "Scientific evidence manifest")
     for category in CATEGORY_ORDER:
         if not any(
             row["evidence_category"] == category for row in manifest.rows
         ):
-            fail(
+            step08.fail(
                 "Scientific evidence manifest must explicitly represent "
                 f"category {category}."
             )
@@ -2314,13 +1851,13 @@ def validate_evidence_manifest(
     normalized_manifest_rows: list[dict[str, str]] = []
     for row_number, original in enumerate(manifest.rows, start=2):
         row = dict(original)
-        validate_safe_id("evidence_id", row["evidence_id"])
-        validate_enum(
+        step08.validate_safe_id("evidence_id", row["evidence_id"])
+        step08.validate_enum(
             f"Evidence manifest row {row_number} category",
             row["evidence_category"],
             ALLOWED_EVIDENCE_CATEGORIES,
         )
-        validate_enum(
+        step08.validate_enum(
             f"Evidence manifest row {row_number} status",
             row["evidence_status"],
             EVIDENCE_STATUSES,
@@ -2332,16 +1869,16 @@ def validate_evidence_manifest(
             else {primary_analysis_id}
         )
         if row["analysis_id"] not in category_allowed_analyses:
-            fail(
+            step08.fail(
                 f"Evidence manifest row {row_number} category "
                 f"{row['evidence_category']} cannot use analysis_id "
                 f"{row['analysis_id']}."
             )
         for column in ("reviewer", "owner"):
-            require_text(
+            step08.require_text(
                 f"Evidence manifest row {row_number} {column}", row[column]
             )
-        validate_safe_id(
+        step08.validate_safe_id(
             f"Evidence manifest row {row_number} policy_version",
             row["policy_version"],
         )
@@ -2360,17 +1897,17 @@ def validate_evidence_manifest(
                     "source_row_count",
                 )
             ):
-                fail(
+                step08.fail(
                     f"Evidence {row['evidence_id']} with status {status} "
                     "must use NA for source path, hash, and row count."
                 )
             if status == "not_applicable":
-                require_text(
+                step08.require_text(
                     f"Evidence {row['evidence_id']} not_applicable_reason",
                     row["not_applicable_reason"],
                 )
             elif row["not_applicable_reason"] != NA_VALUE:
-                fail(
+                step08.fail(
                     "Missing evidence must use not_applicable_reason=NA."
                 )
             observed_path = NA_VALUE
@@ -2378,34 +1915,34 @@ def validate_evidence_manifest(
             observed_count = NA_VALUE
         else:
             if row["evidence_date"] == NA_VALUE:
-                fail(
+                step08.fail(
                     f"Evidence {row['evidence_id']} with status {status} "
                     "must record evidence_date."
                 )
             if row["not_applicable_reason"] != NA_VALUE:
-                fail(
+                step08.fail(
                     "Complete or incomplete evidence must use "
                     "not_applicable_reason=NA."
                 )
             source_path = resolve_declared_path(
                 row["source_path"], manifest.path
             )
-            source_path = require_file(
+            source_path = step08.require_file(
                 f"Evidence source {row['evidence_id']}", source_path
             )
             if source_path in source_paths:
-                fail(
+                step08.fail(
                     "Scientific evidence manifest declares the same source "
                     f"path more than once: {source_path}"
                 )
             source_paths.add(source_path)
-            validate_hash(
+            step08.validate_hash(
                 f"Evidence {row['evidence_id']} source_sha256",
                 row["source_sha256"],
             )
             observed_hash = sha256_file(source_path)
             if observed_hash != row["source_sha256"]:
-                fail(
+                step08.fail(
                     f"Evidence source hash differs for {row['evidence_id']}."
                 )
             expected_header = (
@@ -2418,12 +1955,12 @@ def validate_evidence_manifest(
                 source_path,
                 expected_header,
             )
-            declared_count = parse_nonnegative_int(
+            declared_count = step08.parse_nonnegative_int(
                 f"Evidence {row['evidence_id']} source_row_count",
                 row["source_row_count"],
             )
             if declared_count != len(source_table.rows):
-                fail(
+                step08.fail(
                     f"Evidence source row count differs for "
                     f"{row['evidence_id']}."
                 )
@@ -2431,12 +1968,12 @@ def validate_evidence_manifest(
                 source_table.rows, start=2
             ):
                 if payload["review_id"] != review_id:
-                    fail(
+                    step08.fail(
                         f"Evidence {row['evidence_id']} payload row "
                         f"{source_row_number} has the wrong review_id."
                     )
                 if payload["evidence_id"] != row["evidence_id"]:
-                    fail(
+                    step08.fail(
                         f"Evidence {row['evidence_id']} payload row "
                         f"{source_row_number} has the wrong evidence_id."
                     )
@@ -2448,13 +1985,13 @@ def validate_evidence_manifest(
                         primary_analysis_id,
                         *sensitivity_analyses,
                     }:
-                        fail(
+                        step08.fail(
                             f"Evidence {row['evidence_id']} payload "
                             "references an analysis_id outside the primary "
                             "and declared sensitivity analyses."
                         )
                 elif payload["analysis_id"] != row["analysis_id"]:
-                    fail(
+                    step08.fail(
                         f"Evidence {row['evidence_id']} payload references "
                         "an analysis_id different from its manifest row."
                     )
@@ -2504,7 +2041,7 @@ def validate_supporting_ids(
 ) -> None:
     for evidence_id in split_ids(label, value):
         if evidence_id not in evidence_ids:
-            fail(f"{label} references unknown evidence_id {evidence_id}.")
+            step08.fail(f"{label} references unknown evidence_id {evidence_id}.")
 
 
 def category_is_complete(
@@ -2518,7 +2055,7 @@ def validate_candidate_reference(
 ) -> Mapping[str, str]:
     result = candidates.get(candidate_id)
     if result is None:
-        fail(f"{label} references unknown candidate_id {candidate_id}.")
+        step08.fail(f"{label} references unknown candidate_id {candidate_id}.")
     return result
 
 
@@ -2531,20 +2068,20 @@ def validate_orientation_evidence(
     plan: Mapping[str, str],
     complete: bool,
 ) -> None:
-    ensure_unique(rows, "locus_id", "Orientation locus audit")
+    step08.ensure_unique(rows, "locus_id", "Orientation locus audit")
     samples = {row["sample_id"]: row for row in sample_rows}
     observed_orientations: set[str] = set()
     for row_number, row in enumerate(rows, start=2):
-        validate_safe_id("Orientation audit locus_id", row["locus_id"])
+        step08.validate_safe_id("Orientation audit locus_id", row["locus_id"])
         result = validate_candidate_reference(
             f"Orientation audit row {row_number}",
             row["candidate_id"],
             candidates,
         )
         if row["partition_id"] not in partition_ids:
-            fail("Orientation audit references an unknown partition.")
-        validate_enum(
-            "Orientation audit orientation", row["orientation"], ORIENTATIONS
+            step08.fail("Orientation audit references an unknown partition.")
+        step08.validate_enum(
+            "Orientation audit orientation", row["orientation"], step08.ORIENTATIONS
         )
         observed_orientations.add(row["orientation"])
         if any(
@@ -2560,27 +2097,27 @@ def validate_orientation_evidence(
                 "rna_alt",
             )
         ):
-            fail("Orientation audit candidate identity differs from Step 09.")
+            step08.fail("Orientation audit candidate identity differs from Step 09.")
         sample = samples.get(row["sample_id"])
         if sample is None:
-            fail("Orientation audit references an unknown sample.")
+            step08.fail("Orientation audit references an unknown sample.")
         if (
             row["condition"] != sample["condition"]
             or row["replicate"] != sample["replicate"]
         ):
-            fail("Orientation audit sample metadata differs from the manifest.")
+            step08.fail("Orientation audit sample metadata differs from the manifest.")
         expected_transcripts = result["transcript_ids"].split(";")
         if result["transcript_ids"] == NA_VALUE:
             valid_transcript = row["transcript_id"] == NA_VALUE
         else:
             valid_transcript = row["transcript_id"] in expected_transcripts
         if not valid_transcript:
-            fail(
+            step08.fail(
                 "Orientation audit transcript_id is not part of the "
                 "Step 09 candidate annotation."
             )
         if row["transcript_strand"] != result["annotation_strand"]:
-            fail(
+            step08.fail(
                 "Orientation audit transcript_strand differs from the "
                 "candidate annotation strand."
             )
@@ -2590,23 +2127,23 @@ def validate_orientation_evidence(
             else ("83", "163")
         )
         if row["flag_group"] not in expected_flags:
-            fail(
+            step08.fail(
                 "Orientation audit flag_group is incompatible with its "
                 "mechanical orientation."
             )
-        raw_dp = parse_nonnegative_int("Orientation audit raw_dp", row["raw_dp"])
-        raw_ad = parse_nonnegative_int("Orientation audit raw_ad", row["raw_ad"])
-        raw_ref = parse_nonnegative_int(
+        raw_dp = step08.parse_nonnegative_int("Orientation audit raw_dp", row["raw_dp"])
+        raw_ad = step08.parse_nonnegative_int("Orientation audit raw_ad", row["raw_ad"])
+        raw_ref = step08.parse_nonnegative_int(
             "Orientation audit raw_ref_count", row["raw_ref_count"]
         )
         if raw_ad > raw_dp or raw_ref + raw_ad != raw_dp:
-            fail("Orientation audit raw count arithmetic is invalid.")
+            step08.fail("Orientation audit raw count arithmetic is invalid.")
         sample_id = row["sample_id"]
         if (
             row["raw_dp"] != result[f"DP__{sample_id}"]
             or row["raw_ad"] != result[f"AD__{sample_id}"]
         ):
-            fail(
+            step08.fail(
                 "Orientation audit raw counts differ from the Step 09 "
                 "candidate/sample counts."
             )
@@ -2617,7 +2154,7 @@ def validate_orientation_evidence(
             "inverted_expected_rna_alt",
         ):
             if row[allele_column] not in ("A", "C", "G", "T"):
-                fail(
+                step08.fail(
                     f"Orientation audit {allele_column} must be a DNA base."
                 )
         if (
@@ -2628,27 +2165,27 @@ def validate_orientation_evidence(
             or row["inverted_expected_rna_alt"]
             != complement_base(result["rna_alt"])
         ):
-            fail(
+            step08.fail(
                 "Orientation audit expected alleles do not match the current "
                 "and inverted candidate interpretations."
             )
-        validate_enum(
+        step08.validate_enum(
             "Orientation audit concordance_status",
             row["concordance_status"],
             CONCORDANCE_STATUSES,
         )
         validate_iso_date("Orientation audit review_date", row["review_date"])
-        require_text("Orientation audit reviewer", row["reviewer"])
-        require_text("Orientation audit detail", row["detail"])
-    if complete and len(rows) != parse_nonnegative_int(
+        step08.require_text("Orientation audit reviewer", row["reviewer"])
+        step08.require_text("Orientation audit detail", row["detail"])
+    if complete and len(rows) != step08.parse_nonnegative_int(
         "Scientific review plan locus_target_count", plan["locus_target_count"]
     ):
-        fail(
+        step08.fail(
             "Complete orientation audit row count differs from "
             "locus_target_count."
         )
-    if complete and rows and observed_orientations != set(ORIENTATIONS):
-        fail("Complete orientation audit must cover both required orientations.")
+    if complete and rows and observed_orientations != set(step08.ORIENTATIONS):
+        step08.fail("Complete orientation audit must cover both required orientations.")
     del review_id
 
 
@@ -2658,7 +2195,7 @@ def validate_annotation_evidence(
     plan: Mapping[str, str],
     complete: bool,
 ) -> None:
-    ensure_unique(rows, "audit_id", "Annotation audit")
+    step08.ensure_unique(rows, "audit_id", "Annotation audit")
     observed_cases: set[str] = set()
     observed_strands: set[str] = set()
     observed_orientations: set[str] = set()
@@ -2668,11 +2205,11 @@ def validate_annotation_evidence(
             row["candidate_id"],
             candidates,
         )
-        validate_enum(
-            "Annotation audit orientation", row["orientation"], ORIENTATIONS
+        step08.validate_enum(
+            "Annotation audit orientation", row["orientation"], step08.ORIENTATIONS
         )
         if row["annotation_strand"] not in ("+", "-"):
-            fail("Annotation audit annotation_strand must be + or -.")
+            step08.fail("Annotation audit annotation_strand must be + or -.")
         if any(
             row[column] != result[column]
             for column in (
@@ -2682,7 +2219,7 @@ def validate_annotation_evidence(
                 "annotation_strand",
             )
         ):
-            fail("Annotation audit candidate identity differs from Step 09.")
+            step08.fail("Annotation audit candidate identity differs from Step 09.")
         observed_mapping = {
             "observed_gene_ids": result["gene_ids"],
             "observed_transcript_ids": result["transcript_ids"],
@@ -2694,7 +2231,7 @@ def validate_annotation_evidence(
         }
         for column, expected in observed_mapping.items():
             if row[column] != expected:
-                fail(
+                step08.fail(
                     f"Annotation audit {column} differs from the Step 09 "
                     "candidate annotation."
                 )
@@ -2706,15 +2243,15 @@ def validate_annotation_evidence(
             "expected_is_intron",
         ):
             if row[column] not in ("TRUE", "FALSE"):
-                fail(f"Annotation audit {column} must be TRUE or FALSE.")
+                step08.fail(f"Annotation audit {column} must be TRUE or FALSE.")
         for column in ("expected_gene_ids", "expected_transcript_ids"):
-            require_text(f"Annotation audit {column}", row[column], allow_na=True)
-        validate_enum(
+            step08.require_text(f"Annotation audit {column}", row[column], allow_na=True)
+        step08.validate_enum(
             "Annotation audit assignment_status",
             row["assignment_status"],
             ANNOTATION_ASSIGNMENT_STATUSES,
         )
-        validate_enum(
+        step08.validate_enum(
             "Annotation audit ambiguity_status",
             row["ambiguity_status"],
             ANNOTATION_AMBIGUITY_STATUSES,
@@ -2733,12 +2270,12 @@ def validate_annotation_evidence(
             for column, expected in expected_mapping.items()
         )
         if row["assignment_status"] == "match" and not expected_matches:
-            fail(
+            step08.fail(
                 "Annotation audit assignment_status=match conflicts with "
                 "observed/expected fields."
             )
         if row["assignment_status"] == "mismatch" and expected_matches:
-            fail(
+            step08.fail(
                 "Annotation audit assignment_status=mismatch has no observed "
                 "difference."
             )
@@ -2746,16 +2283,16 @@ def validate_annotation_evidence(
         observed_strands.add(row["annotation_strand"])
         observed_orientations.add(row["orientation"])
         validate_iso_date("Annotation audit review_date", row["review_date"])
-        require_text("Annotation audit reviewer", row["reviewer"])
-        require_text("Annotation audit detail", row["detail"])
+        step08.require_text("Annotation audit reviewer", row["reviewer"])
+        step08.require_text("Annotation audit detail", row["detail"])
     if complete:
         required_cases = set(plan["required_annotation_cases"].split(","))
         if not required_cases.issubset(observed_cases):
-            fail("Complete annotation audit is missing required case types.")
+            step08.fail("Complete annotation audit is missing required case types.")
         if observed_strands != {"+", "-"}:
-            fail("Complete annotation audit must cover both annotation strands.")
-        if observed_orientations != set(ORIENTATIONS):
-            fail("Complete annotation audit must cover both orientations.")
+            step08.fail("Complete annotation audit must cover both annotation strands.")
+        if observed_orientations != set(step08.ORIENTATIONS):
+            step08.fail("Complete annotation audit must cover both orientations.")
 
 
 def expected_qc_rows(
@@ -2882,19 +2419,19 @@ def validate_qc_funnel(
     for row in rows:
         scope = (row["partition_id"], row["orientation"])
         if scope in seen:
-            fail("QC funnel contains a duplicate partition/orientation scope.")
+            step08.fail("QC funnel contains a duplicate partition/orientation scope.")
         seen.add(scope)
         expected = expected_by_scope.get(scope)
         if expected is None:
-            fail("QC funnel references an undeclared partition/orientation.")
+            step08.fail("QC funnel references an undeclared partition/orientation.")
         for column in compared_columns:
             if row[column] != expected[column]:
-                fail(
+                step08.fail(
                     f"QC funnel {scope[0]}/{scope[1]} {column} "
                     "does not reconcile."
                 )
     if complete and seen != set(expected_by_scope):
-        fail("Complete QC funnel does not cover every partition/orientation.")
+        step08.fail("Complete QC funnel does not cover every partition/orientation.")
 
 
 def validate_replicate_effects(
@@ -2917,28 +2454,28 @@ def validate_replicate_effects(
             candidates,
         )
         if result["test_status"] != "tested":
-            fail(
+            step08.fail(
                 "Replicate-effects evidence may only summarize successfully "
                 "tested candidates."
             )
         replicate = row["replicate"]
         if replicate not in replicates:
-            fail("Replicate-effects evidence references an unknown replicate.")
+            step08.fail("Replicate-effects evidence references an unknown replicate.")
         key = (row["candidate_id"], replicate)
         if key in seen:
-            fail("Replicate-effects evidence contains a duplicate stratum row.")
+            step08.fail("Replicate-effects evidence contains a duplicate stratum row.")
         seen.add(key)
         control_sample, treatment_sample = pairs[replicate]
         if (
             row["control_sample"] != control_sample
             or row["treatment_sample"] != treatment_sample
         ):
-            fail("Replicate-effects sample pairing differs from the manifest.")
+            step08.fail("Replicate-effects sample pairing differs from the manifest.")
         if any(
             row[column] != result[column]
             for column in ("partition_id", "orientation")
         ):
-            fail("Replicate-effects candidate scope differs from Step 09.")
+            step08.fail("Replicate-effects candidate scope differs from Step 09.")
         for prefix, sample in (
             ("control", control_sample),
             ("treatment", treatment_sample),
@@ -2947,15 +2484,15 @@ def validate_replicate_effects(
                 if row[f"{prefix}_{metric}"] != result[
                     f"{metric.upper()}__{sample}"
                 ]:
-                    fail(
+                    step08.fail(
                         "Replicate-effects counts differ from Step 09 "
                         f"for candidate {row['candidate_id']}."
                     )
-        control_af = parse_number("Replicate-effects control_af", row["control_af"])
-        treatment_af = parse_number(
+        control_af = step08.parse_number("Replicate-effects control_af", row["control_af"])
+        treatment_af = step08.parse_number(
             "Replicate-effects treatment_af", row["treatment_af"]
         )
-        delta = parse_number(
+        delta = step08.parse_number(
             "Replicate-effects treatment_control_difference",
             row["treatment_control_difference"],
         )
@@ -2965,21 +2502,21 @@ def validate_replicate_effects(
             or delta is None
             or not values_close(delta, treatment_af - control_af)
         ):
-            fail("Replicate-effects treatment-control difference is invalid.")
+            step08.fail("Replicate-effects treatment-control difference is invalid.")
         expected_direction = (
             "concordant_up"
             if delta > 0
             else ("concordant_down" if delta < 0 else "no_change")
         )
         if row["direction_status"] != expected_direction:
-            fail(
+            step08.fail(
                 "Replicate-effects direction_status conflicts with the "
                 "treatment-control difference."
             )
         validate_iso_date("Replicate-effects review_date", row["review_date"])
     if complete:
         if not rows:
-            fail(
+            step08.fail(
                 "Complete replicate-effects evidence must contain at least "
                 "one tested candidate."
             )
@@ -2988,7 +2525,7 @@ def validate_replicate_effects(
             candidate_replicates.setdefault(candidate_id, set()).add(replicate)
         for candidate_id, observed in candidate_replicates.items():
             if observed != set(replicates):
-                fail(
+                step08.fail(
                     "Complete replicate-effects evidence must cover every "
                     f"replicate for candidate {candidate_id}."
                 )
@@ -3001,11 +2538,11 @@ def validate_analysis_file_reference(
     expected_header: Sequence[str],
     input_hashes: dict[Path, str],
 ) -> Table:
-    path = require_file(label, resolve_recorded_path(path_value))
-    validate_hash(f"{label} SHA-256", hash_value)
+    path = step08.require_file(label, resolve_recorded_path(path_value))
+    step08.validate_hash(f"{label} SHA-256", hash_value)
     observed_hash = sha256_file(path)
     if hash_value != observed_hash:
-        fail(f"{label} SHA-256 differs from the declared value.")
+        step08.fail(f"{label} SHA-256 differs from the declared value.")
     table = read_tsv(label, path, expected_header)
     input_hashes[path] = observed_hash
     return table
@@ -3019,7 +2556,7 @@ def validate_sensitivity_matrix(
     input_hashes: dict[Path, str],
     complete: bool,
 ) -> None:
-    ensure_unique(rows, "parameter_set_id", "Sensitivity matrix")
+    step08.ensure_unique(rows, "parameter_set_id", "Sensitivity matrix")
     expected_ids = {
         plan["primary_analysis_id"],
         *split_ids(
@@ -3045,13 +2582,13 @@ def validate_sensitivity_matrix(
     for row_number, row in enumerate(rows, start=2):
         analysis_id = row["analysis_id"]
         if analysis_id not in expected_ids:
-            fail("Sensitivity matrix references an undeclared analysis.")
+            step08.fail("Sensitivity matrix references an undeclared analysis.")
         if analysis_id in observed_ids:
-            fail("Sensitivity matrix contains duplicate analysis IDs.")
+            step08.fail("Sensitivity matrix contains duplicate analysis IDs.")
         observed_ids.add(analysis_id)
         is_primary = row["is_primary"]
         if is_primary not in ("TRUE", "FALSE"):
-            fail("Sensitivity matrix is_primary must be TRUE or FALSE.")
+            step08.fail("Sensitivity matrix is_primary must be TRUE or FALSE.")
         summary_table = validate_analysis_file_reference(
             f"Sensitivity summary row {row_number}",
             row["analysis_summary_path"],
@@ -3060,23 +2597,23 @@ def validate_sensitivity_matrix(
             input_hashes,
         )
         if len(summary_table.rows) != 1:
-            fail("A sensitivity analysis summary must have exactly one row.")
+            step08.fail("A sensitivity analysis summary must have exactly one row.")
         summary = summary_table.rows[0]
         if summary["analysis_id"] != analysis_id:
-            fail("Sensitivity matrix analysis_id differs from its summary.")
+            step08.fail("Sensitivity matrix analysis_id differs from its summary.")
         if is_primary == "TRUE":
             primary_count += 1
             if analysis_id != plan["primary_analysis_id"]:
-                fail("Only the primary analysis may use is_primary=TRUE.")
+                step08.fail("Only the primary analysis may use is_primary=TRUE.")
             if summary_table.path != primary_summary_path:
-                fail("Primary sensitivity row must reference the Step 09 summary.")
+                step08.fail("Primary sensitivity row must reference the Step 09 summary.")
             if summary != primary_summary:
-                fail("Primary sensitivity summary differs from Step 09.")
+                step08.fail("Primary sensitivity summary differs from Step 09.")
         elif analysis_id == plan["primary_analysis_id"]:
-            fail("The primary sensitivity row must use is_primary=TRUE.")
+            step08.fail("The primary sensitivity row must use is_primary=TRUE.")
         for column in summary_fields:
             if row[column] != summary[column]:
-                fail(
+                step08.fail(
                     f"Sensitivity matrix row {row_number} {column} "
                     "differs from its analysis summary."
                 )
@@ -3084,7 +2621,7 @@ def validate_sensitivity_matrix(
     if complete and (
         observed_ids != expected_ids or primary_count != 1
     ):
-        fail("Complete sensitivity matrix does not cover all declared analyses.")
+        step08.fail("Complete sensitivity matrix does not cover all declared analyses.")
 
 
 def validate_leave_one_pair_out(
@@ -3113,18 +2650,18 @@ def validate_leave_one_pair_out(
     analysis_by_replicate: dict[str, str] = {}
     for row_number, row in enumerate(rows, start=2):
         if row["primary_analysis_id"] != plan["primary_analysis_id"]:
-            fail("Leave-one-pair-out row has the wrong primary_analysis_id.")
-        validate_safe_id("Leave-one-pair-out analysis_id", row["analysis_id"])
+            step08.fail("Leave-one-pair-out row has the wrong primary_analysis_id.")
+        step08.validate_safe_id("Leave-one-pair-out analysis_id", row["analysis_id"])
         prior_analysis = analysis_by_replicate.setdefault(
             row["omitted_replicate"], row["analysis_id"]
         )
         if prior_analysis != row["analysis_id"]:
-            fail(
+            step08.fail(
                 "Leave-one-pair-out rows for one omitted replicate must "
                 "reference one immutable analysis ID."
             )
         if row["omitted_replicate"] not in replicates:
-            fail("Leave-one-pair-out row references an unknown replicate.")
+            step08.fail("Leave-one-pair-out row references an unknown replicate.")
         primary = validate_candidate_reference(
             f"Leave-one-pair-out row {row_number}",
             row["candidate_id"],
@@ -3132,7 +2669,7 @@ def validate_leave_one_pair_out(
         )
         key = (row["candidate_id"], row["omitted_replicate"])
         if key in seen:
-            fail("Leave-one-pair-out evidence contains a duplicate comparison.")
+            step08.fail("Leave-one-pair-out evidence contains a duplicate comparison.")
         seen.add(key)
         all_table = validate_analysis_file_reference(
             f"Leave-one-pair-out all-sites row {row_number}",
@@ -3151,14 +2688,14 @@ def validate_leave_one_pair_out(
         if len(summary_table.rows) != 1 or (
             summary_table.rows[0]["analysis_id"] != row["analysis_id"]
         ):
-            fail("Leave-one-pair-out summary identity is invalid.")
+            step08.fail("Leave-one-pair-out summary identity is invalid.")
         matched = [
             candidate
             for candidate in all_table.rows
             if candidate["candidate_id"] == row["candidate_id"]
         ]
         if len(matched) != 1:
-            fail(
+            step08.fail(
                 "Leave-one-pair-out all-sites must contain the referenced "
                 "candidate exactly once."
             )
@@ -3176,17 +2713,17 @@ def validate_leave_one_pair_out(
         }
         for column, expected in expected_values.items():
             if row[column] != expected:
-                fail(
+                step08.fail(
                     f"Leave-one-pair-out row {row_number} {column} differs "
                     "from its analysis result."
                 )
         validate_iso_date("Leave-one-pair-out review_date", row["review_date"])
     if len(set(analysis_by_replicate.values())) != len(analysis_by_replicate):
-        fail(
+        step08.fail(
             "Each leave-one-pair-out replicate must use a distinct analysis ID."
         )
     if complete and set(analysis_by_replicate) != replicates:
-        fail(
+        step08.fail(
             "Complete leave-one-pair-out evidence must cover every "
             "manifest-defined replicate."
         )
@@ -3199,14 +2736,14 @@ def validate_candidate_selection(
     complete: bool,
 ) -> set[tuple[str, str]]:
     expected_sets = {
-        "top_up": parse_nonnegative_int("top_up_count", plan["top_up_count"]),
-        "top_down": parse_nonnegative_int(
+        "top_up": step08.parse_nonnegative_int("top_up_count", plan["top_up_count"]),
+        "top_down": step08.parse_nonnegative_int(
             "top_down_count", plan["top_down_count"]
         ),
-        "discordant": parse_nonnegative_int(
+        "discordant": step08.parse_nonnegative_int(
             "discordant_count", plan["discordant_count"]
         ),
-        "near_threshold": parse_nonnegative_int(
+        "near_threshold": step08.parse_nonnegative_int(
             "near_threshold_count", plan["near_threshold_count"]
         ),
     }
@@ -3215,24 +2752,24 @@ def validate_candidate_selection(
     for row_number, row in enumerate(rows, start=2):
         selection_set = row["selection_set"]
         if selection_set not in expected_sets:
-            fail("Candidate selection contains an unknown selection_set.")
+            step08.fail("Candidate selection contains an unknown selection_set.")
         key = (selection_set, row["candidate_id"])
         if key in seen:
-            fail("Candidate selection contains a duplicate candidate/set pair.")
+            step08.fail("Candidate selection contains a duplicate candidate/set pair.")
         seen.add(key)
         result = validate_candidate_reference(
             f"Candidate selection row {row_number}",
             row["candidate_id"],
             candidates,
         )
-        rank = parse_nonnegative_int("Candidate selection rank", row["rank"])
+        rank = step08.parse_nonnegative_int("Candidate selection rank", row["rank"])
         if rank < 1:
-            fail("Candidate selection rank must be at least 1.")
+            step08.fail("Candidate selection rank must be at least 1.")
         ranks[selection_set].append(rank)
         if row["selection_policy_version"] != plan[
             "candidate_selection_policy_version"
         ]:
-            fail("Candidate selection policy version differs from the plan.")
+            step08.fail("Candidate selection policy version differs from the plan.")
         expected_values = {
             "source_call_status": result["call_status"],
             "source_fdr": result["cmh_fdr_bh"],
@@ -3241,19 +2778,19 @@ def validate_candidate_selection(
         }
         for column, expected in expected_values.items():
             if row[column] != expected:
-                fail(
+                step08.fail(
                     f"Candidate selection row {row_number} {column} differs "
                     "from Step 09."
                 )
         validate_iso_date("Candidate selection review_date", row["review_date"])
     for selection_set, values in ranks.items():
         if values != list(range(1, len(values) + 1)):
-            fail(
+            step08.fail(
                 f"Candidate selection ranks for {selection_set} must be "
                 "contiguous and ordered."
             )
         if complete and len(values) != expected_sets[selection_set]:
-            fail(
+            step08.fail(
                 f"Complete candidate selection count for {selection_set} "
                 "differs from the plan."
             )
@@ -3276,9 +2813,9 @@ def validate_candidate_adjudication(
         )
         key = (row["selection_set"], row["candidate_id"])
         if key not in selected:
-            fail("Candidate adjudication is not part of candidate selection.")
+            step08.fail("Candidate adjudication is not part of candidate selection.")
         if key in seen:
-            fail("Candidate adjudication contains a duplicate candidate/set pair.")
+            step08.fail("Candidate adjudication contains a duplicate candidate/set pair.")
         seen.add(key)
         validate_supporting_ids(
             "Candidate adjudication supporting_evidence_ids",
@@ -3288,7 +2825,7 @@ def validate_candidate_adjudication(
         validate_iso_date(
             "Candidate adjudication review_date", row["review_date"]
         )
-        validate_enum(
+        step08.validate_enum(
             "Candidate adjudication adjudication_status",
             row["adjudication_status"],
             ADJUDICATION_STATUSES,
@@ -3307,7 +2844,7 @@ def validate_candidate_adjudication(
             "matched_dna_status",
             "orthogonal_evidence_status",
         ):
-            validate_enum(
+            step08.validate_enum(
                 f"Candidate adjudication {column}",
                 row[column],
                 AUDIT_COMPONENT_STATUSES,
@@ -3332,7 +2869,7 @@ def validate_candidate_adjudication(
         if row["adjudication_status"] == "pass" and any(
             status in ("flag", "fail") for status in component_values
         ):
-            fail(
+            step08.fail(
                 "Candidate adjudication status=pass conflicts with a "
                 "flagged or failed component."
             )
@@ -3340,9 +2877,9 @@ def validate_candidate_adjudication(
             "reason",
             "reviewer",
         ):
-            require_text(f"Candidate adjudication {column}", row[column])
+            step08.require_text(f"Candidate adjudication {column}", row[column])
     if complete and seen != selected:
-        fail("Complete candidate adjudication does not cover every selection.")
+        step08.fail("Complete candidate adjudication does not cover every selection.")
     return seen
 
 
@@ -3352,7 +2889,7 @@ def validate_decisions(
     evidence_rows: Sequence[Mapping[str, str]],
     complete: bool,
 ) -> dict[str, str]:
-    ensure_unique(rows, "decision_id", "Scientific decisions")
+    step08.ensure_unique(rows, "decision_id", "Scientific decisions")
     evidence_status_by_id = {
         row["evidence_id"]: row["evidence_status"]
         for row in evidence_rows
@@ -3362,15 +2899,15 @@ def validate_decisions(
     decisions: dict[str, str] = {}
     for row_number, row in enumerate(rows, start=2):
         dimension = row["decision_dimension"]
-        validate_enum(
+        step08.validate_enum(
             f"Scientific decisions row {row_number} dimension",
             dimension,
             DECISION_DIMENSIONS,
         )
         if dimension in seen:
-            fail("Scientific decisions contains duplicate decision dimensions.")
+            step08.fail("Scientific decisions contains duplicate decision dimensions.")
         seen.add(dimension)
-        validate_enum(
+        step08.validate_enum(
             "Scientific decision evidence_status",
             row["evidence_status"],
             EVIDENCE_STATUSES,
@@ -3379,35 +2916,35 @@ def validate_decisions(
             "complete",
             "not_applicable",
         ):
-            fail(
+            step08.fail(
                 "A complete science review cannot retain a missing or "
                 "incomplete decision evidence status."
             )
-        validate_enum(
+        step08.validate_enum(
             "Scientific decision decision_status",
             row["decision_status"],
             DECISION_STATUSES,
         )
-        validate_enum(
+        step08.validate_enum(
             "Scientific decision rerun_scope",
             row["rerun_scope"],
             RERUN_SCOPES,
         )
         if row["rerun_required"] not in ("TRUE", "FALSE"):
-            fail("Scientific decision rerun_required must be TRUE or FALSE.")
+            step08.fail("Scientific decision rerun_required must be TRUE or FALSE.")
         supporting_ids = split_ids(
             "Scientific decision supporting_evidence_ids",
             row["supporting_evidence_ids"],
         )
         for evidence_id in supporting_ids:
             if evidence_id not in evidence_ids:
-                fail(
+                step08.fail(
                     "Scientific decision supporting_evidence_ids references "
                     f"unknown evidence_id {evidence_id}."
                 )
-        require_text("Scientific decision rationale", row["rationale"])
-        require_text("Scientific decision owner", row["decision_owner"])
-        validate_safe_id(
+        step08.require_text("Scientific decision rationale", row["rationale"])
+        step08.require_text("Scientific decision owner", row["decision_owner"])
+        step08.validate_safe_id(
             "Scientific decision policy_version",
             row["policy_version"],
         )
@@ -3416,12 +2953,12 @@ def validate_decisions(
                 "complete",
                 "not_applicable",
             ):
-                fail(
+                step08.fail(
                     "Recorded scientific decisions require their own "
                     "evidence_status to be complete or not_applicable."
                 )
             if not supporting_ids:
-                fail(
+                step08.fail(
                     "Recorded scientific decisions require at least one "
                     "supporting evidence ID."
                 )
@@ -3432,43 +2969,43 @@ def validate_decisions(
                 not in ("complete", "not_applicable")
             ]
             if unsupported:
-                fail(
+                step08.fail(
                     "Recorded scientific decisions cannot cite missing or "
                     "incomplete evidence: "
                     + ",".join(unsupported)
                 )
-            require_text("Scientific decision value", row["decision_value"])
+            step08.require_text("Scientific decision value", row["decision_value"])
             validate_iso_date(
                 "Scientific decision decision_date", row["decision_date"]
             )
             decisions[dimension] = row["decision_value"]
         else:
             if supporting_ids:
-                fail(
+                step08.fail(
                     "Pending scientific decisions must not cite supporting "
                     "evidence IDs."
                 )
             if row["decision_value"] != NA_VALUE or row["decision_date"] != NA_VALUE:
-                fail(
+                step08.fail(
                     "Pending scientific decisions must use NA for value and date."
                 )
             decisions[dimension] = "pending"
         if (row["rerun_required"] == "FALSE") != (
             row["rerun_scope"] == "none"
         ):
-            fail(
+            step08.fail(
                 "Scientific decision rerun_required must be FALSE exactly "
                 "when rerun_scope=none."
             )
     if complete and seen != set(DECISION_DIMENSIONS):
-        fail("Complete scientific decisions do not cover every decision dimension.")
+        step08.fail("Complete scientific decisions do not cover every decision dimension.")
     if complete and any(value == "pending" for value in decisions.values()):
-        fail("A complete science review cannot contain pending decisions.")
+        step08.fail("A complete science review cannot contain pending decisions.")
     if (
         decisions.get("orientation") not in (None, "pending")
         and decisions["orientation"] != plan["orientation_status"]
     ):
-        fail(
+        step08.fail(
             "The recorded orientation decision must equal plan "
             "orientation_status."
         )
@@ -3478,9 +3015,9 @@ def validate_decisions(
 def validate_limitations(
     rows: Sequence[Mapping[str, str]], evidence_ids: set[str]
 ) -> None:
-    ensure_unique(rows, "limitation_id", "Scientific limitations")
+    step08.ensure_unique(rows, "limitation_id", "Scientific limitations")
     for row in rows:
-        validate_safe_id(
+        step08.validate_safe_id(
             "Scientific limitation limitation_id",
             row["limitation_id"],
         )
@@ -3492,8 +3029,8 @@ def validate_limitations(
             "mitigation",
             "owner",
         ):
-            require_text(f"Scientific limitation {column}", row[column])
-        validate_enum(
+            step08.require_text(f"Scientific limitation {column}", row[column])
+        step08.validate_enum(
             "Scientific limitation limitation_status",
             row["limitation_status"],
             ("active", "open", "accepted", "resolved"),
@@ -3522,32 +3059,32 @@ def validate_computational_evidence(
     }
     payload_counts = {evidence_id: 0 for evidence_id in complete_evidence_ids}
     for row_number, row in enumerate(rows, start=2):
-        validate_enum(
+        step08.validate_enum(
             "Computational validation scope",
             row["validation_scope"],
             tuple(COMPUTATIONAL_SCOPE_ROLES),
         )
         if row["validation_scope"] in seen:
-            fail("Computational validation contains a duplicate scope.")
+            step08.fail("Computational validation contains a duplicate scope.")
         seen[row["validation_scope"]] = row
         role = COMPUTATIONAL_SCOPE_ROLES[row["validation_scope"]]
         if role in seen_roles:
-            fail(
+            step08.fail(
                 "Computational validation scopes "
                 f"{seen_roles[role]} and {row['validation_scope']} both map "
                 f"to evidence role {role}."
             )
         seen_roles[role] = row["validation_scope"]
-        validate_enum(
+        step08.validate_enum(
             f"Computational validation row {row_number} status",
             row["validation_status"],
             COMPUTATIONAL_VALIDATION_STATUSES,
         )
-        require_text(
+        step08.require_text(
             f"Computational validation row {row_number} reviewer",
             row["reviewer"],
         )
-        require_text(
+        step08.require_text(
             f"Computational validation row {row_number} notes",
             row["notes"],
         )
@@ -3557,7 +3094,7 @@ def validate_computational_evidence(
         )
         if row["exit_code"] != NA_VALUE:
             if not re.fullmatch(r"-?[0-9]+", row["exit_code"]):
-                fail("Computational validation exit_code must be an integer or NA.")
+                step08.fail("Computational validation exit_code must be an integer or NA.")
         if row["scheduler_state"] not in (
             NA_VALUE,
             "COMPLETED",
@@ -3568,34 +3105,34 @@ def validate_computational_evidence(
             "PREEMPTED",
             "UNKNOWN",
         ):
-            fail("Computational validation scheduler_state is unsupported.")
+            step08.fail("Computational validation scheduler_state is unsupported.")
         if row["validation_status"] in ("passed", "proven") and (
             row["exit_code"] != "0"
             or row["scheduler_state"] not in (NA_VALUE, "COMPLETED")
         ):
-            fail(
+            step08.fail(
                 "Passed/proven computational validation requires exit_code=0 "
                 "and a non-failing scheduler state."
             )
         path_is_na = row["evidence_path"] == NA_VALUE
         hash_is_na = row["evidence_sha256"] == NA_VALUE
         if path_is_na != hash_is_na:
-            fail(
+            step08.fail(
                 "Computational validation evidence path and hash must both "
                 "be present or both be NA."
             )
         if not path_is_na:
-            path = require_file(
+            path = step08.require_file(
                 "Computational validation evidence",
                 resolve_recorded_path(row["evidence_path"]),
             )
-            validate_hash(
+            step08.validate_hash(
                 "Computational validation evidence_sha256",
                 row["evidence_sha256"],
             )
             observed = sha256_file(path)
             if observed != row["evidence_sha256"]:
-                fail("Computational validation evidence hash differs.")
+                step08.fail("Computational validation evidence hash differs.")
             input_hashes[path] = observed
         if row["evidence_id"] in complete_evidence_ids:
             payload_counts[row["evidence_id"]] += 1
@@ -3604,7 +3141,7 @@ def validate_computational_evidence(
             ]
             expected_status = plan[plan_field]
             if row["validation_status"] != expected_status:
-                fail(
+                step08.fail(
                     f"Computational validation scope "
                     f"{row['validation_scope']} status "
                     f"{row['validation_status']} does not exactly support "
@@ -3616,7 +3153,7 @@ def validate_computational_evidence(
         if count == 0
     )
     if empty_complete:
-        fail(
+        step08.fail(
             "Complete computational-validation evidence must contain at "
             "least one validation scope row: "
             + ",".join(empty_complete)
@@ -3650,7 +3187,7 @@ def validate_computational_evidence(
             and row["validation_status"] == expected_status
         ]
         if not matching:
-            fail(
+            step08.fail(
                 f"{plan_field} is claimed in the review plan without matching "
                 "computational-validation evidence."
             )
@@ -3660,7 +3197,7 @@ def validate_computational_evidence(
         }
         missing_roles = sorted(required_roles - set(matching_by_role))
         if missing_roles:
-            fail(
+            step08.fail(
                 f"{plan_field}={expected_status} requires computational "
                 "evidence roles: "
                 + ",".join(missing_roles)
@@ -3682,7 +3219,7 @@ def validate_computational_evidence(
             or matching_by_role[role]["evidence_sha256"] == NA_VALUE
         )
         if missing_paths:
-            fail(
+            step08.fail(
                 f"{plan_field}={expected_status} requires explicit paths "
                 "and hashes for evidence roles: "
                 + ",".join(missing_paths)
@@ -3701,7 +3238,7 @@ def validate_computational_evidence(
                 )
             )
         ]["scheduler_state"] != "COMPLETED":
-            fail(f"{plan_field} claims require scheduler_state=COMPLETED.")
+            step08.fail(f"{plan_field} claims require scheduler_state=COMPLETED.")
     if (
         aggregate_evidence_status(
             evidence_rows, "computational_validation"
@@ -3709,7 +3246,7 @@ def validate_computational_evidence(
         == "complete"
         and not rows
     ):
-        fail(
+        step08.fail(
             "Complete computational_validation evidence must contain at "
             "least one explicit validation record."
         )
@@ -3737,7 +3274,7 @@ def validate_evidence_payloads(
             if category not in ("sensitivity_matrix", "leave_one_pair_out") and (
                 row["analysis_id"] != primary_analysis_id
             ):
-                fail(
+                step08.fail(
                     f"{category} row {row_number} must reference the "
                     "primary analysis."
                 )
@@ -3821,25 +3358,25 @@ def validate_evidence_payloads(
         for category in CATEGORY_ORDER:
             status = aggregate_evidence_status(evidence_rows, category)
             if status not in ("complete", "not_applicable"):
-                fail(
+                step08.fail(
                     "science_review_complete_exploratory requires every "
                     f"evidence category complete or justified not_applicable; "
                     f"{category} is {status}."
                 )
         if aggregate_evidence_status(evidence_rows, "decisions") != "complete":
-            fail(
+            step08.fail(
                 "science_review_complete_exploratory requires explicit "
                 "completed decisions."
             )
         if selected != adjudicated:
-            fail(
+            step08.fail(
                 "science_review_complete_exploratory requires complete "
                 "candidate adjudication coverage."
             )
     if plan["cluster_proof_status"] == "proven" and aggregate_evidence_status(
         evidence_rows, "computational_validation"
     ) != "complete":
-        fail(
+        step08.fail(
             "cluster_proof_status=proven requires complete explicit "
             "computational_validation evidence."
         )
@@ -3935,7 +3472,7 @@ def make_review_summary(
         }
     )
     if tuple(row) != REVIEW_SUMMARY_HEADER:
-        fail("Internal review-summary schema construction is inconsistent.")
+        step08.fail("Internal review-summary schema construction is inconsistent.")
     return row
 
 
@@ -3943,7 +3480,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     ReviewContext,
     dict[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ]:
-    validate_safe_id("review_id", arguments.review_id)
+    step08.validate_safe_id("review_id", arguments.review_id)
     artifacts: dict[str, Artifact] = {}
     input_hashes: dict[Path, str] = {}
 
@@ -3956,7 +3493,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         "review_plan",
         artifact_from_table("Scientific review plan", plan_table),
     )
-    sample_table, sample_ids, sample_rows = validate_sample_manifest(
+    sample_table, sample_ids, sample_rows = step08.validate_sample_manifest(
         arguments.sample_manifest
     )
     register_artifact(
@@ -3965,7 +3502,9 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         "sample_manifest",
         artifact_from_table("Sample manifest", sample_table),
     )
-    partition_table = validate_partition_manifest(arguments.partition_manifest)
+    partition_table = step08.validate_partition_manifest(
+        arguments.partition_manifest
+    )
     register_artifact(
         artifacts,
         input_hashes,
@@ -3975,7 +3514,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     sample_hash = artifacts["sample_manifest"].sha256
     partition_hash = artifacts["partition_manifest"].sha256
 
-    step08_inputs = validate_step08_inputs(
+    step08_inputs = step08.validate_step08_inputs(
         arguments.step08_inputs,
         sample_ids,
         partition_table.rows,
@@ -3988,7 +3527,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         "step08_inputs",
         artifact_from_table("Step 08 input receipt", step08_inputs),
     )
-    step08_sites = validate_step08_sites(
+    step08_sites = step08.validate_step08_sites(
         arguments.step08_sites,
         sample_ids,
         partition_table.rows,
@@ -4000,7 +3539,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         "step08_sites",
         artifact_from_table("Step 08 sites table", step08_sites),
     )
-    step08_summary = validate_step08_summary(
+    step08_summary = step08.validate_step08_summary(
         arguments.step08_summary,
         sample_ids,
         partition_table.rows,
@@ -4021,7 +3560,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     )
     analysis_id = plan["primary_analysis_id"]
     if analysis_dir.name != analysis_id:
-        fail(
+        step08.fail(
             "Step 09 analysis directory basename must equal "
             "primary_analysis_id."
         )
@@ -4036,7 +3575,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     if [row["candidate_id"] for row in all_sites.rows] != [
         row["candidate_id"] for row in step08_sites.rows
     ]:
-        fail(
+        step08.fail(
             "Step 09 all-sites candidate order/universe differs from Step 08."
         )
     register_artifact(
@@ -4098,7 +3637,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         ("step09_mutation_spectrum_pdf", "Step 09 mutation-spectrum PDF"),
         ("step09_depth_delta_pdf", "Step 09 depth-delta PDF"),
     ):
-        pdf_path = require_file(label, paths[key])
+        pdf_path = step08.require_file(label, paths[key])
         validate_pdf(label, pdf_path)
         register_artifact(
             artifacts,
@@ -4109,7 +3648,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     if plan["orientation_policy"] != step09_summary_table.rows[0][
         "orientation_policy"
     ]:
-        fail("Scientific review plan orientation policy differs from Step 09.")
+        step08.fail("Scientific review plan orientation policy differs from Step 09.")
 
     evidence_manifest, evidence_rows, category_rows, evidence_index = (
         validate_evidence_manifest(
@@ -4184,17 +3723,17 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         [summary_row],
     )
     if tuple(output_tables) != tuple(key for key, _ in OUTPUT_SUFFIXES):
-        fail("Internal Step 09c output ordering is inconsistent.")
+        step08.fail("Internal Step 09c output ordering is inconsistent.")
     return context, output_tables
 
 
 def confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
     for path, expected_hash in input_hashes.items():
         if not path.is_file():
-            fail(f"An input disappeared before publication: {path}")
+            step08.fail(f"An input disappeared before publication: {path}")
         observed_hash = sha256_file(path)
         if observed_hash != expected_hash:
-            fail(f"An input changed before publication: {path}")
+            step08.fail(f"An input changed before publication: {path}")
 
 
 def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
@@ -4211,12 +3750,12 @@ def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
             0o600,
         )
     except FileExistsError:
-        fail(
+        step08.fail(
             "Step 09c output is locked; inspect and preserve the owner "
             f"metadata before recovery: {lock_path}"
         )
     except OSError as exc:
-        fail(f"Could not acquire Step 09c lock {lock_path}: {exc}")
+        step08.fail(f"Could not acquire Step 09c lock {lock_path}: {exc}")
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(metadata)
@@ -4227,7 +3766,7 @@ def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
             lock_path.unlink()
         except OSError:
             pass
-        fail(f"Could not write Step 09c lock metadata: {exc}")
+        step08.fail(f"Could not write Step 09c lock metadata: {exc}")
 
 
 def remove_owned_path(path: Path) -> None:
@@ -4249,7 +3788,7 @@ def validate_staged_outputs(
         staged = directory / output_paths[key].name
         table = read_tsv(f"Staged Step 09c {key}", staged, header)
         if table.rows != rows:
-            fail(f"Staged Step 09c {key} content changed after writing.")
+            step08.fail(f"Staged Step 09c {key} content changed after writing.")
         hashes[key] = sha256_file(staged)
     return hashes
 
@@ -4317,9 +3856,9 @@ def publish_outputs(
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        fail(f"Could not create Step 09c output directory {output_dir}: {exc}")
+        step08.fail(f"Could not create Step 09c output directory {output_dir}: {exc}")
     if not output_dir.is_dir():
-        fail(f"Step 09c output path is not a directory: {output_dir}")
+        step08.fail(f"Step 09c output path is not a directory: {output_dir}")
 
     lock_path = output_dir / f".{context.review_id}.step09c.lock"
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
@@ -4336,7 +3875,7 @@ def publish_outputs(
         }
         existing_count = sum(existing.values())
         if existing_count not in (0, len(context.output_paths)):
-            fail(
+            step08.fail(
                 "Refusing to replace an incomplete/partial Step 09c output "
                 "transaction; "
                 "preserve it for inspection."
@@ -4352,9 +3891,9 @@ def publish_outputs(
             if had_previous:
                 backup_dir.mkdir()
         except FileExistsError:
-            fail("Refusing to reuse an existing Step 09c run-token path.")
+            step08.fail("Refusing to reuse an existing Step 09c run-token path.")
         except OSError as exc:
-            fail(f"Could not create Step 09c transaction paths: {exc}")
+            step08.fail(f"Could not create Step 09c transaction paths: {exc}")
 
         for key, (header, rows) in output_tables.items():
             write_tsv(temp_dir / context.output_paths[key].name, header, rows)
@@ -4397,9 +3936,9 @@ def publish_outputs(
                 header,
             )
             if final.rows != rows:
-                fail(f"Published Step 09c {key} content is invalid.")
+                step08.fail(f"Published Step 09c {key} content is invalid.")
             if sha256_file(final.path) != staged_hashes[key]:
-                fail(f"Published Step 09c {key} hash is invalid.")
+                step08.fail(f"Published Step 09c {key} hash is invalid.")
         confirm_inputs_unchanged(context.input_hashes)
     except Exception as exc:
         if publication_started:
@@ -4423,13 +3962,13 @@ def publish_outputs(
                     )
                 except OSError:
                     pass
-                fail(
+                step08.fail(
                     f"{exc}\nStep 09c rollback was incomplete; lock and "
                     f"recovery paths were retained: {lock_path}"
                 )
         if isinstance(exc, ContractError):
             raise
-        fail(f"Step 09c publication failed: {exc}")
+        step08.fail(f"Step 09c publication failed: {exc}")
     finally:
         if not keep_recovery:
             cleanup_failures: list[str] = []

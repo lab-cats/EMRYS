@@ -72,70 +72,70 @@ except Exception as exc:
     )
     raise SystemExit(2) from None
 
-_CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
-_CONTRACTS_MODULE_PATH = (
+_STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
+_STEP08_MODULE_PATH = (
     Path(__file__).resolve().parents[4]
     / "src"
     / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py"
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
 ).resolve(strict=False)
-_CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"
+_STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
 
 
-def _validated_step09c_contracts(module: object) -> object:
+def _validated_step08_contract(module: object) -> object:
     try:
         module_path = Path(getattr(module, "__file__")).resolve(strict=False)
     except (OSError, TypeError) as exc:
         raise ImportError(
-            "cached Step 09c contract owner has no valid file path"
+            "cached Step 08 scientific-evidence contract has no valid file path"
         ) from exc
-    if module_path != _CONTRACTS_MODULE_PATH:
+    if module_path != _STEP08_MODULE_PATH:
         raise ImportError(
-            f"cached Step 09c contract owner resolves to {module_path}, "
-            f"expected {_CONTRACTS_MODULE_PATH}"
+            "cached Step 08 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP08_MODULE_PATH}"
         )
-    if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
+    if getattr(module, _STEP08_READY_ATTRIBUTE, False) is not True:
         raise ImportError(
-            "cached Step 09c contract owner is partially initialized"
+            "cached Step 08 scientific-evidence contract is partially initialized"
         )
     return module
 
 
-def _load_step09c_contracts() -> object:
-    cached = sys.modules.get(_CONTRACTS_MODULE_NAME)
+def _load_step08_contract() -> object:
+    cached = sys.modules.get(_STEP08_MODULE_NAME)
     if cached is not None:
-        return _validated_step09c_contracts(cached)
+        return _validated_step08_contract(cached)
     spec = importlib.util.spec_from_file_location(
-        _CONTRACTS_MODULE_NAME, _CONTRACTS_MODULE_PATH
+        _STEP08_MODULE_NAME, _STEP08_MODULE_PATH
     )
     if spec is None or spec.loader is None:
         raise ImportError(
-            "unable to create an exact-file Step 09c module specification"
+            "unable to create an exact-file Step 08 module specification"
         )
     module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_CONTRACTS_MODULE_NAME, module)
+    existing = sys.modules.setdefault(_STEP08_MODULE_NAME, module)
     if existing is not module:
-        return _validated_step09c_contracts(existing)
+        return _validated_step08_contract(existing)
     try:
         spec.loader.exec_module(module)
-        setattr(module, _CONTRACTS_READY_ATTRIBUTE, True)
-        _validated_step09c_contracts(module)
+        setattr(module, _STEP08_READY_ATTRIBUTE, True)
+        _validated_step08_contract(module)
     except BaseException:
-        if sys.modules.get(_CONTRACTS_MODULE_NAME) is module:
-            del sys.modules[_CONTRACTS_MODULE_NAME]
+        if sys.modules.get(_STEP08_MODULE_NAME) is module:
+            del sys.modules[_STEP08_MODULE_NAME]
         raise
     return module
 
 
 try:
-    contracts = _load_step09c_contracts()
+    step08 = _load_step08_contract()
 except Exception as exc:
     reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
     print(
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{_CONTRACTS_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{_STEP08_MODULE_PATH}: {type(exc).__name__}: {reason}",
         file=sys.stderr,
     )
     raise SystemExit(2) from None
@@ -168,7 +168,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def attempt(function: Callable[[], T]) -> tuple[T | None, str]:
     try:
         return function(), "validated"
-    except (OSError, UnicodeError, csv.Error, contracts.ContractError) as exc:
+    except (OSError, UnicodeError, csv.Error, step08.ContractError) as exc:
         return None, report.clean(exc)
 
 
@@ -191,19 +191,19 @@ def build(args: argparse.Namespace):
         for role, path in paths.items()
     }
     sample_result, sample_detail = attempt(
-        lambda: contracts.validate_sample_manifest(paths["sample_manifest"])
+        lambda: step08.validate_sample_manifest(paths["sample_manifest"])
     )
     partition_table, partition_detail = attempt(
-        lambda: contracts.validate_partition_manifest(paths["partition_manifest"])
+        lambda: step08.validate_partition_manifest(paths["partition_manifest"])
     )
-    sample_hash = contracts.sha256_file(paths["sample_manifest"])
-    partition_hash = contracts.sha256_file(paths["partition_manifest"])
-    annotation_hash = contracts.sha256_file(paths["annotation_gtf"])
+    sample_hash = step08.sha256_file(paths["sample_manifest"])
+    partition_hash = step08.sha256_file(paths["partition_manifest"])
+    annotation_hash = step08.sha256_file(paths["annotation_gtf"])
 
     expected_sites_header = None
     if sample_result is not None:
         expected_sites_header = (
-            contracts.STEP08_METADATA_HEADER
+            step08.STEP08_METADATA_HEADER
             + tuple(f"DP__{sample}" for sample in sample_result[1])
             + tuple(f"AD__{sample}" for sample in sample_result[1])
             + tuple(f"AF__{sample}" for sample in sample_result[1])
@@ -221,8 +221,8 @@ def build(args: argparse.Namespace):
         and observed_headers
         == (
             expected_sites_header,
-            contracts.STEP08_INPUTS_HEADER,
-            contracts.STEP08_SUMMARY_HEADER,
+            step08.STEP08_INPUTS_HEADER,
+            step08.STEP08_SUMMARY_HEADER,
         )
     )
 
@@ -230,7 +230,7 @@ def build(args: argparse.Namespace):
     inputs_detail = "prerequisite manifest validation failed"
     if sample_result is not None and partition_table is not None:
         inputs_table, inputs_detail = attempt(
-            lambda: contracts.validate_step08_inputs(
+            lambda: step08.validate_step08_inputs(
                 paths["inputs"],
                 sample_result[1],
                 partition_table.rows,
@@ -258,7 +258,7 @@ def build(args: argparse.Namespace):
         and inputs_table is not None
     ):
         sites_table, sites_detail = attempt(
-            lambda: contracts.validate_step08_sites(
+            lambda: step08.validate_step08_sites(
                 paths["sites"],
                 sample_result[1],
                 partition_table.rows,
@@ -275,7 +275,7 @@ def build(args: argparse.Namespace):
         and sites_table is not None
     ):
         summary_table, summary_detail = attempt(
-            lambda: contracts.validate_step08_summary(
+            lambda: step08.validate_step08_summary(
                 paths["summary"],
                 sample_result[1],
                 partition_table.rows,

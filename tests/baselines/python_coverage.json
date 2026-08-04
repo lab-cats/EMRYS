@@ -10,12 +10,12 @@
       "path": "scripts/_run_summary_science.py"
     },
     {
-      "branch_rate": "0.712425",
-      "covered_branches": 711,
-      "covered_lines": 1690,
-      "line_rate": "0.803996",
-      "num_branches": 998,
-      "num_statements": 2102,
+      "branch_rate": "0.713439",
+      "covered_branches": 722,
+      "covered_lines": 1729,
+      "line_rate": "0.806813",
+      "num_branches": 1012,
+      "num_statements": 2143,
       "path": "scripts/build_artifact_index.py"
     },
     {
@@ -127,12 +127,12 @@
       "path": "scripts/validate_manifest.py"
     },
     {
-      "branch_rate": "0.850000",
-      "covered_branches": 34,
-      "covered_lines": 154,
-      "line_rate": "0.974684",
-      "num_branches": 40,
-      "num_statements": 158,
+      "branch_rate": "0.848485",
+      "covered_branches": 56,
+      "covered_lines": 230,
+      "line_rate": "0.970464",
+      "num_branches": 66,
+      "num_statements": 237,
       "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
     },
     {
@@ -145,12 +145,21 @@
       "path": "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     },
     {
-      "branch_rate": "0.711929",
-      "covered_branches": 561,
-      "covered_lines": 1262,
-      "line_rate": "0.822686",
-      "num_branches": 788,
-      "num_statements": 1534,
+      "branch_rate": "0.992308",
+      "covered_branches": 129,
+      "covered_lines": 238,
+      "line_rate": "0.987552",
+      "num_branches": 130,
+      "num_statements": 241,
+      "path": "src/norad/contracts/scientific_evidence/step08.py"
+    },
+    {
+      "branch_rate": "0.725373",
+      "covered_branches": 486,
+      "covered_lines": 1134,
+      "line_rate": "0.842496",
+      "num_branches": 670,
+      "num_statements": 1346,
       "path": "src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py"
     },
     {
@@ -273,8 +282,8 @@
     {
       "branch_rate": "0.875000",
       "covered_branches": 42,
-      "covered_lines": 162,
-      "line_rate": "0.970060",
+      "covered_lines": 163,
+      "line_rate": "0.976048",
       "num_branches": 48,
       "num_statements": 167,
       "path": "src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py"
@@ -322,11 +331,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.705324",
-    "covered_branches": 3418,
-    "covered_lines": 9774,
-    "line_rate": "0.818662",
-    "num_branches": 4846,
-    "num_statements": 11939
+    "branch_rate": "0.715598",
+    "covered_branches": 3505,
+    "covered_lines": 10000,
+    "line_rate": "0.825627",
+    "num_branches": 4898,
+    "num_statements": 12112
   }
 }

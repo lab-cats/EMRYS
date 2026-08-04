@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import csv
 import importlib
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -34,7 +35,30 @@ ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 SCIENTIFIC_REVIEW = ARTIFACT_INDEX.step09c
+STEP08_CONTRACT = ARTIFACT_INDEX.step08
 SHARED_SCIENCE = RUN_SUMMARY.science
+
+
+def load_exact_test_module(name: str, path: Path) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+STEP08_VALIDATOR = load_exact_test_module(
+    "_independent_step08_validator",
+    REPO_ROOT
+    / "src/norad/stages/preprocess_and_annotate_cohort_candidates"
+    / "validate_step_08_preprocessing_outputs.py",
+)
+STEP09_VALIDATOR = load_exact_test_module(
+    "_independent_step09_validator",
+    REPO_ROOT
+    / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH"
+    / "validate_step_09_cmh_outputs.py",
+)
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX,
@@ -47,6 +71,77 @@ ARTIFACT_CONTRACT_LOADERS = (
     SHARED_SCIENCE,
     REPORT_BUNDLE.html_report,
 )
+STEP08_CONTRACT_LOADERS = (
+    SCIENTIFIC_REVIEW,
+    STEP08_VALIDATOR,
+    STEP09_VALIDATOR,
+    ARTIFACT_INDEX,
+)
+
+
+def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
+    owner = STEP08_CONTRACT
+
+    assert SCIENTIFIC_REVIEW.step08 is owner
+    assert STEP08_VALIDATOR.step08 is owner
+    assert STEP09_VALIDATOR.step08 is owner
+    assert ARTIFACT_INDEX.step08 is owner
+    assert STEP09_VALIDATOR.contracts is SCIENTIFIC_REVIEW
+    assert ARTIFACT_INDEX.step09c is SCIENTIFIC_REVIEW
+    assert SCIENTIFIC_REVIEW.ContractError is owner.ContractError
+    assert SCIENTIFIC_REVIEW.Table is owner.Table
+    assert sys.modules[ARTIFACT_INDEX._STEP08_MODULE_NAME] is owner
+    assert Path(owner.__file__).resolve() == ARTIFACT_INDEX._STEP08_MODULE_PATH
+    assert getattr(owner, ARTIFACT_INDEX._STEP08_READY_ATTRIBUTE) is True
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    STEP08_CONTRACT_LOADERS,
+    ids=("step09c", "step08-validator", "step09-validator", "artifact-index"),
+)
+def test_step08_contract_loaders_reuse_owner_without_mutating_sys_path(
+    loader_owner: ModuleType,
+) -> None:
+    before_sys_path = list(sys.path)
+
+    loaded = loader_owner._load_step08_contract()
+
+    assert loaded is STEP08_CONTRACT
+    assert Path(loaded.__file__).resolve() == loader_owner._STEP08_MODULE_PATH
+    assert getattr(loaded, loader_owner._STEP08_READY_ATTRIBUTE) is True
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    STEP08_CONTRACT_LOADERS,
+    ids=("step09c", "step08-validator", "step09-validator", "artifact-index"),
+)
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
+def test_step08_contract_loaders_reject_invalid_cache(
+    loader_owner: ModuleType,
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = loader_owner._STEP08_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step08.py")
+        setattr(cached, loader_owner._STEP08_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    elif cache_kind == "partial":
+        cached.__file__ = str(loader_owner._STEP08_MODULE_PATH)
+        expected = "partially initialized"
+    else:
+        cached.__file__ = None
+        setattr(cached, loader_owner._STEP08_READY_ATTRIBUTE, True)
+        expected = "no valid file path"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        loader_owner._load_step08_contract()
 
 
 def test_artifact_contract_consumers_share_one_exact_ready_owner() -> None:

@@ -93,6 +93,75 @@ def _load_artifact_contracts() -> object:
 contracts = _load_artifact_contracts()
 
 
+_STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
+_STEP08_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
+).resolve(strict=False)
+_STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
+
+
+def _validated_step08_contract(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract has no valid file path"
+        ) from exc
+    if module_path != _STEP08_MODULE_PATH:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP08_MODULE_PATH}"
+        )
+    if getattr(module, _STEP08_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract is partially initialized"
+        )
+    return module
+
+
+def _load_step08_contract() -> object:
+    cached = sys.modules.get(_STEP08_MODULE_NAME)
+    if cached is not None:
+        return _validated_step08_contract(cached)
+    spec = importlib.util.spec_from_file_location(
+        _STEP08_MODULE_NAME, _STEP08_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file Step 08 module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_STEP08_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_step08_contract(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _STEP08_READY_ATTRIBUTE, True)
+        _validated_step08_contract(module)
+    except BaseException:
+        if sys.modules.get(_STEP08_MODULE_NAME) is module:
+            del sys.modules[_STEP08_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    step08 = _load_step08_contract()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{_STEP08_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
 _CONTRACTS_MODULE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -152,6 +221,11 @@ def _load_step09c_contracts() -> object:
 
 try:
     step09c = _load_step09c_contracts()
+    if step09c.step08 is not step08:
+        raise ImportError(
+            "Step 09c and artifact indexing resolved different Step 08 "
+            "contract objects"
+        )
 except Exception as exc:
     reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
     print(
@@ -766,7 +840,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "sample_blocks_tsv",
         "text/tab-separated-values",
         suffixes=(".step08_sites.tsv",),
-        expected_header=step09c.STEP08_METADATA_HEADER,
+        expected_header=step08.STEP08_METADATA_HEADER,
     )
     add_spec(
         registry,
@@ -776,7 +850,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "tsv",
         "text/tab-separated-values",
         suffixes=(".step08_inputs.tsv",),
-        expected_header=step09c.STEP08_INPUTS_HEADER,
+        expected_header=step08.STEP08_INPUTS_HEADER,
         allow_header_only=False,
     )
     add_spec(
@@ -787,7 +861,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "tsv",
         "text/tab-separated-values",
         suffixes=(".step08_summary.tsv",),
-        expected_header=step09c.STEP08_SUMMARY_HEADER,
+        expected_header=step08.STEP08_SUMMARY_HEADER,
         exact_data_rows=1,
         allow_header_only=False,
     )

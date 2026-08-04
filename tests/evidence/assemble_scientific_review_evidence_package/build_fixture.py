@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build a deterministic synthetic Step 09c input/evidence package.
 
-The fixture imports the production Step 09c schema constants so tests fail
-immediately when a contract changes without a corresponding fixture update.
-All paths and SHA-256 values are generated for the requested temporary root.
+The fixture imports the neutral Step 08 and production Step 09c schema
+constants so tests fail immediately when a contract changes without a
+corresponding fixture update. All paths and SHA-256 values are generated for
+the requested temporary root.
 """
 
 from __future__ import annotations
@@ -20,6 +21,16 @@ from typing import Iterable, Mapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
+STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
+STEP08_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
+)
 CONTRACT_PATH = (
     REPO_ROOT
     / "src"
@@ -50,6 +61,31 @@ PAIRINGS = (
 )
 
 
+def load_step08_contract() -> ModuleType:
+    cached = sys.modules.get(STEP08_MODULE_NAME)
+    if cached is not None:
+        if Path(cached.__file__).resolve(strict=False) != STEP08_PATH.resolve(
+            strict=False
+        ):
+            raise RuntimeError("Cached Step 08 contract has the wrong path")
+        if getattr(cached, STEP08_READY_ATTRIBUTE, False) is not True:
+            raise RuntimeError("Cached Step 08 contract is partially initialized")
+        return cached
+    spec = importlib.util.spec_from_file_location(STEP08_MODULE_NAME, STEP08_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load Step 08 contract: {STEP08_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, STEP08_READY_ATTRIBUTE, True)
+    except BaseException:
+        if sys.modules.get(spec.name) is module:
+            del sys.modules[spec.name]
+        raise
+    return module
+
+
 def load_contract() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "norad_step09c_contract", CONTRACT_PATH
@@ -62,7 +98,10 @@ def load_contract() -> ModuleType:
     return module
 
 
+STEP08 = load_step08_contract()
 CONTRACT = load_contract()
+if CONTRACT.step08 is not STEP08:
+    raise RuntimeError("Step 09c fixture resolved a different Step 08 contract")
 
 
 @dataclass(frozen=True)
@@ -421,7 +460,7 @@ def step08_site_rows(header: Sequence[str]) -> list[dict[str, str]]:
 
 
 def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
-    step08_header = tuple(CONTRACT.STEP08_METADATA_HEADER) + tuple(
+    step08_header = tuple(STEP08.STEP08_METADATA_HEADER) + tuple(
         f"DP__{sample}" for sample in SAMPLE_IDS
     ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
         f"AF__{sample}" for sample in SAMPLE_IDS
@@ -433,7 +472,7 @@ def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
         mean_dp = sum(spec["dp"]) / len(spec["dp"])
         values = {
             "analysis_id": PRIMARY_ANALYSIS_ID,
-            **{column: source[column] for column in CONTRACT.STEP08_METADATA_HEADER},
+            **{column: source[column] for column in STEP08.STEP08_METADATA_HEADER},
             "control_condition": "EV",
             "treatment_condition": "PUM1",
             "target_rna_change": "A>G",
@@ -1189,7 +1228,7 @@ def build_fixture(
     step08_sites = step08_dir / "cohort.step08_sites.tsv"
     step08_inputs = step08_dir / "cohort.step08_inputs.tsv"
     step08_summary = step08_dir / "cohort.step08_summary.tsv"
-    sites_header = tuple(CONTRACT.STEP08_METADATA_HEADER) + tuple(
+    sites_header = tuple(STEP08.STEP08_METADATA_HEADER) + tuple(
         f"DP__{sample}" for sample in SAMPLE_IDS
     ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
         f"AF__{sample}" for sample in SAMPLE_IDS
@@ -1208,13 +1247,13 @@ def build_fixture(
         receipt = step07_dir / partition_id / f"{partition_id}.receipt.tsv"
         receipt.parent.mkdir(parents=True, exist_ok=True)
         receipt.write_text("synthetic receipt\n", encoding="utf-8")
-        for orientation in CONTRACT.ORIENTATIONS:
+        for orientation in STEP08.ORIENTATIONS:
             vcf = step07_dir / partition_id / f"{partition_id}.{orientation}.vcf"
             vcf.write_text("##fileformat=VCFv4.2\n", encoding="utf-8")
             count = input_counts[(partition_id, orientation)]
             input_rows.append(
                 table_row(
-                    CONTRACT.STEP08_INPUTS_HEADER,
+                    STEP08.STEP08_INPUTS_HEADER,
                     cohort_id=COHORT_ID,
                     partition_id=partition_id,
                     selector_type="region",
@@ -1239,13 +1278,13 @@ def build_fixture(
                     orientation_policy="legacy_provisional_v1",
                 )
             )
-    write_tsv(step08_inputs, CONTRACT.STEP08_INPUTS_HEADER, input_rows)
+    write_tsv(step08_inputs, STEP08.STEP08_INPUTS_HEADER, input_rows)
     write_tsv(
         step08_summary,
-        CONTRACT.STEP08_SUMMARY_HEADER,
+        STEP08.STEP08_SUMMARY_HEADER,
         [
             table_row(
-                CONTRACT.STEP08_SUMMARY_HEADER,
+                STEP08.STEP08_SUMMARY_HEADER,
                 cohort_id=COHORT_ID,
                 partition_count="2",
                 step07_receipt_count="2",

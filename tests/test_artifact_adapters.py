@@ -446,13 +446,136 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "assemble_scientific_review_evidence_package/"
                     "step_09c_scientific_validation.py"
                 ),
-                "sha256": (
-                    "7b6b48b71c07249cb791ceb818bd4aef"
-                    "5c30015724cb2406127159815c1e09f8"
-                ),
+                    "sha256": (
+                        "cd3124233f6f077e62a454583221edf85"
+                        "0b67a77f2c42cd4519bb3274a376939"
+                    ),
             }
         ],
     }
+
+
+def test_step08_loader_uses_exact_ready_shared_owner_without_mutating_sys_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._STEP08_MODULE_NAME
+    before_sys_path = list(sys.path)
+    cached = sys.modules[name]
+
+    loaded = ADAPTER._load_step08_contract()
+
+    assert loaded is cached
+    assert Path(loaded.__file__).resolve() == ADAPTER._STEP08_MODULE_PATH
+    assert getattr(loaded, ADAPTER._STEP08_READY_ATTRIBUTE) is True
+    assert sys.modules[name] is loaded
+    assert ADAPTER.step09c.step08 is loaded
+    assert ADAPTER.step09c.ContractError is loaded.ContractError
+    assert ADAPTER.step09c.Table is loaded.Table
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_step08_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._STEP08_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_step08.py")
+        setattr(cached, ADAPTER._STEP08_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(ADAPTER._STEP08_MODULE_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        ADAPTER._load_step08_contract()
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("step08-missing-spec", "step08-missing-loader"),
+)
+def test_step08_loader_fails_closed_without_usable_specification(
+    specification: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._STEP08_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        ADAPTER.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        ADAPTER._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_step08_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = ADAPTER._STEP08_MODULE_NAME
+    failing_owner = tmp_path / "step08.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected Step 08 execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(ADAPTER, "_STEP08_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected Step 08 execution failure"):
+        ADAPTER._load_step08_contract()
+
+    assert name not in sys.modules
+
+
+def test_step08_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
+    invocation_cwd = tmp_path / "step08_invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError("injected\\n" + chr(0) + " Step 08 path")
+
+        cached = ModuleType("_norad_step08_scientific_evidence_contract")
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{ADAPTER._STEP08_MODULE_PATH}: RuntimeError: injected Step 08 path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
 
 
 def test_step09c_loader_uses_exact_ready_owner_without_mutating_sys_path(
@@ -1678,7 +1801,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         rows[0]["published_candidate_count"] = "5"
         FIXTURE.write_tsv(
             path,
-            ADAPTER.step09c.STEP08_SUMMARY_HEADER,
+            ADAPTER.step08.STEP08_SUMMARY_HEADER,
             rows,
         )
     elif step_id == "09":

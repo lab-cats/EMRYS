@@ -72,6 +72,74 @@ except Exception as exc:
     )
     raise SystemExit(2) from None
 
+_STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
+_STEP08_MODULE_PATH = (
+    Path(__file__).resolve().parents[4]
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "step08.py"
+).resolve(strict=False)
+_STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
+
+
+def _validated_step08_contract(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract has no valid file path"
+        ) from exc
+    if module_path != _STEP08_MODULE_PATH:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract resolves to "
+            f"{module_path}, expected {_STEP08_MODULE_PATH}"
+        )
+    if getattr(module, _STEP08_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached Step 08 scientific-evidence contract is partially initialized"
+        )
+    return module
+
+
+def _load_step08_contract() -> object:
+    cached = sys.modules.get(_STEP08_MODULE_NAME)
+    if cached is not None:
+        return _validated_step08_contract(cached)
+    spec = importlib.util.spec_from_file_location(
+        _STEP08_MODULE_NAME, _STEP08_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file Step 08 module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_STEP08_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_step08_contract(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _STEP08_READY_ATTRIBUTE, True)
+        _validated_step08_contract(module)
+    except BaseException:
+        if sys.modules.get(_STEP08_MODULE_NAME) is module:
+            del sys.modules[_STEP08_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    step08 = _load_step08_contract()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load Step 08 scientific-evidence contract at "
+        f"{_STEP08_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
 _CONTRACTS_MODULE_PATH = (
     Path(__file__).resolve().parents[4]
@@ -131,6 +199,10 @@ def _load_step09c_contracts() -> object:
 
 try:
     contracts = _load_step09c_contracts()
+    if contracts.step08 is not step08:
+        raise ImportError(
+            "Step 09c and Step 09 resolved different Step 08 contract objects"
+        )
 except Exception as exc:
     reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
     print(
@@ -175,7 +247,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def attempt(function: Callable[[], T]) -> tuple[T | None, str]:
     try:
         return function(), "validated"
-    except (OSError, UnicodeError, csv.Error, contracts.ContractError) as exc:
+    except (OSError, UnicodeError, csv.Error, step08.ContractError) as exc:
         return None, report.clean(exc)
 
 
@@ -229,26 +301,26 @@ def build(args: argparse.Namespace):
 
     _, id_detail = attempt(
         lambda: (
-            contracts.validate_safe_id("analysis_id", args.analysis_id),
-            contracts.validate_safe_id("cohort_id", args.cohort_id),
+            step08.validate_safe_id("analysis_id", args.analysis_id),
+            step08.validate_safe_id("cohort_id", args.cohort_id),
         )
     )
     sample_result, sample_detail = attempt(
-        lambda: contracts.validate_sample_manifest(paths["sample_manifest"])
+        lambda: step08.validate_sample_manifest(paths["sample_manifest"])
     )
     partition_table, partition_detail = attempt(
-        lambda: contracts.validate_partition_manifest(paths["partition_manifest"])
+        lambda: step08.validate_partition_manifest(paths["partition_manifest"])
     )
     step08_inputs = None
     step08_input_detail = "manifest prerequisite failed"
     if sample_result is not None and partition_table is not None:
         step08_inputs, step08_input_detail = attempt(
-            lambda: contracts.validate_step08_inputs(
+            lambda: step08.validate_step08_inputs(
                 paths["step08_inputs"],
                 sample_result[1],
                 partition_table.rows,
-                contracts.sha256_file(paths["sample_manifest"]),
-                contracts.sha256_file(paths["partition_manifest"]),
+                step08.sha256_file(paths["sample_manifest"]),
+                step08.sha256_file(paths["partition_manifest"]),
             )
         )
     cohort_policy_ok = (
@@ -271,7 +343,7 @@ def build(args: argparse.Namespace):
         and step08_inputs is not None
     ):
         step08_sites, step08_sites_detail = attempt(
-            lambda: contracts.validate_step08_sites(
+            lambda: step08.validate_step08_sites(
                 paths["step08_sites"],
                 sample_result[1],
                 partition_table.rows,
@@ -360,10 +432,10 @@ def build(args: argparse.Namespace):
                 paths["partition_manifest"],
                 paths["step08_sites"],
                 paths["step08_inputs"],
-                contracts.sha256_file(paths["sample_manifest"]),
-                contracts.sha256_file(paths["partition_manifest"]),
-                contracts.sha256_file(paths["step08_sites"]),
-                contracts.sha256_file(paths["step08_inputs"]),
+                step08.sha256_file(paths["sample_manifest"]),
+                step08.sha256_file(paths["partition_manifest"]),
+                step08.sha256_file(paths["step08_sites"]),
+                step08.sha256_file(paths["step08_inputs"]),
                 step08_inputs.rows[0]["orientation_policy"],
             )
         )
