@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02H](LIB-02H-extract-step09-scientific-evidence-contract.md) — Required: move the public Step `09` output contract out of the private Step `09c` implementation before the later public Step `09c` and reporting-local dependency-removal slices can close the direction leak.
+- [LIB-02H](../IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md) — Required: move the public Step `09` output contract out of the private Step `09c` implementation before the later public Step `09c` and reporting-local dependency-removal slices can close the direction leak.
 
 ## Completion unblocks
 

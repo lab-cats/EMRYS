@@ -13,8 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Current package predecessor:
-  `f72cc0f7646a1db9daa625dbe4ff6bcc57ce3671`, the validated `LIB-02G`
-  executable cutover on which this documentation/lifecycle close is based.
+  `d38f782a65de96fff6e7f138fba16eb3d0066267`, the clean, published,
+  live-remote-equal `LIB-02G` documentation/lifecycle close and `LIB-02H`
+  registration checkpoint.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -41,9 +42,11 @@ and delivery-required lineage live in
   moved the public Step `08` table/manifest contract and direct suite into
   their permanent neutral owners, cut over every reviewed Python consumer, and
   left no Step `08` compatibility owner or package-path dependency.
-- Selected package: none. Unselected
-  [`LIB-02H`](../tasks/TODO/LIB-02H-extract-step09-scientific-evidence-contract.md)
-  is the sole next candidate for bounded plan/review.
+- Selected package:
+  [`LIB-02H`](../tasks/IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md)
+  extracts only the public Step `09` output contract into its neutral owner and
+  cuts over its repository-owned Python consumers. Selection begins bounded
+  plan/review; no executable or test change has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -194,10 +197,10 @@ that drift.
 
 ## Immediate resume point
 
-No residual package is selected. Unselected
-[`LIB-02H`](../tasks/TODO/LIB-02H-extract-step09-scientific-evidence-contract.md)
-is the sole next candidate. Select it in a separate status-only commit, then
-inspect only its direct Step `09` public surface, consumers, shared
+Selected
+[`LIB-02H`](../tasks/IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md)
+is the sole active residual package. Inspect only its direct Step `09` public
+surface, consumers, shared
 exception/module/table identities, tests, goldens, and coverage before its
 neutral exact-file cutover inside the existing campaign authorization. The
 public Step `09c` contract, reporting-local reader, reporting migration,

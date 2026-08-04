@@ -43,7 +43,7 @@ relocation does not preserve that prohibited dependency direction.
 
 ## Completion unblocks
 
-- [LIB-02H](../TODO/LIB-02H-extract-step09-scientific-evidence-contract.md) — Fully: the final Step `08` neutral owner and shared error/table identity are available for the Step `09` contract extraction.
+- [LIB-02H](../IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md) — Fully: the final Step `08` neutral owner and shared error/table identity are available for the Step `09` contract extraction.
 - [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: Step `09`, public Step `09c`, and reporting-local dependency-removal slices must still close before reporting relocation.
 
 ## Prerequisites

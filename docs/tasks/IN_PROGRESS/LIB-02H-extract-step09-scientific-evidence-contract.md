@@ -50,7 +50,7 @@ reporting-local dependency removal can proceed.
 
 ## Completion unblocks
 
-- [RPT-05A](RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: the public Step `09c` review-package contract and reporting-local dependency-removal slices must still close before reporting relocation.
+- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: the public Step `09c` review-package contract and reporting-local dependency-removal slices must still close before reporting relocation.
 
 ## Prerequisites
 
@@ -125,6 +125,7 @@ reporting-local dependency removal can proceed.
 
 ## Completion record
 
-Not started. Created as the sole JIT successor at the LIB-02G lifecycle close;
-no Step `09` implementation, test, coverage, or later seam-extraction package
-is selected or changed by this registration.
+Selected from clean, published, live-remote-equal LIB-02G documentation close
+`d38f782a65de96fff6e7f138fba16eb3d0066267`. Selection begins bounded
+read-only plan/review; no Step `09` implementation, test, coverage, or later
+seam-extraction package has changed.

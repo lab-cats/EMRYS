@@ -97,9 +97,9 @@ implementation seams. Completed
 performed the first executable move. Completed
 [`LIB-02G`](../tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
 then extracted the bounded Step `08` neutral scientific-evidence contract. No
-package is selected at this close; unselected
-[`LIB-02H`](../tasks/TODO/LIB-02H-extract-step09-scientific-evidence-contract.md)
-is the sole next candidate.
+later package was selected at that close. The sole selected package is now
+[`LIB-02H`](../tasks/IN_PROGRESS/LIB-02H-extract-step09-scientific-evidence-contract.md),
+the bounded Step `09` neutral scientific-evidence contract extraction.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -138,8 +138,8 @@ Preferred one-owner order is:
 
 1. completed `LIB-02F` settles only the two observed shared seams;
 2. completed `MIG-04A` performs the neutral artifact-contract move;
-3. completed `LIB-02G` extracts the neutral Step `08` contract; next select
-   unselected `LIB-02H`, then create later bottom-up scientific-evidence slices
+3. completed `LIB-02G` extracts the neutral Step `08` contract; execute
+   selected `LIB-02H`, then create later bottom-up scientific-evidence slices
    only just in time: the public review-package contract and reporting-local
    reader removal;
 4. execute `RPT-05A` only after those concrete blockers close;
@@ -150,9 +150,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected at this close. `LIB-02H` is the sole
-unselected next candidate; later seam-extraction cards, the final audit, and
-deferred domains remain uncreated or unbegun.
+`LIB-02H` is the sole selected residual package. Later seam-extraction cards,
+the final audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -209,13 +208,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                             └── LIB-02G executable cutover f72cc0f
                                                 └── LIB-02G documentation/lifecycle close
                                                     + LIB-02H registration
-                                                    (commit containing this plan)
+                                                    d38f782
+                                                    └── LIB-02H selection
+                                                        (commit containing this plan)
 ```
 
-The final node is the documentation/lifecycle close represented by this plan.
-It completes only `LIB-02G`, registers `LIB-02H` without selecting it, and
-implies no later extraction, final audit, default-branch integration, runtime,
-or cluster action.
+The final node is the current selection tip represented by this plan. It
+selects only `LIB-02H`; no implementation, later extraction, final audit,
+default-branch integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
