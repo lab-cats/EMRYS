@@ -228,7 +228,7 @@ plus nine inherited `UNREFINED` locations. No dependency changed. Separately
 passing lanes do not turn the aggregate result green.
 
 Artifact provenance changes only Step `08`'s implementation path and reviewed
-shell hash in [`build_artifact_index.py`](../../../../scripts/build_artifact_index.py).
+shell hash in [`build_artifact_index.py`](../../reporting/build_artifact_index.py).
 Artifact identities, native receipt versus summary failure-marker distinction,
 schemas, ordering, reconciliation, consumers, and scientific meaning are
 unchanged.

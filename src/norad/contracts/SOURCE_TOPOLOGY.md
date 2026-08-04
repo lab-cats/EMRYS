@@ -193,8 +193,9 @@ must be implemented bottom-up through separate JIT cards:
 Reporting has removed its Step `09c` implementation dependency through a
 reporting-local reader/projection over the committed public review package,
 explicitly referenced evidence, and validated artifact-index records. The
-physical reporting move remains pending under `RPT-05A`. Reporting does not
-share the evidence owner's source-to-public reconstruction. Artifact-index
+physical reporting move is complete under `RPT-05A`; source, private assets,
+direct tests, and reporting fixtures occupy the final owners above. Reporting
+does not share the evidence owner's source-to-public reconstruction. Artifact-index
 reconciliation remains independently implemented apart from consuming neutral
 public constants and the closed evidence-state reduction. Step `08`/`09` shell
 and R checks remain independent from the Python executable contract.

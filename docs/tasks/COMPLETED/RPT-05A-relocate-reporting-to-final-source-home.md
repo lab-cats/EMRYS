@@ -117,13 +117,39 @@ logic, while report assets remain explicitly owned and inspectable.
 ## Completion record
 
 Selected from clean, published, live-remote-equal LIB-02J documentation close
-`387d818a9b55e09c956f3034fb2b898ace967924`. The bounded ownership/caller
-audit confirms that all known callers are repository-owned, so the approved
-implementation is one atomic direct cutover with no wrapper: six reporting
-source basenames, two QMD templates, one CSS style, four direct Python suites,
-one shell suite, and three reporting fixture groups move to their exact final
-owners. Independent contract/public-CLI tests, their fixtures, coverage
-policy, public configs, neutral schemas, dependency restoration, and runtime
-report outputs remain in their current owners and change only as direct
-consumers where required. Pre-change byte/mode/behavior freezing and executable
-work have not begun.
+`387d818a9b55e09c956f3034fb2b898ace967924` at `ef513fa`. Executable checkpoint
+`7c10c17215b8ac28811b04c76ecd93555d4ebe49` performed one atomic direct cutover
+with no wrapper: six reporting source basenames moved to
+`src/norad/reporting/`; two QMD templates and one CSS style moved beneath its
+`templates/` and `styles/` owners; four direct Python suites, one shell suite,
+and all four tracked files in the three reporting fixture groups moved beneath
+`tests/reporting/`. Every repository-owned caller, Make expansion, direct CLI
+path, coverage identity, and path-bearing fixture was cut over in the same
+checkpoint. Independent contract/public-CLI tests, public configs, neutral
+schemas, dependency restoration, and runtime report outputs retained their
+owners.
+
+The QMD/CSS bytes remained exact at SHA-256
+`db2dbefa347127e3aee6bcc5daa527d4de55ed1ea2a6ca22156dc4beeece7903`,
+`d1ee13ba3bf26ae16cb870d774668c24df1d11ec869a74f276bc2ffaa39b06f8`,
+and `b33cbf5f56a746bfc0364800b7012888842f707be57a5879374dbd8b0b66d0d2`;
+all source, asset, test, and fixture modes remained exact. Arbitrary-CWD help
+and parse failures were byte-identical for all four Python entry points. The
+shell help changed only its truthful Usage path; missing-argument bytes stayed
+exact. The affected Python roster passed `506` tests with `17` skips, the shell
+contract passed, pinned-Quarto `report-test` passed `164` tests, report-runtime
+passed `17` tests with `60` deselections, public CLI/Make contracts passed `120`
+tests, and static validation passed. Independent final diff review found no
+stale executable caller, prohibited functional-owner import, compatibility
+copy, mode/asset drift, or non-path behavior delta.
+
+After current documentation links were repaired, the complete Python coverage
+lane passed `1,540` tests with `17` skips and measured `0.845535` line coverage
+and `0.747115` branch coverage across `35` files. Documentation validation
+passed with `222` Markdown documents, `139` task cards, and `6` Mermaid sources.
+Both project-local Step `08`/`09` real-R semantic fixture routes and all shell
+contracts passed. The aggregate sandbox run stopped when guarded R could not
+resolve Bioconductor metadata; an unrestricted read-only `r-check` reached
+dependency validation and confirmed one unidentified out-of-date package. This
+card performed no dependency mutation and claims no runtime, cluster,
+scientific, or biological evidence.

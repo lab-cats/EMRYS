@@ -41,9 +41,10 @@ packaging is a later concern.
 The exact target tree, every functional-owner home, descriptor serialization,
 schema-placement rule, non-Python asset owner, test mirror, and allowed
 dependency direction are owned by
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). Current
-root `reports/` and other flat executable assets remain current truth until a
-separately approved migration lands.
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). Reporting
+now occupies its final source, asset, and mirrored-test owners; other approved
+flat assets remain current truth until their separately bounded migrations
+land.
 
 ## Stage identity, DAG, and black-box boundary
 

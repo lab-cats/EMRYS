@@ -13,8 +13,8 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `253800654ebafcf88c605187c52c0cddfb17ce2b`, the `LIB-02J` run-summary
-  dependency cutover and frozen executable basis for its documentation/
+  `7c10c17215b8ac28811b04c76ecd93555d4ebe49`, the direct `RPT-05A`
+  reporting relocation and frozen executable basis for this documentation/
   lifecycle close.
 - Current package predecessor:
   `387d818a9b55e09c956f3034fb2b898ace967924`, the clean, published,
@@ -55,23 +55,22 @@ and delivery-required lineage live in
   [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
   then replaced run-summary's remaining private Step `09c` context/policy edge
   with a reporting-local committed-package reader/projection without changing
-  the normalized record or Step `09c`.
+  the normalized record or Step `09c`. Completed
+  [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
+  then moved all six reporting sources, three private assets, five direct
+  suites, and three fixture groups into their final owners with no wrapper and
+  no behavior delta beyond approved path-derived provenance.
 - Selected package:
-  [`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md)
-  moves the six reporting source basenames, two private QMD templates, one CSS
-  style, four direct Python suites, one shell suite, and three reporting
-  fixture groups atomically into their permanent owners. All callers are
-  repository-owned, so no wrapper is planned. The bounded ownership/caller
-  audit is complete; no executable or test change has begun.
+  None. No residual-convergence successor is selected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
   migrated through `MIG-04A`, and the neutral Step `08`, Step `09`, and public
   review-package contracts are extracted through `LIB-02G`, `LIB-02H`, and
-  `LIB-02I`, and reporting's private Step `09c` dependency is removed through
-  `LIB-02J`. Reporting,
-  reference/runtime/storage evidence, and cross-owner test paths remain in
-  their current locations pending separately selected JIT moves.
+  `LIB-02I`, reporting's private Step `09c` dependency is removed through
+  `LIB-02J`, and the reporting owner is physically final through `RPT-05A`.
+  Reference/runtime/storage evidence and cross-owner test paths remain in their
+  current locations pending separately selected JIT moves.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -102,7 +101,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, the neutral artifact-contract validator/schemas/direct evidence, and the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites are physically migrated; their legacy ownership and temporary compatibility paths are absent. Reporting, evidence-helper, and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, the neutral artifact-contract validator/schemas/direct evidence, the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites, and the reporting source/assets/direct suites/fixtures are physically migrated; their legacy ownership and temporary compatibility paths are absent. Evidence-helper and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -111,7 +110,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `LIB-02J` removed run-summary science's private Step `09c` implementation dependency at executable checkpoint `2538006`. The reporting-local reader validates the committed thirteen-file public package, referenced evidence, and indexed descriptors while leaving private Step `09c` source inputs descriptor-only. Seven representative fixture shapes remained byte-exact; the final focused roster passed 384 tests. Complete Python coverage passed 1,540 tests with 17 skips, measured 0.845535 line and 0.747115 branch coverage across 35 files, and covered `_run_summary_science.py` at 454/540 lines and 166/238 branches. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic fixtures, and the 17-passed/60-deselected report-runtime route passed. The aggregate remained non-green at guarded R because the environment checker reported one out-of-date package; no dependency changed, and no package creates runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `RPT-05A` moved six reporting sources, three private assets, five direct suites, and three fixture groups atomically into `src/norad/reporting/` and `tests/reporting/` at executable checkpoint `7c10c17`, with all callers cut over and no wrapper. Template/style bytes and all modes remained exact; Python CLI bytes were exact and the shell help changed only its truthful path. The affected roster passed 506 tests with 17 skips, pinned-Quarto report testing passed 164, report-runtime passed 17 with 60 deselections, and complete Python coverage passed 1,540 with 17 skips at 0.845535 line and 0.747115 branch coverage across 35 files. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic fixtures, public CLI/Make, and documentation routes passed. The aggregate sandbox run stopped at Bioconductor metadata DNS; an unrestricted read-only `r-check` confirmed the inherited one-package dependency drift. No dependency changed, and this package creates no runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -189,7 +188,7 @@ package diagnoses and resolves that drift.
 - Step `07` lacks real-bcftools and cluster evidence.
 - CSU batch-visible R and package availability remain unresolved.
 - Guarded local R dependency validation reports one out-of-date package; the
-  checker did not print its identity, and LIB-02I installed or updated no
+  checker did not print its identity, and RPT-05A installed or updated no
   dependency.
 - Storage quota, scratch capacity, and retention policy remain unresolved.
 - The exact Novogene annotation release remains partially unresolved.
@@ -215,15 +214,13 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-Selected
-[`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md)
-is the sole active residual package. Freeze the current source/asset/test modes,
-hashes, direct/Make/arbitrary-CWD behavior, and path-bearing output baseline;
-then perform one direct atomic move to `src/norad/reporting/` and
-`tests/reporting/` with no wrapper. Preserve all non-path behavior and bytes;
-stop for an external/unmovable caller, packaging/resource API need, private
-functional-owner import, asset byte/mode change, or any output delta beyond the
-approved physical-path substitutions and their path-derived provenance.
+No residual package is selected. Completed
+[`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
+leaves the campaign's next preferred unit as extraction of only the exact
+ordered FASTA, FAI, and DICT contig/length parser seam into
+`src/norad/libraries/reference_contigs.py`, with independent library tests,
+before moving reference-provenance evidence. That extraction remains
+unselected at this lifecycle close.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is

@@ -23,7 +23,7 @@ same fields, ordering, missing states, and language.
 
 - [RPT-02](../TODO/RPT-02-define-science-report-contract.md) — Required: the versioned field/profile contract must be approved.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent plan reviews must be incorporated.
-- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: new projection implementation must begin inside the final reporting owner rather than extending the temporary flat tree.
+- [RPT-05A](../COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: new projection implementation must begin inside the final reporting owner rather than extending the temporary flat tree.
 
 ## Completion unblocks
 

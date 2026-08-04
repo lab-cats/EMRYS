@@ -3118,7 +3118,7 @@ evidence.
 
 ### Symptom
 
-`scripts/render_run_report.sh` fails during dry-run or execute mode with a
+`src/norad/reporting/render_run_report.sh` fails during dry-run or execute mode with a
 run-summary schema/identity error, approved-table path/hash/row-count error,
 report-tool identity error, input mutation, static HTML validation error, PDF
 signature/EOF/text/page-order error, missing per-page banner, or invalid
@@ -3132,7 +3132,7 @@ The bundle renderer accepts one explicit canonical run-summary document and no
 discovered inputs:
 
 ```bash
-scripts/render_run_report.sh \
+src/norad/reporting/render_run_report.sh \
   --run-summary results/artifacts/<run_id>/<run_id>.run_summary.json \
   --output-root results/reports \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto \

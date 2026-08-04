@@ -231,7 +231,7 @@ evidence only: no real bcftools workflow, scheduler, cluster, production,
 scientific-review, variant/editing-site, or biological evidence was created.
 
 Artifact provenance changes only Step `07`'s implementation path and reviewed
-hash in [`build_artifact_index.py`](../../../../scripts/build_artifact_index.py).
+hash in [`build_artifact_index.py`](../../reporting/build_artifact_index.py).
 Public artifact identities, schemas, ordering, reconciliation, consumers, and
 scientific meaning are unchanged.
 

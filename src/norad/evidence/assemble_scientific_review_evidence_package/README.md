@@ -165,7 +165,7 @@ a new isolated absolute output root. See the dedicated
 ## Private consumers and downstream provenance
 
 The final Step `09` validator, this implementation, and
-[`build_artifact_index.py`](../../../../scripts/build_artifact_index.py)
+[`build_artifact_index.py`](../../reporting/build_artifact_index.py)
 privately exact-load both neutral
 [`step08.py`](../../contracts/scientific_evidence/step08.py) under
 `_norad_step08_scientific_evidence_contract` and neutral
@@ -175,7 +175,7 @@ Step `08` `ContractError` and `Table`; all three consumers fail closed if any
 shared owner identity splits.
 
 This implementation, the artifact index, and
-[`_run_summary_science.py`](../../../../scripts/_run_summary_science.py)
+[`_run_summary_science.py`](../../reporting/_run_summary_science.py)
 exact-load neutral
 [`review_package.py`](../../contracts/scientific_evidence/review_package.py)
 under `_norad_review_package_scientific_evidence_contract` for the public
@@ -214,7 +214,8 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
-  tests/test_artifact_adapters.py tests/test_artifact_run_summary.py \
+  tests/reporting/test_artifact_adapters.py \
+  tests/reporting/test_artifact_run_summary.py \
   tests/test_independent_contract_goldens.py tests/test_public_cli_contracts.py
 ```
 

@@ -56,9 +56,9 @@ scientific stages.
 | Step `08` scientific-evidence contract | Neutral [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py); no public CLI, package identity, or installation surface | Mirrored [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py) plus affected consumer suites. Neutral Step `09`, the Step `08` and Step `09` validators, Step `09c`, and the artifact index share one exact-file module, `ContractError`, and `Table` identity. Shell/R algorithms, review policy, publication, and artifact reconciliation remain owner-local. |
 | Step `09` scientific-evidence contract | Neutral [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py); no public CLI, package identity, or installation surface | Mirrored [`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py) plus affected consumer suites. The owner exact-loads neutral Step `08`; the Step `09` validator, Step `09c`, and artifact index share one exact ready module identity. Step `09` shell/R method, Step `09c` review policy/publication, and artifact reconciliation remain owner-local. |
 | Step `09c` review-package contract | Neutral [`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py); no public CLI, package identity, or installation surface | Mirrored [`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py) plus affected consumer suites. Step `09c`, artifact indexing, and run-summary science share one exact ready module identity for the public thirteen-file roster, headers, vocabularies, bindings, and state reducer. Step `09c` retains review/input policy, context, validation, publication, locking, rollback, and recovery. |
-| Artifact indexing | [`build_artifact_index.py`](../../scripts/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py) and its fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes the neutral Step `08`, Step `09`, and review-package contracts, has no private Step `09c` dependency, and keeps index reconciliation independently implemented. |
-| Canonical run-summary assembly | [`build_run_summary.py`](../../scripts/build_run_summary.py), private helper [`_run_summary_science.py`](../../scripts/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/test_artifact_run_summary.py) and its fixture builder. The helper exact-loads the neutral review-package contract and uses a reporting-local reader/projection over the committed public thirteen-file package, explicitly referenced evidence, and validated index records. It does not load Step `09c`, revalidate private Step `09c` source inputs, or own review/evidence policy. |
-| Static reporting | [`render_run_report.sh`](../../scripts/render_run_report.sh), [`render_run_report.py`](../../scripts/render_run_report.py), [`render_run_report_bundle.py`](../../scripts/render_run_report_bundle.py), [`reports/`](../../reports/), public starter [`report_table_approvals.example.tsv`](../../configs/report_table_approvals.example.tsv); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/shell/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/test_report_exports_v1.py), and report fixtures under [`report_html_v1/`](../../tests/fixtures/report_html_v1/). Rendering consumes one canonical summary and never reruns analysis. |
+| Artifact indexing | [`build_artifact_index.py`](../../src/norad/reporting/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/reporting/test_artifact_adapters.py) and its adjacent fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes the neutral Step `08`, Step `09`, and review-package contracts, has no private Step `09c` dependency, and keeps index reconciliation independently implemented. |
+| Canonical run-summary assembly | [`build_run_summary.py`](../../src/norad/reporting/build_run_summary.py), private helper [`_run_summary_science.py`](../../src/norad/reporting/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/reporting/test_artifact_run_summary.py) and its adjacent fixture builder. The helper exact-loads the neutral review-package contract and uses a reporting-local reader/projection over the committed public thirteen-file package, explicitly referenced evidence, and validated index records. It does not load Step `09c`, revalidate private Step `09c` source inputs, or own review/evidence policy. |
+| Static reporting | [`render_run_report.sh`](../../src/norad/reporting/render_run_report.sh), [`render_run_report.py`](../../src/norad/reporting/render_run_report.py), [`render_run_report_bundle.py`](../../src/norad/reporting/render_run_report_bundle.py), owned [`templates/`](../../src/norad/reporting/templates/) and [`styles/`](../../src/norad/reporting/styles/), public starter [`report_table_approvals.example.tsv`](../../configs/report_table_approvals.example.tsv); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/reporting/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/reporting/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/reporting/test_report_exports_v1.py), and report fixtures under [`report_html_v1/`](../../tests/reporting/fixtures/report_html_v1/). Rendering consumes one canonical summary and never reruns analysis. |
 
 ## Repository-development interfaces
 
@@ -76,14 +76,13 @@ pipeline owner graph but still receive one owner:
 
 `PLAN-03A` inspected the tracked residual implementation-bearing roots,
 remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. The 122 paths
+environment anchors, and intentional operational placeholders. The 104 paths
 are partitioned once below. Counts are inspection checks, not a permanent
 repository-size baseline; each later owner migration updates this current
 inventory when paths move.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `scripts/{_run_summary_science.py,build_artifact_index.py,build_run_summary.py,render_run_report.py,render_run_report.sh,render_run_report_bundle.py}`; all three `reports/` assets; four direct Python suites, the shell renderer suite, and four reporting fixture files | 18 | Reporting application chain; target source/assets/tests are reporting-owned. |
 | `scripts/reference_provenance.py`; `tests/test_reference_provenance.py` | 2 | Reference provenance evidence; Step `00c` and Step `05` currently use the private bridge recorded below. |
 | `scripts/runtime_preflight.py`; `tests/test_runtime_preflight.py` | 2 | Structured runtime inspection evidence. |
 | `scripts/storage_inventory.py`; `tests/test_storage_inventory.py` | 2 | Storage evidence. |
@@ -106,9 +105,9 @@ coverage rows, command rosters, and current documentation remain integration
 surfaces to update atomically when a `MOVE` unit is approved; their own
 repository-level ownership does not change.
 
-The current migration baseline is deliberately mode-nonuniform:
-`build_artifact_index.py`, `render_run_report_bundle.py`, and
-`storage_inventory.py` are `0644`, while private
+The current executable layout is deliberately mode-nonuniform: final reporting
+`build_artifact_index.py` and `render_run_report_bundle.py` plus retained
+`storage_inventory.py` are `0644`, while reporting-private
 `_run_summary_science.py` is `0755`. Each JIT card refreshes every touched mode
 and preserves it; relocation does not normalize executability by filename or
 language.
@@ -117,7 +116,7 @@ language.
 
 Private helpers do not add public owners:
 
-- [`_run_summary_science.py`](../../scripts/_run_summary_science.py) belongs to
+- [`_run_summary_science.py`](../../src/norad/reporting/_run_summary_science.py) belongs to
   canonical-summary normalization.
 - [`git_orchestration/_common.py`](../../scripts/git_orchestration/_common.py)
   and [`_common.sh`](../../scripts/git_orchestration/_common.sh) belong to
@@ -167,13 +166,13 @@ reference-contig parsing remains a separately bounded JIT slice.
 
 ## Coverage result
 
-The protected current roster contains 25 public Python entry points (18 under
-`scripts/` and seven final owner-local entry points), 13 shell entry points (ten
-under `scripts/` and three final owner-local producers), 4 R entry points, 7
-Git-orchestration entry points, 16 SLURM jobs (11 under `jobs/` and five final
-owner-local jobs), and 23 public Make targets. Every member is assigned once
-above. The one private top-level Python module, two neutral library sources,
-four neutral contract implementation sources, and three private orchestration
-files are classified separately. No current
+The protected current roster contains 25 public Python entry points (five under
+`scripts/` and 20 final owner-local entry points), 13 final owner-local shell
+entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
+(three under `jobs/` and 13 final owner-local jobs), and 24 public Make targets.
+Every member is assigned once
+above. The reporting-private Python module, two neutral library sources, four
+neutral contract implementation sources, and three private orchestration files
+are classified separately. No current
 autonomous pipeline orchestrator,
 ingestion executor, or installable-package entry point exists.

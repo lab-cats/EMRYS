@@ -129,15 +129,20 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
-The current LIB-02J measurement protects
-`scripts/_run_summary_science.py` at `454/540` covered lines and `166/238`
-branches. The committed tracked baseline remains `10241/12326` lines and
-`3599/4964` branches. The complete Python lane passed `1,540` tests with `17`
-skips and measured `0.845535` global line coverage and `0.747115` global branch
-coverage across `35` files. Static, shell, and report-runtime routes passed.
-Both project-local Step `08`/`09` real-R semantic fixture routes also passed.
-The aggregate remained non-green at guarded R because the environment checker
-reported one out-of-date package; no dependency was installed, restored,
+The current RPT-05A measurement protects final
+`src/norad/reporting/_run_summary_science.py` at `454/540` covered lines and
+`166/238` branches. The committed tracked baseline remains `10241/12326` lines
+and `3599/4964` branches with the five reporting identities updated to their
+final paths and sorted canonically. The complete Python lane passed `1,540`
+tests with `17` skips and measured `0.845535` global line coverage and
+`0.747115` global branch coverage across `35` files. The affected roster passed
+`506` tests with `17` skips; pinned-Quarto report testing passed `164` tests;
+the report-runtime route passed `17` with `60` deselections; and static, shell,
+public CLI/Make, asset-hash, file-mode, and documentation gates passed. Both
+project-local Step `08`/`09` real-R semantic fixture routes also passed. The
+aggregate sandbox run stopped when guarded R could not resolve Bioconductor
+metadata; an unrestricted read-only `r-check` reached dependency validation and
+confirmed one out-of-date package. No dependency was installed, restored,
 removed, or updated.
 
 DOC-GATE-01 independently freezes the extracted documentation validator with a

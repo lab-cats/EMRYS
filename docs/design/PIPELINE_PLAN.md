@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation-report library, neutral artifact contracts, and neutral scientific-evidence contracts | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation-report library, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -60,8 +60,10 @@ unmigrated owner in that frozen topology. `MIG-04A` also moved the neutral
 artifact validator, schemas, direct test, and valid fixtures to their final
 homes. `LIB-02G`, `LIB-02H`, and `LIB-02I` then moved the neutral Step `08`,
 Step `09`, and public review-package scientific-evidence contracts and direct
-suites to their final homes. Reporting, evidence helpers, and shared tests
-remain at legacy root paths and are not covered by those completion claims.
+suites to their final homes. `RPT-05A` then moved reporting sources, private
+assets, direct suites, and fixtures to their final owners. Evidence helpers and
+shared tests remain at legacy root paths and are not covered by those
+completion claims.
 The repository-health
 runway completed its documentation-gate and lifecycle packages, preserved the
 quarantined malformed local R-library entry, corrected the bounded recursive-
@@ -107,10 +109,11 @@ completed
 [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
 extracted the bounded public Step `09c` review-package contract, and completed
 [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-removed reporting's final private Step `09c` implementation dependency. The
-sole selected package is now
-[`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md),
-the direct atomic reporting relocation.
+removed reporting's final private Step `09c` implementation dependency, and
+completed
+[`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
+performed the direct atomic reporting relocation. No residual-convergence
+package is selected.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -118,7 +121,7 @@ and frozen proposal presence does not authorize selection or implementation.
 
 ### Residual source-topology convergence
 
-The exact 122-path current roster is owned by the
+The exact 104-path current residual roster is owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
@@ -131,7 +134,7 @@ disposition.
 | Residual group | Disposition | JIT route or boundary |
 | --- | --- | --- |
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
-| Artifact indexing, run-summary construction, and static reporting | `MOVE` through selected [`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) | Artifact, Step `08`/`09`, and public review-package contracts are final through completed [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md); completed [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md) removed reporting's private Step `09c` edge. Move current reporting behavior directly before feature work or decomposition. |
+| Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
 | Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
@@ -152,7 +155,7 @@ Preferred one-owner order is:
 3. completed `LIB-02G`, `LIB-02H`, and `LIB-02I` extract the neutral Step `08`,
    Step `09`, and public review-package contracts; completed `LIB-02J` removes
    reporting's private Step `09c` dependency;
-4. execute selected `RPT-05A` just in time;
+4. completed `RPT-05A` moves reporting directly into its final owners;
 5. extract the neutral `reference_contigs` parser seam, then move reference
    provenance; move runtime preflight and storage inventory as separate owner
    cards;
@@ -160,8 +163,9 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-`RPT-05A` is the sole selected residual package. Later seam-extraction cards,
-the final audit, and deferred domains remain uncreated or unbegun.
+No residual package is selected. The neutral `reference_contigs` extraction is
+the next preferred JIT unit; later owner moves, the final audit, and deferred
+domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -237,12 +241,17 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                     └── LIB-02J documentation/
                                                                                         lifecycle close 387d818
                                                                                         └── RPT-05A selection
-                                                                                            (commit containing this plan)
+                                                                                            ef513fa
+                                                                                            └── RPT-05A executable cutover
+                                                                                                7c10c17
+                                                                                                └── RPT-05A documentation/
+                                                                                                    lifecycle close
+                                                                                                    (commit containing this plan)
 ```
 
-The final node is the current selection tip represented by this plan. It
-selects only `RPT-05A`; no implementation, later extraction, final audit,
-default-branch integration, runtime, or cluster action is implied.
+The final node is the current lifecycle close represented by this plan. It
+selects no successor; no later extraction, final audit, default-branch
+integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

@@ -52,7 +52,7 @@ reporting relocation.
 
 ## Completion unblocks
 
-- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Fully: reporting can move after its final private peer-owner dependency is removed.
+- [RPT-05A](../COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) — Fully: reporting can move after its final private peer-owner dependency is removed.
 
 ## Prerequisites
 

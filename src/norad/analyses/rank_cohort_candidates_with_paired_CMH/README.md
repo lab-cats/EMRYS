@@ -199,7 +199,7 @@ absolute output root.
 
 Artifact provenance changes only `STEP_PRODUCERS["09"]` to this final shell
 path and its reviewed hash in
-[`build_artifact_index.py`](../../../../scripts/build_artifact_index.py).
+[`build_artifact_index.py`](../../reporting/build_artifact_index.py).
 Artifact IDs, six native identities, validation-report identity, schemas,
 ordering, consumers, and scientific meaning are unchanged.
 

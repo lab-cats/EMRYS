@@ -741,9 +741,9 @@ Implemented locally at `4dbd32d`:
 
 ```text
 configs/artifact_run_contract.example.json
-scripts/build_artifact_index.py
-tests/fixtures/artifact_adapters_v1/build_fixture.py
-tests/test_artifact_adapters.py
+src/norad/reporting/build_artifact_index.py
+tests/reporting/fixtures/artifact_adapters_v1/build_fixture.py
+tests/reporting/test_artifact_adapters.py
 ```
 
 The adapter builder has 62 registered read-only adapters covering the 81
@@ -754,7 +754,7 @@ the separate downstream canonical run summary.
 Dry-run with explicit inputs:
 
 ```bash
-.venv/bin/python scripts/build_artifact_index.py \
+.venv/bin/python src/norad/reporting/build_artifact_index.py \
   --run-id RUN_ID \
   --run-contract configs/artifact_run_contract.example.json \
   --inventory configs/artifact_inventory.example.tsv \
@@ -770,7 +770,7 @@ production use.
 Execute only after inspecting the dry-run:
 
 ```bash
-.venv/bin/python scripts/build_artifact_index.py \
+.venv/bin/python src/norad/reporting/build_artifact_index.py \
   --run-id RUN_ID \
   --run-contract RUN_CONTRACT_JSON \
   --inventory INVENTORY_TSV \
@@ -847,10 +847,10 @@ remain `not_run`. The reserved ready state remains rejected.
 Run the focused gates:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_artifact_adapters.py
+.venv/bin/python -m pytest -q tests/reporting/test_artifact_adapters.py
 .venv/bin/python -m pytest -q \
   tests/contracts/artifacts/test_artifact_schema_contracts.py \
-  tests/test_artifact_adapters.py
+  tests/reporting/test_artifact_adapters.py
 ```
 
 Passing fixture tests establish only local adapter behavior. They do not
@@ -860,18 +860,18 @@ completed production science review, or biological readiness.
 ### Build An `artifact-run-summary` Transaction
 
 ```text
-scripts/build_run_summary.py
-scripts/_run_summary_science.py
+src/norad/reporting/build_run_summary.py
+src/norad/reporting/_run_summary_science.py
 configs/report_table_approvals.example.tsv
-tests/fixtures/artifact_run_summary_v1/build_fixture.py
-tests/test_artifact_run_summary.py
+tests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py
+tests/reporting/test_artifact_run_summary.py
 ```
 
 The adapter output directory must already contain the exact complete
 records/index/receipt transaction for `RUN_ID`. Dry-run:
 
 ```bash
-.venv/bin/python scripts/build_run_summary.py \
+.venv/bin/python src/norad/reporting/build_run_summary.py \
   --run-id RUN_ID \
   --artifact-receipt \
     results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
@@ -920,7 +920,7 @@ selection/adjudication, decisions, evidence index, and limitations.
 Execute only after inspecting dry-run:
 
 ```bash
-.venv/bin/python scripts/build_run_summary.py \
+.venv/bin/python src/norad/reporting/build_run_summary.py \
   --run-id RUN_ID \
   --artifact-receipt \
     results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
@@ -961,11 +961,11 @@ or manually promote evidence status.
 Run focused and combined checks:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_artifact_run_summary.py
+.venv/bin/python -m pytest -q tests/reporting/test_artifact_run_summary.py
 .venv/bin/python -m pytest -q \
   tests/contracts/artifacts/test_artifact_schema_contracts.py \
-  tests/test_artifact_adapters.py \
-  tests/test_artifact_run_summary.py
+  tests/reporting/test_artifact_adapters.py \
+  tests/reporting/test_artifact_run_summary.py
 ```
 
 Passing fixture tests establish only local summary-builder behavior. The
@@ -976,16 +976,16 @@ biological validation.
 
 ```text
 scripts/restore_quarto.py
-scripts/render_run_report.sh
-scripts/render_run_report.py
-scripts/render_run_report_bundle.py
-reports/run_report.qmd
-reports/run_report_pdf.qmd
-reports/run_report.css
+src/norad/reporting/render_run_report.sh
+src/norad/reporting/render_run_report.py
+src/norad/reporting/render_run_report_bundle.py
+src/norad/reporting/templates/run_report.qmd
+src/norad/reporting/templates/run_report_pdf.qmd
+src/norad/reporting/styles/run_report.css
 tests/test_quarto_restore.py
-tests/test_report_html_v1.py
-tests/test_report_exports_v1.py
-tests/shell/test_render_run_report.sh
+tests/reporting/test_report_html_v1.py
+tests/reporting/test_report_exports_v1.py
+tests/reporting/test_render_run_report.sh
 ```
 
 Restore Quarto deliberately before report testing or rendering:
@@ -1016,7 +1016,7 @@ before rendering. This includes the pure-Python PDF reader recorded in
 Default all-format dry-run:
 
 ```bash
-scripts/render_run_report.sh \
+src/norad/reporting/render_run_report.sh \
   --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
   --output-root results/reports \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto
@@ -1030,7 +1030,7 @@ creates no output directory, lock, scratch path, or report.
 Execute only after inspecting the dry-run:
 
 ```bash
-scripts/render_run_report.sh \
+src/norad/reporting/render_run_report.sh \
   --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
   --output-root results/reports \
   --quarto-bin .tools/quarto/1.9.38/bin/quarto \
@@ -5004,7 +5004,8 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
-  tests/test_artifact_adapters.py tests/test_artifact_run_summary.py \
+  tests/reporting/test_artifact_adapters.py \
+  tests/reporting/test_artifact_run_summary.py \
   tests/test_independent_contract_goldens.py tests/test_public_cli_contracts.py
 ```
 

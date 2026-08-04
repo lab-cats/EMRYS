@@ -23,8 +23,9 @@ and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
 `rank_cohort_candidates_with_paired_CMH`,
 `assemble_scientific_review_evidence_package`,
 `collect_canonical_BAM_QC_evidence`, and
-`collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs
-now live under `src/norad/`; remaining workflow entry points stay under
+`collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs,
+plus artifact indexing, canonical run-summary assembly, and static reporting,
+now live under `src/norad/`; remaining cross-cutting entry points stay under
 `scripts/` and `jobs/`. Other colocated functional-owner documents under
 `src/norad/` remain contracts rather than claims that their implementations
 have migrated.

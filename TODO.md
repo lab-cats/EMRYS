@@ -39,11 +39,13 @@ eliminated artifact indexing's private Step `09c` dependency. Completed
 [`LIB-02J`](docs/tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
 then replaced reporting's remaining private context/policy edge with a
 reporting-local committed-package reader/projection at executable checkpoint
-`2538006`. The sole selected residual-convergence package is
-[`RPT-05A`](docs/tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md),
-the direct atomic relocation of current reporting sources, private assets,
-direct tests, and reporting fixtures into their permanent owners. Its bounded
-ownership/caller audit is complete; no executable or test change has begun.
+`2538006`. Completed
+[`RPT-05A`](docs/tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
+then relocated reporting sources, private assets, direct tests, and fixtures
+atomically into their permanent owners at executable checkpoint `7c10c17`,
+with no wrapper or non-path behavior change. No residual-convergence package
+is selected; the neutral `reference_contigs` parser extraction is the next
+preferred JIT unit but remains unselected.
 Scheduler, ingestion, orchestration/profile, runtime, cluster, and default-
 branch work remain deferred or unselected. `PROGRAM-01` and unrelated work
 remain frozen outside their completed slices. Execute only one dependency-valid
