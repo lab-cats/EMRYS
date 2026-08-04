@@ -83,8 +83,7 @@ marked input, or GATK split-N-cigar semantics. It privately exact-loads
 report/BAM helpers from neutral
 [`validation_report.py`](../../libraries/validation_report.py) and
 [`bam_validation.py`](../../libraries/bam_validation.py), and reference parsers
-from unchanged public
-[`reference_provenance.py`](../../../../scripts/reference_provenance.py). No
+from neutral [`reference_contigs.py`](../../libraries/reference_contigs.py). No
 package identity, `PYTHONPATH`, wrapper, compatibility import, or peer-stage
 implementation dependency is supported.
 
@@ -111,9 +110,10 @@ scientific-review, or biological evidence.
 
 ## Current ownership boundaries and retained defects
 
-- Reference provenance remains a public cross-cutting owner; BAM validation and
-  report publication remain neutral private libraries. This stage owns its
-  three exact-file bridges, check roster, CLI, and transformation journey.
+- Reference-contig parsing, BAM validation, and report publication remain
+  neutral private libraries. Reference provenance remains a separate public
+  cross-cutting evidence owner. This stage owns its three caller-local exact-
+  file loaders, check roster, CLI, and transformation journey.
 - The native pair transaction lacks stable-input identity, receipt, and robust
   rollback-failure recovery evidence.
 - Producer and validator prove structure but not the GATK-specific transform.

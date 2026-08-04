@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation-report library, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -61,9 +61,10 @@ artifact validator, schemas, direct test, and valid fixtures to their final
 homes. `LIB-02G`, `LIB-02H`, and `LIB-02I` then moved the neutral Step `08`,
 Step `09`, and public review-package scientific-evidence contracts and direct
 suites to their final homes. `RPT-05A` then moved reporting sources, private
-assets, direct suites, and fixtures to their final owners. Evidence helpers and
-shared tests remain at legacy root paths and are not covered by those
-completion claims.
+assets, direct suites, and fixtures to their final owners. `LIB-02K` then
+extracted the exact reference-contig parser seam into its neutral final owner
+and cut over all three consumers. Evidence helpers and remaining shared tests
+stay at legacy root paths and are not covered by those completion claims.
 The repository-health
 runway completed its documentation-gate and lifecycle packages, preserved the
 quarantined malformed local R-library entry, corrected the bounded recursive-
@@ -112,10 +113,11 @@ extracted the bounded public Step `09c` review-package contract, and completed
 removed reporting's final private Step `09c` implementation dependency, and
 completed
 [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
-performed the direct atomic reporting relocation. Selected
-[`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
-is the sole residual-convergence package and owns only the neutral
-reference-contig parser extraction.
+performed the direct atomic reporting relocation. Completed
+[`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md)
+then extracted the exact reference-contig parser seam into its neutral final
+owner and cut over all three consumers. No residual-convergence package is
+selected.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -137,7 +139,7 @@ disposition.
 | --- | --- | --- |
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
-| Reference provenance evidence | `MOVE` after selected [`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md) | `LIB-02K` owns only the neutral `reference_contigs` parser extraction; reference-evidence relocation remains a later separate card. |
+| Reference provenance evidence | `MOVE`; neutral prerequisite complete through [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) | The neutral `reference_contigs` owner and all three consumer cutovers are complete; direct reference-evidence relocation is the next preferred, separately selected card. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
 | Independent contract goldens and validation-roster agreement | `MOVE` | Update as direct consumers during owner moves, then converge their paths under `tests/contract_integration/` near campaign close. |
@@ -158,15 +160,16 @@ Preferred one-owner order is:
    Step `09`, and public review-package contracts; completed `LIB-02J` removes
    reporting's private Step `09c` dependency;
 4. completed `RPT-05A` moves reporting directly into its final owners;
-5. extract the neutral `reference_contigs` parser seam, then move reference
-   provenance; move runtime preflight and storage inventory as separate owner
-   cards;
+5. completed `LIB-02K` extracts the neutral `reference_contigs` parser seam;
+   next move reference provenance, runtime preflight, and storage inventory as
+   three separate owner cards;
 6. converge the residual cross-owner contract tests and separately review the
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-`LIB-02K` is the sole selected residual package. Later owner moves, the final
-audit, and deferred domains remain uncreated or unbegun.
+No residual package is selected. The reference-provenance move is next in the
+preferred order; later owner moves, the final audit, and deferred domains remain
+uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -248,12 +251,20 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                 └── RPT-05A documentation/
                                                                                                     lifecycle close 8a5cf28
                                                                                                     └── LIB-02K selection
-                                                                                                        (commit containing this plan)
+                                                                                                        af3ac62
+                                                                                                        └── LIB-02K loader-parity
+                                                                                                            clarification 596bee7
+                                                                                                            └── LIB-02K executable
+                                                                                                                extraction d931214
+                                                                                                                └── LIB-02K documentation/
+                                                                                                                    lifecycle close
+                                                                                                                    (commit containing this plan)
 ```
 
-The final node is the current selection represented by this plan. It selects
-only `LIB-02K`; no reference-evidence relocation, later owner move, final audit,
-default-branch integration, runtime, or cluster action is implied.
+The final node is the current lifecycle close represented by this plan. No
+successor is selected; the preferred reference-evidence relocation, later owner
+moves, final audit, default-branch integration, runtime execution, and cluster
+action are not implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

@@ -13,9 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `7c10c17215b8ac28811b04c76ecd93555d4ebe49`, the direct `RPT-05A`
-  reporting relocation and frozen executable basis for this documentation/
-  lifecycle close.
+  `d9312142aab7f76fedc6c444d0ab6d10880d790a`, the `LIB-02K` neutral
+  reference-contig parser extraction and three-consumer cutover, and the frozen
+  executable basis for this documentation/lifecycle close.
 - Current package predecessor:
   `8a5cf28df6d5f595ef74bde6f22ad376dc41c374`, the clean, published,
   live-remote-equal `RPT-05A` documentation/lifecycle close.
@@ -59,13 +59,14 @@ and delivery-required lineage live in
   [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
   then moved all six reporting sources, three private assets, five direct
   suites, and three fixture groups into their final owners with no wrapper and
-  no behavior delta beyond approved path-derived provenance.
-- Selected package:
-  [`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
-  extracts only the characterized ordered FASTA, FAI, and DICT parsers into
-  the permanent neutral `reference_contigs` library, adds an independent
-  library suite, and cuts over reference provenance plus the final Step
-  `00c`/`05` validators without moving the evidence command.
+  no behavior delta beyond approved path-derived provenance. Completed
+  [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md)
+  then extracted the characterized ordered FASTA, FAI, and DICT parsers into
+  the permanent neutral `reference_contigs` library, added its independent
+  suite, cut over reference provenance plus the final Step `00c`/`05`
+  validators, and removed both peer-owner bridges without moving the evidence
+  command.
+- Selected package: none.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -73,6 +74,7 @@ and delivery-required lineage live in
   review-package contracts are extracted through `LIB-02G`, `LIB-02H`, and
   `LIB-02I`, reporting's private Step `09c` dependency is removed through
   `LIB-02J`, and the reporting owner is physically final through `RPT-05A`.
+  The reference-contig seam is final through `LIB-02K`.
   Reference/runtime/storage evidence and cross-owner test paths remain in their
   current locations pending separately selected JIT moves.
   Current and target ownership route through
@@ -105,7 +107,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, the neutral artifact-contract validator/schemas/direct evidence, the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites, and the reporting source/assets/direct suites/fixtures are physically migrated; their legacy ownership and temporary compatibility paths are absent. Evidence-helper and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; and the reporting source/assets/direct suites/fixtures are physically final. Their legacy ownership and temporary compatibility paths are absent. Evidence-helper and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -114,7 +116,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `RPT-05A` moved six reporting sources, three private assets, five direct suites, and three fixture groups atomically into `src/norad/reporting/` and `tests/reporting/` at executable checkpoint `7c10c17`, with all callers cut over and no wrapper. Template/style bytes and all modes remained exact; Python CLI bytes were exact and the shell help changed only its truthful path. The affected roster passed 506 tests with 17 skips, pinned-Quarto report testing passed 164, report-runtime passed 17 with 60 deselections, and complete Python coverage passed 1,540 with 17 skips at 0.845535 line and 0.747115 branch coverage across 35 files. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic fixtures, public CLI/Make, and documentation routes passed. The aggregate sandbox run stopped at Bioconductor metadata DNS; an unrestricted read-only `r-check` confirmed the inherited one-package dependency drift. No dependency changed, and this package creates no runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `LIB-02K` created the single neutral `reference_contigs` owner and independent suite, cut over reference provenance and the final Step `00c`/`05` validators, and removed the command-owned definitions and peer-owner bridges at executable checkpoint `d931214`. Parser AST/output/error and consumer-aggregation parity passed, including characterized raw exceptions and loader faults. The affected roster passed 474 tests; complete Python coverage passed 1,589 with 17 skips at 0.847971 line and 0.750594 branch coverage across 36 files, with the new library at 52/52 lines and 28/28 branches. Static, all shell contracts, public CLI/Make and golden contracts, documentation routes, and three independent reviews passed. No external dependency was installed, removed, or updated; evidence/publication behavior did not change, and this package creates no runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -218,18 +220,17 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-Selected
-[`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
-is the sole active residual package. Freeze the exact ordered parser outputs,
-messages, exceptions and characterized quirks plus all three consumer
-aggregation/CLI behaviors; then create one exact neutral module identity and
-cut over reference provenance and the final Step `00c`/`05` validators. Do not
-move reference provenance or change agreement, evidence, hashing, snapshots,
-publication, or recovery.
+No residual package is selected. The next preferred unit is a direct atomic
+move of the now-decoupled reference-provenance command and direct suite into
+the exact evidence-owner paths fixed by `SOURCE_TOPOLOGY.md`. Select and bound
+that card only after verifying all live callers, public command/path bytes,
+Make/config/documentation routes, modes, hashes, arbitrary-CWD behavior,
+transaction semantics, and coverage identities. Do not reopen parser semantics
+or move the public starter config.
 
-No later executable migration, final audit, scheduler, ingestion,
-orchestration/profile, runtime, cluster, or default-branch package is
-preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
+No later owner move, final audit, scheduler, ingestion, orchestration/profile,
+runtime execution, cluster, or default-branch package is preloaded.
+`PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 

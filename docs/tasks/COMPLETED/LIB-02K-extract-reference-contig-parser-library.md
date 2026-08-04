@@ -142,6 +142,56 @@ evidence owner.
 ## Completion record
 
 Selected from clean, published, live-remote-equal RPT-05A documentation close
-`8a5cf28df6d5f595ef74bde6f22ad376dc41c374`. The bounded read-only audit
-confirmed exactly three consumers and fixed the behavior/parity boundary above.
-Pre-change characterization and executable/test work have not begun.
+`8a5cf28df6d5f595ef74bde6f22ad376dc41c374` at selection checkpoint
+`af3ac6276b71838cab53ee1016378968b174203a`. Clarification checkpoint
+`596bee7af9a26abf7c7c807b657736ebc03ceebc` fixed the comparable loader-
+diagnostic boundary before mutation. The bounded audit confirmed exactly three
+consumers, and executable/test checkpoint
+`d9312142aab7f76fedc6c444d0ab6d10880d790a` created the single ready-marked
+`_norad_reference_contigs` identity at the permanent neutral owner, added its
+independent direct suite, cut over reference provenance and the final Step
+`00c`/`05` validators, and removed the command-owned parser definitions and
+both peer-owner bridges.
+
+Normalized parser AST comparison was exact after only the approved private-
+helper renames. Direct parity preserved ordered outputs, messages, explicit and
+default decoding, raw `OSError`/`UnicodeError`, characterized raw conversion
+and index exceptions, accepted empty names and zero lengths, duplicate/empty
+rejection, reference-provenance per-role continuation, Step `00c` per-role
+aggregation, and Step `05` short-circuit aggregation. Comparable loader
+diagnostics remained byte-exact apart from the approved truthful owner, class,
+and path substitutions. Cross-consumer loader tests prove final path and
+identity, missing `__file__`, missing readiness, invalid error class, unavailable
+spec, cache preservation, empty stdout, and no CWD or `sys.path` residue. Exact
+AST/search guards prove that only the final neutral owner defines the parser
+functions and neither validator loads reference provenance.
+
+Final executable file evidence was:
+
+- neutral parser owner: mode `0644`, `2,579` bytes, SHA-256
+  `f6f30772f380491fba3b99799d1541bcaae1e2fb3b208ee5f4e17c9da80243a1`;
+- independent parser suite: mode `0644`, `13,814` bytes, SHA-256
+  `2fc7c85cbf3e5fef8c6a48a34ab5c2b8572f4456e7f3e1b81c91542d9a4edbc9`;
+- reference-provenance consumer: mode `0755`, `22,323` bytes, SHA-256
+  `c303a68d0155f1ae206a1131bf7c360e74ce96870e697a398ec8988b9b92b81b`;
+- final Step `00c` validator: mode `0644`, `8,949` bytes, SHA-256
+  `d0ddffab53bc36a7abf80dbfddfbc0ae9108eef129ac6b35a68e960e01f8b11a`;
+  and
+- final Step `05` validator: mode `0644`, `12,832` bytes, SHA-256
+  `6b1a5e4efcb8678fd144474a466332bb40de4993e0ab63e83436c3f8eebc418a`.
+
+The final affected roster passed `474` tests. Complete Python coverage passed
+`1,589` tests with `17` skips, measured global line/branch rates
+`0.847971`/`0.750594` across `36` files, and covered the new neutral owner at
+`52/52` lines and `28/28` branches. The tracked baseline is `10323/12387`
+lines and `3633/4986` branches. Static validation, all shell contracts, public
+CLI/Make and golden contracts, documentation validation, and three independent
+implementation/semantic reviews passed. No wrapper, compatibility owner,
+package surface, consumer aggregation, evidence row, CLI behavior, hashing,
+snapshot, publication, locking, rollback, or recovery behavior changed beyond
+the approved truthful neutral loader owner, class, and path substitutions in
+CLI diagnostics.
+
+This extraction is local contract-preserving engineering evidence. It does not
+move reference provenance and creates no runtime, cluster, production,
+scientific-review, or biological-readiness evidence.

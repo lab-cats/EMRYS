@@ -69,9 +69,10 @@ publication protocol used by all thirteen validator entry points. The final
 through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The FASTA-sidecar and split-N-cigar validators also privately
-exact-load the unchanged public flat reference-provenance owner. Stage-specific
-parsing and check rosters remain with their functional owners.
+interface. Reference provenance and the FASTA-sidecar and split-N-cigar
+validators exact-load the final neutral `reference_contigs` parser owner under
+one ready module identity. Consumer-specific aggregation, agreement, evidence,
+CLI behavior, and stage check rosters remain with their functional owners.
 
 ### Neutral Step 08 scientific-evidence contract
 

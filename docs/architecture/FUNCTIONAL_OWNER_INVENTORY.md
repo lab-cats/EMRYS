@@ -45,13 +45,14 @@ scientific stages.
 | Current functional owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
 | Intake contract validation | [`validate_manifest.py`](../../scripts/validate_manifest.py), [`validate_manifest.slurm`](../../jobs/validate_manifest.slurm), [`samples.example.tsv`](../../samples.example.tsv), Make `validate` in the [`Makefile`](../../Makefile) | [`test_validate_manifest.py`](../../tests/test_validate_manifest.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). This validates current manifest input; it is not an ingestion runner. |
-| Reference provenance evidence | [`reference_provenance.py`](../../scripts/reference_provenance.py), public starter [`reference_provenance.example.tsv`](../../configs/reference_provenance.example.tsv) | [`test_reference_provenance.py`](../../tests/test_reference_provenance.py). This inventories declared reference identity and consistency without repairing reference artifacts. The final FASTA-sidecar and Step `05` validators currently use private exact-file bridges; completed [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) requires their common FASTA/FAI/DICT parsing to move to the neutral `reference_contigs` library while consumer-specific aggregation and evidence remain local. |
+| Reference provenance evidence | [`reference_provenance.py`](../../scripts/reference_provenance.py), public starter [`reference_provenance.example.tsv`](../../configs/reference_provenance.example.tsv) | [`test_reference_provenance.py`](../../tests/test_reference_provenance.py). This inventories declared reference identity and consistency without repairing reference artifacts. Through completed [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md), it and the final Step `00c`/`05` validators consume the one neutral `reference_contigs` identity while consumer-specific aggregation and evidence remain local. |
 | Structured runtime inspection | [`runtime_preflight.py`](../../scripts/runtime_preflight.py), public starter [`runtime_preflight.example.tsv`](../../configs/runtime_preflight.example.tsv) | [`test_runtime_preflight.py`](../../tests/test_runtime_preflight.py). Profile-driven availability evidence does not establish workflow runtime or cluster proof. |
 | Legacy manual cluster probe | [`tool_check.slurm`](../../jobs/tool_check.slurm) | [Wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). It emits scheduler logs rather than a structured runtime-preflight transaction and is not a compute stage. |
 | Dependency lifecycle | [`check_r_environment.R`](../../scripts/check_r_environment.R), [`restore_r_environment.R`](../../scripts/restore_r_environment.R), [`restore_quarto.py`](../../scripts/restore_quarto.py); Make `r-check`, `r-restore`, and `quarto-restore` | [local R contract](../../tests/shell/test_local_r_environment.sh), [`test_quarto_restore.py`](../../tests/test_quarto_restore.py), [public Make contracts](../../tests/test_public_cli_contracts.py). Restoration is explicit operator mutation, never compute-time bootstrap. |
 | Storage evidence | [`storage_inventory.py`](../../scripts/storage_inventory.py), public starters [`storage_roots.example.tsv`](../../configs/storage_roots.example.tsv) and [`retention_policy.example.tsv`](../../configs/retention_policy.example.tsv) | [`test_storage_inventory.py`](../../tests/test_storage_inventory.py). Inventory and approval state never execute retention actions. |
 | Validation-evidence publication protocol | Neutral owner [`validation_report.py`](../../src/norad/libraries/validation_report.py) with exact-file private loaders in all thirteen final owner validators through `rank_cohort_candidates_with_paired_CMH`; no package/import identity or public CLI is assigned to the library | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_validation_check_rosters.py`](../../tests/test_validation_check_rosters.py). Stage parsing/check rosters remain stage-owned, and current validation still does not enforce report-row order. |
 | BAM validation primitives | Neutral private owner [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) exact-loaded by the final Step `02`, Step `04`, and Step `05` validators; no package/import identity or public CLI is assigned | [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py) protects exact helper behavior and loader integrity. Stage-specific checks, arguments, reports, and evidence remain with their three functional owners. |
+| Reference contig parsing | Neutral private owner [`reference_contigs.py`](../../src/norad/libraries/reference_contigs.py) exact-loaded by reference provenance and the final Step `00c` and Step `05` validators; no package/import identity or public CLI is assigned | [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py) plus the three affected consumer suites protect exact parser behavior and one ready owner identity. Agreement, per-role versus short-circuit aggregation, evidence, commands, and publication remain consumer-local. |
 | Artifact contract validation | Neutral [`validate_artifact_contracts.py`](../../src/norad/contracts/artifacts/validate_artifact_contracts.py) and five public schemas under [`contracts/schemas/artifacts/v1/`](../../src/norad/contracts/schemas/artifacts/v1/) | Mirrored [`test_artifact_schema_contracts.py`](../../tests/contracts/artifacts/test_artifact_schema_contracts.py) and [`artifact_schema_v1`](../../tests/contracts/artifacts/fixtures/artifact_schema_v1/) fixtures. The five Python reporting-chain consumers share this one exact final module identity, and the shell preflight exact-loads the final file without package or path setup; schema identity and validation semantics remain neutral. |
 | Step `08` scientific-evidence contract | Neutral [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py); no public CLI, package identity, or installation surface | Mirrored [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py) plus affected consumer suites. Neutral Step `09`, the Step `08` and Step `09` validators, Step `09c`, and the artifact index share one exact-file module, `ContractError`, and `Table` identity. Shell/R algorithms, review policy, publication, and artifact reconciliation remain owner-local. |
 | Step `09` scientific-evidence contract | Neutral [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py); no public CLI, package identity, or installation surface | Mirrored [`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py) plus affected consumer suites. The owner exact-loads neutral Step `08`; the Step `09` validator, Step `09c`, and artifact index share one exact ready module identity. Step `09` shell/R method, Step `09c` review policy/publication, and artifact reconciliation remain owner-local. |
@@ -83,7 +84,7 @@ inventory when paths move.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `scripts/reference_provenance.py`; `tests/test_reference_provenance.py` | 2 | Reference provenance evidence; Step `00c` and Step `05` currently use the private bridge recorded below. |
+| `scripts/reference_provenance.py`; `tests/test_reference_provenance.py` | 2 | Reference provenance evidence; its shared parser seam is final under `src/norad/libraries/reference_contigs.py`, and only the evidence-owner relocation remains. |
 | `scripts/runtime_preflight.py`; `tests/test_runtime_preflight.py` | 2 | Structured runtime inspection evidence. |
 | `scripts/storage_inventory.py`; `tests/test_storage_inventory.py` | 2 | Storage evidence. |
 | `tests/test_independent_contract_goldens.py` and its eight tracked fixture paths; `tests/test_validation_check_rosters.py`; `tests/validation_roster_expectations.py` | 11 | Cross-owner artifact/schema and validation-roster protection; final integration homes are fixed in the target test topology. |
@@ -148,9 +149,10 @@ Private helpers do not add public owners:
   the duplicated schema but do not become additional selection owners.
 - [`reference_provenance.py`](../../scripts/reference_provenance.py) spans the
   `00a`/`00b`/`00c` bundle and remains cross-cutting even when a stage contract
-  links to it. Its shared FASTA/FAI/DICT parsing moves separately to neutral
-  `reference_contigs`; the provenance CLI, hashing, reconciliation, evidence,
-  publication, and recovery remain evidence-owner behavior.
+  links to it. Its shared FASTA/FAI/DICT parsing is final under neutral
+  `reference_contigs` through `LIB-02K`; the provenance CLI, hashing,
+  reconciliation, evidence, publication, and recovery remain evidence-owner
+  behavior.
 - The artifact-index implementation embeds stage-specific reconciliation, but
   those adapter semantics remain accountable to the corresponding stage,
   evidence, or analysis owner.
@@ -162,7 +164,7 @@ their exact permanent dispositions, and
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams)
 owns the target paths. The Step `08`, Step `09`, and public review-package
 contract extractions and reporting-local dependency removal are implemented;
-reference-contig parsing remains a separately bounded JIT slice.
+reference-contig parsing is also implemented through completed `LIB-02K`.
 
 ## Coverage result
 

@@ -104,19 +104,20 @@ The report contains exactly these five check identities:
 - `fai_contig_agreement`; and
 - `dict_contig_agreement`.
 
-A content mismatch is represented by a `status=fail` row and does not repair
-the reference or sidecars. Malformed or unsafe input, an invalid CLI/output
-contract, or unsafe publication state exits with code `2` without publishing
-a new report.
+A parser-recognized malformed sidecar or content mismatch is represented by
+role-local `status=fail` rows and does not repair the reference or sidecars.
+Input rejected by snapshot validation, an invalid CLI/output contract, or an
+unsafe publication state exits with code `2` without publishing a new report.
+Characterized raw parser exceptions remain uncaught and also publish nothing.
 
-The validator privately exact-loads FASTA, `FAI`, and `DICT` parsers from the
-unchanged public [`reference_provenance.py`](../../../../scripts/reference_provenance.py)
-owner and report rendering, locking, and publication from the neutral
+The validator exact-loads FASTA, `FAI`, and `DICT` parsers from the neutral
+[`reference_contigs.py`](../../libraries/reference_contigs.py) owner and report
+rendering, locking, and publication from the neutral
 [`validation_report.py`](../../libraries/validation_report.py) owner. Both
 lookups resolve exact repository files independently of caller CWD without
-package identity or `sys.path` mutation. The reference bridge remains explicit
-mixed-layout debt; it does not assign this stage ownership of that public CLI or
-approve a library extraction.
+package identity or `sys.path` mutation. Reference provenance and the final
+Step `05` validator share the same ready parser identity while this stage
+retains its per-role aggregation and agreement rows.
 
 ## Consumers
 
@@ -168,19 +169,18 @@ Current evidence status remains owned by the canonical roadmap and handoff.
 - The shell producer owns sidecar generation, validation, locking, reuse, and
   publication but does not publish an atomic two-output transaction.
 - The validator is colocated with this stage but reuses reference parsers from
-  the public flat reference-provenance owner and publication helpers from the
-  neutral final library through private exact-file bridges.
+  the neutral `reference_contigs` owner and publication helpers from the
+  neutral validation-report owner through exact-file bridges.
 - The scheduler wrapper owns cluster-specific tool and Java resolution around
   the parameterized shell entrypoint.
 
-This inventory records the implemented mixed layout without choosing a
-reference-parser extraction, transaction redesign, or scheduler abstraction.
+The reference-parser extraction is complete through `LIB-02K`; this inventory
+does not choose a transaction redesign or scheduler abstraction.
 
 ## Deferred decisions
 
 - Final owner of reference materialization.
 - Whether the two sidecars require one atomic publication receipt.
-- Final ownership of the shared reference parsers; validation publication is
-  already owned by the neutral final library.
 - Final ownership of scheduler templates beyond this colocated native asset.
-- Reference-provenance extraction and any transaction or scheduler redesign.
+- Any reference-provenance transaction redesign; its physical owner home is
+  already fixed separately.

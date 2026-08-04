@@ -43,15 +43,17 @@ reporting-local committed-package reader/projection at executable checkpoint
 [`RPT-05A`](docs/tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
 then relocated reporting sources, private assets, direct tests, and fixtures
 atomically into their permanent owners at executable checkpoint `7c10c17`,
-with no wrapper or non-path behavior change. Selected
-[`LIB-02K`](docs/tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
-is the sole residual-convergence package: it extracts only the characterized
-ordered FASTA, FAI, and DICT parser seam into the permanent neutral
-`reference_contigs` library before any reference-evidence relocation.
-Scheduler, ingestion, orchestration/profile, runtime, cluster, and default-
-branch work remain deferred or unselected. `PROGRAM-01` and unrelated work
-remain frozen outside their completed slices. Execute only one dependency-valid
-package at a time under the
+with no wrapper or non-path behavior change. Completed
+[`LIB-02K`](docs/tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md)
+then extracted the characterized ordered FASTA, FAI, and DICT parser seam into
+the permanent neutral `reference_contigs` library at executable checkpoint
+`d931214`, cut over all three consumers, and removed both peer-owner bridges.
+No residual-convergence package is selected. The next preferred unit is the
+still-unselected direct relocation of reference provenance into its fixed
+evidence-owner home. Scheduler, ingestion, orchestration/profile, cluster, and
+default-branch work remain deferred; later residual units remain unselected.
+`PROGRAM-01` and unrelated work remain frozen outside their completed slices.
+Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 

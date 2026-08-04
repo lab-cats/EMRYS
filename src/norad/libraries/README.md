@@ -24,7 +24,19 @@ logic, or validation-report dependency. Loader failure is a checkout-integrity
 diagnostic, not authority to add `PYTHONPATH`, install a package, or restore a
 legacy validator path.
 
-This extraction preserves, rather than fixes, the characterized same-size and
+`reference_contigs.py` owns `ReferenceContigError` and the exact ordered
+`parse_fasta`, `parse_fai`, and `parse_dict` APIs, plus private failure and
+duplicate/empty helpers. Reference provenance and the final Step `00c` and
+Step `05` validators exact-load that file under the single private identity
+`_norad_reference_contigs`, verify its path, readiness marker, error class, and
+three-callable API, and preserve foreign cache state and `sys.path`. Agreement,
+per-role versus short-circuit aggregation, evidence rows, CLI behavior,
+hashing, snapshots, publication, locking, rollback, and recovery remain with
+the three consumers. The library does not establish a public package or repair
+characterized parser behavior.
+
+The validation-report extraction preserves, rather than fixes, the
+characterized same-size and
 restored-mtime snapshot blindness, unordered-report acceptance, late-foreign
 final deletion, incomplete rollback without a retained recovery marker,
 previous/staged/lock cleanup residue, open descriptor and lock retention, and
@@ -33,4 +45,5 @@ the dated refactor audit for the exact evidence boundary:
 
 - [`tests/libraries/test_validation_report.py`](../../../tests/libraries/test_validation_report.py)
 - [`tests/libraries/test_bam_validation.py`](../../../tests/libraries/test_bam_validation.py)
+- [`tests/libraries/test_reference_contigs.py`](../../../tests/libraries/test_reference_contigs.py)
 - [`2026-08-02 refactor log`](../../../docs/history/audits/2026-08-02-refactor-log.md)

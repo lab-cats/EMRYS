@@ -1036,33 +1036,35 @@ repair anything:
   --output results/qc/validation/05/<sample_id>.validation.tsv
 ```
 
-## Step 00c or Step 05 reference-provenance owner cannot load
+## Reference-contig owner cannot load
 
 ### Symptom
 
-The final Step `00c` or Step `05` validator exits `2` before publication with:
+Reference provenance or the final Step `00c`/`05` validator exits `2` before
+publication with:
 
 ```text
-ERROR: unable to load NORAD reference-provenance owner at <path>: <type>: <reason>
+ERROR: unable to load NORAD reference-contig owner at <path>: <type>: <reason>
 ```
 
 ### Cause
 
-The caller could not exact-load or validate unchanged public
-`scripts/reference_provenance.py`. The file may be missing, resolve to a
-foreign cached path, be partially initialized, expose an invalid
-`ProvenanceError`, or lack callable `parse_fasta`, `parse_fai`, or `parse_dict`.
-This is a checkout-integrity failure, not a reference-content mismatch and not
-authority to move or package the public owner.
+The caller could not exact-load or validate final neutral
+`src/norad/libraries/reference_contigs.py`. The file may be missing, resolve to
+a foreign cached path, be partially initialized, lack its readiness marker,
+expose an invalid `ReferenceContigError`, or lack callable `parse_fasta`,
+`parse_fai`, or `parse_dict`. This is a checkout-integrity failure, not a
+reference-content mismatch and not authority to package the neutral owner.
 
 ### Fix
 
 Inspect the exact named file, Git checkout, and process module-cache context.
-Use the final owner-local validator tests and public
-`tests/test_reference_provenance.py`. Do not add `PYTHONPATH`, install a
-package, replace the private module cache, copy the parser into a stage, or
-restore a legacy validator path. Content disagreement after a successful load
-belongs to the structured-validation route below.
+Use `tests/libraries/test_reference_contigs.py`, the final owner-local validator
+tests, and public `tests/test_reference_provenance.py`. Do not add `PYTHONPATH`,
+install a package, replace the private module cache, copy the parser into a
+consumer, or restore a legacy bridge. Content disagreement after a successful
+load belongs to the applicable consumer-specific evidence or validation route;
+the Step `05` route follows below.
 
 ## Step 05 structured validation reports output or reference disagreement
 

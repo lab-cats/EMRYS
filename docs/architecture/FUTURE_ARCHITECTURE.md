@@ -136,8 +136,9 @@ Completed `LIB-02F` approves two concrete narrow seams. Public Step `08`, Step
 `09`, and Step `09c` artifact/table contracts converge bottom-up under the
 neutral `scientific_evidence` contract owner, while review policy/publication
 and reporting projection remain owner-local. Exact FASTA/FAI/DICT contig
-parsing converges under the neutral `reference_contigs` library, while each
-consumer retains its own agreement, evidence, CLI, and publication behavior.
+parsing has converged under the neutral `reference_contigs` library through
+`LIB-02K`, while each consumer retains its own agreement, evidence, CLI, and
+publication behavior.
 The exact targets and prohibited scope are fixed in
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
 

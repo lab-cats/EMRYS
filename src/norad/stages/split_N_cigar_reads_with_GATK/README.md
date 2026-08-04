@@ -149,8 +149,8 @@ no invocation-directory residue:
 
 The validator privately exact-loads neutral
 [`validation_report.py`](../../libraries/validation_report.py), neutral
-[`bam_validation.py`](../../libraries/bam_validation.py), and the unchanged
-public [`scripts/reference_provenance.py`](../../../../scripts/reference_provenance.py).
+[`bam_validation.py`](../../libraries/bam_validation.py), and neutral
+[`reference_contigs.py`](../../libraries/reference_contigs.py).
 Each bridge validates the exact owner and preserves foreign cache state without
 changing `sys.path`; no package identity, `PYTHONPATH`, wrapper, compatibility
 import, or public helper CLI is supported.
@@ -158,7 +158,7 @@ import, or public helper CLI is supported.
 Validator exit `0` means five rows were validly rendered or published; one or
 more rows may still have `status=fail`. Quickcheck nonzero is published as a
 failed row. Unsafe input, a required header-tool failure, a stable-input
-mismatch, a private-owner integrity failure, or unsafe publication exits `2`
+mismatch, an exact-owner integrity failure, or unsafe publication exits `2`
 without a new report and preserves a valid predecessor when one exists.
 Neither producer nor scheduler exit `0` implies validator pass.
 

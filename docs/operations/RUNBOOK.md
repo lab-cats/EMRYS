@@ -3466,7 +3466,7 @@ no invocation-directory residue:
 ```
 
 An `ERROR: unable to load NORAD validation-report`, `BAM-validation`, or
-`reference-provenance` owner is a checkout-integrity failure. Inspect the exact
+`reference-contig` owner is a checkout-integrity failure. Inspect the exact
 named file and checkout; do not add `PYTHONPATH`, install a package, invoke a
 helper as a CLI, or restore a legacy Step `05` path.
 

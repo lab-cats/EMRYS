@@ -175,7 +175,7 @@ direct, one-owner mechanics without inventing a new top-level domain.
 | --- | --- | --- | --- |
 | Artifact contract validation | `src/norad/contracts/artifacts/validate_artifact_contracts.py`; the five existing schema basenames under `src/norad/contracts/schemas/artifacts/v1/` | The five artifact JSON Schemas; no reporting template or producer-local schema | `tests/contracts/artifacts/test_artifact_schema_contracts.py`; current valid fixtures under `tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/` |
 | Artifact indexing, canonical run-summary assembly, and static reporting | The six existing script basenames under `src/norad/reporting/`; `src/norad/reporting/templates/{run_report.qmd,run_report_pdf.qmd}`; `src/norad/reporting/styles/run_report.css` | Artifact index and summary implementation, renderer/bundle/shell launcher, two QMD templates, and one CSS style | Existing direct suite basenames under `tests/reporting/`; fixture groups under `tests/reporting/fixtures/{artifact_adapters_v1,artifact_run_summary_v1,report_html_v1}/` |
-| Reference provenance evidence | `src/norad/evidence/reference_provenance/reference_provenance.py` | The current public evidence command; shared parsers move first only if separately approved as a neutral seam | `tests/evidence/reference_provenance/test_reference_provenance.py` |
+| Reference provenance evidence | `src/norad/evidence/reference_provenance/reference_provenance.py` | The current public evidence command; its shared parsers are final under the neutral seam below | `tests/evidence/reference_provenance/test_reference_provenance.py` |
 | Structured runtime inspection | `src/norad/evidence/runtime_preflight/runtime_preflight.py` | The current explicit-profile, read-only inspection command | `tests/evidence/runtime_preflight/test_runtime_preflight.py` |
 | Storage evidence | `src/norad/evidence/storage_inventory/storage_inventory.py` | The current read-only inventory command; retention action remains prohibited | `tests/evidence/storage_inventory/test_storage_inventory.py` |
 
@@ -190,6 +190,10 @@ must be implemented bottom-up through separate JIT cards:
 | Scientific artifact and public review-package contracts | `src/norad/contracts/scientific_evidence/`, beginning with `step08.py`, followed by separately reviewed `step09.py` and `review_package.py`; mirrored tests under `tests/contracts/scientific_evidence/` | Closed public headers/vocabularies; sample/partition and Step `08`/`09` artifact validation; public thirteen-file review-package roster and state reduction; private subordinate parsing needed by those named APIs | Step `08`, Step `09`, Step `09c`, artifact indexing, and reporting may consume the applicable public contract. The neutral owner may not import them or own review-plan/evidence-payload policy, `Artifact`, `ReviewContext`, `build_context`, publication, locking, rollback, recovery, or reporting projection. |
 | Reference contig parsing | `src/norad/libraries/reference_contigs.py`; independent API tests at `tests/libraries/test_reference_contigs.py` | One parser-specific exception plus the exact ordered FASTA, FAI, and DICT contig/length parsers and their private duplicate/empty check | Reference provenance and the Step `00c`/`05` validators consume the library. Agreement decisions, per-role versus short-circuit aggregation, evidence rows, CLI, hashing, snapshots, publication, and recovery stay owner-local. |
 
+The reference-contig seam is implemented through `LIB-02K`: all three
+consumers exact-load the one final neutral identity, while their agreement,
+aggregation, evidence, command, and publication behaviors remain local.
+
 Reporting has removed its Step `09c` implementation dependency through a
 reporting-local reader/projection over the committed public review package,
 explicitly referenced evidence, and validated artifact-index records. The
@@ -203,9 +207,9 @@ and R checks remain independent from the Python executable contract.
 These homes do not approve descriptors, package imports, console scripts, or
 distribution. Reporting must not reintroduce a private implementation
 dependency on the Step `09c` evidence owner, and the reference-evidence move
-must not leave Step `00c` or Step `05` importing a peer implementation. Any
-neutral extraction needed to correct those directions is a separate reviewed
-unit completed before the affected owner moves.
+must not leave Step `00c` or Step `05` importing a peer implementation. The
+reviewed neutral extraction needed to correct that direction is complete; the
+reference-evidence owner can now move separately without reopening the seam.
 
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.

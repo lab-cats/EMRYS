@@ -66,15 +66,14 @@ the owned report deterministically after stable-input validation. From another
 working directory, use absolute paths for the interpreter, validator, three
 inputs, and output.
 
-The validator privately exact-loads the unchanged public
-[`scripts/reference_provenance.py`](../../../../scripts/reference_provenance.py)
-owner and the neutral validation-report library. An exact reference-loader
-failure is a checkout-integrity diagnostic; do not work around it by changing
-`PYTHONPATH`. This migration does not extract, package, or reassign the public
-reference-provenance owner. The final
+The validator exact-loads the neutral
+[`reference_contigs.py`](../../libraries/reference_contigs.py) parser owner and
+the neutral validation-report library. An exact reference-loader failure is a
+checkout-integrity diagnostic; do not work around it by changing `PYTHONPATH`.
+Reference provenance and the final
 [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
-validator independently uses the same exact public owner; neither consumer
-owns or wraps it.
+validator independently consume the same ready neutral identity; agreement,
+aggregation, evidence, and publication remain consumer-local.
 
 ## Scheduler entry point
 

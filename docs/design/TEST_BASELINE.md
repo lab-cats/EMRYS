@@ -44,9 +44,10 @@ behavior.
 
 The tracked Step `00c` validator row resolves to
 `src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py`.
-Its measured `128/139` line and `35/42` branch counts include the reviewed
-private reference-owner loader. The tracked Step `01` validator remains at its
-final path with `125/140` measured lines and `34/44` measured branches.
+Its current measured `136/142` line and `39/44` branch counts include the
+reviewed neutral reference-contig loader. The tracked Step `01` validator
+remains at its final path with `125/140` measured lines and `34/44` measured
+branches.
 
 The final MIG-03F serial measurement moved Step `02` to
 `src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py`
@@ -129,21 +130,19 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
-The current RPT-05A measurement protects final
-`src/norad/reporting/_run_summary_science.py` at `454/540` covered lines and
-`166/238` branches. The committed tracked baseline remains `10241/12326` lines
-and `3599/4964` branches with the five reporting identities updated to their
-final paths and sorted canonically. The complete Python lane passed `1,540`
-tests with `17` skips and measured `0.845535` global line coverage and
-`0.747115` global branch coverage across `35` files. The affected roster passed
-`506` tests with `17` skips; pinned-Quarto report testing passed `164` tests;
-the report-runtime route passed `17` with `60` deselections; and static, shell,
-public CLI/Make, asset-hash, file-mode, and documentation gates passed. Both
-project-local Step `08`/`09` real-R semantic fixture routes also passed. The
-aggregate sandbox run stopped when guarded R could not resolve Bioconductor
-metadata; an unrestricted read-only `r-check` reached dependency validation and
-confirmed one out-of-date package. No dependency was installed, restored,
-removed, or updated.
+The current LIB-02K measurement protects final neutral
+`src/norad/libraries/reference_contigs.py` at `52/52` covered lines and `28/28`
+branches. The affected consumers measure `scripts/reference_provenance.py` at
+`332/379` lines and `107/142` branches, final Step `00c` at `136/142` and
+`39/44`, and final Step `05` at `188/195` and `49/56`. The committed tracked
+baseline is `10323/12387` lines and `3633/4986` branches; unrelated historical
+documentation-validator and run-summary entries were not opportunistically
+refreshed. The complete Python lane passed `1,589` tests with `17` skips and
+measured `0.847971` global line coverage and `0.750594` global branch coverage
+across `36` files. The final affected roster passed `474` tests; static, all
+shell, public CLI/Make, golden, coverage-policy, and documentation gates passed.
+This is parser-extraction and loader-integrity evidence only; no dependency was
+installed, restored, removed, or updated.
 
 DOC-GATE-01 independently freezes the extracted documentation validator with a
 hard-coded legacy heading oracle, isolated valid/invalid repositories, exact
@@ -223,7 +222,7 @@ surface reachable without copying the dated row-by-row matrices:
 | Python, shell, R, file-mode, arbitrary-CWD, and Make entry points | `tests/test_public_cli_contracts.py` and the direct owner named by each entry point; exact path maps cover final migrated-owner paths plus intentionally retained cross-cutting flat owners |
 | SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `08` live under `tests/stages/`, Step `09` under `tests/analyses/`, and migrated Step `02b`, Step `03`, and Step `09c` evidence tests under their owner directories in `tests/evidence/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
-| Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
+| Validation publication, neutral BAM/reference helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, `tests/libraries/test_reference_contigs.py`, plus affected consumer and producer-specific transaction suites |
 | Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/contracts/scientific_evidence/test_review_package.py` directly protects the neutral review-package roster, headers, vocabularies, bindings, and status reducer; `tests/test_independent_contract_goldens.py` plus schema and producer suites protect cross-owner parity. |
 | Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py`, its owner-local fixed corpus, and guarded real-R comparison |
 | Step `09c` evidence policy, input, publication, signal, concurrency, and recovery behavior | `tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py` plus its adjacent shell contract and fixture builder; public review-package contract protection is neutral, and characterized signal defects remain defects |
