@@ -29,7 +29,7 @@ does not make that evidence discoverable or explain its status.
 
 ## Completion unblocks
 
-- [DOC-CONS-08E](../TODO/DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the root history route and date/provenance rules then exist for an operational child owned by that card.
+- [DOC-CONS-08E](../IN_PROGRESS/DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the root history route and date/provenance rules now support the selected operational-history and live-state compression package.
 - [DOC-CONS-08G](../TODO/DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
 
 ## Prerequisites

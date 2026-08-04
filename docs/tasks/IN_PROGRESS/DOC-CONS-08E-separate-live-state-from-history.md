@@ -87,5 +87,10 @@ first-use milestones. That duplication makes stale history look operational.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Selected on 2026-08-03 from clean, published predecessor
+`9cb4bb88788d5d58b9c918baa7993cafff145c5b` on
+`codex/doc-cons-08e-separate-live-state-from-history`. The approved package is
+documentation-only/non-consuming: create the indexed operations-history
+destination, compress only the three named live owners, batch directly
+affected ownership/navigation/lifecycle repairs at card close, and run the
+complete documentation gate without computational or cluster validation.
