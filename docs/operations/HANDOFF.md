@@ -15,10 +15,10 @@ and delivery-required lineage live in
 - Latest executable/test checkpoint:
   `b5160f377afe721abecf67ce0cab951f6456e583`, the `MIG-04D` direct storage-
   inventory source/test relocation and repository path cutover, and the frozen
-  executable basis for this documentation/lifecycle close.
+  executable basis for selected `MIG-04E`.
 - Current package predecessor:
-  `e52f4e8526562f02ce82e2302f979ffc66269633`, the clean, published,
-  live-remote-equal `MIG-04C` documentation/lifecycle close.
+  `797aede33700a73ff39898ce2f683d26f7b5f1d1`, the clean, published,
+  live-remote-equal `MIG-04D` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -82,7 +82,11 @@ and delivery-required lineage live in
   into their fixed final evidence-owner homes, repaired only the suite's self-
   relative anchors, and cut over every repository path consumer without a
   wrapper or public starter-contract move.
-- Selected package: none.
+- Selected package:
+  [`MIG-04E`](../tasks/IN_PROGRESS/MIG-04E-converge-independent-contract-goldens.md)
+  directly moves only the independent-contract-golden suite and eight
+  fixture/provenance files into their fixed final contract-integration owner,
+  repairing only the suite's repository-root and owner-local-golden anchors.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -93,8 +97,9 @@ and delivery-required lineage live in
   The reference-contig seam is final through `LIB-02K`, and reference-
   provenance evidence is physically final through `MIG-04B`.
   Runtime-preflight evidence is physically final through `MIG-04C`, and storage
-  evidence is physically final through `MIG-04D`. Cross-owner test paths remain
-  in their current locations pending a separately selected JIT move.
+  evidence is physically final through `MIG-04D`. `MIG-04E` selects only the
+  independent-golden owner; the separate validation-roster paths remain in
+  their current locations and unselected.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -238,11 +243,14 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. At this user-requested slice boundary, pause
-before selecting more work. The next preferred still-unselected unit converges
-the residual cross-owner contract tests under `tests/contract_integration/`;
-its exact file/fixture roster and caller cutover must be freshly bounded before
-mutation. Do not preload the separate legacy-test reviews or final audit.
+Selected
+[`MIG-04E`](../tasks/IN_PROGRESS/MIG-04E-converge-independent-contract-goldens.md)
+is the sole active residual package. Move only the independent-golden suite
+and its eight fixture/provenance files directly under
+`tests/contract_integration/independent_contract_goldens/`; repair only its two
+self-relative anchors, preserve fixture bytes and all oracle behavior, and add
+no package or compatibility path. Leave the separate validation-roster owner,
+its fourteen callers, legacy reviews, and final audit unselected.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

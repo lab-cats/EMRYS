@@ -31,10 +31,12 @@ directly relocated runtime preflight and its mirrored suite into their final
 evidence-owner homes. Completed
 [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
 then directly relocated storage inventory and its mirrored suite into their
-final evidence-owner homes. No residual-convergence package is selected; the
-next preferred cross-owner contract-test convergence remains unselected. No
-later owner move, final audit, runtime execution, cluster, or default-branch
-integration is selected. The remainder of
+final evidence-owner homes. Selected
+[`MIG-04E`](../tasks/IN_PROGRESS/MIG-04E-converge-independent-contract-goldens.md)
+is the sole residual-convergence package and owns only the independent-golden
+owner. The separate validation-roster move, later legacy reviews, final audit,
+runtime execution, cluster, and default-branch integration remain unselected.
+The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not

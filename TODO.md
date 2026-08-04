@@ -63,10 +63,13 @@ without a wrapper. Completed
 then directly moved the public storage-inventory command and direct suite to
 their fixed evidence-owner homes at executable checkpoint `b5160f3`, cut over
 all repository path consumers, and retained both public starter contracts at
-root without a wrapper. No residual-convergence package is selected. The next
-preferred unit is the still-unselected cross-owner contract-test convergence.
-Scheduler, ingestion, orchestration/profile, cluster, and default-branch work
-remain deferred; later residual units remain unselected.
+root without a wrapper. Selected
+[`MIG-04E`](docs/tasks/IN_PROGRESS/MIG-04E-converge-independent-contract-goldens.md)
+is the sole residual-convergence package: it moves only the independent-
+contract-golden suite and eight fixture/provenance files into their fixed
+contract-integration owner. The separate validation-roster owner remains
+unselected. Scheduler, ingestion, orchestration/profile, cluster, and default-
+branch work remain deferred; later residual units remain unselected.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
