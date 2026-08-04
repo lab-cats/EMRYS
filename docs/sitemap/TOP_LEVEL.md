@@ -28,8 +28,11 @@ The bounded repository-health runway and
 live-state compression are complete. Completed
 [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
 directly relocated runtime preflight and its mirrored suite into their final
-evidence-owner homes. No residual package, final audit, runtime execution,
-cluster, or default-branch integration is selected. The remainder of
+evidence-owner homes. Selected
+[`MIG-04D`](../tasks/IN_PROGRESS/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
+is the sole residual-convergence package. No later owner move, final audit,
+runtime execution, cluster, or default-branch integration is selected. The
+remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not
