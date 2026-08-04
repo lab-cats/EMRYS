@@ -166,10 +166,10 @@ ownership only; no listed file is moved by this topology contract.
 
 ## Cross-cutting implemented target homes
 
-The numbered-owner roster above does not classify the implemented cross-cutting
-concerns that remain at legacy root paths. Their final homes are fixed here so
-later movement can use the same direct, one-owner mechanics without inventing a
-new top-level domain.
+The numbered-owner roster above does not classify implemented cross-cutting
+concerns. This table remains the owner of their final homes after movement;
+unmigrated rows may still occupy legacy root paths. Each move uses the same
+direct, one-owner mechanics without inventing a new top-level domain.
 
 | Current functional owner | Exact target source home | Owned native assets | Mirrored test home |
 | --- | --- | --- | --- |

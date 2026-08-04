@@ -22,7 +22,6 @@ producers would create common-mode defects.
 
 ## Blocked by
 
-- [MIG-04A](../IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) — Required: the validator, schemas, direct test, and fixtures must occupy their permanent neutral owner before decomposition.
 - [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 
@@ -32,6 +31,10 @@ producers would create common-mode defects.
 
 ## Prerequisites
 
+- Completed
+  [MIG-04A](../COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+  places the validator, schemas, direct test, and fixtures in their permanent
+  neutral owner.
 - Complete independent roster/golden/CLI characterization and refresh the
   validator's schema/status/consumer matrix.
 - Verify that the validator and its five public schemas occupy the final

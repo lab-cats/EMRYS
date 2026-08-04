@@ -19,14 +19,20 @@ closed. Published documentation-only
 dispositions the remaining cross-cutting source/test convergence without moving
 files. Documentation-only
 [`LIB-02F`](docs/tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
-then settled the two observed peer-implementation seams and created exactly
-one first campaign successor:
-[`MIG-04A`](docs/tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
-now selected as the sole residual package for bounded plan/review and direct
-neutral artifact-contract migration. No executable move, final audit, runtime,
-cluster, or default-branch integration has begun. `PROGRAM-01` and unrelated
-work remain frozen outside their completed slices. Execute only one dependency-
-valid package at a time under the
+then settled the two observed peer-implementation seams. Completed
+[`MIG-04A`](docs/tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+moved the neutral artifact validator, five schemas, direct suite, and valid
+fixtures to their permanent owners at executable checkpoint `17090ac` and cut
+over every reviewed consumer. No residual package is selected at this
+lifecycle close. The next unselected JIT
+candidate is
+[`LIB-02G`](docs/tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md),
+the narrow Step `08` neutral scientific-evidence contract extraction required
+before later Step `09`/`09c` and reporting dependency removal. Scheduler,
+ingestion, orchestration/profile, runtime, cluster, and default-branch work
+remain deferred or unselected. `PROGRAM-01` and unrelated work remain frozen
+outside their completed slices. Execute only one dependency-valid package at a
+time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 

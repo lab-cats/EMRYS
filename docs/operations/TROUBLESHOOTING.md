@@ -2478,7 +2478,9 @@ policy can change those statements. Report generation will not do so.
 
 ### Symptom
 
-Running `scripts/validate_artifact_contracts.py` fails before validation with
+Running
+`src/norad/contracts/artifacts/validate_artifact_contracts.py` fails before
+validation with
 an import error naming `jsonschema`, `referencing`, or another pinned Python
 dependency.
 
@@ -2496,7 +2498,9 @@ explicit local setup action:
 ```bash
 cd /Users/elisteiger/dev/norad
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python scripts/validate_artifact_contracts.py --check-schemas
+.venv/bin/python \
+  src/norad/contracts/artifacts/validate_artifact_contracts.py \
+  --check-schemas
 ```
 
 Do not add package installation to pipeline compute wrappers, SLURM jobs,
@@ -2555,17 +2559,17 @@ Combining `--inventory` with a document performs reconciliation only for an
 First validate the tracked contracts and inventory independently:
 
 ```bash
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --check-schemas
 
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --inventory configs/artifact_inventory.example.tsv
 ```
 
 Then validate the explicit record with the matching public schema:
 
 ```bash
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --schema artifact-record \
   --document /explicit/path/to/artifact-record.json
 ```

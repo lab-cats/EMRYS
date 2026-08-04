@@ -13,10 +13,10 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Current package predecessor:
-  `96c64365705eff08bd9509a76a97b8b5ee04eb1b`, the clean, published,
-  upstream-equal documentation-only `LIB-02F` decision/lifecycle close.
+  `17090acb523d1a882bfae51ff738b5f8b9e391c9`, the local executable/test
+  `MIG-04A` cutover checkpoint awaiting this documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
-  equality from Git; this handoff owns the branch and selected package rather
+  equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
 - Completed planning predecessor: documentation-only/non-consuming
   [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md).
@@ -31,17 +31,20 @@ and delivery-required lineage live in
   consumed surface. It fixed bottom-up neutral scientific-evidence contracts,
   a reporting-local committed-package reader/projection, and a neutral
   `reference_contigs` parser library as the permanent directions.
-- Selected package:
-  [`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-  moves only the neutral artifact validator, five schemas, direct test, and
-  four valid fixtures with all direct consumers. Selection begins bounded
-  plan/review; no executable source move has begun.
+- Completed residual migration:
+  [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+  moved the neutral artifact validator, five schemas, direct test, and four
+  valid fixtures to their permanent owners and cut over all reviewed consumers
+  without a wrapper or schema/behavior change. No package is selected at this
+  lifecycle close. Unselected
+  [`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
+  is the next JIT candidate.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
-  fourteen-owner DAG topology. Residual artifact-contract, reporting,
-  reference/runtime/storage evidence, and cross-owner test paths remain in
-  their current legacy locations pending separately approved JIT moves. Current
-  and target ownership route through
+  fourteen-owner DAG topology. The residual artifact-contract owner is also
+  migrated through `MIG-04A`. Reporting, reference/runtime/storage evidence,
+  and cross-owner test paths remain in their current legacy locations pending
+  separately approved JIT moves. Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
   [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
@@ -71,7 +74,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report library and all fourteen semantic DAG owners are physically migrated; their legacy executable/test owners and temporary compatibility paths are absent. Cross-cutting artifact-contract, reporting, evidence-helper, and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, and neutral artifact-contract validator/schemas/direct evidence are physically migrated; their legacy implementation paths and temporary compatibility paths are absent. Reporting, evidence-helper, and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -80,7 +83,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest documentation package | Published `PLAN-03A` fixes exact residual dispositions and order. Documentation-only `LIB-02F` resolves the two peer-implementation seams; `MIG-04A` is selected only for the first executable move. None creates runtime, cluster, scientific-review, or biological evidence, and no executable move has begun. |
+| Latest residual package | `MIG-04A` moved artifact contracts at executable checkpoint `17090ac`; focused parity, Python coverage, shell contracts, guarded Step `08`/`09` real-R semantics, and pinned report runtime passed. The aggregate gate remained non-green only because current CRAN metadata advertises `renv 1.2.4` while the synchronized lock/library remains at `1.2.3`; no dependency changed. No package creates runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -142,9 +145,13 @@ worktree. Its original directory tree remains preserved at
 `/private/tmp/norad-r-library-quarantine.Z645n8/macos`.
 
 Do not delete, repair, reuse, or automatically restore that quarantine. No
-package was installed, restored, removed, or updated. Successful guarded checks
-use the existing primary project library through `RENV_PATHS_LIBRARY`; the
-earlier temporary Python-environment symlink remains removed.
+package was installed, restored, removed, or updated. Guarded checks use the
+existing primary project library through `RENV_PATHS_LIBRARY`; the earlier
+temporary Python-environment symlink remains removed. Current CRAN metadata
+now advertises `renv 1.2.4` while the tracked lock and installed library remain
+synchronized at `1.2.3`, so the aggregate R environment check is explicitly
+non-green until a separately reviewed dependency-maintenance package resolves
+that drift.
 
 ## Current blockers
 
@@ -153,6 +160,9 @@ earlier temporary Python-environment symlink remains removed.
   inspection.
 - Step `07` lacks real-bcftools and cluster evidence.
 - CSU batch-visible R and package availability remain unresolved.
+- Guarded local R dependency metadata flags lock-pinned `renv 1.2.3` as out of
+  date against CRAN `1.2.4`; no compatible existing library is present, and
+  MIG-04A did not install or update it.
 - Storage quota, scratch capacity, and retention policy remain unresolved.
 - The exact Novogene annotation release remains partially unresolved.
 - No production scientific-evidence review has been completed.
@@ -177,17 +187,18 @@ earlier temporary Python-environment symlink remains removed.
 
 ## Immediate resume point
 
-Published `PLAN-03A` is the clean campaign predecessor. Completed
-[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
-owns the bounded semantic decisions for the reporting/Step `09c` and
-reference-provenance/Step `00c`/`05` direction leaks. Its clean, published,
-upstream-equal documentation close created only selected
-[`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md).
-Inspect that card's exact current implementation, consumers, modes, hashes,
-tests, and path contracts; freeze focused pre-move behavior; then execute its
-direct cutover inside the existing campaign authorization.
+Completed
+[`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+owns the final artifact-contract cutover and exact evidence ceiling. After this
+documentation close is clean, published, and live-remote equal, select only
+unselected
+[`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
+and begin its read-only JIT plan/review. That card extracts only the public
+Step `08` neutral scientific-evidence contract; later Step `09`, public Step
+`09c`, reporting-local reader, reporting migration, reference/evidence moves,
+and final audit remain uncreated or unselected.
 
-No executable migration, final audit, scheduler, ingestion,
+No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is
 preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,

@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, and neutral validation-report library | pipeline-owner migration complete through `MIG-03O`; residual cross-cutting convergence is dispositioned by `PLAN-03A` |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation-report library, and neutral artifact contracts | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -56,13 +56,15 @@ completed cards rather than this current matrix.
 
 The neutral validation-report concern and all fourteen semantic DAG owners are
 physically migrated through `MIG-03O`; the required-artifact DAG contains no
-unmigrated owner in that frozen topology. Cross-cutting artifact contracts,
-reporting, evidence helpers, and shared tests remain at legacy root paths and
-are not covered by that narrower completion claim. The repository-health
+unmigrated owner in that frozen topology. `MIG-04A` also moved the neutral
+artifact validator, schemas, direct test, and valid fixtures to their final
+homes. Reporting, evidence helpers, and shared tests remain at legacy root
+paths and are not covered by those completion claims. The repository-health
 runway completed its documentation-gate and lifecycle packages, preserved the
 quarantined malformed local R-library entry, corrected the bounded recursive-
-Make fixture issue, and reached a green complete local gate without changing
-dependencies.
+Make fixture issue, and reached an earlier green complete local gate without
+changing dependencies. Current `renv` metadata drift is recorded in the
+handoff and MIG-04A completion evidence without relabeling that history.
 
 Documentation-only
 [`DOC-CONS-08E`](../tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
@@ -90,10 +92,12 @@ Documentation-only
 [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) is
 complete as the first decision package in the explicitly authorized residual
 convergence campaign. It settled the two observed prohibited peer-
-implementation seams and created exactly one first campaign successor,
-[`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md).
-That neutral artifact-contract move is now the sole selected package; no
-executable migration has begun.
+implementation seams. Completed
+[`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+performed the first executable move. No package is selected at this lifecycle
+close; unselected
+[`LIB-02G`](../tasks/TODO/LIB-02G-extract-step08-scientific-evidence-contract.md)
+is the next JIT candidate.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -101,7 +105,7 @@ and frozen proposal presence does not authorize selection or implementation.
 
 ### Residual source-topology convergence
 
-The exact 133-path current roster is owned by the
+The exact 122-path current roster is owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
@@ -113,7 +117,7 @@ disposition.
 
 | Residual group | Disposition | JIT route or boundary |
 | --- | --- | --- |
-| Artifact schemas and contract validator | `MOVE` through [`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | Move the validator, five schemas, direct test, and fixtures together in the first executable campaign card. |
+| Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Start only after artifact contracts and every concrete prohibited-dependency extraction it needs; move current behavior before feature work or decomposition. |
 | Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
@@ -131,10 +135,10 @@ disposition.
 Preferred one-owner order is:
 
 1. completed `LIB-02F` settles only the two observed shared seams;
-2. execute selected `MIG-04A` as the neutral artifact-contract move;
-3. create and execute bottom-up scientific-evidence contract slices only when
-   required by the next owner: Step `08`, then Step `09`, then the public
-   review-package contract and reporting-local reader removal;
+2. completed `MIG-04A` performs the neutral artifact-contract move;
+3. select and execute unselected `LIB-02G`, then create later bottom-up
+   scientific-evidence slices only just in time: Step `09`, the public review-
+   package contract, and reporting-local reader removal;
 4. execute `RPT-05A` only after those concrete blockers close;
 5. extract the neutral `reference_contigs` parser seam, then move reference
    provenance; move runtime preflight and storage inventory as separate owner
@@ -143,8 +147,9 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-`MIG-04A` is the sole selected residual executable package. No later seam-
-extraction card, final audit, or deferred domain is pre-created or begun.
+No residual package is selected at this lifecycle close. `LIB-02G` is the sole
+pre-created next JIT candidate; later seam-extraction cards, the final audit,
+and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -193,13 +198,17 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                 └── PLAN-03A documentation/lifecycle close 3efe461
                     └── LIB-02F selection 3896081
                         └── LIB-02F decision/lifecycle close 96c6436
-                            └── MIG-04A selection
-                                (commit containing this plan)
+                            └── MIG-04A selection ca5497f
+                                └── MIG-04A executable cutover 17090ac
+                                    └── MIG-04A documentation/lifecycle close
+                                        + LIB-02G registration
+                                        (commit containing this plan)
 ```
 
-The final node is the current selection tip represented by this plan. It
-selects only `MIG-04A`; no executable migration, final audit, default-branch
-integration, runtime, or cluster action is implied.
+The final node is the current lifecycle-close tip represented by this plan. It
+creates unselected `LIB-02G` as the next JIT candidate but selects no package;
+no later extraction, final audit, default-branch integration, runtime, or
+cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

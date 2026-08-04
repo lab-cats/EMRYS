@@ -95,12 +95,16 @@ extending the flat tree.
 - Pre/post direct CLI parity covers help, schema-only validation, valid and
   malformed documents, inventory reconciliation, streams, exits, arbitrary
   working directory, and side-effect boundaries.
-- Schema and fixture hashes and modes are unchanged; path-only fixtures and
-  rosters change only where they truthfully name the moved source.
+- Schema bytes, hashes, identities, and modes are unchanged. The report-receipt
+  fixture remains byte-identical; the other three fixture files change only in
+  the four approved self-test path occurrences, while every embedded hash and
+  non-path byte remains unchanged. Test and fixture modes remain unchanged.
 - The direct artifact-contract suite, affected reporting/adapter/summary and
   independent-golden suites, public-CLI characterization, measured Python
-  coverage, complete applicable local gate, documentation gate, and exact
-  legacy-path searches pass on the final executable state.
+  coverage, applicable independent local lanes, documentation gate, and exact
+  legacy-path searches pass on the final executable state. The complete
+  aggregate gate is attempted and any unrelated environment deferral is
+  recorded without a passing-gate claim or dependency mutation.
 
 ## Canonical documentation updates
 
@@ -117,6 +121,49 @@ extending the flat tree.
 
 ## Completion record
 
-Selected after the clean, published, upstream-equal `LIB-02F` decision close.
-Selection begins bounded plan/review only; no executable source, schema, test,
-fixture, caller, configuration, or documentation path has moved.
+Selected from clean, published, upstream-equal `LIB-02F` decision close
+`96c64365705eff08bd9509a76a97b8b5ee04eb1b`; status-only selection checkpoint
+`ca5497f40442f9d7427f56458372e3b701efa0ff` was the frozen implementation
+parent. Executable/test checkpoint
+`17090acb523d1a882bfae51ff738b5f8b9e391c9` then moved exactly the validator,
+five schemas, direct suite, and four valid fixtures and cut over the six
+reviewed reporting-chain consumers. No wrapper, copy, symlink, package import,
+`PYTHONPATH` mutation, installation metadata, console script, schema change,
+or reporting/scientific-policy change was added.
+
+- The validator remains mode `0755`; schemas, direct test, and fixtures remain
+  `0644`. The five schema SHA-256 values remain, respectively,
+  `5bf367ff9f4f3142bbbc77cbd187b85902758613225958d009b30bd89f8cf41e`,
+  `f67385bbc65820f3efd6ad30b11e5e131ce42a8da5a9efcdd414819d22709b95`,
+  `6035cda8b393a161efa19f0c8fb2d4080be5525dee785c4ce33aebc690eba28a`,
+  `a2ea0f551eab4848f487f03a277de43a10264cfb550e14eee121f03cc4ac6884`,
+  and `67ff7068a4b1dbc911eaccc0a484eefd10ba48d0362cb61e89c64e7d37c089bf`.
+  `report_receipt.json` remains byte-identical at
+  `e98edba4a48a409ffd0b66e5a5108e6317fd4f61d64e6e48a6986b73f3d41f2e`;
+  the other three valid fixtures contain only the four approved self-test path
+  substitutions and retain all embedded hashes and non-path bytes.
+- Old-path and final-path focused sets each passed `398` tests with `17`
+  skips. The moved direct suite passed `58` tests, and the independent loader/
+  golden suite passed `44`. Help, five-line schema check, valid and malformed
+  documents, inventory reconciliation, streams, exits, arbitrary-CWD
+  execution, and side-effect behavior matched with only the approved physical
+  paths changed. All Python consumers resolve one exact final module identity.
+- Final executable coverage ran `1,346` passes with `17` skips. Current measured
+  coverage was `0.834998` line and `0.729303` branch across `32` files; the
+  affected-only committed floor increased to `0.818662` line and `0.705324`
+  branch. The moved validator retained exactly `658/777` lines and `361/472`
+  branches; no unrelated transient coverage gain was promoted.
+- Static preflight, the complete shell-contract lane, guarded Step `08`/`09`
+  real-R semantic fixtures, and pinned report-runtime lane passed; report
+  runtime was `17` passes with `60` deselected. The exact network-enabled
+  aggregate gate remained status `2`, not green, solely because CRAN began
+  advertising `renv 1.2.4` after the last known green run while the installed
+  library and `renv.lock` remain synchronized at `1.2.3`. There were zero
+  too-new packages, no existing compatible `1.2.4` library, and no dependency,
+  lockfile, cache, or runtime mutation. This is an explicit environmental
+  deferral, not a passing aggregate-gate claim or a MIG-04A regression.
+- Final exact searches find no non-document consumer at the legacy validator,
+  schema, direct-test, or valid-fixture paths and no duplicate implementation.
+  Documentation validation and `git diff --check` pass at lifecycle close.
+  These results are local contract-preserving engineering evidence only; they
+  add no cluster, production, scientific-review, or biological-readiness proof.

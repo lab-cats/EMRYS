@@ -660,15 +660,15 @@ proof. Focused tests:
 Implemented locally at `5f4d3b4`:
 
 ```text
-schemas/artifacts/v1/common.schema.json
-schemas/artifacts/v1/artifact_record.schema.json
-schemas/artifacts/v1/scientific_review_record.schema.json
-schemas/artifacts/v1/run_summary.schema.json
-schemas/artifacts/v1/report_receipt.schema.json
+src/norad/contracts/schemas/artifacts/v1/common.schema.json
+src/norad/contracts/schemas/artifacts/v1/artifact_record.schema.json
+src/norad/contracts/schemas/artifacts/v1/scientific_review_record.schema.json
+src/norad/contracts/schemas/artifacts/v1/run_summary.schema.json
+src/norad/contracts/schemas/artifacts/v1/report_receipt.schema.json
 configs/artifact_inventory.example.tsv
-scripts/validate_artifact_contracts.py
-tests/fixtures/artifact_schema_v1/valid/
-tests/test_artifact_schema_contracts.py
+src/norad/contracts/artifacts/validate_artifact_contracts.py
+tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/
+tests/contracts/artifacts/test_artifact_schema_contracts.py
 ```
 
 The shared common schema and four public record schemas use JSON Schema Draft
@@ -684,7 +684,7 @@ artifacts may share one logical scope, whose rows must remain contiguous.
 Validate the schemas and example inventory:
 
 ```bash
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --check-schemas \
   --inventory configs/artifact_inventory.example.tsv
 ```
@@ -692,28 +692,29 @@ Validate the schemas and example inventory:
 Validate each public example record:
 
 ```bash
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --schema artifact-record \
-  --document tests/fixtures/artifact_schema_v1/valid/artifact_record.json \
+  --document tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/artifact_record.json \
   --inventory configs/artifact_inventory.example.tsv
 
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --schema scientific-review-record \
-  --document tests/fixtures/artifact_schema_v1/valid/scientific_review_record.json
+  --document tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/scientific_review_record.json
 
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --schema run-summary \
-  --document tests/fixtures/artifact_schema_v1/valid/run_summary.json
+  --document tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/run_summary.json
 
-.venv/bin/python scripts/validate_artifact_contracts.py \
+.venv/bin/python src/norad/contracts/artifacts/validate_artifact_contracts.py \
   --schema report-receipt \
-  --document tests/fixtures/artifact_schema_v1/valid/report_receipt.json
+  --document tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/report_receipt.json
 ```
 
 Run the focused suite:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_artifact_schema_contracts.py
+.venv/bin/python -m pytest -q \
+  tests/contracts/artifacts/test_artifact_schema_contracts.py
 ```
 
 The validator is read-only. It validates strict JSON, schema and semantic
@@ -848,7 +849,7 @@ Run the focused gates:
 ```bash
 .venv/bin/python -m pytest -q tests/test_artifact_adapters.py
 .venv/bin/python -m pytest -q \
-  tests/test_artifact_schema_contracts.py \
+  tests/contracts/artifacts/test_artifact_schema_contracts.py \
   tests/test_artifact_adapters.py
 ```
 
@@ -962,7 +963,7 @@ Run focused and combined checks:
 ```bash
 .venv/bin/python -m pytest -q tests/test_artifact_run_summary.py
 .venv/bin/python -m pytest -q \
-  tests/test_artifact_schema_contracts.py \
+  tests/contracts/artifacts/test_artifact_schema_contracts.py \
   tests/test_artifact_adapters.py \
   tests/test_artifact_run_summary.py
 ```

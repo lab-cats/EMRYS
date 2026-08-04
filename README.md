@@ -56,10 +56,10 @@ analysis dependencies.
 scripts/        retained cross-cutting validation, artifact, and report entry points
 jobs/           SLURM jobs and wrapper interfaces
 src/norad/      implemented migrated owners, neutral libraries, and contracts
+src/norad/contracts/  neutral validators and versioned public schemas
 tests/          active Python, shell, R, and fixture tests
 tests/pending/  non-runnable future test plans
 configs/        example manifests and explicit contracts
-schemas/        versioned public artifact/report JSON Schemas
 reports/        static report source and style
 docs/           architecture, design, operations, and demo material
 docs/tasks/     bounded future task cards organized by lifecycle status

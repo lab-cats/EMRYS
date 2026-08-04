@@ -112,7 +112,11 @@ say missing, failed, incomplete, unavailable, blocked, or not run.
 
 ## Artifact contracts and indexing
 
-Versioned schemas under `schemas/artifacts/v1/` define:
+The neutral
+[`artifact-contract validator`](../../src/norad/contracts/artifacts/validate_artifact_contracts.py)
+enforces versioned schemas under
+[`src/norad/contracts/schemas/artifacts/v1/`](../../src/norad/contracts/schemas/artifacts/v1/).
+They define:
 
 - artifact records;
 - scientific-review records;

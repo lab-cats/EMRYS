@@ -30,8 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02F](../COMPLETED/LIB-02F-define-shared-library-ownership.md) — Required: the ownership decision is complete, but this family edge remains until its concrete bottom-up scientific-contract extraction and reporting-local dependency-removal slices are created just in time and replace it.
-- [MIG-04A](../IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) — Required: neutral artifact contracts must occupy their permanent owner before reporting moves.
+- [LIB-02G](../TODO/LIB-02G-extract-step08-scientific-evidence-contract.md) — Required: begin the concrete bottom-up scientific-contract extraction before later Step `09`/`09c` and reporting-local dependency-removal slices replace this JIT edge.
 
 ## Completion unblocks
 
@@ -42,6 +41,11 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Prerequisites
 
+- Completed [LIB-02F](../COMPLETED/LIB-02F-define-shared-library-ownership.md)
+  fixes the neutral scientific-contract and reporting-local dependency
+  directions; completed
+  [MIG-04A](../COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+  places neutral artifact contracts in their permanent owner.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.
