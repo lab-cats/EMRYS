@@ -144,10 +144,11 @@ production, cluster, scientific-review, or biological evidence.
 
 ## Current ownership boundaries and retained defects
 
-- Shared Step `08` schemas and reconciliation remain in the flat Step `09c`
-  scientific-validation module. The validator exact-loads that file under a
-  private identity for dataclass-safe execution without adding package or
-  `sys.path` behavior.
+- Shared Step `08` manifest/table schemas and reconciliation belong to neutral
+  [`step08.py`](../../contracts/scientific_evidence/step08.py). The validator
+  exact-loads that file under the same private identity used by the Step `09`
+  validator, Step `09c` implementation, and artifact index, preserving one
+  `ContractError` and `Table` identity without package or `sys.path` behavior.
 - The producer declares the input receipt as its commit marker, while the
   artifact adapter treats the summary as the native-transaction failure
   marker; ownership must resolve this disagreement.

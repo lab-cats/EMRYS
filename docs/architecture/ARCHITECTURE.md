@@ -68,13 +68,29 @@ publication protocol used by all thirteen validator entry points. The final
 through private caller-local
 loaders; no package marker, public Python import identity, install step,
 compatibility wrapper, or `sys.path` mutation is part of the current
-interface. The Step `08` and Step `09` validators, artifact index, and run-
-summary science helper exact-load the final Step `09c` implementation under
-one private identity for shared schemas and policy; this is a retained
-ownership inversion, not a package API. The FASTA-sidecar and split-N-cigar
-validators also privately
+interface. The FASTA-sidecar and split-N-cigar validators also privately
 exact-load the unchanged public flat reference-provenance owner. Stage-specific
 parsing and check rosters remain with their functional owners.
+
+### Neutral Step 08 scientific-evidence contract
+
+[`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py) owns the
+public Step `08` manifest/table headers, closed vocabularies, validation
+exception and table identity, and manifest/inputs/sites/summary validation.
+The Step `08` and Step `09` validators, final Step `09c` evidence
+implementation, and artifact index exact-load that exact file under the shared
+private identity `_norad_step08_scientific_evidence_contract`; they reject a
+foreign-path or partially initialized cached module and do not mutate
+`sys.path`. Step `09` and artifact indexing additionally reject a split object
+identity between their direct neutral load and Step `09c`. Mirrored direct
+protection lives in
+[`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py).
+
+The Step `09` validator and artifact index still exact-load the final Step
+`09c` implementation for Step `09` and review-package surfaces, while the
+run-summary science helper consumes Step `09c` review context and policy. Those
+remaining dependencies are not package APIs and are deferred to the separate
+bottom-up Step `09`, public review-package, and reporting-local-reader slices.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
 shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step

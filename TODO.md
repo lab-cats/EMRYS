@@ -23,15 +23,19 @@ then settled the two observed peer-implementation seams. Completed
 [`MIG-04A`](docs/tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
 moved the neutral artifact validator, five schemas, direct suite, and valid
 fixtures to their permanent owners at executable checkpoint `17090ac` and cut
-over every reviewed consumer. The sole selected residual package is
-[`LIB-02G`](docs/tasks/IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md),
-the narrow Step `08` neutral scientific-evidence contract extraction required
-before later Step `09`/`09c` and reporting dependency removal. Selection begins
-bounded plan/review; no LIB-02G executable or test change has begun. Scheduler,
-ingestion, orchestration/profile, runtime, cluster, and default-branch work
-remain deferred or unselected. `PROGRAM-01` and unrelated work remain frozen
-outside their completed slices. Execute only one dependency-valid package at a
-time under the
+over every reviewed consumer. Completed
+[`LIB-02G`](docs/tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
+then moved the public Step `08` scientific-evidence contract and direct suite
+to their permanent neutral owners at executable checkpoint `f72cc0f`, with all
+reviewed consumers cut over and no compatibility owner. No residual package is
+selected at this close. The sole unselected next candidate is
+[`LIB-02H`](docs/tasks/TODO/LIB-02H-extract-step09-scientific-evidence-contract.md),
+the bottom-up Step `09` contract extraction required before public Step `09c`
+and reporting dependency removal. Scheduler, ingestion,
+orchestration/profile, runtime, cluster, and default-branch work remain
+deferred or unselected. `PROGRAM-01` and unrelated work remain frozen outside
+their completed slices. Execute only one dependency-valid package at a time
+under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 

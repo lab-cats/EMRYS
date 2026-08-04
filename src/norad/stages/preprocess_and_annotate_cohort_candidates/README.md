@@ -124,11 +124,12 @@ annotation spellings can fail identity evidence; arbitrary unique candidate
 IDs and reversed site rows can pass.
 
 It privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and the final
-[`step_09c_scientific_validation.py`](../../evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py)
-contract owner under separate private identities. The Step `09c` bridge exists
-for shared schemas and validators and remains an ownership inversion, not a
-public package API.
+[`validation_report.py`](../../libraries/validation_report.py) and neutral
+[`step08.py`](../../contracts/scientific_evidence/step08.py) under separate
+private identities. The latter owns the public Step `08` manifest/table
+headers, `ContractError`/`Table` identity, and reconciliation used by this
+validator, Step `09`, Step `09c`, and artifact indexing. The exact-file bridge
+adds no public package API, installation step, or `sys.path` mutation.
 
 ## Guarded R and scheduler
 
@@ -189,6 +190,7 @@ Focused local protection is:
 ```bash
 bash tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
 .venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step08.py \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
   bash tests/stages/preprocess_and_annotate_cohort_candidates/run_step_08_vcf_preprocessing_tests.sh
@@ -199,14 +201,14 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
 Published runtime/input, transaction/recovery, signal/concurrency, validator,
 and scheduler baselines are `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
 `7a667ee`. Executable checkpoint `5e51496` moved exactly eight files and
-updated ten reviewed integration owners. Final shell mode/bytes/lines/SHA-256
-is `0755` / `39,954` / `1,024` /
+updated ten reviewed integration owners. At that migration checkpoint, shell
+mode/bytes/lines/SHA-256 was `0755` / `39,954` / `1,024` /
 `578542fefa02aa23667bb40e582cbab215e6d3efec0a7c2fbb002290f1cfc1f3`;
-R is `0644` / `69,505` / `1,939` /
+R was `0644` / `69,505` / `1,939` /
 `50cae0523ea68f87535866cbe9e86d38c3812f96a2c8a06ebd66a72177268699`;
-validator is `0644` / `12,918` / `346` /
+validator was `0644` / `12,918` / `346` /
 `57a227c478c0caec60fe2ff8d84f7feb1fce28c5248338f1369b2a186284c78f`;
-and the mode-`0644` job is `4,597` bytes / `134` lines /
+and the mode-`0644` job was `4,597` bytes / `134` lines /
 `e51d0df86609ca5d3d39b60f6036ee225bc17c11b6a83d68c683603842c57de6`.
 
 The owner validator passed `17` tests; the complete shell suite passed; and the

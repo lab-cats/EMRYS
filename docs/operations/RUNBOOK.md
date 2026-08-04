@@ -4130,15 +4130,24 @@ cluster-proven.
 Implemented files:
 
 ```text
+src/norad/contracts/scientific_evidence/step08.py
 src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh
 src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R
 src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py
 src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm
+tests/contracts/scientific_evidence/test_step08.py
 tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
 tests/stages/preprocess_and_annotate_cohort_candidates/run_step_08_vcf_preprocessing_tests.sh
 tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.R
 tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
 ```
+
+The Python validator exact-loads the neutral Step `08` table/manifest contract
+from the tracked file shown above under one canonical internal module name.
+The Step `09` validator, Step `09c` Python owner, and artifact index use the
+same exact neutral file and shared module/error/table identity. These loads are
+checkout-relative and package-independent: they do not install or discover a
+package, alter `PYTHONPATH`, or mutate `sys.path`.
 
 Structured validation consumes the exact published three-TSV transaction and
 is dry-run-first:
@@ -4159,6 +4168,14 @@ is dry-run-first:
 After inspecting the five printed checks, rerun the same command with
 `--execute`. Exact checks and limits remain in the
 [Step `08` contract](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md#validation-interface).
+
+Focused neutral-contract and Step `08` validator protection:
+
+```bash
+.venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step08.py \
+  tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
+```
 
 Runtime requirements:
 
@@ -4744,6 +4761,13 @@ tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scienti
 tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 ```
 
+The neutral Step `08` owner and its direct suite are listed under
+[Step `08`](#step-08-vcf-preprocessing); Step `09c` consumes that contract but
+does not own or re-export its Step `08` headers and validators. The Python
+evidence owner exact-loads the tracked neutral file without package discovery,
+`PYTHONPATH` changes, or `sys.path` mutation. Its public shell and direct Python
+commands remain unchanged.
+
 The local dry-run-first Python/shell evidence package has this public
 interface:
 
@@ -4953,6 +4977,7 @@ Local fixture gate:
 ```bash
 bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 .venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step08.py \
   tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 .venv/bin/python -m pytest -q \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \

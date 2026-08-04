@@ -2417,24 +2417,68 @@ a new isolated absolute output root after every writer and reader is ruled out.
 Lock, mutation, rollback, and cleanup paths are synthetic-fixture-tested only;
 no production Step `09c` recovery incident has been observed.
 
-## A Step 08, Step 09, artifact, or run-summary consumer cannot load Step 09c
+## A Step 08, Step 09, artifact, or Step 09c consumer cannot load the neutral Step 08 contract
 
 ### Symptom
 
-The final Step `08` or Step `09` validator, artifact index, or run-summary
-science normalization exits `2` with a sanitized one-line message that the
-Step `09c` contract module is missing, unreadable, incomplete, or failed to
-load.
+The final Step `08` or Step `09` validator, artifact index, or Step `09c`
+Python owner exits `2` with a sanitized one-line diagnostic such as:
+
+```text
+ERROR: unable to load Step 08 scientific-evidence contract at <path>: <type>: <reason>
+```
 
 ### Cause
 
-All four consumers privately exact-load
+These four repository-owned consumers exact-load the neutral public contract
+at
+`src/norad/contracts/scientific_evidence/step08.py` under the single internal
+name `_norad_step08_scientific_evidence_contract`. Each loader requires the
+exact cached-file path and completed readiness marker, inserts the module
+before execution, cleans only an owned partial cache entry, and fails closed
+for a missing file, foreign cache entry, partial initialization, unreadable
+path, or execution error. The Step `09` and artifact consumers also require
+their retained Step `09c` module to resolve the same neutral module object.
+
+This is exact-file loading from the tracked checkout. It does not use package
+discovery, `PYTHONPATH`, an installed distribution, or `sys.path` mutation.
+
+### Fix
+
+Preserve the diagnostic and inspect the exact neutral file, current Git state,
+cached module identity when debugging in-process, and the invoking consumer.
+Restore the reviewed neutral owner through Git if the tracked file is missing
+or changed. Do not recreate the extracted Step `08` surface in Step `09c`, add
+a wrapper, copy the contract into a stage, install a package, alter
+`PYTHONPATH`, or inject a search path. Use the neutral direct suite and
+consumer-focused commands in the
+[Step `08` runbook](RUNBOOK.md#step-08-vcf-preprocessing).
+
+## A Step 09, artifact, or run-summary consumer cannot load Step 09c
+
+### Symptom
+
+The final Step `09` validator, artifact index, or run-summary science
+normalization exits `2` with a sanitized one-line message that the Step `09c`
+contract module is missing, unreadable, incomplete, or failed to load. If the
+diagnostic instead names the neutral Step `08` scientific-evidence contract,
+use the preceding recovery route.
+
+### Cause
+
+These three retained consumers exact-load
 `src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
 under `_norad_step_09c_scientific_validation_contracts`. They require that
-exact cached-file identity and callable/schema readiness, insert the module
-before execution, clean only an owned partial cache entry, and do not search
-`PYTHONPATH` or mutate `sys.path`. A missing final file, foreign cache entry,
-partial module, unreadable path, or execution error fails closed.
+exact cached-file identity and completed readiness marker, insert the module
+before execution, and clean only an owned partial cache entry. The Step `09`
+and artifact consumers additionally verify that their direct neutral Step `08`
+load is the same object used by Step `09c`; run-summary science retains only
+the Step `09c` load and receives the neutral dependency transitively. A
+missing final file, foreign cache entry, partial module, unreadable path,
+execution error, or split neutral identity fails closed.
+
+The retained load is also checkout-relative and exact-file based. It does not
+search `PYTHONPATH`, mutate `sys.path`, or require a package installation.
 
 ### Fix
 

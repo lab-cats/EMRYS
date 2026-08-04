@@ -164,14 +164,22 @@ a new isolated absolute output root. See the dedicated
 
 ## Private consumers and downstream provenance
 
-The final Step `08` and Step `09` validators,
-[`build_artifact_index.py`](../../../../scripts/build_artifact_index.py), and
-[`_run_summary_science.py`](../../../../scripts/_run_summary_science.py)
-privately exact-load the final Python file under
-`_norad_step_09c_scientific_validation_contracts`. They validate cached-file
-identity and readiness, insert the module before execution, clean only their
-own partial cache entry, leave `sys.path` unchanged, and expose no public
-package identity.
+This implementation, the final Step `08` and Step `09` validators, and
+[`build_artifact_index.py`](../../../../scripts/build_artifact_index.py)
+privately exact-load neutral
+[`step08.py`](../../contracts/scientific_evidence/step08.py) under
+`_norad_step08_scientific_evidence_contract`. They share its exact module,
+`ContractError`, and `Table` identities and fail closed if Step `09c` and a
+downstream consumer resolve different objects.
+
+The Step `09` validator, artifact index, and
+[`_run_summary_science.py`](../../../../scripts/_run_summary_science.py) still
+exact-load this final Python file under
+`_norad_step_09c_scientific_validation_contracts` for Step `09` and public
+review-package/policy surfaces. Both private-loader families validate cached-
+owner identity and readiness, insert before execution, clean only their own
+partial cache entry, leave `sys.path` unchanged, and expose no public package
+identity.
 
 Artifact indexing treats this final Python file as the Step `09c` producer and
 `step09c_review_summary_v1` as the failure marker while validating all thirteen
@@ -189,6 +197,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
 .venv/bin/python -m pytest -q \
   tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 .venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step08.py \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
@@ -199,20 +208,21 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
 Published wrapper, input-identity, publication-order, recovery, and signal/
 concurrency checkpoints are `0dea4da`, `bd680b6`, `d9b0ce8`, `3fa0699`, and
 `d459440`. Executable checkpoint `d1cce50` moved exactly five files and updated
-fourteen reviewed integration owners. The final Python implementation remains
-byte-identical at SHA-256
+fourteen reviewed integration owners. At that migration checkpoint, the final
+Python implementation was byte-identical at SHA-256
 `7b6b48b71c07249cb791ceb818bd4aef5c30015724cb2406127159815c1e09f8`;
 the shell's only implementation change is its displayed usage path.
 
-The final shell suite passed; `65` direct Python tests passed; Step `08`/`09`
-loader suites passed `53`; selected artifact and run-summary loader/provenance
-checks passed `16`; and independent-golden plus public-CLI suites passed. The
-first complete network-enabled gate was not green: static, shell, guarded-R,
-and report-runtime passed, then Python reached `1,323` passes and `17` skips
-before its sole failure listed the eight intentionally deferred documentation
-links; coverage did not run. A coverage run with only that known documentation
-assertion deselected passed `1,323` tests with `17` skips and one deselection,
-and its standalone policy comparison passed. None of this is cluster,
+At that migration checkpoint, the final shell suite passed; `65` direct Python
+tests passed; Step `08`/`09` loader suites passed `53`; selected artifact and
+run-summary loader/provenance checks passed `16`; and independent-golden plus
+public-CLI suites passed. The first complete network-enabled gate was not
+green: static, shell, guarded-R, and report-runtime passed, then Python reached
+`1,323` passes and `17` skips before its sole failure listed the eight
+intentionally deferred documentation links; coverage did not run. A coverage
+run with only that known documentation assertion deselected passed `1,323`
+tests with `17` skips and one deselection, and its standalone policy comparison
+passed. None of this is cluster,
 production, completed-review, editing-site, or biological evidence.
 
 After the separate documentation close repaired those links, `git diff

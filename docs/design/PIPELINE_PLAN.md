@@ -94,9 +94,12 @@ complete as the first decision package in the explicitly authorized residual
 convergence campaign. It settled the two observed prohibited peer-
 implementation seams. Completed
 [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-performed the first executable move. The sole selected package is
-[`LIB-02G`](../tasks/IN_PROGRESS/LIB-02G-extract-step08-scientific-evidence-contract.md),
-the bounded Step `08` neutral scientific-evidence contract extraction.
+performed the first executable move. Completed
+[`LIB-02G`](../tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
+then extracted the bounded Step `08` neutral scientific-evidence contract. No
+package is selected at this close; unselected
+[`LIB-02H`](../tasks/TODO/LIB-02H-extract-step09-scientific-evidence-contract.md)
+is the sole next candidate.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -135,9 +138,10 @@ Preferred one-owner order is:
 
 1. completed `LIB-02F` settles only the two observed shared seams;
 2. completed `MIG-04A` performs the neutral artifact-contract move;
-3. execute selected `LIB-02G`, then create later bottom-up
-   scientific-evidence slices only just in time: Step `09`, the public review-
-   package contract, and reporting-local reader removal;
+3. completed `LIB-02G` extracts the neutral Step `08` contract; next select
+   unselected `LIB-02H`, then create later bottom-up scientific-evidence slices
+   only just in time: the public review-package contract and reporting-local
+   reader removal;
 4. execute `RPT-05A` only after those concrete blockers close;
 5. extract the neutral `reference_contigs` parser seam, then move reference
    provenance; move runtime preflight and storage inventory as separate owner
@@ -146,8 +150,9 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-`LIB-02G` is the sole selected residual package. Later seam-extraction cards,
-the final audit, and deferred domains remain uncreated or unbegun.
+No residual package is selected at this close. `LIB-02H` is the sole
+unselected next candidate; later seam-extraction cards, the final audit, and
+deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -200,13 +205,17 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                 └── MIG-04A executable cutover 17090ac
                                     └── MIG-04A documentation/lifecycle close
                                         + LIB-02G registration ec0b00f
-                                        └── LIB-02G selection
-                                            (commit containing this plan)
+                                        └── LIB-02G selection e5f54e0
+                                            └── LIB-02G executable cutover f72cc0f
+                                                └── LIB-02G documentation/lifecycle close
+                                                    + LIB-02H registration
+                                                    (commit containing this plan)
 ```
 
-The final node is the current selection tip represented by this plan. It
-selects only `LIB-02G`; no implementation, later extraction, final audit,
-default-branch integration, runtime, or cluster action is implied.
+The final node is the documentation/lifecycle close represented by this plan.
+It completes only `LIB-02G`, registers `LIB-02H` without selecting it, and
+implies no later extraction, final audit, default-branch integration, runtime,
+or cluster action.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

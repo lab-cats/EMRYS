@@ -141,9 +141,14 @@ separate real-R fixture and independent oracle protect that boundary; neither
 turns the production validator into independent statistical proof.
 
 The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and final
+[`validation_report.py`](../../libraries/validation_report.py), neutral
+[`step08.py`](../../contracts/scientific_evidence/step08.py) for manifests and
+the Step `08` inputs/sites contract, and final
 [`step_09c_scientific_validation.py`](../../evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py)
-contracts. The latter remains a private ownership inversion, not a package API.
+for the still-owner-local Step `09` contract. Step `09c` must resolve the same
+Step `08` object before the validator continues. None of these exact-file
+bridges creates a package API; only the remaining Step `09` dependency retains
+the ownership inversion.
 
 ## Guarded R and scheduler
 
@@ -203,6 +208,7 @@ Focused local protection is:
 ```bash
 bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 .venv/bin/python -m pytest -q \
+  tests/contracts/scientific_evidence/test_step08.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
@@ -214,9 +220,9 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
 Published runtime/input, publication-order, signal/concurrency, validator, and
 scheduler baselines are `fd015e4`, `3828496`, `7aced51`, `1ba3001`, and
 `d35b674`. Executable checkpoint `50e1bb3` moved exactly eleven files and
-updated ten reviewed integration owners. The final shell, R program,
-validator, and job match their reviewed modes and SHA-256 identities in the
-completed migration card.
+updated ten reviewed integration owners. At that migration checkpoint, the
+shell, R program, validator, and job matched their reviewed modes and SHA-256
+identities in the completed migration card.
 
 The final shell suite passed; `56` owner-local Python tests passed; the
 selected scheduler suite passed `15` tests with `157` deselected; and guarded

@@ -43,6 +43,7 @@ relocation does not preserve that prohibited dependency direction.
 
 ## Completion unblocks
 
+- [LIB-02H](../TODO/LIB-02H-extract-step09-scientific-evidence-contract.md) — Fully: the final Step `08` neutral owner and shared error/table identity are available for the Step `09` contract extraction.
 - [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: Step `09`, public Step `09c`, and reporting-local dependency-removal slices must still close before reporting relocation.
 
 ## Prerequisites
@@ -119,6 +120,51 @@ relocation does not preserve that prohibited dependency direction.
 ## Completion record
 
 Selected from clean, published, live-remote-equal MIG-04A documentation close
-`ec0b00f545b8272eaf19b3cebee7c608a20139e7`. Selection begins bounded read-only
-plan/review; no neutral module, test, consumer, coverage, or documentation
-surface has changed.
+`ec0b00f545b8272eaf19b3cebee7c608a20139e7`; status-only selection checkpoint
+`e5f54e078eed82f523434aed6ab87c951f212315` was the frozen implementation
+parent. Executable/test checkpoint
+`f72cc0f7646a1db9daa625dbe4ff6bcc57ce3671` then extracted the exact Step `08`
+contract into `src/norad/contracts/scientific_evidence/step08.py`, added the
+mirrored independent suite, and cut over Step `09c`, the Step `08` and Step
+`09` Python validators, artifact indexing, and their direct fixtures/tests. No
+wrapper, copy, symlink, package import, `PYTHONPATH` mutation, installation
+metadata, schema change, shell/R change, reporting change, or scientific-policy
+change was added.
+
+- The neutral owner and mirrored suite are mode `0644` with SHA-256 values
+  `566239b28ab807adb67fe5a63ed735cce14a3ef7c1a2cf3db78f88efce2c47e6`
+  and `17bd5bf77110c2f454d2833594e576c711fecf105ef92298f1fa70a9f33991d0`,
+  respectively. The final Step `09c` owner is mode `0644` with SHA-256
+  `cd3124233f6f077e62a454583221edf850b67a77f2c42cd4519bb3274a376939`.
+- Frozen comparison proved all `29` moved definitions AST-identical to the
+  selection parent. The neutral public API fingerprint is
+  `8824d7b30f3c45dddcb475d21d4382ac52de2520031cdd89bab107fb2edc2bf1`;
+  exact headers, signatures, error/table identity, accepted/rejected inputs,
+  messages, ordering, path behavior, and consumer module identity remained
+  unchanged. Exact searches found no stale repository-owned Python consumer or
+  duplicate implementation of the extracted surface.
+- The pre-extraction affected baseline passed `405` tests. At the final
+  executable state the direct neutral suite passed `40` tests and the focused
+  affected suite passed `379`. Focused Step `08`, Step `09`, and Step `09c`
+  shell contracts all passed.
+- The repository coverage run passed `1,425` tests with `17` skips and measured
+  `0.839875` line and `0.737398` branch coverage across `33` files. The new
+  neutral owner measured `238/241` lines and `129/130` branches. The committed
+  affected-only floor is `0.825627` line and `0.715598` branch; no unrelated
+  transient coverage gain was promoted.
+- The correct project-local real-R route,
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s local-real-r-test`, passed both
+  Step `08` and Step `09` semantic fixture suites. The pinned report-runtime
+  route passed `17` tests with `60` deselected.
+- The full serial aggregate reported static preflight, Python coverage, and
+  shell contracts green. Its guarded-R lane remained environment-deferred,
+  not green, solely because the installed library and `renv.lock` remain
+  synchronized at `renv 1.2.3` while CRAN currently advertises
+  `1.2.4`; a separate
+  `RSCRIPT_BIN=/usr/local/bin/Rscript make -s r-check` confirmed the same drift.
+  No package install, update, lockfile, cache, dependency, or runtime mutation
+  was performed. This is not a LIB-02G regression or a passing aggregate claim.
+- Documentation validation and `git diff --check` passed at lifecycle close.
+  These results are local contract-preserving engineering evidence only; they
+  add no runtime, cluster, production, scientific-review, or biological-
+  readiness proof.

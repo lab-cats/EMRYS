@@ -53,7 +53,8 @@ scientific stages.
 | Validation-evidence publication protocol | Neutral owner [`validation_report.py`](../../src/norad/libraries/validation_report.py) with exact-file private loaders in all thirteen final owner validators through `rank_cohort_candidates_with_paired_CMH`; no package/import identity or public CLI is assigned to the library | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_validation_check_rosters.py`](../../tests/test_validation_check_rosters.py). Stage parsing/check rosters remain stage-owned, and current validation still does not enforce report-row order. |
 | BAM validation primitives | Neutral private owner [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) exact-loaded by the final Step `02`, Step `04`, and Step `05` validators; no package/import identity or public CLI is assigned | [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py) protects exact helper behavior and loader integrity. Stage-specific checks, arguments, reports, and evidence remain with their three functional owners. |
 | Artifact contract validation | Neutral [`validate_artifact_contracts.py`](../../src/norad/contracts/artifacts/validate_artifact_contracts.py) and five public schemas under [`contracts/schemas/artifacts/v1/`](../../src/norad/contracts/schemas/artifacts/v1/) | Mirrored [`test_artifact_schema_contracts.py`](../../tests/contracts/artifacts/test_artifact_schema_contracts.py) and [`artifact_schema_v1`](../../tests/contracts/artifacts/fixtures/artifact_schema_v1/) fixtures. The five Python reporting-chain consumers share this one exact final module identity, and the shell preflight exact-loads the final file without package or path setup; schema identity and validation semantics remain neutral. |
-| Artifact indexing | [`build_artifact_index.py`](../../scripts/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py) and its fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing currently exact-loads final Step `09c`; the approved final boundary consumes only neutral public scientific-evidence contracts and keeps index reconciliation independently implemented. |
+| Step `08` scientific-evidence contract | Neutral [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py); no public CLI, package identity, or installation surface | Mirrored [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py) plus affected consumer suites. The Step `08` and Step `09` validators, Step `09c` implementation, and artifact index share one exact-file module, `ContractError`, and `Table` identity. Shell/R algorithms, Step `09` contracts, review policy, publication, and artifact reconciliation remain owner-local. |
+| Artifact indexing | [`build_artifact_index.py`](../../scripts/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py) and its fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes neutral Step `08` headers but still exact-loads final Step `09c` for Step `09` and review-package surfaces; later slices remove that remaining implementation dependency while keeping index reconciliation independent. |
 | Canonical run-summary assembly | [`build_run_summary.py`](../../scripts/build_run_summary.py), private helper [`_run_summary_science.py`](../../scripts/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/test_artifact_run_summary.py) and its fixture builder. The helper currently exact-loads final Step `09c`; the approved final boundary replaces private `build_context` reuse with a reporting-local reader/projection over the committed public review package and validated index records, without owning Step `09c` policy. |
 | Static reporting | [`render_run_report.sh`](../../scripts/render_run_report.sh), [`render_run_report.py`](../../scripts/render_run_report.py), [`render_run_report_bundle.py`](../../scripts/render_run_report_bundle.py), [`reports/`](../../reports/), public starter [`report_table_approvals.example.tsv`](../../configs/report_table_approvals.example.tsv); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/shell/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/test_report_exports_v1.py), and report fixtures under [`report_html_v1/`](../../tests/fixtures/report_html_v1/). Rendering consumes one canonical summary and never reruns analysis. |
 
@@ -121,18 +122,19 @@ Private helpers do not add public owners:
   documentation/Git orchestration.
 - Shared validation-report publication belongs to the neutral
   [`validation_report.py`](../../src/norad/libraries/validation_report.py)
-  owner. Twelve final owner validators and one legacy-path validator use
-  exact-file private loaders until any later packaging decision or
-  functional-owner migration.
+  owner. All thirteen final owner validators use exact-file private loaders
+  until any later packaging decision.
 - Shared samtools execution and BAM-header parsing belong to neutral private
   [`bam_validation.py`](../../src/norad/libraries/bam_validation.py). The final
   Step `02`, Step `04`, and Step `05` validators exact-load it; no
   peer-stage implementation import remains.
-- Reusable Step `08`/`09` schemas and validators currently belong to the Step
-  `09c` implementation and are imported upstream. Their approved final route
-  is a bottom-up neutral `scientific_evidence` contract package containing
-  only public artifact/table and review-package contracts; Step `09c` review
-  policy, evidence sources, publication, rollback, and recovery remain local.
+- Reusable Step `08` schemas and validators now belong to neutral
+  [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py) and are
+  exact-loaded by all four reviewed Python consumers under one shared identity.
+  Reusable Step `09` and public review-package contracts still belong to the
+  Step `09c` implementation and move through later bottom-up slices; Step `09c`
+  review policy, evidence sources, publication, rollback, and recovery remain
+  local.
 - Base intake validation does not require `replicate`, while the Step `09` and
   `09c` analysis profile does; that is a base contract plus a stricter consumer
   refinement, not two interchangeable manifest definitions.
@@ -147,12 +149,14 @@ Private helpers do not add public owners:
   those adapter semantics remain accountable to the corresponding stage,
   evidence, or analysis owner.
 
-The observed reverse dependencies are temporary current-state facts, not final
-ownership. Completed [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
-fixes their exact permanent dispositions, and
+The remaining reverse dependencies are temporary current-state facts, not
+final ownership. Completed
+[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) fixes
+their exact permanent dispositions, and
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams)
-owns the target paths. Each executable extraction remains deferred until its
-own JIT card so this inventory does not pre-implement a later slice.
+owns the target paths. The Step `08` extraction is implemented; Step `09`, the
+public review-package contract, reporting-local dependency removal, and
+reference-contig parsing remain separately bounded JIT slices.
 
 ## Coverage result
 
@@ -162,6 +166,7 @@ under `scripts/` and three final owner-local producers), 4 R entry points, 7
 Git-orchestration entry points, 16 SLURM jobs (11 under `jobs/` and five final
 owner-local jobs), and 23 public Make targets. Every member is assigned once
 above. The one private top-level Python module, two neutral library sources,
-and three private orchestration files are classified separately. No current
+two neutral contract implementation sources, and three private orchestration
+files are classified separately. No current
 autonomous pipeline orchestrator,
 ingestion executor, or installable-package entry point exists.

@@ -130,13 +130,17 @@ interpretation readiness is established in this checkout.
 
 ## Ownership gaps and deferred decisions
 
-- The 4,500-line implementation also owns reusable Step `08`/`09` schemas and
-  validators, ten evidence domains, state policy, and transaction machinery;
-  the final Step `08` and Step `09` validators, artifact index, and run-summary
-  science helper exact-load it under one private identity as a contract
-  library, reversing ownership without creating a package API.
-- Headers exist in Python and tracked schema TSVs; parity is tested, but the
-  canonical schema owner and versioning boundary are not explicit.
+- The roughly 4,100-line implementation exact-loads neutral
+  [`step08.py`](../../contracts/scientific_evidence/step08.py) for the public
+  Step `08` manifest/table contract and shared `ContractError`/`Table`
+  identity. It still owns reusable Step `09` schemas and validators, ten
+  evidence domains, state policy, and transaction machinery; the Step `09`
+  validator, artifact index, and run-summary science helper therefore retain
+  narrower private dependencies on this file without creating a package API.
+- Remaining Step `09` and review-package headers exist in Python and tracked
+  schema TSVs; parity is tested, but their canonical neutral owner and
+  versioning boundary are not yet explicit. Step `08` now has an explicit
+  neutral Python owner and mirrored direct suite.
 - State/evidence rules are duplicated across publication, artifact indexing,
   science normalization, and tests. Review-plan Git/software/runtime values
   are declared metadata, not independently observed environment facts.
