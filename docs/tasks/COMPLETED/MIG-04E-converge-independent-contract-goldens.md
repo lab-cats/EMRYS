@@ -168,5 +168,51 @@ and `small_table.tsv`
 `9d67cc544f8a46b8bd600003ac228806e8f66122013755a4d452937dcce5b0ec`.
 The exact `82` tests passed from repository root and unrelated working
 directory `/private/tmp` in `0.17s` each. The separate two-file validation-
-roster owner and its fourteen callers remain unselected. Executable/test work
-has not begun.
+roster owner and its fourteen callers remain unselected. Selection checkpoint
+`79427416a9631b30fe354fdf18cbf29bce57c37f` was published and verified live
+before executable mutation.
+
+Executable checkpoint `9434b0adb2550b0e6290f16df44af0b5d5df62c4`
+published the direct nine-file Git move. All eight fixture/provenance files
+remain byte-identical at mode `0644`, their frozen sizes and hashes above, and
+the final owner contains exactly those files plus the suite at one level. The
+suite remains `693` lines and mode `0644`; its final size is `23,006` bytes and
+SHA-256 is
+`6cab669cf26c008de0dc354af8b97c786fbaf95260e6f6112b76ceba5ce12017`.
+Its normalized diff changes only `REPO_ROOT` from `parents[1]` to `parents[3]`
+and `GOLDENS` to its resolved parent. Both old paths are absent; no package
+marker, wrapper, copy, symlink, re-export, descriptor, install surface, or new
+path-environment mutation exists. The existing reporting-only `sys.path`
+insertion, both validation-roster files, all fourteen roster callers, and the
+coverage baseline remain unchanged.
+
+Post-move, the exact `82` tests passed from repository root and `/private/tmp`
+with collection differing only by the approved path prefix. The focused
+contract, scientific-evidence, reporting, and producer/validator roster passed
+`612` tests with `17` expected renderer skips. Static validation and the full
+shell-contract lane passed. The pre-close undeselected complete Python run
+passed `1,591` tests with `17` skips and failed only the expected current-
+documentation assertion for the moved README link. Its recovered coverage
+artifact passed policy at exact rates `0.847971` line and `0.750594` branch
+across `36` files (`10592/12491` lines and `3789/5048` branches), with no
+measured-file or baseline change. Three independent executable reviews found
+no source, fixture, path, collection, roster, coverage, package, compatibility,
+or evidence-boundary defect.
+
+Current ownership, lifecycle, command, test-baseline, and README links were
+then repaired; the residual inventory fell from `98` to `89` while retaining
+the separate two-path validation-roster owner. No dependency was installed,
+restored, removed, or updated, and no contract oracle, production behavior, or
+characterized defect changed. This remains local synthetic-characterization
+and relocation-parity evidence only, not runtime, cluster, production,
+scientific-review, or biological-readiness evidence. The close selects no
+successor and pauses before the still-unselected validation-roster owner.
+
+After those close repairs, the undeselected complete Python gate passed
+`1,592` tests with `17` skips and the coverage policy remained exact at
+`0.847971` line and `0.750594` branch across `36` files. Documentation
+validation passed `227` Markdown documents, `144` task cards, and `6` Mermaid
+sources. Three independent final close reviews found only two evidence-
+recording omissions: this prospective review sentence and the handoff's missing
+final-green clause. Both are repaired; final re-review found no remaining
+lifecycle, path, residual-count, scope, or evidence-record defect.

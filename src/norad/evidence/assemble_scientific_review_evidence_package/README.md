@@ -216,7 +216,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
 .venv/bin/python -m pytest -q \
   tests/reporting/test_artifact_adapters.py \
   tests/reporting/test_artifact_run_summary.py \
-  tests/test_independent_contract_goldens.py tests/test_public_cli_contracts.py
+  tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py tests/test_public_cli_contracts.py
 ```
 
 Published wrapper, input-identity, publication-order, recovery, and signal/

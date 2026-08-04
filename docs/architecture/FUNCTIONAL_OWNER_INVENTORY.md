@@ -77,14 +77,14 @@ pipeline owner graph but still receive one owner:
 
 `PLAN-03A` inspected the tracked residual implementation-bearing roots,
 remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. The 98 paths
+environment anchors, and intentional operational placeholders. The 89 paths
 are partitioned once below. Counts are inspection checks, not a permanent
 repository-size baseline; each later owner migration updates this current
 inventory when paths move.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `tests/test_independent_contract_goldens.py` and its eight tracked fixture paths; `tests/test_validation_check_rosters.py`; `tests/validation_roster_expectations.py` | 11 | Cross-owner artifact/schema and validation-roster protection; final integration homes are fixed in the target test topology. |
+| `tests/test_validation_check_rosters.py`; `tests/validation_roster_expectations.py` | 2 | Cross-owner validation-roster protection; the final integration home is fixed in the target test topology. The independent contract goldens are final through `MIG-04E` and no longer residual. |
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
 | The 26 non-profile files under root `configs/`: three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 26 | Public operator/reference inputs retained at root; they are not owner-native implementation assets. |
@@ -98,7 +98,8 @@ inventory when paths move.
 
 The table does not reclassify already final owner-local paths under
 `src/norad/` or mirrored `tests/stages/`, `tests/analyses/`,
-`tests/evidence/`, and `tests/libraries/`. Root callers such as `Makefile`,
+`tests/evidence/`, `tests/libraries/`, and `tests/contract_integration/`. Root
+callers such as `Makefile`,
 coverage rows, command rosters, and current documentation remain integration
 surfaces to update atomically when a `MOVE` unit is approved; their own
 repository-level ownership does not change.
