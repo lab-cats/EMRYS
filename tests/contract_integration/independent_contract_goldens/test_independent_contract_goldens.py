@@ -15,9 +15,9 @@ from typing import Any, Callable, Mapping
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
-GOLDENS = REPO_ROOT / "tests" / "fixtures" / "independent_contract_goldens"
+GOLDENS = Path(__file__).resolve().parent
 SCHEMAS = (
     REPO_ROOT
     / "src"
