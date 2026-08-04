@@ -54,7 +54,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py

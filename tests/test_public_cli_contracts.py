@@ -47,7 +47,9 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/evidence/assemble_scientific_review_evidence_package/"
         "step_09c_scientific_validation.py"
     ),
-    "storage_inventory.py": Path("scripts/storage_inventory.py"),
+    "storage_inventory.py": Path(
+        "src/norad/evidence/storage_inventory/storage_inventory.py"
+    ),
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),

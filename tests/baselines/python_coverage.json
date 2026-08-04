@@ -46,15 +46,6 @@
       "path": "scripts/restore_quarto.py"
     },
     {
-      "branch_rate": "0.698113",
-      "covered_branches": 74,
-      "covered_lines": 240,
-      "line_rate": "0.854093",
-      "num_branches": 106,
-      "num_statements": 281,
-      "path": "scripts/storage_inventory.py"
-    },
-    {
       "branch_rate": "0.769231",
       "covered_branches": 40,
       "covered_lines": 100,
@@ -152,6 +143,15 @@
       "num_branches": 140,
       "num_statements": 361,
       "path": "src/norad/evidence/runtime_preflight/runtime_preflight.py"
+    },
+    {
+      "branch_rate": "0.698113",
+      "covered_branches": 74,
+      "covered_lines": 240,
+      "line_rate": "0.854093",
+      "num_branches": 106,
+      "num_statements": 281,
+      "path": "src/norad/evidence/storage_inventory/storage_inventory.py"
     },
     {
       "branch_rate": "1.000000",

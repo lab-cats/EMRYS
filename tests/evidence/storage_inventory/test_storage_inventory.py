@@ -7,8 +7,15 @@ from pathlib import Path
 import pytest
 
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts/storage_inventory.py"
+ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    ROOT
+    / "src"
+    / "norad"
+    / "evidence"
+    / "storage_inventory"
+    / "storage_inventory.py"
+)
 ROOT_HEADER = "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
 POLICY_HEADER = "policy_id\tstorage_id\tartifact_class\taction\tretention_days\tapproval_status\tapproved_by\tapproved_at\tnotes\n"
 SPEC = importlib.util.spec_from_file_location(
@@ -75,6 +82,83 @@ def test_dry_run_is_side_effect_free(tmp_path):
     assert result.returncode == 0
     assert "no storage is altered" in result.stdout
     assert not output.exists()
+
+
+def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
+    roots, policy, storage = contracts(tmp_path)
+    output = tmp_path / "out"
+    invocation = tmp_path / "invocation"
+    invocation.mkdir()
+    command = [
+        sys.executable,
+        str(SCRIPT),
+        "--roots",
+        str(roots),
+        "--retention-policy",
+        str(policy),
+        "--output-root",
+        str(output),
+    ]
+
+    dry_run = subprocess.run(
+        command,
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert "Dry-run complete" in dry_run.stdout
+    assert not output.exists()
+
+    output.mkdir()
+    first = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert first.returncode == 0, first.stderr
+    first_inventory = rows(output / "storage_inventory.tsv")[0]
+    first_policy = (output / "retention_policy.tsv").read_bytes()
+    first_summary = (output / "storage_retention_summary.tsv").read_bytes()
+
+    repeated = subprocess.run(
+        [*command, "--execute"],
+        cwd=invocation,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert repeated.returncode == 0, repeated.stderr
+    second_inventory = rows(output / "storage_inventory.tsv")[0]
+    volatile_fields = {
+        "filesystem_total_bytes",
+        "filesystem_free_bytes",
+        "filesystem_available_bytes",
+    }
+    assert {
+        key: value
+        for key, value in first_inventory.items()
+        if key not in volatile_fields
+    } == {
+        key: value
+        for key, value in second_inventory.items()
+        if key not in volatile_fields
+    }
+    assert first.stdout == repeated.stdout
+    assert first.stderr == repeated.stderr == ""
+    assert first_policy == (output / "retention_policy.tsv").read_bytes()
+    assert first_summary == (output / "storage_retention_summary.tsv").read_bytes()
+    assert (storage / "file").read_bytes() == b"1234"
+    assert (storage / "link").is_symlink()
+    assert not any(invocation.iterdir())
+    assert sorted(path.name for path in output.iterdir()) == [
+        "retention_policy.tsv",
+        "storage_inventory.tsv",
+        "storage_retention_summary.tsv",
+    ]
 
 
 def test_execute_measures_without_following_symlinks(tmp_path):
