@@ -432,8 +432,8 @@ validators and repeated operational need establish their contracts.
 
 ```text
 configs/runtime_preflight.example.tsv
-scripts/runtime_preflight.py
-tests/test_runtime_preflight.py
+src/norad/evidence/runtime_preflight/runtime_preflight.py
+tests/evidence/runtime_preflight/test_runtime_preflight.py
 ```
 
 Copy the example to an explicit operator-controlled profile and replace its
@@ -463,7 +463,7 @@ approved batch/compute environment.
 Local dry-run:
 
 ```bash
-.venv/bin/python scripts/runtime_preflight.py \
+.venv/bin/python src/norad/evidence/runtime_preflight/runtime_preflight.py \
   --profile configs/runtime_preflight.example.tsv \
   --output results/qc/runtime/local.runtime_preflight.tsv \
   --runtime-context local
@@ -478,7 +478,7 @@ For an approved batch profile, first enter the actual allocated
 batch/compute context, then run its dry-run with:
 
 ```bash
-python3 scripts/runtime_preflight.py \
+python3 src/norad/evidence/runtime_preflight/runtime_preflight.py \
   --profile /explicit/path/to/csu.runtime_profile.tsv \
   --output results/qc/runtime/csu.runtime_preflight.tsv \
   --runtime-context cluster_batch
@@ -489,7 +489,7 @@ parent and publish:
 
 ```bash
 mkdir -p results/qc/runtime
-python3 scripts/runtime_preflight.py \
+python3 src/norad/evidence/runtime_preflight/runtime_preflight.py \
   --profile /explicit/path/to/csu.runtime_profile.tsv \
   --output results/qc/runtime/csu.runtime_preflight.tsv \
   --runtime-context cluster_batch \
@@ -517,7 +517,7 @@ report to change its statuses.
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_runtime_preflight.py
+.venv/bin/python -m pytest -q tests/evidence/runtime_preflight/test_runtime_preflight.py
 ```
 
 The tracked example and tests are local fixture evidence only. A future
@@ -1823,7 +1823,7 @@ cd /Users/elisteiger/dev/norad
 .venv/bin/python -m pytest -q --tb=short \
   tests/libraries/test_validation_report.py \
   tests/evidence/reference_provenance/test_reference_provenance.py \
-  tests/test_runtime_preflight.py \
+  tests/evidence/runtime_preflight/test_runtime_preflight.py \
   tests/test_storage_inventory.py
 ```
 

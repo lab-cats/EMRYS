@@ -130,18 +130,26 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
-The current MIG-04B measurement protects final
-`src/norad/evidence/reference_provenance/reference_provenance.py` at `332/379`
-covered lines and `107/142` branches. The committed tracked baseline remains
+The current MIG-04C measurement protects final
+`src/norad/evidence/runtime_preflight/runtime_preflight.py` at `311/361`
+covered lines and `102/140` branches. The committed tracked baseline remains
 `10323/12387` lines and `3633/4986` branches; only that file identity moved,
 with its counts and rates unchanged and no unrelated baseline promotion. The
-complete Python lane passed `1,590` tests with `17` skips and measured
-`0.847971` global line coverage and `0.750594` global branch coverage across
-`36` files. The final affected roster passed `183` tests; static, all shell,
-public CLI/Make, coverage-policy, and documentation gates passed. This is
-direct relocation, arbitrary-CWD, and loader-integrity evidence only; no
-dependency was installed, restored, removed, or updated, and no runtime,
-cluster, scientific-review, or biological evidence was created.
+first complete undeselected Python attempt passed `1,590` tests with `17` skips
+and failed only the expected documentation assertion naming the intentionally
+not-yet-closed legacy source/test links. The coverage artifact from that same
+complete measurement passed the standalone policy at `0.847971` global line
+coverage and `0.750594` global branch coverage across `36` files. The affected
+roster passed `150` tests and the complete Phase `01b` publication-fault roster
+passed `184`; static, all shell, public CLI/Make, and coverage-policy gates
+passed. After the current paths and lifecycle links were closed, the
+undeselected complete Python lane passed `1,591` tests with `17` skips at the
+same `0.847971` line and `0.750594` branch coverage across `36` files.
+Documentation validation passed `225` Markdown documents, `142` task cards,
+and `6` Mermaid sources. This is direct relocation and arbitrary-CWD/
+transaction parity evidence only; no dependency was installed, restored,
+removed, or updated, and no runtime, cluster, scientific-review, or biological
+evidence was created.
 
 DOC-GATE-01 independently freezes the extracted documentation validator with a
 hard-coded legacy heading oracle, isolated valid/invalid repositories, exact

@@ -211,6 +211,10 @@ did not leave Step `00c` or Step `05` importing a peer implementation. The
 reviewed neutral extraction is complete through `LIB-02K`, and the reference-
 evidence source and mirrored suite occupy their final homes through `MIG-04B`
 without reopening that seam or moving the public starter config.
+The structured runtime-inspection source and mirrored suite occupy their final
+homes through `MIG-04C` without moving the public starter profile or changing
+its local-fixture evidence ceiling; final placement is not runtime or cluster
+proof.
 
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.

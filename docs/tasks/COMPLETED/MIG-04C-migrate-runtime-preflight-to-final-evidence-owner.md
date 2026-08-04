@@ -165,5 +165,52 @@ with no invocation-directory or transaction residue. Those raw, unnormalized
 hashes use profile
 `/Users/elisteiger/dev/norad/configs/runtime_preflight.example.tsv`, output
 `/private/tmp/norad-mig04c-parity.uzl05m/output/preflight.tsv`, and working
-directory `/private/tmp/norad-mig04c-parity.uzl05m/invocation`. Executable/test
-work has not begun.
+directory `/private/tmp/norad-mig04c-parity.uzl05m/invocation`. Selection
+checkpoint `13853f2475f05aaee54b26b0b83dd2a989690af2` was published and
+verified live before executable mutation.
+
+Executable checkpoint `2585542380cd7d4645acd613d7095303e728837f`
+then Git-moved the command byte-identically and moved its direct suite to the
+exact final evidence-owner homes. The suite changed only its repository-root
+and source anchors and added one bounded arbitrary-CWD dry-run/execute/repeat
+parity guard. Make and its literal golden, the public-CLI path map, and the
+coverage identity moved atomically. The old source/test paths are absent;
+exact searches found one final command and one mirrored suite with no wrapper,
+copy, symlink, package marker, install surface, or later-domain payload. Final
+source evidence remains mode `0755`, `21,674` bytes, SHA-256
+`d455d65bd35405cba1dbcda9f656e6ba28e23ebf8610ca50e2215efff8cb8173`;
+the final suite is mode `0644`, `21,655` bytes, SHA-256
+`4bbccec9d640c594859927edec23be3e360b5f5562408424302acca01a84e7d0`.
+The root starter profile retained its pre-change mode, size, and SHA-256
+exactly.
+
+Old-versus-new execution from the same unrelated working directory matched
+interpreter and direct help plus unknown-option statuses, stdout/stderr lengths,
+and hashes exactly. Tracked-profile dry-run, execute, and repeat retained exact
+status and stream hashes; the deterministic `1,191`-byte report retained SHA-
+256
+`8082a5b420edd6361fcd6dfc167550896fbff940584b58febaae349990abd512`,
+and no invocation-directory or transaction residue appeared. The direct suite
+passed `23` tests; the command/public-CLI/coverage-policy affected roster passed
+`150`, and the complete Phase `01b` publication-fault roster passed `184`.
+Static and every shell lane passed. The first complete undeselected Python
+attempt passed `1,590` tests with `17` skips and failed only the expected
+documentation assertion naming the intentionally not-yet-closed legacy links.
+The coverage artifact from that same complete measurement passed standalone
+comparison at `0.847971` line and `0.750594` branch coverage across `36` files,
+with the relocated owner frozen at `311/361` lines and `102/140` branches and
+no baseline value promotion. Three independent executable reviews found no
+scope, code, semantic, caller, parity, test-quality, coverage, or relocation-
+induced transaction delta.
+
+At documentation/lifecycle close, the undeselected complete Python lane passed
+`1,591` tests with `17` skips at `0.847971` line and `0.750594` branch coverage
+across `36` files. Documentation validation passed `225` Markdown documents,
+`142` task cards, and `6` Mermaid sources. Three independent close reviews
+found no stale live path, lifecycle, residual-count, public-entrypoint, scope,
+or evidence-ceiling defect; their sole provisional evidence-recording finding
+was closed by recording this final green run in the card and
+`TEST_BASELINE.md`. This package installed, restored, removed, or updated no
+dependency; moved no public starter profile; repaired none of the characterized
+recovery defects; and created no runtime, cluster, scientific-review,
+biological, scheduler, ingestion, or orchestration evidence.

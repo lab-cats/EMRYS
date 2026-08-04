@@ -46,7 +46,7 @@ scientific stages.
 | --- | --- | --- |
 | Intake contract validation | [`validate_manifest.py`](../../scripts/validate_manifest.py), [`validate_manifest.slurm`](../../jobs/validate_manifest.slurm), [`samples.example.tsv`](../../samples.example.tsv), Make `validate` in the [`Makefile`](../../Makefile) | [`test_validate_manifest.py`](../../tests/test_validate_manifest.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). This validates current manifest input; it is not an ingestion runner. |
 | Reference provenance evidence | Final owner [`reference_provenance.py`](../../src/norad/evidence/reference_provenance/reference_provenance.py), public starter [`reference_provenance.example.tsv`](../../configs/reference_provenance.example.tsv) | Mirrored [`test_reference_provenance.py`](../../tests/evidence/reference_provenance/test_reference_provenance.py). This inventories declared reference identity and consistency without repairing reference artifacts. Through completed [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) and [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md), it occupies its final evidence home and consumes the one neutral `reference_contigs` identity shared with the final Step `00c`/`05` validators while consumer-specific aggregation and evidence remain local. |
-| Structured runtime inspection | [`runtime_preflight.py`](../../scripts/runtime_preflight.py), public starter [`runtime_preflight.example.tsv`](../../configs/runtime_preflight.example.tsv) | [`test_runtime_preflight.py`](../../tests/test_runtime_preflight.py). Profile-driven availability evidence does not establish workflow runtime or cluster proof. |
+| Structured runtime inspection | Final owner [`runtime_preflight.py`](../../src/norad/evidence/runtime_preflight/runtime_preflight.py), public starter [`runtime_preflight.example.tsv`](../../configs/runtime_preflight.example.tsv) | Mirrored [`test_runtime_preflight.py`](../../tests/evidence/runtime_preflight/test_runtime_preflight.py). Through completed [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md), the command and direct suite occupy their final evidence-owner homes. Profile-driven availability evidence does not establish workflow runtime or cluster proof. |
 | Legacy manual cluster probe | [`tool_check.slurm`](../../jobs/tool_check.slurm) | [Wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). It emits scheduler logs rather than a structured runtime-preflight transaction and is not a compute stage. |
 | Dependency lifecycle | [`check_r_environment.R`](../../scripts/check_r_environment.R), [`restore_r_environment.R`](../../scripts/restore_r_environment.R), [`restore_quarto.py`](../../scripts/restore_quarto.py); Make `r-check`, `r-restore`, and `quarto-restore` | [local R contract](../../tests/shell/test_local_r_environment.sh), [`test_quarto_restore.py`](../../tests/test_quarto_restore.py), [public Make contracts](../../tests/test_public_cli_contracts.py). Restoration is explicit operator mutation, never compute-time bootstrap. |
 | Storage evidence | [`storage_inventory.py`](../../scripts/storage_inventory.py), public starters [`storage_roots.example.tsv`](../../configs/storage_roots.example.tsv) and [`retention_policy.example.tsv`](../../configs/retention_policy.example.tsv) | [`test_storage_inventory.py`](../../tests/test_storage_inventory.py). Inventory and approval state never execute retention actions. |
@@ -77,14 +77,13 @@ pipeline owner graph but still receive one owner:
 
 `PLAN-03A` inspected the tracked residual implementation-bearing roots,
 remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. The 102 paths
+environment anchors, and intentional operational placeholders. The 100 paths
 are partitioned once below. Counts are inspection checks, not a permanent
 repository-size baseline; each later owner migration updates this current
 inventory when paths move.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `scripts/runtime_preflight.py`; `tests/test_runtime_preflight.py` | 2 | Structured runtime inspection evidence. |
 | `scripts/storage_inventory.py`; `tests/test_storage_inventory.py` | 2 | Storage evidence. |
 | `tests/test_independent_contract_goldens.py` and its eight tracked fixture paths; `tests/test_validation_check_rosters.py`; `tests/validation_roster_expectations.py` | 11 | Cross-owner artifact/schema and validation-roster protection; final integration homes are fixed in the target test topology. |
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
@@ -168,8 +167,8 @@ reference-contig parsing is also implemented through completed `LIB-02K`.
 
 ## Coverage result
 
-The protected current roster contains 25 public Python entry points (four under
-`scripts/` and 21 final owner-local entry points), 13 final owner-local shell
+The protected current roster contains 25 public Python entry points (three under
+`scripts/` and 22 final owner-local entry points), 13 final owner-local shell
 entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
 (three under `jobs/` and 13 final owner-local jobs), and 24 public Make targets.
 Every member is assigned once

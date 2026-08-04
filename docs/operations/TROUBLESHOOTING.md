@@ -1442,7 +1442,8 @@ cluster header-only output has been inspected yet.
 
 ### Symptom
 
-`scripts/runtime_preflight.py` exits before probing or publication with an
+`src/norad/evidence/runtime_preflight/runtime_preflight.py` exits before
+probing or publication with an
 error about the profile header, row shape, duplicate ID, check type, context,
 boolean, JSON probe arguments, regular expression, relative path, output
 suffix, symlink, or invalid previous report.

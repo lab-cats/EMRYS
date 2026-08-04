@@ -25,11 +25,11 @@ The one-unit-at-a-time physical-migration campaign is complete through
 [`MIG-03O`](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md).
 The bounded repository-health runway and
 [`DOC-CONS-08E`](../tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
-live-state compression are complete. Selected
-[`MIG-04C`](../tasks/IN_PROGRESS/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
-is the sole residual-convergence package. No later owner move, final audit,
-runtime execution, cluster, or default-branch integration is selected. The
-remainder of
+live-state compression are complete. Completed
+[`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
+directly relocated runtime preflight and its mirrored suite into their final
+evidence-owner homes. No residual package, final audit, runtime execution,
+cluster, or default-branch integration is selected. The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not
