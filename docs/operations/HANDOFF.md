@@ -9,9 +9,12 @@ and delivery-required lineage live in
 ## Checkout
 
 - Branch: `codex/residual-source-topology-convergence`.
-- Package base:
+- Campaign base:
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
+- Current package predecessor:
+  `96c64365705eff08bd9509a76a97b8b5ee04eb1b`, the clean, published,
+  upstream-equal documentation-only `LIB-02F` decision/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and selected package rather
   than duplicating a moving commit ID.
@@ -28,11 +31,11 @@ and delivery-required lineage live in
   consumed surface. It fixed bottom-up neutral scientific-evidence contracts,
   a reporting-local committed-package reader/projection, and a neutral
   `reference_contigs` parser library as the permanent directions.
-- Selected package: none. The next eligible campaign package is unselected
-  [`MIG-04A`](../tasks/TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
-  which moves only the neutral artifact validator, five schemas, direct test,
-  and four valid fixtures with all direct consumers. No executable source move
-  has begun.
+- Selected package:
+  [`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
+  moves only the neutral artifact validator, five schemas, direct test, and
+  four valid fixtures with all direct consumers. Selection begins bounded
+  plan/review; no executable source move has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. Residual artifact-contract, reporting,
@@ -77,7 +80,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest documentation package | Published `PLAN-03A` fixes exact residual dispositions and order. Documentation-only `LIB-02F` resolves the two peer-implementation seams and creates unselected `MIG-04A`; neither package creates runtime, cluster, scientific-review, or biological evidence, and no executable move has begun. |
+| Latest documentation package | Published `PLAN-03A` fixes exact residual dispositions and order. Documentation-only `LIB-02F` resolves the two peer-implementation seams; `MIG-04A` is selected only for the first executable move. None creates runtime, cluster, scientific-review, or biological evidence, and no executable move has begun. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -177,12 +180,12 @@ earlier temporary Python-environment symlink remains removed.
 Published `PLAN-03A` is the clean campaign predecessor. Completed
 [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
 owns the bounded semantic decisions for the reporting/Step `09c` and
-reference-provenance/Step `00c`/`05` direction leaks. The documentation close
-created only
-[`MIG-04A`](../tasks/TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
-which remains unselected. Verify the close is clean, published, and upstream-
-equal; publish it if required. Then select `MIG-04A` just in time under the
-campaign authorization and freeze its pre-move behavior before mutation.
+reference-provenance/Step `00c`/`05` direction leaks. Its clean, published,
+upstream-equal documentation close created only selected
+[`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md).
+Inspect that card's exact current implementation, consumers, modes, hashes,
+tests, and path contracts; freeze focused pre-move behavior; then execute its
+direct cutover inside the existing campaign authorization.
 
 No executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is

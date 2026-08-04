@@ -42,8 +42,8 @@ extending the flat tree.
 
 ## Completion unblocks
 
-- [RPT-05A](RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: reporting also requires concrete removal of its private Step `09c` dependency before relocation.
-- [SIZE-07F](SIZE-07F-decompose-artifact-contract-validator.md) — Partially: decomposition also requires its live size refresh and independent review blockers.
+- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: reporting also requires concrete removal of its private Step `09c` dependency before relocation.
+- [SIZE-07F](../TODO/SIZE-07F-decompose-artifact-contract-validator.md) — Partially: decomposition also requires its live size refresh and independent review blockers.
 
 ## Prerequisites
 
@@ -117,5 +117,6 @@ extending the flat tree.
 
 ## Completion record
 
-Not started. Select this card just in time after the published `LIB-02F`
-decision close; the campaign approval authorizes its bounded implementation.
+Selected after the clean, published, upstream-equal `LIB-02F` decision close.
+Selection begins bounded plan/review only; no executable source, schema, test,
+fixture, caller, configuration, or documentation path has moved.

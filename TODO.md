@@ -21,11 +21,12 @@ files. Documentation-only
 [`LIB-02F`](docs/tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
 then settled the two observed peer-implementation seams and created exactly
 one first campaign successor:
-[`MIG-04A`](docs/tasks/TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
-the next eligible but unselected neutral artifact-contract move. No executable
-migration, final audit, runtime, cluster, or default-branch integration has
-begun. `PROGRAM-01` and unrelated work remain frozen outside their completed
-slices. Execute only one dependency-valid package at a time under the
+[`MIG-04A`](docs/tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
+now selected as the sole residual package for bounded plan/review and direct
+neutral artifact-contract migration. No executable move, final audit, runtime,
+cluster, or default-branch integration has begun. `PROGRAM-01` and unrelated
+work remain frozen outside their completed slices. Execute only one dependency-
+valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
 roadmap order is not blocker metadata.
 

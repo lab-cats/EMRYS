@@ -88,7 +88,7 @@ test defects.
 - A reviewed shared-library promotion matrix for both observed seams and
   child-ready boundaries for their later one-concern JIT cards.
 - Exactly one first campaign successor:
-  [`MIG-04A`](../TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
+  [`MIG-04A`](../IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md),
   the already-bounded neutral artifact-contract migration required before
   reporting relocation. Seam-extraction children remain uncreated until their
   JIT turn.

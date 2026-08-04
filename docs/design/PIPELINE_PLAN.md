@@ -91,9 +91,9 @@ Documentation-only
 complete as the first decision package in the explicitly authorized residual
 convergence campaign. It settled the two observed prohibited peer-
 implementation seams and created exactly one first campaign successor,
-[`MIG-04A`](../tasks/TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md).
-That neutral artifact-contract move is the next eligible package but remains
-unselected; no executable migration has begun.
+[`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md).
+That neutral artifact-contract move is now the sole selected package; no
+executable migration has begun.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -113,7 +113,7 @@ disposition.
 
 | Residual group | Disposition | JIT route or boundary |
 | --- | --- | --- |
-| Artifact schemas and contract validator | `MOVE` through [`MIG-04A`](../tasks/TODO/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | Move the validator, five schemas, direct test, and fixtures together in the first executable campaign card. |
+| Artifact schemas and contract validator | `MOVE` through [`MIG-04A`](../tasks/IN_PROGRESS/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | Move the validator, five schemas, direct test, and fixtures together in the first executable campaign card. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Start only after artifact contracts and every concrete prohibited-dependency extraction it needs; move current behavior before feature work or decomposition. |
 | Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
@@ -131,7 +131,7 @@ disposition.
 Preferred one-owner order is:
 
 1. completed `LIB-02F` settles only the two observed shared seams;
-2. select and execute `MIG-04A` as the neutral artifact-contract move;
+2. execute selected `MIG-04A` as the neutral artifact-contract move;
 3. create and execute bottom-up scientific-evidence contract slices only when
    required by the next owner: Step `08`, then Step `09`, then the public
    review-package contract and reporting-local reader removal;
@@ -143,9 +143,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual executable package is selected. `MIG-04A` is the sole generated
-campaign successor and remains in `TODO` until its own JIT selection. No later
-seam-extraction card, final audit, or deferred domain is pre-created or begun.
+`MIG-04A` is the sole selected residual executable package. No later seam-
+extraction card, final audit, or deferred domain is pre-created or begun.
 
 ### Recovered proposal families
 
@@ -193,14 +192,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
             └── PLAN-03A selection b84bf55
                 └── PLAN-03A documentation/lifecycle close 3efe461
                     └── LIB-02F selection 3896081
-                        └── LIB-02F decision/lifecycle close
-                            (commit containing this plan)
+                        └── LIB-02F decision/lifecycle close 96c6436
+                            └── MIG-04A selection
+                                (commit containing this plan)
 ```
 
-The final node is the current documentation close represented by this plan.
-It completes only the shared-ownership decision package and leaves `MIG-04A`
-unselected; no executable migration, final audit, default-branch integration,
-runtime, or cluster action is implied.
+The final node is the current selection tip represented by this plan. It
+selects only `MIG-04A`; no executable migration, final audit, default-branch
+integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
