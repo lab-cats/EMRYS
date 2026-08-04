@@ -21,11 +21,13 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "build_run_summary.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
+SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "artifact_run_summary_v1"
     / "build_fixture.py"
@@ -205,7 +207,7 @@ def test_review_package_science_loader_failure_is_sanitized_one_line(
 ) -> None:
     invocation_cwd = tmp_path / "review_package_invocation"
     invocation_cwd.mkdir()
-    science_script = REPO_ROOT / "scripts" / "_run_summary_science.py"
+    science_script = REPORTING_ROOT / "_run_summary_science.py"
     setup = textwrap.dedent(
         f"""
         import runpy
@@ -223,7 +225,7 @@ def test_review_package_science_loader_failure_is_sanitized_one_line(
         )
         cached.__file__ = InvalidPath()
         sys.modules[cached.__name__] = cached
-        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        sys.path.insert(0, {str(REPORTING_ROOT)!r})
         runpy.run_path({str(science_script)!r}, run_name="__main__")
         """
     )
@@ -254,7 +256,7 @@ def test_run_summary_science_ignores_foreign_step09c_cache(
 ) -> None:
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
-    science_script = REPO_ROOT / "scripts" / "_run_summary_science.py"
+    science_script = REPORTING_ROOT / "_run_summary_science.py"
     setup = textwrap.dedent(
         f"""
         import runpy
@@ -264,7 +266,7 @@ def test_run_summary_science_ignores_foreign_step09c_cache(
         cached = ModuleType("_norad_step_09c_scientific_validation_contracts")
         cached.__file__ = "foreign-step09c.py"
         sys.modules[cached.__name__] = cached
-        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        sys.path.insert(0, {str(REPORTING_ROOT)!r})
         runpy.run_path({str(science_script)!r}, run_name="__main__")
         print("loaded-without-step09c")
         """

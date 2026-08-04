@@ -39,9 +39,7 @@ PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.1.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "1.1.0"
 PDF_TEMPLATE = (
-    Path(__file__).resolve().parents[1]
-    / "reports"
-    / "run_report_pdf.qmd"
+    Path(__file__).resolve().parent / "templates" / "run_report_pdf.qmd"
 )
 PDF_BODY_MARKER = "{{NORAD_REPORT_PDF_BODY}}"
 RECEIPT_HEADER = (

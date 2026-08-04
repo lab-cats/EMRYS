@@ -38,7 +38,7 @@ import yaml
 
 _ARTIFACT_CONTRACTS_MODULE_NAME = "_norad_artifact_contracts"
 _ARTIFACT_CONTRACTS_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"
@@ -99,12 +99,8 @@ PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 QUARTO_VERSION = "1.9.38"
-QMD_TEMPLATE = (
-    Path(__file__).resolve().parents[1]
-    / "reports"
-    / "run_report.qmd"
-)
-CSS_TEMPLATE = QMD_TEMPLATE.with_name("run_report.css")
+QMD_TEMPLATE = Path(__file__).resolve().parent / "templates" / "run_report.qmd"
+CSS_TEMPLATE = Path(__file__).resolve().parent / "styles" / "run_report.css"
 BODY_MARKER = "{{NORAD_REPORT_BODY}}"
 CSS_MARKER = "{{NORAD_REPORT_CSS}}"
 CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"

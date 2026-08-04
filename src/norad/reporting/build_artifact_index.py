@@ -36,7 +36,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 _ARTIFACT_CONTRACTS_MODULE_NAME = "_norad_artifact_contracts"
 _ARTIFACT_CONTRACTS_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"
@@ -95,7 +95,7 @@ contracts = _load_artifact_contracts()
 
 _STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
 _STEP08_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"
@@ -164,7 +164,7 @@ except Exception as exc:
 
 _STEP09_MODULE_NAME = "_norad_step09_scientific_evidence_contract"
 _STEP09_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"
@@ -243,7 +243,7 @@ except Exception as exc:
 
 _REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
 _REVIEW_PACKAGE_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"

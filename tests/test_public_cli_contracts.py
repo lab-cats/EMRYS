@@ -25,14 +25,18 @@ MAKE_EXPANSION_GOLDEN = (
 )
 
 PYTHON_ENTRYPOINT_PATHS = {
-    "build_artifact_index.py": Path("scripts/build_artifact_index.py"),
-    "build_run_summary.py": Path("scripts/build_run_summary.py"),
+    "build_artifact_index.py": Path(
+        "src/norad/reporting/build_artifact_index.py"
+    ),
+    "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
     "gtf_to_bed12.py": Path(
         "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
     ),
     "reference_provenance.py": Path("scripts/reference_provenance.py"),
-    "render_run_report.py": Path("scripts/render_run_report.py"),
-    "render_run_report_bundle.py": Path("scripts/render_run_report_bundle.py"),
+    "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
+    "render_run_report_bundle.py": Path(
+        "src/norad/reporting/render_run_report_bundle.py"
+    ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
     "runtime_preflight.py": Path("scripts/runtime_preflight.py"),
     "step_09c_scientific_validation.py": Path(
@@ -96,7 +100,7 @@ PYTHON_ENTRYPOINT_PATHS = {
     ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
-PRIVATE_PYTHON_MODULES = frozenset({"_run_summary_science.py"})
+PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
         "build_run_summary.py",
@@ -112,7 +116,7 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 
 SHELL_ENTRYPOINT_PATHS = {
-    "render_run_report.sh": Path("scripts/render_run_report.sh"),
+    "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/construct_FASTA_sidecars/"
         "step_00c_prepare_gatk_reference.sh"

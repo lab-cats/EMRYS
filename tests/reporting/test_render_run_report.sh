@@ -17,12 +17,13 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/norad-report-html-shell.XXXXXX")"
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
-"$python_bin" tests/fixtures/artifact_run_summary_v1/build_fixture.py \
+"$python_bin" tests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py \
     --root "$tmp/fixture" >/dev/null
 
 artifact_root="$tmp/fixture/adapter_fixture/artifacts"
 artifact_receipt="$artifact_root/synthetic_run/synthetic_run.artifact_receipt.tsv"
-SOURCE_DATE_EPOCH=1700000000 "$python_bin" scripts/build_run_summary.py \
+SOURCE_DATE_EPOCH=1700000000 "$python_bin" \
+    src/norad/reporting/build_run_summary.py \
     --run-id synthetic_run \
     --artifact-receipt "$artifact_receipt" \
     --output-root "$artifact_root" \
@@ -64,7 +65,7 @@ payload = (
 PY
 chmod +x "$fake_quarto"
 
-scripts/render_run_report.sh --help >"$tmp/help.out"
+src/norad/reporting/render_run_report.sh --help >"$tmp/help.out"
 for option in --run-summary --output-root --quarto-bin --formats --execute; do
     grep -Fq -- "$option" "$tmp/help.out" ||
         fail "help output is missing $option"
@@ -74,7 +75,7 @@ grep -Fq '<repo>/.venv/bin/python' "$tmp/help.out" ||
 grep -Fq 'explicit value is authoritative' "$tmp/help.out" ||
     fail "help output does not document explicit-Python authority"
 
-if scripts/render_run_report.sh \
+if src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$tmp/reports-missing" >"$tmp/missing.out" 2>&1; then
     fail "wrapper accepted a missing --quarto-bin"
@@ -82,7 +83,7 @@ fi
 grep -Fq 'Missing required argument: --quarto-bin' "$tmp/missing.out" ||
     fail "missing-argument failure was not specific"
 
-if scripts/render_run_report.sh \
+if src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$tmp/reports-invalid" \
     --quarto-bin "$fake_quarto" \
@@ -94,7 +95,7 @@ grep -Fq -- '--formats must be html, pdf, or all' "$tmp/invalid.out" ||
 
 default_root="$tmp/reports-default"
 env -u PYTHON_BIN_OVERRIDE \
-    scripts/render_run_report.sh \
+    src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$default_root" \
     --quarto-bin "$fake_quarto" >"$tmp/default.out"
@@ -117,7 +118,7 @@ SH
 chmod +x "$bad_python"
 bad_root="$tmp/reports-bad-python"
 if PYTHON_BIN_OVERRIDE="$bad_python" \
-    scripts/render_run_report.sh \
+    src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$bad_root" \
     --quarto-bin "$fake_quarto" >"$tmp/bad-python.out" 2>&1; then
@@ -136,7 +137,7 @@ grep -Fq 'synthetic dependency import failure' "$tmp/bad-python.out" ||
 
 dry_root="$tmp/reports-dry"
 PYTHON_BIN_OVERRIDE="$python_bin" \
-    scripts/render_run_report.sh \
+    src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$dry_root" \
     --quarto-bin "$fake_quarto" \
@@ -157,7 +158,7 @@ printf 'must\tremain\nunchanged\ttrue\n' >"$unrelated"
 unrelated_before="$(shasum -a 256 "$unrelated" | awk '{print $1}')"
 execute_root="$tmp/reports-execute"
 PYTHON_BIN_OVERRIDE="$python_bin" \
-    scripts/render_run_report.sh \
+    src/norad/reporting/render_run_report.sh \
     --run-summary "$run_summary" \
     --output-root "$execute_root" \
     --quarto-bin "$fake_quarto" \
@@ -187,7 +188,8 @@ if find "$execute_root/synthetic_run" -maxdepth 1 \
 fi
 
 if rg -n 'restore_quarto|step_0[0-9]|bcftools|samtools|Rscript|mantelhaen' \
-    scripts/render_run_report.sh | grep -v 'report-exports-v1' >/dev/null; then
+    src/norad/reporting/render_run_report.sh |
+        grep -v 'report-exports-v1' >/dev/null; then
     fail "public renderer wrapper contains an install or analysis invocation"
 fi
 

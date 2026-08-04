@@ -18,7 +18,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 _ARTIFACT_CONTRACTS_MODULE_NAME = "_norad_artifact_contracts"
 _ARTIFACT_CONTRACTS_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"
@@ -77,7 +77,7 @@ contracts = _load_artifact_contracts()
 
 _REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
 _REVIEW_PACKAGE_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[3]
     / "src"
     / "norad"
     / "contracts"

@@ -20,19 +20,22 @@ from typing import Any, Mapping, Sequence
 import pytest
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-RENDER_SCRIPT = REPO_ROOT / "scripts" / "render_run_report.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
+RENDER_SCRIPT = REPORTING_ROOT / "render_run_report.py"
 SCRIPT = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "report_html_v1"
     / "run_html_core.py"
 )
-RUN_SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "build_run_summary.py"
+RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "artifact_run_summary_v1"
     / "build_fixture.py"
@@ -40,6 +43,7 @@ FIXTURE_BUILDER = (
 APPROVED_TABLE_FIXTURE = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "report_html_v1"
     / "approved_candidates.tsv"

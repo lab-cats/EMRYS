@@ -10,7 +10,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  scripts/render_run_report.sh \
+  src/norad/reporting/render_run_report.sh \
     --run-summary RUN_SUMMARY_JSON \
     --output-root OUTPUT_ROOT \
     --quarto-bin QUARTO_BIN \
@@ -133,7 +133,7 @@ done
     die "--formats must be html, pdf, or all; observed: $formats"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/.." && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
 python_script="$script_dir/render_run_report.py"
 [[ -f "$python_script" && -r "$python_script" ]] ||
     die "Report Python implementation is missing or unreadable: $python_script"

@@ -17,24 +17,27 @@ import pytest
 from pypdf import PdfReader
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "render_run_report.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
+SCRIPT = REPORTING_ROOT / "render_run_report.py"
 HTML_CORE_RUNNER = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "report_html_v1"
     / "run_html_core.py"
 )
-BUNDLE_SCRIPT = REPO_ROOT / "scripts" / "render_run_report_bundle.py"
+BUNDLE_SCRIPT = REPORTING_ROOT / "render_run_report_bundle.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "artifact_run_summary_v1"
     / "build_fixture.py"
 )
-RUN_SUMMARY_SCRIPT = REPO_ROOT / "scripts" / "build_run_summary.py"
+RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXED_EPOCH = "1700000000"
 
 

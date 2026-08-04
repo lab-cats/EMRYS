@@ -23,9 +23,9 @@ from types import ModuleType
 from typing import Iterable, Mapping, Sequence
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT_ROOT = REPO_ROOT / "scripts"
-ADAPTER_SCRIPT = SCRIPT_ROOT / "build_artifact_index.py"
+REPO_ROOT = Path(__file__).resolve().parents[4]
+REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
+ADAPTER_SCRIPT = REPORTING_ROOT / "build_artifact_index.py"
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",
@@ -47,7 +47,7 @@ REVIEW_ID = "synthetic_review"
 
 
 def load_adapter_module() -> ModuleType:
-    sys.path.insert(0, str(SCRIPT_ROOT))
+    sys.path.insert(0, str(REPORTING_ROOT))
     spec = importlib.util.spec_from_file_location(
         "norad_artifact_adapter_fixture_contract",
         ADAPTER_SCRIPT,

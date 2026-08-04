@@ -16,10 +16,11 @@ from types import ModuleType
 from typing import Any, Iterable, Mapping, Sequence
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 ADAPTER_FIXTURE_PATH = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "artifact_adapters_v1"
     / "build_fixture.py"

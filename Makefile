@@ -48,7 +48,7 @@ validation-shell-contracts:
 	bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 	bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
-	bash tests/shell/test_render_run_report.sh
+	bash tests/reporting/test_render_run_report.sh
 
 shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_runtime_preflight.py
@@ -107,11 +107,11 @@ report-test:
 	NORAD_REQUIRE_QUARTO=1 QUARTO_BIN="$(QUARTO_BIN)" \
 		"$(REPORT_PYTHON_BIN)" -m pytest \
 		tests/test_quarto_restore.py \
-		tests/test_artifact_run_summary.py \
-		tests/test_report_html_v1.py \
-		tests/test_report_exports_v1.py
+		tests/reporting/test_artifact_run_summary.py \
+		tests/reporting/test_report_html_v1.py \
+		tests/reporting/test_report_exports_v1.py
 	QUARTO_BIN="$(QUARTO_BIN)" REPORT_PYTHON_BIN="$(REPORT_PYTHON_BIN)" \
-		bash tests/shell/test_render_run_report.sh
+		bash tests/reporting/test_render_run_report.sh
 
 validation-report-runtime:
 	test -n "$(REPORT_TEST_RESULT)" || { \
@@ -128,8 +128,8 @@ validation-report-runtime:
 	NORAD_REQUIRE_QUARTO=1 QUARTO_BIN="$(QUARTO_BIN)" \
 		"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
 		-m report_runtime --junitxml="$(REPORT_TEST_RESULT)" \
-		tests/test_report_html_v1.py \
-		tests/test_report_exports_v1.py
+		tests/reporting/test_report_html_v1.py \
+		tests/reporting/test_report_exports_v1.py
 
 demo-report:
 	test -x "$(QUARTO_BIN)" || { \
@@ -157,11 +157,11 @@ demo-report:
 			;; \
 	esac
 	"$(REPORT_PYTHON_BIN)" \
-		tests/fixtures/artifact_run_summary_v1/build_fixture.py \
+		tests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py \
 		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
 		--full-science-demo
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" scripts/build_run_summary.py \
+		"$(REPORT_PYTHON_BIN)" src/norad/reporting/build_run_summary.py \
 		--run-id "$(DEMO_REPORT_RUN_ID)" \
 		--artifact-receipt \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).artifact_receipt.tsv" \
@@ -171,7 +171,7 @@ demo-report:
 		--execute
 	SOURCE_DATE_EPOCH=1700000000 \
 		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
-		scripts/render_run_report.sh \
+		src/norad/reporting/render_run_report.sh \
 		--run-summary \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
@@ -179,7 +179,7 @@ demo-report:
 		--formats "$(DEMO_REPORT_FORMATS)"
 	SOURCE_DATE_EPOCH=1700000000 \
 		PYTHON_BIN_OVERRIDE="$(REPORT_PYTHON_BIN)" \
-		scripts/render_run_report.sh \
+		src/norad/reporting/render_run_report.sh \
 		--run-summary \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \
@@ -248,7 +248,7 @@ validation-guarded-r:
 
 validation-static:
 	git diff --check
-	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
+	bash -n src/norad/reporting/render_run_report.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
 	bash -n scripts/git_orchestration/*.sh
 	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
 	PYTHONDONTWRITEBYTECODE=1 \
@@ -260,7 +260,7 @@ validate:
 	python scripts/validate_manifest.py --manifest samples.example.tsv
 
 smoke:
-	bash -n scripts/*.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
+	bash -n src/norad/reporting/render_run_report.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
 	bash -n scripts/git_orchestration/*.sh
 	bash -n jobs/*.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
 

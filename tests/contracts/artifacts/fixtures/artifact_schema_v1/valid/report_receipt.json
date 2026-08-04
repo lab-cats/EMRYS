@@ -27,7 +27,7 @@
     "pdf_engine": "typst"
   },
   "template": {
-    "path": "reports/run_report.qmd",
+    "path": "src/norad/reporting/templates/run_report.qmd",
     "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "size_bytes": 1024,
     "row_count": null,

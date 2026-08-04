@@ -16,7 +16,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = REPO_ROOT / "scripts"
+REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
 GOLDENS = REPO_ROOT / "tests" / "fixtures" / "independent_contract_goldens"
 SCHEMAS = (
     REPO_ROOT
@@ -28,8 +28,8 @@ SCHEMAS = (
     / "v1"
 )
 
-if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
+if str(REPORTING) not in sys.path:
+    sys.path.insert(0, str(REPORTING))
 
 ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
 RUN_SUMMARY = importlib.import_module("build_run_summary")

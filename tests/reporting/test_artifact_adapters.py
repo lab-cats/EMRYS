@@ -18,14 +18,22 @@ from typing import Any, Mapping, Sequence
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from validation_roster_expectations import assert_exact_check_roster
-
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "build_artifact_index.py"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
+ROSTER_ORACLE = REPO_ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_SPEC = importlib.util.spec_from_file_location(
+    "reporting_validation_roster_oracle",
+    ROSTER_ORACLE,
+)
+assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
+ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
+ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
+assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+SCRIPT = REPORTING_ROOT / "build_artifact_index.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
+    / "reporting"
     / "fixtures"
     / "artifact_adapters_v1"
     / "build_fixture.py"
@@ -553,7 +561,7 @@ def test_step08_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
         cached = ModuleType("_norad_step08_scientific_evidence_contract")
         cached.__file__ = InvalidPath()
         sys.modules[cached.__name__] = cached
-        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        sys.path.insert(0, {str(REPORTING_ROOT)!r})
         runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
         """
     )
@@ -674,7 +682,7 @@ def test_step09_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
         cached = ModuleType("_norad_step09_scientific_evidence_contract")
         cached.__file__ = InvalidPath()
         sys.modules[cached.__name__] = cached
-        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        sys.path.insert(0, {str(REPORTING_ROOT)!r})
         runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
         """
     )
@@ -808,7 +816,7 @@ def test_review_package_loader_failure_is_sanitized_one_line(tmp_path: Path) -> 
         cached = ModuleType("_norad_review_package_scientific_evidence_contract")
         cached.__file__ = InvalidPath()
         sys.modules[cached.__name__] = cached
-        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        sys.path.insert(0, {str(REPORTING_ROOT)!r})
         runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
         """
     )
