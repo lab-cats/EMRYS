@@ -23,7 +23,7 @@ changing public/report contracts or duplicating the relocation concern.
 
 ## Blocked by
 
-- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decomposition must occur in the final ownership boundary.
+- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decomposition must occur in the final ownership boundary.
 
 ## Completion unblocks
 

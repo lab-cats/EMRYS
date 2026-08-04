@@ -42,7 +42,7 @@ extending the flat tree.
 
 ## Completion unblocks
 
-- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: reporting also requires concrete removal of its private Step `09c` dependency before relocation.
+- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: reporting also requires concrete removal of its private Step `09c` dependency before relocation.
 - [SIZE-07F](../TODO/SIZE-07F-decompose-artifact-contract-validator.md) — Partially: decomposition also requires its live size refresh and independent review blockers.
 
 ## Prerequisites

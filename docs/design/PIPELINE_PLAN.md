@@ -107,8 +107,10 @@ completed
 [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
 extracted the bounded public Step `09c` review-package contract, and completed
 [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-removed reporting's final private Step `09c` implementation dependency. No
-residual-convergence package is selected.
+removed reporting's final private Step `09c` implementation dependency. The
+sole selected package is now
+[`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md),
+the direct atomic reporting relocation.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -129,7 +131,7 @@ disposition.
 | Residual group | Disposition | JIT route or boundary |
 | --- | --- | --- |
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
-| Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Artifact, Step `08`/`09`, and public review-package contracts are final through completed [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md); completed [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md) removed reporting's private Step `09c` edge. Relocate current reporting behavior before feature work or decomposition. |
+| Artifact indexing, run-summary construction, and static reporting | `MOVE` through selected [`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) | Artifact, Step `08`/`09`, and public review-package contracts are final through completed [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md); completed [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md) removed reporting's private Step `09c` edge. Move current reporting behavior directly before feature work or decomposition. |
 | Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
@@ -150,7 +152,7 @@ Preferred one-owner order is:
 3. completed `LIB-02G`, `LIB-02H`, and `LIB-02I` extract the neutral Step `08`,
    Step `09`, and public review-package contracts; completed `LIB-02J` removes
    reporting's private Step `09c` dependency;
-4. select and execute now-unblocked `RPT-05A` just in time;
+4. execute selected `RPT-05A` just in time;
 5. extract the neutral `reference_contigs` parser seam, then move reference
    provenance; move runtime preflight and storage inventory as separate owner
    cards;
@@ -158,9 +160,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. `RPT-05A` is unblocked but unselected; later
-seam-extraction cards, the final audit, and deferred domains remain uncreated
-or unbegun.
+`RPT-05A` is the sole selected residual package. Later seam-extraction cards,
+the final audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -234,12 +235,13 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                 └── LIB-02J executable cutover
                                                                                     2538006
                                                                                     └── LIB-02J documentation/
-                                                                                        lifecycle close
-                                                                                        (commit containing this plan)
+                                                                                        lifecycle close 387d818
+                                                                                        └── RPT-05A selection
+                                                                                            (commit containing this plan)
 ```
 
-The final node is the current lifecycle close represented by this plan. It
-selects no successor; no reporting relocation, later extraction, final audit,
+The final node is the current selection tip represented by this plan. It
+selects only `RPT-05A`; no implementation, later extraction, final audit,
 default-branch integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in

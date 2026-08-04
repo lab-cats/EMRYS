@@ -49,7 +49,7 @@ test defects.
 
 ## Completion unblocks
 
-- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: this card settles the reporting/Step `09c` ownership decision, but any concrete extraction and artifact-contract relocation must also complete before reporting moves.
+- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: this card settles the reporting/Step `09c` ownership decision, but any concrete extraction and artifact-contract relocation must also complete before reporting moves.
 
 ## Prerequisites
 

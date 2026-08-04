@@ -17,8 +17,8 @@ and delivery-required lineage live in
   dependency cutover and frozen executable basis for its documentation/
   lifecycle close.
 - Current package predecessor:
-  `1c04809475a42a9372e04c6278b682326a1b953d`, the clean, published,
-  live-remote-equal `LIB-02I` documentation/lifecycle close.
+  `387d818a9b55e09c956f3034fb2b898ace967924`, the clean, published,
+  live-remote-equal `LIB-02J` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -57,7 +57,12 @@ and delivery-required lineage live in
   with a reporting-local committed-package reader/projection without changing
   the normalized record or Step `09c`.
 - Selected package:
-  None. No residual-convergence successor is selected.
+  [`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md)
+  moves the six reporting source basenames, two private QMD templates, one CSS
+  style, four direct Python suites, one shell suite, and three reporting
+  fixture groups atomically into their permanent owners. All callers are
+  repository-owned, so no wrapper is planned. The bounded ownership/caller
+  audit is complete; no executable or test change has begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -210,12 +215,15 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. Completed
-[`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-fully unblocks
-[`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md),
-which is the next preferred JIT move but remains unselected at this lifecycle
-close.
+Selected
+[`RPT-05A`](../tasks/IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md)
+is the sole active residual package. Freeze the current source/asset/test modes,
+hashes, direct/Make/arbitrary-CWD behavior, and path-bearing output baseline;
+then perform one direct atomic move to `src/norad/reporting/` and
+`tests/reporting/` with no wrapper. Preserve all non-path behavior and bytes;
+stop for an external/unmovable caller, packaging/resource API need, private
+functional-owner import, asset byte/mode change, or any output delta beyond the
+approved physical-path substitutions and their path-derived provenance.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is

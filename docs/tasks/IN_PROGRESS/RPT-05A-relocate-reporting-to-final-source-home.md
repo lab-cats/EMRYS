@@ -116,5 +116,14 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Selected from clean, published, live-remote-equal LIB-02J documentation close
+`387d818a9b55e09c956f3034fb2b898ace967924`. The bounded ownership/caller
+audit confirms that all known callers are repository-owned, so the approved
+implementation is one atomic direct cutover with no wrapper: six reporting
+source basenames, two QMD templates, one CSS style, four direct Python suites,
+one shell suite, and three reporting fixture groups move to their exact final
+owners. Independent contract/public-CLI tests, their fixtures, coverage
+policy, public configs, neutral schemas, dependency restoration, and runtime
+report outputs remain in their current owners and change only as direct
+consumers where required. Pre-change byte/mode/behavior freezing and executable
+work have not begun.

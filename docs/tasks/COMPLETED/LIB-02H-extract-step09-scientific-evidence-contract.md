@@ -50,7 +50,7 @@ reporting-local dependency removal can proceed.
 
 ## Completion unblocks
 
-- [RPT-05A](../TODO/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: the public Step `09c` review-package contract and reporting-local dependency-removal slices must still close before reporting relocation.
+- [RPT-05A](../IN_PROGRESS/RPT-05A-relocate-reporting-to-final-source-home.md) — Partially: the public Step `09c` review-package contract and reporting-local dependency-removal slices must still close before reporting relocation.
 
 ## Prerequisites
 
