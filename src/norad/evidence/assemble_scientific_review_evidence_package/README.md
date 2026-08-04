@@ -184,20 +184,20 @@ reducer. These loader families validate cached-owner identity and readiness,
 insert before execution, clean only their own partial cache entry, leave
 `sys.path` unchanged, and expose no public package identity.
 
-The artifact index no longer loads this final Step `09c` Python file. Run-
-summary science still exact-loads it under
-`_norad_step_09c_scientific_validation_contracts` only for private review
-context and policy, and rejects a split neutral review-package identity. The
-Step `09` validator consumes the neutral Step `09` owner directly and does not
-load this review implementation.
+The artifact index and run-summary science no longer load this final Step
+`09c` Python file. Run-summary science exact-loads the neutral review-package
+owner and uses a reporting-local reader/projection over the committed public
+package, explicitly referenced evidence, and validated artifact-index records.
+The Step `09` validator consumes the neutral Step `09` owner directly and does
+not load this review implementation.
 
 Artifact indexing uses the neutral review-package contract while treating the
 published Step `09c` package and `step09c_review_summary_v1` as source evidence
 for all thirteen adapters. Run-summary assembly accepts one explicit committed
-summary and reconstructs the complete package. Reporting consumes only that
-authorized normalized record. None of these consumers proves which
-publication attempt returned success or promotes computational, scientific,
-or biological state.
+summary and validates the complete public package without reopening this
+owner's private source-input policy. Reporting consumes only that authorized
+normalized record. None of these consumers proves which publication attempt
+returned success or promotes computational, scientific, or biological state.
 
 ## Focused protection and rollback
 
@@ -255,9 +255,21 @@ R semantic routes passed. The aggregate remained non-green at guarded R
 because the environment checker reported one out-of-date package; no package
 was installed, restored, removed, or updated.
 
-Rollback of only LIB-02I reverts its documentation close, executable
-`95f795e`, then selection `d416e47`. Any deeper rollback must follow the full
-reverse branch lineage in
+Executable checkpoint `2538006` then removed run-summary science's private
+Step `09c` implementation dependency. Seven representative fixture shapes
+remained byte-exact, private summary-declared inputs became descriptor-only,
+and public-package, referenced-evidence, scope/state, and in-flight mutation
+checks remained fail closed. Complete Python coverage passed `1,540` tests with
+`17` skips, measured global line/branch rates `0.845535`/`0.747115`, and covered
+the reporting helper at `454/540` lines and `166/238` branches. Static, shell,
+both project-local Step `08`/`09` real-R semantic fixtures, and report-runtime
+routes passed; guarded R remained non-green only because one package was out of
+date. Step `09c` code, review policy, publication, and recovery were unchanged.
+
+Rollback of only LIB-02J reverts its documentation close, executable
+`2538006`, then selection `d18856f`. Rollback of LIB-02I then reverts its
+documentation close, executable `95f795e`, and selection `d416e47`. Any deeper
+rollback must follow the full reverse branch lineage in
 [`PIPELINE_PLAN.md`](../../../../docs/design/PIPELINE_PLAN.md#approved-current-delivery-lineage)
 and operations history; do not skip the intervening LIB-02G, LIB-02H, or
 MIG-04A packages. Git cannot authenticate, recover, delete, or alter runtime

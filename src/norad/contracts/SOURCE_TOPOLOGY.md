@@ -190,16 +190,17 @@ must be implemented bottom-up through separate JIT cards:
 | Scientific artifact and public review-package contracts | `src/norad/contracts/scientific_evidence/`, beginning with `step08.py`, followed by separately reviewed `step09.py` and `review_package.py`; mirrored tests under `tests/contracts/scientific_evidence/` | Closed public headers/vocabularies; sample/partition and Step `08`/`09` artifact validation; public thirteen-file review-package roster and state reduction; private subordinate parsing needed by those named APIs | Step `08`, Step `09`, Step `09c`, artifact indexing, and reporting may consume the applicable public contract. The neutral owner may not import them or own review-plan/evidence-payload policy, `Artifact`, `ReviewContext`, `build_context`, publication, locking, rollback, recovery, or reporting projection. |
 | Reference contig parsing | `src/norad/libraries/reference_contigs.py`; independent API tests at `tests/libraries/test_reference_contigs.py` | One parser-specific exception plus the exact ordered FASTA, FAI, and DICT contig/length parsers and their private duplicate/empty check | Reference provenance and the Step `00c`/`05` validators consume the library. Agreement decisions, per-role versus short-circuit aggregation, evidence rows, CLI, hashing, snapshots, publication, and recovery stay owner-local. |
 
-Reporting removes its remaining Step `09c` implementation dependency with a
-reporting-local reader/projection over the committed public review package and
-validated artifact-index records. It does not share the evidence owner's
-source-to-public reconstruction. Artifact-index reconciliation remains
-independently implemented apart from consuming neutral public constants and
-the closed evidence-state reduction. Step `08`/`09` shell and R checks remain
-independent from the Python executable contract.
+Reporting has removed its Step `09c` implementation dependency through a
+reporting-local reader/projection over the committed public review package,
+explicitly referenced evidence, and validated artifact-index records. The
+physical reporting move remains pending under `RPT-05A`. Reporting does not
+share the evidence owner's source-to-public reconstruction. Artifact-index
+reconciliation remains independently implemented apart from consuming neutral
+public constants and the closed evidence-state reduction. Step `08`/`09` shell
+and R checks remain independent from the Python executable contract.
 
 These homes do not approve descriptors, package imports, console scripts, or
-distribution. Reporting must not retain its current private implementation
+distribution. Reporting must not reintroduce a private implementation
 dependency on the Step `09c` evidence owner, and the reference-evidence move
 must not leave Step `00c` or Step `05` importing a peer implementation. Any
 neutral extraction needed to correct those directions is a separate reviewed

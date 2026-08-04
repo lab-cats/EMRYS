@@ -129,14 +129,14 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
-The current LIB-02I measurement protects neutral
-`src/norad/contracts/scientific_evidence/review_package.py` at `53/53` covered
-lines and `8/8` branches. The reviewed affected-only tracked baseline is
-`10241/12326` lines and `3599/4964` branches. The complete Python lane passed
-`1,538` tests with `17` skips and measured `0.844829` global line coverage and
-`0.746490` global branch coverage across `35` files. Static, shell, report-
-runtime, and project-local Step `08`/`09` real-R semantic routes passed. The
-aggregate remained non-green at guarded R because the environment checker
+The current LIB-02J measurement protects
+`scripts/_run_summary_science.py` at `454/540` covered lines and `166/238`
+branches. The committed tracked baseline remains `10241/12326` lines and
+`3599/4964` branches. The complete Python lane passed `1,540` tests with `17`
+skips and measured `0.845535` global line coverage and `0.747115` global branch
+coverage across `35` files. Static, shell, and report-runtime routes passed.
+Both project-local Step `08`/`09` real-R semantic fixture routes also passed.
+The aggregate remained non-green at guarded R because the environment checker
 reported one out-of-date package; no dependency was installed, restored,
 removed, or updated.
 

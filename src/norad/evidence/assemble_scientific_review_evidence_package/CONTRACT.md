@@ -114,8 +114,9 @@ all behavior, and preserves the implementation's exit status.
   `step09c_review_summary_v1` as the failure marker while reconciling package
   rows, identities, decisions, evidence states, and upstream provenance.
 - Run-summary science normalization accepts one explicit committed review
-  summary, reconstructs and revalidates the complete indexed package, and
-  rejects ad hoc or glob-selected substitutes.
+  summary, validates the complete public package and explicitly referenced
+  evidence against indexed records, treats private source inputs as committed
+  descriptors, and rejects ad hoc or glob-selected substitutes.
 - Reporting consumes that normalized science record. Raw Step `09` candidates
   or a Step `09c` marker alone do not become biological conclusions.
 - Direct shell/Python tests protect CLI delegation, incomplete and exploratory
@@ -126,7 +127,7 @@ all behavior, and preserves the implementation's exit status.
   independently protects the public roster, headers, vocabularies, bindings,
   state reduction, standard-library-only boundary, and exact loader identity.
 - Artifact, run-summary, report, and schema-parity tests protect downstream
-  reconstruction and presentation boundaries.
+  package-integrity, projection, and presentation boundaries.
 
 This is local synthetic-fixture characterization. No production Step `09c`
 package, completed production review, cluster proof, or biological-
@@ -148,10 +149,11 @@ interpretation readiness is established in this checkout.
   This implementation, artifact indexing, and run-summary science exact-load
   that standard-library-only owner under one ready-marked identity without
   creating a package API.
-- Artifact indexing no longer loads this private implementation. Run-summary
-  science retains only the private Step `09c` context/policy edge, verifies
-  that Step `09c` shares its neutral review-package identity, and removes that
-  edge through a separate reporting-local reader slice before reporting moves.
+- Artifact indexing and run-summary science no longer load this private
+  implementation. Run-summary science uses a reporting-local reader/projection
+  over the committed public package, explicitly referenced evidence, and
+  validated artifact-index records; private review/input and publication policy
+  remains here.
 - Policy and evidence-input rules outside the neutral public contract remain
   owner-local across publication, artifact reconciliation, science
   normalization, and tests. Review-plan Git/software/runtime values are

@@ -129,6 +129,56 @@ reporting relocation.
 ## Completion record
 
 Selected from clean, published, live-remote-equal LIB-02I documentation close
-`1c04809475a42a9372e04c6278b682326a1b953d`. The bounded dependency audit and
-pre-change direct baseline (`272` tests) pass; no executable or test change has
-begun.
+`1c04809475a42a9372e04c6278b682326a1b953d` at selection checkpoint
+`d18856fbaccd8acbd179630d14215d56634eade5`. The bounded dependency audit and
+pre-change direct baseline passed `272` tests. Executable/test checkpoint
+`253800654ebafcf88c605187c52c0cddfb17ce2b` removed the exact-file Step `09c`
+loader, cached identity, private types, and every private implementation
+reference from run-summary science. The replacement reporting-local reader
+validates the committed thirteen-file public package, explicitly referenced
+evidence and computational payloads, and the fixed artifact-index scope while
+treating summary-declared private source inputs as committed descriptors only.
+Step `09c`, the neutral contracts, normalized schemas, public CLI, and report
+assets were not changed.
+
+Independent old/new normalization across seven valid fixture shapes was byte-
+exact, including incomplete and exploratory-complete state, missing and mixed
+categories, mixed and multi-scope computational evidence, human reviewer names,
+and empty candidate selection. Direct regressions prove dependency absence,
+one neutral review-package identity, byte-exact normalization after removing
+the original review plan, evidence manifest, and an indexed Step `08` source,
+fixed package scope/state, public-package and referenced-evidence mutation,
+nested computational-payload mutation, and in-flight package mutation. The
+historical canonical-table tamper diagnostic remains exactly `Published Step
+09c <key> rows differ from reconstruction.`
+
+Final executable file evidence was:
+
+- reporting helper: mode `0755`, `48,135` bytes, SHA-256
+  `f1e0a7d56794e592f81291f07b0b41dd31d80a649d311e3bf7419586fd32a6fc`;
+- direct run-summary suite: mode `0644`, `80,327` bytes, SHA-256
+  `a0e82e5807cd126909deb591d171b5c4df21e3ec96883472381d3bc5f03ae34d`;
+  and
+- independent-golden suite: mode `0644`, `23,014` bytes, SHA-256
+  `880235cb1b8b0f75c68381089c15f02e1868f0fe85b59bb52f1c36dd084e9717`.
+
+The final affected roster passed `384` tests. Complete Python coverage passed
+`1,540` tests with `17` skips, measured global line/branch rates
+`0.845535`/`0.747115` across `35` files, and covered
+`scripts/_run_summary_science.py` at `454/540` lines and `166/238` branches,
+above its tracked `392/477`-line and `133/198`-branch baseline. Static
+validation, all shell contracts, both project-local Step `08`/`09` real-R
+semantic fixtures, and the pinned report-runtime route (`17` passed, `60`
+deselected) passed. The unrestricted aggregate attempt remained
+non-green only at guarded R, where the environment checker reported one out-
+of-date package. No dependency was installed, restored, removed, or updated.
+Two independent reviews found no remaining implementation, semantic, evidence,
+or compatibility blocker.
+
+`git diff --check` and `make -s documentation-check` passed at lifecycle close;
+the documentation gate validated `222` Markdown documents, `139` task cards,
+and `6` Mermaid sources.
+
+This closes reporting's final private Step `09c` dependency and fully unblocks
+`RPT-05A`. It creates no runtime, cluster, production, completed scientific-
+review, editing-site, or biological-readiness evidence.

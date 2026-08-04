@@ -13,9 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `95f795e8b015d4908b600c88367aecee3ed0abc8`, the `LIB-02I` neutral Step `09c`
-  review-package contract cutover and frozen executable basis for its
-  documentation/lifecycle close.
+  `253800654ebafcf88c605187c52c0cddfb17ce2b`, the `LIB-02J` run-summary
+  dependency cutover and frozen executable basis for its documentation/
+  lifecycle close.
 - Current package predecessor:
   `1c04809475a42a9372e04c6278b682326a1b953d`, the clean, published,
   live-remote-equal `LIB-02I` documentation/lifecycle close.
@@ -51,20 +51,20 @@ and delivery-required lineage live in
   [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
   moved the public thirteen-file Step `09c` review-package roster, headers,
   vocabularies, bindings, and state reducer into their permanent neutral owner,
-  eliminated artifact indexing's private Step `09c` dependency, and retained
-  only run-summary's private context/policy edge.
+  and eliminated artifact indexing's private Step `09c` dependency. Completed
+  [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+  then replaced run-summary's remaining private Step `09c` context/policy edge
+  with a reporting-local committed-package reader/projection without changing
+  the normalized record or Step `09c`.
 - Selected package:
-  [`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-  replaces run-summary's remaining private Step `09c` implementation edge with
-  a reporting-local committed-package reader/projection. Its bounded audit and
-  pre-change direct baseline are complete; no executable or test change has
-  begun.
+  None. No residual-convergence successor is selected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
   migrated through `MIG-04A`, and the neutral Step `08`, Step `09`, and public
   review-package contracts are extracted through `LIB-02G`, `LIB-02H`, and
-  `LIB-02I`. Reporting,
+  `LIB-02I`, and reporting's private Step `09c` dependency is removed through
+  `LIB-02J`. Reporting,
   reference/runtime/storage evidence, and cross-owner test paths remain in
   their current locations pending separately selected JIT moves.
   Current and target ownership route through
@@ -106,7 +106,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `LIB-02I` moved the public Step `09c` review-package contract at executable checkpoint `95f795e`. Independent comparison kept all 39 constants and `aggregate_evidence_status` AST-exact; the neutral owner remained standard-library-only, and artifact indexing retained no private Step `09c` load. The direct neutral suite passed 18 tests and the final focused roster passed 558. Complete Python coverage passed 1,538 tests with 17 skips, measured 0.844829 line and 0.746490 branch coverage across 35 files, and covered the new owner at 53/53 lines and 8/8 branches above the committed affected-only 0.830845/0.725020 floor. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic suites, and the 17-passed/60-deselected report-runtime route passed. The aggregate remained non-green at guarded R because the environment checker reported one out-of-date package; no dependency changed, and no package creates runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `LIB-02J` removed run-summary science's private Step `09c` implementation dependency at executable checkpoint `2538006`. The reporting-local reader validates the committed thirteen-file public package, referenced evidence, and indexed descriptors while leaving private Step `09c` source inputs descriptor-only. Seven representative fixture shapes remained byte-exact; the final focused roster passed 384 tests. Complete Python coverage passed 1,540 tests with 17 skips, measured 0.845535 line and 0.747115 branch coverage across 35 files, and covered `_run_summary_science.py` at 454/540 lines and 166/238 branches. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic fixtures, and the 17-passed/60-deselected report-runtime route passed. The aggregate remained non-green at guarded R because the environment checker reported one out-of-date package; no dependency changed, and no package creates runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -210,13 +210,12 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-Selected
-[`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-is the sole active residual package. Replace only run-summary science's private
-Step `09c` exact loader and source reconstruction with a reporting-local reader
-over the committed public thirteen-file package and validated artifact-index
-records; preserve the normalized scientific-review record and public failure
-behavior. Reporting relocation remains `RPT-05A` scope after this card closes.
+No residual package is selected. Completed
+[`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+fully unblocks
+[`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md),
+which is the next preferred JIT move but remains unselected at this lifecycle
+close.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is

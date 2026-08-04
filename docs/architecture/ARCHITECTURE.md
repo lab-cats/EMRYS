@@ -114,11 +114,12 @@ partial, or split neutral identity without package discovery or `sys.path`
 mutation. Mirrored direct protection lives in
 [`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py).
 
-Artifact indexing no longer loads Step `09c`. Run-summary science still
-exact-loads Step `09c` only for its private review context and policy, and
-requires Step `09c` to share the same neutral review-package identity. That
-remaining checkout-relative bridge is deferred to the separate reporting-
-local-reader slice; it is not a package API.
+Artifact indexing and run-summary science no longer load Step `09c`. Run-
+summary science exact-loads the neutral review-package owner and uses a
+reporting-local reader/projection over the committed thirteen-file package,
+explicitly referenced evidence, and validated artifact-index records. Step
+`09c` retains review/input policy, source reconstruction, publication, locking,
+rollback, and recovery; the reporting reader is not a package API.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
 shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step

@@ -4750,9 +4750,9 @@ editing-site, or biological proof.
 Status:
 
 ```text
-implemented at the final evidence owner; public review-package contract extracted at 95f795e
+implemented at the final evidence owner; reporting's private Step 09c edge removed at 2538006
 focused final-path Python, shell, loader, artifact, run-summary, and CLI suites pass
-the latest complete Python coverage lane passes 1,538 tests with 17 skips
+the latest complete Python coverage lane passes 1,540 tests with 17 skips
 the latest aggregate attempt is non-green only at guarded R: one package is out of date
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
@@ -4781,9 +4781,10 @@ contracts but does not own or re-export their public headers, vocabularies, or
 validators. The Python evidence owner exact-loads the tracked neutral files
 under their shared ready identities without package discovery, `PYTHONPATH`
 changes, or `sys.path` mutation. Artifact indexing consumes the neutral
-review-package owner and no longer loads Step `09c`; run-summary science uses
-the neutral owner for public surfaces while retaining Step `09c` only for
-private review context/policy. The public shell and direct Python commands
+review-package owner and no longer loads Step `09c`; run-summary science also
+no longer loads Step `09c`. It uses the neutral owner plus a reporting-local
+reader/projection over the committed public package, referenced evidence, and
+validated artifact-index records. The public shell and direct Python commands
 remain unchanged.
 
 The local dry-run-first Python/shell evidence package has this public
@@ -5011,9 +5012,9 @@ The active fixtures cover exact 13-file publication, side-effect-free dry-run,
 incomplete and exploratory evidence, reserved-state rejection, unrelated-file
 immunity, the 32-input identity ceiling, ordered publication, hash mutation,
 locks, cleanup, restoration, signals, and concurrency. The cross-consumer
-suites protect neutral Step `08`/`09` and review-package contracts, retained
-private Step `09c` context/policy, artifact, run-summary, and public-command
-routes. A local pass means implemented and
+suites protect neutral Step `08`/`09` and review-package contracts, private
+Step `09c` policy, the reporting-local committed-package reader, artifact,
+run-summary, and public-command routes. A local pass means implemented and
 fixture-tested only. It does not
 establish a production review, scheduler/runtime evidence, cluster proof,
 validated editing sites, or biological readiness.

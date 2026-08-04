@@ -2511,8 +2511,8 @@ internal name `_norad_review_package_scientific_evidence_contract`. Each loader
 requires the exact cached-file path and completed readiness marker, inserts the
 module before execution, cleans only an owned partial cache entry, and fails
 closed for a missing file, foreign cache entry, partial initialization,
-unreadable path, or execution error. Run-summary science also verifies that
-its retained Step `09c` owner uses the same neutral review-package object.
+unreadable path, or execution error. Run-summary science reads the committed
+public package locally and does not load the private Step `09c` implementation.
 
 This is exact-file loading from the tracked checkout. The neutral owner is
 standard-library-only, and the load does not use package discovery,
@@ -2528,41 +2528,6 @@ wrapper or compatibility alias, copy the contract into reporting, install a
 package, alter `PYTHONPATH`, or inject a search path. Recheck
 `tests/contracts/scientific_evidence/test_review_package.py` and the affected
 consumer suite.
-
-## A run-summary consumer cannot load Step 09c
-
-### Symptom
-
-Run-summary science normalization exits `2` with a sanitized one-line message
-that the Step `09c` contract owner is missing, unreadable, incomplete, or
-failed to load. If the diagnostic instead names the neutral review-package,
-Step `08`, or Step `09` contract, use the corresponding preceding route.
-
-### Cause
-
-Run-summary science is the only retained downstream consumer that exact-loads
-`src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
-under `_norad_step_09c_scientific_validation_contracts`. It requires that exact
-cached-file identity and completed readiness marker, inserts the module before
-execution, and cleans only an owned partial cache entry. It uses Step `09c` for
-private review context and policy while loading public roster, headers,
-vocabularies, bindings, and state reduction directly from the neutral review-
-package owner. A missing final file, foreign cache entry, partial module,
-unreadable path, execution error, or split review-package identity fails
-closed. Artifact indexing no longer loads Step `09c`.
-
-The retained load is also checkout-relative and exact-file based. It does not
-search `PYTHONPATH`, mutate `sys.path`, or require a package installation.
-
-### Fix
-
-Preserve the diagnostic and inspect the final tracked file, current Git state,
-both cached module identities when debugging in-process, and run-summary.
-Restore the reviewed final owner through Git if the tracked file is missing or
-changed. Do not recreate `scripts/step_09c_scientific_validation.py`, add a
-wrapper, copy the module, install a package, alter `PYTHONPATH`, or inject a
-search path. Use the final owner and consumer-focused commands in the
-[Step `09c` runbook](RUNBOOK.md#post-step-09-scientific-validation-gate).
 
 ## Step 09c fixture output is mistaken for a completed scientific review
 

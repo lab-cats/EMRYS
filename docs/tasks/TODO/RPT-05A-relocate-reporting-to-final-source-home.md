@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02J](../IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md) — Required: reporting must stop importing the private Step `09c` evidence implementation before its owner moves.
+- [LIB-02J](../COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md) — Required: the completed removal of reporting's private Step `09c` implementation dependency is the satisfied prerequisite for this move.
 
 ## Completion unblocks
 
@@ -54,19 +54,18 @@ logic, while report assets remain explicitly owned and inspectable.
   completed
   [LIB-02I](../COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
   places the public Step `09c` review-package contract in its final neutral
-  owner.
-- Selected
-  [LIB-02J](../IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-  owns the required reporting-local dependency removal; complete it before
-  selecting this relocation card.
+  owner; and completed
+  [LIB-02J](../COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+  replaces reporting's private Step `09c` implementation edge with the
+  reporting-local committed-package reader/projection required before this
+  move.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.
 - Verify that neutral artifact contracts occupy their final home and that no
   reporting module imports Step `09c` or another functional owner's private
-  implementation. Complete the required reporting-local reader/projection
-  slice before selecting this relocation card if that direction leak still
-  exists.
+  implementation. Reverify, but do not recreate or broaden, the completed
+  reporting-local reader/projection boundary.
 
 ## Required context
 
