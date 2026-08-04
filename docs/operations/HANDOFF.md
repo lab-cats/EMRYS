@@ -13,9 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `2585542380cd7d4645acd613d7095303e728837f`, the `MIG-04C` direct
-  runtime-preflight source/test relocation and repository path cutover, and the
-  frozen executable basis for selected `MIG-04D`.
+  `b5160f377afe721abecf67ce0cab951f6456e583`, the `MIG-04D` direct storage-
+  inventory source/test relocation and repository path cutover, and the frozen
+  executable basis for this documentation/lifecycle close.
 - Current package predecessor:
   `e52f4e8526562f02ce82e2302f979ffc66269633`, the clean, published,
   live-remote-equal `MIG-04C` documentation/lifecycle close.
@@ -76,13 +76,13 @@ and delivery-required lineage live in
   then directly moved the public runtime-preflight command and mirrored suite
   into their fixed final evidence-owner homes, repaired only the suite's self-
   relative anchors, and cut over every repository path consumer without a
-  wrapper or public starter-profile move.
-- Selected package:
-  [`MIG-04D`](../tasks/IN_PROGRESS/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
-  directly moves only the public storage-inventory command and mirrored suite
-  into their fixed final evidence-owner homes, repairs only the suite's self-
-  relative anchors, and cuts over every repository path consumer without a
+  wrapper or public starter-profile move. Completed
+  [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
+  then directly moved the public storage-inventory command and mirrored suite
+  into their fixed final evidence-owner homes, repaired only the suite's self-
+  relative anchors, and cut over every repository path consumer without a
   wrapper or public starter-contract move.
+- Selected package: none.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -92,9 +92,9 @@ and delivery-required lineage live in
   `LIB-02J`, and the reporting owner is physically final through `RPT-05A`.
   The reference-contig seam is final through `LIB-02K`, and reference-
   provenance evidence is physically final through `MIG-04B`.
-  Runtime-preflight evidence is physically final through `MIG-04C`. Storage
-  evidence and cross-owner test paths remain in their current locations pending
-  separately selected JIT moves.
+  Runtime-preflight evidence is physically final through `MIG-04C`, and storage
+  evidence is physically final through `MIG-04D`. Cross-owner test paths remain
+  in their current locations pending a separately selected JIT move.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -125,7 +125,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; and the reference-provenance and runtime-preflight source/direct-suite pairs are physically final. Their legacy ownership and temporary compatibility paths are absent. The storage helper and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; and the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs are physically final. Their legacy ownership and temporary compatibility paths are absent. Shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -134,7 +134,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `MIG-04C` directly relocated runtime preflight and its mirrored suite at executable checkpoint `2585542`, cut over every repository path consumer, preserved the root starter profile, and left no wrapper or legacy tracked path. The source remained byte-identical; help, parse failure, arbitrary-CWD dry-run/execute/repeat behavior, deterministic report bytes, and all characterized transaction/recovery defects retained parity. The affected roster passed 150 tests and the complete publication-fault roster passed 184; complete Python coverage passed 1,591 with 17 skips at 0.847971 line and 0.750594 branch coverage across 36 files, with the relocated command at 311/361 lines and 102/140 branches. Static, all shell contracts, public CLI/Make, coverage-policy, documentation routes, and three independent executable reviews passed. No dependency or starter profile changed, and this package creates no runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `MIG-04D` directly relocated storage inventory and its mirrored suite at executable checkpoint `b5160f3`, cut over every repository path consumer, preserved both root starter contracts, and left no wrapper or legacy tracked path. The source remained byte-identical; help, parse failure, arbitrary-CWD dry-run/execute/repeat behavior, all three report bytes, and all characterized transaction/recovery defects retained parity. The affected roster passed 136 tests and the complete publication-fault roster passed 185; complete Python coverage passed 1,592 with 17 skips at 0.847971 line and 0.750594 branch coverage across 36 files, with the relocated command at 240/281 lines and 74/106 branches. Static, all shell contracts, public CLI/Make, coverage-policy, documentation routes, and three independent executable reviews passed. No dependency or starter contract changed, no retention action occurred, and this package creates no runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -238,15 +238,11 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-Selected
-[`MIG-04D`](../tasks/IN_PROGRESS/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
-is the sole active residual package. Move the public storage-inventory command
-and direct suite atomically to the exact `SOURCE_TOPOLOGY.md` homes; repair only
-the moved suite's self-relative anchors and cut over Make/golden, public-CLI,
-coverage, and current documentation paths. Preserve exact CLI/input/output,
-measurement/approval, summary-last transaction, and characterized incomplete-
-restoration behavior and modes, leave both public starter contracts at root,
-perform no retention action, and add no compatibility path.
+No residual package is selected. At this user-requested slice boundary, pause
+before selecting more work. The next preferred still-unselected unit converges
+the residual cross-owner contract tests under `tests/contract_integration/`;
+its exact file/fixture roster and caller cutover must be freshly bounded before
+mutation. Do not preload the separate legacy-test reviews or final audit.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

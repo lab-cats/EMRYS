@@ -178,4 +178,59 @@ SHA-256
 `e51cffd118cd4d2726e4a7c4bb554ad6cac0ffe05a0a841c2a77190631ab3836`,
 and `storage_retention_summary.tsv` is `389` bytes at SHA-256
 `9a4768da297ab56be164189584725aa3a730d2fdb973402c9ce3d0c8c6af2ced`.
-Executable/test work has not begun.
+Selection checkpoint `2f13d63b4ec8a576159e9e473461004a760daced` was
+published and verified live before executable mutation.
+
+Executable checkpoint `b5160f377afe721abecf67ce0cab951f6456e583`
+published the direct Git move to the fixed source/test homes. The source is
+byte-identical at mode `0644`, `16,395` bytes, and SHA-256
+`06f624b972812cc5f0b26d9cfefde1d79154f10e910487d80ae79548416338e0`.
+The moved suite changed only its repository-root/source anchors plus one
+bounded arbitrary-CWD dry-run/execute/repeat parity guard; its final evidence
+is mode `0644`, `11,693` bytes, and SHA-256
+`8001e80797665e752c620e57698c46f6ed8a68163e80c34d995e79bfdb7033c1`.
+Make and its literal golden, the public-CLI path map, and the coverage identity
+moved atomically. Both root starter contracts retained their frozen modes,
+sizes, bytes, and hashes. Exact searches found one final source and one final
+mirrored suite, with both old paths absent and no wrapper, copy, symlink,
+package marker, install/console surface, path mutation, moved starter, or
+later-domain payload.
+
+Post-move interpreter help, unknown-option failure, tracked-contract dry-run,
+execute, repeat, streams, and all three report hashes exactly matched the
+frozen pre-move evidence. The added available-root guard preserves the fixture
+file and symlink, proves an empty unrelated invocation directory and clean
+three-file transaction result, and compares every stable inventory field while
+excluding only the live `statvfs` total, free, and available byte fields. It
+also protects exact policy/summary bytes. The characterized publication-plus-
+restoration defect still can retain all three `.previous` backups while
+removing the lock and creating no recovery marker; relocation did not repair
+or approve it. The direct suite passed `9` tests;
+the affected command/public-CLI/coverage roster passed `136`; the complete
+Phase `01b` publication-fault roster passed `185`; static validation and all
+shell contracts passed. The first complete undeselected Python measurement
+passed `1,591` tests with `17` skips and failed only the expected current-
+documentation assertion naming the two not-yet-closed legacy links. Its
+coverage artifact passed policy at `0.847971` line and `0.750594` branch across
+`36` files (`10592/12491` lines, `3789/5048` branches), with storage inventory
+at the unchanged `240/281` lines and `74/106` branches and the tracked baseline
+otherwise exact at `10323/12387` lines and `3633/4986` branches. Independent
+guard review identified the live total-capacity field as an overly broad
+equality assertion; excluding all three live capacity fields repaired that
+issue, and focused reruns plus final re-review found no remaining issue. The
+other independent executable reviews found no source, caller, topology, mode,
+starter, coverage, or compatibility defect.
+
+After current path, ownership, lifecycle, and evidence routes were closed, the
+undeselected complete Python gate passed `1,592` tests with `17` skips and the
+coverage policy remained exact. Documentation validation passed `226` Markdown
+documents, `143` task cards, and `6` Mermaid sources. Independent close reviews
+found one shared evidence-recording omission: this final close result was not
+yet present in the card. Adding it resolved the omission; final re-review found
+no remaining path, lifecycle, residual-count, public-entrypoint, scope, or
+evidence-ceiling defect. No dependency was installed, restored, removed, or
+updated; neither starter contract moved or changed; no retention action or
+defect repair occurred; and no CSU or production storage/quota proof, retention
+approval, runtime/cluster proof, scientific-review evidence, or biological
+readiness was created. The close selects no successor and pauses before the
+still-unselected cross-owner contract-test convergence slice.

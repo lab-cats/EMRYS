@@ -168,8 +168,9 @@ ownership only; no listed file is moved by this topology contract.
 
 The numbered-owner roster above does not classify implemented cross-cutting
 concerns. This table remains the owner of their final homes after movement;
-unmigrated rows may still occupy legacy root paths. Each move uses the same
-direct, one-owner mechanics without inventing a new top-level domain.
+all five rows occupy those homes through completed `MIG-04A`, `RPT-05A`,
+`MIG-04B`, `MIG-04C`, and `MIG-04D`. Each move used the same direct, one-owner
+mechanics without inventing a new top-level domain.
 
 | Current functional owner | Exact target source home | Owned native assets | Mirrored test home |
 | --- | --- | --- | --- |
@@ -215,6 +216,10 @@ The structured runtime-inspection source and mirrored suite occupy their final
 homes through `MIG-04C` without moving the public starter profile or changing
 its local-fixture evidence ceiling; final placement is not runtime or cluster
 proof.
+The storage-evidence source and mirrored suite occupy their final homes through
+`MIG-04D` without moving either public starter contract, executing a retention
+action, or changing the local-fixture evidence ceiling; final placement is not
+production storage, quota, retention-approval, runtime, or cluster proof.
 
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.

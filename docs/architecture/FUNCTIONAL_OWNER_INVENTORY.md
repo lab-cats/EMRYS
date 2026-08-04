@@ -49,7 +49,7 @@ scientific stages.
 | Structured runtime inspection | Final owner [`runtime_preflight.py`](../../src/norad/evidence/runtime_preflight/runtime_preflight.py), public starter [`runtime_preflight.example.tsv`](../../configs/runtime_preflight.example.tsv) | Mirrored [`test_runtime_preflight.py`](../../tests/evidence/runtime_preflight/test_runtime_preflight.py). Through completed [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md), the command and direct suite occupy their final evidence-owner homes. Profile-driven availability evidence does not establish workflow runtime or cluster proof. |
 | Legacy manual cluster probe | [`tool_check.slurm`](../../jobs/tool_check.slurm) | [Wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). It emits scheduler logs rather than a structured runtime-preflight transaction and is not a compute stage. |
 | Dependency lifecycle | [`check_r_environment.R`](../../scripts/check_r_environment.R), [`restore_r_environment.R`](../../scripts/restore_r_environment.R), [`restore_quarto.py`](../../scripts/restore_quarto.py); Make `r-check`, `r-restore`, and `quarto-restore` | [local R contract](../../tests/shell/test_local_r_environment.sh), [`test_quarto_restore.py`](../../tests/test_quarto_restore.py), [public Make contracts](../../tests/test_public_cli_contracts.py). Restoration is explicit operator mutation, never compute-time bootstrap. |
-| Storage evidence | [`storage_inventory.py`](../../scripts/storage_inventory.py), public starters [`storage_roots.example.tsv`](../../configs/storage_roots.example.tsv) and [`retention_policy.example.tsv`](../../configs/retention_policy.example.tsv) | [`test_storage_inventory.py`](../../tests/test_storage_inventory.py). Inventory and approval state never execute retention actions. |
+| Storage evidence | Final owner [`storage_inventory.py`](../../src/norad/evidence/storage_inventory/storage_inventory.py), public starters [`storage_roots.example.tsv`](../../configs/storage_roots.example.tsv) and [`retention_policy.example.tsv`](../../configs/retention_policy.example.tsv) | Mirrored [`test_storage_inventory.py`](../../tests/evidence/storage_inventory/test_storage_inventory.py). Through completed [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md), the command and direct suite occupy their final evidence-owner homes while both public starter contracts remain at root. Inventory and approval state never execute retention actions. |
 | Validation-evidence publication protocol | Neutral owner [`validation_report.py`](../../src/norad/libraries/validation_report.py) with exact-file private loaders in all thirteen final owner validators through `rank_cohort_candidates_with_paired_CMH`; no package/import identity or public CLI is assigned to the library | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_validation_check_rosters.py`](../../tests/test_validation_check_rosters.py). Stage parsing/check rosters remain stage-owned, and current validation still does not enforce report-row order. |
 | BAM validation primitives | Neutral private owner [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) exact-loaded by the final Step `02`, Step `04`, and Step `05` validators; no package/import identity or public CLI is assigned | [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py) protects exact helper behavior and loader integrity. Stage-specific checks, arguments, reports, and evidence remain with their three functional owners. |
 | Reference contig parsing | Neutral private owner [`reference_contigs.py`](../../src/norad/libraries/reference_contigs.py) exact-loaded by reference provenance and the final Step `00c` and Step `05` validators; no package/import identity or public CLI is assigned | [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py) plus the three affected consumer suites protect exact parser behavior and one ready owner identity. Agreement, per-role versus short-circuit aggregation, evidence, commands, and publication remain consumer-local. |
@@ -77,14 +77,13 @@ pipeline owner graph but still receive one owner:
 
 `PLAN-03A` inspected the tracked residual implementation-bearing roots,
 remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. The 100 paths
+environment anchors, and intentional operational placeholders. The 98 paths
 are partitioned once below. Counts are inspection checks, not a permanent
 repository-size baseline; each later owner migration updates this current
 inventory when paths move.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `scripts/storage_inventory.py`; `tests/test_storage_inventory.py` | 2 | Storage evidence. |
 | `tests/test_independent_contract_goldens.py` and its eight tracked fixture paths; `tests/test_validation_check_rosters.py`; `tests/validation_roster_expectations.py` | 11 | Cross-owner artifact/schema and validation-roster protection; final integration homes are fixed in the target test topology. |
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
@@ -105,8 +104,8 @@ surfaces to update atomically when a `MOVE` unit is approved; their own
 repository-level ownership does not change.
 
 The current executable layout is deliberately mode-nonuniform: final reporting
-`build_artifact_index.py` and `render_run_report_bundle.py` plus retained
-`storage_inventory.py` are `0644`, while reporting-private
+`build_artifact_index.py` and `render_run_report_bundle.py` plus final owner-
+local `storage_inventory.py` are `0644`, while reporting-private
 `_run_summary_science.py` is `0755`. Each JIT card refreshes every touched mode
 and preserves it; relocation does not normalize executability by filename or
 language.
@@ -167,8 +166,8 @@ reference-contig parsing is also implemented through completed `LIB-02K`.
 
 ## Coverage result
 
-The protected current roster contains 25 public Python entry points (three under
-`scripts/` and 22 final owner-local entry points), 13 final owner-local shell
+The protected current roster contains 25 public Python entry points (two under
+`scripts/` and 23 final owner-local entry points), 13 final owner-local shell
 entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
 (three under `jobs/` and 13 final owner-local jobs), and 24 public Make targets.
 Every member is assigned once

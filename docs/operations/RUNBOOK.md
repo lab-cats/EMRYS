@@ -547,7 +547,7 @@ executed by this tool.
 Read-only dry-run:
 
 ```bash
-.venv/bin/python scripts/storage_inventory.py \
+.venv/bin/python src/norad/evidence/storage_inventory/storage_inventory.py \
   --roots /explicit/path/to/storage_roots.tsv \
   --retention-policy /explicit/path/to/retention_policy.tsv \
   --output-root results/qc/storage
@@ -560,7 +560,7 @@ root and publish:
 
 ```bash
 mkdir -p results/qc/storage
-.venv/bin/python scripts/storage_inventory.py \
+.venv/bin/python src/norad/evidence/storage_inventory/storage_inventory.py \
   --roots /explicit/path/to/storage_roots.tsv \
   --retention-policy /explicit/path/to/retention_policy.tsv \
   --output-root results/qc/storage \
@@ -592,7 +592,8 @@ appropriate CSU context.
 Focused validation:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_storage_inventory.py
+.venv/bin/python -m pytest -q \
+  tests/evidence/storage_inventory/test_storage_inventory.py
 ```
 
 ### Reconcile Explicit Reference Provenance
@@ -1824,7 +1825,7 @@ cd /Users/elisteiger/dev/norad
   tests/libraries/test_validation_report.py \
   tests/evidence/reference_provenance/test_reference_provenance.py \
   tests/evidence/runtime_preflight/test_runtime_preflight.py \
-  tests/test_storage_inventory.py
+  tests/evidence/storage_inventory/test_storage_inventory.py
 ```
 
 Assertions whose names or comments say `characterizes` or `known gap` record
