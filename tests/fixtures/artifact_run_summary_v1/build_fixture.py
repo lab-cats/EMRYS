@@ -83,6 +83,7 @@ STEP09C_FIXTURE = load_module(
 )
 ADAPTER = ADAPTER_FIXTURE.ADAPTER
 STEP09C = STEP09C_FIXTURE.CONTRACT
+REVIEW_PACKAGE = STEP09C_FIXTURE.REVIEW_PACKAGE
 
 
 @dataclass(frozen=True)
@@ -486,7 +487,7 @@ def explicit_science_inventory_rows(
             "required": "true",
         }
     )
-    for key, suffix in STEP09C.OUTPUT_SUFFIXES:
+    for key, suffix in REVIEW_PACKAGE.OUTPUT_SUFFIXES:
         rows.append(
             {
                 "artifact_id": f"review.{review_id}.{key}",
@@ -687,7 +688,7 @@ def build_explicit_science_fixture(
             )
         write_tsv(
             step09c_fixture.review_plan,
-            STEP09C.REVIEW_PLAN_HEADER,
+            REVIEW_PACKAGE.REVIEW_PLAN_HEADER,
             plan_rows,
         )
     if empty_candidate_selection:
@@ -695,12 +696,12 @@ def build_explicit_science_fixture(
             (
                 "candidate_selection",
                 "e_selection",
-                STEP09C.CANDIDATE_SELECTION_HEADER,
+                REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
             ),
             (
                 "candidate_adjudication",
                 "e_adjudication",
-                STEP09C.CANDIDATE_ADJUDICATION_HEADER,
+                REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
             ),
         )
         for category, evidence_id, header in empty_categories:
@@ -802,7 +803,7 @@ def build_explicit_science_fixture(
             row["decision_owner"] = "Jane Doe"
         write_tsv(
             decisions_path,
-            STEP09C.DECISIONS_HEADER,
+            REVIEW_PACKAGE.DECISIONS_HEADER,
             decision_rows,
         )
         decisions_manifest = next(
@@ -1181,7 +1182,7 @@ def main() -> int:
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument(
         "--science-status",
-        choices=("none", *STEP09C_FIXTURE.SCIENCE_STATUSES),
+        choices=("none", *REVIEW_PACKAGE.SCIENCE_STATUSES),
         default="none",
     )
     parser.add_argument(

@@ -75,6 +75,76 @@ def _load_artifact_contracts() -> object:
 contracts = _load_artifact_contracts()
 
 
+_REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
+_REVIEW_PACKAGE_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "review_package.py"
+).resolve(strict=False)
+_REVIEW_PACKAGE_READY_ATTRIBUTE = "_NORAD_REVIEW_PACKAGE_CONTRACT_READY"
+
+
+def _validated_review_package_contract(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached review-package scientific-evidence contract has no valid file path"
+        ) from exc
+    if module_path != _REVIEW_PACKAGE_MODULE_PATH:
+        raise ImportError(
+            "cached review-package scientific-evidence contract resolves to "
+            f"{module_path}, expected {_REVIEW_PACKAGE_MODULE_PATH}"
+        )
+    if getattr(module, _REVIEW_PACKAGE_READY_ATTRIBUTE, False) is not True:
+        raise ImportError(
+            "cached review-package scientific-evidence contract is partially "
+            "initialized"
+        )
+    return module
+
+
+def _load_review_package_contract() -> object:
+    cached = sys.modules.get(_REVIEW_PACKAGE_MODULE_NAME)
+    if cached is not None:
+        return _validated_review_package_contract(cached)
+    spec = importlib.util.spec_from_file_location(
+        _REVIEW_PACKAGE_MODULE_NAME, _REVIEW_PACKAGE_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            "unable to create an exact-file review-package module specification"
+        )
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_REVIEW_PACKAGE_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_review_package_contract(existing)
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, _REVIEW_PACKAGE_READY_ATTRIBUTE, True)
+        _validated_review_package_contract(module)
+    except BaseException:
+        if sys.modules.get(_REVIEW_PACKAGE_MODULE_NAME) is module:
+            del sys.modules[_REVIEW_PACKAGE_MODULE_NAME]
+        raise
+    return module
+
+
+try:
+    review_package = _load_review_package_contract()
+except Exception as exc:
+    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+    print(
+        "ERROR: unable to load review-package scientific-evidence contract at "
+        f"{_REVIEW_PACKAGE_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
+
+
 _CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
 _CONTRACTS_MODULE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -102,6 +172,11 @@ def _validated_step09c_contracts(module: object) -> object:
     if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
         raise ImportError(
             "cached Step 09c contract owner is partially initialized"
+        )
+    if getattr(module, "review_package", None) is not review_package:
+        raise ImportError(
+            "cached Step 09c contract owner resolved a different "
+            "review-package contract object"
         )
     return module
 
@@ -149,7 +224,7 @@ PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "1.0.0"
 
 PUBLISHED_ADAPTERS = {
-    key: f"step09c_{key}_v1" for key, _ in step09c.OUTPUT_SUFFIXES
+    key: f"step09c_{key}_v1" for key, _ in review_package.OUTPUT_SUFFIXES
 }
 INPUT_ROLE_BY_STEP09C_KEY = {
     "sample_manifest": "sample_manifest",
@@ -371,7 +446,7 @@ def _validate_published_artifacts(
         )
 
     by_key: dict[str, Mapping[str, Any]] = {}
-    for key, suffix in step09c.OUTPUT_SUFFIXES:
+    for key, suffix in review_package.OUTPUT_SUFFIXES:
         adapter = PUBLISHED_ADAPTERS[key]
         artifact = indexed[adapter]
         if artifact.get("completion_status") != "complete":
@@ -529,7 +604,7 @@ def _normalize_input_artifacts(
     run_contract: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    for key in step09c.INPUT_ARTIFACT_KEYS:
+    for key in review_package.INPUT_ARTIFACT_KEYS:
         source_artifact = context.artifacts[key]
         role = INPUT_ROLE_BY_STEP09C_KEY[key]
         row_count = _parse_row_count(
@@ -635,13 +710,13 @@ def _normalize_evidence(
         represented_ids.add(row["evidence_id"])
 
     categories: dict[str, dict[str, Any]] = {}
-    for category in step09c.CATEGORY_ORDER:
+    for category in review_package.CATEGORY_ORDER:
         rows = [
             row
             for row in context.evidence_index_rows
             if row["evidence_category"] == category
         ]
-        status = step09c.aggregate_evidence_status(
+        status = review_package.aggregate_evidence_status(
             context.evidence_rows, category
         )
         reasons: list[str] = []
@@ -767,7 +842,7 @@ def _normalize_decisions(
         for row in context.category_rows["decisions"]
     }
     decisions: dict[str, dict[str, Any]] = {}
-    for dimension in step09c.DECISION_DIMENSIONS:
+    for dimension in review_package.DECISION_DIMENSIONS:
         row = by_dimension.get(dimension)
         if row is None or row["decision_status"] == "pending":
             if (
@@ -908,7 +983,7 @@ def normalize_scientific_review(
         summary_table = step09c.read_tsv(
             "Explicit Step 09c review summary",
             normalized_summary_path,
-            step09c.REVIEW_SUMMARY_HEADER,
+            review_package.REVIEW_SUMMARY_HEADER,
         )
         if len(summary_table.rows) != 1:
             _fail("The explicit Step 09c review summary must contain one row.")
@@ -916,7 +991,7 @@ def normalize_scientific_review(
         if summary_row["transaction_state"] != "complete":
             _fail("The explicit Step 09c review summary is not committed.")
         if summary_row["published_output_count"] != str(
-            len(step09c.OUTPUT_SUFFIXES)
+            len(review_package.OUTPUT_SUFFIXES)
         ):
             _fail("The Step 09c review summary does not declare 13 outputs.")
         if (

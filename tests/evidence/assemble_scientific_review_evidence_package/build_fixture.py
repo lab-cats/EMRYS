@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Build a deterministic synthetic Step 09c input/evidence package.
 
-The fixture imports the neutral Step 08 and Step 09 contracts plus production
-Step 09c schema constants so tests fail immediately when a contract changes
-without a corresponding fixture update. All paths and SHA-256 values are
-generated for the requested temporary root.
+The fixture imports the neutral Step 08, Step 09, and public review-package
+contracts plus retained production Step 09c policy so tests fail immediately
+when a contract changes without a corresponding fixture update. All paths and
+SHA-256 values are generated for the requested temporary root.
 """
 
 from __future__ import annotations
@@ -41,6 +41,16 @@ STEP09_PATH = (
     / "scientific_evidence"
     / "step09.py"
 )
+REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
+REVIEW_PACKAGE_READY_ATTRIBUTE = "_NORAD_REVIEW_PACKAGE_CONTRACT_READY"
+REVIEW_PACKAGE_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "review_package.py"
+)
 CONTRACT_PATH = (
     REPO_ROOT
     / "src"
@@ -52,10 +62,6 @@ CONTRACT_PATH = (
 REVIEW_ID = "review_fixture"
 COHORT_ID = "cohort"
 PRIMARY_ANALYSIS_ID = "analysis_primary"
-SCIENCE_STATUSES = (
-    "evidence_incomplete",
-    "science_review_complete_exploratory",
-)
 SAMPLE_IDS = (
     "ABE_EV_2",
     "ABE_EV_3",
@@ -121,6 +127,36 @@ def load_step09_contract() -> ModuleType:
     return module
 
 
+def load_review_package_contract() -> ModuleType:
+    cached = sys.modules.get(REVIEW_PACKAGE_MODULE_NAME)
+    if cached is not None:
+        if Path(cached.__file__).resolve(
+            strict=False
+        ) != REVIEW_PACKAGE_PATH.resolve(strict=False):
+            raise RuntimeError("Cached review-package contract has the wrong path")
+        if getattr(cached, REVIEW_PACKAGE_READY_ATTRIBUTE, False) is not True:
+            raise RuntimeError("Cached review-package contract is partially initialized")
+        return cached
+    spec = importlib.util.spec_from_file_location(
+        REVIEW_PACKAGE_MODULE_NAME,
+        REVIEW_PACKAGE_PATH,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(
+            f"Could not load review-package contract: {REVIEW_PACKAGE_PATH}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        setattr(module, REVIEW_PACKAGE_READY_ATTRIBUTE, True)
+    except BaseException:
+        if sys.modules.get(spec.name) is module:
+            del sys.modules[spec.name]
+        raise
+    return module
+
+
 def load_contract() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "norad_step09c_contract", CONTRACT_PATH
@@ -135,6 +171,7 @@ def load_contract() -> ModuleType:
 
 STEP08 = load_step08_contract()
 STEP09 = load_step09_contract()
+REVIEW_PACKAGE = load_review_package_contract()
 CONTRACT = load_contract()
 if STEP09.step08 is not STEP08:
     raise RuntimeError("Step 09 fixture resolved a different Step 08 contract")
@@ -142,6 +179,8 @@ if CONTRACT.step08 is not STEP08:
     raise RuntimeError("Step 09c fixture resolved a different Step 08 contract")
 if CONTRACT.step09 is not STEP09:
     raise RuntimeError("Step 09c fixture resolved a different Step 09 contract")
+if CONTRACT.review_package is not REVIEW_PACKAGE:
+    raise RuntimeError("Step 09c fixture resolved a different review-package contract")
 
 
 @dataclass(frozen=True)
@@ -615,7 +654,7 @@ def write_evidence_tables(
     orientation_path = evidence_dir / "orientation_locus_audit.tsv"
     orientation_rows = [
         table_row(
-            CONTRACT.ORIENTATION_HEADER,
+            REVIEW_PACKAGE.ORIENTATION_HEADER,
             review_id=REVIEW_ID,
             evidence_id="e_orientation",
             analysis_id=PRIMARY_ANALYSIS_ID,
@@ -648,7 +687,7 @@ def write_evidence_tables(
             detail="Synthetic plus-strand concordance.",
         ),
         table_row(
-            CONTRACT.ORIENTATION_HEADER,
+            REVIEW_PACKAGE.ORIENTATION_HEADER,
             review_id=REVIEW_ID,
             evidence_id="e_orientation",
             analysis_id=PRIMARY_ANALYSIS_ID,
@@ -681,7 +720,11 @@ def write_evidence_tables(
             detail="Synthetic minus-strand concordance.",
         ),
     ]
-    write_tsv(orientation_path, CONTRACT.ORIENTATION_HEADER, orientation_rows)
+    write_tsv(
+        orientation_path,
+        REVIEW_PACKAGE.ORIENTATION_HEADER,
+        orientation_rows,
+    )
 
     annotation_path = evidence_dir / "annotation_audit.tsv"
     cases = [
@@ -741,7 +784,7 @@ def write_evidence_tables(
         )
         annotation_rows.append(
             table_row(
-                CONTRACT.ANNOTATION_HEADER,
+                REVIEW_PACKAGE.ANNOTATION_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_annotation",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -785,7 +828,7 @@ def write_evidence_tables(
                 detail=f"Synthetic {case_type} annotation audit.",
             )
         )
-    write_tsv(annotation_path, CONTRACT.ANNOTATION_HEADER, annotation_rows)
+    write_tsv(annotation_path, REVIEW_PACKAGE.ANNOTATION_HEADER, annotation_rows)
 
     qc_path = evidence_dir / "qc_funnel.tsv"
     qc_specs = [
@@ -811,7 +854,7 @@ def write_evidence_tables(
     ) in qc_specs:
         qc_rows.append(
             table_row(
-                CONTRACT.QC_FUNNEL_HEADER,
+                REVIEW_PACKAGE.QC_FUNNEL_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_qc",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -842,7 +885,7 @@ def write_evidence_tables(
                 detail="Synthetic partition-orientation reconciliation.",
             )
         )
-    write_tsv(qc_path, CONTRACT.QC_FUNNEL_HEADER, qc_rows)
+    write_tsv(qc_path, REVIEW_PACKAGE.QC_FUNNEL_HEADER, qc_rows)
 
     replicate_path = evidence_dir / "replicate_effects.tsv"
     replicate_rows = []
@@ -865,7 +908,7 @@ def write_evidence_tables(
             difference = treatment_af - control_af
             replicate_rows.append(
                 table_row(
-                    CONTRACT.REPLICATE_EFFECTS_HEADER,
+                    REVIEW_PACKAGE.REPLICATE_EFFECTS_HEADER,
                     review_id=REVIEW_ID,
                     evidence_id="e_replicates",
                     analysis_id=PRIMARY_ANALYSIS_ID,
@@ -890,7 +933,11 @@ def write_evidence_tables(
                     detail=f"Synthetic replicate effect {pair_index + 1}.",
                 )
             )
-    write_tsv(replicate_path, CONTRACT.REPLICATE_EFFECTS_HEADER, replicate_rows)
+    write_tsv(
+        replicate_path,
+        REVIEW_PACKAGE.REPLICATE_EFFECTS_HEADER,
+        replicate_rows,
+    )
 
     sensitivity_path = evidence_dir / "sensitivity_matrix.tsv"
     sensitivity_rows = []
@@ -932,7 +979,7 @@ def write_evidence_tables(
     ):
         sensitivity_rows.append(
             table_row(
-                CONTRACT.SENSITIVITY_HEADER,
+                REVIEW_PACKAGE.SENSITIVITY_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_sensitivity",
                 analysis_id=analysis_id,
@@ -962,7 +1009,7 @@ def write_evidence_tables(
                 detail=f"Synthetic sensitivity set {parameter_id}.",
             )
         )
-    write_tsv(sensitivity_path, CONTRACT.SENSITIVITY_HEADER, sensitivity_rows)
+    write_tsv(sensitivity_path, REVIEW_PACKAGE.SENSITIVITY_HEADER, sensitivity_rows)
 
     loo_path = evidence_dir / "leave_one_pair_out.tsv"
     loo_rows = []
@@ -985,7 +1032,7 @@ def write_evidence_tables(
         ):
             loo_rows.append(
                 table_row(
-                    CONTRACT.LEAVE_ONE_OUT_HEADER,
+                    REVIEW_PACKAGE.LEAVE_ONE_OUT_HEADER,
                     review_id=REVIEW_ID,
                     evidence_id="e_loo",
                     primary_analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1011,7 +1058,7 @@ def write_evidence_tables(
                     detail="Synthetic leave-one-pair-out result.",
                 )
             )
-    write_tsv(loo_path, CONTRACT.LEAVE_ONE_OUT_HEADER, loo_rows)
+    write_tsv(loo_path, REVIEW_PACKAGE.LEAVE_ONE_OUT_HEADER, loo_rows)
 
     selection_path = evidence_dir / "candidate_selection.tsv"
     selection_specs = [
@@ -1054,7 +1101,7 @@ def write_evidence_tables(
     ):
         selection_rows.append(
             table_row(
-                CONTRACT.CANDIDATE_SELECTION_HEADER,
+                REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_selection",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1074,7 +1121,9 @@ def write_evidence_tables(
             )
         )
     write_tsv(
-        selection_path, CONTRACT.CANDIDATE_SELECTION_HEADER, selection_rows
+        selection_path,
+        REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
+        selection_rows,
     )
 
     adjudication_path = evidence_dir / "candidate_adjudication.tsv"
@@ -1082,7 +1131,7 @@ def write_evidence_tables(
     for selection_set, candidate_id, *_ in selection_specs:
         adjudication_rows.append(
             table_row(
-                CONTRACT.CANDIDATE_ADJUDICATION_HEADER,
+                REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_adjudication",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1113,7 +1162,7 @@ def write_evidence_tables(
         )
     write_tsv(
         adjudication_path,
-        CONTRACT.CANDIDATE_ADJUDICATION_HEADER,
+        REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
         adjudication_rows,
     )
 
@@ -1128,10 +1177,10 @@ def write_evidence_tables(
         "adjudication": "review_recorded",
     }
     decisions_rows = []
-    for dimension in CONTRACT.DECISION_DIMENSIONS:
+    for dimension in REVIEW_PACKAGE.DECISION_DIMENSIONS:
         decisions_rows.append(
             table_row(
-                CONTRACT.DECISIONS_HEADER,
+                REVIEW_PACKAGE.DECISIONS_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_decisions",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1149,7 +1198,7 @@ def write_evidence_tables(
                 rerun_scope="none",
             )
         )
-    write_tsv(decisions_path, CONTRACT.DECISIONS_HEADER, decisions_rows)
+    write_tsv(decisions_path, REVIEW_PACKAGE.DECISIONS_HEADER, decisions_rows)
 
     limitations_path = evidence_dir / "limitations.tsv"
     limitation_rows = []
@@ -1160,7 +1209,7 @@ def write_evidence_tables(
     ):
         limitation_rows.append(
             table_row(
-                CONTRACT.LIMITATIONS_HEADER,
+                REVIEW_PACKAGE.LIMITATIONS_HEADER,
                 review_id=REVIEW_ID,
                 evidence_id="e_limitations",
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1176,7 +1225,7 @@ def write_evidence_tables(
                 related_evidence_ids="e_decisions",
             )
         )
-    write_tsv(limitations_path, CONTRACT.LIMITATIONS_HEADER, limitation_rows)
+    write_tsv(limitations_path, REVIEW_PACKAGE.LIMITATIONS_HEADER, limitation_rows)
 
     computational_path = evidence_dir / "computational_validation.tsv"
     computational_rows = [
@@ -1221,9 +1270,10 @@ def build_fixture(
     root: Path,
     science_status: str = "evidence_incomplete",
 ) -> FixturePaths:
-    if science_status not in SCIENCE_STATUSES:
+    if science_status not in REVIEW_PACKAGE.SCIENCE_STATUSES:
         raise ValueError(
-            f"science_status must be one of {', '.join(SCIENCE_STATUSES)}"
+            "science_status must be one of "
+            f"{', '.join(REVIEW_PACKAGE.SCIENCE_STATUSES)}"
         )
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -1475,7 +1525,7 @@ def build_fixture(
 
     review_plan = root / "review_plan.tsv"
     plan_row = table_row(
-        CONTRACT.REVIEW_PLAN_HEADER,
+        REVIEW_PACKAGE.REVIEW_PLAN_HEADER,
         review_id=REVIEW_ID,
         primary_analysis_id=PRIMARY_ANALYSIS_ID,
         superseded_analysis_ids="NA",
@@ -1528,7 +1578,7 @@ def build_fixture(
         ),
         notes="Synthetic fixture; never production scientific evidence.",
     )
-    write_tsv(review_plan, CONTRACT.REVIEW_PLAN_HEADER, [plan_row])
+    write_tsv(review_plan, REVIEW_PACKAGE.REVIEW_PLAN_HEADER, [plan_row])
 
     evidence_manifest = root / "evidence_manifest.tsv"
     evidence_ids = {
@@ -1545,7 +1595,9 @@ def build_fixture(
         "computational_validation": "e_computational",
     }
     evidence_rows = []
-    for category in tuple(CONTRACT.CATEGORY_ORDER) + ("computational_validation",):
+    for category in tuple(REVIEW_PACKAGE.CATEGORY_ORDER) + (
+        "computational_validation",
+    ):
         source_path = evidence_paths[category]
         with source_path.open("r", encoding="utf-8", newline="") as stream:
             row_count = sum(1 for _ in csv.reader(stream, delimiter="\t")) - 1
@@ -1592,7 +1644,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument(
         "--science-status",
-        choices=SCIENCE_STATUSES,
+        choices=REVIEW_PACKAGE.SCIENCE_STATUSES,
         default="evidence_incomplete",
     )
     return parser.parse_args()

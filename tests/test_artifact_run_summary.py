@@ -83,16 +83,161 @@ def run_cli(
     )
 
 
-def test_step09c_private_loaders_share_exact_ready_owner() -> None:
+def test_review_package_private_loaders_share_exact_ready_owner() -> None:
+    name = SCIENCE._REVIEW_PACKAGE_MODULE_NAME
+
+    assert RUN_SUMMARY.adapter.review_package is SCIENCE.review_package
+    assert FIXTURE.ADAPTER.review_package is SCIENCE.review_package
+    assert FIXTURE.REVIEW_PACKAGE is SCIENCE.review_package
+    assert sys.modules[name] is SCIENCE.review_package
+    assert Path(SCIENCE.review_package.__file__).resolve() == (
+        SCIENCE._REVIEW_PACKAGE_MODULE_PATH
+    )
+    assert (
+        getattr(
+            SCIENCE.review_package,
+            SCIENCE._REVIEW_PACKAGE_READY_ATTRIBUTE,
+        )
+        is True
+    )
+
+
+def test_step09c_private_loader_uses_exact_ready_owner() -> None:
     name = SCIENCE._CONTRACTS_MODULE_NAME
 
-    assert RUN_SUMMARY.adapter.step09c is SCIENCE.step09c
-    assert FIXTURE.ADAPTER.step09c is SCIENCE.step09c
     assert sys.modules[name] is SCIENCE.step09c
     assert Path(SCIENCE.step09c.__file__).resolve() == (
         SCIENCE._CONTRACTS_MODULE_PATH
     )
     assert getattr(SCIENCE.step09c, SCIENCE._CONTRACTS_READY_ATTRIBUTE) is True
+    assert SCIENCE.step09c.review_package is SCIENCE.review_package
+
+
+def test_review_package_science_loader_does_not_mutate_sys_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = SCIENCE._REVIEW_PACKAGE_MODULE_NAME
+    before_sys_path = list(sys.path)
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+    loaded = SCIENCE._load_review_package_contract()
+
+    assert Path(loaded.__file__).resolve() == SCIENCE._REVIEW_PACKAGE_MODULE_PATH
+    assert getattr(loaded, SCIENCE._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
+    assert sys.modules[name] is loaded
+    assert sys.path == before_sys_path
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_review_package_science_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = SCIENCE._REVIEW_PACKAGE_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_review_package.py")
+        setattr(cached, SCIENCE._REVIEW_PACKAGE_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(SCIENCE._REVIEW_PACKAGE_MODULE_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        SCIENCE._load_review_package_contract()
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_review_package_science_loader_fails_without_usable_specification(
+    specification: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = SCIENCE._REVIEW_PACKAGE_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        SCIENCE.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        SCIENCE._load_review_package_contract()
+
+    assert name not in sys.modules
+
+
+def test_review_package_science_loader_cleans_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = SCIENCE._REVIEW_PACKAGE_MODULE_NAME
+    failing_owner = tmp_path / "review_package.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected review-package execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(SCIENCE, "_REVIEW_PACKAGE_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected review-package execution failure"):
+        SCIENCE._load_review_package_contract()
+
+    assert name not in sys.modules
+
+
+def test_review_package_science_loader_failure_is_sanitized_one_line(
+    tmp_path: Path,
+) -> None:
+    invocation_cwd = tmp_path / "review_package_invocation"
+    invocation_cwd.mkdir()
+    science_script = REPO_ROOT / "scripts" / "_run_summary_science.py"
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError(
+                    "injected\\n" + chr(0) + " review-package path"
+                )
+
+        cached = ModuleType(
+            "_norad_review_package_scientific_evidence_contract"
+        )
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
+        runpy.run_path({str(science_script)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load review-package scientific-evidence contract at "
+        f"{SCIENCE._REVIEW_PACKAGE_MODULE_PATH}: RuntimeError: injected "
+        "review-package path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
 
 
 def test_step09c_science_loader_does_not_mutate_sys_path(
@@ -110,7 +255,9 @@ def test_step09c_science_loader_does_not_mutate_sys_path(
     assert sys.path == before_sys_path
 
 
-@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+@pytest.mark.parametrize(
+    "cache_kind", ("foreign", "partial", "split-review-package")
+)
 def test_step09c_science_loader_rejects_foreign_or_partial_cache(
     cache_kind: str,
     tmp_path: Path,
@@ -122,9 +269,14 @@ def test_step09c_science_loader_rejects_foreign_or_partial_cache(
         cached.__file__ = str(tmp_path / "foreign_step09c.py")
         setattr(cached, SCIENCE._CONTRACTS_READY_ATTRIBUTE, True)
         expected = "resolves to"
-    else:
+    elif cache_kind == "partial":
         cached.__file__ = str(SCIENCE._CONTRACTS_MODULE_PATH)
         expected = "partially initialized"
+    else:
+        cached.__file__ = str(SCIENCE._CONTRACTS_MODULE_PATH)
+        setattr(cached, SCIENCE._CONTRACTS_READY_ATTRIBUTE, True)
+        cached.review_package = ModuleType("_split_review_package_contract")
+        expected = "different review-package contract object"
     monkeypatch.setitem(sys.modules, name, cached)
 
     with pytest.raises(ImportError, match=expected):

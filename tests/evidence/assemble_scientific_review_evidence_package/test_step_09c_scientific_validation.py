@@ -44,6 +44,14 @@ STEP09_PATH = (
     / "scientific_evidence"
     / "step09.py"
 )
+REVIEW_PACKAGE_PATH = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "scientific_evidence"
+    / "review_package.py"
+)
 
 
 def load_fixture_builder() -> ModuleType:
@@ -67,8 +75,10 @@ def test_neutral_contract_identities_are_shared_with_step09c() -> None:
 
     assert contract._load_step08_contract() is FIXTURES.STEP08
     assert contract._load_step09_contract() is FIXTURES.STEP09
+    assert contract._load_review_package_contract() is FIXTURES.REVIEW_PACKAGE
     assert contract.step08 is FIXTURES.STEP08
     assert contract.step09 is FIXTURES.STEP09
+    assert contract.review_package is FIXTURES.REVIEW_PACKAGE
     assert FIXTURES.STEP09.step08 is FIXTURES.STEP08
     assert contract.ContractError is FIXTURES.STEP08.ContractError
     assert contract.Table is FIXTURES.STEP08.Table
@@ -118,6 +128,59 @@ def test_neutral_contract_identities_are_shared_with_step09c() -> None:
         "validate_mutation_spectrum",
     ):
         assert not hasattr(contract, name)
+    for name in (
+        "SCIENCE_STATUSES",
+        "RESERVED_SCIENCE_STATUS",
+        "EVIDENCE_STATUSES",
+        "ORIENTATION_STATUSES",
+        "IMPLEMENTATION_STATUSES",
+        "LOCAL_TEST_STATUSES",
+        "RUNTIME_VALIDATION_STATUSES",
+        "CLUSTER_DRY_RUN_STATUSES",
+        "CLUSTER_PROOF_STATUSES",
+        "DECISION_STATUSES",
+        "DECISION_DIMENSIONS",
+        "RERUN_SCOPES",
+        "REVIEW_PLAN_HEADER",
+        "ORIENTATION_HEADER",
+        "ANNOTATION_HEADER",
+        "QC_FUNNEL_HEADER",
+        "REPLICATE_EFFECTS_HEADER",
+        "SENSITIVITY_HEADER",
+        "LEAVE_ONE_OUT_HEADER",
+        "CANDIDATE_SELECTION_HEADER",
+        "CANDIDATE_ADJUDICATION_HEADER",
+        "DECISIONS_HEADER",
+        "LIMITATIONS_HEADER",
+        "CATEGORY_HEADERS",
+        "CATEGORY_ORDER",
+        "ALLOWED_EVIDENCE_CATEGORIES",
+        "EVIDENCE_INDEX_HEADER",
+        "OUTPUT_SUFFIXES",
+        "INPUT_ARTIFACT_KEYS",
+        "REVIEW_SUMMARY_BASE_HEADER",
+        "REVIEW_SUMMARY_EVIDENCE_HEADER",
+        "REVIEW_SUMMARY_ARTIFACT_HEADER",
+        "REVIEW_SUMMARY_TRAILING_HEADER",
+        "REVIEW_SUMMARY_HEADER",
+        "CONCORDANCE_STATUSES",
+        "ANNOTATION_ASSIGNMENT_STATUSES",
+        "ANNOTATION_AMBIGUITY_STATUSES",
+        "ADJUDICATION_STATUSES",
+        "AUDIT_COMPONENT_STATUSES",
+        "aggregate_evidence_status",
+    ):
+        assert hasattr(FIXTURES.REVIEW_PACKAGE, name)
+        assert not hasattr(contract, name)
+    for name in (
+        "EVIDENCE_MANIFEST_HEADER",
+        "COMPUTATIONAL_VALIDATION_HEADER",
+        "COMPUTATIONAL_VALIDATION_STATUSES",
+        "COMPUTATIONAL_SCOPE_ROLES",
+        "COMPUTATIONAL_SCOPE_PLAN_FIELDS",
+    ):
+        assert hasattr(contract, name)
+        assert not hasattr(FIXTURES.REVIEW_PACKAGE, name)
     assert sys.path == before_sys_path
 
 
@@ -337,6 +400,120 @@ def test_step09_public_loader_failure_is_sanitized_one_line(tmp_path: Path) -> N
     assert list(invocation_cwd.iterdir()) == []
 
 
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
+def test_review_package_loader_rejects_foreign_or_partial_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._REVIEW_PACKAGE_MODULE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_review_package.py")
+        setattr(cached, contract._REVIEW_PACKAGE_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    else:
+        cached.__file__ = str(REVIEW_PACKAGE_PATH)
+        expected = "partially initialized"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        contract._load_review_package_contract()
+
+    assert sys.modules[name] is cached
+
+
+@pytest.mark.parametrize(
+    "specification",
+    (None, SimpleNamespace(loader=None)),
+    ids=("missing-spec", "missing-loader"),
+)
+def test_review_package_loader_fails_closed_without_usable_specification(
+    specification: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._REVIEW_PACKAGE_MODULE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(
+        contract.importlib.util,
+        "spec_from_file_location",
+        lambda *_args, **_kwargs: specification,
+    )
+
+    with pytest.raises(ImportError, match="module specification"):
+        contract._load_review_package_contract()
+
+    assert name not in sys.modules
+
+
+def test_review_package_loader_cleans_owned_partial_after_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = FIXTURES.CONTRACT
+    name = contract._REVIEW_PACKAGE_MODULE_NAME
+    failing_owner = tmp_path / "review_package.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected review-package execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(contract, "_REVIEW_PACKAGE_MODULE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected review-package execution failure"):
+        contract._load_review_package_contract()
+
+    assert name not in sys.modules
+
+
+def test_review_package_public_loader_failure_is_sanitized_one_line(
+    tmp_path: Path,
+) -> None:
+    invocation_cwd = tmp_path / "review_package_invocation"
+    invocation_cwd.mkdir()
+    setup = textwrap.dedent(
+        f"""
+        import runpy
+        import sys
+        from types import ModuleType
+
+        class InvalidPath:
+            def __fspath__(self):
+                raise RuntimeError(
+                    "injected\\n" + chr(0) + " review-package path"
+                )
+
+        cached = ModuleType(
+            "_norad_review_package_scientific_evidence_contract"
+        )
+        cached.__file__ = InvalidPath()
+        sys.modules[cached.__name__] = cached
+        runpy.run_path({str(SCRIPT)!r}, run_name="__main__")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=invocation_cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "\x00" not in result.stderr
+    assert result.stderr.splitlines() == [
+        "ERROR: unable to load review-package scientific-evidence contract at "
+        f"{REVIEW_PACKAGE_PATH}: RuntimeError: injected review-package path"
+    ]
+    assert list(invocation_cwd.iterdir()) == []
+
+
 def build_fixture(
     root: Path,
     science_status: str = "evidence_incomplete",
@@ -471,7 +648,7 @@ def refresh_evidence_source(
 def expected_output_names(review_id: str) -> set[str]:
     return {
         f"{review_id}.{suffix}"
-        for _, suffix in FIXTURES.CONTRACT.OUTPUT_SUFFIXES
+        for _, suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
     }
 
 
@@ -580,7 +757,7 @@ def test_complete_evidence_does_not_auto_upgrade_requested_incomplete_state(
     assert result.returncode == 0, result.stderr
     summary = read_single_row(summary_path(fixture.output_root, fixture.review_id))
     assert summary["overall_science_status"] == "evidence_incomplete"
-    for category in FIXTURES.CONTRACT.CATEGORY_ORDER:
+    for category in FIXTURES.REVIEW_PACKAGE.CATEGORY_ORDER:
         assert summary[f"{category}_status"] == "complete"
 
 
@@ -708,7 +885,7 @@ def test_human_reviewer_and_owner_names_are_preserved(tmp_path: Path) -> None:
         for row in FIXTURES.CONTRACT.read_tsv(
             "published decisions",
             published_decisions,
-            FIXTURES.CONTRACT.DECISIONS_HEADER,
+            FIXTURES.REVIEW_PACKAGE.DECISIONS_HEADER,
         ).rows
         if row["decision_dimension"] == "orientation"
     )
@@ -1069,7 +1246,7 @@ def test_exploratory_completion_requires_and_preserves_complete_evidence(
     assert summary["review_completed_date"] == "2026-01-10"
     assert summary["selected_candidate_count"] == "4"
     assert summary["adjudicated_candidate_count"] == "4"
-    for category in FIXTURES.CONTRACT.CATEGORY_ORDER:
+    for category in FIXTURES.REVIEW_PACKAGE.CATEGORY_ORDER:
         assert summary[f"{category}_status"] == "complete"
 
 
@@ -1166,7 +1343,7 @@ def test_first_publication_moves_twelve_payloads_then_summary(
     fixture = build_fixture(tmp_path / "fixture")
     arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
     context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    ordered_keys = [key for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES]
+    ordered_keys = [key for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES]
     final_by_path = {path: key for key, path in context.output_paths.items()}
     original_replace = FIXTURES.CONTRACT.os.replace
     original_read_tsv = FIXTURES.CONTRACT.read_tsv
@@ -1265,7 +1442,7 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
     rewrite_field(fixture.review_plan, "notes", "Replacement publication order.")
     arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
     context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    ordered_keys = [key for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES]
+    ordered_keys = [key for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES]
     key_by_name = {path.name: key for key, path in context.output_paths.items()}
     final_by_path = {path: key for key, path in context.output_paths.items()}
     original_replace = FIXTURES.CONTRACT.os.replace
@@ -1505,7 +1682,7 @@ def test_post_summary_replacement_failure_restores_all_predecessors_summary_last
     assert observed_complete_new_set
     expected_restore_order = [
         key
-        for key, _ in FIXTURES.CONTRACT.OUTPUT_SUFFIXES
+        for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
         if key != "review_summary"
     ] + ["review_summary"]
     assert restore_order == expected_restore_order
@@ -1858,6 +2035,7 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
 
 def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     contract = FIXTURES.CONTRACT
+    review_package = FIXTURES.REVIEW_PACKAGE
     plan_path = REPO_ROOT / "configs" / "step_09c_review_plan.example.tsv"
     manifest_path = (
         REPO_ROOT / "configs" / "step_09c_evidence_manifest.example.tsv"
@@ -1865,7 +2043,7 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     plan_table, plan, analyses = contract.validate_review_plan(
         plan_path, "example_scientific_review"
     )
-    assert plan_table.header == contract.REVIEW_PLAN_HEADER
+    assert plan_table.header == review_package.REVIEW_PLAN_HEADER
     assert plan["overall_science_status"] == "evidence_incomplete"
     manifest, rows, payloads, _ = contract.validate_evidence_manifest(
         manifest_path,
@@ -1875,16 +2053,16 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     )
     assert manifest.header == contract.EVIDENCE_MANIFEST_HEADER
     assert [row["evidence_category"] for row in rows] == list(
-        contract.CATEGORY_ORDER
+        review_package.CATEGORY_ORDER
     )
-    assert all(not payloads[category] for category in contract.CATEGORY_ORDER)
+    assert all(not payloads[category] for category in review_package.CATEGORY_ORDER)
 
     schema_root = REPO_ROOT / "configs" / "step_09c_evidence_schemas"
     expected_headers = {
-        **contract.CATEGORY_HEADERS,
+        **review_package.CATEGORY_HEADERS,
         "computational_validation": contract.COMPUTATIONAL_VALIDATION_HEADER,
-        "evidence_index": contract.EVIDENCE_INDEX_HEADER,
-        "review_summary": contract.REVIEW_SUMMARY_HEADER,
+        "evidence_index": review_package.EVIDENCE_INDEX_HEADER,
+        "review_summary": review_package.REVIEW_SUMMARY_HEADER,
     }
     for category, expected_header in expected_headers.items():
         table = contract.read_tsv(

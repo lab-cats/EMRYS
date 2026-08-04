@@ -447,8 +447,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_09c_scientific_validation.py"
                 ),
                 "sha256": (
-                    "f2917f08c64c1df61e6888b8c6d0484f"
-                    "2cc0b4ee6f302d3359409709cf5bddcb"
+                    "a3200ffe9d2248e646e5fe4524383e4f"
+                    "3e9e7a9467c26d10217ee1a2315e562a"
                 ),
             }
         ],
@@ -471,9 +471,6 @@ def test_step08_loader_uses_exact_ready_shared_owner_without_mutating_sys_path(
     assert ADAPTER.step09.step08 is loaded
     assert ADAPTER.step09.ContractError is loaded.ContractError
     assert ADAPTER.step09.Table is loaded.Table
-    assert ADAPTER.step09c.step08 is loaded
-    assert ADAPTER.step09c.ContractError is loaded.ContractError
-    assert ADAPTER.step09c.Table is loaded.Table
     assert sys.path == before_sys_path
 
 
@@ -595,7 +592,6 @@ def test_step09_loader_uses_exact_ready_shared_owner_without_mutating_sys_path(
     assert getattr(loaded, ADAPTER._STEP09_READY_ATTRIBUTE) is True
     assert sys.modules[name] is loaded
     assert loaded.step08 is ADAPTER.step08
-    assert ADAPTER.step09c.step09 is loaded
     assert sys.path == before_sys_path
 
 
@@ -703,40 +699,53 @@ def test_step09_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
     assert list(invocation_cwd.iterdir()) == []
 
 
-def test_step09c_loader_uses_exact_ready_owner_without_mutating_sys_path(
+def test_review_package_loader_uses_exact_ready_owner_without_mutating_sys_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    name = ADAPTER._CONTRACTS_MODULE_NAME
+    name = ADAPTER._REVIEW_PACKAGE_MODULE_NAME
     before_sys_path = list(sys.path)
     monkeypatch.delitem(sys.modules, name, raising=False)
 
-    loaded = ADAPTER._load_step09c_contracts()
+    loaded = ADAPTER._load_review_package_contract()
 
-    assert Path(loaded.__file__).resolve() == ADAPTER._CONTRACTS_MODULE_PATH
-    assert getattr(loaded, ADAPTER._CONTRACTS_READY_ATTRIBUTE) is True
+    assert Path(loaded.__file__).resolve() == ADAPTER._REVIEW_PACKAGE_MODULE_PATH
+    assert getattr(loaded, ADAPTER._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
     assert sys.modules[name] is loaded
     assert sys.path == before_sys_path
 
 
+def test_artifact_index_has_no_private_step09c_dependency() -> None:
+    prohibited = (
+        "step09c",
+        "_CONTRACTS_MODULE_NAME",
+        "_CONTRACTS_MODULE_PATH",
+        "_CONTRACTS_READY_ATTRIBUTE",
+        "_validated_step09c_contracts",
+        "_load_step09c_contracts",
+    )
+
+    assert all(not hasattr(ADAPTER, name) for name in prohibited)
+
+
 @pytest.mark.parametrize("cache_kind", ("foreign", "partial"))
-def test_step09c_loader_rejects_foreign_or_partial_cache(
+def test_review_package_loader_rejects_foreign_or_partial_cache(
     cache_kind: str,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    name = ADAPTER._CONTRACTS_MODULE_NAME
+    name = ADAPTER._REVIEW_PACKAGE_MODULE_NAME
     cached = ModuleType(name)
     if cache_kind == "foreign":
-        cached.__file__ = str(tmp_path / "foreign_step09c.py")
-        setattr(cached, ADAPTER._CONTRACTS_READY_ATTRIBUTE, True)
+        cached.__file__ = str(tmp_path / "foreign_review_package.py")
+        setattr(cached, ADAPTER._REVIEW_PACKAGE_READY_ATTRIBUTE, True)
         expected = "resolves to"
     else:
-        cached.__file__ = str(ADAPTER._CONTRACTS_MODULE_PATH)
+        cached.__file__ = str(ADAPTER._REVIEW_PACKAGE_MODULE_PATH)
         expected = "partially initialized"
     monkeypatch.setitem(sys.modules, name, cached)
 
     with pytest.raises(ImportError, match=expected):
-        ADAPTER._load_step09c_contracts()
+        ADAPTER._load_review_package_contract()
 
 
 @pytest.mark.parametrize(
@@ -744,11 +753,11 @@ def test_step09c_loader_rejects_foreign_or_partial_cache(
     (None, SimpleNamespace(loader=None)),
     ids=("missing-spec", "missing-loader"),
 )
-def test_step09c_loader_fails_closed_without_usable_specification(
+def test_review_package_loader_fails_closed_without_usable_specification(
     specification: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    name = ADAPTER._CONTRACTS_MODULE_NAME
+    name = ADAPTER._REVIEW_PACKAGE_MODULE_NAME
     monkeypatch.delitem(sys.modules, name, raising=False)
     monkeypatch.setattr(
         ADAPTER.importlib.util,
@@ -757,31 +766,31 @@ def test_step09c_loader_fails_closed_without_usable_specification(
     )
 
     with pytest.raises(ImportError, match="module specification"):
-        ADAPTER._load_step09c_contracts()
+        ADAPTER._load_review_package_contract()
 
     assert name not in sys.modules
 
 
-def test_step09c_loader_cleans_owned_partial_after_execution_failure(
+def test_review_package_loader_cleans_owned_partial_after_execution_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    name = ADAPTER._CONTRACTS_MODULE_NAME
-    failing_owner = tmp_path / "step_09c_scientific_validation.py"
+    name = ADAPTER._REVIEW_PACKAGE_MODULE_NAME
+    failing_owner = tmp_path / "review_package.py"
     failing_owner.write_text(
-        "raise RuntimeError('injected Step 09c execution failure')\n",
+        "raise RuntimeError('injected review-package execution failure')\n",
         encoding="utf-8",
     )
     monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(ADAPTER, "_CONTRACTS_MODULE_PATH", failing_owner)
+    monkeypatch.setattr(ADAPTER, "_REVIEW_PACKAGE_MODULE_PATH", failing_owner)
 
-    with pytest.raises(RuntimeError, match="injected Step 09c execution failure"):
-        ADAPTER._load_step09c_contracts()
+    with pytest.raises(RuntimeError, match="injected review-package execution failure"):
+        ADAPTER._load_review_package_contract()
 
     assert name not in sys.modules
 
 
-def test_step09c_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
+def test_review_package_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     setup = textwrap.dedent(
@@ -792,9 +801,11 @@ def test_step09c_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
 
         class InvalidPath:
             def __fspath__(self):
-                raise RuntimeError("injected\\n" + chr(0) + " Step 09c path")
+                raise RuntimeError(
+                    "injected\\n" + chr(0) + " review-package path"
+                )
 
-        cached = ModuleType("_norad_step_09c_scientific_validation_contracts")
+        cached = ModuleType("_norad_review_package_scientific_evidence_contract")
         cached.__file__ = InvalidPath()
         sys.modules[cached.__name__] = cached
         sys.path.insert(0, {str(REPO_ROOT / 'scripts')!r})
@@ -816,8 +827,9 @@ def test_step09c_loader_failure_is_sanitized_one_line(tmp_path: Path) -> None:
     assert result.stdout == ""
     assert "\x00" not in result.stderr
     assert result.stderr.splitlines() == [
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{ADAPTER._CONTRACTS_MODULE_PATH}: RuntimeError: injected Step 09c path"
+        "ERROR: unable to load review-package scientific-evidence contract at "
+        f"{ADAPTER._REVIEW_PACKAGE_MODULE_PATH}: RuntimeError: injected "
+        "review-package path"
     ]
     assert list(invocation_cwd.iterdir()) == []
 
@@ -1508,9 +1520,9 @@ def test_reserved_biological_ready_state_is_rejected(
         rows = read_tsv(path)
         rows[0]["overall_science_status"] = "biological_interpretation_ready"
         header = (
-            ADAPTER.step09c.REVIEW_PLAN_HEADER
+            ADAPTER.review_package.REVIEW_PLAN_HEADER
             if artifact_id.endswith("review_plan")
-            else ADAPTER.step09c.REVIEW_SUMMARY_HEADER
+            else ADAPTER.review_package.REVIEW_SUMMARY_HEADER
         )
         FIXTURE.write_tsv(path, header, rows)
     review_summary_path = artifact_fixture.source_for(
@@ -1522,7 +1534,7 @@ def test_reserved_biological_ready_state_is_rejected(
     )
     FIXTURE.write_tsv(
         review_summary_path,
-        ADAPTER.step09c.REVIEW_SUMMARY_HEADER,
+        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
         review_summary_rows,
     )
 
@@ -1948,7 +1960,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         rows[0]["step09_summary_sha256"] = "9" * 64
         FIXTURE.write_tsv(
             path,
-            ADAPTER.step09c.REVIEW_SUMMARY_HEADER,
+            ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
             rows,
         )
 
@@ -2274,7 +2286,7 @@ def test_step09c_cannot_self_declare_exploratory_completion(
     plan_rows[0]["review_completed_date"] = "2026-01-01"
     FIXTURE.write_tsv(
         plan_path,
-        ADAPTER.step09c.REVIEW_PLAN_HEADER,
+        ADAPTER.review_package.REVIEW_PLAN_HEADER,
         plan_rows,
     )
     summary_path = artifact_fixture.source_for(
@@ -2288,7 +2300,7 @@ def test_step09c_cannot_self_declare_exploratory_completion(
     summary_rows[0]["review_plan_sha256"] = sha256_file(plan_path)
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.step09c.REVIEW_SUMMARY_HEADER,
+        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 
@@ -2312,7 +2324,7 @@ def test_step09c_requires_every_explicit_evidence_category(
     evidence_rows = read_tsv(evidence_index)[:1]
     FIXTURE.write_tsv(
         evidence_index,
-        ADAPTER.step09c.EVIDENCE_INDEX_HEADER,
+        ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
     summary_path = artifact_fixture.source_for(
@@ -2323,7 +2335,7 @@ def test_step09c_requires_every_explicit_evidence_category(
     summary_rows[0]["evidence_manifest_row_count"] = "1"
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.step09c.REVIEW_SUMMARY_HEADER,
+        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 
@@ -2360,7 +2372,7 @@ def test_step09c_complete_evidence_cannot_point_to_empty_payload(
     )
     FIXTURE.write_tsv(
         evidence_index,
-        ADAPTER.step09c.EVIDENCE_INDEX_HEADER,
+        ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
     summary_path = artifact_fixture.source_for(
@@ -2371,7 +2383,7 @@ def test_step09c_complete_evidence_cannot_point_to_empty_payload(
     summary_rows[0]["evidence_source_count"] = "1"
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.step09c.REVIEW_SUMMARY_HEADER,
+        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 

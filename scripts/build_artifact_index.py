@@ -241,80 +241,71 @@ except Exception as exc:
     raise SystemExit(2) from None
 
 
-_CONTRACTS_MODULE_NAME = "_norad_step_09c_scientific_validation_contracts"
-_CONTRACTS_MODULE_PATH = (
+_REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
+_REVIEW_PACKAGE_MODULE_PATH = (
     Path(__file__).resolve().parents[1]
     / "src"
     / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py"
+    / "contracts"
+    / "scientific_evidence"
+    / "review_package.py"
 ).resolve(strict=False)
-_CONTRACTS_READY_ATTRIBUTE = "_NORAD_STEP09C_CONTRACTS_READY"
+_REVIEW_PACKAGE_READY_ATTRIBUTE = "_NORAD_REVIEW_PACKAGE_CONTRACT_READY"
 
 
-def _validated_step09c_contracts(module: object) -> object:
+def _validated_review_package_contract(module: object) -> object:
     try:
         module_path = Path(getattr(module, "__file__")).resolve(strict=False)
     except (OSError, TypeError) as exc:
         raise ImportError(
-            "cached Step 09c contract owner has no valid file path"
+            "cached review-package scientific-evidence contract has no valid file path"
         ) from exc
-    if module_path != _CONTRACTS_MODULE_PATH:
+    if module_path != _REVIEW_PACKAGE_MODULE_PATH:
         raise ImportError(
-            f"cached Step 09c contract owner resolves to {module_path}, "
-            f"expected {_CONTRACTS_MODULE_PATH}"
+            "cached review-package scientific-evidence contract resolves to "
+            f"{module_path}, expected {_REVIEW_PACKAGE_MODULE_PATH}"
         )
-    if getattr(module, _CONTRACTS_READY_ATTRIBUTE, False) is not True:
+    if getattr(module, _REVIEW_PACKAGE_READY_ATTRIBUTE, False) is not True:
         raise ImportError(
-            "cached Step 09c contract owner is partially initialized"
+            "cached review-package scientific-evidence contract is partially "
+            "initialized"
         )
     return module
 
 
-def _load_step09c_contracts() -> object:
-    cached = sys.modules.get(_CONTRACTS_MODULE_NAME)
+def _load_review_package_contract() -> object:
+    cached = sys.modules.get(_REVIEW_PACKAGE_MODULE_NAME)
     if cached is not None:
-        return _validated_step09c_contracts(cached)
+        return _validated_review_package_contract(cached)
     spec = importlib.util.spec_from_file_location(
-        _CONTRACTS_MODULE_NAME, _CONTRACTS_MODULE_PATH
+        _REVIEW_PACKAGE_MODULE_NAME, _REVIEW_PACKAGE_MODULE_PATH
     )
     if spec is None or spec.loader is None:
         raise ImportError(
-            "unable to create an exact-file Step 09c module specification"
+            "unable to create an exact-file review-package module specification"
         )
     module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_CONTRACTS_MODULE_NAME, module)
+    existing = sys.modules.setdefault(_REVIEW_PACKAGE_MODULE_NAME, module)
     if existing is not module:
-        return _validated_step09c_contracts(existing)
+        return _validated_review_package_contract(existing)
     try:
         spec.loader.exec_module(module)
-        setattr(module, _CONTRACTS_READY_ATTRIBUTE, True)
-        _validated_step09c_contracts(module)
+        setattr(module, _REVIEW_PACKAGE_READY_ATTRIBUTE, True)
+        _validated_review_package_contract(module)
     except BaseException:
-        if sys.modules.get(_CONTRACTS_MODULE_NAME) is module:
-            del sys.modules[_CONTRACTS_MODULE_NAME]
+        if sys.modules.get(_REVIEW_PACKAGE_MODULE_NAME) is module:
+            del sys.modules[_REVIEW_PACKAGE_MODULE_NAME]
         raise
     return module
 
 
 try:
-    step09c = _load_step09c_contracts()
-    if step09c.step08 is not step08:
-        raise ImportError(
-            "Step 09c and artifact indexing resolved different Step 08 "
-            "contract objects"
-        )
-    if step09c.step09 is not step09:
-        raise ImportError(
-            "Step 09c and artifact indexing resolved different Step 09 "
-            "contract objects"
-        )
+    review_package = _load_review_package_contract()
 except Exception as exc:
     reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
     print(
-        "ERROR: unable to load Step 09c contract owner at "
-        f"{_CONTRACTS_MODULE_PATH}: {type(exc).__name__}: {reason}",
+        "ERROR: unable to load review-package scientific-evidence contract at "
+        f"{_REVIEW_PACKAGE_MODULE_PATH}: {type(exc).__name__}: {reason}",
         file=sys.stderr,
     )
     raise SystemExit(2) from None
@@ -340,7 +331,7 @@ ANCHOR_HASH_FIELDS = (
 )
 STEP09C_CATEGORY_ADAPTERS = {
     category: f"step09c_{category}_v1"
-    for category in step09c.CATEGORY_ORDER
+    for category in review_package.CATEGORY_ORDER
 }
 
 ARTIFACT_INDEX_HEADER = (
@@ -1026,79 +1017,79 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         (
             "step09c_review_plan_v1",
             ".step09c_review_plan.tsv",
-            step09c.REVIEW_PLAN_HEADER,
+            review_package.REVIEW_PLAN_HEADER,
             1,
         ),
         (
             "step09c_evidence_index_v1",
             ".step09c_evidence_index.tsv",
-            step09c.EVIDENCE_INDEX_HEADER,
+            review_package.EVIDENCE_INDEX_HEADER,
             None,
         ),
         (
             "step09c_orientation_locus_audit_v1",
             ".step09c_orientation_locus_audit.tsv",
-            step09c.ORIENTATION_HEADER,
+            review_package.ORIENTATION_HEADER,
             None,
         ),
         (
             "step09c_annotation_audit_v1",
             ".step09c_annotation_audit.tsv",
-            step09c.ANNOTATION_HEADER,
+            review_package.ANNOTATION_HEADER,
             None,
         ),
         (
             "step09c_qc_funnel_v1",
             ".step09c_qc_funnel.tsv",
-            step09c.QC_FUNNEL_HEADER,
+            review_package.QC_FUNNEL_HEADER,
             None,
         ),
         (
             "step09c_replicate_effects_v1",
             ".step09c_replicate_effects.tsv",
-            step09c.REPLICATE_EFFECTS_HEADER,
+            review_package.REPLICATE_EFFECTS_HEADER,
             None,
         ),
         (
             "step09c_sensitivity_matrix_v1",
             ".step09c_sensitivity_matrix.tsv",
-            step09c.SENSITIVITY_HEADER,
+            review_package.SENSITIVITY_HEADER,
             None,
         ),
         (
             "step09c_leave_one_pair_out_v1",
             ".step09c_leave_one_pair_out.tsv",
-            step09c.LEAVE_ONE_OUT_HEADER,
+            review_package.LEAVE_ONE_OUT_HEADER,
             None,
         ),
         (
             "step09c_candidate_selection_v1",
             ".step09c_candidate_selection.tsv",
-            step09c.CANDIDATE_SELECTION_HEADER,
+            review_package.CANDIDATE_SELECTION_HEADER,
             None,
         ),
         (
             "step09c_candidate_adjudication_v1",
             ".step09c_candidate_adjudication.tsv",
-            step09c.CANDIDATE_ADJUDICATION_HEADER,
+            review_package.CANDIDATE_ADJUDICATION_HEADER,
             None,
         ),
         (
             "step09c_decisions_v1",
             ".step09c_decisions.tsv",
-            step09c.DECISIONS_HEADER,
+            review_package.DECISIONS_HEADER,
             None,
         ),
         (
             "step09c_limitations_v1",
             ".step09c_limitations.tsv",
-            step09c.LIMITATIONS_HEADER,
+            review_package.LIMITATIONS_HEADER,
             None,
         ),
         (
             "step09c_review_summary_v1",
             ".step09c_review_summary.tsv",
-            step09c.REVIEW_SUMMARY_HEADER,
+            review_package.REVIEW_SUMMARY_HEADER,
             1,
         ),
     )
@@ -2929,10 +2920,10 @@ def require_referenced_source(
         expected_count = target.source["row_count"] if target.source else None
         observed_count = row.get(row_count_field, "")
         if expected_count is None:
-            if observed_count != step09c.NA_VALUE:
+            if observed_count != step08.NA_VALUE:
                 raise ArtifactIndexError(
                     f"Native binary reference {row_count_field} must be "
-                    f"{step09c.NA_VALUE}"
+                    f"{step08.NA_VALUE}"
                 )
         elif native_int(row, row_count_field) != expected_count:
             raise ArtifactIndexError(
@@ -3401,7 +3392,7 @@ def validate_step09_mutation_spectrum(
         )
         if (
             not 0.0 <= observed_fraction <= 1.0
-            or not step09c.values_close(observed_fraction, expected_fraction)
+            or not step08.values_close(observed_fraction, expected_fraction)
         ):
             raise ArtifactIndexError(
                 "Step 09 mutation spectrum candidate_fraction does not "
@@ -3530,7 +3521,7 @@ def reconcile_step09(
 
 
 def split_native_safe_ids(value: str, field_name: str) -> list[str]:
-    if value == step09c.NA_VALUE:
+    if value == step08.NA_VALUE:
         return []
     values = value.split(",")
     if (
@@ -3565,7 +3556,7 @@ def validate_step09c_evidence_index(
     seen_evidence_ids: set[str] = set()
     category_order = {
         category: index
-        for index, category in enumerate(step09c.ALLOWED_EVIDENCE_CATEGORIES)
+        for index, category in enumerate(review_package.ALLOWED_EVIDENCE_CATEGORIES)
     }
     observed_order: list[tuple[int, str]] = []
     for row in evidence_rows:
@@ -3580,11 +3571,11 @@ def validate_step09c_evidence_index(
                 "Step 09c evidence IDs must be unique safe IDs"
             )
         seen_evidence_ids.add(evidence_id)
-        if category not in step09c.ALLOWED_EVIDENCE_CATEGORIES:
+        if category not in review_package.ALLOWED_EVIDENCE_CATEGORIES:
             raise ArtifactIndexError(
                 f"Step 09c evidence category is invalid: {category!r}"
             )
-        if status not in step09c.EVIDENCE_STATUSES:
+        if status not in review_package.EVIDENCE_STATUSES:
             raise ArtifactIndexError(
                 f"Step 09c evidence status is invalid: {status!r}"
             )
@@ -3598,7 +3589,7 @@ def validate_step09c_evidence_index(
         observed_order.append((category_order[category], evidence_id))
         if status in {"missing", "not_applicable"}:
             if any(
-                row[field_name] != step09c.NA_VALUE
+                row[field_name] != step08.NA_VALUE
                 for field_name in (
                     "source_path",
                     "declared_sha256",
@@ -3613,18 +3604,18 @@ def validate_step09c_evidence_index(
                 )
             if (
                 status == "missing"
-                and row["not_applicable_reason"] != step09c.NA_VALUE
+                and row["not_applicable_reason"] != step08.NA_VALUE
             ) or (
                 status == "not_applicable"
-                and row["not_applicable_reason"] in {"", step09c.NA_VALUE}
+                and row["not_applicable_reason"] in {"", step08.NA_VALUE}
             ):
                 raise ArtifactIndexError(
                     "Step 09c evidence not-applicable reason is inconsistent"
                 )
         else:
             if (
-                row["source_path"] == step09c.NA_VALUE
-                or row["not_applicable_reason"] != step09c.NA_VALUE
+                row["source_path"] == step08.NA_VALUE
+                or row["not_applicable_reason"] != step08.NA_VALUE
                 or not SHA256_RE.fullmatch(row["declared_sha256"])
                 or row["declared_sha256"] != row["observed_sha256"]
                 or native_int(row, "declared_row_count")
@@ -3648,7 +3639,7 @@ def validate_step09c_evidence_index(
         )
     missing_categories = [
         category
-        for category in step09c.CATEGORY_ORDER
+        for category in review_package.CATEGORY_ORDER
         if not any(
             row["evidence_category"] == category for row in evidence_rows
         )
@@ -3658,8 +3649,8 @@ def validate_step09c_evidence_index(
             "Step 09c evidence index omits required explicit categories: "
             + ", ".join(missing_categories)
         )
-    for category in step09c.CATEGORY_ORDER:
-        status = step09c.aggregate_evidence_status(evidence_rows, category)
+    for category in review_package.CATEGORY_ORDER:
+        status = review_package.aggregate_evidence_status(evidence_rows, category)
         if summary_row[f"{category}_status"] != status:
             raise ArtifactIndexError(
                 f"Step 09c summary {category}_status disagrees with evidence"
@@ -3673,8 +3664,8 @@ def validate_step09c_evidence_index(
             "Step 09c summary evidence_source_count disagrees with evidence"
         )
     return {
-        category: step09c.aggregate_evidence_status(evidence_rows, category)
-        for category in step09c.ALLOWED_EVIDENCE_CATEGORIES
+        category: review_package.aggregate_evidence_status(evidence_rows, category)
+        for category in review_package.ALLOWED_EVIDENCE_CATEGORIES
     }
 
 
@@ -3757,10 +3748,10 @@ def validate_step09c_decisions(
         dimension = row["decision_dimension"]
         if (
             row["review_id"] != summary_row["review_id"]
-            or dimension not in step09c.DECISION_DIMENSIONS
+            or dimension not in review_package.DECISION_DIMENSIONS
             or dimension in seen
-            or row["evidence_status"] not in step09c.EVIDENCE_STATUSES
-            or row["decision_status"] not in step09c.DECISION_STATUSES
+            or row["evidence_status"] not in review_package.EVIDENCE_STATUSES
+            or row["decision_status"] not in review_package.DECISION_STATUSES
         ):
             raise ArtifactIndexError(
                 "Step 09c decision identity/status contract is invalid"
@@ -3768,8 +3759,8 @@ def validate_step09c_decisions(
         seen.add(dimension)
         if row["decision_status"] == "recorded":
             if (
-                row["decision_value"] in {"", step09c.NA_VALUE}
-                or row["decision_date"] in {"", step09c.NA_VALUE}
+                row["decision_value"] in {"", step08.NA_VALUE}
+                or row["decision_date"] in {"", step08.NA_VALUE}
             ):
                 raise ArtifactIndexError(
                     "Step 09c recorded decision lacks a value or date"
@@ -3777,15 +3768,15 @@ def validate_step09c_decisions(
             decisions[dimension] = row["decision_value"]
         else:
             if (
-                row["decision_value"] != step09c.NA_VALUE
-                or row["decision_date"] != step09c.NA_VALUE
+                row["decision_value"] != step08.NA_VALUE
+                or row["decision_date"] != step08.NA_VALUE
             ):
                 raise ArtifactIndexError(
                     "Step 09c pending decision must use NA value/date"
                 )
             decisions[dimension] = "pending"
     if require_complete and (
-        seen != set(step09c.DECISION_DIMENSIONS)
+        seen != set(review_package.DECISION_DIMENSIONS)
         or any(value == "pending" for value in decisions.values())
     ):
         raise ArtifactIndexError(
@@ -3829,13 +3820,13 @@ def reconcile_step09c(
     summary = by_adapter["step09c_review_summary_v1"]
     plan_row = plan.first_row or {}
     summary_row = summary.first_row or {}
-    for field_name in step09c.REVIEW_PLAN_HEADER:
+    for field_name in review_package.REVIEW_PLAN_HEADER:
         if summary_row.get(field_name) != plan_row.get(field_name):
             raise ArtifactIndexError(
                 f"Step 09c summary disagrees with review plan: {field_name}"
             )
     if native_int(summary_row, "published_output_count") != len(
-        step09c.OUTPUT_SUFFIXES
+        review_package.OUTPUT_SUFFIXES
     ):
         raise ArtifactIndexError(
             "Step 09c published_output_count is inconsistent"
@@ -3845,21 +3836,21 @@ def reconcile_step09c(
             "Step 09c summary transaction_state is not complete"
         )
     status_contracts = {
-        "implementation_status": step09c.IMPLEMENTATION_STATUSES,
-        "local_test_status": step09c.LOCAL_TEST_STATUSES,
-        "runtime_validation_status": step09c.RUNTIME_VALIDATION_STATUSES,
-        "cluster_dry_run_status": step09c.CLUSTER_DRY_RUN_STATUSES,
-        "cluster_proof_status": step09c.CLUSTER_PROOF_STATUSES,
-        "orientation_status": step09c.ORIENTATION_STATUSES,
+        "implementation_status": review_package.IMPLEMENTATION_STATUSES,
+        "local_test_status": review_package.LOCAL_TEST_STATUSES,
+        "runtime_validation_status": review_package.RUNTIME_VALIDATION_STATUSES,
+        "cluster_dry_run_status": review_package.CLUSTER_DRY_RUN_STATUSES,
+        "cluster_proof_status": review_package.CLUSTER_PROOF_STATUSES,
+        "orientation_status": review_package.ORIENTATION_STATUSES,
     }
     for field_name, allowed in status_contracts.items():
         if summary_row.get(field_name) not in allowed:
             raise ArtifactIndexError(
                 f"Step 09c summary {field_name} is invalid"
             )
-    for category in step09c.CATEGORY_ORDER:
+    for category in review_package.CATEGORY_ORDER:
         field_name = f"{category}_status"
-        if summary_row.get(field_name) not in step09c.EVIDENCE_STATUSES:
+        if summary_row.get(field_name) not in review_package.EVIDENCE_STATUSES:
             raise ArtifactIndexError(
                 f"Step 09c summary {field_name} is invalid"
             )
@@ -3950,7 +3941,7 @@ def reconcile_step09c(
     if exploratory_complete:
         incomplete_categories = {
             category: category_statuses[category]
-            for category in step09c.CATEGORY_ORDER
+            for category in review_package.CATEGORY_ORDER
             if category_statuses[category] not in {"complete", "not_applicable"}
         }
         if incomplete_categories:
@@ -3967,11 +3958,11 @@ def reconcile_step09c(
                 "Step 09c exploratory-complete state lacks complete "
                 "candidate adjudication coverage"
             )
-        if summary_row.get("review_completed_date") == step09c.NA_VALUE:
+        if summary_row.get("review_completed_date") == step08.NA_VALUE:
             raise ArtifactIndexError(
                 "Step 09c exploratory-complete state lacks a completion date"
             )
-    elif summary_row.get("review_completed_date") != step09c.NA_VALUE:
+    elif summary_row.get("review_completed_date") != step08.NA_VALUE:
         raise ArtifactIndexError(
             "Step 09c evidence-incomplete state must not claim a completion date"
         )

@@ -202,7 +202,7 @@ def row_value(column: str) -> str:
         "evidence_manifest_path": "/synthetic/evidence_manifest.tsv",
         "evidence_manifest_sha256": "6" * 64,
         "evidence_manifest_row_count": str(
-            len(ADAPTER.step09c.CATEGORY_ORDER)
+            len(ADAPTER.review_package.CATEGORY_ORDER)
         ),
         "evidence_source_count": "0",
         "superseded_analysis_ids": "NA",
@@ -217,7 +217,7 @@ def row_value(column: str) -> str:
         "orientation_decision": "pending",
     }
     if column in {
-        f"{category}_status" for category in ADAPTER.step09c.CATEGORY_ORDER
+        f"{category}_status" for category in ADAPTER.review_package.CATEGORY_ORDER
     }:
         return "missing"
     if column.startswith("DP__"):
@@ -381,7 +381,7 @@ def tsv_rows_for(
         "step09_cmh_significant_sites_v1": 1,
         "step09_mutation_spectrum_tsv_v1": 12,
         "step09c_evidence_index_v1": len(
-            ADAPTER.step09c.CATEGORY_ORDER
+            ADAPTER.review_package.CATEGORY_ORDER
         ),
         "step09c_orientation_locus_audit_v1": 0,
         "step09c_annotation_audit_v1": 0,
@@ -722,7 +722,7 @@ def tsv_rows_for(
     elif adapter == "step09c_evidence_index_v1":
         for output_row, category in zip(
             rows,
-            ADAPTER.step09c.CATEGORY_ORDER,
+            ADAPTER.review_package.CATEGORY_ORDER,
             strict=True,
         ):
             output_row.update(
@@ -754,7 +754,7 @@ def tsv_rows_for(
                 "orientation_status": "provisional",
                 "orientation_policy": "legacy_provisional_v1",
                 "evidence_record_count": str(
-                    len(ADAPTER.step09c.CATEGORY_ORDER)
+                    len(ADAPTER.review_package.CATEGORY_ORDER)
                 ),
                 "evidence_source_count": "0",
                 "selected_candidate_count": "0",

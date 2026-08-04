@@ -154,6 +154,7 @@
     "\t\t--new-shared-module scripts/git_orchestration/_common.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step08.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
+    "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
     "\t\t--new-shared-module src/norad/libraries/bam_validation.py"
   ],
@@ -300,6 +301,7 @@
     "\t\t--new-shared-module scripts/git_orchestration/_common.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step08.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
+    "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
     "\t\t--new-shared-module src/norad/libraries/bam_validation.py"
   ],

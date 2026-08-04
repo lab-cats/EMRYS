@@ -34,10 +34,11 @@ if str(SCRIPTS) not in sys.path:
 ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
-SCIENTIFIC_REVIEW = ARTIFACT_INDEX.step09c
 STEP08_CONTRACT = ARTIFACT_INDEX.step08
 STEP09_CONTRACT = ARTIFACT_INDEX.step09
 SHARED_SCIENCE = RUN_SUMMARY.science
+REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
+SCIENTIFIC_REVIEW = SHARED_SCIENCE.step09c
 
 
 def load_exact_test_module(name: str, path: Path) -> ModuleType:
@@ -67,6 +68,17 @@ HEADER_MODULES: Mapping[str, ModuleType] = {
     "render_run_report_bundle": REPORT_BUNDLE,
     "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
 }
+
+
+def header_module(module_name: str, constant_name: str) -> ModuleType:
+    if (
+        module_name == "step_09c_scientific_validation"
+        and constant_name == "REVIEW_PLAN_HEADER"
+    ):
+        return REVIEW_PACKAGE
+    return HEADER_MODULES[module_name]
+
+
 ARTIFACT_CONTRACT_LOADERS = (
     ARTIFACT_INDEX,
     SHARED_SCIENCE,
@@ -84,6 +96,11 @@ STEP09_CONTRACT_LOADERS = (
     STEP09_VALIDATOR,
     ARTIFACT_INDEX,
 )
+REVIEW_PACKAGE_CONTRACT_LOADERS = (
+    SCIENTIFIC_REVIEW,
+    ARTIFACT_INDEX,
+    SHARED_SCIENCE,
+)
 
 
 def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
@@ -95,12 +112,46 @@ def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
     assert ARTIFACT_INDEX.step08 is owner
     assert STEP09_CONTRACT.step08 is owner
     assert STEP09_VALIDATOR.step09 is STEP09_CONTRACT
-    assert ARTIFACT_INDEX.step09c is SCIENTIFIC_REVIEW
     assert SCIENTIFIC_REVIEW.ContractError is owner.ContractError
     assert SCIENTIFIC_REVIEW.Table is owner.Table
     assert sys.modules[ARTIFACT_INDEX._STEP08_MODULE_NAME] is owner
     assert Path(owner.__file__).resolve() == ARTIFACT_INDEX._STEP08_MODULE_PATH
     assert getattr(owner, ARTIFACT_INDEX._STEP08_READY_ATTRIBUTE) is True
+
+
+def test_review_package_consumers_share_one_exact_ready_owner() -> None:
+    owner = REVIEW_PACKAGE
+
+    assert ARTIFACT_INDEX.review_package is owner
+    assert SHARED_SCIENCE.review_package is owner
+    assert SCIENTIFIC_REVIEW.review_package is owner
+    assert sys.modules[ARTIFACT_INDEX._REVIEW_PACKAGE_MODULE_NAME] is owner
+    assert Path(owner.__file__).resolve() == (
+        ARTIFACT_INDEX._REVIEW_PACKAGE_MODULE_PATH
+    )
+    assert (
+        getattr(owner, ARTIFACT_INDEX._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
+    )
+
+
+@pytest.mark.parametrize(
+    "loader_owner",
+    REVIEW_PACKAGE_CONTRACT_LOADERS,
+    ids=("step09c", "artifact-index", "run-summary-science"),
+)
+def test_review_package_loaders_reuse_owner_without_mutating_sys_path(
+    loader_owner: ModuleType,
+) -> None:
+    before_sys_path = list(sys.path)
+
+    loaded = loader_owner._load_review_package_contract()
+
+    assert loaded is REVIEW_PACKAGE
+    assert Path(loaded.__file__).resolve() == (
+        loader_owner._REVIEW_PACKAGE_MODULE_PATH
+    )
+    assert getattr(loaded, loader_owner._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
+    assert sys.path == before_sys_path
 
 
 @pytest.mark.parametrize(
@@ -406,8 +457,8 @@ def assert_schema_contracts(documents: Mapping[str, Any]) -> None:
 def assert_header_contracts() -> None:
     contracts = load_json(GOLDENS / "headers.json")
     for module_name, headers in contracts.items():
-        module = HEADER_MODULES[module_name]
         for constant_name, expected in headers.items():
+            module = header_module(module_name, constant_name)
             actual = getattr(module, constant_name)
             assert tuple(actual) == tuple(expected), (
                 f"{module_name}.{constant_name} differs from the independent "
@@ -418,16 +469,16 @@ def assert_header_contracts() -> None:
 def assert_status_constants() -> None:
     expected = load_json(GOLDENS / "scientific_state_contracts.json")["constants"]
     for constant_name, value in expected.items():
-        actual = getattr(SCIENTIFIC_REVIEW, constant_name)
+        actual = getattr(REVIEW_PACKAGE, constant_name)
         if isinstance(value, list):
             actual = list(actual)
         assert actual == value, (
-            f"step_09c_scientific_validation.{constant_name} differs from the "
+            f"review_package.{constant_name} differs from the "
             "independent status oracle"
         )
     assert (
-        SCIENTIFIC_REVIEW.RESERVED_SCIENCE_STATUS
-        not in SCIENTIFIC_REVIEW.SCIENCE_STATUSES
+        REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS
+        not in REVIEW_PACKAGE.SCIENCE_STATUSES
     )
 
 
@@ -508,7 +559,7 @@ def test_mutated_named_header_constant_is_rejected(
     module_name: str,
     constant_name: str,
 ) -> None:
-    module = HEADER_MODULES[module_name]
+    module = header_module(module_name, constant_name)
     original = getattr(module, constant_name)
     monkeypatch.setattr(module, constant_name, (*original[:-1], "mutated_field"))
     with pytest.raises(AssertionError, match=constant_name):
@@ -580,13 +631,13 @@ def test_mutated_named_status_constant_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
     constant_name: str,
 ) -> None:
-    original = getattr(SCIENTIFIC_REVIEW, constant_name)
+    original = getattr(REVIEW_PACKAGE, constant_name)
     mutated: Any
     if isinstance(original, tuple):
         mutated = (*original[:-1], "mutated_status")
     else:
         mutated = "mutated_status"
-    monkeypatch.setattr(SCIENTIFIC_REVIEW, constant_name, mutated)
+    monkeypatch.setattr(REVIEW_PACKAGE, constant_name, mutated)
     with pytest.raises(AssertionError, match=constant_name):
         assert_status_constants()
 
@@ -594,7 +645,7 @@ def test_mutated_named_status_constant_is_rejected(
 def test_evidence_status_aggregation_matches_literal_transition_cases() -> None:
     contracts = load_json(GOLDENS / "scientific_state_contracts.json")
     for case in contracts["aggregations"]:
-        actual = SCIENTIFIC_REVIEW.aggregate_evidence_status(
+        actual = REVIEW_PACKAGE.aggregate_evidence_status(
             case["rows"], case["category"]
         )
         assert actual == case["expected"], case["name"]
@@ -607,9 +658,9 @@ def test_shared_science_policy_matches_independent_transition_oracle() -> None:
 def test_mutated_shared_decision_dimension_constant_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    original = SCIENTIFIC_REVIEW.DECISION_DIMENSIONS
+    original = REVIEW_PACKAGE.DECISION_DIMENSIONS
     monkeypatch.setattr(
-        SCIENTIFIC_REVIEW,
+        REVIEW_PACKAGE,
         "DECISION_DIMENSIONS",
         ("mutated_dimension", *original[1:]),
     )
