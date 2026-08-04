@@ -8,7 +8,8 @@
 - [Task registry](../tasks/README.md) — bounded task scope and lifecycle.
 - [Integration fragments](../fragments/README.md) — candidate-fragment format.
 - [Demonstrations](../demo/) — presentation and walkthrough material.
-- [History](../history/) — indexed immutable audit and testing evidence views.
+- [History](../history/) — indexed immutable audit, testing, and operations
+  evidence views.
 - [Audience and ownership map](DOCUMENTATION_OWNERSHIP.md) — short reader
   routes, canonical responsibility boundaries, and no-loss dispositions.
 
@@ -20,21 +21,23 @@ for every task.
 
 ### Temporary critical runway
 
-The one-unit-at-a-time physical-migration campaign is paused after completed
-[`MIG-03M`](../tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md).
-No Step `09` or later migration/review card is created or selected. The user
-replaced that campaign boundary with a bounded repository-health runway under
-Slice `2` of
-[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+The one-unit-at-a-time physical-migration campaign is complete through
+[`MIG-03O`](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md).
+The bounded repository-health runway and
+[`DOC-CONS-08E`](../tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
+live-state compression are complete. No follow-on card, final audit, runtime,
+cluster, or default-branch integration is selected. The remainder of
+[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
+remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not
 weaken safety, freshness, evidence, ownership, or
 [mandatory-expansion rules](../operations/TASK_START.md#mandatory-expansion-triggers).
 
 - Select, plan, execute, validate, document, publish, and prove only one
-  dependency-valid repository-health package at a time.
-- Do not preload a later health package, resume physical migration, mutate
-  runtime state, install dependencies, or integrate the default branch merely
-  because the broader health campaign is authorized.
+  dependency-valid package at a time.
+- Do not preload a later package, mutate runtime state, install dependencies,
+  begin cluster work, or integrate the default branch merely because an
+  earlier campaign was authorized.
 - Every unrelated pending task, candidate, integration, branch package, and
   preserved program-design remainder remains frozen and out of scope.
 - Frozen material may be inspected only when a concrete contradiction, safety

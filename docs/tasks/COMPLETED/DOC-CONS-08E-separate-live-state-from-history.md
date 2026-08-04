@@ -89,8 +89,33 @@ first-use milestones. That duplication makes stale history look operational.
 
 Selected on 2026-08-03 from clean, published predecessor
 `9cb4bb88788d5d58b9c918baa7993cafff145c5b` on
-`codex/doc-cons-08e-separate-live-state-from-history`. The approved package is
-documentation-only/non-consuming: create the indexed operations-history
-destination, compress only the three named live owners, batch directly
-affected ownership/navigation/lifecycle repairs at card close, and run the
-complete documentation gate without computational or cluster validation.
+`codex/doc-cons-08e-separate-live-state-from-history`; status-only selection
+checkpoint `9bb7a1a99ba96f0412271b2a0c24b85a605bbc3c` was published and proved
+upstream-equal before authoring.
+
+The completed documentation-only/non-consuming package:
+
+- creates and registers `docs/history/operations/` with exact source snapshot
+  `9cb4bb8`, frozen recovery/synthetic-exchange identities, the unique legacy
+  branch chain, and a no-loss destination map;
+- reduces `HANDOFF.md` from 1,317 lines to a current checkout, lane, evidence,
+  cohort, recovery, blocker, and resume snapshot;
+- reduces `PIPELINE_PLAN.md` from 903 lines to current pipeline/evidence
+  status, runway, proposal ordering, acceptance, required lineage, deferred
+  remote order, and scientific exit criteria;
+- moves the dated first-use completion out of `CONCURRENT_WORK.md` while
+  preserving every durable lane, authority, handoff, fragment, validation,
+  and recovery rule;
+- repairs both inbound references to the removed completed-exchange handoff
+  anchor, card lifecycle links, ownership records, and stale root/sitemap
+  current-status text; and
+- preserves migration defects and non-green attempts as characterized evidence
+  rather than fixing, approving, or relabeling them.
+
+Semantic review maps every removed roster, checkpoint, total, timing, defect,
+and branch/lane identity to operations, audit, or testing history, a completed
+card, or a current implementation owner. The final `git diff --check` and
+`make -s documentation-check` pass on the exact completed tree. Computational
+Python, shell, R, report-runtime, full-suite, runtime, and cluster validation
+are not applicable because the complete predecessor-to-final diff is
+non-consuming Markdown only. No follow-on card is selected.

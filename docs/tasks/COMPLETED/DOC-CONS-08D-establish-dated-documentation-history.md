@@ -29,7 +29,7 @@ does not make that evidence discoverable or explain its status.
 
 ## Completion unblocks
 
-- [DOC-CONS-08E](../IN_PROGRESS/DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the root history route and date/provenance rules now support the selected operational-history and live-state compression package.
+- [DOC-CONS-08E](DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the indexed operational-history child and compressed live-state owners are complete.
 - [DOC-CONS-08G](../TODO/DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
 
 ## Prerequisites
@@ -114,5 +114,5 @@ schema, fixture, report-template, dependency, source-layout, public-interface,
 scientific-policy, or test-harness behavior changed, and no runtime, cluster,
 scientific-review, or biological-readiness evidence was created. The branch
 remains intentionally local-only and must not be pushed by this package.
-`DOC-CONS-08E` through `DOC-CONS-08H` remain unselected; this completion does
-not change ordinary runway order.
+`DOC-CONS-08E` is complete. `DOC-CONS-08F` through `DOC-CONS-08H` remain
+unselected; this completion does not change ordinary runway order.

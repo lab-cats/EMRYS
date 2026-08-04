@@ -129,6 +129,6 @@ A candidate request ends with `Candidate disposition: pending`; it does not
 predict its outcome. The integration owner independently validates the frozen
 handoff and current target, then records the terminal outcome outside the
 fragment under the lifecycle policy. The completed CONCURRENCY-02 synthetic
-exchange is indexed from
-[`HANDOFF.md`](../operations/HANDOFF.md#completed-concurrency-02-synthetic-exchange);
+exchange is indexed from the
+[`operations-history record`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md#frozen-coordination-and-recovery-identities);
 this example defines syntax, not completion evidence.

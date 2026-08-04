@@ -162,7 +162,7 @@ the shadow-archive request `C02-SYNTH-V2-03`, and deferred structural
 enforcement request `C02-SYNTH-V2-04` to the existing `CONCURRENCY-03` card.
 The fragment was removed before final publication; its immutable source and
 the complete disposition evidence are recorded in
-[`HANDOFF.md`](../../operations/HANDOFF.md#completed-concurrency-02-synthetic-exchange).
+[`operations history`](../../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md#frozen-coordination-and-recovery-identities).
 The completion evidence includes focused orchestration tests, the applicable
 local computational gate, the documentation gate, exact Git checks, and
 independent adversarial review; it does not establish runtime, cluster,

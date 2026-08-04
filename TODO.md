@@ -5,23 +5,20 @@ scope, roadmap, current state, blockers, or open questions.
 
 ## Current priority
 
-The physical-migration campaign is paused after completed
-[`MIG-03M`](docs/tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md).
-No Step `09` or later migration/review card is created or selected. The current
-boundary is Slice `3` of
-[`PROGRAM-01`](docs/tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md),
-which activates only one separately planned repository-health package at a
-time under the
-[critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway).
-Completed [`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-and completed
-[`TASK-LIFECYCLE-01`](docs/tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-now supply the tested documentation gate and flat lifecycle/proposal support.
-The repository-health campaign is complete: the malformed ignored R-library
-entry is preserved outside the worktree, guarded R is consistent, and the
-complete local gate passed on the published executable/test checkpoint. No
-follow-on card is selected. Unrelated work and the preserved program remainder
-remain frozen. Roadmap order is not blocker metadata.
+The physical-migration campaign is complete through
+[`MIG-03O`](docs/tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md),
+and all fourteen frozen functional owners occupy their final homes. Completed
+[`DOC-GATE-01`](docs/tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md),
+[`TASK-LIFECYCLE-01`](docs/tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md),
+and
+[`DOC-CONS-08E`](docs/tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
+leave the repository-health and first live-state compression boundaries
+closed. No follow-on card, final audit, runtime, cluster, or default-branch
+integration is selected. `PROGRAM-01` and unrelated work remain frozen outside
+their completed slices. Select only one dependency-valid package at a time
+under the
+[critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
+roadmap order is not blocker metadata.
 
 ## Canonical routes
 

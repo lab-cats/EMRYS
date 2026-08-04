@@ -9,11 +9,13 @@ or evidence promotion.
 
 - [Audits](audits/) — dated repository audits, findings, rejected approaches,
   limitations, and recheck evidence.
+- [Operations](operations/) — dated delivery, branch-lineage, concurrency, and
+  takeover records that no longer belong in live state.
 - [Testing](testing/) — dated validation runs, baselines, risks, and gate
   provenance.
 
-The topic names `demos/` and `operations/` are reserved for separately owned
-history work. They are not evidence routes until an indexed child exists.
+The topic name `demos/` is reserved for separately owned history work. It is
+not an evidence route until an indexed child exists.
 
 ## Record rules
 

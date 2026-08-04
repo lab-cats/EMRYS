@@ -30,10 +30,12 @@ but never authorizes a task by itself.
   decision.
 - Read-only reviewers may inspect any lane but must not mutate its worktree.
 
-The required post-`CONCURRENCY-01` first-use strategy discussion was completed
-on 2026-07-31. That removed only the discussion pause: it did not select a
-task, accept pilot content, or relax lane-packet, integration, validation, or
-publication requirements. Live lane and pilot state remains in `HANDOFF.md`.
+The required post-`CONCURRENCY-01` first-use strategy condition is satisfied
+when the current handoff says so. Its dated completion belongs in
+[`operations history`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md#frozen-coordination-and-recovery-identities),
+not this durable policy. Satisfying that condition removes only the discussion
+pause: it does not select work, accept candidate content, or relax lane-packet,
+integration, validation, or publication requirements.
 
 ## Lane roles
 
