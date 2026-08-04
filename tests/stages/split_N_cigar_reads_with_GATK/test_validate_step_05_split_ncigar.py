@@ -132,6 +132,19 @@ def test_sidecar_disagreement_is_failed_evidence(tmp_path):
     assert status["reference_sidecars"] == "fail"
 
 
+def test_reference_parsing_short_circuits_on_first_parser_error(tmp_path):
+    values = fixture(tmp_path)
+    values[2].write_text("sequence-before-header\n")
+    values[3].write_text("also-malformed\n")
+    values[4].write_text("@SQ\tLN:not-a-number\n")
+    result = run(values, "--execute")
+    assert result.returncode == 0, result.stderr
+    by_check = {row["check_id"]: row for row in rows(values[-1])}
+    sidecars = by_check["reference_sidecars"]
+    assert sidecars["status"] == "fail"
+    assert sidecars["observed"] == "FASTA sequence appears before its header"
+
+
 def test_missing_input_and_wrong_output_fail_closed(tmp_path):
     values = fixture(tmp_path)
     values[1].unlink()
@@ -211,11 +224,11 @@ def test_reference_loader_reuses_exact_owner_without_sys_path_change(
     validator_module,
 ):
     before_sys_path = list(sys.path)
-    cached = sys.modules[validator_module._REFERENCE_MODULE_NAME]
+    cached = sys.modules[validator_module._REFERENCE_CONTIGS_MODULE_NAME]
 
-    assert validator_module._load_reference_provenance() is cached
+    assert validator_module._load_reference_contigs() is cached
     assert Path(cached.__file__).resolve() == Path(
-        validator_module._REFERENCE_MODULE_PATH
+        validator_module._REFERENCE_CONTIGS_MODULE_PATH
     ).resolve()
     assert sys.path == before_sys_path
 
@@ -223,23 +236,23 @@ def test_reference_loader_reuses_exact_owner_without_sys_path_change(
 def test_reference_loader_missing_owner_removes_owned_partial(
     tmp_path, monkeypatch, capsys, validator_module
 ):
-    name = validator_module._REFERENCE_MODULE_NAME
-    missing = tmp_path / "missing_reference_provenance.py"
+    name = validator_module._REFERENCE_CONTIGS_MODULE_NAME
+    missing = tmp_path / "missing_reference_contigs.py"
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     report_path = tmp_path / "report.tsv"
     before_sys_path = list(sys.path)
     monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(validator_module, "_REFERENCE_MODULE_PATH", missing)
+    monkeypatch.setattr(validator_module, "_REFERENCE_CONTIGS_MODULE_PATH", missing)
     monkeypatch.chdir(invocation_cwd)
 
     with pytest.raises(SystemExit) as caught:
-        validator_module._load_reference_provenance_or_exit()
+        validator_module._load_reference_contigs_or_exit()
 
     assert caught.value.code == 2
     assert name not in sys.modules
     assert capsys.readouterr().err.startswith(
-        f"ERROR: unable to load NORAD reference-provenance owner at {missing}: "
+        f"ERROR: unable to load NORAD reference-contig owner at {missing}: "
         "FileNotFoundError:"
     )
     assert_loader_fault_is_residue_free(
@@ -252,9 +265,9 @@ def test_reference_loader_missing_owner_removes_owned_partial(
 def test_reference_loader_rejects_foreign_cache_without_replacing_it(
     tmp_path, monkeypatch, capsys, validator_module
 ):
-    name = validator_module._REFERENCE_MODULE_NAME
+    name = validator_module._REFERENCE_CONTIGS_MODULE_NAME
     foreign = ModuleType(name)
-    foreign.__file__ = str(tmp_path / "foreign_reference_provenance.py")
+    foreign.__file__ = str(tmp_path / "foreign_reference_contigs.py")
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     report_path = tmp_path / "report.tsv"
@@ -263,11 +276,11 @@ def test_reference_loader_rejects_foreign_cache_without_replacing_it(
     monkeypatch.chdir(invocation_cwd)
 
     with pytest.raises(SystemExit) as caught:
-        validator_module._load_reference_provenance_or_exit()
+        validator_module._load_reference_contigs_or_exit()
 
     assert caught.value.code == 2
     assert sys.modules[name] is foreign
-    assert "ImportError: cached reference-provenance owner resolves to" in (
+    assert "ImportError: cached reference-contig owner resolves to" in (
         capsys.readouterr().err
     )
     assert_loader_fault_is_residue_free(
@@ -280,10 +293,11 @@ def test_reference_loader_rejects_foreign_cache_without_replacing_it(
 def test_reference_loader_rejects_correct_path_incomplete_api_in_place(
     tmp_path, monkeypatch, capsys, validator_module
 ):
-    name = validator_module._REFERENCE_MODULE_NAME
+    name = validator_module._REFERENCE_CONTIGS_MODULE_NAME
     incomplete = ModuleType(name)
-    incomplete.__file__ = str(validator_module._REFERENCE_MODULE_PATH)
-    incomplete.ProvenanceError = RuntimeError
+    incomplete.__file__ = str(validator_module._REFERENCE_CONTIGS_MODULE_PATH)
+    incomplete._NORAD_REFERENCE_CONTIGS_READY = True
+    incomplete.ReferenceContigError = RuntimeError
     incomplete.parse_fasta = lambda path: path
     incomplete.parse_fai = lambda path: path
     incomplete.parse_dict = None
@@ -295,11 +309,11 @@ def test_reference_loader_rejects_correct_path_incomplete_api_in_place(
     monkeypatch.chdir(invocation_cwd)
 
     with pytest.raises(SystemExit) as caught:
-        validator_module._load_reference_provenance_or_exit()
+        validator_module._load_reference_contigs_or_exit()
 
     assert caught.value.code == 2
     assert sys.modules[name] is incomplete
-    assert "ImportError: cached reference-provenance owner has invalid parse_dict" in (
+    assert "ImportError: cached reference-contig owner has invalid parse_dict" in (
         capsys.readouterr().err
     )
     assert_loader_fault_is_residue_free(
@@ -312,10 +326,10 @@ def test_reference_loader_rejects_correct_path_incomplete_api_in_place(
 def test_reference_loader_execution_failure_removes_only_owned_partial(
     tmp_path, monkeypatch, capsys, validator_module
 ):
-    name = validator_module._REFERENCE_MODULE_NAME
-    failing_owner = tmp_path / "failing_reference_provenance.py"
+    name = validator_module._REFERENCE_CONTIGS_MODULE_NAME
+    failing_owner = tmp_path / "failing_reference_contigs.py"
     failing_owner.write_text(
-        "raise RuntimeError('injected reference-provenance execution failure')\n",
+        "raise RuntimeError('injected reference-contig execution failure')\n",
         encoding="utf-8",
     )
     invocation_cwd = tmp_path / "invocation"
@@ -323,16 +337,18 @@ def test_reference_loader_execution_failure_removes_only_owned_partial(
     report_path = tmp_path / "report.tsv"
     before_sys_path = list(sys.path)
     monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(validator_module, "_REFERENCE_MODULE_PATH", failing_owner)
+    monkeypatch.setattr(
+        validator_module, "_REFERENCE_CONTIGS_MODULE_PATH", failing_owner
+    )
     monkeypatch.chdir(invocation_cwd)
 
     with pytest.raises(SystemExit) as caught:
-        validator_module._load_reference_provenance_or_exit()
+        validator_module._load_reference_contigs_or_exit()
 
     assert caught.value.code == 2
     assert name not in sys.modules
     assert (
-        "RuntimeError: injected reference-provenance execution failure"
+        "RuntimeError: injected reference-contig execution failure"
         in capsys.readouterr().err
     )
     assert_loader_fault_is_residue_free(

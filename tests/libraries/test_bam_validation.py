@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "src/norad/libraries/bam_validation.py"
 BAM_MODULE_NAME = "_norad_bam_validation"
 REPORT_MODULE_NAME = "_norad_validation_report"
-REFERENCE_MODULE_NAME = "_norad_reference_provenance"
+REFERENCE_MODULE_NAME = "_norad_reference_contigs"
 
 
 @dataclass(frozen=True)

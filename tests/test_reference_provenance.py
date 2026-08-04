@@ -4,6 +4,7 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -93,11 +94,53 @@ def test_execute_publishes_summary_last_contract(tmp_path):
     summary = rows(directory / "ref1.reference_summary.tsv")[0]
     assert len(artifacts) == 8
     assert {row["source_role"] for row in contigs} == {"fasta", "fai", "dict", "gtf", "bed12", "star"}
+    assert [
+        (row["source_role"], row["ordinal"], row["contig"], row["length"])
+        for row in contigs
+        if row["source_role"] in {"fasta", "fai", "dict"}
+    ] == [
+        ("fasta", "1", "1", "4"),
+        ("fasta", "2", "MT", "3"),
+        ("fai", "1", "1", "4"),
+        ("fai", "2", "MT", "3"),
+        ("dict", "1", "1", "4"),
+        ("dict", "2", "MT", "3"),
+    ]
     assert summary["overall_status"] == "pass"
     assert summary["star_agreement"] == "pass"
     original = {path.name: path.read_bytes() for path in directory.iterdir()}
     assert run(inventory, output, "--execute").returncode == 0
     assert original == {path.name: path.read_bytes() for path in directory.iterdir()}
+
+
+def test_parser_error_is_role_local_and_preserves_other_contig_rows(tmp_path):
+    inventory = make_fixture(tmp_path)
+    (tmp_path / "ref" / "genome.fa.fai").write_text("malformed\n")
+    generated = publication_data(inventory)
+    contigs = list(
+        csv.DictReader(
+            generated["contigs"].decode().splitlines(), delimiter="\t"
+        )
+    )
+    parser_rows = [
+        row for row in contigs if row["source_role"] in {"fasta", "fai", "dict"}
+    ]
+    assert [row["source_role"] for row in parser_rows] == [
+        "fasta",
+        "fasta",
+        "fai",
+        "dict",
+        "dict",
+    ]
+    assert parser_rows[2] == {
+        "reference_id": "ref1",
+        "source_role": "fai",
+        "ordinal": "0",
+        "contig": "NA",
+        "length": "NA",
+        "status": "not_checked",
+        "detail": "FAI row 1 is malformed",
+    }
 
 
 def test_reports_mismatch_missing_and_hash_mismatch(tmp_path):
@@ -132,6 +175,105 @@ def test_invalid_inventory_and_symlink_fail(tmp_path):
     result = run(link, output, "--execute")
     assert result.returncode == 2
     assert "non-symlink" in result.stderr
+
+
+def test_reference_contig_loader_reuses_exact_owner_without_sys_path_change():
+    before_sys_path = list(sys.path)
+    cached = sys.modules[PROVENANCE._REFERENCE_CONTIGS_MODULE_NAME]
+
+    assert PROVENANCE._load_reference_contigs() is cached
+    assert Path(cached.__file__).resolve() == Path(
+        PROVENANCE._REFERENCE_CONTIGS_MODULE_PATH
+    ).resolve()
+    assert sys.path == before_sys_path
+
+
+def test_reference_contig_loader_missing_owner_removes_owned_partial(
+    tmp_path, monkeypatch, capsys
+):
+    name = PROVENANCE._REFERENCE_CONTIGS_MODULE_NAME
+    missing = tmp_path / "missing_reference_contigs.py"
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    before_sys_path = list(sys.path)
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(PROVENANCE, "_REFERENCE_CONTIGS_MODULE_PATH", missing)
+    monkeypatch.chdir(invocation_cwd)
+
+    with pytest.raises(SystemExit) as caught:
+        PROVENANCE._load_reference_contigs_or_exit()
+
+    assert caught.value.code == 2
+    assert name not in sys.modules
+    assert capsys.readouterr().err.startswith(
+        f"ERROR: unable to load NORAD reference-contig owner at {missing}: "
+        "FileNotFoundError:"
+    )
+    assert sys.path == before_sys_path
+    assert not any(invocation_cwd.iterdir())
+
+
+def test_reference_contig_loader_rejects_foreign_cache_without_replacing_it(
+    tmp_path, monkeypatch, capsys
+):
+    name = PROVENANCE._REFERENCE_CONTIGS_MODULE_NAME
+    foreign = ModuleType(name)
+    foreign.__file__ = str(tmp_path / "foreign_reference_contigs.py")
+    monkeypatch.setitem(sys.modules, name, foreign)
+
+    with pytest.raises(SystemExit) as caught:
+        PROVENANCE._load_reference_contigs_or_exit()
+
+    assert caught.value.code == 2
+    assert sys.modules[name] is foreign
+    assert "ImportError: cached reference-contig owner resolves to" in (
+        capsys.readouterr().err
+    )
+
+
+def test_reference_contig_loader_rejects_incomplete_api_in_place(
+    monkeypatch, capsys
+):
+    name = PROVENANCE._REFERENCE_CONTIGS_MODULE_NAME
+    incomplete = ModuleType(name)
+    incomplete.__file__ = str(PROVENANCE._REFERENCE_CONTIGS_MODULE_PATH)
+    incomplete._NORAD_REFERENCE_CONTIGS_READY = True
+    incomplete.ReferenceContigError = RuntimeError
+    incomplete.parse_fasta = lambda path: path
+    incomplete.parse_fai = lambda path: path
+    incomplete.parse_dict = None
+    monkeypatch.setitem(sys.modules, name, incomplete)
+
+    with pytest.raises(SystemExit) as caught:
+        PROVENANCE._load_reference_contigs_or_exit()
+
+    assert caught.value.code == 2
+    assert sys.modules[name] is incomplete
+    assert "ImportError: cached reference-contig owner has invalid parse_dict" in (
+        capsys.readouterr().err
+    )
+
+
+def test_reference_contig_loader_execution_failure_removes_owned_partial(
+    tmp_path, monkeypatch, capsys
+):
+    name = PROVENANCE._REFERENCE_CONTIGS_MODULE_NAME
+    failing_owner = tmp_path / "failing_reference_contigs.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected reference-contig execution failure')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(PROVENANCE, "_REFERENCE_CONTIGS_MODULE_PATH", failing_owner)
+
+    with pytest.raises(SystemExit) as caught:
+        PROVENANCE._load_reference_contigs_or_exit()
+
+    assert caught.value.code == 2
+    assert name not in sys.modules
+    assert "RuntimeError: injected reference-contig execution failure" in (
+        capsys.readouterr().err
+    )
 
 
 def test_partial_prior_and_foreign_lock_are_preserved(tmp_path):

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import os
 import re
 import stat
@@ -48,6 +49,88 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 class ProvenanceError(RuntimeError):
     pass
+
+
+_REFERENCE_CONTIGS_MODULE_NAME = "_norad_reference_contigs"
+_REFERENCE_CONTIGS_MODULE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src"
+    / "norad"
+    / "libraries"
+    / "reference_contigs.py"
+).resolve(strict=False)
+_REFERENCE_CONTIGS_READY_ATTRIBUTE = "_NORAD_REFERENCE_CONTIGS_READY"
+_REFERENCE_CONTIGS_REQUIRED_CALLABLES = (
+    "parse_fasta",
+    "parse_fai",
+    "parse_dict",
+)
+
+
+def _validated_reference_contigs(module: object) -> object:
+    try:
+        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
+    except (OSError, TypeError) as exc:
+        raise ImportError(
+            "cached reference-contig owner has no valid file path"
+        ) from exc
+    if module_path != _REFERENCE_CONTIGS_MODULE_PATH:
+        raise ImportError(
+            f"cached reference-contig owner resolves to {module_path}, "
+            f"expected {_REFERENCE_CONTIGS_MODULE_PATH}"
+        )
+    if getattr(module, _REFERENCE_CONTIGS_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached reference-contig owner is partially initialized")
+    parser_error = getattr(module, "ReferenceContigError", None)
+    if not (
+        isinstance(parser_error, type) and issubclass(parser_error, RuntimeError)
+    ):
+        raise ImportError(
+            "cached reference-contig owner has invalid ReferenceContigError"
+        )
+    for name in _REFERENCE_CONTIGS_REQUIRED_CALLABLES:
+        if not callable(getattr(module, name, None)):
+            raise ImportError(f"cached reference-contig owner has invalid {name}")
+    return module
+
+
+def _load_reference_contigs() -> object:
+    cached = sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME)
+    if cached is not None:
+        return _validated_reference_contigs(cached)
+    spec = importlib.util.spec_from_file_location(
+        _REFERENCE_CONTIGS_MODULE_NAME, _REFERENCE_CONTIGS_MODULE_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError("unable to create an exact-file module specification")
+    module = importlib.util.module_from_spec(spec)
+    existing = sys.modules.setdefault(_REFERENCE_CONTIGS_MODULE_NAME, module)
+    if existing is not module:
+        return _validated_reference_contigs(existing)
+    try:
+        spec.loader.exec_module(module)
+        _validated_reference_contigs(module)
+    except BaseException:
+        if sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME) is module:
+            del sys.modules[_REFERENCE_CONTIGS_MODULE_NAME]
+        raise
+    return module
+
+
+def _load_reference_contigs_or_exit() -> object:
+    try:
+        return _load_reference_contigs()
+    except Exception as exc:
+        reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
+        print(
+            "ERROR: unable to load NORAD reference-contig owner at "
+            f"{_REFERENCE_CONTIGS_MODULE_PATH}: {type(exc).__name__}: {reason}",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from None
+
+
+reference_contigs = _load_reference_contigs_or_exit()
 
 
 @dataclass(frozen=True)
@@ -217,60 +300,6 @@ def role_path(observations: Sequence[Observation], role: str) -> Path | None:
     return None
 
 
-def parse_fasta(path: Path) -> list[tuple[str, int]]:
-    result: list[tuple[str, int]] = []
-    name: str | None = None
-    length = 0
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        if raw_line.startswith(">"):
-            if name is not None:
-                result.append((name, length))
-            name = raw_line[1:].split()[0]
-            if not name or any(existing == name for existing, _ in result):
-                fail(f"FASTA has empty or duplicate contig: {name!r}")
-            length = 0
-        else:
-            if name is None:
-                fail("FASTA sequence appears before its header")
-            sequence = raw_line.strip()
-            if sequence and re.fullmatch(r"[A-Za-z*.-]+", sequence) is None:
-                fail(f"FASTA has invalid sequence characters for {name}")
-            length += len(sequence)
-    if name is not None:
-        result.append((name, length))
-    if not result or any(length <= 0 for _, length in result):
-        fail("FASTA must contain nonempty contigs")
-    return result
-
-
-def parse_fai(path: Path) -> list[tuple[str, int]]:
-    result = []
-    for number, line in enumerate(path.read_text().splitlines(), 1):
-        fields = line.split("\t")
-        if len(fields) < 2 or not fields[1].isdigit():
-            fail(f"FAI row {number} is malformed")
-        result.append((fields[0], int(fields[1])))
-    return unique_contigs(result, "FAI")
-
-
-def parse_dict(path: Path) -> list[tuple[str, int]]:
-    result = []
-    for line in path.read_text().splitlines():
-        if not line.startswith("@SQ\t"):
-            continue
-        values = dict(field.split(":", 1) for field in line.split("\t")[1:] if ":" in field)
-        if "SN" not in values or not values.get("LN", "").isdigit():
-            fail("DICT has malformed @SQ row")
-        result.append((values["SN"], int(values["LN"])))
-    return unique_contigs(result, "DICT")
-
-
-def unique_contigs(rows: list[tuple[str, int]], label: str) -> list[tuple[str, int]]:
-    if not rows or len({name for name, _ in rows}) != len(rows):
-        fail(f"{label} contigs are empty or duplicated")
-    return rows
-
-
 def parse_names(path: Path, label: str, column: int = 0) -> list[str]:
     names: list[str] = []
     for number, line in enumerate(path.read_text().splitlines(), 1):
@@ -304,9 +333,9 @@ def collect_contigs(observations: Sequence[Observation]) -> tuple[dict[str, list
     parsed: dict[str, list[tuple[str, int | None]]] = {}
     errors: dict[str, str] = {}
     parsers = {
-        "fasta": lambda p: parse_fasta(p),
-        "fai": lambda p: parse_fai(p),
-        "dict": lambda p: parse_dict(p),
+        "fasta": reference_contigs.parse_fasta,
+        "fai": reference_contigs.parse_fai,
+        "dict": reference_contigs.parse_dict,
         "gtf": lambda p: [(name, None) for name in parse_names(p, "GTF")],
         "bed12": lambda p: [(name, None) for name in parse_names(p, "BED12")],
     }
@@ -317,7 +346,12 @@ def collect_contigs(observations: Sequence[Observation]) -> tuple[dict[str, list
             continue
         try:
             parsed[role] = parser(path)
-        except (OSError, UnicodeError, ProvenanceError) as exc:
+        except (
+            OSError,
+            UnicodeError,
+            ProvenanceError,
+            reference_contigs.ReferenceContigError,
+        ) as exc:
             errors[role] = clean(exc)
     try:
         parsed["star"] = parse_star(observations)

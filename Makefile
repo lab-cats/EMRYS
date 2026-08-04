@@ -53,6 +53,7 @@ validation-shell-contracts:
 shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_reference_provenance.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py
@@ -235,7 +236,8 @@ python-coverage-check: python-coverage-measure
 		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \
 		--new-shared-module src/norad/libraries/validation_report.py \
-		--new-shared-module src/norad/libraries/bam_validation.py
+		--new-shared-module src/norad/libraries/bam_validation.py \
+		--new-shared-module src/norad/libraries/reference_contigs.py
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"

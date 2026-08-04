@@ -156,7 +156,8 @@
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
-    "\t\t--new-shared-module src/norad/libraries/bam_validation.py"
+    "\t\t--new-shared-module src/norad/libraries/bam_validation.py \\",
+    "\t\t--new-shared-module src/norad/libraries/reference_contigs.py"
   ],
   "python-coverage-measure": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",
@@ -233,6 +234,7 @@
     "bash tests/reporting/test_render_run_report.sh",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_runtime_preflight.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_reference_provenance.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_reference_contigs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/test_storage_inventory.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py",
@@ -303,7 +305,8 @@
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
-    "\t\t--new-shared-module src/norad/libraries/bam_validation.py"
+    "\t\t--new-shared-module src/norad/libraries/bam_validation.py \\",
+    "\t\t--new-shared-module src/norad/libraries/reference_contigs.py"
   ],
   "validation-report-runtime": [
     "test -n \"\" || { \\",

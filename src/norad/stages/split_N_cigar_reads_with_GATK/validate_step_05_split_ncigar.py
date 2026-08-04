@@ -129,81 +129,85 @@ def _load_bam_validation() -> object:
     return module
 
 
-# Temporary exact-file bridge; the public owner remains scripts/reference_provenance.py.
-_REFERENCE_MODULE_NAME = "_norad_reference_provenance"
-_REFERENCE_MODULE_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "scripts"
-    / "reference_provenance.py"
+# Exact-file neutral owner; no package or sys.path contract is implied.
+_REFERENCE_CONTIGS_MODULE_NAME = "_norad_reference_contigs"
+_REFERENCE_CONTIGS_MODULE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "libraries"
+    / "reference_contigs.py"
 ).resolve(strict=False)
-_REFERENCE_PARSER_NAMES = ("parse_fasta", "parse_fai", "parse_dict")
+_REFERENCE_CONTIGS_READY_ATTRIBUTE = "_NORAD_REFERENCE_CONTIGS_READY"
+_REFERENCE_CONTIGS_REQUIRED_CALLABLES = (
+    "parse_fasta",
+    "parse_fai",
+    "parse_dict",
+)
 
 
-def _validated_reference_provenance(module: object) -> object:
+def _validated_reference_contigs(module: object) -> object:
     try:
         module_path = Path(getattr(module, "__file__")).resolve(strict=False)
     except (OSError, TypeError) as exc:
         raise ImportError(
-            "cached reference-provenance owner has no valid file path"
+            "cached reference-contig owner has no valid file path"
         ) from exc
-    if module_path != _REFERENCE_MODULE_PATH:
+    if module_path != _REFERENCE_CONTIGS_MODULE_PATH:
         raise ImportError(
-            f"cached reference-provenance owner resolves to {module_path}, "
-            f"expected {_REFERENCE_MODULE_PATH}"
+            f"cached reference-contig owner resolves to {module_path}, "
+            f"expected {_REFERENCE_CONTIGS_MODULE_PATH}"
         )
-    provenance_error = getattr(module, "ProvenanceError", None)
+    if getattr(module, _REFERENCE_CONTIGS_READY_ATTRIBUTE, False) is not True:
+        raise ImportError("cached reference-contig owner is partially initialized")
+    parser_error = getattr(module, "ReferenceContigError", None)
     if not (
-        isinstance(provenance_error, type)
-        and issubclass(provenance_error, BaseException)
+        isinstance(parser_error, type) and issubclass(parser_error, RuntimeError)
     ):
         raise ImportError(
-            "cached reference-provenance owner has invalid ProvenanceError"
+            "cached reference-contig owner has invalid ReferenceContigError"
         )
-    for name in _REFERENCE_PARSER_NAMES:
+    for name in _REFERENCE_CONTIGS_REQUIRED_CALLABLES:
         if not callable(getattr(module, name, None)):
-            raise ImportError(
-                f"cached reference-provenance owner has invalid {name}"
-            )
+            raise ImportError(f"cached reference-contig owner has invalid {name}")
     return module
 
 
-def _load_reference_provenance() -> object:
-    cached = sys.modules.get(_REFERENCE_MODULE_NAME)
+def _load_reference_contigs() -> object:
+    cached = sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME)
     if cached is not None:
-        return _validated_reference_provenance(cached)
+        return _validated_reference_contigs(cached)
     spec = importlib.util.spec_from_file_location(
-        _REFERENCE_MODULE_NAME, _REFERENCE_MODULE_PATH
+        _REFERENCE_CONTIGS_MODULE_NAME, _REFERENCE_CONTIGS_MODULE_PATH
     )
     if spec is None or spec.loader is None:
         raise ImportError("unable to create an exact-file module specification")
     module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_REFERENCE_MODULE_NAME, module)
+    existing = sys.modules.setdefault(_REFERENCE_CONTIGS_MODULE_NAME, module)
     if existing is not module:
-        return _validated_reference_provenance(existing)
+        return _validated_reference_contigs(existing)
     try:
         spec.loader.exec_module(module)
-        _validated_reference_provenance(module)
+        _validated_reference_contigs(module)
     except BaseException:
-        if sys.modules.get(_REFERENCE_MODULE_NAME) is module:
-            del sys.modules[_REFERENCE_MODULE_NAME]
+        if sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME) is module:
+            del sys.modules[_REFERENCE_CONTIGS_MODULE_NAME]
         raise
     return module
 
 
-def _load_reference_provenance_or_exit() -> object:
+def _load_reference_contigs_or_exit() -> object:
     try:
-        return _load_reference_provenance()
+        return _load_reference_contigs()
     except Exception as exc:
         reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
         print(
-            "ERROR: unable to load NORAD reference-provenance owner at "
-            f"{_REFERENCE_MODULE_PATH}: {type(exc).__name__}: {reason}",
+            "ERROR: unable to load NORAD reference-contig owner at "
+            f"{_REFERENCE_CONTIGS_MODULE_PATH}: {type(exc).__name__}: {reason}",
             file=sys.stderr,
         )
         raise SystemExit(2) from None
 
 
-reference_provenance = _load_reference_provenance_or_exit()
+reference_contigs = _load_reference_contigs_or_exit()
 
 try:
     bam_report = _load_bam_validation()
@@ -274,12 +278,12 @@ def build(args: argparse.Namespace):
     )
     sidecar_error = ""
     try:
-        fasta = reference_provenance.parse_fasta(paths["fasta"])
-        fai = reference_provenance.parse_fai(paths["fai"])
-        dictionary = reference_provenance.parse_dict(paths["dict"])
+        fasta = reference_contigs.parse_fasta(paths["fasta"])
+        fai = reference_contigs.parse_fai(paths["fai"])
+        dictionary = reference_contigs.parse_dict(paths["dict"])
         sidecars_ok = fasta == fai == dictionary
         sidecar_observed = f"FASTA={len(fasta)} FAI={len(fai)} DICT={len(dictionary)}"
-    except reference_provenance.ProvenanceError as exc:
+    except reference_contigs.ReferenceContigError as exc:
         sidecars_ok = False
         sidecar_error = report.clean(exc)
         sidecar_observed = sidecar_error
