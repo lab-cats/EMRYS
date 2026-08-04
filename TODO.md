@@ -31,12 +31,14 @@ reviewed consumers cut over and no compatibility owner. Completed
 [`LIB-02H`](docs/tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
 then moved the public Step `09` scientific-evidence contract and direct suite
 to their permanent neutral owners at executable checkpoint `97f9169`, again
-with all reviewed consumers cut over and no compatibility owner. The sole
-selected residual-convergence package is
-[`LIB-02I`](docs/tasks/IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md),
-the bounded public Step `09c` review-package contract extraction. Its exact
-read-only boundary audit is complete; no executable or test change has begun.
-Reporting-local dependency removal remains a later, uncreated JIT slice.
+with all reviewed consumers cut over and no compatibility owner. Completed
+[`LIB-02I`](docs/tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
+then moved the public Step `09c` review-package contract and direct suite to
+their permanent neutral owners at executable checkpoint `95f795e`, eliminated
+artifact indexing's private Step `09c` dependency, and left only reporting's
+private context/policy edge for a later slice. No residual-convergence package
+is selected. Reporting-local dependency removal remains a required, uncreated,
+and unselected JIT slice.
 Scheduler, ingestion, orchestration/profile, runtime, cluster, and default-
 branch work remain deferred or unselected. `PROGRAM-01` and unrelated work
 remain frozen outside their completed slices. Execute only one dependency-valid

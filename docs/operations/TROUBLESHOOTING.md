@@ -2492,27 +2492,64 @@ into the analysis owner, install a package, alter `PYTHONPATH`, or inject a
 search path. Use the neutral direct suite and consumer-focused commands in the
 [Step `09` runbook](RUNBOOK.md#step-09-cmh-editing-site-calling).
 
-## An artifact or run-summary consumer cannot load Step 09c
+## A Step 09c, artifact, or run-summary consumer cannot load the neutral review-package contract
 
 ### Symptom
 
-The artifact index or run-summary science normalization exits `2` with a
-sanitized one-line message that the Step `09c` contract module is missing,
-unreadable, incomplete, or failed to load. If the diagnostic instead names a
-neutral Step `08` or Step `09` contract, use the preceding recovery route.
+The final Step `09c` owner, artifact index, or run-summary science normalization
+exits `2` with a sanitized one-line diagnostic such as:
+
+```text
+ERROR: unable to load review-package scientific-evidence contract at <path>: <type>: <reason>
+```
 
 ### Cause
 
-These two retained consumers exact-load
+These three repository-owned consumers exact-load the neutral public contract
+at `src/norad/contracts/scientific_evidence/review_package.py` under the single
+internal name `_norad_review_package_scientific_evidence_contract`. Each loader
+requires the exact cached-file path and completed readiness marker, inserts the
+module before execution, cleans only an owned partial cache entry, and fails
+closed for a missing file, foreign cache entry, partial initialization,
+unreadable path, or execution error. Run-summary science also verifies that
+its retained Step `09c` owner uses the same neutral review-package object.
+
+This is exact-file loading from the tracked checkout. The neutral owner is
+standard-library-only, and the load does not use package discovery,
+`PYTHONPATH`, an installed distribution, or `sys.path` mutation.
+
+### Fix
+
+Preserve the diagnostic and inspect the exact neutral file, current Git state,
+cached module identity when debugging in-process, and the invoking consumer.
+Restore the reviewed neutral owner through Git if the tracked file is missing
+or changed. Do not recreate the extracted public surface in Step `09c`, add a
+wrapper or compatibility alias, copy the contract into reporting, install a
+package, alter `PYTHONPATH`, or inject a search path. Recheck
+`tests/contracts/scientific_evidence/test_review_package.py` and the affected
+consumer suite.
+
+## A run-summary consumer cannot load Step 09c
+
+### Symptom
+
+Run-summary science normalization exits `2` with a sanitized one-line message
+that the Step `09c` contract owner is missing, unreadable, incomplete, or
+failed to load. If the diagnostic instead names the neutral review-package,
+Step `08`, or Step `09` contract, use the corresponding preceding route.
+
+### Cause
+
+Run-summary science is the only retained downstream consumer that exact-loads
 `src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
-under `_norad_step_09c_scientific_validation_contracts`. They require that
-exact cached-file identity and completed readiness marker, insert the module
-before execution, and clean only an owned partial cache entry. The artifact
-index additionally verifies that its direct neutral Step `08` and Step `09`
-loads are the same objects used by Step `09c`; run-summary science retains only
-the Step `09c` load and receives both neutral dependencies transitively. A
-missing final file, foreign cache entry, partial module, unreadable path,
-execution error, or split neutral identity fails closed.
+under `_norad_step_09c_scientific_validation_contracts`. It requires that exact
+cached-file identity and completed readiness marker, inserts the module before
+execution, and cleans only an owned partial cache entry. It uses Step `09c` for
+private review context and policy while loading public roster, headers,
+vocabularies, bindings, and state reduction directly from the neutral review-
+package owner. A missing final file, foreign cache entry, partial module,
+unreadable path, execution error, or split review-package identity fails
+closed. Artifact indexing no longer loads Step `09c`.
 
 The retained load is also checkout-relative and exact-file based. It does not
 search `PYTHONPATH`, mutate `sys.path`, or require a package installation.
@@ -2520,7 +2557,7 @@ search `PYTHONPATH`, mutate `sys.path`, or require a package installation.
 ### Fix
 
 Preserve the diagnostic and inspect the final tracked file, current Git state,
-cached module identity when debugging in-process, and the invoking consumer.
+both cached module identities when debugging in-process, and run-summary.
 Restore the reviewed final owner through Git if the tracked file is missing or
 changed. Do not recreate `scripts/step_09c_scientific_validation.py`, add a
 wrapper, copy the module, install a package, alter `PYTHONPATH`, or inject a

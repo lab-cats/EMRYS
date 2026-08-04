@@ -100,12 +100,25 @@ partial, or split neutral identity without package discovery or `sys.path`
 mutation. Mirrored direct protection lives in
 [`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py).
 
-The Step `09` validator no longer loads Step `09c`. The artifact index still
-exact-loads Step `09c` for review-package surfaces, while the run-summary
-science helper consumes Step `09c` review context and policy. Those retained
-dependencies are private checkout-relative bridges, not package APIs, and are
-deferred to the separate public-review-package and reporting-local-reader
-slices.
+The Step `09` validator no longer loads Step `09c`.
+
+### Neutral Step 09c review-package contract
+
+[`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py)
+owns the public thirteen-file review-package roster, headers, closed
+vocabularies, category and input-artifact bindings, and evidence-status
+reducer. Step `09c`, artifact indexing, and the public portion of run-summary
+science exact-load that standard-library-only owner under
+`_norad_review_package_scientific_evidence_contract`; they reject a foreign,
+partial, or split neutral identity without package discovery or `sys.path`
+mutation. Mirrored direct protection lives in
+[`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py).
+
+Artifact indexing no longer loads Step `09c`. Run-summary science still
+exact-loads Step `09c` only for its private review context and policy, and
+requires Step `09c` to share the same neutral review-package identity. That
+remaining checkout-relative bridge is deferred to the separate reporting-
+local-reader slice; it is not a package API.
 
 [`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
 shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step

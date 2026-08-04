@@ -121,6 +121,10 @@ all behavior, and preserves the implementation's exit status.
 - Direct shell/Python tests protect CLI delegation, incomplete and exploratory
   states, non-promotion, reserved-state rejection, evidence mutation,
   computational-claim gates, exact publication, locks, rollback, and recovery.
+- Neutral
+  [`test_review_package.py`](../../../../tests/contracts/scientific_evidence/test_review_package.py)
+  independently protects the public roster, headers, vocabularies, bindings,
+  state reduction, standard-library-only boundary, and exact loader identity.
 - Artifact, run-summary, report, and schema-parity tests protect downstream
   reconstruction and presentation boundaries.
 
@@ -138,12 +142,19 @@ interpretation readiness is established in this checkout.
   Step `09` output contract. The Step `09` validator consumes both neutral
   owners directly; Step `09c` retains ten evidence domains, state policy, and
   transaction machinery.
-- Public review-package headers remain in this implementation and tracked
-  schema TSVs. The artifact index and run-summary science helper retain narrower
-  private dependencies on this file for review-package/policy surfaces without
-  creating a package API; their later ownership slices remain separate.
-- State/evidence rules are duplicated across publication, artifact indexing,
-  science normalization, and tests. Review-plan Git/software/runtime values
-  are declared metadata, not independently observed environment facts.
-- Target files, schema/policy modules, recovery tooling,
+- Public review-package roster, headers, vocabularies, bindings, and state
+  reduction belong to neutral
+  [`review_package.py`](../../contracts/scientific_evidence/review_package.py).
+  This implementation, artifact indexing, and run-summary science exact-load
+  that standard-library-only owner under one ready-marked identity without
+  creating a package API.
+- Artifact indexing no longer loads this private implementation. Run-summary
+  science retains only the private Step `09c` context/policy edge, verifies
+  that Step `09c` shares its neutral review-package identity, and removes that
+  edge through a separate reporting-local reader slice before reporting moves.
+- Policy and evidence-input rules outside the neutral public contract remain
+  owner-local across publication, artifact reconciliation, science
+  normalization, and tests. Review-plan Git/software/runtime values are
+  declared metadata, not independently observed environment facts.
+- Separate modules for retained private schemas/policy, recovery tooling,
   reviewer workflow, and migration mechanics remain deferred.

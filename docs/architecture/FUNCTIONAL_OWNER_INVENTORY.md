@@ -55,8 +55,9 @@ scientific stages.
 | Artifact contract validation | Neutral [`validate_artifact_contracts.py`](../../src/norad/contracts/artifacts/validate_artifact_contracts.py) and five public schemas under [`contracts/schemas/artifacts/v1/`](../../src/norad/contracts/schemas/artifacts/v1/) | Mirrored [`test_artifact_schema_contracts.py`](../../tests/contracts/artifacts/test_artifact_schema_contracts.py) and [`artifact_schema_v1`](../../tests/contracts/artifacts/fixtures/artifact_schema_v1/) fixtures. The five Python reporting-chain consumers share this one exact final module identity, and the shell preflight exact-loads the final file without package or path setup; schema identity and validation semantics remain neutral. |
 | Step `08` scientific-evidence contract | Neutral [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py); no public CLI, package identity, or installation surface | Mirrored [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py) plus affected consumer suites. Neutral Step `09`, the Step `08` and Step `09` validators, Step `09c`, and the artifact index share one exact-file module, `ContractError`, and `Table` identity. Shell/R algorithms, review policy, publication, and artifact reconciliation remain owner-local. |
 | Step `09` scientific-evidence contract | Neutral [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py); no public CLI, package identity, or installation surface | Mirrored [`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py) plus affected consumer suites. The owner exact-loads neutral Step `08`; the Step `09` validator, Step `09c`, and artifact index share one exact ready module identity. Step `09` shell/R method, Step `09c` review policy/publication, and artifact reconciliation remain owner-local. |
-| Artifact indexing | [`build_artifact_index.py`](../../scripts/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py) and its fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes neutral Step `08` and Step `09` contracts and still exact-loads final Step `09c` only for review-package surfaces; later slices remove that retained review dependency while keeping index reconciliation independent. |
-| Canonical run-summary assembly | [`build_run_summary.py`](../../scripts/build_run_summary.py), private helper [`_run_summary_science.py`](../../scripts/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/test_artifact_run_summary.py) and its fixture builder. The helper currently exact-loads final Step `09c`; the approved final boundary replaces private `build_context` reuse with a reporting-local reader/projection over the committed public review package and validated index records, without owning Step `09c` policy. |
+| Step `09c` review-package contract | Neutral [`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py); no public CLI, package identity, or installation surface | Mirrored [`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py) plus affected consumer suites. Step `09c`, artifact indexing, and run-summary science share one exact ready module identity for the public thirteen-file roster, headers, vocabularies, bindings, and state reducer. Step `09c` retains review/input policy, context, validation, publication, locking, rollback, and recovery. |
+| Artifact indexing | [`build_artifact_index.py`](../../scripts/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/test_artifact_adapters.py) and its fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes the neutral Step `08`, Step `09`, and review-package contracts, has no private Step `09c` dependency, and keeps index reconciliation independently implemented. |
+| Canonical run-summary assembly | [`build_run_summary.py`](../../scripts/build_run_summary.py), private helper [`_run_summary_science.py`](../../scripts/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/test_artifact_run_summary.py) and its fixture builder. The helper exact-loads the neutral review-package contract for public surfaces and final Step `09c` only for private review context/policy. The approved final boundary replaces that private `build_context` reuse with a reporting-local reader/projection over the committed public review package and validated index records, without owning Step `09c` policy. |
 | Static reporting | [`render_run_report.sh`](../../scripts/render_run_report.sh), [`render_run_report.py`](../../scripts/render_run_report.py), [`render_run_report_bundle.py`](../../scripts/render_run_report_bundle.py), [`reports/`](../../reports/), public starter [`report_table_approvals.example.tsv`](../../configs/report_table_approvals.example.tsv); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/shell/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/test_report_exports_v1.py), and report fixtures under [`report_html_v1/`](../../tests/fixtures/report_html_v1/). Rendering consumes one canonical summary and never reruns analysis. |
 
 ## Repository-development interfaces
@@ -135,9 +136,12 @@ Private helpers do not add public owners:
   validators belong to neutral
   [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py), which
   reuses the Step `08` error/table identity and is exact-loaded under one shared
-  ready-owner identity. The public review-package contract still belongs to the
-  Step `09c` implementation and moves through a later slice; Step `09c` review
-  policy, evidence sources, publication, rollback, and recovery remain local.
+  ready-owner identity. The public review-package roster, headers,
+  vocabularies, bindings, and state reducer belong to neutral
+  [`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py)
+  and are exact-loaded under one shared ready-owner identity. Step `09c`
+  review policy, evidence sources, context, publication, rollback, and recovery
+  remain local.
 - Base intake validation does not require `replicate`, while the Step `09` and
   `09c` analysis profile does; that is a base contract plus a stricter consumer
   refinement, not two interchangeable manifest definitions.
@@ -157,8 +161,8 @@ final ownership. Completed
 [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) fixes
 their exact permanent dispositions, and
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams)
-owns the target paths. The Step `08` and Step `09` extractions are implemented;
-the public review-package contract, reporting-local dependency removal, and
+owns the target paths. The Step `08`, Step `09`, and public review-package
+contract extractions are implemented; reporting-local dependency removal and
 reference-contig parsing remain separately bounded JIT slices.
 
 ## Coverage result
@@ -169,7 +173,7 @@ under `scripts/` and three final owner-local producers), 4 R entry points, 7
 Git-orchestration entry points, 16 SLURM jobs (11 under `jobs/` and five final
 owner-local jobs), and 23 public Make targets. Every member is assigned once
 above. The one private top-level Python module, two neutral library sources,
-three neutral contract implementation sources, and three private orchestration
+four neutral contract implementation sources, and three private orchestration
 files are classified separately. No current
 autonomous pipeline orchestrator,
 ingestion executor, or installable-package entry point exists.

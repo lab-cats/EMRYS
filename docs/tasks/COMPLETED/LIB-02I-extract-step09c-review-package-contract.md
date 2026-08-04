@@ -144,7 +144,48 @@ its final source home.
 ## Completion record
 
 Selected from clean, published, live-remote-equal LIB-02H documentation close
-`524bfd1e1a055a5616afeeaa66a56fce095a5da4`. The exact symbol, consumer,
-fixture, parity-oracle, and coverage boundary was refreshed read-only before
-selection; no executable, test, coverage, or later reporting-local slice has
-changed.
+`524bfd1e1a055a5616afeeaa66a56fce095a5da4` at selection checkpoint
+`d416e47`. Executable/test checkpoint `95f795e` added the standard-library-only
+neutral owner and mirrored direct suite, removed every extracted definition
+from Step `09c`, cut over all reviewed consumers, eliminated artifact
+indexing's private Step `09c` loader, and limited run-summary's retained Step
+`09c` edge to private context and policy. It added no wrapper, compatibility
+alias, package/import surface, installation metadata, `PYTHONPATH`, `sys.path`
+mutation, reporting-local reader, or successor-card content.
+
+The selection-parent JSON-serialized public-contract fingerprint was `24,525`
+bytes at SHA-256
+`fc23dfa0fc87a96d801db8989ac83a031d48f4fd1407afc40a41b7b4c87ab1db`.
+Independent pre/post comparison proved all `39` public constants and
+`aggregate_evidence_status` AST-exact, with signature
+`(rows: 'Sequence[Mapping[str, str]]', category: 'str') -> 'str'`, and found no
+duplicate Step `09c` definitions. Final file evidence was:
+
+- neutral owner: mode `0644`, `12,641` bytes, SHA-256
+  `2a3100600c9c9d9f4c50c8a632f10115036be0efed2b7dd16d1005d8a12e7ad9`;
+- mirrored direct suite: mode `0644`, `14,046` bytes, SHA-256
+  `49e1ce2d13d6ae72124af2692c2cf4fe798594e7e49fecaf9b46fdeb75158425`;
+  and
+- retained Step `09c`: mode `0644`, `108,319` bytes, SHA-256
+  `a3200ffe9d2248e646e5fe4524383e4f3e9e7a9467c26d10217ee1a2315e562a`.
+
+The final direct neutral suite passed `18` tests, and the final focused roster
+passed `558`. Complete Python coverage passed `1,538` tests with `17` skips,
+measured global line/branch rates `0.844829`/`0.746490` across `35` files, and
+covered the neutral owner at `53/53` lines and `8/8` branches. The reviewed
+affected-only tracked baseline is `10241/12326` lines and `3599/4964`
+branches. Static validation, all shell contracts, the pinned report-runtime
+route (`17` passed, `60` deselected), and project-local Step `08`/`09` real-R
+semantic fixtures passed. The aggregate attempt remained non-green only at
+guarded R: its unrestricted read-only rerun reached dependency validation and
+reported one out-of-date package. No dependency was installed, restored,
+removed, or updated.
+
+`git diff --check` and `make -s documentation-check` passed at the lifecycle
+close; the latter validated `221` Markdown documents, `138` task cards, and
+`6` Mermaid sources.
+
+This closes the public review-package extraction and only partially unblocks
+`RPT-05A`: reporting-local dependency removal remains required, uncreated, and
+unselected. No runtime, cluster, production, completed scientific-review,
+editing-site, or biological-readiness evidence is created.

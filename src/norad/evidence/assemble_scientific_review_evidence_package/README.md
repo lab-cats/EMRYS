@@ -174,22 +174,30 @@ privately exact-load both neutral
 Step `08` `ContractError` and `Table`; all three consumers fail closed if any
 shared owner identity splits.
 
-The artifact index and
-[`_run_summary_science.py`](../../../../scripts/_run_summary_science.py) still
-exact-load this final Python file under
-`_norad_step_09c_scientific_validation_contracts` for public review-package and
-policy surfaces. These private-loader families validate cached-owner identity
-and readiness, insert before execution, clean only their own partial cache
-entry, leave `sys.path` unchanged, and expose no public package identity. The
-Step `09` validator now consumes the neutral Step `09` owner directly and does
-not load this review implementation.
+This implementation, the artifact index, and
+[`_run_summary_science.py`](../../../../scripts/_run_summary_science.py)
+exact-load neutral
+[`review_package.py`](../../contracts/scientific_evidence/review_package.py)
+under `_norad_review_package_scientific_evidence_contract` for the public
+thirteen-file roster, headers, vocabularies, bindings, and evidence-status
+reducer. These loader families validate cached-owner identity and readiness,
+insert before execution, clean only their own partial cache entry, leave
+`sys.path` unchanged, and expose no public package identity.
 
-Artifact indexing treats this final Python file as the Step `09c` producer and
-`step09c_review_summary_v1` as the failure marker while validating all thirteen
-adapters. Run-summary assembly accepts one explicit committed summary and
-reconstructs the complete package. Reporting consumes only that authorized
-normalized record. None of these consumers proves which publication attempt
-returned success or promotes computational, scientific, or biological state.
+The artifact index no longer loads this final Step `09c` Python file. Run-
+summary science still exact-loads it under
+`_norad_step_09c_scientific_validation_contracts` only for private review
+context and policy, and rejects a split neutral review-package identity. The
+Step `09` validator consumes the neutral Step `09` owner directly and does not
+load this review implementation.
+
+Artifact indexing uses the neutral review-package contract while treating the
+published Step `09c` package and `step09c_review_summary_v1` as source evidence
+for all thirteen adapters. Run-summary assembly accepts one explicit committed
+summary and reconstructs the complete package. Reporting consumes only that
+authorized normalized record. None of these consumers proves which
+publication attempt returned success or promotes computational, scientific,
+or biological state.
 
 ## Focused protection and rollback
 
@@ -202,6 +210,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
+  tests/contracts/scientific_evidence/test_review_package.py \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
   tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
@@ -237,10 +246,20 @@ lanes with summary status `0` in `200.121s`. This later green result does not
 turn either earlier attempt into a pass or establish scheduler, cluster,
 production, completed-review, editing-site, or biological proof.
 
-Git rollback reverts the documentation close, executable `d1cce50`, then
-signal/concurrency `d459440`, recovery `3fa0699`, publication order `d9b0ce8`,
-input identity `bd680b6`, and wrapper resolution `0dea4da`. Git cannot
-authenticate, recover, delete, or alter runtime evidence, outputs, locks,
-backups, notices, or review state. See [`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03O`](../../../../docs/tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md)
-for the full boundary.
+Later executable checkpoint `95f795e` extracted the public review-package
+contract without changing Step `09c` review policy or publication. Its final
+focused roster passed `558` tests; complete Python coverage passed `1,538`
+tests with `17` skips and measured the neutral owner at `53/53` lines and `8/8`
+branches. Static, shell, report-runtime, and project-local Step `08`/`09` real-
+R semantic routes passed. The aggregate remained non-green at guarded R
+because the environment checker reported one out-of-date package; no package
+was installed, restored, removed, or updated.
+
+Rollback of only LIB-02I reverts its documentation close, executable
+`95f795e`, then selection `d416e47`. Any deeper rollback must follow the full
+reverse branch lineage in
+[`PIPELINE_PLAN.md`](../../../../docs/design/PIPELINE_PLAN.md#approved-current-delivery-lineage)
+and operations history; do not skip the intervening LIB-02G, LIB-02H, or
+MIG-04A packages. Git cannot authenticate, recover, delete, or alter runtime
+evidence, outputs, locks, backups, notices, or review state. See
+[`CONTRACT.md`](CONTRACT.md) for the full boundary.

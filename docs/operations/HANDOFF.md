@@ -13,10 +13,10 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `97f91690aa1d5e7a67c96d407ab6e3b0e9c1e68f`, the `LIB-02H` neutral Step `09`
-  contract cutover and frozen executable basis for its documentation/lifecycle
-  close.
-- Current package predecessor:
+  `95f795e8b015d4908b600c88367aecee3ed0abc8`, the `LIB-02I` neutral Step `09c`
+  review-package contract cutover and frozen executable basis for its
+  documentation/lifecycle close.
+- LIB-02I package predecessor:
   `524bfd1e1a055a5616afeeaa66a56fce095a5da4`, the clean, published,
   live-remote-equal `LIB-02H` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
@@ -47,18 +47,20 @@ and delivery-required lineage live in
   left no Step `08` compatibility owner or package-path dependency. Completed
   [`LIB-02H`](../tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
   did the same for the public Step `09` output contract without changing the
-  Step `09c` review-package policy or publication behavior.
+  Step `09c` review-package policy or publication behavior. Completed
+  [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
+  moved the public thirteen-file Step `09c` review-package roster, headers,
+  vocabularies, bindings, and state reducer into their permanent neutral owner,
+  eliminated artifact indexing's private Step `09c` dependency, and retained
+  only run-summary's private context/policy edge.
 - Selected package:
-  [`LIB-02I`](../tasks/IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
-  extracts only the public thirteen-file Step `09c` roster, headers,
-  vocabularies, and closed state reduction into their neutral owner. The exact
-  read-only boundary audit is complete; no executable or test change has begun.
+  None. No residual-convergence successor is created or selected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
-  migrated through `MIG-04A`, and the neutral Step `08` and Step `09` contracts
-  are extracted through `LIB-02G` and `LIB-02H`. Public review-package
-  extraction is selected through `LIB-02I`; reporting,
+  migrated through `MIG-04A`, and the neutral Step `08`, Step `09`, and public
+  review-package contracts are extracted through `LIB-02G`, `LIB-02H`, and
+  `LIB-02I`. Reporting,
   reference/runtime/storage evidence, and cross-owner test paths remain in
   their current locations pending separately selected JIT moves.
   Current and target ownership route through
@@ -91,7 +93,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, the neutral artifact-contract validator/schemas/direct evidence, and the neutral Step `08` and Step `09` scientific-evidence contracts/direct suites are physically migrated; their legacy ownership and temporary compatibility paths are absent. Public review-package, reporting, evidence-helper, and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report library, all fourteen semantic DAG owners, the neutral artifact-contract validator/schemas/direct evidence, and the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites are physically migrated; their legacy ownership and temporary compatibility paths are absent. Reporting, evidence-helper, and shared-test roots remain and are dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -100,7 +102,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `LIB-02H` moved the Step `09` contract at executable checkpoint `97f9169`. Its 6118-byte frozen API fingerprint remained exact; 45 neutral direct tests passed, and the focused scope advanced from 509 pre-extraction passes to 584 final passes. The 1,500-passed/17-skipped coverage run measured 0.844007 line and 0.745770 branch coverage across 34 files; the new owner covered 319/332 lines and 169/178 branches, above the committed affected-only 0.829931/0.724201 floor. All three focused shell contracts, both project-local Step `08`/`09` real-R semantic suites, and the 17-passed/60-deselected report-runtime route passed. The aggregate static, Python, and shell gates passed; guarded R remained expected environment drift because CRAN advertises `renv 1.2.4` while the synchronized lock/library remains at `1.2.3`. No dependency changed, and no package creates runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `LIB-02I` moved the public Step `09c` review-package contract at executable checkpoint `95f795e`. Independent comparison kept all 39 constants and `aggregate_evidence_status` AST-exact; the neutral owner remained standard-library-only, and artifact indexing retained no private Step `09c` load. The direct neutral suite passed 18 tests and the final focused roster passed 558. Complete Python coverage passed 1,538 tests with 17 skips, measured 0.844829 line and 0.746490 branch coverage across 35 files, and covered the new owner at 53/53 lines and 8/8 branches above the committed affected-only 0.830845/0.725020 floor. Static, all shell contracts, both project-local Step `08`/`09` real-R semantic suites, and the 17-passed/60-deselected report-runtime route passed. The aggregate remained non-green at guarded R because the environment checker reported one out-of-date package; no dependency changed, and no package creates runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -164,11 +166,11 @@ worktree. Its original directory tree remains preserved at
 Do not delete, repair, reuse, or automatically restore that quarantine. No
 package was installed, restored, removed, or updated. Guarded checks use the
 existing primary project library through `RENV_PATHS_LIBRARY`; the earlier
-temporary Python-environment symlink remains removed. Current CRAN metadata
-now advertises `renv 1.2.4` while the tracked lock and installed library remain
-synchronized at `1.2.3`, so the aggregate R environment check is explicitly
-non-green until a separately reviewed dependency-maintenance package resolves
-that drift.
+temporary Python-environment symlink remains removed. The latest unrestricted
+read-only environment check reached dependency validation and reported one
+out-of-date package without printing its identity, so the aggregate R lane is
+explicitly non-green until a separately reviewed dependency-maintenance
+package diagnoses and resolves that drift.
 
 ## Current blockers
 
@@ -177,9 +179,9 @@ that drift.
   inspection.
 - Step `07` lacks real-bcftools and cluster evidence.
 - CSU batch-visible R and package availability remain unresolved.
-- Guarded local R dependency metadata flags lock-pinned `renv 1.2.3` as out of
-  date against CRAN `1.2.4`; no compatible existing library is present, and
-  neither LIB-02G nor LIB-02H installed or updated it.
+- Guarded local R dependency validation reports one out-of-date package; the
+  checker did not print its identity, and LIB-02I installed or updated no
+  dependency.
 - Storage quota, scratch capacity, and retention policy remain unresolved.
 - The exact Novogene annotation release remains partially unresolved.
 - No production scientific-evidence review has been completed.
@@ -204,21 +206,22 @@ that drift.
 
 ## Immediate resume point
 
-Selected
-[`LIB-02I`](../tasks/IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
-is the sole active residual package. Extract only the public thirteen-file
-review-package roster, headers, vocabularies, and closed state reduction into
-`src/norad/contracts/scientific_evidence/review_package.py`; cut over Step
-`09c`, artifact indexing, and only the public references in run-summary
-science. Keep all review/input policy, source reconstruction, context,
-validation, publication, recovery, and the reporting-local reader outside this
-slice. The latter remains the next uncreated JIT dependency.
+No residual package is selected. Completed
+[`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
+placed the public review-package contract in its neutral owner and removed the
+artifact-index Step `09c` edge. When the campaign resumes, the next dependency-
+valid need in the preferred runway is to create the reporting-local reader/
+projection slice just in time so run-summary can stop loading private Step
+`09c` context and policy. That package remains uncreated and unselected.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is
 preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
+
+The user requested a pause after the LIB-02I lifecycle close and publication;
+do not select or begin the next package until the user resumes the campaign.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The

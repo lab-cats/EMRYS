@@ -129,6 +129,17 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
+The current LIB-02I measurement protects neutral
+`src/norad/contracts/scientific_evidence/review_package.py` at `53/53` covered
+lines and `8/8` branches. The reviewed affected-only tracked baseline is
+`10241/12326` lines and `3599/4964` branches. The complete Python lane passed
+`1,538` tests with `17` skips and measured `0.844829` global line coverage and
+`0.746490` global branch coverage across `35` files. Static, shell, report-
+runtime, and project-local Step `08`/`09` real-R semantic routes passed. The
+aggregate remained non-green at guarded R because the environment checker
+reported one out-of-date package; no dependency was installed, restored,
+removed, or updated.
+
 DOC-GATE-01 independently freezes the extracted documentation validator with a
 hard-coded legacy heading oracle, isolated valid/invalid repositories, exact
 ordered diagnostics, explicit-root and fail-closed Git inventory scenarios,
@@ -208,9 +219,9 @@ surface reachable without copying the dated row-by-row matrices:
 | SLURM modes, modules, CWD, delegation, arguments, outputs, and exits | `tests/test_slurm_wrapper_contracts.py` plus each delegated workflow owner; direct migrated-stage tests through Step `08` live under `tests/stages/`, Step `09` under `tests/analyses/`, and migrated Step `02b`, Step `03`, and Step `09c` evidence tests under their owner directories in `tests/evidence/` |
 | Exact Step `00a`–`09` validation rosters | `tests/validation_roster_expectations.py` and `tests/test_validation_check_rosters.py` |
 | Validation publication, private BAM-helper loading, and recovery faults | `tests/libraries/test_validation_report.py`, `tests/libraries/test_bam_validation.py`, plus producer-specific transaction suites |
-| Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/test_independent_contract_goldens.py` plus schema and producer suites |
+| Public schemas, headers, bytes, statuses, and shared-policy transitions | `tests/contracts/scientific_evidence/test_review_package.py` directly protects the neutral review-package roster, headers, vocabularies, bindings, and status reducer; `tests/test_independent_contract_goldens.py` plus schema and producer suites protect cross-owner parity. |
 | Step `09` statistic, p-value, odds-ratio, and estimability characterization | `tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py`, its owner-local fixed corpus, and guarded real-R comparison |
-| Step `09c` evidence, state, input, publication, signal, concurrency, and recovery behavior | `tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py` plus its adjacent shell contract and fixture builder; characterized signal defects remain defects |
+| Step `09c` evidence policy, input, publication, signal, concurrency, and recovery behavior | `tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py` plus its adjacent shell contract and fixture builder; public review-package contract protection is neutral, and characterized signal defects remain defects |
 | Python non-regression measurement | the tracked coverage snapshot and coverage tests |
 | Full dated entry-point matrices and regression dispositions | [historical Python matrix](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md#python-entry-points) and adjacent shell, R, SLURM, and Make sections |
 

@@ -4750,10 +4750,10 @@ editing-site, or biological proof.
 Status:
 
 ```text
-implemented at the final evidence owner in executable checkpoint d1cce50
+implemented at the final evidence owner; public review-package contract extracted at 95f795e
 focused final-path Python, shell, loader, artifact, run-summary, and CLI suites pass
-the pre-documentation aggregate attempt was not green because of eight stale links
-the post-documentation exact aggregate passes all local lanes
+the latest complete Python coverage lane passes 1,538 tests with 17 skips
+the latest aggregate attempt is non-green only at guarded R: one package is out of date
 production evidence and scientific review remain unavailable
 not a rerun of CMH and not a biological interpretation engine
 ```
@@ -4763,9 +4763,11 @@ Implemented files:
 ```text
 src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
 src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py
+src/norad/contracts/scientific_evidence/review_package.py
 configs/step_09c_review_plan.example.tsv
 configs/step_09c_evidence_manifest.example.tsv
 configs/step_09c_evidence_schemas/
+tests/contracts/scientific_evidence/test_review_package.py
 tests/evidence/assemble_scientific_review_evidence_package/build_fixture.py
 tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
@@ -4773,11 +4775,16 @@ tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scienti
 
 The neutral Step `08` and Step `09` owners and direct suites are listed under
 [Step `08`](#step-08-vcf-preprocessing) and
-[Step `09`](#step-09-cmh-editing-site-calling). Step `09c` consumes both
-contracts but does not own or re-export their headers and validators. The
-Python evidence owner exact-loads the tracked neutral files under their shared
-ready identities without package discovery, `PYTHONPATH` changes, or `sys.path`
-mutation. Its public shell and direct Python commands remain unchanged.
+[Step `09`](#step-09-cmh-editing-site-calling). The neutral review-package
+owner and mirrored suite are listed above. Step `09c` consumes all three
+contracts but does not own or re-export their public headers, vocabularies, or
+validators. The Python evidence owner exact-loads the tracked neutral files
+under their shared ready identities without package discovery, `PYTHONPATH`
+changes, or `sys.path` mutation. Artifact indexing consumes the neutral
+review-package owner and no longer loads Step `09c`; run-summary science uses
+the neutral owner for public surfaces while retaining Step `09c` only for
+private review context/policy. The public shell and direct Python commands
+remain unchanged.
 
 The local dry-run-first Python/shell evidence package has this public
 interface:
@@ -4990,6 +4997,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
+  tests/contracts/scientific_evidence/test_review_package.py \
   tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py
 .venv/bin/python -m pytest -q \
   tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py \
@@ -5003,8 +5011,9 @@ The active fixtures cover exact 13-file publication, side-effect-free dry-run,
 incomplete and exploratory evidence, reserved-state rejection, unrelated-file
 immunity, the 32-input identity ceiling, ordered publication, hash mutation,
 locks, cleanup, restoration, signals, and concurrency. The cross-consumer
-suites protect neutral Step `08`/`09`, retained Step `09c`, artifact,
-run-summary, and public-command routes. A local pass means implemented and
+suites protect neutral Step `08`/`09` and review-package contracts, retained
+private Step `09c` context/policy, artifact, run-summary, and public-command
+routes. A local pass means implemented and
 fixture-tested only. It does not
 establish a production review, scheduler/runtime evidence, cluster proof,
 validated editing sites, or biological readiness.

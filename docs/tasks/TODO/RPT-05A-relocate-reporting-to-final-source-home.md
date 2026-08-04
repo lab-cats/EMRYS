@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02I](../IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md) — Required: move the public Step `09c` review-package roster, headers, vocabularies, and closed state reduction out of the private evidence implementation before reporting removes its owner-private dependency.
+- None.
 
 ## Completion unblocks
 
@@ -50,19 +50,22 @@ logic, while report assets remain explicitly owned and inspectable.
   places the public Step `08` contract and shared error/table identity in their
   final neutral owner; and completed
   [LIB-02H](../COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
-  places the public Step `09` output contract in its final neutral owner.
-- Selected
-  [LIB-02I](../IN_PROGRESS/LIB-02I-extract-step09c-review-package-contract.md)
-  owns the public Step `09c` review-package contract extraction. The reporting-
-  local dependency-removal slice remains required and uncreated; complete it
-  just in time after `LIB-02I` and before selecting this relocation card.
+  places the public Step `09` output contract in its final neutral owner; and
+  completed
+  [LIB-02I](../COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
+  places the public Step `09c` review-package contract in its final neutral
+  owner.
+- The reporting-local dependency-removal slice remains required, uncreated,
+  and unselected; complete it just in time before selecting this relocation
+  card.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.
 - Verify that neutral artifact contracts occupy their final home and that no
   reporting module imports Step `09c` or another functional owner's private
-  implementation. Stop and create the required neutral extraction card if the
-  direction leak still exists.
+  implementation. Complete the required reporting-local reader/projection
+  slice before selecting this relocation card if that direction leak still
+  exists.
 
 ## Required context
 
