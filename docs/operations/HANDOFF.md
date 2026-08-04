@@ -16,9 +16,9 @@ and delivery-required lineage live in
   `95f795e8b015d4908b600c88367aecee3ed0abc8`, the `LIB-02I` neutral Step `09c`
   review-package contract cutover and frozen executable basis for its
   documentation/lifecycle close.
-- LIB-02I package predecessor:
-  `524bfd1e1a055a5616afeeaa66a56fce095a5da4`, the clean, published,
-  live-remote-equal `LIB-02H` documentation/lifecycle close.
+- Current package predecessor:
+  `1c04809475a42a9372e04c6278b682326a1b953d`, the clean, published,
+  live-remote-equal `LIB-02I` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -54,7 +54,11 @@ and delivery-required lineage live in
   eliminated artifact indexing's private Step `09c` dependency, and retained
   only run-summary's private context/policy edge.
 - Selected package:
-  None. No residual-convergence successor is created or selected.
+  [`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+  replaces run-summary's remaining private Step `09c` implementation edge with
+  a reporting-local committed-package reader/projection. Its bounded audit and
+  pre-change direct baseline are complete; no executable or test change has
+  begun.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -206,13 +210,13 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. Completed
-[`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
-placed the public review-package contract in its neutral owner and removed the
-artifact-index Step `09c` edge. When the campaign resumes, the next dependency-
-valid need in the preferred runway is to create the reporting-local reader/
-projection slice just in time so run-summary can stop loading private Step
-`09c` context and policy. That package remains uncreated and unselected.
+Selected
+[`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+is the sole active residual package. Replace only run-summary science's private
+Step `09c` exact loader and source reconstruction with a reporting-local reader
+over the committed public thirteen-file package and validated artifact-index
+records; preserve the normalized scientific-review record and public failure
+behavior. Reporting relocation remains `RPT-05A` scope after this card closes.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is
@@ -220,8 +224,9 @@ preloaded. `PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 
-The user requested a pause after the LIB-02I lifecycle close and publication;
-do not select or begin the next package until the user resumes the campaign.
+The user resumed the whole residual-convergence campaign after the LIB-02I
+lifecycle close and publication; continue one JIT package at a time through the
+final residual-layout audit unless a genuine escalation condition is reached.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The

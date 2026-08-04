@@ -30,7 +30,7 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- None.
+- [LIB-02J](../IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md) — Required: reporting must stop importing the private Step `09c` evidence implementation before its owner moves.
 
 ## Completion unblocks
 
@@ -55,9 +55,10 @@ logic, while report assets remain explicitly owned and inspectable.
   [LIB-02I](../COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
   places the public Step `09c` review-package contract in its final neutral
   owner.
-- The reporting-local dependency-removal slice remains required, uncreated,
-  and unselected; complete it just in time before selecting this relocation
-  card.
+- Selected
+  [LIB-02J](../IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md)
+  owns the required reporting-local dependency removal; complete it before
+  selecting this relocation card.
 - Reinspect all report imports, direct scripts, Make targets, assets, tests,
   Quarto inputs, arbitrary-CWD cases, packaged-asset constraints, and the
   artifact-schema receipt fixture that embeds the current QMD path.

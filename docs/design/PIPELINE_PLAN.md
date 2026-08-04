@@ -105,8 +105,11 @@ completed
 extracted the bounded Step `09` neutral scientific-evidence contract, and
 completed
 [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
-extracted the bounded public Step `09c` review-package contract. No residual-
-convergence package is selected.
+extracted the bounded public Step `09c` review-package contract. The sole
+selected package is now
+[`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md),
+the reporting-local committed-package reader/projection that removes the final
+private Step `09c` implementation dependency.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -127,7 +130,7 @@ disposition.
 | Residual group | Disposition | JIT route or boundary |
 | --- | --- | --- |
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
-| Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Artifact, Step `08`/`09`, and public review-package contracts are final through completed [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md). Create and complete the reporting-local dependency-removal slice just in time before selecting reporting relocation; move current behavior before feature work or decomposition. |
+| Artifact indexing, run-summary construction, and static reporting | `MOVE` through [`RPT-05A`](../tasks/TODO/RPT-05A-relocate-reporting-to-final-source-home.md) | Artifact, Step `08`/`09`, and public review-package contracts are final through completed [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md). Execute selected [`LIB-02J`](../tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md), then relocate current reporting behavior before feature work or decomposition. |
 | Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
@@ -146,9 +149,9 @@ Preferred one-owner order is:
 1. completed `LIB-02F` settles only the two observed shared seams;
 2. completed `MIG-04A` performs the neutral artifact-contract move;
 3. completed `LIB-02G`, `LIB-02H`, and `LIB-02I` extract the neutral Step `08`,
-   Step `09`, and public review-package contracts; create the reporting-local
-   reader-removal slice just in time when this campaign resumes;
-4. execute `RPT-05A` only after those concrete blockers close;
+   Step `09`, and public review-package contracts; execute selected `LIB-02J`
+   to remove reporting's private Step `09c` dependency;
+4. execute `RPT-05A` only after `LIB-02J` closes;
 5. extract the neutral `reference_contigs` parser seam, then move reference
    provenance; move runtime preflight and storage inventory as separate owner
    cards;
@@ -156,9 +159,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. The reporting-local successor, later seam-
-extraction cards, the final audit, and deferred domains remain uncreated or
-unbegun.
+`LIB-02J` is the sole selected residual package. Later seam-extraction cards,
+the final audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -226,13 +228,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                     └── LIB-02I executable cutover
                                                                         95f795e
                                                                         └── LIB-02I documentation/
-                                                                            lifecycle close
-                                                                            (commit containing this plan)
+                                                                            lifecycle close 1c04809
+                                                                            └── LIB-02J selection
+                                                                                (commit containing this plan)
 ```
 
-The final node is the current lifecycle close represented by this plan. It
-selects no successor; no later extraction, final audit, default-branch
-integration, runtime, or cluster action is implied.
+The final node is the current selection tip represented by this plan. It
+selects only `LIB-02J`; no reporting relocation, later extraction, final audit,
+default-branch integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

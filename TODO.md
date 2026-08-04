@@ -34,11 +34,14 @@ to their permanent neutral owners at executable checkpoint `97f9169`, again
 with all reviewed consumers cut over and no compatibility owner. Completed
 [`LIB-02I`](docs/tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
 then moved the public Step `09c` review-package contract and direct suite to
-their permanent neutral owners at executable checkpoint `95f795e`, eliminated
-artifact indexing's private Step `09c` dependency, and left only reporting's
-private context/policy edge for a later slice. No residual-convergence package
-is selected. Reporting-local dependency removal remains a required, uncreated,
-and unselected JIT slice.
+their permanent neutral owners at executable checkpoint `95f795e` and
+eliminated artifact indexing's private Step `09c` dependency. The sole selected
+residual-convergence package is
+[`LIB-02J`](docs/tasks/IN_PROGRESS/LIB-02J-remove-run-summary-private-step09c-dependency.md),
+which replaces reporting's remaining private context/policy edge with a
+reporting-local committed-package reader/projection. Its bounded read-only
+audit and pre-change direct baseline are complete; no executable or test change
+has begun.
 Scheduler, ingestion, orchestration/profile, runtime, cluster, and default-
 branch work remain deferred or unselected. `PROGRAM-01` and unrelated work
 remain frozen outside their completed slices. Execute only one dependency-valid
