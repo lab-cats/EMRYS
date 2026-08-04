@@ -17,8 +17,8 @@ and delivery-required lineage live in
   reporting relocation and frozen executable basis for this documentation/
   lifecycle close.
 - Current package predecessor:
-  `387d818a9b55e09c956f3034fb2b898ace967924`, the clean, published,
-  live-remote-equal `LIB-02J` documentation/lifecycle close.
+  `8a5cf28df6d5f595ef74bde6f22ad376dc41c374`, the clean, published,
+  live-remote-equal `RPT-05A` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -61,7 +61,11 @@ and delivery-required lineage live in
   suites, and three fixture groups into their final owners with no wrapper and
   no behavior delta beyond approved path-derived provenance.
 - Selected package:
-  None. No residual-convergence successor is selected.
+  [`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
+  extracts only the characterized ordered FASTA, FAI, and DICT parsers into
+  the permanent neutral `reference_contigs` library, adds an independent
+  library suite, and cuts over reference provenance plus the final Step
+  `00c`/`05` validators without moving the evidence command.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -214,13 +218,14 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. Completed
-[`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
-leaves the campaign's next preferred unit as extraction of only the exact
-ordered FASTA, FAI, and DICT contig/length parser seam into
-`src/norad/libraries/reference_contigs.py`, with independent library tests,
-before moving reference-provenance evidence. That extraction remains
-unselected at this lifecycle close.
+Selected
+[`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
+is the sole active residual package. Freeze the exact ordered parser outputs,
+messages, exceptions and characterized quirks plus all three consumer
+aggregation/CLI behaviors; then create one exact neutral module identity and
+cut over reference provenance and the final Step `00c`/`05` validators. Do not
+move reference provenance or change agreement, evidence, hashing, snapshots,
+publication, or recovery.
 
 No later executable migration, final audit, scheduler, ingestion,
 orchestration/profile, runtime, cluster, or default-branch package is

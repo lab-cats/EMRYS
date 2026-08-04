@@ -112,8 +112,10 @@ extracted the bounded public Step `09c` review-package contract, and completed
 removed reporting's final private Step `09c` implementation dependency, and
 completed
 [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
-performed the direct atomic reporting relocation. No residual-convergence
-package is selected.
+performed the direct atomic reporting relocation. Selected
+[`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md)
+is the sole residual-convergence package and owns only the neutral
+reference-contig parser extraction.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -135,7 +137,7 @@ disposition.
 | --- | --- | --- |
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
-| Reference provenance evidence | `MOVE` | Start only after the approved neutral `reference_contigs` parser extraction completes. |
+| Reference provenance evidence | `MOVE` after selected [`LIB-02K`](../tasks/IN_PROGRESS/LIB-02K-extract-reference-contig-parser-library.md) | `LIB-02K` owns only the neutral `reference_contigs` parser extraction; reference-evidence relocation remains a later separate card. |
 | Runtime preflight | `MOVE` | One evidence-owner migration card. |
 | Storage inventory | `MOVE` | One evidence-owner migration card; retention action remains prohibited. |
 | Independent contract goldens and validation-roster agreement | `MOVE` | Update as direct consumers during owner moves, then converge their paths under `tests/contract_integration/` near campaign close. |
@@ -163,9 +165,8 @@ Preferred one-owner order is:
    two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. The neutral `reference_contigs` extraction is
-the next preferred JIT unit; later owner moves, the final audit, and deferred
-domains remain uncreated or unbegun.
+`LIB-02K` is the sole selected residual package. Later owner moves, the final
+audit, and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -245,13 +246,14 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                             └── RPT-05A executable cutover
                                                                                                 7c10c17
                                                                                                 └── RPT-05A documentation/
-                                                                                                    lifecycle close
-                                                                                                    (commit containing this plan)
+                                                                                                    lifecycle close 8a5cf28
+                                                                                                    └── LIB-02K selection
+                                                                                                        (commit containing this plan)
 ```
 
-The final node is the current lifecycle close represented by this plan. It
-selects no successor; no later extraction, final audit, default-branch
-integration, runtime, or cluster action is implied.
+The final node is the current selection represented by this plan. It selects
+only `LIB-02K`; no reference-evidence relocation, later owner move, final audit,
+default-branch integration, runtime, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
