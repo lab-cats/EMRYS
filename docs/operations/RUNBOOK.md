@@ -602,7 +602,7 @@ point. Replace illustrative paths, hashes, and provenance values rather than
 editing generated results. Dry-run:
 
 ```bash
-.venv/bin/python scripts/reference_provenance.py \
+.venv/bin/python src/norad/evidence/reference_provenance/reference_provenance.py \
   --inventory configs/reference_provenance.example.tsv \
   --base-dir . \
   --output-root results/qc/reference_provenance
@@ -624,7 +624,7 @@ After inspecting the dry-run, create the explicit root and execute:
 
 ```bash
 mkdir -p results/qc/reference_provenance
-.venv/bin/python scripts/reference_provenance.py \
+.venv/bin/python src/norad/evidence/reference_provenance/reference_provenance.py \
   --inventory /explicit/path/to/reference_provenance.tsv \
   --base-dir /explicit/reference/root \
   --output-root results/qc/reference_provenance \
@@ -652,7 +652,7 @@ rewrites annotations, renames contigs, or establishes production/cluster
 proof. Focused tests:
 
 ```bash
-.venv/bin/python -m pytest -q tests/test_reference_provenance.py
+.venv/bin/python -m pytest -q tests/evidence/reference_provenance/test_reference_provenance.py
 ```
 
 ### Validate `artifact-schema-v1`
@@ -1822,7 +1822,7 @@ Run the complete Phase `01b` publication-fault characterization set with:
 cd /Users/elisteiger/dev/norad
 .venv/bin/python -m pytest -q --tb=short \
   tests/libraries/test_validation_report.py \
-  tests/test_reference_provenance.py \
+  tests/evidence/reference_provenance/test_reference_provenance.py \
   tests/test_runtime_preflight.py \
   tests/test_storage_inventory.py
 ```

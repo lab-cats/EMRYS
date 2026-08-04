@@ -1060,11 +1060,12 @@ reference-content mismatch and not authority to package the neutral owner.
 
 Inspect the exact named file, Git checkout, and process module-cache context.
 Use `tests/libraries/test_reference_contigs.py`, the final owner-local validator
-tests, and public `tests/test_reference_provenance.py`. Do not add `PYTHONPATH`,
-install a package, replace the private module cache, copy the parser into a
-consumer, or restore a legacy bridge. Content disagreement after a successful
-load belongs to the applicable consumer-specific evidence or validation route;
-the Step `05` route follows below.
+tests, and public
+`tests/evidence/reference_provenance/test_reference_provenance.py`. Do not add
+`PYTHONPATH`, install a package, replace the private module cache, copy the
+parser into a consumer, or restore a legacy bridge. Content disagreement after
+a successful load belongs to the applicable consumer-specific evidence or
+validation route; the Step `05` route follows below.
 
 ## Step 05 structured validation reports output or reference disagreement
 

@@ -130,19 +130,18 @@ comparison passed. The untouched aggregate Python lane reached the same
 deferred MIG-03O documentation links; coverage therefore did not run in that
 aggregate attempt. Neither result makes that earlier aggregate gate green.
 
-The current LIB-02K measurement protects final neutral
-`src/norad/libraries/reference_contigs.py` at `52/52` covered lines and `28/28`
-branches. The affected consumers measure `scripts/reference_provenance.py` at
-`332/379` lines and `107/142` branches, final Step `00c` at `136/142` and
-`39/44`, and final Step `05` at `188/195` and `49/56`. The committed tracked
-baseline is `10323/12387` lines and `3633/4986` branches; unrelated historical
-documentation-validator and run-summary entries were not opportunistically
-refreshed. The complete Python lane passed `1,589` tests with `17` skips and
-measured `0.847971` global line coverage and `0.750594` global branch coverage
-across `36` files. The final affected roster passed `474` tests; static, all
-shell, public CLI/Make, golden, coverage-policy, and documentation gates passed.
-This is parser-extraction and loader-integrity evidence only; no dependency was
-installed, restored, removed, or updated.
+The current MIG-04B measurement protects final
+`src/norad/evidence/reference_provenance/reference_provenance.py` at `332/379`
+covered lines and `107/142` branches. The committed tracked baseline remains
+`10323/12387` lines and `3633/4986` branches; only that file identity moved,
+with its counts and rates unchanged and no unrelated baseline promotion. The
+complete Python lane passed `1,590` tests with `17` skips and measured
+`0.847971` global line coverage and `0.750594` global branch coverage across
+`36` files. The final affected roster passed `183` tests; static, all shell,
+public CLI/Make, coverage-policy, and documentation gates passed. This is
+direct relocation, arbitrary-CWD, and loader-integrity evidence only; no
+dependency was installed, restored, removed, or updated, and no runtime,
+cluster, scientific-review, or biological evidence was created.
 
 DOC-GATE-01 independently freezes the extracted documentation validator with a
 hard-coded legacy heading oracle, isolated valid/invalid repositories, exact

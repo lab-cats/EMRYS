@@ -151,4 +151,48 @@ stdout bytes at SHA-256
 with empty stderr and status `0`; unknown-option failure has empty stdout,
 status `2`, and stderr SHA-256
 `21f50c761b8a8b8af35a186b24dbef66313b9125a58fe21619ff942499312bfe`.
-Executable/test work has not begun.
+The selection checkpoint `e4223ba4072ca4da12631258fc7c50ec78d9c72b`
+was published and verified live before executable mutation.
+
+Executable checkpoint `bbc09c9b52f365e46c9e28711efa1cd0ce90ccfe`
+then Git-moved the command and direct suite to their exact final evidence-owner
+homes. The only source change repaired the self-relative neutral-library anchor
+from the legacy root layout to final
+`src/norad/libraries/reference_contigs.py`; the moved suite changed only its
+root/source anchors and added one bounded arbitrary-CWD dry-run/execute/repeat
+parity guard. Make and its literal golden, the public-CLI path map, the neutral-
+parser consumer roster, and the coverage identity moved atomically. The old
+source/test paths are absent; exact searches found one final command and one
+mirrored suite with no wrapper, copy, symlink, package marker, install surface,
+validator dependency, or later-domain payload. Final source evidence is mode
+`0755`, `22,297` bytes, SHA-256
+`d2c44e1ef9163902b67ff47f4c29464706921bf0048ac0de2e0a25b521d0d407`;
+the final suite is mode `0644`, `17,319` bytes, SHA-256
+`56cda54d73d3d0a26cd4ffe3a6db151e29264d56d82ca19d8c0b1bce542cfbbc`.
+The root starter config retained its pre-change mode, size, and SHA-256 exactly.
+
+Normalized source comparison found exactly the approved loader-anchor
+substitution. Old-versus-new execution from an unrelated working directory
+matched dry-run and execute status/stdout/stderr and all three published TSV
+byte maps; repeat execution was byte-stable and left no invocation-directory
+residue. Help and unknown-option results retained their exact pre-change
+lengths, hashes, streams, and statuses. The direct suite passed `15` tests and
+the command/neutral-parser/public-CLI/coverage-policy affected roster passed
+`183`. Static and every shell lane passed. The first complete undeselected
+Python attempt passed `1,589` tests with `17` skips and failed only the expected
+documentation assertion naming the intentionally not-yet-closed legacy paths;
+the same final executable state passed `1,589` with `17` skips and that one
+assertion explicitly deselected. Its standalone coverage comparison passed at
+`0.847971` line and `0.750396` branch coverage across `36` files, with the
+relocated owner frozen at `332/379` lines and `107/142` branches and no baseline
+value promotion.
+
+At documentation/lifecycle close, the undeselected complete Python lane passed
+`1,590` tests with `17` skips at `0.847971` line and `0.750594` branch coverage
+across `36` files. Documentation validation passed `224` documents, `141` task
+cards, and `6` Mermaid sources. Three independent executable reviews found no
+scope, code, semantic, parity, coverage, or relocation-induced transaction
+delta. This package installed, restored, removed, or updated no dependency;
+moved no public config; repaired none of the characterized recovery defects;
+and created no runtime, cluster, scientific-review, biological, scheduler,
+ingestion, or orchestration evidence.

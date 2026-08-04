@@ -55,7 +55,7 @@ evidence owner.
 
 ## Completion unblocks
 
-- [MIG-04B](../IN_PROGRESS/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md) — Fully: the neutral parser seam removes the peer-owner dependency that would otherwise prevent direct reference-provenance relocation.
+- [MIG-04B](../COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md) — Fully: the neutral parser seam removes the peer-owner dependency that would otherwise prevent direct reference-provenance relocation.
 
 ## Prerequisites
 

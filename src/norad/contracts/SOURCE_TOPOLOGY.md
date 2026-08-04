@@ -207,9 +207,10 @@ and R checks remain independent from the Python executable contract.
 These homes do not approve descriptors, package imports, console scripts, or
 distribution. Reporting must not reintroduce a private implementation
 dependency on the Step `09c` evidence owner, and the reference-evidence move
-must not leave Step `00c` or Step `05` importing a peer implementation. The
-reviewed neutral extraction needed to correct that direction is complete; the
-reference-evidence owner can now move separately without reopening the seam.
+did not leave Step `00c` or Step `05` importing a peer implementation. The
+reviewed neutral extraction is complete through `LIB-02K`, and the reference-
+evidence source and mirrored suite occupy their final homes through `MIG-04B`
+without reopening that seam or moving the public starter config.
 
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.

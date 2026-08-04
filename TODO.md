@@ -48,14 +48,15 @@ with no wrapper or non-path behavior change. Completed
 then extracted the characterized ordered FASTA, FAI, and DICT parser seam into
 the permanent neutral `reference_contigs` library at executable checkpoint
 `d931214`, cut over all three consumers, and removed both peer-owner bridges.
-Selected
-[`MIG-04B`](docs/tasks/IN_PROGRESS/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
-is the sole residual-convergence package: it directly moves only the public
-reference-provenance command and direct suite to their fixed evidence-owner
-homes, cuts over all repository path consumers, and retains the public starter
-config at root without a wrapper. Scheduler, ingestion, orchestration/profile,
-cluster, and default-branch work remain deferred; later residual units remain
-unselected.
+Completed
+[`MIG-04B`](docs/tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
+then directly moved the public reference-provenance command and direct suite to
+their fixed evidence-owner homes at executable checkpoint `bbc09c9`, cut over
+all repository path consumers, and retained the public starter config at root
+without a wrapper. No residual-convergence package is selected. The next
+preferred unit is the still-unselected direct relocation of runtime preflight.
+Scheduler, ingestion, orchestration/profile, cluster, and default-branch work
+remain deferred; later residual units remain unselected.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
