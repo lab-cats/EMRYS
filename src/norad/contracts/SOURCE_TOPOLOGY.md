@@ -179,6 +179,25 @@ new top-level domain.
 | Structured runtime inspection | `src/norad/evidence/runtime_preflight/runtime_preflight.py` | The current explicit-profile, read-only inspection command | `tests/evidence/runtime_preflight/test_runtime_preflight.py` |
 | Storage evidence | `src/norad/evidence/storage_inventory/storage_inventory.py` | The current read-only inventory command; retention action remains prohibited | `tests/evidence/storage_inventory/test_storage_inventory.py` |
 
+## Approved neutral shared seams
+
+`LIB-02F` compared the two implemented peer-dependency leaks by full behavior,
+not by name. The resulting targets are narrower than either current owner and
+must be implemented bottom-up through separate JIT cards:
+
+| Neutral concern | Exact permanent owner | Allowed shared surface | Consumers and prohibited scope |
+| --- | --- | --- | --- |
+| Scientific artifact and public review-package contracts | `src/norad/contracts/scientific_evidence/`, beginning with `step08.py`, followed by separately reviewed `step09.py` and `review_package.py`; mirrored tests under `tests/contracts/scientific_evidence/` | Closed public headers/vocabularies; sample/partition and Step `08`/`09` artifact validation; public thirteen-file review-package roster and state reduction; private subordinate parsing needed by those named APIs | Step `08`, Step `09`, Step `09c`, artifact indexing, and reporting may consume the applicable public contract. The neutral owner may not import them or own review-plan/evidence-payload policy, `Artifact`, `ReviewContext`, `build_context`, publication, locking, rollback, recovery, or reporting projection. |
+| Reference contig parsing | `src/norad/libraries/reference_contigs.py`; independent API tests at `tests/libraries/test_reference_contigs.py` | One parser-specific exception plus the exact ordered FASTA, FAI, and DICT contig/length parsers and their private duplicate/empty check | Reference provenance and the Step `00c`/`05` validators consume the library. Agreement decisions, per-role versus short-circuit aggregation, evidence rows, CLI, hashing, snapshots, publication, and recovery stay owner-local. |
+
+Reporting removes its remaining Step `09c` implementation dependency with a
+reporting-local reader/projection over the committed public review package and
+validated artifact-index records. It does not share the evidence owner's
+source-to-public reconstruction. Artifact-index reconciliation remains
+independently implemented apart from consuming neutral public constants and
+the closed evidence-state reduction. Step `08`/`09` shell and R checks remain
+independent from the Python executable contract.
+
 These homes do not approve descriptors, package imports, console scripts, or
 distribution. Reporting must not retain its current private implementation
 dependency on the Step `09c` evidence owner, and the reference-evidence move

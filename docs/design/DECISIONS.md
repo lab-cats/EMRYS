@@ -948,7 +948,20 @@ deferred.
 Consequences: intentional independent validation and heterogeneous
 transactions stay local. The remaining candidate inventory and promotion or
 retention decisions belong to
-[`LIB-02F`](../tasks/IN_PROGRESS/LIB-02F-define-shared-library-ownership.md).
+completed
+[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md).
+
+Its two concrete dispositions are mixed by responsibility. Public Step `08`,
+Step `09`, and Step `09c` artifact/table contracts qualify for bottom-up
+neutral ownership because five consumers already share their exact executable
+semantics; Step `09c` review policy, evidence-source validation, and
+publication/recovery do not. Reporting replaces private `build_context` reuse
+with its own reader/projection of the committed public package rather than
+renaming evidence-owner implementation as a library. The three equivalent
+FASTA/FAI/DICT parsers qualify for a narrow `reference_contigs` library, but
+contig agreement, aggregation, evidence, and publication remain with their
+three consumers. Exact homes and APIs belong to
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
 
 ### Apply risk-based source-size thresholds
 

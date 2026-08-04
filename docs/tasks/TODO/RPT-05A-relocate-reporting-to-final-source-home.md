@@ -30,7 +30,8 @@ logic, while report assets remain explicitly owned and inspectable.
 
 ## Blocked by
 
-- [LIB-02F](../IN_PROGRESS/LIB-02F-define-shared-library-ownership.md) — Required: reporting's current private Step `09c` dependency needs an approved neutral or owner-local removal direction before relocation can be planned safely.
+- [LIB-02F](../COMPLETED/LIB-02F-define-shared-library-ownership.md) — Required: the ownership decision is complete, but this family edge remains until its concrete bottom-up scientific-contract extraction and reporting-local dependency-removal slices are created just in time and replace it.
+- [MIG-04A](MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) — Required: neutral artifact contracts must occupy their permanent owner before reporting moves.
 
 ## Completion unblocks
 
