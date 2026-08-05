@@ -67,10 +67,13 @@ root without a wrapper. Completed
 [`MIG-04E`](docs/tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md)
 then moved the independent-contract-golden suite and eight byte-identical
 fixture/provenance files into their fixed contract-integration owner at
-executable checkpoint `9434b0a`. No residual-convergence package is selected;
-the separate validation-roster owner is the next preferred still-unselected
-unit. Scheduler, ingestion, orchestration/profile, cluster, and default-branch
-work remain deferred; later residual units remain unselected.
+executable checkpoint `9434b0a`. Selected
+[`MIG-04F`](docs/tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md)
+is the sole residual-convergence package: it moves only the validation-roster
+suite/helper into their fixed contract-integration owner and cuts over the
+fourteen reviewed exact-file callers. Scheduler, ingestion,
+orchestration/profile, cluster, and default-branch work remain deferred; the
+later legacy reviews and final audit remain unselected.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);

@@ -15,10 +15,10 @@ and delivery-required lineage live in
 - Latest executable/test checkpoint:
   `9434b0adb2550b0e6290f16df44af0b5d5df62c4`, the `MIG-04E` direct
   independent-contract-goldens relocation, and the frozen executable basis
-  for this documentation/lifecycle close.
+  for selected `MIG-04F`.
 - Current package predecessor:
-  `797aede33700a73ff39898ce2f683d26f7b5f1d1`, the clean, published,
-  live-remote-equal `MIG-04D` documentation/lifecycle close.
+  `26daa84ca8b52e7b8fc36c38d83921f6f983264f`, the clean, published,
+  live-remote-equal `MIG-04E` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -86,7 +86,12 @@ and delivery-required lineage live in
   then directly moved the independent-contract-golden suite and eight
   fixture/provenance files into their fixed final contract-integration owner,
   repairing only the suite's repository-root and owner-local-golden anchors.
-- Selected package: none.
+- Selected package:
+  [`MIG-04F`](../tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md)
+  directly moves only the validation-roster suite/helper into their fixed
+  final contract-integration owner and cuts over fourteen exact-file callers,
+  repairing only the moved suite's repository-root anchor and caller path
+  literals.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -98,8 +103,8 @@ and delivery-required lineage live in
   provenance evidence is physically final through `MIG-04B`.
   Runtime-preflight evidence is physically final through `MIG-04C`, and storage
   evidence is physically final through `MIG-04D`, and the independent-golden
-  owner is physically final through `MIG-04E`. The separate validation-roster
-  paths remain in their current locations and unselected.
+  owner is physically final through `MIG-04E`. `MIG-04F` selects only the
+  separate validation-roster paths and fourteen exact-file caller cutovers.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -243,12 +248,10 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. At this user-requested slice boundary, pause
-before selecting more work. The next preferred still-unselected unit converges
-only the validation-roster suite/helper and its fourteen repository-owned
-callers under `tests/contract_integration/validation_rosters/`; freshly bound
-that card before mutation. Do not preload the separate legacy reviews or final
-audit.
+`MIG-04F` is the sole selected residual package. Resume only its direct
+validation-roster suite/helper move, fourteen exact-file caller cutovers,
+validation, documentation close, publication, and live-remote verification.
+Do not preload the separate legacy reviews or final audit.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
