@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; fixed residual source-topology convergence complete through `AUDIT-RESIDUAL-04A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -149,9 +149,10 @@ repository-level owner. Completed documentation-only/non-consuming
 then confirmed `RETAIN_ROOT` for the unchanged pending Step `04` scaffold: its
 pre-Picard input-sort requirement is absent and adversarial dry-run quoting
 protection is not independently established. Documentation-only/non-consuming
-[`AUDIT-RESIDUAL-04A`](../tasks/IN_PROGRESS/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-is the sole selected residual package and reconciles only the fixed 87-path
-roster and completed source-topology campaign.
+[`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
+then reconciled the fixed 87-path roster, every final tracked owner and current
+caller, and all retained/deferred/separately-retired boundaries. The residual
+source-topology campaign is complete at the local/static evidence ceiling.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -183,7 +184,7 @@ disposition.
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
 | Legacy Step `05` operational output checker | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) | `tests/data_checks/validate_step05_outputs.sh` remains unchanged at its permanent current repository-level owner. Its optional scheduler-state, cohort-status, output-size, scratch, additional `LB`/`PL` read-group requirements, best-effort TSV, and aggregate-exit behavior is distinct from the final stage validator; known duplicate-`tee` and silent-replacement defects remain characterized. |
 | Pending Step `04` scaffold | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged: pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
-| Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Preserve its two unique cleanup entries in authorized owners before removing the record; this is documentation cleanup, not source migration. |
+| Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Give both cleanup entries final no-loss dispositions before removing the record. The first `NO_CHANGE` substance is already durable in completed `DOC-GATE-01`; the task-intake entry remains unique. This is documentation cleanup, not source migration. |
 | Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
 | Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
 | Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
@@ -203,10 +204,11 @@ Preferred one-owner order is:
    completed `MIG-04F` converges only the validation-roster owner; completed
    `REVIEW-LEGACY-05A` confirms only the retained Step `05` data checker; and
    completed `REVIEW-LEGACY-04A` confirms only the retained Step `04` scaffold;
-7. selected `AUDIT-RESIDUAL-04A` performs only the final residual-layout audit.
+7. completed `AUDIT-RESIDUAL-04A` performs only the final residual-layout audit.
 
-`AUDIT-RESIDUAL-04A` is the sole selected residual package. Deferred domains
-remain unbegun.
+No residual package is selected. The source-topology campaign is complete;
+deferred domains remain unbegun and the existing documentation-consolidation
+cards remain separately selectable.
 
 ### Recovered proposal families
 
@@ -335,14 +337,16 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                                                                                             └── REVIEW-LEGACY-04A
                                                                                                                                                                                                 decision/lifecycle close 1311db3
                                                                                                                                                                                                 └── AUDIT-RESIDUAL-04A
-                                                                                                                                                                                                    selection
-                                                                                                                                                                                                    (commit containing this plan)
+                                                                                                                                                                                                    selection d8df288
+                                                                                                                                                                                                    └── AUDIT-RESIDUAL-04A
+                                                                                                                                                                                                        audit/lifecycle close
+                                                                                                                                                                                                        (commit containing this plan)
 ```
 
-The final node is the current `AUDIT-RESIDUAL-04A` selection represented by
-this plan. It selects only the fixed 87-path residual-layout reconciliation;
-no broad `AUDIT-99`, default-branch integration, runtime execution, or cluster
-action is implied.
+The final node is the `AUDIT-RESIDUAL-04A` audit/lifecycle close represented by
+this plan. It completes only the fixed 87-path residual source-topology
+campaign and selects no successor; no broad `AUDIT-99`, default-branch
+integration, runtime execution, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

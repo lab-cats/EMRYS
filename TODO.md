@@ -81,10 +81,13 @@ then confirmed `RETAIN_ROOT` for the byte-identical Step `04` pending test
 scaffold because pre-Picard input-sort validation is absent and adversarial
 dry-run quoting protection is not independently established. Documentation-
 only/non-consuming
-[`AUDIT-RESIDUAL-04A`](docs/tasks/IN_PROGRESS/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-is now the sole selected residual package. It reconciles only the fixed
-87-path roster and completed source-topology campaign. Scheduler, ingestion,
-orchestration/profile, cluster, and default-branch work remain deferred.
+[`AUDIT-RESIDUAL-04A`](docs/tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
+then reconciled the fixed 87-path roster with 76 `RETAIN_ROOT`, 10 `DEFER`, and
+one separately owned `RETIRE` disposition, verified every final tracked owner
+and current caller, and closed the source-topology campaign at the local/static
+evidence ceiling. No package is selected; the existing documentation cleanup
+cards remain separate. Scheduler, ingestion, orchestration/profile, cluster,
+and default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);

@@ -2,19 +2,25 @@
 
 ## Objective
 
-Move both still-unique cleanup entries from `work/active/JIT-01.md` to
-authorized durable owners, repair backlinks, and remove the temporary record.
+Give both cleanup entries in `work/active/JIT-01.md` final no-loss
+dispositions, preserve any still-unique material in authorized durable owners,
+repair backlinks, and remove the temporary record.
 
 ## Why this exists
 
-The completed JIT card still links an active-work file whose two cleanup items
-have no accepted durable destination. Removing it now would lose discoverable
-work; retaining it forever would make completed work look active.
+The completed JIT card still links an active-work file. The first `NO_CHANGE`
+entry's substance is already durable in completed `DOC-GATE-01`; the task-
+intake entry remains unique and has no accepted durable destination. Removing
+the record without checking both entries could lose discoverable work;
+retaining it forever would make completed work look active.
 
 ## Fixed decisions
 
-- Treat Git recoverability as insufficient: each cleanup item needs an indexed
+- Treat Git recoverability as insufficient for unique material. Confirm the
+  first entry's accepted `DOC-GATE-01` owner and give the second an indexed,
   authorized owner before removal.
+- Do not duplicate the already durable `NO_CHANGE` substance merely to move
+  both entries mechanically.
 - Do not inspect, integrate, depend on, or infer acceptance from any isolated
   sidecar or reserved reconciliation path.
 - Move each item, repair references, and delete the old copy in one coherent
@@ -30,8 +36,9 @@ work; retaining it forever would make completed work look active.
 
 ## Prerequisites
 
-- The integration owner must identify and authorize one canonical destination
-  for each of the two cleanup entries from accepted canonical state alone.
+- The integration owner must verify the accepted canonical owner for the first
+  entry and identify and authorize one canonical destination for the second
+  from accepted canonical state alone.
 
 ## Required context
 
@@ -44,8 +51,9 @@ work; retaining it forever would make completed work look active.
 
 ## In scope
 
-- Moving each cleanup entry to its authorized destination without changing its
-  unresolved meaning.
+- Recording the first entry's `NO_CHANGE` disposition against its existing
+  durable owner and moving the still-unique second entry to its authorized
+  destination without changing its unresolved meaning.
 - Repairing direct backlinks and removing the now-empty temporary work record.
 - Verifying no current route still treats JIT-01 as active.
 
@@ -57,12 +65,14 @@ work; retaining it forever would make completed work look active.
 
 ## Deliverables
 
-- Two durable cleanup records, repaired completed-card links, and removal of
+- Two final no-loss dispositions, one durable destination for the still-unique
+  task-intake material, repaired completed-card links, and removal of
   `work/active/JIT-01.md`.
 
 ## Acceptance evidence
 
-- Each original cleanup entry remains semantically intact and reachable once.
+- Each original cleanup entry is semantically accounted for once without
+  duplicating already durable material.
 - The completed JIT card links only accepted canonical owners.
 - No inbound link or active-work route points to the removed file.
 - Documentation links and the documentation gate pass.

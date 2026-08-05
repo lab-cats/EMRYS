@@ -95,8 +95,9 @@ backlog and cannot substitute for this bounded close.
 - Git-derived path enumeration proves the current residual ledger contains
   exactly 87 tracked paths, with every path represented once and grouped counts
   summing to 87.
-- Exact destination and absence checks prove every completed `MOVE` path is at
-  its final owner and every prohibited old or compatibility path is absent.
+- Exact destination and absence checks prove every completed tracked `MOVE`
+  file is at its final owner and every prohibited tracked old file, wrapper,
+  symlink, or compatibility surface is absent.
 - Current-code, current-test, current-job, Make, configuration, and mutable-
   documentation searches prove reviewed callers use final paths; any old path
   retained only in completed cards or dated history is classified as evidence,
@@ -129,5 +130,36 @@ backlog and cannot substitute for this bounded close.
 
 ## Completion record
 
-Selected from clean, published, live-remote-equal `REVIEW-LEGACY-04A` close
-`1311db325c20d00a6f37c73289892a519ac4ffa8`. Audit execution has not begun.
+Selected at clean, published, live-remote-equal checkpoint
+`d8df288ecd334cdd82d1b29d7201792e44e36dd4` from the
+`REVIEW-LEGACY-04A` close
+`1311db325c20d00a6f37c73289892a519ac4ffa8`.
+
+The final static reconciliation passed:
+
+| Audit surface | Recomputed result |
+| --- | --- |
+| Current residual ledger | The eleven inventory groups contain `5`, `17`, `26`, `8`, `18`, `5`, `3`, `2`, `1`, `1`, and `1` tracked paths: 87 total, 87 unique, zero missing, zero extra, and zero duplicate assignments. Terminal dispositions are 76 `RETAIN_ROOT`, 10 `DEFER`, and one `RETIRE`. |
+| Final owners and old paths | Manifests reconstructed from the twelve executable checkpoints find all 54 expected final tracked files. All 46 Git-moved legacy files are absent from the tree and index. No audited final owner contains a symlink or prohibited package marker. |
+| Current callers and shared seams | Exact negative-boundary searches find zero live old-path references outside completed cards and dated history. All fourteen validation-roster callers use the final helper. Step `08`, Step `09`, review-package, and reference-contig definitions have one neutral owner; the reference-contig library has the intended three source consumers; reporting has no private Step `09c` implementation edge. |
+| Retained and deferred roots | The Step `05` checker and Step `04` scaffold retain their frozen identities and completed decisions. Ingestion, scheduler, and orchestration target/test domains contain zero tracked implementation paths; the manifest validator, scheduler probes, and two profiles remain explicitly deferred rather than falsely complete. |
+| Separate retirement owner | `work/active/JIT-01.md` remains the sole `RETIRE` path through `DOC-CONS-08H`. Audit found that its first `NO_CHANGE` entry is already substantively durable in completed `DOC-GATE-01`, while its task-intake entry remains unique. Current owners now require a final no-loss disposition for both entries rather than falsely claiming both are unique. |
+
+The tracked source-topology campaign therefore passes and is complete at the
+local/static evidence ceiling. It does not close the broader `AUDIT-99`, whose
+eight named blockers remain unresolved, or any documentation-consolidation,
+runtime, cluster, production, scientific-review, evidence-promotion, or
+biological work.
+
+Read-only workspace inspection also found ignored `__pycache__` content under
+three old reporting-fixture directories and four empty legacy directories.
+They are regenerable workspace hygiene, not tracked wrappers, callers, or
+compatibility owners; deletion remains outside this card and is reserved for
+the separately approved targeted hygiene pass.
+
+No product source, executable test, fixture, configuration, schema, dependency,
+report template, Make target, or harness surface changed or ran. Independent
+roster, move/caller, non-`MOVE`, and semantic close reviews passed.
+`git diff --check` and the complete documentation gate are the applicable
+automated close gates. This audit creates no new runtime, cluster, production,
+scientific-review, or biological evidence.

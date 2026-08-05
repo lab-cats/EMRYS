@@ -221,6 +221,15 @@ The storage-evidence source and mirrored suite occupy their final homes through
 action, or changing the local-fixture evidence ceiling; final placement is not
 production storage, quota, retention-approval, runtime, or cluster proof.
 
+Completed
+[`AUDIT-RESIDUAL-04A`](../../../docs/tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
+reverified these implemented cross-cutting homes, the neutral seams, and the
+contract-integration homes against the live tree. Every expected final tracked
+file exists, prohibited tracked old paths and compatibility surfaces are
+absent, and current callers use final paths. This is local/static topology
+evidence, not runtime, cluster, production, scientific-review, or biological
+proof.
+
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.
 They are not owner-native implementation assets merely because one command
