@@ -108,9 +108,41 @@ described elsewhere as dated.
 
 Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
 `8617635eecd848d684c695a5299354066ee02167` on
-`codex/residual-source-topology-convergence`. This status-only selection does
-not open dormant sources, change presentation/evidence claims, create demo
-history, select a successor, or promote evidence. The approved implementation
-is limited to the two named demo views, their direct routes, and any snapshot
-whose date/provenance is proved from repository evidence; it stops on an
-undatable snapshot or weakened scientific caution.
+`codex/residual-source-topology-convergence`; status-only selection checkpoint
+`6549f5dfcaf808ebfe8f98dadf1e43d5334b78ba` was published and proved
+live-remote-equal before authoring.
+
+The completed documentation-only/non-consuming package:
+
+- adds `docs/demo/README.md` as the direct route to exactly two reviewed
+  presentation consumers and makes unindexed material explicitly dormant;
+- retains walkthrough order, report-tour order, inspection order, and the
+  complete presenter `Say`/`Do not say` scientific guardrails;
+- retains the PI evidence-layer table, scientific cautions, and all five
+  discussion prompts while relabeling the file as an audience discussion guide
+  rather than an undated snapshot;
+- delegates product identity, current evidence, report behavior, exact demo
+  commands, and open answers to `README.md`, `HANDOFF.md`, `ARCHITECTURE.md`,
+  `PIPELINE_PLAN.md`, `RUNBOOK.md`, and `QUESTIONS.md` respectively;
+- removes the walkthrough's undated cohort paragraph after proving that its
+  complete meaning already lives in `HANDOFF.md`, including exact six-sample
+  fractions, the `ABE_EV_2` mapping-outlier caveat, and the distinction between
+  mechanical orientation evidence and biological-strand proof; and
+- leaves `docs/history/demos/` absent. Repository history can date the earlier
+  documentation to 2026-06-15 (`ec4d9d93a7a36de85704227c046990d889e7725d`
+  for the fractions and `0815514a42d9d00611aa125690148054a606d277` for the
+  mapping observation), but no tracked raw output, receipt, hash, job ID, or
+  artifact timestamp proves an execution date, and the removed paragraph had
+  no unique historical content that warranted a second evidence owner.
+
+Independent role/no-loss, provenance/history, and navigation/ownership reviews
+confirmed the archive-or-remove disposition, retained presentation cautions,
+and direct owner routes. Their findings were corrected by delegating remaining
+rendering behavior, using the conceptual architecture boundary, moving this
+card, and changing every current route to completed in the same commit. Final
+`git diff --check` and `make -s documentation-check` pass on the exact completed
+tree: 232 Markdown documents, 148 task cards, and 5 Mermaid sources.
+Computational, shell, R, report-runtime, dependency, full-suite, runtime,
+cluster, scientific-review, and biological validation are not applicable
+because the complete selection-to-close diff is non-consuming documentation
+only. No successor is selected by this close.

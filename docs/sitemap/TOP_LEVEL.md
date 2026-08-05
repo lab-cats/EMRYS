@@ -7,7 +7,8 @@
   and troubleshooting.
 - [Task registry](../tasks/README.md) — bounded task scope and lifecycle.
 - [Integration fragments](../fragments/README.md) — candidate-fragment format.
-- [Demonstrations](../demo/) — presentation and walkthrough material.
+- [Demonstrations](../demo/README.md) — reviewed presenter and PI discussion
+  guides plus their current-owner routes.
 - [History](../history/) — indexed immutable audit, testing, and operations
   evidence views.
 - [Audience and ownership map](DOCUMENTATION_OWNERSHIP.md) — short reader
@@ -51,8 +52,10 @@ consuming
 [`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
 then completed the bounded design/architecture compression and redundant-
 diagram retirement. Documentation-only/non-consuming
-[`DOC-CONS-08G`](../tasks/IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md)
-is now the sole selected cleanup package; `DOC-CONS-08H` remains unselected.
+[`DOC-CONS-08G`](../tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
+then completed the bounded demo-role consolidation and current-owner routing.
+No cleanup package is selected; `DOC-CONS-08H` remains eligible and
+unselected.
 Runtime execution, cluster, and default-branch integration remain unselected.
 The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)

@@ -1,22 +1,15 @@
-# PI demo evidence report
+# PI demo discussion guide
 
-This document is a presentation snapshot of the evidence model. It is not the
-live project status, command source, or roadmap. Consult
-[`../operations/HANDOFF.md`](../operations/HANDOFF.md) before presenting.
+This is the PI/audience discussion view, not the presenter run-of-show, live
+project status, command source, report contract, or dated snapshot. Consult the
+current [`HANDOFF.md`](../operations/HANDOFF.md) before presenting.
 
-## Executive summary
+## Discussion context
 
-NORAD is a manifest-driven, local-first and SLURM-scaled reconstruction of a
-Novogene RNA-seq/RNA-editing workflow. It separates:
-
-- reproducible computation;
-- local fixture and real-runtime testing;
-- cluster execution evidence;
-- structured scientific review;
-- report rendering;
-- biological interpretation.
-
-The report layer cannot convert one category into another.
+Use the root [`README.md`](../../README.md) for product identity and the current
+[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) for system structure. The
+discussion here separates evidence layers that must not be promoted into one
+another.
 
 ## Evidence model
 
@@ -31,9 +24,11 @@ The report layer cannot convert one category into another.
 
 ## Scientific caution
 
-The cohort is paired-end and shows a reverse-stranded/first-strand-style
-orientation pattern. Mechanical `FWD_like` and `REV_like` groupings remain
-neutral. The legacy-compatible orientation policy is provisional.
+Use the current cohort evidence in the
+[`HANDOFF.md`](../operations/HANDOFF.md#cohort-and-preserved-scientific-evidence).
+Reverse-stranded/first-strand-style evidence does not make mechanical
+`FWD_like` and `REV_like` groups biological strand. The legacy-compatible
+orientation policy remains provisional.
 
 Rows emitted by the CMH stage are “CMH-ranked candidates.” They are not
 validated editing sites.
@@ -42,20 +37,16 @@ validated editing sites.
 `biological_interpretation_ready` remains reserved until a separate policy and
 evidence gate explicitly unlock it.
 
-## Reporting contract
+## Report boundary
 
-Reports consume one canonical run summary and only exact authorized
-supplemental tables. They never discover inputs, invoke analysis, restore
-dependencies, or change evidence state. Missing, failed, incomplete, blocked,
-and unavailable evidence remains visible.
-
-Every report must carry the applicable scientific-state banner and disclose
-table truncation with the complete source path and hash.
-
-The local populated demo uses only synthetic artifacts and an exploratory
-review fixture. Its open Overview category deliberately brings status,
-CMH-ranked candidates, adjudication, and limitations forward; that
-presentation does not make the fixture production or biologically validated.
+The current conceptual reporting boundary belongs in the
+[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#reporting-and-scientific-boundaries),
+with implementation and synthetic-demo status in the
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report). For this
+discussion, the essential boundary is that a report presents declared
+evidence without creating new computational, cluster, scientific, or
+biological evidence. A synthetic demo must never be presented as production
+or validation evidence.
 
 ## Discussion prompts
 
@@ -65,5 +56,7 @@ presentation does not make the fixture production or biologically validated.
 - What is the approved production artifact retention policy?
 - Which conclusions may be communicated under exploratory review?
 
-Current answers and blockers belong in the handoff and questions documents,
-not in this presentation snapshot.
+Current answers and blockers belong in the
+[`HANDOFF.md`](../operations/HANDOFF.md#current-blockers) and
+[`QUESTIONS.md`](../design/QUESTIONS.md#open-operational-and-scientific-questions),
+not in this discussion guide.

@@ -14,8 +14,9 @@ or evidence promotion.
 - [Testing](testing/) — dated validation runs, baselines, risks, and gate
   provenance.
 
-The topic name `demos/` is reserved for separately owned history work. It is
-not an evidence route until an indexed child exists.
+No demo snapshot is currently indexed. Create a `demos/` child only when a
+snapshot has repository-backed date/provenance and unique historical value;
+until then, it is not an evidence route.
 
 ## Record rules
 

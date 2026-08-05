@@ -89,11 +89,13 @@ evidence ceiling. Documentation-only/non-consuming
 [`DOC-CONS-08F`](docs/tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
 then compressed the five conceptual architecture/design views, routed exact
 contracts to their owners, and retired the redundant waterfall diagram after
-no-loss review. Documentation-only/non-consuming
-[`DOC-CONS-08G`](docs/tasks/IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md)
-is now the sole selected cleanup package; it may consolidate only the two demo
-views and a directly proven dated snapshot/history route. `DOC-CONS-08H`
-remains unselected. Scheduler, ingestion,
+no-loss review. Completed documentation-only/non-consuming
+[`DOC-CONS-08G`](docs/tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
+then separated the presenter run-of-show from the PI discussion guide, added a
+local demo index, routed mutable facts to their owners, and removed the
+non-unique undated cohort paragraph without creating a redundant history
+record. No cleanup package is selected by that close; `DOC-CONS-08H` remains
+eligible and unselected. Scheduler, ingestion,
 orchestration/profile, cluster, and default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the

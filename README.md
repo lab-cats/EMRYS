@@ -45,6 +45,8 @@ lineage, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
 Preview a populated synthetic HTML/PDF bundle with the
 [demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
 It uses synthetic inputs and does not promote evidence.
+For a PI-facing presentation, start with the reviewed
+[demo-guide index](docs/demo/README.md).
 
 Dependency restoration is an explicit setup action. Workflow scripts,
 validators, renderers, and tests never install R, Quarto, system packages, or

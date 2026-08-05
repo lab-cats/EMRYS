@@ -114,10 +114,14 @@ and delivery-required lineage live in
   preserves current/target separation and exact contract owners while reducing
   the five views from 2,710 to 2,132 lines and retiring one redundant waterfall
   diagram after no-loss comparison.
-- Selected package: documentation-only/non-consuming
-  [`DOC-CONS-08G`](../tasks/IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md).
-  It owns only distinct walkthrough/PI presentation roles plus a directly
-  proven dated snapshot/history disposition; evidence state remains fixed.
+- Completed demo consolidation: documentation-only/non-consuming
+  [`DOC-CONS-08G`](../tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
+  separates the presenter run-of-show from the PI discussion guide, adds the
+  local demo index, and delegates current evidence/report facts. Its undated
+  cohort paragraph duplicated this handoff and was removed; no demo-history
+  child or evidence change was warranted.
+- Selected package: none. `DOC-CONS-08H` remains separately eligible and
+  unselected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -278,10 +282,11 @@ package diagnoses and resolves that drift.
 source-topology campaign at the local/static evidence ceiling.
 Documentation-only/non-consuming `DOC-CONS-08F` then completed the five-view
 architecture/design compression and retired the redundant universal-waterfall
-diagram without changing an exact contract or evidence state. No cleanup
-package was selected by that close. Documentation-only/non-consuming
-`DOC-CONS-08G` is now the sole selected package for the two demo views and a
-directly proven dated snapshot/history disposition.
+diagram without changing an exact contract or evidence state.
+Documentation-only/non-consuming `DOC-CONS-08G` then gave the two demo views
+distinct presenter/audience roles, added their local index, delegated mutable
+facts, and removed the non-unique undated cohort paragraph. No package is
+selected by this close.
 
 No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
@@ -291,8 +296,8 @@ recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 The approved residual-convergence campaign is fulfilled through completed
 `AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup continues
-one JIT package at a time with selected `DOC-CONS-08G`, unless a genuine
-escalation condition is reached. No later cleanup package is preloaded.
+one JIT package at a time; `DOC-CONS-08H` is the next eligible candidate but is
+not selected by this close. No later cleanup package is preloaded.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The
