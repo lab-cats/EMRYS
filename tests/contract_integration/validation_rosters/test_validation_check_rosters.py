@@ -15,7 +15,7 @@ from validation_roster_expectations import (
 )
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
 VALIDATOR_PATHS = {

@@ -20,7 +20,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
-ROSTER_ORACLE = REPO_ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_ORACLE = REPO_ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "reporting_validation_roster_oracle",
     ROSTER_ORACLE,

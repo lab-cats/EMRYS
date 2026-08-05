@@ -10,7 +10,7 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "validation_roster_expectations.py"
+ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle",
     ROSTER_ORACLE,
