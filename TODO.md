@@ -94,8 +94,11 @@ no-loss review. Completed documentation-only/non-consuming
 then separated the presenter run-of-show from the PI discussion guide, added a
 local demo index, routed mutable facts to their owners, and removed the
 non-unique undated cohort paragraph without creating a redundant history
-record. No cleanup package is selected by that close; `DOC-CONS-08H` remains
-eligible and unselected. Scheduler, ingestion,
+record. That close selected no successor. Documentation-only/non-consuming
+[`DOC-CONS-08H`](docs/tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+is now the sole selected cleanup package. Its scope is limited to two no-loss
+dispositions and retirement of the temporary JIT work record. Scheduler,
+ingestion,
 orchestration/profile, cluster, and default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the

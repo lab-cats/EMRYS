@@ -54,8 +54,10 @@ then completed the bounded design/architecture compression and redundant-
 diagram retirement. Documentation-only/non-consuming
 [`DOC-CONS-08G`](../tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
 then completed the bounded demo-role consolidation and current-owner routing.
-No cleanup package is selected; `DOC-CONS-08H` remains eligible and
-unselected.
+Documentation-only/non-consuming
+[`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+is now the sole selected cleanup package for the temporary JIT record and its
+direct owner routes.
 Runtime execution, cluster, and default-branch integration remain unselected.
 The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)

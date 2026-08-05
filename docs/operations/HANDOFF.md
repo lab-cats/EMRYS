@@ -120,8 +120,10 @@ and delivery-required lineage live in
   local demo index, and delegates current evidence/report facts. Its undated
   cohort paragraph duplicated this handoff and was removed; no demo-history
   child or evidence change was warranted.
-- Selected package: none. `DOC-CONS-08H` remains separately eligible and
-  unselected.
+- Selected package: documentation-only/non-consuming
+  [`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md).
+  It owns only the two accepted no-loss dispositions, direct backlinks, and
+  retirement of the temporary JIT work record.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -285,19 +287,20 @@ architecture/design compression and retired the redundant universal-waterfall
 diagram without changing an exact contract or evidence state.
 Documentation-only/non-consuming `DOC-CONS-08G` then gave the two demo views
 distinct presenter/audience roles, added their local index, delegated mutable
-facts, and removed the non-unique undated cohort paragraph. No package is
-selected by this close.
+facts, and removed the non-unique undated cohort paragraph. That close selected
+no successor. Documentation-only/non-consuming `DOC-CONS-08H` is now the sole
+selected package for the temporary JIT record and its direct owner routes.
 
 No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
 `PROGRAM-01`, `CONCURRENCY-03`,
-`TASK-EPIC-01`, `AUDIT-99`, `DOC-CONS-08H`,
+`TASK-EPIC-01`, `AUDIT-99`,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 The approved residual-convergence campaign is fulfilled through completed
 `AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup continues
-one JIT package at a time; `DOC-CONS-08H` is the next eligible candidate but is
-not selected by this close. No later cleanup package is preloaded.
+one JIT package at a time with selected `DOC-CONS-08H`. No later cleanup
+package is preloaded.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The

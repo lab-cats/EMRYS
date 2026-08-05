@@ -89,5 +89,12 @@ retaining it forever would make completed work look active.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
+`db4272c925278efd4952091f259e2cd8297dedaa` on
+`codex/residual-source-topology-convergence`. This status-only selection does
+not open or change `work/active/JIT-01.md`, choose either destination, inspect
+sidecar/reconciliation state, retire the record, select a successor, or promote
+evidence. The approved implementation is limited to two no-loss dispositions,
+their accepted canonical owners, direct backlinks, and removal of the empty
+temporary record; it stops if accepted canonical state cannot supply either
+destination.

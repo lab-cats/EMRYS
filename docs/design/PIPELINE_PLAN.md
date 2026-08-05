@@ -46,7 +46,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
 | Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; fixed residual source-topology convergence complete through `AUDIT-RESIDUAL-04A` |
-| Documentation ownership and compression | Canonical owner map, concise root/operations/history/design views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08G` complete; `DOC-CONS-08H` unselected |
+| Documentation ownership and compression | Canonical owner map, concise root/operations/history/design views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08G` complete; `DOC-CONS-08H` selected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
 and close evidence remain in the dated audit/testing/operations history and
@@ -95,9 +95,11 @@ Documentation-only/non-consuming
 is complete. It established distinct presenter and PI/audience roles, added
 the local demo route, delegated current evidence/report behavior, and removed
 the undated non-unique cohort paragraph after no-loss comparison with the
-handoff. No package is selected automatically; `DOC-CONS-08H` remains a
-separate eligible, unselected candidate. `PROGRAM-01` remains in progress and
-frozen outside its completed slices.
+handoff. Documentation-only/non-consuming
+[`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+is now the sole selected package, limited to the two temporary-record
+dispositions and direct backlinks. `PROGRAM-01` remains in progress and frozen
+outside its completed slices.
 `CONCURRENCY-03`, `TASK-EPIC-01`, `AUDIT-99`, recovered TODO work, UNREFINED
 proposals, default-branch integration, and remote runtime or cluster work
 remain unselected.
@@ -193,7 +195,7 @@ disposition.
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
 | Legacy Step `05` operational output checker | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) | `tests/data_checks/validate_step05_outputs.sh` remains unchanged at its permanent current repository-level owner. Its optional scheduler-state, cohort-status, output-size, scratch, additional `LB`/`PL` read-group requirements, best-effort TSV, and aggregate-exit behavior is distinct from the final stage validator; known duplicate-`tee` and silent-replacement defects remain characterized. |
 | Pending Step `04` scaffold | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged: pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
-| Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Give both cleanup entries final no-loss dispositions before removing the record. The first `NO_CHANGE` substance is already durable in completed `DOC-GATE-01`; the task-intake entry remains unique. This is documentation cleanup, not source migration. |
+| Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Give both cleanup entries final no-loss dispositions before removing the record. The first `NO_CHANGE` substance is already durable in completed `DOC-GATE-01`; the task-intake entry remains unique. This is documentation cleanup, not source migration. |
 | Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
 | Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
 | Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
