@@ -50,9 +50,10 @@ is complete at the local/static evidence ceiling. Documentation-only/non-
 consuming
 [`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
 then completed the bounded design/architecture compression and redundant-
-diagram retirement. No package is selected; `DOC-CONS-08G` and
-`DOC-CONS-08H` remain separate cleanup candidates. Runtime execution, cluster,
-and default-branch integration remain unselected.
+diagram retirement. Documentation-only/non-consuming
+[`DOC-CONS-08G`](../tasks/IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md)
+is now the sole selected cleanup package; `DOC-CONS-08H` remains unselected.
+Runtime execution, cluster, and default-branch integration remain unselected.
 The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.

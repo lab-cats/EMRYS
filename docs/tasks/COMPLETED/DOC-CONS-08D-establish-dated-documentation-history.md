@@ -30,7 +30,7 @@ does not make that evidence discoverable or explain its status.
 ## Completion unblocks
 
 - [DOC-CONS-08E](DOC-CONS-08E-separate-live-state-from-history.md) — Fully: the indexed operational-history child and compressed live-state owners are complete.
-- [DOC-CONS-08G](../TODO/DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
+- [DOC-CONS-08G](../IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md) — Fully: the root history route and date/provenance rules then exist for a demo child owned by that card.
 
 ## Prerequisites
 

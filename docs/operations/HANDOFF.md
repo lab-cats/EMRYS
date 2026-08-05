@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `1da90c561cf5abb93fa695157b64624ce2089bf0`, the clean, published,
-  live-remote-equal `DOC-CONS-08F` selection checkpoint.
+  `8617635eecd848d684c695a5299354066ee02167`, the clean, published,
+  live-remote-equal `DOC-CONS-08F` close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -114,8 +114,10 @@ and delivery-required lineage live in
   preserves current/target separation and exact contract owners while reducing
   the five views from 2,710 to 2,132 lines and retiring one redundant waterfall
   diagram after no-loss comparison.
-- Selected package: none. Remaining documentation cleanup stays separately
-  selectable.
+- Selected package: documentation-only/non-consuming
+  [`DOC-CONS-08G`](../tasks/IN_PROGRESS/DOC-CONS-08G-consolidate-demo-views.md).
+  It owns only distinct walkthrough/PI presentation roles plus a directly
+  proven dated snapshot/history disposition; evidence state remains fixed.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -277,19 +279,20 @@ source-topology campaign at the local/static evidence ceiling.
 Documentation-only/non-consuming `DOC-CONS-08F` then completed the five-view
 architecture/design compression and retired the redundant universal-waterfall
 diagram without changing an exact contract or evidence state. No cleanup
-package is selected. The next approved package is existing `DOC-CONS-08G`, but
-it remains unselected until its own just-in-time start.
+package was selected by that close. Documentation-only/non-consuming
+`DOC-CONS-08G` is now the sole selected package for the two demo views and a
+directly proven dated snapshot/history disposition.
 
 No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
 `PROGRAM-01`, `CONCURRENCY-03`,
-`TASK-EPIC-01`, `AUDIT-99`, `DOC-CONS-08G`, `DOC-CONS-08H`,
+`TASK-EPIC-01`, `AUDIT-99`, `DOC-CONS-08H`,
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 The approved residual-convergence campaign is fulfilled through completed
 `AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup continues
-one JIT package at a time, next considering `DOC-CONS-08G`, unless a genuine
-escalation condition is reached.
+one JIT package at a time with selected `DOC-CONS-08G`, unless a genuine
+escalation condition is reached. No later cleanup package is preloaded.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The

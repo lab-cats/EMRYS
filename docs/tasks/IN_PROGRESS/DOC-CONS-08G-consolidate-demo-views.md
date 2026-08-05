@@ -29,6 +29,10 @@ described elsewhere as dated.
   Do not create another narrative without a named consumer and review
   milestone, and do not make report-card coupling until a guide is verified as
   a report or evidence consumer.
+- Semantic category: bounded documentation or low-risk maintenance.
+- Validation category: documentation-only/non-consuming. Computational,
+  report-runtime, dependency, cluster, scientific-review, and biological
+  evidence are not changed or promoted.
 
 ## Blocked by
 
@@ -102,5 +106,11 @@ described elsewhere as dated.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
+`8617635eecd848d684c695a5299354066ee02167` on
+`codex/residual-source-topology-convergence`. This status-only selection does
+not open dormant sources, change presentation/evidence claims, create demo
+history, select a successor, or promote evidence. The approved implementation
+is limited to the two named demo views, their direct routes, and any snapshot
+whose date/provenance is proved from repository evidence; it stops on an
+undatable snapshot or weakened scientific caution.
