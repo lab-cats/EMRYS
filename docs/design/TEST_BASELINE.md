@@ -261,8 +261,12 @@ The retained current boundaries are:
   general durable application-attempt log or evidence promotion;
 - durable receipts, reports, QC, metrics, manifests, and scientific records
   are not complete console logs;
-- Step `05` inspection output remains best-effort because duplicate truncating
-  `tee` writers and silent replacement are characterized defects; and
+- the permanent repository-level Step `05` operator checker remains at
+  `tests/data_checks/validate_step05_outputs.sh` through completed
+  [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md),
+  and its persisted TSV snapshot remains best-effort because duplicate
+  truncating `tee` writers and silent replacement are characterized defects;
+  and
 - paths, arguments, environment/tool diagnostics, URLs, and arbitrary child
   output may contain sensitive material and have no general redaction promise.
 

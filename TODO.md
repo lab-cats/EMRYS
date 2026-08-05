@@ -71,13 +71,14 @@ executable checkpoint `9434b0a`. Completed
 [`MIG-04F`](docs/tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
 then moved the validation-roster suite/helper into their fixed contract-
 integration owner at executable checkpoint `8921ec3` and cut over all fourteen
-reviewed exact-file callers. Documentation-only
-[`REVIEW-LEGACY-05A`](docs/tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
-is now the sole selected residual-review package. It reviews only the
-permanent no-loss owner of `tests/data_checks/validate_step05_outputs.sh` and
-does not change or execute that checker. The pending Step `04` scaffold review
-and final residual audit remain unselected. Scheduler, ingestion,
-orchestration/profile, cluster, and default-branch work remain deferred.
+reviewed exact-file callers. Completed documentation-only
+[`REVIEW-LEGACY-05A`](docs/tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
+then confirmed `tests/data_checks/validate_step05_outputs.sh` at its permanent
+current repository-level owner without changing or executing it. No residual-
+convergence package is selected. The pending Step `04` scaffold review is the
+next preferred still-unselected unit, and the final residual audit remains
+unselected. Scheduler, ingestion, orchestration/profile, cluster, and default-
+branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);

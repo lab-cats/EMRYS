@@ -137,5 +137,40 @@ current historical Runbook reference and no Make, test-harness, source, or
 automated-job caller; that the final Step `05` validator does not supply its
 scheduler-state, cohort, scratch, best-effort persisted TSV snapshot, or
 aggregate-exit behavior; and that moving or retiring it would create an
-unowned contract or needless public-path break. Documentation-only decision
-work has not begun.
+unowned contract or needless public-path break. Selection checkpoint
+`0be4ab2050afdbc77263e641e7e6ca5a6baf8e67` was published and verified live
+before the decision close.
+
+The no-loss comparison is:
+
+| Surface | Repository-level operator checker | Final Step `05` validator | Disposition |
+| --- | --- | --- | --- |
+| Invocation scope | Optional explicit sample list or frozen six-sample default, with optional sample-to-job map | One explicit scope ID, BAM/BAI/reference set, samtools executable, and report path | The cohort/job interface remains repository-level. |
+| Scheduler and aggregate state | Optional `squeue` then `sacct` lookup; PASS/PENDING-or-running/FAIL aggregation; exit `0`/`1`/`2` | No scheduler lookup or cohort reducer; emits one neutral five-check validation report | `RETIRE` would lose unique operator behavior. |
+| Output inspection | BAM/BAI existence and human-readable sizes, quickcheck, coordinate header, exactly one `@RG` line with substring requirements for `ID`/`SM`/`LB` plus `PL:ILLUMINA`, and Step `05` scratch census | BAM/BAI container structure, quickcheck, coordinate sorting, exact tab-delimited `ID`/`SM` read-group preservation, and FASTA/FAI/DICT agreement | The checker adds `LB`/`PL` expectations but is not categorically stricter; the final validator is stage-native but is not a substitute. |
+| Persisted result | Twelve-column stdout is sent through duplicate truncating `tee` writers and is therefore only best-effort persisted; the human summary is stderr-only | Seven-column neutral structured validation report for one scope | Silent replacement and duplicate writers remain characterized; this review neither approves nor repairs them. |
+| Ownership | Historical Runbook reference and self-documented repository-relative public path; no automated caller | Adjacent final stage owner and direct stage suite | `RETAIN_ROOT` is final under the current architecture; `MOVE` would create a needless public-path break and invent a stage or deferred scheduler owner. |
+
+Git confirms the checker remains the original blob introduced by `4c4c7b8`,
+byte-identical at mode `0755`, size `5,413` bytes, and SHA-256
+`aa72defed3f96bd327e969dfd98f303182ede6d7fe417d8bf7039faedbaa95a9`.
+The functional inventory now partitions it separately from the still-
+unselected pending Step `04` scaffold while retaining the exact 87-path
+residual total. Source topology, test baseline, Runbook, roadmap, handoff, and
+lifecycle routes record the permanent current owner and evidence ceiling.
+
+No product executable, computational test, fixture, configuration, dependency,
+schema, report contract, Make selection, scheduler state, cluster resource, or
+production artifact changed or ran. Only documentation validation applies.
+This is static no-loss ownership evidence plus a preserved historical operator
+reference only, not new runtime, cluster, production, scientific-review, or
+biological-readiness evidence. `git diff --check` passed, and documentation
+validation passed `229` Markdown documents, `146` task cards, and `6` Mermaid
+sources. Computational tests were not applicable and did not run. Three
+independent initial close reviews found only two crosswalk-accuracy defects:
+the checker was incorrectly described as categorically stricter for read-group
+matching, and the stderr-only human summary was incorrectly grouped with its
+best-effort persisted stdout. Both descriptions were corrected. All three
+focused re-reviews found no remaining semantic, lifecycle, link, owner-routing,
+residual-count, evidence-ceiling, defect-preservation, or scope-isolation
+issue.

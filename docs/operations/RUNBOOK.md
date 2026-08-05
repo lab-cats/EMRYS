@@ -3593,7 +3593,20 @@ recovery evidence; follow the
 [`Step 05` recovery route](TROUBLESHOOTING.md#step-05-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-pair)
 before cleanup or retry.
 
-The six-sample Step `05` output inspection with `tests/data_checks/validate_step05_outputs.sh` reported:
+The historical six-sample Step `05` output inspection below used the permanent
+repository-level operator utility
+`tests/data_checks/validate_step05_outputs.sh`, whose owner was confirmed by
+completed
+[`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md).
+It is distinct from the stage-native structured validator: the operator
+utility adds optional scheduler-state lookup, cohort aggregation, output-size
+and scratch inspection, and a twelve-column TSV snapshot. That snapshot
+remains best-effort because duplicate truncating `tee` writers and silent
+replacement are characterized defects. The retained path and historical
+result do not constitute a new invocation, runtime, cluster, or production
+proof.
+
+The inspection reported:
 
 ```text
 PASS=6

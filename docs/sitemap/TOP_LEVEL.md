@@ -36,12 +36,13 @@ final evidence-owner homes. Completed
 then directly relocated the independent-golden owner. Completed
 [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
 then directly relocated the validation-roster owner and cut over fourteen
-exact-file callers. Documentation-only
-[`REVIEW-LEGACY-05A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
-is the sole selected residual-review package and reviews only the unchanged
-Step `05` operational checker's permanent current owner. The pending Step `04`
-review, final audit, runtime execution, cluster, and default-branch integration
-remain unselected. The remainder of
+exact-file callers. Completed documentation-only
+[`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
+then confirmed the unchanged Step `05` operational checker's permanent current
+repository-level owner. No residual-convergence package is selected. The
+pending Step `04` scaffold review is the next preferred still-unselected unit;
+final audit, runtime execution, cluster, and default-branch integration remain
+unselected. The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not

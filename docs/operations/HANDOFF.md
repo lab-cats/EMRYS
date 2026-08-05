@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `65be0878269752dd8482d1807e41ce68c08fd6ad`, the clean, published,
-  live-remote-equal `MIG-04F` documentation/lifecycle close.
+  `0be4ab2050afdbc77263e641e7e6ca5a6baf8e67`, the clean, published,
+  live-remote-equal `REVIEW-LEGACY-05A` selection checkpoint.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -92,11 +92,13 @@ and delivery-required lineage live in
   final contract-integration owner and cut over fourteen exact-file callers,
   repairing only the moved suite's repository-root anchor and caller path
   literals.
-- Selected package: documentation-only/non-consuming
-  [`REVIEW-LEGACY-05A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md).
-  It reviews only the permanent current repository owner of the unchanged
-  Step `05` operational output checker. The pending Step `04` scaffold review
-  and final residual audit remain unselected.
+- Completed no-loss review:
+  [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
+  confirms the unchanged Step `05` operational output checker at its permanent
+  current repository-level owner. Its unique scheduler/cohort/TSV behavior is
+  distinct from the stage validator, and its known duplicate-`tee` and silent-
+  replacement defects remain characterized.
+- Selected package: none.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -140,7 +142,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs; the independent contract goldens; and the validation-roster agreement are physically final. Their legacy ownership and temporary compatibility paths are absent. The retained/deferred shared-test roots remain dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs; the independent contract goldens; and the validation-roster agreement are physically final. Their legacy ownership and temporary compatibility paths are absent. `REVIEW-LEGACY-05A` also confirms the unchanged Step `05` operator checker at its permanent current repository-level owner. Other retained/deferred roots remain dispositioned by `PLAN-03A`. This is contract-preserving local migration/static-review evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -149,7 +151,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `MIG-04F` directly relocated the validation-roster suite/helper and cut over fourteen exact-file callers at executable checkpoint `8921ec3`. The helper remained byte-identical at mode `0644`; the suite changed only its repository-root anchor; each caller changed only its helper path. Exact 105-test root/arbitrary-CWD and 369-test focused results and normalized collection retained parity. Static and all shell contracts passed. The pre-close complete run passed 1,591 with 17 skips and failed only the expected eight moved-suite documentation links; its recovered coverage artifact passed the exact 0.847971 line and 0.750594 branch policy across 36 files. After current links closed, the final complete gate passed 1,592 with 17 skips at the same exact coverage, and documentation validation passed 228 Markdown documents, 145 task cards, and 6 Mermaid sources. Three independent executable reviews found no defect. No roster, check, loader, report, adapter, baseline, package, compatibility path, or characterized defect changed. This creates no runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | Documentation-only `REVIEW-LEGACY-05A` confirms `tests/data_checks/validate_step05_outputs.sh` as the permanent current repository-level Step `05` operator checker. Static comparison proves the final stage validator does not replace its optional scheduler-state lookup, cohort aggregation, output-size/scratch inspection, additional `LB`/`PL` read-group requirements, best-effort twelve-column TSV snapshot, or aggregate exit `0`/`1`/`2` behavior. The checker remains byte-identical at mode `0755`, size `5,413` bytes, and SHA-256 `aa72defed3f96bd327e969dfd98f303182ede6d7fe417d8bf7039faedbaa95a9`; its duplicate truncating `tee` writers and silent replacement remain characterized defects. No product executable or computational test ran or changed; only documentation validation applies, and the residual roster remains 87 paths. This creates no new runtime, cluster, production, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -253,12 +255,10 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-`REVIEW-LEGACY-05A` is the sole selected residual-review package. Complete
-only the static no-loss decision for
-`tests/data_checks/validate_step05_outputs.sh`: keep it byte-identical at its
-permanent current repository-level owner, distinguish its scheduler/cohort/TSV
-contract from the final Step `05` validator, close current documentation, and
-pause. Do not preload the pending Step `04` scaffold review or final audit.
+No residual package is selected. At this user-requested slice boundary, pause
+before selecting more work. The pending Step `04` scaffold no-loss review is
+the next preferred still-unselected unit; the final residual audit remains
+unselected. Do not preload either package.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

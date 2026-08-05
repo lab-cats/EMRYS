@@ -236,6 +236,17 @@ documentation/Git orchestration do not become runtime `cli/`, `libraries/`, or
 scientific-workflow `orchestration/` implementation. A later setup design may
 reconsider that boundary without creating a speculative `setup/` domain here.
 
+Repository-level operational inspection utilities also remain outside a stage
+owner when their contract spans scheduler state, cross-sample aggregation,
+final-output inspection, and a best-effort persisted operator snapshot.
+Completed
+[`REVIEW-LEGACY-05A`](../../../docs/tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
+therefore fixes `tests/data_checks/validate_step05_outputs.sh` at its permanent
+current `tests/data_checks/` owner. It is distinct from the stage-native Step
+`05` structured validator; this retention does not select a scheduler owner,
+repair the checker's characterized defects, or create runtime or cluster
+evidence.
+
 ## Mirrored test ownership
 
 ```text
