@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `6e7cf7ae9957a3c6edf92acf7efaaaef9524b481`, the clean, published,
-  live-remote-equal `REVIEW-LEGACY-04A` selection checkpoint.
+  `1311db325c20d00a6f37c73289892a519ac4ffa8`, the clean, published,
+  live-remote-equal `REVIEW-LEGACY-04A` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -103,8 +103,10 @@ and delivery-required lineage live in
   confirms `RETAIN_ROOT` for the byte-identical Step `04` pending scaffold.
   Its pre-Picard input-sort requirement is absent and adversarial dry-run
   quoting protection is not independently established.
-- Selected package: none. The final residual-layout audit is the next preferred
-  unselected package.
+- Selected package: documentation-only/non-consuming
+  [`AUDIT-RESIDUAL-04A`](../tasks/IN_PROGRESS/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md).
+  It reconciles only the fixed 87-path residual roster, completed moves, and
+  retained/deferred/separately-retired boundaries.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -261,13 +263,12 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. `REVIEW-LEGACY-04A` completed its static
-no-loss comparison and retained
-`tests/pending/test_step_04_mark_duplicates.sh` unchanged. The final residual-
-layout audit is the next preferred package but remains unselected; create and
-select it just in time rather than preloading it here.
+`AUDIT-RESIDUAL-04A` is the sole selected residual package. Recompute the exact
+87-path roster, verify completed final homes and old-path absences, recheck
+retained/deferred/separately-retired boundaries, and close only the source-
+topology campaign at the local/static evidence ceiling.
 
-No later owner move, final audit, scheduler, ingestion, orchestration/profile,
+No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
 `PROGRAM-01`, `CONCURRENCY-03`,
 `TASK-EPIC-01`, `AUDIT-99`, the remaining documentation-consolidation cards,

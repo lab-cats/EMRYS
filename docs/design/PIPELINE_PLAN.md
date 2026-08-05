@@ -148,8 +148,10 @@ repository-level owner. Completed documentation-only/non-consuming
 [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
 then confirmed `RETAIN_ROOT` for the unchanged pending Step `04` scaffold: its
 pre-Picard input-sort requirement is absent and adversarial dry-run quoting
-protection is not independently established. No residual package is selected;
-the final residual-layout audit remains the next preferred unselected package.
+protection is not independently established. Documentation-only/non-consuming
+[`AUDIT-RESIDUAL-04A`](../tasks/IN_PROGRESS/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
+is the sole selected residual package and reconciles only the fixed 87-path
+roster and completed source-topology campaign.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -201,10 +203,10 @@ Preferred one-owner order is:
    completed `MIG-04F` converges only the validation-roster owner; completed
    `REVIEW-LEGACY-05A` confirms only the retained Step `05` data checker; and
    completed `REVIEW-LEGACY-04A` confirms only the retained Step `04` scaffold;
-7. create one residual-layout audit only after the final executable move.
+7. selected `AUDIT-RESIDUAL-04A` performs only the final residual-layout audit.
 
-No residual package is selected. The final residual-layout audit is the next
-preferred unselected package; deferred domains remain unbegun.
+`AUDIT-RESIDUAL-04A` is the sole selected residual package. Deferred domains
+remain unbegun.
 
 ### Recovered proposal families
 
@@ -331,14 +333,16 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                                                                                         └── REVIEW-LEGACY-04A
                                                                                                                                                                                             selection 6e7cf7a
                                                                                                                                                                                             └── REVIEW-LEGACY-04A
-                                                                                                                                                                                                decision/lifecycle close
-                                                                                                                                                                                                (commit containing this plan)
+                                                                                                                                                                                                decision/lifecycle close 1311db3
+                                                                                                                                                                                                └── AUDIT-RESIDUAL-04A
+                                                                                                                                                                                                    selection
+                                                                                                                                                                                                    (commit containing this plan)
 ```
 
-The final node is the `REVIEW-LEGACY-04A` decision/lifecycle close represented
-by this plan. It confirms only the pending Step `04` scaffold's `RETAIN_ROOT`
-disposition and selects no successor; no final audit, default-branch
-integration, runtime execution, or cluster action is implied.
+The final node is the current `AUDIT-RESIDUAL-04A` selection represented by
+this plan. It selects only the fixed 87-path residual-layout reconciliation;
+no broad `AUDIT-99`, default-branch integration, runtime execution, or cluster
+action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

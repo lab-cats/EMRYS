@@ -42,9 +42,11 @@ then confirmed the unchanged Step `05` operational checker's permanent current
 repository-level owner. Completed documentation-only/non-consuming
 [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
 confirmed `RETAIN_ROOT` for the intentional non-runnable Step `04` pending test
-scaffold. No residual package is selected; the final residual-layout audit is
-the next preferred unselected package. Runtime execution, cluster, and default-
-branch integration remain unselected. The remainder of
+scaffold. Documentation-only/non-consuming
+[`AUDIT-RESIDUAL-04A`](../tasks/IN_PROGRESS/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
+is the sole selected residual package and reconciles only the fixed 87-path
+source-topology campaign. Runtime execution, cluster, and default-branch
+integration remain unselected. The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not
