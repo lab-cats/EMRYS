@@ -45,7 +45,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence selected through `MIG-04F`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
+| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; remaining cross-cutting convergence is dispositioned by `PLAN-03A` |
 | Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` through `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
@@ -68,9 +68,9 @@ its mirrored suite into their final evidence-owner homes. `MIG-04C` then moved
 runtime preflight and its mirrored suite into their final evidence-owner homes.
 `MIG-04D` then moved storage inventory and its mirrored suite into their final
 evidence-owner homes. `MIG-04E` then moved the independent-contract-golden
-suite and eight fixture/provenance files into their final owner. `MIG-04F` now
-selects only the separate validation-roster suite/helper and fourteen
-exact-file caller cutovers.
+suite and eight fixture/provenance files into their final owner. `MIG-04F` then
+moved the separate validation-roster suite/helper into its final owner and cut
+over fourteen exact-file callers.
 The repository-health
 runway completed its documentation-gate and lifecycle packages, preserved the
 quarantined malformed local R-library entry, corrected the bounded recursive-
@@ -137,10 +137,11 @@ final evidence-owner homes without a wrapper or public starter-contract move.
 Completed
 [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md)
 then directly relocated the nine-path independent-contract-goldens owner with
-no compatibility path or oracle change. Selected
-[`MIG-04F`](../tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md)
-is the sole residual-convergence package and owns only the validation-roster
-suite/helper move and fourteen exact-file caller cutovers.
+no compatibility path or oracle change. Completed
+[`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
+then directly relocated the two-path validation-roster owner and cut over all
+fourteen exact-file callers without a compatibility or package surface. No
+residual-convergence package is selected.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -148,7 +149,7 @@ and frozen proposal presence does not authorize selection or implementation.
 
 ### Residual source-topology convergence
 
-The exact 89-path current residual roster is owned by the
+The exact 87-path current residual roster is owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
@@ -166,7 +167,7 @@ disposition.
 | Runtime preflight | `MOVE` complete through [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; the public starter profile remains at root and no wrapper exists. |
 | Storage inventory | `MOVE` complete through [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; both public starter contracts remain at root, no wrapper exists, and retention action remains prohibited. |
 | Independent contract goldens | `MOVE` complete through [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md) | The direct suite and eight fixture/provenance files occupy `tests/contract_integration/independent_contract_goldens/` with byte-identical fixtures, no nested fixture owner, and no compatibility path. |
-| Validation-roster agreement | `MOVE` selected through [`MIG-04F`](../tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md) | Move only the suite/helper under `tests/contract_integration/validation_rosters/` and cut over fourteen exact-file callers; no compatibility or package surface. |
+| Validation-roster agreement | `MOVE` complete through [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md) | The suite/helper occupy `tests/contract_integration/validation_rosters/`, all fourteen exact-file callers load the final helper directly, and no compatibility or package surface exists. |
 | Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
 | Public config examples, operator selections, and reference schemas | `RETAIN_ROOT` | Move only if a later inspected contract proves that one is implementation-native rather than an explicit user input. |
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
@@ -188,12 +189,13 @@ Preferred one-owner order is:
    completed `MIG-04B` moves reference provenance; completed `MIG-04C` moves
    runtime preflight; completed `MIG-04D` moves storage inventory;
 6. completed `MIG-04E` converges only the independent contract goldens;
-   selected `MIG-04F` converges only the validation-roster owner; later
+   completed `MIG-04F` converges only the validation-roster owner; later
    separately review the two retained legacy test/data-check paths; and
 7. create one residual-layout audit only after the final executable move.
 
-`MIG-04F` is the sole selected residual package. Later legacy reviews, final
-audit, and deferred domains remain uncreated or unbegun.
+No residual package is selected. The two retained legacy-path reviews are the
+next preferred still-unselected units; final audit and deferred domains remain
+uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -308,12 +310,18 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                                                                 └── MIG-04E documentation/
                                                                                                                                                                     lifecycle close 26daa84
                                                                                                                                                                     └── MIG-04F selection
-                                                                                                                                                                        (commit containing this plan)
+                                                                                                                                                                        9f67b0c
+                                                                                                                                                                        └── MIG-04F executable
+                                                                                                                                                                            relocation 8921ec3
+                                                                                                                                                                            └── MIG-04F documentation/
+                                                                                                                                                                                lifecycle close
+                                                                                                                                                                                (commit containing this plan)
 ```
 
-The final node is the current `MIG-04F` selection represented by this plan. It
-selects no successor; no legacy review, final audit, default-branch
-integration, runtime execution, or cluster action is implied.
+The final node is the current `MIG-04F` documentation/lifecycle close
+represented by this plan. It selects no successor; no legacy review, final
+audit, default-branch integration, runtime execution, or cluster action is
+implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

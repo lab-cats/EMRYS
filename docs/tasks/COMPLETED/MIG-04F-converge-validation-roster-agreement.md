@@ -161,5 +161,53 @@ hash `6d8f586a5762a834a1c099006f32eae30c385abe885fffe0e91a1656b3b6c5a5`.
 The complete suite-plus-fourteen-consumer closure passed `369` tests in
 `56.72s`; its pre-move collection hash is
 `b7a5b54d8cafa125a09335a6f728f39c0e1a473670e83f74da8da9227a182528`.
-The earlier cached `385` estimate was not used. Executable/test work has not
-begun.
+The earlier cached `385` estimate was not used. Selection checkpoint
+`9f67b0cc924c19cda3734156aac3daaf60db2f68` was published and verified live
+before executable mutation.
+
+Executable checkpoint `8921ec37348d78e8a9b0a374c155ea8cd1be0d53`
+published the direct two-file Git move and fourteen caller cutovers. Both final
+files retain mode `0644`. The helper remains exactly `114` lines and `2,957`
+bytes with its frozen SHA-256 identity above. The suite remains exactly `190`
+lines and `5,842` bytes; its final SHA-256 is
+`8f9f17b902bebbe10566d8df31d7607606220137dccebe1ba3c04d21189d4c67`,
+and its normalized diff changes only `REPO_ROOT` from `parents[1]` to
+`parents[3]`. Each reviewed consumer changes one `ROSTER_ORACLE` path and
+nothing else; private module names and loader behavior remain exact. Both old
+paths are absent, and the final owner contains exactly the two regular files
+with no package marker, wrapper, copy, symlink, re-export, descriptor,
+installation surface, `PYTHONPATH`, or `sys.path` mutation.
+
+Post-move, the exact `105` suite tests passed from repository root and
+`/private/tmp` in `0.07s` each with normalized collection hash
+`6d8f586a5762a834a1c099006f32eae30c385abe885fffe0e91a1656b3b6c5a5`.
+The complete fifteen-file focused closure passed `369` tests in `55.36s` with
+normalized collection hash
+`b7a5b54d8cafa125a09335a6f728f39c0e1a473670e83f74da8da9227a182528`.
+Static validation and the full shell-contract lane passed. The pre-close
+undeselected complete Python run passed `1,591` tests with `17` skips and
+failed only the expected eight current-documentation links for the moved
+suite. Its recovered coverage artifact passed policy at exact rates `0.847971`
+line and `0.750594` branch across `36` files (`10592/12491` lines and
+`3789/5048` branches), with no measured-file or baseline change. Three
+independent executable reviews found no path, mode, helper, suite, caller,
+loader, roster, package, compatibility, coverage, or evidence-boundary defect.
+
+Current owner links, lifecycle routes, test baseline, source topology, and the
+functional inventory are repaired; the residual roster falls from `89` to
+`87`. No dependency was installed, restored, removed, or updated, and no
+roster, check, report, adapter, production behavior, or characterized defect
+changed. This remains local synthetic-characterization and relocation-parity
+evidence only, not runtime, cluster, production, scientific-review, or
+biological-readiness evidence. The close selects no successor and pauses
+before the two separate retained-legacy-path reviews.
+
+After the current links closed, the undeselected complete Python gate passed
+`1,592` tests with `17` skips in `324.07s`; coverage remained exact at
+`0.847971` line and `0.750594` branch across `36` files. Documentation
+validation passed `228` Markdown documents, `145` task cards, and `6` Mermaid
+sources. Three independent initial final-close reviews found only that this
+close-review outcome had not yet been recorded; this sentence repairs that
+evidence-recording omission. All three re-reviews found no remaining
+lifecycle, link, path, residual-count, evidence, scope, defect-preservation, or
+premature-selection issue.

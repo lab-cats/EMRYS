@@ -33,12 +33,13 @@ evidence-owner homes. Completed
 then directly relocated storage inventory and its mirrored suite into their
 final evidence-owner homes. Completed
 [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md)
-then directly relocated the independent-golden owner. Selected
-[`MIG-04F`](../tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md)
-is the sole residual-convergence package and owns only the validation-roster
-suite/helper move and fourteen exact-file caller cutovers. Later legacy
-reviews, final audit, runtime execution, cluster, and default-branch
-integration remain unselected. The remainder of
+then directly relocated the independent-golden owner. Completed
+[`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
+then directly relocated the validation-roster owner and cut over fourteen
+exact-file callers. No residual-convergence package is selected; the two
+retained-legacy-path reviews are the next preferred still-unselected units.
+Final audit, runtime execution, cluster, and default-branch integration remain
+unselected. The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not

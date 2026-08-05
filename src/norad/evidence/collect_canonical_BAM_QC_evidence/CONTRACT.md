@@ -167,7 +167,7 @@ make it a prerequisite for later computation.
   protects wrapper execution control, module/CWD/delegation behavior,
   directory creation, the Bash 3.2 defect, child failure propagation, and the
   stale-final false-success defect.
-- [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py),
+- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py),
   [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
   [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)

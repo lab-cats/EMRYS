@@ -186,7 +186,7 @@ their functional ownership.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects delegation, execution control, module behavior, current dry-run
   directory creation, the Bash 3.2 defect, and exit propagation with mocks.
-- [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
+- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes the imported shared validation-report publication behavior.

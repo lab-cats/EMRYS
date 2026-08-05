@@ -13,9 +13,9 @@ and delivery-required lineage live in
   `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
   upstream-equal `PLAN-03A` documentation/lifecycle close.
 - Latest executable/test checkpoint:
-  `9434b0adb2550b0e6290f16df44af0b5d5df62c4`, the `MIG-04E` direct
-  independent-contract-goldens relocation, and the frozen executable basis
-  for selected `MIG-04F`.
+  `8921ec37348d78e8a9b0a374c155ea8cd1be0d53`, the `MIG-04F` direct
+  validation-roster relocation and fourteen-caller cutover, and the frozen
+  executable basis for this documentation/lifecycle close.
 - Current package predecessor:
   `26daa84ca8b52e7b8fc36c38d83921f6f983264f`, the clean, published,
   live-remote-equal `MIG-04E` documentation/lifecycle close.
@@ -86,12 +86,13 @@ and delivery-required lineage live in
   then directly moved the independent-contract-golden suite and eight
   fixture/provenance files into their fixed final contract-integration owner,
   repairing only the suite's repository-root and owner-local-golden anchors.
-- Selected package:
-  [`MIG-04F`](../tasks/IN_PROGRESS/MIG-04F-converge-validation-roster-agreement.md)
-  directly moves only the validation-roster suite/helper into their fixed
-  final contract-integration owner and cuts over fourteen exact-file callers,
+  Completed
+  [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
+  then directly moved the validation-roster suite/helper into their fixed
+  final contract-integration owner and cut over fourteen exact-file callers,
   repairing only the moved suite's repository-root anchor and caller path
   literals.
+- Selected package: none.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -103,8 +104,8 @@ and delivery-required lineage live in
   provenance evidence is physically final through `MIG-04B`.
   Runtime-preflight evidence is physically final through `MIG-04C`, and storage
   evidence is physically final through `MIG-04D`, and the independent-golden
-  owner is physically final through `MIG-04E`. `MIG-04F` selects only the
-  separate validation-roster paths and fourteen exact-file caller cutovers.
+  owner is physically final through `MIG-04E`. The validation-roster owner and
+  its fourteen exact-file caller cutovers are final through `MIG-04F`.
   Current and target ownership route through
   [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and
@@ -135,7 +136,7 @@ or evidence authority.
 
 | Surface | Current verified state |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs; and the independent contract goldens are physically final. Their legacy ownership and temporary compatibility paths are absent. The validation-roster and retained/deferred shared-test roots remain dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
+| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs; the independent contract goldens; and the validation-roster agreement are physically final. Their legacy ownership and temporary compatibility paths are absent. The retained/deferred shared-test roots remain dispositioned by `PLAN-03A`. This is contract-preserving local migration evidence, not new runtime or cluster proof. |
 | Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
 | Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
@@ -144,7 +145,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | `MIG-04E` directly relocated the independent-contract-golden suite and eight byte-identical fixture/provenance files at executable checkpoint `9434b0a`, with only its repository-root and owner-local-golden anchors changed. Exact 82-test root/arbitrary-CWD collection and results retained parity; the focused roster passed 612 tests with 17 renderer skips; static and all shell contracts passed. The pre-close complete run passed 1,591 with 17 skips and failed only the expected moved-document link; its recovered coverage artifact passed the exact 0.847971 line and 0.750594 branch policy across 36 files. After current links closed, the final complete gate passed 1,592 with 17 skips at the same exact coverage, and documentation validation passed 227 Markdown documents, 144 task cards, and 6 Mermaid sources. Three independent executable reviews found no defect. Validation-roster files/callers and the coverage baseline remained unchanged; no package or compatibility path was added. This creates no runtime, cluster, scientific-review, or biological evidence. |
+| Latest residual package | `MIG-04F` directly relocated the validation-roster suite/helper and cut over fourteen exact-file callers at executable checkpoint `8921ec3`. The helper remained byte-identical at mode `0644`; the suite changed only its repository-root anchor; each caller changed only its helper path. Exact 105-test root/arbitrary-CWD and 369-test focused results and normalized collection retained parity. Static and all shell contracts passed. The pre-close complete run passed 1,591 with 17 skips and failed only the expected eight moved-suite documentation links; its recovered coverage artifact passed the exact 0.847971 line and 0.750594 branch policy across 36 files. After current links closed, the final complete gate passed 1,592 with 17 skips at the same exact coverage, and documentation validation passed 228 Markdown documents, 145 task cards, and 6 Mermaid sources. Three independent executable reviews found no defect. No roster, check, loader, report, adapter, baseline, package, compatibility path, or characterized defect changed. This creates no runtime, cluster, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -248,10 +249,10 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-`MIG-04F` is the sole selected residual package. Resume only its direct
-validation-roster suite/helper move, fourteen exact-file caller cutovers,
-validation, documentation close, publication, and live-remote verification.
-Do not preload the separate legacy reviews or final audit.
+No residual package is selected. At this user-requested slice boundary, pause
+before selecting more work. The next preferred still-unselected work comprises
+two separate no-loss reviews of the retained legacy Step `05` data checker and
+pending Step `04` scaffold. Do not preload either review or the final audit.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.

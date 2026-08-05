@@ -148,7 +148,7 @@ No downstream stage should depend on this stage's implementation module.
   protects dry-run, the five checks, mismatch reporting, repeat publication,
   contract failures, and preservation of foreign locks or invalid
   predecessors.
-- [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
+- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes shared publication, rollback, cleanup, and recovery behavior.

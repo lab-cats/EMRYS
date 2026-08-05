@@ -275,10 +275,11 @@ placement do not create runtime dependency edges.
 The independent contract goldens and validation-roster agreement converge
 under `tests/contract_integration/independent_contract_goldens/` and
 `tests/contract_integration/validation_rosters/`, respectively. The independent
-contract goldens occupy the first final owner through `MIG-04E`; the validation-
-roster suite/helper remain at their legacy root paths pending a separate JIT
-move. Cross-entry-point public-command characterization remains a repository-
-development suite
+contract goldens occupy the first final owner through `MIG-04E`; the
+validation-roster suite/helper occupy the second final owner through `MIG-04F`,
+with all fourteen reviewed exact-file callers cut over directly and no
+compatibility or package surface. Cross-entry-point public-command
+characterization remains a repository-development suite
 because it spans Make, Git tooling, modes, and several runtime domains. The
 repository-wide SLURM-wrapper characterization converges under
 `tests/workflow_integration/scheduler/` only when scheduler work resumes; until

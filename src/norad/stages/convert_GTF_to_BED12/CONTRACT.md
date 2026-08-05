@@ -153,7 +153,7 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects the exact mixed-layout job roster, directives, mode, and generic
   scheduler boundaries.
-- [`test_validation_check_rosters.py`](../../../../tests/test_validation_check_rosters.py)
+- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes the imported shared publication and recovery behavior.
