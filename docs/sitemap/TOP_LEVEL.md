@@ -39,10 +39,11 @@ then directly relocated the validation-roster owner and cut over fourteen
 exact-file callers. Completed documentation-only
 [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
 then confirmed the unchanged Step `05` operational checker's permanent current
-repository-level owner. No residual-convergence package is selected. The
-pending Step `04` scaffold review is the next preferred still-unselected unit;
-final audit, runtime execution, cluster, and default-branch integration remain
-unselected. The remainder of
+repository-level owner. Documentation-only/non-consuming
+[`REVIEW-LEGACY-04A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
+is the sole selected residual-review package and reviews only the intentional
+non-runnable Step `04` pending test scaffold. Final audit, runtime execution,
+cluster, and default-branch integration remain unselected. The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.
 This route narrows work selection and routine context loading; it does not

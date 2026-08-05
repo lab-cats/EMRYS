@@ -144,8 +144,10 @@ fourteen exact-file callers without a compatibility or package surface.
 Completed documentation-only
 [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
 then confirmed the unchanged Step `05` operational checker's permanent current
-repository-level owner. No residual-convergence package is selected; the
-pending Step `04` scaffold review and final residual audit remain unselected.
+repository-level owner. Documentation-only/non-consuming
+[`REVIEW-LEGACY-04A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
+is the sole selected residual-review package and reviews only the pending Step
+`04` scaffold. The final residual audit remains unselected.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -176,7 +178,7 @@ disposition.
 | Public config examples, operator selections, and reference schemas | `RETAIN_ROOT` | Move only if a later inspected contract proves that one is implementation-native rather than an explicit user input. |
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
 | Legacy Step `05` operational output checker | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) | `tests/data_checks/validate_step05_outputs.sh` remains unchanged at its permanent current repository-level owner. Its optional scheduler-state, cohort-status, output-size, scratch, additional `LB`/`PL` read-group requirements, best-effort TSV, and aggregate-exit behavior is distinct from the final stage validator; known duplicate-`tee` and silent-replacement defects remain characterized. |
-| Pending Step `04` scaffold | `RETAIN_ROOT` pending separate review | Preserve the intentional non-runnable scaffold unchanged until its separate still-unselected no-loss owner/retirement review. |
+| Pending Step `04` scaffold | Selected no-loss review through [`REVIEW-LEGACY-04A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged until the selected review proves one final `RETAIN_ROOT` or `RETIRE` disposition. |
 | Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Preserve its two unique cleanup entries in authorized owners before removing the record; this is documentation cleanup, not source migration. |
 | Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
 | Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
@@ -196,12 +198,11 @@ Preferred one-owner order is:
 6. completed `MIG-04E` converges only the independent contract goldens;
    completed `MIG-04F` converges only the validation-roster owner; completed
    `REVIEW-LEGACY-05A` confirms only the retained Step `05` data checker;
-   later separately review the pending Step `04` scaffold; and
+   selected `REVIEW-LEGACY-04A` reviews only the pending Step `04` scaffold; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. The pending Step `04` scaffold review is the
-next preferred still-unselected unit; final audit and deferred domains remain
-uncreated or unbegun.
+`REVIEW-LEGACY-04A` is the sole selected residual-review package. Final audit
+and deferred domains remain uncreated or unbegun.
 
 ### Recovered proposal families
 
@@ -324,14 +325,16 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                                                                                 └── REVIEW-LEGACY-05A
                                                                                                                                                                                     selection 0be4ab2
                                                                                                                                                                                     └── REVIEW-LEGACY-05A
-                                                                                                                                                                                        decision/lifecycle close
-                                                                                                                                                                                        (commit containing this plan)
+                                                                                                                                                                                        decision/lifecycle close 916737b
+                                                                                                                                                                                        └── REVIEW-LEGACY-04A
+                                                                                                                                                                                            selection
+                                                                                                                                                                                            (commit containing this plan)
 ```
 
-The final node is the current `REVIEW-LEGACY-05A` decision/lifecycle close
-represented by this plan. It selects no successor; no pending Step `04`
-review, final audit, default-branch integration, runtime execution, or cluster
-action is implied.
+The final node is the current `REVIEW-LEGACY-04A` selection represented by
+this plan. It selects only the pending Step `04` scaffold review; no final
+audit, default-branch integration, runtime execution, or cluster action is
+implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

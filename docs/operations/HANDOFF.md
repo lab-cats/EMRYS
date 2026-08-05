@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `0be4ab2050afdbc77263e641e7e6ca5a6baf8e67`, the clean, published,
-  live-remote-equal `REVIEW-LEGACY-05A` selection checkpoint.
+  `916737bf33fb8a0a96a765ce48979ee41d9e2668`, the clean, published,
+  live-remote-equal `REVIEW-LEGACY-05A` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -98,7 +98,11 @@ and delivery-required lineage live in
   current repository-level owner. Its unique scheduler/cohort/TSV behavior is
   distinct from the stage validator, and its known duplicate-`tee` and silent-
   replacement defects remain characterized.
-- Selected package: none.
+- Selected package: documentation-only/non-consuming
+  [`REVIEW-LEGACY-04A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md).
+  It reviews only the intentional non-runnable Step `04` pending test scaffold
+  and may retire it only after no-loss comparison. The final residual audit
+  remains unselected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -255,10 +259,11 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. At this user-requested slice boundary, pause
-before selecting more work. The pending Step `04` scaffold no-loss review is
-the next preferred still-unselected unit; the final residual audit remains
-unselected. Do not preload either package.
+`REVIEW-LEGACY-04A` is the sole selected residual-review package. Complete
+only the static no-loss comparison for
+`tests/pending/test_step_04_mark_duplicates.sh`, give it one final disposition,
+and close the directly affected documentation. Do not preload the final
+residual audit.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
