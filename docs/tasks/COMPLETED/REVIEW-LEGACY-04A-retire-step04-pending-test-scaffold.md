@@ -28,6 +28,9 @@ removed.
   BAM input is validated before Picard, deterministic output naming and safe
   dry-run command projection are protected, and missing-input/tool diagnostics
   are all protected in current owners.
+- Final disposition: `RETAIN_ROOT`. The comparison found unique planned
+  protection that is not yet established, so the documentation scaffold stays
+  byte-identical at its current root-level pending owner.
 - Do not change, run, relocate, or reinterpret the final Step `04` producer,
   validator, SLURM wrapper, tests, fixtures, contracts, or characterized
   defects.
@@ -94,10 +97,10 @@ removed.
 - If retired, exact searches prove the old path is absent and the final Step
   `04` source/test owners and selectors remain unchanged.
 - `git diff --check`, documentation validation, and independent semantic close
-  review pass. Computational tests are not applicable because the removed file
-  is an unselected documentation scaffold and no executable, selected test,
-  fixture, configuration, dependency, schema, report template, or harness
-  behavior changes.
+  review pass. Computational tests are not applicable because the retained
+  file is an unselected documentation scaffold and no executable, selected
+  test, fixture, configuration, dependency, schema, report template, or
+  harness behavior changes.
 - Evidence remains static no-loss review and existing local fixture/mock
   characterization only.
 
@@ -117,11 +120,27 @@ removed.
 
 ## Completion record
 
-Selected from clean, published, live-remote-equal `REVIEW-LEGACY-05A`
-documentation/lifecycle close
-`916737bf33fb8a0a96a765ce48979ee41d9e2668`. Read-only planning confirmed the
-scaffold's frozen identity and sole ownership reference and found no automated
-caller. It also found that pre-Picard input-sort validation and adversarial
-dry-run shell escaping are not yet proven by the current owner-local suite;
-the selected review must disposition those gaps without expanding into an
-executable correction. Disposition work has not begun.
+Selected at clean, published, live-remote-equal checkpoint
+`6e7cf7ae9957a3c6edf92acf7efaaaef9524b481` from the
+`REVIEW-LEGACY-05A` close
+`916737bf33fb8a0a96a765ce48979ee41d9e2668`. Static Git inspection confirmed
+that the scaffold is still nine lines, `417` bytes, mode `0644`, and SHA-256
+`bfbec48adee7307f93890986f7087f60583fdc4a6c550056e6155dabc9d129a1`.
+Exact repository searches found no Make, test-harness, source, job, or other
+automated caller.
+
+| Planned check | Current direct evidence | No-loss result |
+| --- | --- | --- |
+| Validate the required sorted BAM before Picard | The producer checks only that the input BAM and adjacent BAI are files before Picard. Its `samtools quickcheck` and the structured validator's coordinate-sort check apply only to the duplicate-marked output. | Not protected. The pre-Picard input-sort requirement remains unique. |
+| Use deterministic duplicate-marked BAM and metrics names | The producer derives `${sample_id}.markdup.bam`, its adjacent BAI, and `${sample_id}.markdup.metrics.txt`; the owner-local shell suite asserts those projected and executed paths. | Protected for the current simple-path contract. |
+| Print the Picard dry-run command safely | The producer projects command arrays with `printf '%q '`, and the owner-local shell suite checks a side-effect-free simple-path projection. The suite does not exercise spaces or shell metacharacters, so the planned adversarial safety protection is not independently established. | Partially protected; not sufficient for retirement. |
+| Fail clearly for missing tools or inputs | The producer and owner-local suite cover missing BAM, BAI, Picard jar, `samtools`, and temporary-directory failures. Wrapper characterization separately covers Java selection/version failures and missing Picard after module load; the direct producer's missing-Java path is not independently exercised by its owner-local shell suite. | Broadly implemented, but the exact direct-suite ceiling remains explicit. |
+
+Final disposition is `RETAIN_ROOT`. The scaffold remains byte-identical and
+unselected at `tests/pending/test_step_04_mark_duplicates.sh`; no producer,
+validator, wrapper, executable test, fixture, contract, selector, or runtime
+surface changed or ran. The review records the gaps without authorizing a
+correction. `git diff --check`, documentation validation, and independent
+semantic review are the only applicable close gates. This is static no-loss
+review over existing local fixture/mock characterization, not new runtime,
+cluster, production, scientific-review, or biological evidence.

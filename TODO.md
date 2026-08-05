@@ -75,12 +75,14 @@ reviewed exact-file callers. Completed documentation-only
 [`REVIEW-LEGACY-05A`](docs/tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
 then confirmed `tests/data_checks/validate_step05_outputs.sh` at its permanent
 current repository-level owner without changing or executing it.
-Documentation-only/non-consuming
-[`REVIEW-LEGACY-04A`](docs/tasks/IN_PROGRESS/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
-is now the sole selected residual-review package. It reviews only the
-intentional non-runnable Step `04` pending test scaffold; the final residual
-audit remains unselected. Scheduler, ingestion, orchestration/profile,
-cluster, and default-branch work remain deferred.
+Completed documentation-only/non-consuming
+[`REVIEW-LEGACY-04A`](docs/tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
+then confirmed `RETAIN_ROOT` for the byte-identical Step `04` pending test
+scaffold because pre-Picard input-sort validation is absent and adversarial
+dry-run quoting protection is not independently established. No residual
+package is selected; the final residual-layout audit is the next preferred
+unselected package. Scheduler, ingestion, orchestration/profile, cluster, and
+default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);
