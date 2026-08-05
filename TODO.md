@@ -85,9 +85,12 @@ only/non-consuming
 then reconciled the fixed 87-path roster with 76 `RETAIN_ROOT`, 10 `DEFER`, and
 one separately owned `RETIRE` disposition, verified every final tracked owner
 and current caller, and closed the source-topology campaign at the local/static
-evidence ceiling. No package is selected; the existing documentation cleanup
-cards remain separate. Scheduler, ingestion, orchestration/profile, cluster,
-and default-branch work remain deferred.
+evidence ceiling. Documentation-only/non-consuming
+[`DOC-CONS-08F`](docs/tasks/IN_PROGRESS/DOC-CONS-08F-compress-design-and-architecture-views.md)
+is now the sole selected cleanup package; it may compress only its named
+architecture/design views after no-loss comparison with their exact owners.
+`DOC-CONS-08G` and `DOC-CONS-08H` remain unselected. Scheduler, ingestion,
+orchestration/profile, cluster, and default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the
 [critical-runway route](docs/design/PIPELINE_PLAN.md#active-critical-runway);

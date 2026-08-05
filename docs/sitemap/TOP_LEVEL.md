@@ -46,8 +46,12 @@ scaffold. Documentation-only/non-consuming
 [`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
 then reconciled the fixed 87-path roster, final owners, current callers, and
 retained/deferred/separately-retired boundaries. The source-topology campaign
-is complete at the local/static evidence ceiling and no package is selected.
-Runtime execution, cluster, and default-branch integration remain unselected.
+is complete at the local/static evidence ceiling. Documentation-only/non-
+consuming
+[`DOC-CONS-08F`](../tasks/IN_PROGRESS/DOC-CONS-08F-compress-design-and-architecture-views.md)
+is the sole selected cleanup package; `DOC-CONS-08G` and `DOC-CONS-08H`
+remain unselected. Runtime execution, cluster, and default-branch integration
+remain unselected.
 The remainder of
 [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
 remains frozen outside its completed slices.

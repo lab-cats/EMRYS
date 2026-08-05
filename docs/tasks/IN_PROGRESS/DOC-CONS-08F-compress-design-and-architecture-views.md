@@ -23,6 +23,10 @@ diagram.
 - `QUESTIONS.md` retains open choices and a concise resolved index.
 - Standalone Mermaid files remain canonical sources until unique diagram
   meaning has an inspected destination.
+- Semantic category: bounded documentation or low-risk maintenance.
+- Validation category: documentation-only/non-consuming. Computational,
+  runtime, report-rendering, dependency, cluster, scientific-review, and
+  biological evidence are not changed or promoted.
 
 ## Blocked by
 
@@ -88,5 +92,10 @@ diagram.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-a separately approved task-specific plan.
+Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
+`a772f791141aee9fdb3fcfbd932f2dd2c1e93521` on
+`codex/residual-source-topology-convergence`. This status-only selection does
+not compress a view, change an exact owner, select a successor, or promote
+evidence. The approved implementation is limited to the named conceptual
+architecture/design views and their directly affected navigation links; it
+stops on any current/target contradiction or unique unmapped meaning.
