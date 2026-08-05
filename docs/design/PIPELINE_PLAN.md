@@ -140,8 +140,12 @@ then directly relocated the nine-path independent-contract-goldens owner with
 no compatibility path or oracle change. Completed
 [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
 then directly relocated the two-path validation-roster owner and cut over all
-fourteen exact-file callers without a compatibility or package surface. No
-residual-convergence package is selected.
+fourteen exact-file callers without a compatibility or package surface.
+Documentation-only
+[`REVIEW-LEGACY-05A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
+is the sole selected residual-review package. It reviews only the permanent
+current owner of the unchanged Step `05` operational checker; the pending Step
+`04` scaffold review and final residual audit remain unselected.
 
 Select, plan, execute, validate, document, publish, and prove only one
 dependency-valid package at a time. Preferred order is not blocker metadata,
@@ -171,7 +175,7 @@ disposition.
 | Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
 | Public config examples, operator selections, and reference schemas | `RETAIN_ROOT` | Move only if a later inspected contract proves that one is implementation-native rather than an explicit user input. |
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
-| Legacy Step `05` data checker and pending Step `04` scaffold | `RETAIN_ROOT` | Preserve the checker's unique scheduler/status/TSV behavior and the intentional pending scaffold until a separate no-loss owner/retirement review. |
+| Legacy Step `05` data checker and pending Step `04` scaffold | `RETAIN_ROOT` | Selected [`REVIEW-LEGACY-05A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) reviews only the checker's permanent current owner while preserving its unique scheduler/status/TSV behavior unchanged. The pending Step `04` scaffold remains preserved and unselected for its separate no-loss review. |
 | Temporary `work/active/JIT-01.md` record | `RETIRE` through [`DOC-CONS-08H`](../tasks/TODO/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Preserve its two unique cleanup entries in authorized owners before removing the record; this is documentation cleanup, not source migration. |
 | Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
 | Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
@@ -189,13 +193,14 @@ Preferred one-owner order is:
    completed `MIG-04B` moves reference provenance; completed `MIG-04C` moves
    runtime preflight; completed `MIG-04D` moves storage inventory;
 6. completed `MIG-04E` converges only the independent contract goldens;
-   completed `MIG-04F` converges only the validation-roster owner; later
-   separately review the two retained legacy test/data-check paths; and
+   completed `MIG-04F` converges only the validation-roster owner; selected
+   `REVIEW-LEGACY-05A` reviews only the retained Step `05` data checker; later
+   separately review the pending Step `04` scaffold; and
 7. create one residual-layout audit only after the final executable move.
 
-No residual package is selected. The two retained legacy-path reviews are the
-next preferred still-unselected units; final audit and deferred domains remain
-uncreated or unbegun.
+`REVIEW-LEGACY-05A` is the sole selected residual-review package. The pending
+Step `04` scaffold review, final audit, and deferred domains remain uncreated
+or unbegun.
 
 ### Recovered proposal families
 
@@ -314,14 +319,16 @@ MIG-03O documentation/lifecycle close 9cb4bb8
                                                                                                                                                                         └── MIG-04F executable
                                                                                                                                                                             relocation 8921ec3
                                                                                                                                                                             └── MIG-04F documentation/
-                                                                                                                                                                                lifecycle close
-                                                                                                                                                                                (commit containing this plan)
+                                                                                                                                                                                lifecycle close 65be087
+                                                                                                                                                                                └── REVIEW-LEGACY-05A
+                                                                                                                                                                                    selection
+                                                                                                                                                                                    (commit containing this plan)
 ```
 
-The final node is the current `MIG-04F` documentation/lifecycle close
-represented by this plan. It selects no successor; no legacy review, final
-audit, default-branch integration, runtime execution, or cluster action is
-implied.
+The final node is the current `REVIEW-LEGACY-05A` selection represented by
+this plan. It selects only the Step `05` operational-checker ownership review;
+no pending Step `04` review, final audit, default-branch integration, runtime
+execution, or cluster action is implied.
 The complete legacy
 lineage and frozen source identities are indexed in
 [operations history](../history/operations/).

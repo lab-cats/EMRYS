@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `26daa84ca8b52e7b8fc36c38d83921f6f983264f`, the clean, published,
-  live-remote-equal `MIG-04E` documentation/lifecycle close.
+  `65be0878269752dd8482d1807e41ce68c08fd6ad`, the clean, published,
+  live-remote-equal `MIG-04F` documentation/lifecycle close.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -92,7 +92,11 @@ and delivery-required lineage live in
   final contract-integration owner and cut over fourteen exact-file callers,
   repairing only the moved suite's repository-root anchor and caller path
   literals.
-- Selected package: none.
+- Selected package: documentation-only/non-consuming
+  [`REVIEW-LEGACY-05A`](../tasks/IN_PROGRESS/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md).
+  It reviews only the permanent current repository owner of the unchanged
+  Step `05` operational output checker. The pending Step `04` scaffold review
+  and final residual audit remain unselected.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -249,10 +253,12 @@ package diagnoses and resolves that drift.
 
 ## Immediate resume point
 
-No residual package is selected. At this user-requested slice boundary, pause
-before selecting more work. The next preferred still-unselected work comprises
-two separate no-loss reviews of the retained legacy Step `05` data checker and
-pending Step `04` scaffold. Do not preload either review or the final audit.
+`REVIEW-LEGACY-05A` is the sole selected residual-review package. Complete
+only the static no-loss decision for
+`tests/data_checks/validate_step05_outputs.sh`: keep it byte-identical at its
+permanent current repository-level owner, distinguish its scheduler/cohort/TSV
+contract from the final Step `05` validator, close current documentation, and
+pause. Do not preload the pending Step `04` scaffold review or final audit.
 
 No later owner move, final audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
