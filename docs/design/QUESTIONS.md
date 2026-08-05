@@ -7,46 +7,14 @@ current blockers belong in
 
 ## Open operational and scientific questions
 
-### Production sample manifest
-
-- Where is the immutable six-row runtime manifest stored?
-- Should a safe canonical copy be tracked or remain cluster-local?
-- What is its SHA-256 and retention policy?
-- Have explicit replicate values been added before Steps `07`–`09` promotion?
-
-### CSU batch runtime
-
-- Which compute-visible R/Rscript and required namespaces are supported?
-- Which hash utilities and exact tool paths are available in batch jobs?
-- Is Java 17 consistently available across eligible compute nodes?
-
-### Storage and retention
-
-- What are the home, project-storage, and scratch quotas?
-- Which location should large temporary and intermediate files use?
-- What retention policy is approved for native and derived artifacts?
-
-### Reference provenance
-
-- What exact Novogene annotation release produced the delivered GTF?
-- Do FASTA, FAI, DICT, GTF, BED, and STAR index contigs reconcile?
-- Is the mitochondrial contig consistently named and included in the approved
-  primary correction universe?
-
-### Runtime promotion
-
-- Are Step `07` resources sufficient for pilot, chromosome, and full primary
-  partitions?
-- Does real bcftools reproduce the locally tested VCF and receipt contracts?
-- What evidence is required before downstream runtime promotion proceeds?
-
-### Scientific policy
-
-- What orthogonal orientation evidence is required?
-- What annotation, statistical, replicate, sensitivity, and candidate
-  adjudication exits are mandatory?
-- What separately approved policy, if any, may unlock
-  `biological_interpretation_ready`?
+| Domain | Unresolved evidence or decision |
+| --- | --- |
+| Production sample manifest | Location of the immutable six-row runtime manifest; tracked-safe versus cluster-local ownership; SHA-256 and retention; explicit replicate values before Steps `07`–`09` promotion. |
+| CSU batch runtime | Compute-visible R/Rscript and namespaces; hash utilities and exact tool paths; Java 17 availability across eligible nodes. |
+| Storage and retention | Home, project, and scratch quotas; large temporary/intermediate placement; approved native/derived retention policy. |
+| Reference provenance | Exact Novogene annotation release; FASTA/FAI/DICT/GTF/BED/STAR contig agreement; mitochondrial-contig naming and approved primary correction universe. |
+| Runtime promotion | Step `07` resources by partition scale; real-bcftools VCF/receipt parity; required evidence before downstream promotion. |
+| Scientific policy | Orthogonal orientation evidence; mandatory annotation/statistical/replicate/sensitivity/adjudication exits; any separately approved policy capable of unlocking `biological_interpretation_ready`. |
 
 ## Open choices
 
@@ -264,95 +232,24 @@ task's planning deadline rather than rediscovered by an implementation agent.
 
 ## Resolved index
 
-Durable decisions are recorded in [`DECISIONS.md`](DECISIONS.md), including:
+Durable rationale lives in [`DECISIONS.md`](DECISIONS.md). This table is only a
+discoverability index; exact contracts and implementation evidence stay with
+the linked owner.
 
-- `CHOICE-LIFECYCLE-01`: persist `INTEGRATION_REVIEW` only for asynchronous
-  candidate review that survives beyond the current unpublished integration
-  package; same-package frozen handoff and integration remain in the active
-  card lifecycle;
-- TSV manifests and explicit manifest-defined sample pairing;
-- local-first development with SLURM scaling;
-- descendant branches and separate docpatch gates;
-- dry-run-first scripts and wrappers;
-- Novogene reference use and STAR overhang;
-- canonical BAM/read-group and rollback-protected publication rules;
-- reverse-stranded/first-strand-style cohort evidence;
-- separation of mechanical orientation from biological interpretation;
-- Java/Picard, TMPDIR, and module-output handling;
-- Step `07` cohort/partition and receipt contracts;
-- Step `08` declared-input transaction and provisional orientation policy;
-- Step `09` paired CMH, global BH family, and six-output transaction;
-- guarded local R and explicit dependency restoration;
-- separation of computational proof, scientific review, and biological state;
-- structured artifact/reporting decoupling;
-- documentation ownership and task-bounded canonical reading;
-- `CHOICE-CONTEXT-01`: version-aware task-start routing, exact-revision context
-  reuse, selective phase-boundary inspection, explicit expansion triggers, and
-  impact-directed documentation review; see
-  [`TASK_START.md`](../operations/TASK_START.md) and the
-  [context-routing decision](DECISIONS.md#route-task-context-by-revision-and-impact);
-- one complete computational gate per executable state and failure-first local
-  validation output;
-- de-duplicated validation lanes with measured bounded parallel defaults,
-  exact serial parity, and explicit failure/interruption cleanup;
-- `CHOICE-LOG-01` and `CHOICE-LOG-02`: `normal|verbose|debug`, direct-command
-  flags plus Make/SLURM environment controls, machine stdout and human stderr,
-  one-writer operation-attempt JSONL, dry-run command visibility, receipt-safe
-  logging, bounded failure tails, protected operator-owned retention, distinct
-  scheduler capture, and explicit evidence-role authorization; see the
-  [logging decision](DECISIONS.md#separate-concise-console-output-from-durable-detailed-logs)
-  and [target contract](../architecture/FUTURE_ARCHITECTURE.md#logging-target);
-- behavior-contract sufficiency rather than 100% line coverage before
-  architectural mutation;
-- `CHOICE-STAGE-01`: exact display titles, public slugs, frozen machine keys,
-  historical aliases, typed external inputs, and direct DAG/barrier semantics;
-  see [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md);
-- `CHOICE-ARCH-01`: a vertical `src/norad` target with first-class stages,
-  analyses, and evidence owners; predictable versioned YAML descriptors;
-  owner-local or neutral JSON Schemas; mirrored tests; and explicit dependency
-  direction; see
-  [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md);
-- direct, reversible, contract-preserving migrations with bounded wrapper
-  criteria and parity/removal gates; see
-  [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md);
-- evidence-based shared-library promotion and risk-based source-size thresholds;
-- YAML run requests plus TSV sample manifests, atomic claim, immutable run/
-  attempt identity, success-only metadata promotion, and stationary raw data;
-- local FASTQ/reference priority before separate future reference and SRA
-  adapters;
-- future typed preprocessing profiles/analysis modules and thin installable
-  control plane, without implementing them in the current refactor;
-- future science-default/comprehensive report profiles and two-sink logging;
-- glossary, directory README, adjacent opaque-file documentation,
-  code-header/comment inventory, no-loss consolidation, and local context;
-- `CHOICE-DOC-01`: audience routes, exact owner boundaries, move-before-delete
-  ledger, action-point safety repetition, a planned architecture pipeline
-  overview, neutral engineering-conventions owner, and dated history index; see
-  the [documentation decision](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture)
-  and [ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md); this remains
-  resolved and is not reopened by the recovery source;
-- `CHOICE-PROGRAM-02`: two independently machine-readable future fields, one
-  for semantic planning category and one for validation impact; see the
-  [proportional-planning decision](DECISIONS.md#use-proportional-planning-categories-and-bounded-approval-envelopes)
-  and [`TASK_START.md`](../operations/TASK_START.md#proportional-planning-categories-and-validation-impact);
-- `CHOICE-TASK-IDENTITY-01`: permanent ID-only canonical card paths with
-  reviewed structured lifecycle metadata after an atomic parity-validated
-  migration; see the
-  [task-registry decision](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry);
-- `CHOICE-TASK-VIEW-01`: committed lifecycle, dependency, epic, and tranche
-  Markdown views that are byte-for-byte check-regenerated with deterministic
-  recovery and fail-closed stale-output detection; see the
-  [task-registry decision](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry);
-- `CHOICE-TRANCHE-VIEW-01`: durable
-  `docs/operations/tranches/<TRANCHE-ID>.md` artifacts plus one recoverable
-  current pointer; see the
-  [rolling-delivery decision](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery);
-- `CHOICE-DOC-GATE-01`: a stable, logic-free Make wrapper over the same
-  explicit-root validator engine, owned for implementation by
-  completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md);
-- a file-backed task registry with separate planning/approval for every card;
-- a future proper documentation-health skill and later separate skill review,
-  with no `docs/skills/` directory now.
+| Resolved ID or topic | Durable decision | Exact owner |
+| --- | --- | --- |
+| `CHOICE-LIFECYCLE-01`; `CHOICE-TASK-IDENTITY-01`; `CHOICE-TASK-VIEW-01` | [File-backed task registry](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry) | [`docs/tasks/README.md`](../tasks/README.md), `TASK-LIFECYCLE-01`, and `TASK-REG-01` |
+| `CHOICE-CONTEXT-01` | [Revision- and impact-routed context](DECISIONS.md#route-task-context-by-revision-and-impact) | [`TASK_START.md`](../operations/TASK_START.md) |
+| `CHOICE-PROGRAM-02` | [Independent planning and validation categories](DECISIONS.md#use-proportional-planning-categories-and-bounded-approval-envelopes) | `TASK_START.md` and `CONCURRENT_WORK.md` |
+| `CHOICE-TRANCHE-VIEW-01` | [Rolling vertical delivery](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery) | `PROGRAM-01` |
+| `CHOICE-STAGE-01` | [Semantic identities and DAG order](DECISIONS.md#identify-stages-semantically-and-order-them-with-a-dag) | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
+| `CHOICE-ARCH-01` | [Vertical ownership and direct migration](DECISIONS.md#target-a-vertical-package-with-direct-contract-preserving-migrations) | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |
+| `CHOICE-LOG-01`; `CHOICE-LOG-02` | [Concise console plus durable logs](DECISIONS.md#separate-concise-console-output-from-durable-detailed-logs) | [Logging target](../architecture/FUTURE_ARCHITECTURE.md#logging-target) |
+| `CHOICE-DOC-01`; `CHOICE-DOC-GATE-01` | [Documentation as architecture](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture) | [Ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md) and `DOC-GATE-01` |
+| Scientific workflow and evidence | [Reference/BAM](DECISIONS.md#reference-and-bam-pipeline), [orientation/analysis](DECISIONS.md#orientation-and-downstream-analysis), and [evidence state](DECISIONS.md#evidence-and-scientific-state) | `STAGE_MAP.md` and local contracts |
+| Structured artifacts and current reporting | [Artifact/reporting decisions](DECISIONS.md#structured-artifacts-and-reporting) | Neutral schemas and current reporting owner |
+| YAML+TSV intake direction | [Run request and manifest](DECISIONS.md#use-yaml-run-requests-with-tsv-sample-manifests) | `INTAKE-02E`; exact fields/paths remain open in `CHOICE-INTAKE-01` |
+| Future reporting, analysis extensions, control plane, and optional-analysis success | [Future reporting](DECISIONS.md#make-science-reporting-the-future-default-and-retain-comprehensive-reporting), [analysis extensions](DECISIONS.md#preserve-an-extension-path-for-preprocessing-profiles-and-analysis-modules), [control plane](DECISIONS.md#keep-an-installable-control-plane-as-a-later-capability), and [success boundary](DECISIONS.md#keep-optional-analysis-success-and-request-archival-future-only) | Exact report interfaces remain open in `CHOICE-REPORT-01`–`03`; analysis trust/registration in `CHOICE-ANALYSIS-01`; CLI/packaging in `CHOICE-CONTROL-01`; success/archive semantics in `CHOICE-SUCCESS-01` |
 
 Implementation status and remaining package order are intentionally not copied
 here; see [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).

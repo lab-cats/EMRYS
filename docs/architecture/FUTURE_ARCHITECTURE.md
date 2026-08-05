@@ -10,7 +10,6 @@ in the
 
 Canonical future diagrams:
 
-- [`diagrams/future_roadmap_sequence.mmd`](diagrams/future_roadmap_sequence.mmd)
 - [`diagrams/future_modular_pipeline.mmd`](diagrams/future_modular_pipeline.mmd)
 - [`diagrams/future_manifest_config_contracts.mmd`](diagrams/future_manifest_config_contracts.mmd)
 - [`diagrams/future_reporting_layer.mmd`](diagrams/future_reporting_layer.mmd)
@@ -41,18 +40,19 @@ packaging is a later concern.
 The exact target tree, every functional-owner home, descriptor serialization,
 schema-placement rule, non-Python asset owner, test mirror, and allowed
 dependency direction are owned by
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). Reporting
-now occupies its final source, asset, and mirrored-test owners; other approved
-flat assets remain current truth until their separately bounded migrations
-land.
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). Current
+placement and intentional repository-level/deferred boundaries remain in the
+[current architecture](ARCHITECTURE.md) and
+[functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md); target topology
+does not imply unfinished movement.
 
 ## Stage identity, DAG, and black-box boundary
 
-The exact display titles, public slugs, frozen machine keys, historical
-aliases, typed external inputs, direct artifact edges, evidence branches, and
-barriers are owned by
+Exact identities, typed external inputs, artifact edges, evidence branches,
+and barriers are owned by
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md). Numeric aliases remain
-provenance only; the DAG, not lexical or historical order, defines dependency.
+provenance only; declared DAG edges, not lexical or historical order, define
+dependency.
 
 A stage may depend on neutral contracts/libraries but never import another
 stage's implementation. Orchestration navigates only declared DAG edges and
@@ -62,14 +62,10 @@ contract, and next safe operator action without hiding filesystem state.
 
 ## Direct migration model
 
-The hybrid flat/target repository is temporary scaffolding, never an end
-state. Each bounded migration moves one owner directly to its final home,
-preserves its behavior and evidence contracts, and removes any strictly
-necessary legacy wrapper after named callers and parity obligations close.
-
-The exact wrapper criteria, caller order, language/asset parity matrix,
-rollback boundaries, removal criteria, and reusable card checklist are owned
-by
+One bounded migration moves one owner directly to its final home, preserves
+characterized behavior and evidence contracts, and leaves no permanent
+compatibility owner. Exact wrapper criteria, caller order, parity and rollback
+evidence, removal criteria, and the reusable card checklist are owned by
 [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
 
 ## Intake, identity, attempts, and promotion
@@ -104,10 +100,11 @@ from the V1 design.
 
 ## Orchestration and filesystem-inspectable state
 
-The orchestration layer owns DAG planning, declared contract resolution, run
-and attempt state, scheduler submission/materialization, resume decisions, and
-requested report coordination. It does not own scientific algorithms or install
-dependencies.
+The orchestration layer coordinates declared DAGs, contracts, run/attempt
+state, scheduler submission/materialization, resume, and requested reports.
+Its exact dependency and scheduler boundaries are owned by
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#orchestration-and-scheduler-boundary).
+It does not own scientific algorithms or install dependencies.
 
 Run state must remain inspectable from explicit files and directories even if a
 future CLI is unavailable. At minimum, a maintainer must be able to locate:
@@ -129,17 +126,7 @@ Code starts local and moves only after proven equivalent reuse justifies the
 narrowest neutral owner. Neutral libraries and contracts never depend on
 functional implementations; independent or meaningfully different cross-
 language behavior may remain duplicated. The exact dependency-direction rules
-and catch-all prohibitions are owned by
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#library-boundary).
-
-Completed `LIB-02F` approves two concrete narrow seams. Public Step `08`, Step
-`09`, and Step `09c` artifact/table contracts converge bottom-up under the
-neutral `scientific_evidence` contract owner, while review policy/publication
-and reporting projection remain owner-local. Exact FASTA/FAI/DICT contig
-parsing has converged under the neutral `reference_contigs` library through
-`LIB-02K`, while each consumer retains its own agreement, evidence, CLI, and
-publication behavior.
-The exact targets and prohibited scope are fixed in
+and approved shared surfaces are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
 
 ## Source-size and local-context constraints
@@ -483,6 +470,8 @@ multiple typed analysis modules. It does not assume every DNA/RNA assay shares
 one preprocessing trunk. A profile declares a DAG and produces typed artifacts;
 an analysis module declares accepted artifact types, configuration, runtime
 dependencies, outputs, validation, evidence limits, and report projections.
+The exact analysis-owner shape and dependency direction are owned by
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#analysis-module-contract).
 
 The current CMH analysis may become the first built-in module. A scientist-
 authored R module is feasible only with explicit inputs/outputs, controlled
@@ -516,9 +505,10 @@ a thin operational interface for validation, planning, run, status, resume,
 reporting, and stage description. Command names are illustrative until a
 separate public-interface design is approved.
 
-The control plane coordinates contracts, DAG, scheduler, filesystem state, and
-reports. It does not reimplement external compute tools or bootstrap R/system
-dependencies. Packaging must explicitly include required non-Python assets.
+The control plane follows the dependency boundaries in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#dependency-direction-summary),
+does not reimplement external compute tools or bootstrap dependencies, and
+must explicitly include required non-Python assets.
 Scheduler jobs are materialized as immutable, run-bound resolved copies before
 submission so an installed package update cannot mutate an active run's job.
 

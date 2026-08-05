@@ -94,8 +94,40 @@ diagram.
 
 Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
 `a772f791141aee9fdb3fcfbd932f2dd2c1e93521` on
-`codex/residual-source-topology-convergence`. This status-only selection does
-not compress a view, change an exact owner, select a successor, or promote
-evidence. The approved implementation is limited to the named conceptual
-architecture/design views and their directly affected navigation links; it
-stops on any current/target contradiction or unique unmapped meaning.
+`codex/residual-source-topology-convergence`; status-only selection checkpoint
+`1da90c561cf5abb93fa695157b64624ce2089bf0` was published and proved
+live-remote-equal before authoring.
+
+The completed documentation-only/non-consuming package:
+
+- reduces the five architecture/design views from 2,710 to 2,132 lines:
+  `ARCHITECTURE.md` 287 to 170, `FUTURE_ARCHITECTURE.md` 563 to 553,
+  `FUNCTIONAL_OWNER_INVENTORY.md` 188 to 154, `DECISIONS.md` 1,314 to
+  1,000, and `QUESTIONS.md` 358 to 255;
+- makes `ARCHITECTURE.md` a conceptual current-system view, retains the exact
+  executable/residual roster in the inventory, and routes identities, DAG,
+  interfaces, defects, target homes, and migration mechanics to their owners;
+- removes stale flat-layout, unfinished-migration, reverse-dependency, and
+  Step-00a shared-helper claims without changing a topology or contract;
+- preserves the unique intake, filesystem-state, logging, reporting,
+  extension, acquisition, documentation, deferral, scientific, and evidence
+  constraints while replacing mutable status/procedure and the duplicate task
+  crosswalk with canonical links;
+- retains all thirteen unresolved choice headings and their card backlinks,
+  gives every previously unique resolved `CHOICE-*` ID a durable decision
+  label, and replaces verbose resolved prose with a compact owner index;
+- retires `future_roadmap_sequence.mmd` after proving that its relationships
+  already live in the roadmap, future constraints, and task graph and that its
+  universal-waterfall implication conflicts with rolling JIT delivery; and
+- corrects the grouped current pipeline and reliability diagrams, the neutral-
+  seam implementation tense, and the ownership/no-loss ledger.
+
+Three independent semantic reviews found no remaining current/target
+contradiction, owner misrouting, unresolved-choice loss, diagram-semantic loss,
+or evidence overclaim after their findings were corrected. Final
+`git diff --check` and `make -s documentation-check` pass on the exact completed
+tree: 231 Markdown documents, 148 task cards, and 5 Mermaid sources.
+Computational, shell, R, report-runtime, dependency, full-suite, runtime,
+cluster, scientific-review, and biological validation are not applicable
+because the complete selection-to-close diff is non-consuming documentation
+only. No successor is selected by this close.

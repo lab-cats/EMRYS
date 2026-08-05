@@ -6,7 +6,7 @@ flowchart LR
         review_inputs["Review plan and declared scientific evidence"]
     end
 
-    subgraph workflow["Current flat executable workflow under scripts/ and jobs/"]
+    subgraph workflow["Current functional-owner workflow under src/norad/"]
         reference_owners["Reference-derived owners (00a/00b/00c)"]
         sample_owners["Per-sample alignment and BAM owners (01-06)"]
         evidence_branches["Non-gating QC/orientation evidence (02b/03)"]
@@ -33,7 +33,7 @@ flowchart LR
     manifests --> review
     review_inputs --> review
 
-    registered["Declared artifacts plus owner-local validation evidence"]
+    registered["Declared artifacts plus owner-local validation evidence<br/>(grouped projection; exact edges live in STAGE_MAP)"]
     adapters["Read-only artifact indexing"]
     summary["Canonical run summary"]
     report["Receipt-last HTML/PDF/TSV report bundle"]

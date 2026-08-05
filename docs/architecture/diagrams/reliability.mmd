@@ -6,6 +6,6 @@ flowchart LR
     lock --> stage["Run-token staging"]
     stage --> validate["Validate outputs and recheck inputs"]
     validate --> publish["Validated producer-specific publication"]
-    publish --> marker["Receipt or summary published last"]
+    publish --> marker["Receipt or summary published last<br/>(marker alone may not prove final producer success)"]
     validate --> rollback["Rollback on failure"]
     rollback --> recovery["Preserve recovery evidence when uncertain"]

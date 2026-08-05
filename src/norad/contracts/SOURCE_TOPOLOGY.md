@@ -183,8 +183,8 @@ mechanics without inventing a new top-level domain.
 ## Approved neutral shared seams
 
 `LIB-02F` compared the two implemented peer-dependency leaks by full behavior,
-not by name. The resulting targets are narrower than either current owner and
-must be implemented bottom-up through separate JIT cards:
+not by name. The resulting seams were implemented bottom-up through separate
+JIT cards and remain narrower than either original owner:
 
 | Neutral concern | Exact permanent owner | Allowed shared surface | Consumers and prohibited scope |
 | --- | --- | --- | --- |

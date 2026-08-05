@@ -1,287 +1,170 @@
 # Current architecture
 
-This document owns the current system topology, component boundaries,
-contracts, and data flow. Status and branch lineage belong in
-[`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); current evidence
-belongs in [`../operations/HANDOFF.md`](../operations/HANDOFF.md).
+This document is the conceptual view of the implemented current system. Exact
+semantic identities and DAG edges belong in
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); current public
+surfaces and direct protection belong in the
+[`functional-owner inventory`](FUNCTIONAL_OWNER_INVENTORY.md); each owner-local
+`CONTRACT.md` owns its interface, consumers, evidence, and characterized
+defects. Package status and current evidence remain in
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) and
+[`HANDOFF.md`](../operations/HANDOFF.md).
 
-Canonical diagrams:
+Canonical current diagrams:
 
-- [`diagrams/pipeline.mmd`](diagrams/pipeline.mmd)
-- [`diagrams/reliability.mmd`](diagrams/reliability.mmd)
+- [`diagrams/pipeline.mmd`](diagrams/pipeline.mmd) — grouped system projection;
+  it does not replace the exact DAG.
+- [`diagrams/reliability.mmd`](diagrams/reliability.mmd) — publication and
+  recovery principles; owner-local contracts remain exact.
 
-## Compute pipeline
+## Conceptual current system
 
-Current public workflow entry points use a mixed physical layout. The neutral
-validation-report and BAM-validation libraries, the `construct_STAR_index` job
-and validator, and the `convert_GTF_to_BED12`, `construct_FASTA_sidecars`,
-`align_RNA_reads_with_STAR`, `construct_canonical_BAM`,
-`mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`,
-`partition_BAM_by_mechanical_read_orientation`,
-`generate_partitioned_cohort_mpileup_VCFs`,
-`preprocess_and_annotate_cohort_candidates`,
-`rank_cohort_candidates_with_paired_CMH`,
-`assemble_scientific_review_evidence_package`,
-`collect_canonical_BAM_QC_evidence`, and
-`collect_RSeQC_paired_orientation_evidence` producers, validators, and jobs,
-plus artifact indexing, canonical run-summary assembly, and static reporting,
-now live under `src/norad/`; remaining cross-cutting entry points stay under
-`scripts/` and `jobs/`. Other colocated functional-owner documents under
-`src/norad/` remain contracts rather than claims that their implementations
-have migrated.
+All fourteen numbered workflow, analysis, and evidence owners occupy their
+final functional homes under `src/norad/`. Implemented artifact contracts,
+reporting, and reference/runtime/storage evidence also occupy their approved
+cross-cutting homes. Interfaces intentionally retained at repository level, or
+deferred scheduler, ingestion, orchestration, and profile work, remain
+classified in the inventory; their presence is not an unfinished flat-source
+migration or proof that every target domain exists.
 
-The supported workflow is a directed graph of shared reference inputs,
-per-sample alignment and BAM transformations, non-gating QC/orientation
-evidence branches, manifest-declared cohort processing, a first-class analysis,
-and explicit scientific-review packaging. The exact semantic identities,
-historical aliases, direct artifact edges, typed external inputs, and barrier
-semantics have one owner in
-[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md). The current executable
-diagram remains [`diagrams/pipeline.mmd`](diagrams/pipeline.mmd).
+The supported workflow is a directed graph of explicit reference and read
+inputs, per-sample alignment and BAM transformations, non-gating QC and
+orientation evidence, manifest-declared cohort processing, a first-class
+paired-CMH analysis, and explicit scientific-review packaging. Numeric step
+labels are historical aliases, not dependency order. The exact artifact edges,
+typed external inputs, fan-in, barriers, and review lineage live in the stage
+map.
 
-Most numbered SLURM entry points delegate functional work to parameterized
-scripts; the historical `00a` and `00b` embedded-compute exceptions remain
-recorded in their colocated contracts. The login node is not a compute engine.
+Functional owners remain accountable for their producers, validators,
+scheduler assets, mirrored tests, and local contracts. Most SLURM entry points
+delegate to parameterized implementations; the historical `00a` and `00b` embedded-
+compute exceptions remain explicit in their local contracts. The login node is
+not a compute engine.
 
-### Functional-owner contract index
+| Exact question | Canonical owner |
+| --- | --- |
+| What is each semantic owner and what directly depends on it? | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
+| Where are current public commands, jobs, validators, Make surfaces, and direct tests? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
+| What does one operation consume, publish, validate, or preserve on failure? | Its adjacent `CONTRACT.md` linked from the inventory |
+| What are the durable target homes and dependency directions? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
+| How does a future direct move preserve parity and rollback? | [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |
 
-The exact public-entrypoint and cross-cutting-domain coverage roster is
-[`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md).
-Target source/test ownership and future direct-migration mechanics live in
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and
-[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md),
-not in this implemented-current-topology document.
+## Ownership and dependency boundaries
 
-### Neutral validation-report library
+Cross-owner data flow uses declared artifacts and neutral contracts; a
+functional owner does not import another owner's private implementation.
+Current shared seams are deliberately narrow:
 
-[`validation_report.py`](../../src/norad/libraries/validation_report.py) owns
-the shared snapshot, seven-column rendering/validation, and transactional
-publication protocol used by all thirteen validator entry points. The final
-`construct_STAR_index`, `convert_GTF_to_BED12`,
-`construct_FASTA_sidecars`, `align_RNA_reads_with_STAR`,
-`construct_canonical_BAM`, `collect_canonical_BAM_QC_evidence`,
-`collect_RSeQC_paired_orientation_evidence`, and
-`mark_BAM_duplicates_with_Picard`, `split_N_cigar_reads_with_GATK`, and
-`partition_BAM_by_mechanical_read_orientation` and
-`generate_partitioned_cohort_mpileup_VCFs` and
-`preprocess_and_annotate_cohort_candidates` and
-`rank_cohort_candidates_with_paired_CMH` validators resolve that exact file
-through private caller-local
-loaders; no package marker, public Python import identity, install step,
-compatibility wrapper, or `sys.path` mutation is part of the current
-interface. Reference provenance and the FASTA-sidecar and split-N-cigar
-validators exact-load the final neutral `reference_contigs` parser owner under
-one ready module identity. Consumer-specific aggregation, agreement, evidence,
-CLI behavior, and stage check rosters remain with their functional owners.
+- `validation_report.py` owns the common validator snapshot/report/publication
+  implementation, while each of the thirteen validators owns its checks and
+  CLI behavior;
+- `bam_validation.py` and `reference_contigs.py` own only the reviewed BAM and
+  reference-parsing primitives shared by their named consumers;
+- the neutral artifact schemas and validator own public structured-artifact
+  contracts; and
+- neutral Step `08`, Step `09`, and public review-package contracts own shared
+  scientific-evidence vocabularies and validation, while algorithms, review
+  policy, publication, recovery, and reporting projection remain owner-local.
 
-### Neutral Step 08 scientific-evidence contract
+These files are exact-loaded through private bridges; current placement does
+not establish a package import identity, installable distribution, generic
+utility layer, or permission to share a larger implementation. Reporting
+reads the committed public review package through a reporting-local
+projection, not the private Step `09c` implementation.
 
-[`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py) owns the
-public Step `08` manifest/table headers, closed vocabularies, validation
-exception and table identity, and manifest/inputs/sites/summary validation.
-The Step `08` validator, neutral Step `09` contract, Step `09` validator, final
-Step `09c` evidence implementation, and artifact index exact-load that exact
-file under the shared private identity
-`_norad_step08_scientific_evidence_contract`; they reject a foreign-path or
-partially initialized cached module and do not mutate `sys.path`. The higher-
-level consumers additionally reject a split Step `08` object identity. Mirrored
-direct protection lives in
-[`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py).
-
-### Neutral Step 09 scientific-evidence contract
-
-[`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py) owns the
-public Step `09` result, summary, and mutation-spectrum headers; canonical
-mutation order; status vocabularies and count bindings; and reusable result,
-summary, statistical-state, significant-subset, mutation-spectrum, and PDF
-validation. It exact-loads the neutral Step `08` contract and reuses its
-`ContractError` and `Table` identities. The Step `09` validator, final Step
-`09c` evidence implementation, and artifact index exact-load the Step `09`
-owner under `_norad_step09_scientific_evidence_contract` and reject a foreign,
-partial, or split neutral identity without package discovery or `sys.path`
-mutation. Mirrored direct protection lives in
-[`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py).
-
-The Step `09` validator no longer loads Step `09c`.
-
-### Neutral Step 09c review-package contract
-
-[`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py)
-owns the public thirteen-file review-package roster, headers, closed
-vocabularies, category and input-artifact bindings, and evidence-status
-reducer. Step `09c`, artifact indexing, and the public portion of run-summary
-science exact-load that standard-library-only owner under
-`_norad_review_package_scientific_evidence_contract`; they reject a foreign,
-partial, or split neutral identity without package discovery or `sys.path`
-mutation. Mirrored direct protection lives in
-[`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py).
-
-Artifact indexing and run-summary science no longer load Step `09c`. Run-
-summary science exact-loads the neutral review-package owner and uses a
-reporting-local reader/projection over the committed thirteen-file package,
-explicitly referenced evidence, and validated artifact-index records. Step
-`09c` retains review/input policy, source reconstruction, publication, locking,
-rollback, and recovery; the reporting reader is not a package API.
-
-[`bam_validation.py`](../../src/norad/libraries/bam_validation.py) owns only the
-shared `run_tool` and `parse_header` behavior used by the final Step `02`, Step
-`04`, and Step `05` validators. Those three
-callers exact-load the private neutral file and validate its path,
-readiness, and callable API without package identity or `sys.path` mutation.
-Stage-specific checks and CLI behavior remain in each functional owner.
-
-This relocation preserved the characterized snapshot, ordering, collision,
-rollback, cleanup, descriptor, and lock defects. It did not correct them or
-promote runtime, cluster, scientific-review, or biological evidence.
+Physical placement and shared identity did not repair characterized owner-
+local defects or create runtime, cluster, scientific-review, or biological-
+readiness evidence.
 
 ## Identity and explicit-input boundaries
 
-The sample manifest is the source of sample identity, order, condition, and
-replicate pairing. The partition manifest defines Step `07` selection.
-Reference and analysis policy identities are explicit contracts.
+Sample, condition, order, and replicate pairing come from the declared sample
+manifest. The partition manifest defines Step `07` selection. Reference,
+analysis, review-plan, and evidence identities are explicit inputs.
 
-Downstream stages consume declared paths and receipts. They do not infer
-samples, partitions, report tables, or scientific evidence from filenames or
-globs.
+Owners consume declared paths, artifacts, and receipts. They do not infer
+samples, partitions, report tables, or scientific evidence from filenames,
+globs, neighboring source directories, or numeric step order.
 
-## Native artifact transactions
+## Native publication and evidence flow
 
-Current multi-file owners use several publication patterns. Many attempt
-validation before publication, marker-last completion, owned locks or staging,
-no-clobber checks, rollback, and retained recovery evidence, but those
-properties are not uniform. Some markers become visible before final
-post-publication checks, so marker presence alone does not always prove that
-the producer returned success. Each functional-owner contract records its
-exact guarantees and characterized defects.
+Current multi-file owners have heterogeneous transaction guarantees. Many use
+validation before publication, owned locks or staging, no-clobber checks,
+rollback, recovery preservation, and a receipt or summary last, but no generic
+transaction contract may be inferred. Some owner-specific paths can expose a
+marker before final post-publication checks return; marker presence alone does
+not always prove producer success. Each local contract owns the exact behavior
+and known gaps.
 
-A transaction may be structurally complete while its evidence records still
-say missing, failed, incomplete, unavailable, blocked, or not run.
+A transaction can be structurally complete while its evidence remains
+`missing`, `failed`, `incomplete`, `unavailable`, `blocked`, or `not_run`.
+Publication never promotes evidence merely because files exist.
 
-## Artifact contracts and indexing
+The downstream product flow is deliberately one-way:
 
-The neutral
-[`artifact-contract validator`](../../src/norad/contracts/artifacts/validate_artifact_contracts.py)
-enforces versioned schemas under
-[`src/norad/contracts/schemas/artifacts/v1/`](../../src/norad/contracts/schemas/artifacts/v1/).
-They define:
+1. Native owners publish their declared artifacts and owner-local validation
+   evidence.
+2. Read-only adapters inspect an explicit inventory and publish versioned
+   artifact records, an ordered index, and a receipt without altering native
+   outputs or executing analysis.
+3. The run-summary owner consumes one exact committed adapter receipt plus
+   explicitly authorized scientific-review/report-table inputs and publishes
+   canonical JSON with deterministic TSV projections.
+4. Static renderers consume that canonical summary and only exact, hash- and
+   policy-authorized supplemental tables.
 
-- artifact records;
-- scientific-review records;
-- canonical run summaries;
-- report receipts;
-- shared identifiers and evidence fields.
+The neutral artifact schemas and validator live under
+[`src/norad/contracts/`](../../src/norad/contracts/), while the indexing,
+summary, templates, styles, and renderers live under
+[`src/norad/reporting/`](../../src/norad/reporting/). Exact files and direct
+tests are listed in the inventory.
 
-An explicit artifact inventory drives read-only adapters. Adapters inspect
-declared native outputs and publish records, an ordered index, and a receipt
-last. They do not alter native outputs or execute analysis.
+## Reporting and scientific boundaries
 
-## Canonical run-summary assembly
+Reporting is a read-only projection. It never discovers inputs, runs analysis,
+installs dependencies, changes native artifacts, or promotes computational or
+scientific state. The public renderer validates explicit inputs and output
+identity. The report-bundle interface attempts an atomic receipt-last selected-
+format/summary-TSV publication and preserves recovery evidence when rollback
+or cleanup cannot be proved complete. Format-specific layout may differ, but
+state banners, authorized content, and neutral terminology remain aligned.
 
-The run-summary builder consumes one exact committed adapter receipt and
-optional exact scientific-review and report-table approval inputs. It
-publishes canonical JSON plus deterministic artifact and QC TSV views, with
-its receipt last.
+Reports say “CMH-ranked candidates,” not validated editing sites. Mechanical
+`FWD_like` and `REV_like` labels do not assert biological strand, and
+`legacy_provisional_v1` preserves a compatibility mapping rather than proving
+one. `science_review_complete_exploratory` is provisional;
+`biological_interpretation_ready` remains locked until a separate policy
+defines and authorizes its exits.
 
-The canonical JSON is the sole structured report input. Missing and failed
-expected scopes remain visible.
+## Operational evidence boundaries
 
-## Reporting boundary
+### Runtime availability
 
-Report renderers:
+Local restoration is explicit and opt-in; compute and validation never install
+software. Runtime preflight evaluates one declared profile in an explicit
+context and records availability observations. Even an all-pass batch profile
+is not workflow runtime validation or cluster proof.
 
-- validate one explicit canonical run summary;
-- read only supplemental tables authorized by exact path, hash, row count,
-  role, policy, and approval provenance;
-- never discover report inputs;
-- never execute analysis code;
-- never install dependencies;
-- never promote computational or scientific state;
-- validate accessibility, self-containment, banners, and output identity
-  before publication.
+### Reference provenance
 
-Reports use “CMH-ranked candidates.” Scientific-state banners remain visible.
-The public renderer accepts explicit `html`, `pdf`, or `all` formats and
-defaults to `all`. It publishes the selected static report formats, one
-deterministic per-scope summary TSV, and a deterministic report-output receipt
-last as a single recoverable transaction. PDF rendering uses pinned Quarto
-with bundled Typst; a pinned pure-Python reader validates the PDF signature,
-EOF, extractable section order, page count, and exact banner on every page.
-A valid predecessor containing only the former HTML output may be upgraded
-without weakening identity or no-clobber checks.
+Reference provenance hashes and reconciles one explicit declared reference
+inventory. It reports missing, malformed, or inconsistent material and never
+repairs or regenerates shared references.
 
-The HTML view uses a bounded reading column and broad native disclosure
-categories. Overview is initially open and places computational/scientific
-status, CMH-ranked candidates, adjudication, and limitations before detailed
-QC, sensitivity, review, and provenance material. Wide tables scroll inside
-their category rather than expanding the page. The PDF remains a linear
-projection and uses compact candidate records where a full-width table would
-be unreadable.
+### Storage and retention
 
-## Scientific boundary
+Storage inventory measures only declared roots and records the separate
+retention-policy approval state. Approval is evidence, not an executable
+instruction: the boundary never deletes, moves, archives, compresses, or
+cleans data.
 
-Mechanical `FWD_like` and `REV_like` labels are intentionally neutral.
-`legacy_provisional_v1` preserves legacy-compatible behavior without asserting
-biological strand validity.
+### Validation evidence
 
-Scientific review consumes explicit evidence for orientation, annotation,
-quality funnels, replicate effects, sensitivity analyses, candidate selection
-and adjudication, decisions, and limitations.
+Owner-local validators observe explicitly declared native artifacts; they do
+not repair them or rerun producers. Their exact checks, evidence strengths,
+consumers, and known gaps live in the local contracts. The shared publication
+implementation still does not enforce report-row order.
 
-`science_review_complete_exploratory` is provisional.
-`biological_interpretation_ready` is reserved until a separate policy defines
-and unlocks its exits.
-
-## Runtime and dependency boundaries
-
-Local runtime restoration is explicit and opt-in. R activation is guarded;
-Quarto restoration is separate from rendering. Compute and validation entry
-points never install software.
-
-Cluster tool modules and paths are operational profiles, not hardcoded
-scientific identity. Effective executable versions must be observed in the
-runtime where work occurs.
-
-The runtime preflight consumes one exact TSV profile and records tool-version,
-R-namespace, functional SHA-256, and absolute-path visibility probes in one
-deterministic TSV. Each row declares its required execution context. A check
-declared for `cluster_batch` is `blocked` or `not_checked` when the tool
-actually runs in `local` context; the program never infers scheduler context.
-It installs and repairs nothing, and its report is not connected to the
-artifact/run-summary evidence graph. Availability evidence remains distinct
-from workflow runtime validation and cluster proof.
-
-## Reference provenance evidence
-
-Reference provenance similarly consumes one explicit inventory and base
-directory. It hashes regular FASTA, FAI, DICT, GTF, BED12, and named STAR index
-members; records annotation source/release declarations; compares
-FASTA/FAI/DICT/STAR ordered names and lengths; and verifies that GTF/BED12
-contigs belong to the FASTA universe. It publishes artifact and contig TSVs
-with a summary last, reports inconsistencies, and never repairs references.
-
-## Storage evidence
-
-Storage inventory consumes one exact root contract and one exact retention
-policy. It measures only the named absolute directory trees without following
-symlinks, records filesystem capacity and declared quota, and publishes the
-inventory and normalized policy with a summary last. Approval state is
-evidence, not an executable instruction: this boundary never deletes, moves,
-archives, compresses, or cleans data.
-
-## Validation evidence protocol
-
-Numbered validators observe explicitly declared native artifacts and never
-repair them or rerun their producers. The functional-owner
-[`CONTRACT.md`](#functional-owner-contract-index) files own each
-operation's exact check roster, evidence strength, consumers, and known gaps;
-the [ownership inventory](FUNCTIONAL_OWNER_INVENTORY.md) maps every public
-validator to one owner.
-
-The common snapshot, seven-column report, lock, rollback, and publication
-implementation lives in the neutral validation-report library and is loaded by
-all thirteen validators through exact-file private bridges. Current shared
-publication still does not enforce report-row order.
-
-Typed adapters, artifact indexing, canonical-summary assembly, and reporting
-project both passing and failing validation evidence without promoting
-runtime, cluster, scientific-review, or biological-readiness state.
+Artifact adapters, summaries, and reports project passing and failing evidence
+without raising the runtime, cluster, scientific-review, or biological-
+readiness ceiling.

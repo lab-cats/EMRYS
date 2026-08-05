@@ -46,7 +46,7 @@ or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
 | Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
 | Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
 | Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; fixed residual source-topology convergence complete through `AUDIT-RESIDUAL-04A` |
-| Documentation ownership and compression | Canonical owner map, concise root/operations/history views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08E` complete; `DOC-CONS-08F` selected; `DOC-CONS-08G` and `DOC-CONS-08H` unselected |
+| Documentation ownership and compression | Canonical owner map, concise root/operations/history/design views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08F` complete; `DOC-CONS-08G` and `DOC-CONS-08H` unselected |
 
 Exact historical package totals, timings, branch names, checkpoints, failures,
 and close evidence remain in the dated audit/testing/operations history and
@@ -86,15 +86,16 @@ changing a roadmap decision, executable behavior, evidence state, or another
 card's lifecycle.
 
 Documentation-only/non-consuming
-[`DOC-CONS-08F`](../tasks/IN_PROGRESS/DOC-CONS-08F-compress-design-and-architecture-views.md)
-is the sole selected package. It may compress only its named conceptual
-architecture/design views after no-loss comparison with the exact current and
-target owners. `DOC-CONS-08G` and `DOC-CONS-08H` remain separate eligible,
-unselected candidates; neither is preloaded. `PROGRAM-01` remains in progress
-and frozen outside its completed slices. `CONCURRENCY-03`, `TASK-EPIC-01`,
-`AUDIT-99`, recovered TODO work, UNREFINED proposals, default-branch
-integration, and remote runtime or cluster work remain unselected and outside
-this package.
+[`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
+is complete. It reduced the five conceptual architecture/design views from
+2,710 to 2,132 lines, preserved exact rosters/contracts with their dedicated
+owners, and retired the redundant universal-waterfall diagram. No follow-on
+package is selected automatically. `DOC-CONS-08G` and `DOC-CONS-08H` remain
+separate eligible, unselected candidates; neither is preloaded. `PROGRAM-01`
+remains in progress and frozen outside its completed slices.
+`CONCURRENCY-03`, `TASK-EPIC-01`, `AUDIT-99`, recovered TODO work, UNREFINED
+proposals, default-branch integration, and remote runtime or cluster work
+remain unselected.
 
 Documentation-only
 [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)

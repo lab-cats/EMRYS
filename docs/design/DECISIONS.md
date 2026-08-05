@@ -29,12 +29,18 @@ Alternative rejected: executing heavy work on the login node.
 
 ### Use descendant branches and separate docpatch gates
 
-Decision: each package descends linearly from the latest clean, docpatched
-predecessor. Implementation and documentation are separate commits; a
-documentation-only package uses one documentation commit.
+Decision: delivery remains linear and every package descends from the latest
+clean, published, documentation-patched predecessor. An executable state and
+its documentation close remain separate reviewable commits; a documentation-
+only package needs no artificial executable checkpoint. One approved campaign
+may execute sequential cards on one branch rather than creating a branch per
+card.
 
 Reason: evidence, interfaces, and current state remain reviewable at every
-stage. The authoritative current lineage belongs in `PIPELINE_PLAN.md`.
+boundary without turning a historical branch shape into architecture. Exact
+delivery procedure belongs in
+[`TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md), and current lineage in
+`PIPELINE_PLAN.md`.
 
 ### Keep executable programs out of Markdown
 
@@ -56,111 +62,56 @@ or publication behavior.
 
 ### Permit isolated concurrent authoring with serialized integration
 
-Context: the linear package gate protects evidence but currently serializes
-unrelated card creation and documentation work behind long implementation or
-execution. Multiple mutating agents in one worktree would contaminate status,
-staging, validation, and completion claims.
+Context: parallel mutation in one worktree contaminates status, staging,
+validation, and evidence, while fully serial authoring wastes independent
+capacity.
 
-Decision: preserve one authoritative linear lineage while permitting multiple
-simultaneous documentation/card sidecars beside at most one active
-implementation-candidate or immutable-execution lane. Every authoring candidate
-uses a separate branch and sibling worktree; immutable execution uses a locked
-detached worktree at its exact pushed commit. The primary worktree is the
-single-writer integration/control lane. Every lane receives an exact base,
-absolute path, branch-or-detached identity, integration target, reserved
-IDs/paths, declared write set, prohibited overlaps, and coupling classification.
+Decision: preserve one authoritative linear lineage and one single-writer
+integration/control worktree. Concurrent candidates use isolated branches and
+worktrees with exact identities, bounded write sets, and explicit coupling;
+long execution uses an immutable exact commit. Coupled work cannot silently
+land across an unsettled contract or evidence boundary, and only combined
+canonical validation can close the package.
 
-Independent documentation may land while implementation continues. A document
-that changes or depends on an unsettled active contract, acceptance criterion,
-architecture decision, test behavior, or evidence claim is coupled and cannot
-silently land: preserve it as a draft or checkpoint and re-plan the active
-task. Long execution remains attributed to its immutable commit. Only combined
-canonical validation may close a package.
+Rationale: isolation permits useful parallel authoring without creating a
+second source of truth or weakening rollback and evidence attribution.
 
-Rationale: parallel authoring reduces idle time and allows maintainers to keep
-the task registry and unrelated documentation healthy without creating two
-sources of truth. Worktree isolation plus one integrator retains the evidence
-and recovery properties of the linear model.
-
-Consequences: [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) owns the
-operational roles, lane packet, write authority, coupling rules, handoff,
-integration, evidence reuse, and recovery policy. A candidate branch or packet
-is a proposal, not authorization or approved lineage. Every lane and landing
-still requires approved task scope; only combined canonical validation can
-publish status, completion, or evidence.
-
-[`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md)
-operationalized lane roles, multi-sidecar coordination, exact commands, status
-ownership, integration, and validation. The required first-use strategy
-discussion was completed on 2026-07-31. Before a fragment protocol existed,
-the user explicitly authorized one researcher-path card sidecar as a pilot;
-that exception does not make its content canonical, reviewed, accepted, or
-retroactively compliant with a protocol that had not yet been defined. Live
-lane identity and disposition remain owned by `HANDOFF.md`.
-
-The manual, reviewable integration-fragment protocol is owned by
-[`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md).
-Its synthetic exchange establishes the inspected manual contract without
-reviewing or integrating the preserved pilot. Its operator-invoked Git helpers
-mechanize only supplied identities, paths, and terminal records. Completed
-[`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-now provides the tested validator owner required before
-[`CONCURRENCY-03`](../tasks/TODO/CONCURRENCY-03-enforce-integration-fragment-lifecycle.md)
-may add automatic repository-wide structural enforcement. Fragments remain
-transient proposals; they never become a second canonical documentation system
-or acquire authority to publish status, evidence, decisions, or card
-transitions.
+Consequences: exact roles, lane packets, authority, integration, and recovery
+belong in [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md); current
+lanes belong in `HANDOFF.md`. A candidate or lane packet remains a proposal,
+not authorization, lineage, status, or evidence.
 
 ### Use transient integration fragments for cross-owner proposals
 
-Context: a sidecar may produce valid deliverables while also discovering facts
-that belong in canonical owners it cannot edit. Direct sidecar edits would
-violate single-writer authority; ad hoc notes can be lost; retaining every note
-canonically would create a shadow documentation system.
+Context: an isolated candidate can discover facts owned elsewhere. Direct
+edits would violate authority; ad hoc notes can be lost; permanent proposal
+notes would create a shadow documentation system.
 
-Decision: a lane may reserve exact candidate deliverables plus at most one
-`docs/fragments/<fragment-id>.md`. Candidate write reservations are exclusive.
-Canonical target declarations are nonexclusive requests and grant no target-
-owner authority. The candidate publishes and freezes its exact source ref;
-the integration owner independently validates the handoff and current targets,
-assigns every request and partial residual a terminal disposition, routes
-accepted or authorized deferred material, and removes the fragment before
-canonical publication.
+Decision: a candidate may publish at most one structured transient fragment
+alongside its reserved deliverables. The fragment requests canonical-owner
+changes but grants no authority. The integration owner verifies the frozen
+source, gives every request and residual a terminal disposition, routes
+accepted material, and removes the fragment before canonical publication.
 
-Rationale: this preserves cross-owner proposals and raw provenance without
-transferring canonical authority. Structured terminal records prevent silent
-loss, while removal from the final tree prevents proposal state from becoming
-durable truth. Ordinary descendant advancement remains compatible; only an
-invalid handoff or material request-local drift stops the applicable work.
+Rationale: this preserves provenance and prevents silent loss without making
+proposal state durable truth. A permanent preservation-ref namespace was
+rejected because it would add an archive and lifecycle the protocol does not
+need.
 
-Consequences: [`docs/fragments/README.md`](../fragments/README.md) owns only
-filename and candidate-field syntax,
-[`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md#integration-fragment-authority-and-lifecycle)
-owns authority and lifecycle, and
-[`RUNBOOK.md`](../operations/RUNBOOK.md#manual-integration-fragment-exchange)
-owns commands. Raw source remains reachable from its recorded remote ref by
-default. Canonical publication uses an exact reviewed SHA plus an expected-
-remote compare-and-swap lease. Git omits an already-equal source ref from that
-push transaction, so source immutability is checked immediately before and
-after publication rather than falsely described as atomic. A concurrent
-source-ref violation is a publication-recovery incident even when the
-canonical ref has already advanced; it cannot close the lane. A separate per-
-integration preservation-ref namespace was rejected for this package because
-it would add an archive and lifecycle that the protocol deliberately avoids.
-Automation, queues, archives, new task statuses, and substantive pilot
-integration remain separate work.
+Consequences: field syntax belongs in
+[`docs/fragments/README.md`](../fragments/README.md), authority and lifecycle
+in [`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md#integration-fragment-authority-and-lifecycle),
+and exact commands and publication checks in
+[`RUNBOOK.md`](../operations/RUNBOOK.md#manual-integration-fragment-exchange).
 
 ### Run one complete computational gate per executable state
 
 Decision: use focused tests during implementation, then run one de-duplicated
 complete computational gate against the final executable state before its
-implementation commit. A subsequent documentation-only patch runs the
-documentation gate and reuses that recorded computational evidence when Git
-inspection proves that executable configuration, dependencies, Make targets,
-schemas, fixtures, report templates, and test-harness selection and execution
-semantics are unchanged. For a standalone documentation-only package with no
-executable or test-affecting consumer, computational validation is not
-applicable; run only Git and documentation validation.
+implementation commit. A documentation-only close may reuse that evidence only
+when Git proves no executable, dependency, test, schema, fixture, template, or
+gate semantics changed. A wholly non-consuming documentation package runs Git
+and documentation validation only.
 
 Reason: rerunning identical multi-runtime suites before both the implementation
 and documentation commits adds substantial latency without testing a new
@@ -169,44 +120,28 @@ reuse and reopens the full implementation/docpatch sequence.
 
 ### Prefer failure-first validation output
 
-Decision: local pytest uses quiet progress, short tracebacks, and its default
-captured-output behavior. Make command echo and routine successful shell, R,
-and report output are suppressed or captured; complete output is shown for a
-failure or an explicit verbose run.
+Decision: routine successful validation is quiet; complete diagnostics appear
+for failure or an explicit verbose run. The complete developer gate uses a
+bounded orchestrator, not unconstrained `make -j`. Parallel defaults require
+repeated exact serial parity, measured benefit, controlled failure/interruption
+cleanup, pinned developer dependencies, and a deterministic serial fallback.
 
-Reason: successful progress narration consumes operator attention and agent
-context without changing evidence. Failure logs must remain complete and
-diagnosable.
-
-Decision: the complete developer gate uses a bounded orchestrator rather than
-unconstrained `make -j`. Python coverage, shell contracts, sequential guarded
-R, and pinned report-runtime checks are independent lanes. A parallel default
-is allowed only after exact repeated serial/parallel result, file, line,
-branch, and coverage equality; the measured improvement thresholds and
-smallest-stable-concurrency rule in `PIPELINE_PLAN.md`; controlled failure and
-interruption cleanup; and a working serial fallback. Developer-only parallel
-dependencies are pinned and synchronized explicitly, never installed by tests
-or workflow entry points.
-
-Reason: this removes duplicate work and reduces feedback latency while keeping
-coverage, evidence boundaries, failure provenance, process cleanup, and a
-deterministic low-concurrency fallback reviewable.
+Reason: success narration consumes attention without changing evidence, while
+failures must remain complete and attributable. Exact lane and threshold
+policy belongs in `PIPELINE_PLAN.md` and the gate implementation.
 
 ### Route task context by revision and impact
 
+Resolved ID: `CHOICE-CONTEXT-01`.
+
 Decision: [`TASK_START.md`](../operations/TASK_START.md) is the concise routing
 owner. A task begins with live Git state, the selected card, its bounded local
-surfaces, and applicable canonical sections. Exact content already present in
-active context may be reused only when its revision is identifiable, Git proves
-it unchanged, and the retained detail is sufficient. Changed content requires
-the diff and affected sections; full-file or corpus reading is reserved for
-unknown revisions, contradictions, ownership or structural changes, dispersed
-impact, and scientific, evidence, safety, recovery, publication, public-
-contract, or other risk that cannot be bounded safely.
-
-A phase boundary requires reassessing closing evidence, new acceptance and
-lineage, changed canonical owners, and the diff since the prior boundary. It
-does not by itself require a complete canonical-corpus read.
+surfaces, and applicable canonical sections. Context is reusable only when its
+revision is identifiable, Git proves it unchanged, and its detail is sufficient.
+Unknown revisions, contradictions, ownership/structural changes, or unbounded
+scientific, evidence, safety, recovery, publication, or public-contract impact
+expand inspection. A phase boundary triggers reassessment, not an automatic
+full-corpus read.
 
 Reason: the former phase-boundary corpus exceeded 9,000 lines, much of it
 unrelated and unchanged. Version-aware reuse plus explicit expansion triggers
@@ -216,31 +151,20 @@ than live proof.
 
 ### Use proportional planning categories and bounded approval envelopes
 
-Decision: semantic planning category and validation impact are independent.
-The future machine-readable target uses two fields: one distinguishes read-only
-review, bounded documentation or low-risk maintenance, and behavior or
-architecture planning; the other distinguishes no mutation, documentation-
-only/non-consuming change, and executable/test-affecting change. Tests are
-selected evidence based on affected contracts, risk, and acceptance—not a
-ritual implied by the topic label.
+Resolved ID: `CHOICE-PROGRAM-02`.
 
-One explicit bounded approval envelope may authorize routine in-scope work. It
-preserves its objective, included cards, both classifications, exact Git and
-lane identities, write sets, allowed mutations and commits, validation and
-evidence boundary, expressly authorized external or high-impact actions,
-exclusions, unresolved choices, and stop conditions. Scope expansion or
-authority expansion requires revised approval. A lane packet projects an
-approved envelope and never creates authority. Preferred sequence remains
-distinct from an execution blocker and from the task registry's narrower
-genuine technological blocker.
+Decision: semantic planning category and validation impact are independent;
+tests follow affected contracts, risk, and acceptance rather than topic labels.
+One explicit bounded approval envelope may authorize routine in-scope work,
+but preserves objective, included cards, classifications, Git/lane identity,
+write set, mutations, evidence boundary, exclusions, unresolved choices, and
+stop conditions. Expansion requires revised approval. A lane packet projects
+authority and never creates it; preferred order is not a technological blocker.
 
-Rationale: semantic review can be broad while executable impact is absent, and
-a small consumed file can demand tests without broad architecture planning.
-The rejected alternatives are one formal planning field with validation impact
-left only in prose; a one-dimensional lettered risk/gate class; uniform maximum
-ceremony; computational testing triggered solely by an architectural topic;
-repeated approval for already-authorized routine work; packet-as-authorization;
-and preferred sequence encoded as a blocker.
+Rationale: semantic review can be broad without executable impact, and a small
+consumed file can demand tests. Rejected alternatives include one-dimensional
+risk classes, uniform maximum ceremony, topic-triggered computational testing,
+repeated in-envelope approval, packet-as-authorization, and order-as-blocker.
 
 Consequences: operational classification and envelope fields belong in
 [`TASK_START.md`](../operations/TASK_START.md); projected lane fields belong in
@@ -252,10 +176,8 @@ no metadata schema, gate, receipt, task authority, or current evidence.
 Decision: use the final package diff, canonical ownership, inbound references,
 and repository-wide targeted searches to discover documentation and diagram
 impact. Inspect affected sections, owners, consumers, and changed diagrams;
-broaden semantic reading only when the impact is cross-cutting, contradictory,
-ownership-changing, or not safely bounded. Keep the automated repository-wide
-documentation gate because its global structural checks emit compact evidence
-without loading the corpus into agent context.
+broaden only for cross-cutting, contradictory, ownership-changing, or unbounded
+impact. The repository-wide structural gate remains compact global evidence.
 
 Reason: repository-wide search and validation coverage protects consistency;
 repository-wide manual line-by-line reading is not a necessary proxy for that
@@ -432,45 +354,25 @@ never installs or repairs software.
 
 ### Probe runtime availability from explicit profiles
 
-Decision: runtime preflight consumes one exact TSV profile with closed
-tool-version, R-namespace, SHA-256, and absolute-path visibility check types.
-Each row declares `local`, `cluster_batch`, or `any`; the operator explicitly
-declares the context in which the probes run.
-
-Reason: login-shell availability, local development state, module names, and
-path assumptions do not prove batch visibility. Context mismatches remain
-`blocked` or `not_checked` rather than being silently promoted.
-
-Consequence: preflight installs and repairs nothing. Command success means the
-checks were evaluated and, in execute mode, the report was published; every
-required row still must be inspected. Even an all-pass batch report is
-availability evidence, not workflow runtime validation or cluster proof.
+Decision: runtime preflight evaluates one exact declared profile in an
+explicit execution context and installs or repairs nothing. Login-shell or
+local availability does not prove batch visibility; context mismatches remain
+blocked/not checked. Even an all-pass batch report is availability evidence,
+not workflow runtime validation or cluster proof.
 
 ### Reconcile references without repair
 
-Decision: reference provenance uses an explicit TSV inventory and base
-directory, hashes every named physical member, retains declared annotation
-source/release, and compares contig identities across FASTA, FAI, DICT, GTF,
-BED12, and STAR metadata.
-
-Reason: filenames and colocated directories are not provenance, while an
-inspection tool must not silently regenerate or normalize shared references.
-Consequently, missing files, hash differences, malformed metadata, and contig
-disagreement are reported in a summary-last transaction and require separate
-operator resolution.
+Decision: reference provenance hashes and reconciles one explicit inventory,
+including declared annotation identity and contig agreement, without repairing
+or regenerating shared artifacts. Filenames and colocation are not provenance;
+reported inconsistencies require separate operator resolution.
 
 ### Measure storage without acting on retention policy
 
-Decision: storage evidence comes from an exact TSV inventory of absolute roots
-and a separate exact retention-policy TSV. The inventory records declared and
-resolved paths, tree size, entry counts, filesystem capacity, expected quota,
-and policy approval state in a three-file summary-last transaction.
-
-Reason: capacity evidence and retention authorization must be inspectable
-before large runs, but an observational foundation tool must not become an
-implicit cleanup engine. Consequently, pending or rejected approvals and
-missing required storage are reported without deleting, moving, archiving,
-compressing, or otherwise changing data.
+Decision: storage evidence measures exact declared roots and records a separate
+retention-policy approval state. Capacity evidence and authorization must be
+inspectable, but the observational tool never deletes, moves, archives,
+compresses, or otherwise changes data.
 
 ## Evidence and scientific state
 
@@ -561,22 +463,11 @@ Decision: reports are self-contained, script-free, accessible projections of
 one canonical run summary. They use exact scientific-state banners and disclose
 truncation with the full source path and hash.
 
-The public renderer defaults to one atomic HTML/PDF/summary-TSV bundle with a
-deterministic report receipt published last. Operators may explicitly select
-`html`, `pdf`, or `all`; every mode still publishes the summary and receipt.
-PDF uses pinned Quarto with bundled Typst and a pinned pure-Python reader for
-structural, text-order, and every-page banner validation. Format-neutral
-content keeps the HTML and PDF projections aligned while allowing
-format-specific validation.
-
-The HTML projection groups broad report categories with native,
-script-free disclosure elements. Overview opens first so status, CMH-ranked
-candidates, adjudication, and limitations remain near the top. The page uses
-a bounded reading width, while wide approved tables scroll within their own
-keyboard-focusable regions instead of widening the document. The PDF remains
-linear and renders wide candidate tables as compact per-candidate records.
-Full approved rows and provenance remain available in the HTML and authorized
-source tables.
+One format-neutral content projection keeps HTML and PDF semantically aligned
+while permitting format-specific accessible layout and structural validation.
+The selected static format set plus summary TSV and deterministic receipt is
+published transactionally; exact modes, assets, defaults, and validation live
+with the reporting owner and its tests.
 
 Alternative deferred: a richer tab interaction model with additional
 keyboard, responsive, print, and browser behavior. It requires separate
@@ -591,12 +482,9 @@ dependencies, or promotes evidence state.
 Decision: pin Python coverage as a developer-only dependency, measure line and
 branch execution across the complete Python suite and configured Python
 subprocesses, and compare a deterministic tracked snapshot by exact ratios.
-Ordinary checks reject a global line/branch regression or a removed baseline
-module. New shared Python modules start with a 90% line and 85% branch
-threshold.
-
-Baseline regeneration is an explicit reviewed action. Tests and runtime entry
-points never install the tool or rewrite the snapshot automatically.
+Checks reject ratio regressions or removed baseline modules; new shared Python
+modules start at 90% line and 85% branch. Baseline regeneration is reviewed;
+tests and runtime never install the tool or rewrite the snapshot.
 
 Reason: a measured floor makes later refactors comparable, while percentage
 coverage alone cannot establish assertion independence, public-contract
@@ -606,44 +494,21 @@ tests remain separate gates.
 
 ## Documentation ownership
 
-Decision: each information category has one canonical owner:
+Decision: every information category has one canonical owner recorded in
+[`DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
+Documents link instead of copying mutable state, commands, identities, counts,
+or diagrams; intentional action-point safety repetition remains allowed.
 
-- `AGENTS.md`: stable conduct and gates;
-- `README.md`: concise entry point;
-- `TODO.md`: prioritized pending work;
-- `HANDOFF.md`: current takeover snapshot;
-- `PIPELINE_PLAN.md`: pipeline/package/evidence status, acceptance criteria,
-  and lineage;
-- `QUESTIONS.md`: open questions and resolved index;
-- `RUNBOOK.md`: executable commands;
-- `TASK_START.md`: version-aware context routing and expansion rules;
-- `DECISIONS.md`: durable choices and rationale;
-- `TROUBLESHOOTING.md`: symptom, cause, diagnosis, and fix;
-- `ARCHITECTURE.md`: current topology and contracts;
-- `FUTURE_ARCHITECTURE.md`: target-state constraints;
-- `docs/tasks/`: bounded task scope, directory-owned workflow status,
-  dependencies, acceptance evidence, and historical completion records;
-- demo documents: presentation material or dated snapshots;
-- standalone `.mmd` files: canonical diagrams.
-
-Reason: mutable facts otherwise drift across independently maintained copies.
-Documents link to canonical owners instead of repeating branch names, commit
-IDs, test totals, commands, live status, or diagrams.
-
-Unique information is relocated and proven discoverable before its old copy is
-removed. Uncertainty remains an explicit pending human-review point instead of
-being normalized into an invented owner or answer. A purposeful historical or
-refactor reference may remain permanently when a named consumer and evidence
-boundary justify it; preservation is not promotion. Intentional safety
-repetition remains at action points.
+Reason: mutable copies drift. Unique information must be discoverable at its
+destination before removal; uncertainty remains explicit, and a purposeful
+historical reference may remain only with a named consumer and evidence
+boundary. Preservation is not promotion.
 
 ## Approved architecture direction (2026-07-31)
 
-The decisions below were approved by the repository owner on 2026-07-31. They
-constrain future planning inside the already-active repository-spanning
-refactor, but do not authorize any TODO task or represent target behavior as
-implemented. Each task still requires live inspection, a task-specific plan,
-and approval.
+These approved directions constrain future planning but do not authorize a
+task or represent target behavior as implemented. Each task still requires
+live inspection, bounded planning, and approval.
 
 ### Protect behavior before architectural mutation
 
@@ -651,120 +516,79 @@ Context: the repository has substantial local coverage, but tests vary in
 independence and no percentage can prove that every behavior intended for
 preservation is protected.
 
-Decision: before production structure changes, classify every applicable
-behavior row as `preserved contract`, `characterized defect`,
-`undefined — decision required`, or `environment-deferred`. The Phase `01Z`
-exit is 100% protection of applicable `preserved contract` rows, not 100% line
-coverage. Independent goldens are small, reviewed known-good bytes or semantic
-oracles that do not derive the expected rule from the producer under test.
-Integrated fixtures remain valuable and are not replaced.
-
-If the sufficiency decision is negative, create bounded `TEST-01G-*` closure
-cards and a later `TEST-01Z-R*` decision card. Later migrations add focused
-pre-characterization and old/new parity where feasible. An approved path or
-interface change is an explicit contract migration, never a silent regression.
+Decision: before structural mutation, classify applicable behavior as
+`preserved contract`, `characterized defect`, `undefined — decision required`,
+or `environment-deferred`. Readiness means every preserved-contract row has
+appropriate protection, not 100% line coverage. Independent goldens or semantic
+oracles do not derive expectations from the producer; integrated fixtures
+remain complementary. Migrations add focused characterization and old/new
+parity where feasible, and an approved interface change is explicit rather
+than a silent regression.
 
 Rationale: this preserves intentional behavior while allowing known defects
 and accidental paths to be handled honestly. The alternative—treating every
 current output as correct or treating high coverage as readiness—would freeze
 defects and leave shared producer/test mistakes undetected.
 
-Consequences: no architecture root is released by a negative `01Z` decision;
-defect corrections remain separate tasks. See
+Consequences: characterized defects remain defects and corrections remain
+separate tasks. The evidence record lives in
 [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md)
 through
 [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md).
 
 ### Govern future work through a file-backed task registry
 
+Resolved IDs: `CHOICE-LIFECYCLE-01`, `CHOICE-TASK-IDENTITY-01`, and
+`CHOICE-TASK-VIEW-01`.
+
 Context: a broad roadmap cannot carry enough settled constraints for dozens of
 small future agents, while putting Jira-like detail in every canonical owner
 would recreate responsibility leak.
 
-Decision: use one stable Markdown card per task under `docs/tasks/TODO`,
-`IN_PROGRESS`, `INTEGRATION_REVIEW`, or `COMPLETED`; directory location is the
-status. Cards own scope, dependencies, deliverables, acceptance, and completion
-history. Durable rationale, current state, commands, topology, and open choices
-remain in their canonical documents.
+Decision: one Markdown card owns each task's scope, technological dependencies,
+deliverables, acceptance, and completion history. Directory placement is the
+current lifecycle authority. Moving a card to `IN_PROGRESS` starts read-only
+planning, not implementation; blocker fields name only genuine technological
+impediments, while order, approval, environment, and repository-state
+conditions use their own owners. Completed cards are immutable history and
+follow-up work receives a new card.
 
-Moving a card to `IN_PROGRESS` starts task-specific read-only planning. It does
-not authorize implementation. Hard blockers are direct, reciprocal, and
-acyclic. `Completion unblocks` distinguishes a sole remaining blocker from one
-of several blockers. Paused work may return to TODO with a reason; there is no
-`BLOCKED` directory. Completed cards are historical; follow-up work receives a
-new card.
+`UNREFINED` preserves lightweight proposals without granting selection,
+dependency, roadmap, or implementation authority. `INTEGRATION_REVIEW` is used
+only when an exact frozen candidate awaits asynchronous canonical review beyond
+the current unpublished package; same-package handoff and integration remain
+under the active card. Logical epics are navigation groups, never lifecycle or
+blocker substitutes. Exact current lifecycle rules and card schema belong in
+[`docs/tasks/README.md`](../tasks/README.md).
 
-Correction approved on 2026-07-31: blocker fields are reserved for genuine
-technological blockers whose missing output makes meaningful progress
-impossible. Preferred order belongs in `PIPELINE_PLAN.md` or `TODO.md`;
-approval, environment, and repository-state conditions belong under
-`Prerequisites`; useful context alone is not an unblock relationship.
-Completed cards remain historical rather than being rewritten to maintain a
-live graph. The existing registry and validator still implement the original
-broader model until the separately planned `TASK-REG-01` evidence-based
-migration; this decision does not authorize a mechanical edge rewrite.
-
-Current-to-target boundary approved on 2026-08-02: lifecycle-directory paths
-and reciprocal card fields remain canonical until one separately approved
-atomic migration passes parity and final validation. The selected target then
-uses permanent ID-only canonical card paths with reviewed structured lifecycle
-authority, one authored technological-dependency direction, and committed,
-byte-for-byte check-regenerated lifecycle, reverse-dependency, epic, and
-tranche Markdown views. Durable per-tranche artifacts retain history and one
-recoverable pointer identifies the current tranche. Stable IDs, separate
-planning approval, immutable completed history, explicit promotion authority,
-no mixed canonical roots, and no status or evidence inference from prose remain
-mandatory throughout cutover.
-
-`UNREFINED` is now an authorized nonselectable intake for lightweight rough
-proposals outside the roadmap; file presence preserves an idea but grants no
-status, selection, dependency, or implementation authority. Its exact
-lightweight schema is validated separately from actionable cards, which begin
-in `TODO`. `INTEGRATION_REVIEW` is the implemented full-card state for an exact
-frozen candidate awaiting asynchronous canonical integration beyond the
-current unpublished package. Logical epics are orthogonal planning groups and
-indexes, not lifecycle states or blocker substitutes. The four actionable
-lifecycle directories remain the current status authority until the atomic
-target migration above. `TASK-EPIC-01` later adds orthogonal navigation
-without changing lifecycle authority.
-
-`CHOICE-LIFECYCLE-01` resolved on 2026-08-03: persist the
-`INTEGRATION_REVIEW` state only when a frozen candidate awaits asynchronous
-review beyond the current unpublished integration package. A frozen handoff
-that is reviewed and integrated within that same unpublished package remains
-under the active card lifecycle; it does not create a durable review-queue
-transition. Once persisted, the state's no-scope-expansion, exact-
-candidate, correction-return, and completion-after-integration rules remain
-mandatory. Completed
-[`TASK-LIFECYCLE-01`](../tasks/COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-implements that trigger, the lightweight proposal boundary, and independent
-validator fixtures without moving an existing card into review.
+The future target uses permanent ID-only card paths, structured lifecycle
+authority, one authored technological-dependency direction, and committed
+check-regenerated views. Stable identity, separate approval, immutable history,
+explicit promotion, no mixed roots, and no prose-inferred status/evidence remain
+mandatory. Current directory authority stays canonical until one atomic
+parity-validated migration.
 
 Rationale: a file-backed registry is inspectable, reviewable with code, and
 locally usable without introducing an external project system. The alternative
 of expanding the roadmap into task specifications would duplicate status and
 rationale across owners.
 
-Consequences: card moves use `git mv` and update inbound links in the same
-commit. The lifecycle and template are canonical in
-[`docs/tasks/README.md`](../tasks/README.md). The approved semantic migration is
-owned by
+Consequences: the approved semantic migration is owned by
 [`TASK-REG-01`](../tasks/TODO/TASK-REG-01-correct-task-dependency-semantics.md).
 The rejected permanent target is directory-owned identity/status because moves
 destabilize paths and mix identity with lifecycle. On-demand-only generated
 views were rejected because they weaken browseability, reviewability, stale-
 output detection, and deterministic recovery; a single replaceable tranche
 dashboard was rejected because it loses durable history and stable links.
-Committed projections accept bounded repository churn in exchange for exact
-check-regeneration and fail-closed drift detection. No target view or path is
-implemented by this decision.
+Committed projections accept bounded churn for exact regeneration and fail-
+closed drift detection.
 
 ### Use an architecture runway with rolling vertical delivery
 
-Context: the current program is iterative inside each card but waterfall-shaped
-across phases: all characterization, all design, one integrated plan, three
-whole-plan reviews, and then implementation. That shape can create stale plans,
-speculative cards, broad context requirements, and delayed empirical feedback.
+Resolved ID: `CHOICE-TRANCHE-VIEW-01`.
+
+Context: a phase-wide waterfall creates stale plans, speculative cards, broad
+context, and delayed empirical feedback even when each card is iterative.
 
 Decision: settle expensive-to-reverse cross-cutting invariants in small
 coordinated planning cohorts, then plan and execute bounded vertical cards just
@@ -773,26 +597,19 @@ document, integrate, and feedback loop before dependent delivery advances. A
 design card executes by producing a reviewed decision; it does not absorb all
 downstream implementation.
 
-`TEST-01Z` continues to gate structural architectural mutation, not independent
-read-only inventory or characterization. `PLAN-02Z` will reconcile the minimum
-shared architecture and create only the next evidence-supported delivery
-tranche. Architecture, reliability, and usability reviews remain independent
-but attach to the risk boundaries they govern rather than one monolithic plan.
-Future-only cards preserve constraints without joining the current release
-gate or receiving speculative detailed plans.
+`TEST-01Z` gates structural architectural mutation, not independent read-only
+inventory or characterization. Planning reconciles only the minimum shared
+architecture and next evidence-supported delivery tranche. Architecture,
+reliability, and usability reviews remain independent but attach to the risk
+boundaries they govern rather than one monolithic plan. Future-only cards
+preserve constraints without joining the current release gate or receiving
+speculative detailed plans.
 
-The selected target uses durable
-`docs/operations/tranches/<TRANCHE-ID>.md` coordination artifacts plus one
-recoverable current pointer, not one replaceable dashboard. The committed views
-are byte-for-byte check-regenerated from their canonical inputs. Each tranche
-records or links its approved envelope, included existing cards or epics, entry
-and exit evidence requirements, reconciliation basis, and next trigger without
-becoming a task card, lifecycle state, substitute roadmap, or authorization.
-It never copies live results. A tranche is not complete until its frozen
-candidates are canonically integrated, combined validation passes, publication
-succeeds, and upstream equality is verified; individual cards remain the
-separately planned and approved execution units. This target does not create
-the directory, files, pointer, or generator.
+The future target uses durable per-tranche coordination artifacts plus one
+recoverable current pointer, not a replaceable dashboard. A tranche links its
+approved envelope, cards, evidence boundaries, reconciliation basis, and next
+trigger without becoming lifecycle, roadmap, authorization, or live-results
+state. Individual cards remain the execution and approval units.
 
 Rationale: high-fan-out topology, contract, state, recovery, and evidence
 decisions are cheaper and safer to reconcile before files move. Local
@@ -800,22 +617,17 @@ implementation choices are more accurate after feedback from a completed
 slice. The hybrid keeps necessary architecture without front-loading the whole
 refactor.
 
-Consequences: the first
-[`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md)
-slice classified active cards and defined the rolling-wave boundary; its frozen
-remainder may later revise `PLAN-02Z`, review boundaries, cohorts, and the
-durable tranche-file/current-pointer contract before selecting a first tranche.
-It does not execute implementation, implement lifecycle or epic mechanisms, or
-migrate the legacy blocker graph. The separately authorized consolidated
-recovery integration superseded the earlier proposal to create a future pilot-
-integration card; recovered cards and proposals remain owned, unselected, and
-separately planned at their materialized destinations.
+Consequences: `PROGRAM-01` owns the remaining tranche mechanism and cohort
+choices. Tranche artifacts coordinate approved cards but never replace card
+scope, lifecycle, approval, validation, publication, or live status owners.
 
 ### Target a vertical package with direct contract-preserving migrations
 
-Context: `scripts/` and `jobs/` now contain application domains, but packaging
-and public distribution are premature. There are no external consumers that
-justify indefinite preservation of accidental repository paths.
+Resolved ID: `CHOICE-ARCH-01`.
+
+Context: the former flat application layout mixed functional ownership, while
+packaging and public distribution remained premature. Accidental repository
+paths did not justify indefinite compatibility surfaces.
 
 Decision: the target is a vertical source tree with distinct preprocessing
 stages, first-class analyses, evidence operations, and neutral application
@@ -836,63 +648,41 @@ later installable package without forcing versioning now. A permanent hybrid
 would create dual ownership; a big-bang move would exceed the behavior and
 review boundary.
 
-Consequences: the exact inventory, semantic map, topology, and migration
-mechanics belong to
-[`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md)
-through
-[`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md).
-Current flat-layout documentation remains current truth until migrations land.
+Consequences: exact current placement belongs in
+[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) and the
+[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md);
+exact target homes and movement procedure remain in `SOURCE_TOPOLOGY.md` and
+`MIGRATION_MECHANICS.md`. Physical convergence does not create packaging or
+distribution commitments.
 
 ### Converge cross-cutting source without misclassifying repository surfaces
 
-Context: the first physical campaign moved the neutral validation-report
-concern and fourteen semantic DAG owners. Artifact contracts, reporting,
-reference/runtime/storage evidence commands, shared tests, public examples,
-dependency restoration, and repository-development tooling remain mixed under
-root paths. Directory age alone does not show whether a path is application
-implementation or an intentional repository interface.
+Context: directory age and root placement do not distinguish application
+implementation from intentional public inputs or repository controls.
 
-Decision: move the remaining implemented application concerns to the exact
-cross-cutting homes in
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes),
-one functional owner or neutral concern at a time. Reference provenance,
-runtime preflight, and storage inventory become distinct evidence owners;
-artifact schemas/validation become neutral contracts; and artifact indexing,
-canonical summary construction, renderers, templates, and styles become the
-reporting owner. Correct any prohibited peer-implementation dependency through
-a separately reviewed neutral extraction before moving the affected owner.
-
-Keep explicit user/operator starter configurations and reference tables under
-root `configs/`, and keep Git/documentation orchestration, quality tooling, R
-and Quarto restoration, project `renv` state, and other developer/operator
-interfaces at repository level. Those surfaces do not become runtime
-orchestration, a generic library, or a speculative new `setup/` domain.
-Scheduler, ingestion, and runtime orchestration/profile implementation remain
-deferred.
-
-Reporting relocation preserves template and style content hashes but continues
-to record truthful physical template/style paths. Repository-facing callers,
-help/usage text, path diagnostics, delegated-command output, Make-expansion
-goldens, and path-bearing fixtures may receive only exact old-to-new physical-
-path substitutions. Product report bytes may change only through their exact
-path-valued QMD/CSS provenance fields, with before/after characterization and
-reviewed golden updates. The move must not preserve an obsolete root path as a
-logical alias, falsify physical provenance, or treat any non-path byte or
-semantic difference as relocation parity.
+Decision: cross-cutting application concerns use the exact contract,
+reporting, and evidence homes in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
+Explicit operator starter configurations and reference tables remain under
+root `configs/`; Git/documentation orchestration, quality tooling, dependency
+restoration, and project environments remain repository interfaces. Deferred
+scheduler, ingestion, and runtime-orchestration/profile work is not inferred
+from those retained paths. A prohibited peer-implementation dependency must be
+resolved through the narrowest separately reviewed neutral seam.
 
 Rationale: application ownership converges without moving public inputs or
 repository controls into invented runtime domains. The explicit provenance
 delta is narrower and more truthful than either indefinite compatibility paths
 or a simultaneous report-interface redesign.
 
-Consequences: completed
-[`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
-owns the planning record; current paths remain in the functional-owner
-inventory and preferred JIT order remains in `PIPELINE_PLAN.md`. Each
-executable move still requires its own selected card, live caller graph,
-approved plan, parity evidence, and documentation close.
+Consequences: the functional-owner inventory owns current retained/deferred
+root surfaces; `SOURCE_TOPOLOGY.md` owns durable dependency direction. Source
+placement alone neither changes public provenance semantics nor promotes
+runtime or scientific evidence.
 
 ### Identify stages semantically and order them with a DAG
+
+Resolved ID: `CHOICE-STAGE-01`.
 
 Context: numeric names such as `00c`, `02b`, and `09c` convey historical order
 but not user meaning. Encoding order in a new filename would repeat the same
@@ -933,35 +723,13 @@ Rationale: this captures real reuse without converting lexical similarity into
 repository-wide coupling or a shared defect. The alternatives of never sharing
 or extracting on sight both impose avoidable maintenance risk.
 
-The first rolling-wave application is the validation-evidence report protocol:
-twelve validators import the same nine safety-critical helpers from the Step
-`00a` validator, while an independent fault matrix already exercises their one
-shared implementation. That bounded seam qualifies for neutral ownership in
-`src/norad/libraries/`; it does not prove that BAM helpers, scientific checks,
-parsing/hashing, fixture builders, or other transaction mechanisms are
-equivalent. The exact reviewed migration boundary belongs to
-[`MIG-03A`](../tasks/COMPLETED/MIG-03A-extract-validation-report-library.md).
-Neutral source ownership here does not establish a public Python import name,
-package marker, build metadata, or installable distribution; those remain
-deferred.
-
-Consequences: intentional independent validation and heterogeneous
-transactions stay local. The remaining candidate inventory and promotion or
-retention decisions belong to
-completed
-[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md).
-
-Its two concrete dispositions are mixed by responsibility. Public Step `08`,
-Step `09`, and Step `09c` artifact/table contracts qualify for bottom-up
-neutral ownership because five consumers already share their exact executable
-semantics; Step `09c` review policy, evidence-source validation, and
-publication/recovery do not. Reporting replaces private `build_context` reuse
-with its own reader/projection of the committed public package rather than
-renaming evidence-owner implementation as a library. The three equivalent
-FASTA/FAI/DICT parsers qualify for a narrow `reference_contigs` library, but
-contig agreement, aggregation, evidence, and publication remain with their
-three consumers. Exact homes and APIs belong to
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
+Consequences: intentional independent validation, scientific algorithms,
+review policy, reporting projection, and heterogeneous transactions remain
+local. Neutral ownership does not establish a public import name, package
+marker, build metadata, or installable distribution. The reviewed shared
+surfaces, consumers, and prohibited scope are owned once in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams);
+historical selection evidence remains in `MIG-03A` and `LIB-02F`.
 
 ### Apply risk-based source-size thresholds
 
@@ -974,11 +742,6 @@ a decomposition plan or explicit justification before architectural mutation.
 A file above 1,500 lines must be eliminated during the current repo-spanning
 refactor unless the owner approves an explicit exception. Split tests by
 scenario/comprehension, not arbitrary length.
-
-The 2026-07-31 snapshot found 15 files above 600, 10 above 1,000, and 6 above
-1,500. The six mandatory families were the artifact-index builder, scientific-
-validation tooling, report renderer, run-summary builder, Step `08` R module,
-and artifact-contract validator. Counts must be refreshed before execution.
 
 Rationale: thresholds force a cohesion decision without rewarding mechanical
 fragmentation. A single low limit would create a massive low-value rewrite; no
@@ -1108,11 +871,13 @@ current report in one change would risk silent information loss.
 
 Consequences: report work is deliberately split across
 [`RPT-01`](../tasks/TODO/RPT-01-characterize-comprehensive-report.md) through
-[`RPT-06`](../tasks/TODO/RPT-06-make-science-report-the-default.md). The target
-implementation owner is `src/norad/reporting`; current report behavior remains
-unchanged until those cards complete.
+[`RPT-06`](../tasks/TODO/RPT-06-make-science-report-the-default.md). This
+decision changes no report behavior; any profile or default change requires
+the linked card. The target implementation owner is `src/norad/reporting`.
 
 ### Separate concise console output from durable detailed logs
+
+Resolved IDs: `CHOICE-LOG-01` and `CHOICE-LOG-02`.
 
 Context: the
 [`LOG-01` inventory](TEST_BASELINE.md#log-01-current-output-and-log-inventory)
@@ -1120,117 +885,68 @@ found valuable recovery detail mixed with repetitive human output, thirteen
 validators mixing machine TSV rows with human stdout, only conditional
 scheduler-level complete capture, and no general local application log.
 
-Decision: use the version-1 two-sink contract in
+Decision: separate concise operator-facing console output from complete durable
+diagnostic logs under the versioned target contract in
 [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md#logging-target).
-Public levels are `normal`, `verbose`, and `debug`; direct commands use
-`--log-level`/`--log-root`, Make and SLURM use the corresponding `NORAD_*`
-environment controls, and the outermost operation resolves them once. There is
-no `quiet` level. The existing validation `--verbose` control remains unchanged
-until a separately approved adoption may migrate it as a deprecated
-debug-level alias.
+Declared machine responses remain on stdout and human events on stderr. A log
+level changes projection only, never computation, validation, publication,
+recovery, evidence, or exit behavior. One operation owns one no-clobber log;
+delegated components never append concurrently.
 
-Declared machine responses use stdout and human events use stderr. Dry-runs
-remain log-free but show their exact command at `normal`. Adopted substantive
-operations create one exclusively owned, no-clobber JSONL application log with
-an execution-attempt identity distinct from run, transaction, process, and
-scheduler identities. A single writer captures or adapts delegated diagnostics;
-children never append concurrently.
-
-Required log state is synced before receipt publication; the receipt remains
-the authoritative transaction marker, and any closing observation afterward is
-best-effort. Failures receive a bounded 20-event/8-KiB console summary while
-the protected partial log is retained; sensitive `durable_only` diagnostics are
-replaced there by a sanitized count and log pointer. Level changes projection
-only and never enables extra work or changes commands, artifacts, hashes,
-receipts, evidence, validation, rollback, cleanup, or exit behavior.
-
-Application logs are protected operational data. NORAD does not automatically
-rotate, upload, truncate, or delete them. Creation alone never promotes
-evidence; only a separately authorized immutable copy with the required path,
-hash, relationship, and role may satisfy existing runtime/cluster evidence
-policy.
+The receipt remains the authoritative transaction marker. Pre-receipt logging
+faults follow the owner's existing failure/recovery path, while protected
+partial logs and bounded sanitized failure guidance remain inspectable.
+Application logs are operator-owned protected data: no automatic rotation,
+upload, truncation, or deletion, and no evidence promotion without a separately
+authorized immutable role/path/hash relationship.
 
 Rationale: deleting diagnostic detail would harm maintainability; printing all
 detail by default harms usability and context efficiency. Stable stream,
 identity, and publication ownership protects automation and recovery without
 confusing scheduler capture, application state, or scientific evidence.
 
-Consequences: completed
-[`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) resolves its two
-owned choices. `LOG-03` owns a neutral foundation and representative opt-in
-adoption; `PLAN-02Z` later creates bounded rollout cards. Current output and
-defaults remain unchanged until separately reviewed implementation/adoption
-packages and `LOG-05` activation complete.
+Consequences: exact controls, event schema, stream rules, failure bounds,
+scheduler relationship, and adoption obligations live once in the target
+contract. Implementation and default activation remain separately reviewed
+work; this decision alone changes no current output or evidence.
 
 ### Treat documentation and maintainer context as architecture
+
+Resolved IDs: `CHOICE-DOC-01` and `CHOICE-DOC-GATE-01`.
 
 Context: abbreviations, opaque directories/fixtures, overlapping documents,
 and undocumented module invariants make the repository expensive to inspect.
 Broad mandatory reads also consume context that local ownership could avoid.
 
-Decision: create `docs/reference/GLOSSARY.md` as the canonical abbreviation and
-term owner. Use `README.md` for eligible durable directories; parents stay
-shallow and children own detail. Explain TSV/JSON/schema/generated/lock/byte-
-sensitive artifacts adjacently rather than inserting comments into them.
+Decision: documentation has explicit audience and responsibility owners.
+Eligible directories receive shallow parent and detailed local READMEs; opaque
+or byte-sensitive artifacts are documented adjacently. Module/header text owns
+purpose and interfaces, while comments explain non-obvious rationale,
+scientific limits, safety, and recovery rather than mechanics.
 
-Inventory every code file as `sufficient`, `update`, `defer`, or `exclude`.
-Module/header documentation explains purpose, inputs/outputs, side effects,
-invariants, failure/publication, and scientific limits as applicable. Inline
-comments explain why, non-obvious invariants, recovery/safety, and scientific
-boundaries—not mechanics. Protect CLI help before changing any module docstring
-used as an `argparse` description.
+Consolidation begins with an audience map and source-to-destination ledger.
+Unique meaning moves before its old copy disappears; intentional safety
+repetition may remain at the action point. Local owner context links purpose,
+contracts, direct neighbors, tests, and canonical cross-cutting owners so
+routine work stays bounded, while contradictions and high-risk impact broaden
+inspection. Correctness outranks compression.
 
-Documentation consolidation begins with an audience/navigation and source-to-
-destination ledger. Unique meaning must have a destination before relocation;
-intentional safety repetition may remain at the action point. Local stage/domain
-context should link purpose, contracts, direct neighbors, tests, and canonical
-owners so bounded work does not load the whole repository. Phase and cross-
-cutting work reassesses impact and broadens according to the global task-start
-triggers; correctness outranks token reduction.
-
-`CHOICE-DOC-01` is resolved by the canonical
-[`documentation ownership and consolidation map`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
-Exact commands remain in `RUNBOOK.md`; symptom, cause, diagnosis, and fix remain
-in `TROUBLESHOOTING.md`; neutral cross-language conventions are owned by
-[`ENGINEERING_CONVENTIONS.md`](../operations/ENGINEERING_CONVENTIONS.md); and
-the concise user pipeline overview will live at
-`docs/architecture/PIPELINE_OVERVIEW.md`.
-Dated noncanonical records will be indexed by a shallow `docs/history/README.md`
-with topic-specific children for audit, testing, operational, and demo history.
-No planned destination becomes authoritative before its owning card creates it
-and moves the source without leaving a duplicate.
-
-The repository-root `AGENTS.md` is a concise, automatically loaded project
-router, not the owner of detailed NORAD commands, topology, mutable state,
-scientific policy, or coding conventions. It retains only always-needed
-approval, safety, evidence, and routing guardrails plus canonical links.
-Reusable cross-repository preferences belong in global agent guidance. A
-rule-by-rule source-to-destination ledger must prove that slimming the root file
-does not lose critical protections.
-
-Operational documentation owns supported invocations and behavior summaries,
-not substantial embedded implementations. The documentation validator remains
-under `scripts/git_orchestration/` and is independently behavior-locked before
-any dependency-semantic change. `RUNBOOK.md` owns the concise
-`make documentation-check` invocation and operator-facing behavior summary;
-the target is a stable, logic-free wrapper over the same explicit-root engine.
-Completed `DOC-GATE-01` proves literal expansion, same-engine delegation, and
-the Make-native failure contract: preserved engine stderr followed by Make's
-target diagnostic and exit `2`. Task-dependency semantics remain owned by
-`TASK-REG-01`, not validator characterization.
+The exact owner map and no-loss ledger live in
+[`DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md). Root
+`AGENTS.md` remains a concise automatically loaded safety/router surface, exact
+commands remain in `RUNBOOK.md`, diagnostics in `TROUBLESHOOTING.md`, and
+neutral cross-language conventions in `ENGINEERING_CONVENTIONS.md`.
+Operational prose links tested programs instead of embedding them; the
+documentation gate remains one stable logic-free Make route to its tested
+explicit-root engine.
 
 Rationale: conventional local documentation makes the repository inspectable
 without creating more canonical owners. A blind cleanup or blanket commenting
 pass would either lose meaning or add noise.
 
-Consequences: see
-[`DOC-IA-01`](../tasks/COMPLETED/DOC-IA-01-define-documentation-ownership-and-navigation.md)
-through
-[`CONTEXT-09`](../tasks/TODO/CONTEXT-09-define-local-maintainer-context.md), plus
-completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md) and
-the bounded `DOC-CONS-08A`–`DOC-CONS-08H` cards linked from the
-[ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md#bounded-follow-up-packages).
-Concrete consolidation/comment rollout cards are created only after inventories.
+Consequences: exact destinations and bounded follow-up owners are indexed in
+the ownership map. A planned destination never becomes authoritative before
+its owning card creates it and proves the old copy removable.
 
 ### Defer repository skills until the underlying practice is proven
 
@@ -1272,43 +988,13 @@ Consequences: see
 
 ### Decision-capture crosswalk
 
-| Discussion theme | Durable owner above | Task owner |
-| --- | --- | --- |
-| Behavior coverage before mutation and independent goldens | Protect behavior before architectural mutation | `TEST-01C`–`TEST-01Z` |
-| Card lifecycle, true technological blockers, separate approvals, future proposal/review states, and logical epic indexes | File-backed task registry | `ARCH-DOC-00`, `TASK-REG-01`, `TASK-LIFECYCLE-01`, `TASK-EPIC-01`, and `docs/tasks/README.md` |
-| Multiple isolated documentation/card sidecars, one canonical integrator, and transient integration fragments | Concurrent authoring with serialized integration | `CONCURRENCY-01`, `CONCURRENCY-02`, and `CONCURRENCY-03` |
-| Architecture runway, planning cohorts, durable per-tranche artifacts/current pointer, and just-in-time card execution | Rolling vertical delivery | `PROGRAM-01`, `PLAN-02Z`, future `docs/operations/tranches/`, and `REVIEW-*` |
-| Vertical `src/norad`, black-box stages, mirrored tests, direct migration | Vertical package | `ARCH-02A`–`ARCH-02D` |
-| Semantic names, historical numbers, DAG, user overview | Semantic stages and DAG | `ARCH-02B`, `DOC-PIPE-04` |
-| Local/shared abstraction threshold and ownership | Shared-library promotion | `LIB-02F` |
-| 600/1,000/1,500 thresholds and mandatory large files | Source-size thresholds | `SIZE-07*`, `RPT-05B` |
-| YAML+TSV intake, atomic claim, attempts, promotion, stationary raw data | Run request and manifest | `INTAKE-02E` |
-| Reference formats versus SRA reads and acquisition priority | Public acquisition priority | `FUT-DATA-02` |
-| Preprocessing profiles, analysis library, custom R, trust boundary | Analysis extension path | `FUT-ANALYSIS-01` |
-| Installable `norad`, non-Python assets, materialized jobs | Later control plane | `FUT-CLI-03` |
-| Science default, comprehensive profile, projection, no nested scroll | Future reporting | `RPT-01`–`RPT-06` |
-| Quiet default, verbose/debug, durable logs, stdout/stderr | Two-sink logging | `LOG-01`–`LOG-05` plus generated `LOG-04-*` |
-| Exact-revision context reuse, selective phase boundaries, impact-directed review | Task-start routing | `CONTEXT-00` |
-| Independent planning category and validation impact plus bounded approval envelopes | Proportional planning and approval envelopes | `TASK_START.md`, `PROGRAM-01`, and concurrent lane packets |
-| Glossary, READMEs, adjacent fixture docs, comments, concise root agent router, validator extraction, consolidation, context | Documentation as architecture | `DOC-GATE-01`, `DOC-IA-01`–`CONTEXT-09` plus generated cleanup/comment cards |
-| Documentation-health skill and later skill review | Deferred skills | `DOC-SKILL-10`, `SKILL-11` |
-| Required/optional analyses and archival | Future success semantics | `FUT-SUCCESS-04` |
-
-The integrated sequence and three independent reviews are owned by
-[`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md) and
-`REVIEW-*`; final closure is owned by
-[`AUDIT-99`](../tasks/TODO/AUDIT-99-final-refactor-and-documentation-audit.md).
+The headings above are the rationale index. Exact contracts route to
+`STAGE_MAP.md`, `SOURCE_TOPOLOGY.md`, and `MIGRATION_MECHANICS.md`; live task
+state to the registry, plan, and handoff; commands to `RUNBOOK.md`; and open or
+resolved-choice navigation to [`QUESTIONS.md`](QUESTIONS.md).
 
 ## Deferred engineering
 
-Decision: generic orchestration, job arrays, publishing infrastructure,
-targeted reruns, automatic cleanup, biological-readiness policy, public-data
-acquisition, analysis-module execution, optional-analysis archival, and public
-package distribution remain deferred until their named evidence and task gates
-are complete.
-
-Future refactors preserve proven behavior, scientific meaning, outputs,
-evidence, dry-run/execute semantics, and transaction/recovery contracts.
-Current CLIs and paths may change only through separately approved, explicitly
-tested migrations; they are not preserved indefinitely merely because they are
-current.
+Decision: future engineering preserves behavior, scientific meaning, evidence ceilings, and transaction/recovery contracts. Current interfaces may
+change only through approved, tested migrations; accidental placement is not a
+permanent promise. Live backlog belongs in `PIPELINE_PLAN.md` and `TODO.md`.

@@ -69,7 +69,7 @@ pipeline owner graph but still receive one owner:
 | Current owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
 | Scheduler scaffolding | [`template.slurm`](../../jobs/template.slurm) | [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). This is a future-job template/probe, not a pipeline stage. |
-| Documentation/Git orchestration | Public commands in [`scripts/git_orchestration/`](../../scripts/git_orchestration/): `apply_fragment_candidate.sh`, `finalize_fragment_integration.sh`, `publish_exact_ref.sh`, `record_fragment_noop.sh`, `validate_documentation.py`, `validate_fragment_candidate.py`, and `validate_fragment_target.py` | [`tests/git_orchestration/`](../../tests/git_orchestration/), [public CLI contracts](../../tests/test_public_cli_contracts.py). These operate on repository state, never scientific artifacts or evidence state. |
+| Documentation/Git orchestration | Public commands in [`scripts/git_orchestration/`](../../scripts/git_orchestration/): `apply_fragment_candidate.sh`, `finalize_fragment_integration.sh`, `publish_exact_ref.sh`, `record_fragment_noop.sh`, `validate_documentation.py`, `validate_fragment_candidate.py`, and `validate_fragment_target.py`; private helpers `_common.py` and `_common.sh` add no public surface | [`tests/git_orchestration/`](../../tests/git_orchestration/), [public CLI contracts](../../tests/test_public_cli_contracts.py). These operate on repository state, never scientific artifacts or evidence state. |
 | Developer quality gates | Make `all-checks`, `lint`, `local-real-r-test`, `python-coverage-baseline-update`, `python-coverage-check`, `python-coverage-measure`, `real-r-test`, `shell-test`, `smoke`, `test`, `validation-guarded-r`, `validation-python-coverage`, `validation-report-runtime`, `validation-shell-contracts`, and `validation-static` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages. |
 | Demonstration facade | Make `demo-step03` and `demo-step03-dry-run` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json). They submit the existing Step `03` wrapper and do not own Step `03` behavior. |
 
@@ -113,66 +113,32 @@ coverage rows, command rosters, and current documentation remain integration
 surfaces to update atomically when a `MOVE` unit is approved; their own
 repository-level ownership does not change.
 
-The current executable layout is deliberately mode-nonuniform: final reporting
-`build_artifact_index.py` and `render_run_report_bundle.py` plus final owner-
-local `storage_inventory.py` are `0644`, while reporting-private
-`_run_summary_science.py` is `0755`. Each JIT card refreshes every touched mode
-and preserves it; relocation does not normalize executability by filename or
-language.
+Git file modes are contract data even when language peers differ. The exact
+mode is refreshed for a touched path and never normalized from its name or
+language; migration parity and rollback rules live in
+[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
 
-## Private-library and mixed-ownership findings
+## Ownership refinements
 
-Private helpers do not add public owners:
+Private helpers remain inside the public or neutral owner listed above; they do
+not add entry points or public owners. The following refinements prevent nearby
+contracts from being treated as interchangeable:
 
-- [`_run_summary_science.py`](../../src/norad/reporting/_run_summary_science.py) belongs to
-  canonical-summary normalization.
-- [`git_orchestration/_common.py`](../../scripts/git_orchestration/_common.py)
-  and [`_common.sh`](../../scripts/git_orchestration/_common.sh) belong to
-  documentation/Git orchestration.
-- Shared validation-report publication belongs to the neutral
-  [`validation_report.py`](../../src/norad/libraries/validation_report.py)
-  owner. All thirteen final owner validators use exact-file private loaders
-  until any later packaging decision.
-- Shared samtools execution and BAM-header parsing belong to neutral private
-  [`bam_validation.py`](../../src/norad/libraries/bam_validation.py). The final
-  Step `02`, Step `04`, and Step `05` validators exact-load it; no
-  peer-stage implementation import remains.
-- Reusable Step `08` schemas and validators belong to neutral
-  [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py) and are
-  exact-loaded under one shared identity. Reusable Step `09` schemas and
-  validators belong to neutral
-  [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py), which
-  reuses the Step `08` error/table identity and is exact-loaded under one shared
-  ready-owner identity. The public review-package roster, headers,
-  vocabularies, bindings, and state reducer belong to neutral
-  [`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py)
-  and are exact-loaded under one shared ready-owner identity. Step `09c`
-  review policy, evidence sources, context, publication, rollback, and recovery
-  remain local.
-- Base intake validation does not require `replicate`, while the Step `09` and
-  `09c` analysis profile does; that is a base contract plus a stricter consumer
-  refinement, not two interchangeable manifest definitions.
-- Step `07` owns partition selection semantics. Steps `08` and `09` consume
-  the duplicated schema but do not become additional selection owners.
-- [`reference_provenance.py`](../../src/norad/evidence/reference_provenance/reference_provenance.py) spans the
-  `00a`/`00b`/`00c` bundle and remains cross-cutting even when a stage contract
-  links to it. Its shared FASTA/FAI/DICT parsing is final under neutral
-  `reference_contigs` through `LIB-02K`; the provenance CLI, hashing,
-  reconciliation, evidence, publication, and recovery remain evidence-owner
-  behavior. Its direct source and mirrored suite are final through completed
-  `MIG-04B`.
-- The artifact-index implementation embeds stage-specific reconciliation, but
-  those adapter semantics remain accountable to the corresponding stage,
-  evidence, or analysis owner.
+- base intake validation does not require `replicate`, while the Step `09` and
+  `09c` analysis profile does; this is a base contract plus a stricter consumer
+  refinement;
+- Step `07` owns partition selection semantics; Steps `08` and `09` consume the
+  declared schema without becoming selection owners;
+- reference provenance spans the `00a`/`00b`/`00c` reference bundle and remains
+  cross-cutting, while neutral `reference_contigs` owns only shared parsing;
+  and
+- artifact-index reconciliation remains accountable to the stage, evidence,
+  or analysis owner whose native artifact it projects.
 
-The remaining reverse dependencies are temporary current-state facts, not
-final ownership. Completed
-[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) fixes
-their exact permanent dispositions, and
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams)
-owns the target paths. The Step `08`, Step `09`, and public review-package
-contract extractions and reporting-local dependency removal are implemented;
-reference-contig parsing is also implemented through completed `LIB-02K`.
+The previously prohibited peer-implementation dependencies are closed. The
+durable neutral seams, consumers, and dependency direction live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams);
+the table above remains the current executable-surface roster.
 
 ## Coverage result
 

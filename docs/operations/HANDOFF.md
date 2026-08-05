@@ -17,8 +17,8 @@ and delivery-required lineage live in
   validation-roster relocation and fourteen-caller cutover, and the frozen
   executable basis for this documentation/lifecycle close.
 - Current package predecessor:
-  `a772f791141aee9fdb3fcfbd932f2dd2c1e93521`, the clean, published,
-  live-remote-equal `AUDIT-RESIDUAL-04A` close.
+  `1da90c561cf5abb93fa695157b64624ce2089bf0`, the clean, published,
+  live-remote-equal `DOC-CONS-08F` selection checkpoint.
 - Current tip and upstream relationship: resolve the exact identity and
   equality from Git; this handoff owns the branch and lifecycle state rather
   than duplicating a moving commit ID.
@@ -109,10 +109,13 @@ and delivery-required lineage live in
   separately owned `RETIRE`; verifies every expected final tracked owner,
   current caller, and prohibited old-path absence; and closes only the source-
   topology campaign at the local/static evidence ceiling.
-- Selected package: documentation-only/non-consuming
-  [`DOC-CONS-08F`](../tasks/IN_PROGRESS/DOC-CONS-08F-compress-design-and-architecture-views.md).
-  It owns only no-loss compression of its named conceptual architecture and
-  design views; exact current/target owners and their meaning remain fixed.
+- Completed design/architecture compression: documentation-only/non-consuming
+  [`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
+  preserves current/target separation and exact contract owners while reducing
+  the five views from 2,710 to 2,132 lines and retiring one redundant waterfall
+  diagram after no-loss comparison.
+- Selected package: none. Remaining documentation cleanup stays separately
+  selectable.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -271,10 +274,11 @@ package diagnoses and resolves that drift.
 
 `AUDIT-RESIDUAL-04A` completed the exact 87-path reconciliation and closed the
 source-topology campaign at the local/static evidence ceiling.
-Documentation-only/non-consuming `DOC-CONS-08F` is now the sole selected
-cleanup package. It compresses only its five named architecture/design views
-and the directly affected future-roadmap diagram after no-loss comparison with
-the exact owners.
+Documentation-only/non-consuming `DOC-CONS-08F` then completed the five-view
+architecture/design compression and retired the redundant universal-waterfall
+diagram without changing an exact contract or evidence state. No cleanup
+package is selected. The next approved package is existing `DOC-CONS-08G`, but
+it remains unselected until its own just-in-time start.
 
 No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
@@ -284,7 +288,7 @@ recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 The approved residual-convergence campaign is fulfilled through completed
 `AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup continues
-one JIT package at a time with selected `DOC-CONS-08F`, unless a genuine
+one JIT package at a time, next considering `DOC-CONS-08G`, unless a genuine
 escalation condition is reached.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
