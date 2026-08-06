@@ -127,7 +127,10 @@ data for local tests.
 
 The cluster login node is for Git operations, small transfers, editing, light
 inspection, job submission, and small smoke tests. Heavy alignment, sorting,
-mpileup, and analysis must run through `jobs/*.slurm`.
+mpileup, and analysis must run through the applicable owner-local `.slurm`
+entry point under `src/norad/{stages,analyses,evidence,ingestion}/`. The
+[functional-owner inventory](docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+owns the exact current job roster.
 
 Never commit:
 

@@ -31,21 +31,16 @@ migration already performed. Exact commands belong only in
 - The [decision record](../design/DECISIONS.md) owns rationale and rejected
   alternatives. This document owns the resulting neutral working rules.
 
-## Current-layout entry points
+## Owner-local entry points
 
-Before a separately approved physical migration, prefer new or changed
-current-layout entry points shaped as:
-
-```text
-scripts/step_XX_<name>.sh
-jobs/step_XX_<name>.slurm
-tests/shell/test_step_XX_<name>.sh
-```
-
-These are compatibility conventions for the implemented layout, not permanent
-target homes. Active tests and non-runnable future plans remain separate under
-the [current repository map](../../README.md#repository-map) and the
-[test-placement decision](../design/DECISIONS.md#keep-active-and-future-tests-separate).
+Workflow, analysis, evidence, ingestion, and scheduler assets live with their
+functional owner under `src/norad/<domain>/<owner>/`; direct tests mirror that
+owner under `tests/<domain>/<owner>/`. Root `jobs/` and numbered root
+`scripts/` paths are retired. Exact current names and protected exceptions
+belong to the
+[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+and adjacent contracts. Non-runnable future test plans remain separate under
+the [test-placement decision](../design/DECISIONS.md#keep-active-and-future-tests-separate).
 
 ## Declared inputs, manifests, and paths
 

@@ -72,88 +72,31 @@ pipeline owner graph but still receive one owner:
 | Developer quality gates | Public targets and variables in the root [`Makefile`](../../Makefile), with private recipes grouped by [quality](../../scripts/make_quality.mk), [reporting](../../scripts/make_reporting.mk), and [cluster demonstration](../../scripts/make_cluster_demo.mk) ownership | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages; the includes add no public entry point. |
 | Demonstration facade | Make `demo-step03` and `demo-step03-dry-run` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json). They submit the existing Step `03` wrapper and do not own Step `03` behavior. |
 
-## Residual tracked-path coverage
+## Remaining repository-level exceptions
 
-`PLAN-03A` inspected the tracked residual implementation-bearing roots,
-remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. Its audit-time
-87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
-separately owned temporary record, sample-manifest admission moved four
-implementation/test paths, the manual cluster tool probe moved to its final
-runtime-preflight owner, the unused scheduler scaffold was retired, and two
-unconsumed configuration profiles remain explicitly deferred, the 84 current residual paths are
-partitioned once below. Counts are inspection checks, not a permanent
-repository-size baseline; each later tracked-root change, owner migration, or
-retirement updates this current inventory.
+Routine root-owned configuration, environment, documentation, and quality-gate
+paths are now mapped by the [repository map](../../README.md#repository-map),
+the [configuration catalog](../../configs/README.md), the
+[repository-utilities map](../../scripts/README.md), and the
+[tooling-file map](../operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration).
+Only dispositions that remain deferred or exceptional are repeated here:
 
-| Exact current path group | Paths | Current owner or boundary |
-| --- | ---: | --- |
-| `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py,make_quality.mk,make_reporting.mk,make_cluster_demo.mk}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 8 | Explicit repository dependency lifecycle and private Make recipe ownership; intentionally repository-level pending any separately approved setup redesign. |
-| All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
-| All 27 tracked public input/reference files under root `configs/`: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | `RETAIN_ROOT` public operator/reference inputs; they are not owner-native implementation assets. |
-| `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | `DEFER`; inert illustrative workflow profiles retained without supported execution semantics until an actual orchestration owner exists. |
-| `tests/baselines/python_coverage.json`; `tests/test_python_coverage_baseline.py`; `tests/test_validation_orchestrator.py`; both `tests/tools/` files; `tests/test_public_cli_contracts.py` and its two fixture paths | 8 | Repository quality-gate, coverage, and cross-entry-point command infrastructure retained at repository level. The public-command suite spans Make, Git tooling, modes, and multiple runtime domains, so it is not a neutral artifact-contract integration test. |
-| `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `configs/README.md`; `scripts/README.md`; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 22 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level; the five dependency/test configuration files have a canonical [purpose map](../operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration). |
-| `tests/test_slurm_wrapper_contracts.py` | 1 | Permanent `RETAIN_ROOT` cross-owner scheduler-wrapper protection. All scheduler assets themselves remain with their final functional owners. |
-| `tests/data_checks/validate_step05_outputs.sh` | 1 | Permanent repository-level operational inspection utility through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md). It uniquely retains optional scheduler-state lookup, six-sample/cohort status aggregation, output-size and scratch inspection, additional `LB`/`PL` read-group requirements, a best-effort persisted twelve-column TSV snapshot, and aggregate exit `0`/`1`/`2` behavior not supplied by the final Step `05` validator. The duplicate truncating `tee` writers and silent replacement remain characterized defects. |
-| `tests/pending/test_step_04_mark_duplicates.sh` | 1 | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md). The intentional non-runnable pending-plan scaffold remains byte-identical because pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
-Completed
-[`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-recomputed eleven groups and 87 unique paths at its audit boundary: 76
-`RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
-[`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-later retired that one temporary path after no-loss disposition. The nine
-current groups contain `8`, `17`, `27`, `2`, `8`, `22`, `1`, `1`, and `1`
-paths: 87 total, 87 unique, 85 `RETAIN_ROOT`, 2 `DEFER`, and no current
-`RETIRE`.
-The source-topology campaign remains complete at the local/static
-evidence ceiling; this inventory does not close the broader modernization
-backlog.
+| Exact current path | Disposition and owner boundary |
+| --- | --- |
+| `configs/{cluster_full.yaml.example,local_test.yaml}` | `DEFER`; inert illustrative profiles with no supported execution semantics until an orchestration owner exists. |
+| `tests/test_slurm_wrapper_contracts.py` | `RETAIN_ROOT`; permanent cross-owner protection for the owner-local scheduler wrappers. |
+| `tests/data_checks/validate_step05_outputs.sh` | `RETAIN_ROOT`; permanent repository-level Step `05` operational inspection utility. Its distinct behavior and defects remain recorded in [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md). |
+| `tests/pending/test_step_04_mark_duplicates.sh` | `RETAIN_ROOT`; intentional non-runnable pending-plan scaffold retained through [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md). |
 
-The table does not reclassify already final owner-local paths under
-`src/norad/` or mirrored `tests/stages/`, `tests/analyses/`,
-`tests/evidence/`, `tests/ingestion/`, `tests/libraries/`, and
-`tests/contract_integration/`. Root callers such as `Makefile`,
-coverage rows, command rosters, and current documentation remain integration
-surfaces to update atomically when a `MOVE` unit is approved; their own
-repository-level ownership does not change.
+No current residual path is classified `MOVE` or `RETIRE`. Root `jobs/` is
+absent, all 15 tracked SLURM assets are owner-local, and the current public
+surface roster is assigned once in the tables above.
 
-Git file modes are contract data even when language peers differ. The exact
-mode is refreshed for a touched path and never normalized from its name or
-language; migration parity and rollback rules live in
-[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
+Private helpers remain part of their listed public or neutral owner and add no
+entry point. Owner-specific refinements live in adjacent contracts; the
+approved neutral seams, consumer rosters, and dependency direction live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
 
-## Ownership refinements
-
-Private helpers remain inside the public or neutral owner listed above; they do
-not add entry points or public owners. The following refinements prevent nearby
-contracts from being treated as interchangeable:
-
-- base intake validation does not require `replicate`, while the Step `09` and
-  `09c` analysis profile does; this is a base contract plus a stricter consumer
-  refinement;
-- Step `07` owns partition selection semantics; Steps `08` and `09` consume the
-  declared schema without becoming selection owners;
-- reference provenance spans the `00a`/`00b`/`00c` reference bundle and remains
-  cross-cutting, while neutral `reference_contigs` owns only shared parsing;
-  and
-- artifact-index reconciliation remains accountable to the stage, evidence,
-  or analysis owner whose native artifact it projects.
-
-The previously prohibited peer-implementation dependencies are closed. The
-durable neutral seams, consumers, and dependency direction live in
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams);
-the table above remains the current executable-surface roster.
-
-## Coverage result
-
-The protected current roster contains 25 public Python entry points (one under
-`scripts/` and 24 final owner-local entry points), 14 final owner-local shell
-entry points, 4 R entry points, 7 Git-orchestration entry points, 15 SLURM jobs
-(all final owner-local), and 24 public Make targets.
-Every member is assigned once
-above. The reporting-private Python implementation surfaces, three neutral
-library sources, four neutral contract implementation sources, and three
-private orchestration files are classified separately. No current
-autonomous pipeline orchestrator,
-ingestion executor, or installable-package entry point exists.
+The protected roster contains 25 public Python entry points, 14 owner-local
+shell entry points, 4 R entry points, 7 Git-orchestration entry points, 15
+owner-local SLURM jobs, and 24 public Make targets.

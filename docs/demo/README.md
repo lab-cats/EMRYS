@@ -14,7 +14,7 @@ limitations; use the exact
 [`RUNBOOK.md`](../operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report)
 procedure to generate the synthetic report. Current reporting behavior and its
 evidence ceiling remain in the
-[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#reporting-and-scientific-boundaries)
+[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow)
 and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).
 
 Only the two guides listed above are verified current presentation consumers.

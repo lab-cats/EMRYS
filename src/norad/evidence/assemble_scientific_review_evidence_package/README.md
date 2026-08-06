@@ -275,8 +275,8 @@ Rollback of only LIB-02J reverts its documentation close, executable
 `2538006`, then selection `d18856f`. Rollback of LIB-02I then reverts its
 documentation close, executable `95f795e`, and selection `d416e47`. Any deeper
 rollback must follow the full reverse branch lineage in
-[`PIPELINE_PLAN.md`](../../../../docs/design/PIPELINE_PLAN.md#completed-delivery-lineage)
-and operations history; do not skip the intervening LIB-02G, LIB-02H, or
-MIG-04A packages. Git cannot authenticate, recover, delete, or alter runtime
+[`operations history`](../../../../docs/history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md);
+do not skip the intervening LIB-02G, LIB-02H, or MIG-04A packages. Git cannot
+authenticate, recover, delete, or alter runtime
 evidence, outputs, locks, backups, notices, or review state. See
 [`CONTRACT.md`](CONTRACT.md) for the full boundary.

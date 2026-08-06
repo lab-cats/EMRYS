@@ -40,7 +40,7 @@ evidence gate explicitly unlock it.
 ## Report boundary
 
 The current conceptual reporting boundary belongs in the
-[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#reporting-and-scientific-boundaries),
+[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow),
 with implementation and synthetic-demo status in the
 [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report). For this
 discussion, the essential boundary is that a report presents declared

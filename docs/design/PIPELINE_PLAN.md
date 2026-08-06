@@ -47,47 +47,17 @@ production review.
 | Physical ownership | Fourteen DAG owners, neutral contracts/libraries, reporting, and evidence tools in final homes | source-topology migration complete at the local/static ceiling |
 | Documentation | User pipeline overview and compressed canonical owner views | [`DOC-PIPE-04`](../tasks/COMPLETED/DOC-PIPE-04-create-user-pipeline-overview.md) and final central reconciliation complete |
 
-## Completed PI-readiness tranche
+## Current modernization state
 
-The physical migration is complete for all fourteen semantic DAG owners,
-artifact and scientific-evidence contracts, reporting, reference-contig
-parsing, evidence tools, contract goldens, and validation-roster agreement.
-Exact final homes live in
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md); current
-public surfaces live in the
-[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md).
-
-The approved tranche completed this bounded sequence:
-
-1. finish central documentation reconciliation;
-2. complete [`SIZE-07A`](../tasks/COMPLETED/SIZE-07A-decompose-artifact-index-builder.md),
-   [`SIZE-07B`](../tasks/COMPLETED/SIZE-07B-decompose-scientific-validation-tooling.md),
-   [`SIZE-07D`](../tasks/COMPLETED/SIZE-07D-decompose-run-summary-builder.md),
-   [`SIZE-07E`](../tasks/COMPLETED/SIZE-07E-resolve-step08-r-module-size.md), and
-   [`SIZE-07F`](../tasks/COMPLETED/SIZE-07F-decompose-artifact-contract-validator.md)
-   in that order, each with its own outcome commit; and
-3. complete
-   [`LIB-03`](../tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md)
-   through one observed repeated seam defined just in time.
-
-`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` are complete.
-Each size slice owned a live refresh of only its target's size,
-responsibilities, consumers, risks, and disposition; the standalone repo-wide
-refresh was retired through
-[`SIZE-07`](../tasks/COMPLETED/SIZE-07-refresh-large-file-inventory.md).
-`LIB-03` is complete through one neutral source-only executable resolver used
-by exactly five stage producers; tool-specific policy remains consumer-local.
-No successor package is selected.
-
-The recorded reciprocal `REVIEW-UX-03` task edges are not an execution blocker
-for this explicitly authorized tranche; correcting general task-edge semantics
-through `TASK-REG-01` is out of scope. RPT-05A and required final-owner moves
-are complete. A slice must still stop if focused inspection exposes a changed
-interface, schema, dependency direction, shared-infrastructure contract,
-scientific meaning, evidence ceiling, or safety authority that the tranche did
-not authorize. Step `08` algorithmic extraction remains specifically barred;
-`SIZE-07E` must use a provably non-algorithmic seam or an explicitly approved,
-time-bounded exception.
+The physical owner migration and selected PI-readiness work are complete at
+the local/static evidence ceiling. Exact semantic owners and current public
+surfaces live in
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) and the
+[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md);
+allowed source homes live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
+Package evidence and chronology live in completed cards and dated history. No
+successor package is selected.
 
 Formal [`ONBOARD-03A`](../tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md)
 remains blocked on the local-pilot setup/orchestration/E2E family and must not
@@ -97,19 +67,11 @@ bounded entry path for a user whose environment is already configured.
 
 ### Residual source-topology convergence
 
-The current residual roster contains 87 tracked repository-level paths: 85
-`RETAIN_ROOT` and two `DEFER`. Root `jobs/` is absent; all 15 tracked SLURM
-files are owner-local. The manual tool probe lives with runtime preflight and
-the unused generic template is retired. The two unconsumed workflow profiles
-remain inert and deferred until an actual orchestration owner exists. The mixed
-wrapper-contract suite remains permanent cross-owner repository protection;
-there are no current residual `MOVE` or `RETIRE` groups.
-
-This count covers only the bounded residual roots defined by the completed
-source-topology audit; it is an inspection check, not a permanent repository-
-size target. Final owner-local implementation and mirrored tests are excluded.
-The functional-owner inventory owns the exact ledger and must change whenever
-a tracked residual path changes disposition.
+Root `jobs/` is absent and all 15 tracked SLURM files are owner-local. The
+only deferred repository paths are the two inert workflow profiles; no current
+residual path is marked `MOVE` or `RETIRE`. The
+[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#remaining-repository-level-exceptions)
+owns the exact remaining exceptions.
 
 ### Recovered proposal families
 
@@ -125,21 +87,6 @@ and readiness relationships, not automatic selection. UNREFINED records and
 other TODO proposals do not enter the approved runway without review and user
 direction.
 
-## Completed delivery lineage
-
-The current branch descends from the completed physical-owner and residual-
-topology convergence campaigns. The completed tranche used sequential,
-outcome-oriented commits: `DOC-PIPE-04` has its own completed commit; each of
-`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` has its own
-commit; the bounded
-[`LIB-03`](../tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md)
-seam is likewise a separate outcome commit rather than part of a size slice.
-Final local validation and genuinely affected central reconciliation are
-complete. The guarded R lane remains non-green only because the installed
-`renv` package is out of date; dependency maintenance is a separate package.
-Exact commit ancestry, publication state, and dated delivery evidence belong
-in Git and [`operations history`](../history/operations/), not here.
-
 ## Package acceptance criteria
 
 Every package must:
@@ -152,11 +99,10 @@ Every package must:
 - keep stage-specific semantics with their stage and introduce a neutral seam
   only when multiple real consumers and independent tests justify it;
 - record characterization as local, real-runtime, cluster, scientific-review,
-  or biological-readiness evidence without promoting between levels;
-- run focused checks during the tranche and the complete applicable gate on
-  the final combined tree; and
-- close its card in the same canonical outcome commit, repairing only links
-  required by the lifecycle move.
+  or biological-readiness evidence without promoting between levels; and
+- validate in proportion to changed behavior and shared risk, using
+  [`TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md) for lifecycle and
+  publication choreography.
 
 Documentation-only work additionally requires one mutable owner per fact,
 valid lifecycle links, preserved unique scientific/validation evidence, no
