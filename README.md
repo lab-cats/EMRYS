@@ -1,108 +1,104 @@
-# NORAD / CSU HPC RNA-seq Workflow
+# NORAD: CSU HPC RNA-seq and RNA-editing workflow
 
-NORAD rebuilds a legacy Novogene Remora RNA-seq / RNA-editing workflow as
-maintainable, manifest-driven research software for local development and CSU
-SLURM execution.
+NORAD modernizes a legacy Novogene Remora workflow as maintainable research
+software for local characterization and CSU SLURM execution. Its implemented
+repository-path owners span reference preparation, RNA-seq alignment and BAM
+processing, mechanical-orientation-aware cohort candidate generation, paired
+CMH ranking, evidence assembly, and report projection. See the
+[current architecture](docs/architecture/ARCHITECTURE.md) for the system map
+and [`STAGE_MAP.md`](src/norad/contracts/STAGE_MAP.md) for exact owner identities
+and dependency edges. NORAD does not yet provide a single workflow orchestrator
+or installed command-line application.
 
-It prepares the reference, aligns and normalizes BAMs, measures library
-orientation, marks duplicates, applies `SplitNCigarReads`, separates mechanical
-read orientations, performs cohort mpileup, preprocesses VCFs, and runs paired
-CMH candidate ranking. See the
-[current architecture](docs/architecture/ARCHITECTURE.md) for conceptual flow
-and contract routes. Structured artifact, scientific-review, run-summary, and
-report contracts support evidence inspection without changing native analysis
-outputs; step-specific validation reports enter through explicit read-only
-adapters.
+## Start here
+
+This entry path assumes pinned Python packages, the guarded R environment,
+pinned Quarto, and owner-required system tools are already configured. Activate
+the configured Python environment before using the Make target below.
+Implemented owners collectively consume a sample manifest and paired RNA-seq
+reads, reference FASTA/GTF material, and any owner-specific selections or
+declarations described by their local contract. The full runtime manifest and
+production references may remain operator- or cluster-local.
+
+1. Review the [configuration catalog](configs/README.md) and the structural
+   [`samples.example.tsv`](configs/samples.example.tsv) starter.
+2. From the repository root, validate the starter's public schema:
+
+   ```sh
+   make validate
+   ```
+
+   This checks manifest structure only. It does not require the example FASTQ
+   paths to exist, run ingestion, or establish a runnable data fixture.
+3. Choose the applicable owner through the
+   [transformation-stage index](src/norad/stages/README.md),
+   [analysis owner](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md),
+   [evidence index](src/norad/evidence/README.md), or
+   [reporting index](src/norad/reporting/README.md). Read the routed `README.md`
+   and any adjacent `CONTRACT.md`, then follow that owner's validation and
+   safety instructions. Use a dry-run or preflight where the owner provides
+   one; some legacy-preserving owners do not, and there is no repository-wide
+   dry-run.
+4. Use the [runbook](docs/operations/RUNBOOK.md) for supported commands and
+   recovery procedures, and
+   [troubleshooting](docs/operations/TROUBLESHOOTING.md) for symptom-based
+   diagnosis.
+
+For current implementation and evidence state, read
+[`HANDOFF.md`](docs/operations/HANDOFF.md). For planned work and acceptance
+boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
+
+To generate a synthetic presentation bundle, follow the
+[demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report),
+which creates or replaces ignored artifacts beneath `results/demo-report/`.
+Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
+fixture is synthetic and provisional; it does not establish production
+execution, local or cluster runtime validation, completed production scientific
+review, or biological readiness.
 
 ## Evidence boundary
 
-Implementation, local fixtures, real-runtime testing, cluster execution,
-scientific review, and biological interpretation are distinct. Report
-generation does not promote any of those states.
+Implementation, local fixtures, real local runtime, cluster execution,
+scientific review, and biological interpretation are distinct evidence states.
+Evidence in one layer does not automatically establish a higher one: a local
+validation proves only its declared local check, while a scheduler exit,
+generated artifact, or rendered report alone does not establish scientific
+review or biological interpretation.
 
-Candidate rows are “CMH-ranked candidates,” not validated editing sites.
+Candidate rows are **CMH-ranked candidates**, not validated editing sites.
 Mechanical `FWD_like` and `REV_like` labels are not biological strand claims.
 `biological_interpretation_ready` remains reserved unless an approved
 scientific policy explicitly unlocks it.
 
-For current status and the exact resume point, read
-[`HANDOFF.md`](docs/operations/HANDOFF.md); for the package matrix, roadmap, and
-lineage, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
-
-## Minimal local start
-
-1. Apply [`AGENTS.md`](AGENTS.md), read the
-   [`task-start router`](docs/operations/TASK_START.md), and follow the selected
-   card or bounded package.
-2. Use the applicable [owner-local contract](src/norad/) for exact current
-   behavior, the
-   [engineering conventions](docs/operations/ENGINEERING_CONVENTIONS.md) for
-   new or changed implementation, and
-   [`RUNBOOK.md`](docs/operations/RUNBOOK.md) for supported commands.
-3. Start with tiny synthetic fixtures and a supported dry-run; never treat a
-   local pass as cluster or scientific evidence.
-
-Preview a populated synthetic HTML/PDF bundle with the
-[demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
-It uses synthetic inputs and does not promote evidence.
-For a PI-facing presentation, start with the reviewed
-[demo-guide index](docs/demo/README.md).
-
-Dependency restoration is an explicit setup action. Workflow scripts,
-validators, renderers, and tests never install R, Quarto, system packages, or
-analysis dependencies.
-
 ## Repository map
 
-```text
-scripts/        retained cross-cutting validation and evidence entry points
-jobs/           SLURM jobs and wrapper interfaces
-src/norad/      implemented migrated owners, neutral libraries, and contracts
-src/norad/contracts/  neutral validators and versioned public schemas
-src/norad/reporting/  artifact index, run-summary, report code, and owned assets
-tests/          active Python, shell, R, and fixture tests
-tests/pending/  non-runnable future test plans
-configs/        example manifests and explicit contracts
-docs/           architecture, design, operations, and demo material
-docs/tasks/     bounded future task cards organized by lifecycle status
-results/        ignored generated outputs
-logs/           ignored runtime logs
-```
+| Path | Purpose |
+| --- | --- |
+| [`src/norad/stages/`](src/norad/stages/README.md) | Transformation owners and their local producer, validator, scheduler, and contract routes. |
+| [`src/norad/analyses/`](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md), [`src/norad/evidence/`](src/norad/evidence/README.md), [`src/norad/reporting/`](src/norad/reporting/README.md) | Paired-CMH analysis, evidence operations, and report projection. |
+| [`src/norad/contracts/`](src/norad/contracts/) and [`src/norad/libraries/`](src/norad/libraries/README.md) | Neutral schemas, validators, topology maps, and explicitly shared libraries. |
+| [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
+| [`scripts/`](scripts/README.md) | Cross-cutting manifest validation, dependency lifecycle, documentation, and Git tooling. |
+| [`jobs/`](jobs/) | Repository-level manifest validation and generic scheduler utilities; owner-specific wrappers live beside their owners under `src/norad/`. |
+| [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
+| [`docs/`](docs/sitemap/README.md) | Architecture, operations, design, task, history, and demonstration documentation. |
+| [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
+| [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
+| [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
 
-## Documentation map
+Use the [documentation sitemap](docs/sitemap/README.md) for category-level
+navigation and the
+[ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) for canonical
+responsibility boundaries.
 
-Use the [documentation sitemap](docs/sitemap/README.md) for top-level categories
-and the [ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) for audience
-routes and canonical responsibility boundaries.
+## Data and repository safety
 
-## Data and Git policy
+Commit source, tests, configuration starters, schemas, documentation, and tiny
+safe fixtures. Do not commit FASTQ, BAM, CRAM, VCF, large result tables, runtime
+logs, credentials, tokens, private keys, restored runtimes, or environment
+caches.
 
-Commit source, tests, configs, schemas, documentation, and tiny safe fixtures.
-Do not commit FASTQ, BAM, CRAM, VCF, large result tables, logs, credentials,
-tokens, private keys, restored runtimes, or environment caches.
-
-The full runtime sample manifest and production references may be cluster-local.
-Record their identity, persistence, and hashes before downstream runtime
-promotion; filenames are not provenance.
-
-## Development model
-
-Select future work through the [`task registry`](docs/tasks/README.md).
-Selection starts read-only planning and does not authorize implementation;
-every task still requires live repository inspection and an approved
-task-specific plan. `UNREFINED` proposals are nonselectable, while
-`INTEGRATION_REVIEW` contains complete cards frozen for asynchronous canonical
-integration and permits no candidate mutation.
-
-[`TASK_DELIVERY.md`](docs/operations/TASK_DELIVERY.md#package-delivery) owns
-package delivery and documentation-impact procedure; exact validation commands
-remain in the [`RUNBOOK.md`](docs/operations/RUNBOOK.md#local-validation-gate).
-
-Concurrent candidates remain isolated proposals. Accepted integration and final
-validation are serialized under
-[`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md); live lanes remain in
-[`HANDOFF.md`](docs/operations/HANDOFF.md).
-
-Remote and cluster promotion remain upstream-sequential under the
-[delivery procedure](docs/operations/TASK_DELIVERY.md#package-delivery) and
-current [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md) lineage.
+Record the identity, source, persistence, and hashes of production inputs and
+references before downstream runtime promotion; a path or filename is not
+provenance. Before deleting ignored data, references, results, or logs, confirm
+their owner, active consumers, recovery state, and retention requirements.
