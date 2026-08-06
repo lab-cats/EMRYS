@@ -32,6 +32,7 @@ if str(REPORTING) not in sys.path:
     sys.path.insert(0, str(REPORTING))
 
 ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
+ARTIFACT_INDEX_CONTEXT = importlib.import_module("_artifact_index.context")
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 STEP08_CONTRACT = ARTIFACT_INDEX.step08
@@ -82,6 +83,11 @@ HEADER_MODULES: Mapping[str, ModuleType] = {
 
 
 def header_module(module_name: str, constant_name: str) -> ModuleType:
+    if (
+        module_name == "build_artifact_index"
+        and constant_name == "ARTIFACT_INDEX_HEADER"
+    ):
+        return ARTIFACT_INDEX_CONTEXT
     if (
         module_name == "step_09c_scientific_validation"
         and constant_name == "REVIEW_PLAN_HEADER"

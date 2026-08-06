@@ -60,7 +60,7 @@ public surfaces live in the
 The approved tranche is deliberately narrow:
 
 1. finish central documentation reconciliation;
-2. complete [`SIZE-07A`](../tasks/TODO/SIZE-07A-decompose-artifact-index-builder.md),
+2. complete [`SIZE-07A`](../tasks/COMPLETED/SIZE-07A-decompose-artifact-index-builder.md),
    [`SIZE-07B`](../tasks/TODO/SIZE-07B-decompose-scientific-validation-tooling.md),
    [`SIZE-07D`](../tasks/TODO/SIZE-07D-decompose-run-summary-builder.md),
    [`SIZE-07E`](../tasks/TODO/SIZE-07E-resolve-step08-r-module-size.md), and
@@ -68,8 +68,8 @@ The approved tranche is deliberately narrow:
    in that order, each with its own outcome commit; and
 3. begin `LIB-03` with one observed repeated seam only, defined just in time.
 
-`SIZE-07A` is in flight and is not complete. The later size slices remain
-queued. Each size slice owns a live refresh of only its target's size,
+`SIZE-07A` is complete. The later size slices remain queued. Each size slice
+owns a live refresh of only its target's size,
 responsibilities, consumers, risks, and disposition; the standalone repo-wide
 refresh was retired through
 [`SIZE-07`](../tasks/COMPLETED/SIZE-07-refresh-large-file-inventory.md).

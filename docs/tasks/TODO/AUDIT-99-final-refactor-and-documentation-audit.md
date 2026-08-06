@@ -25,7 +25,7 @@ runtime/cluster/scientific promotion.
 
 - [RPT-06](../TODO/RPT-06-make-science-report-the-default.md) — Required: report target/default work must be complete.
 - [LOG-05](../TODO/LOG-05-activate-concise-default-logging.md) — Required: logging rollout/default work must be complete.
-- [SIZE-07A](../TODO/SIZE-07A-decompose-artifact-index-builder.md) — Required: the artifact-index mandatory size family must be closed.
+- [SIZE-07A](../COMPLETED/SIZE-07A-decompose-artifact-index-builder.md) — Required: the artifact-index mandatory size family must be closed.
 - [SIZE-07B](../TODO/SIZE-07B-decompose-scientific-validation-tooling.md) — Required: the scientific-validation mandatory size family must be closed.
 - [SIZE-07D](../TODO/SIZE-07D-decompose-run-summary-builder.md) — Required: the run-summary mandatory size family must be closed.
 - [SIZE-07E](../TODO/SIZE-07E-resolve-step08-r-module-size.md) — Required: the Step 08 size-policy conflict must be explicitly resolved.

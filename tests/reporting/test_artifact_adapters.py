@@ -71,6 +71,8 @@ def load_fixture_module() -> ModuleType:
 
 FIXTURE = load_fixture_module()
 ADAPTER = FIXTURE.ADAPTER
+ARTIFACT_CONTEXT = importlib.import_module("_artifact_index.context")
+ARTIFACT_VALIDATION = importlib.import_module("_artifact_index.validation")
 
 
 @pytest.fixture
@@ -873,6 +875,20 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
     assert not artifact_fixture.output_root.exists()
 
 
+def test_live_artifact_index_header_owner_controls_serialized_bytes(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = ARTIFACT_CONTEXT.ARTIFACT_INDEX_HEADER
+    mutated = (original[1], original[0], *original[2:])
+    monkeypatch.setattr(ARTIFACT_CONTEXT, "ARTIFACT_INDEX_HEADER", mutated)
+
+    context = context_for(artifact_fixture)
+
+    assert context.index_bytes.splitlines()[0] == "\t".join(mutated).encode()
+    assert context.index_bytes != ADAPTER.tsv_bytes(original, context.index_rows)
+
+
 def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     artifact_fixture: Any,
 ) -> None:
@@ -1307,6 +1323,33 @@ def test_source_mutation_between_inspection_and_publication_aborts_cleanly(
     assert_no_owned_outputs(artifact_fixture)
 
 
+def test_recheck_inputs_uses_live_context_stat_owner(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context = context_for(artifact_fixture)
+    target = artifact_fixture.source_for("sample.SYNTH_A.star_log").resolve()
+    real_stat_source = ARTIFACT_CONTEXT.stat_source
+    reached_target = False
+
+    def fail_target_recheck(path: Path, *, hash_content: bool = True) -> Any:
+        nonlocal reached_target
+        if path.resolve() == target:
+            reached_target = True
+            raise ADAPTER.ArtifactIndexError("injected live stat-source failure")
+        return real_stat_source(path, hash_content=hash_content)
+
+    monkeypatch.setattr(ARTIFACT_CONTEXT, "stat_source", fail_target_recheck)
+
+    with pytest.raises(
+        ADAPTER.ArtifactIndexError,
+        match="injected live stat-source failure",
+    ):
+        ADAPTER.recheck_inputs(context)
+
+    assert reached_target
+
+
 def test_run_contract_is_order_independent_but_strict_json(
     artifact_fixture: Any,
 ) -> None:
@@ -1631,6 +1674,38 @@ def test_stale_predecessor_context_cannot_overwrite_newer_retry(
 
     assert owned_snapshot(artifact_fixture) == before
     assert not artifact_fixture.lock_path.exists()
+
+
+def test_prepare_context_uses_live_predecessor_validation_owner(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ADAPTER.publish_context(context_for(artifact_fixture))
+    real_validate = ARTIFACT_VALIDATION.validate_published_transaction
+    reached_predecessor = False
+
+    def fail_predecessor_validation(**kwargs: Any) -> None:
+        nonlocal reached_predecessor
+        if not kwargs["require_current_source_locations"]:
+            reached_predecessor = True
+            raise ADAPTER.ArtifactIndexError(
+                "injected live predecessor-validation failure"
+            )
+        real_validate(**kwargs)
+
+    monkeypatch.setattr(
+        ARTIFACT_VALIDATION,
+        "validate_published_transaction",
+        fail_predecessor_validation,
+    )
+
+    with pytest.raises(
+        ADAPTER.ArtifactIndexError,
+        match="injected live predecessor-validation failure",
+    ):
+        context_for(artifact_fixture)
+
+    assert reached_predecessor
 
 
 def test_post_publication_source_mutation_rolls_back(

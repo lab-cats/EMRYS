@@ -14,6 +14,7 @@ rerun analysis, decide scientific validity, or promote evidence.
 | [`render_run_report.py`](render_run_report.py) | Provides the public Python bundle entry point and the internal self-contained HTML core used by the bundle coordinator; it consumes one canonical summary and only its authorized supplemental tables. |
 | [`render_run_report_bundle.py`](render_run_report_bundle.py) | Publishes a selected HTML/PDF/TSV/receipt bundle, with the receipt last. |
 
+[`_artifact_index/`](_artifact_index/README.md),
 [`_run_summary_science.py`](_run_summary_science.py),
 [`templates/`](templates/README.md), and [`styles/`](styles/README.md) are
 private implementation assets, not additional public interfaces. Structural

@@ -24,7 +24,6 @@ change surface.
 
 ## Blocked by
 
-- [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 - [RPT-05A](../COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decompose the builder inside the final reporting owner rather than creating more temporary flat implementation.
 
 ## Completion unblocks
@@ -86,5 +85,30 @@ change surface.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the explicitly approved PI-readiness tranche. The target-only
+refresh measured `src/norad/reporting/build_artifact_index.py` at 5,681 lines
+and 201,647 bytes. It owned exact contract loading; models, constants, rosters,
+and registry data; text and binary inspection; native, Step `09`, and review
+reconciliation; record/index/receipt assembly and validation; stable-input
+context checks; the public CLI; and receipt-last transaction control. Direct
+consumers are `build_run_summary.py`, the reporting fixture and adapter suites,
+the independent contract goldens, and public CLI contracts; report renderers
+consume it transitively through the run summary.
+
+The same public path is now a 766-line CLI and compatibility facade over 15
+substantive reporting-private modules plus `__init__.py`. The extracted seams
+own contracts, models, rosters, registry, core helpers, text/binary readers,
+inspection, native/Step `09`/review reconciliation, cross-scope reconciliation,
+records, context, and validation. The largest private module is 570 lines. The
+facade remains above the 600-line advisory threshold because it coherently
+retains the public loader and transaction/fault boundary, including write,
+fsync, lock, signal, replace, remove, rollback, and recovery hooks; it is below
+both mandatory decomposition thresholds.
+
+Focused local evidence passed: 95 adapter, fault, native, and parity tests; 82
+independent contract goldens; 72 run-summary tests; 22 exact-loader/private-
+dependency cases; two exact public CLI cases; compile/import checks; and
+`git diff --check`. Added live-owner mutation tests prove that header
+serialization, source rechecks, and predecessor validation bind to the moved
+owners. This is local structural and contract-parity evidence only; it adds no
+cluster, production, scientific-review, or biological proof.

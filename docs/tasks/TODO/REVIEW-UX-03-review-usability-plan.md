@@ -27,7 +27,6 @@ instructions, or local context that omits critical caveats.
 
 - [RPT-03](../TODO/RPT-03-build-format-neutral-report-projection.md) — Partially: the science report contract is also required.
 - [LOG-03](../TODO/LOG-03-build-two-sink-logging-foundation.md) — Partially: the logging contract is also required.
-- [SIZE-07A](../TODO/SIZE-07A-decompose-artifact-index-builder.md) — Partially: its target-only size refresh remains inside that implementation slice.
 - [SIZE-07B](../TODO/SIZE-07B-decompose-scientific-validation-tooling.md) — Partially: its target-only size refresh remains inside that implementation slice.
 - [SIZE-07D](../TODO/SIZE-07D-decompose-run-summary-builder.md) — Partially: its target-only size refresh remains inside that implementation slice.
 - [SIZE-07E](../TODO/SIZE-07E-resolve-step08-r-module-size.md) — Partially: its target-only size refresh remains inside that implementation slice.
