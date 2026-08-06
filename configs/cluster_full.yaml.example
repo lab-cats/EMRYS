@@ -1,0 +1,13 @@
+project_root: "/path/to/project/on/cluster"
+sample_manifest: "/path/to/sample_manifest.tsv"
+
+data_dir: "/path/to/full/data"
+results_dir: "/path/to/results"
+logs_dir: "logs"
+
+threads: 8
+
+reference:
+  genome_dir: "/path/to/star/genome/index"
+  fasta: "/path/to/reference.fa"
+  gtf: "/path/to/annotation.gtf"

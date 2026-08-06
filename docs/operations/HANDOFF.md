@@ -15,7 +15,8 @@ for frozen branch and delivery detail.
   exact clean-tree, tip, publication, and upstream-equality state.
 - Cleanup modernized the user entry path and canonical documentation, removed
   the root `jobs/` scaffold, moved the retained cluster probe to its evidence
-  owner, and retired unused scheduler/workflow scaffolding.
+  owner, and retired the unused generic scheduler scaffold. Two unconsumed
+  workflow profiles remain inert and deferred; no orchestrator reads them.
 - `DOC-PIPE-04`, `SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, `SIZE-07F`,
   and the bounded `LIB-03` seam each have their own outcome commit. The
   standalone size-inventory prerequisite is retired, and no successor package

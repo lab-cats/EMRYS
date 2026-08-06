@@ -97,12 +97,13 @@ bounded entry path for a user whose environment is already configured.
 
 ### Residual source-topology convergence
 
-The current residual roster contains 82 tracked repository-level paths, all
-`RETAIN_ROOT`. Root `jobs/` is absent; all 15 tracked SLURM files are
-owner-local. The manual tool probe lives with runtime preflight, the unused
-generic template and two unconsumed workflow profiles are retired, and the
-mixed wrapper-contract suite remains permanent cross-owner repository
-protection. There are no current residual `MOVE`, `DEFER`, or `RETIRE` groups.
+The current residual roster contains 84 tracked repository-level paths: 82
+`RETAIN_ROOT` and two `DEFER`. Root `jobs/` is absent; all 15 tracked SLURM
+files are owner-local. The manual tool probe lives with runtime preflight and
+the unused generic template is retired. The two unconsumed workflow profiles
+remain inert and deferred until an actual orchestration owner exists. The mixed
+wrapper-contract suite remains permanent cross-owner repository protection;
+there are no current residual `MOVE` or `RETIRE` groups.
 
 This count covers only the bounded residual roots defined by the completed
 source-topology audit; it is an inspection check, not a permanent repository-

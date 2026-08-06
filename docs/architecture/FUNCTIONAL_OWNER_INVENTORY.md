@@ -80,8 +80,8 @@ environment anchors, and intentional operational placeholders. Its audit-time
 87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
 separately owned temporary record, sample-manifest admission moved four
 implementation/test paths, the manual cluster tool probe moved to its final
-runtime-preflight owner, and the unused scheduler scaffold and two unconsumed
-configuration profiles were retired, the 82 current residual paths are
+runtime-preflight owner, the unused scheduler scaffold was retired, and two
+unconsumed configuration profiles remain explicitly deferred, the 84 current residual paths are
 partitioned once below. Counts are inspection checks, not a permanent
 repository-size baseline; each later tracked-root change, owner migration, or
 retirement updates this current inventory.
@@ -91,6 +91,7 @@ retirement updates this current inventory.
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
 | All 27 tracked public input/reference files under root `configs/`: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | `RETAIN_ROOT` public operator/reference inputs; they are not owner-native implementation assets. |
+| `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | `DEFER`; inert illustrative workflow profiles retained without supported execution semantics until an actual orchestration owner exists. |
 | `tests/baselines/python_coverage.json`; `tests/test_python_coverage_baseline.py`; `tests/test_validation_orchestrator.py`; both `tests/tools/` files; `tests/test_public_cli_contracts.py` and its two fixture paths | 8 | Repository quality-gate, coverage, and cross-entry-point command infrastructure retained at repository level. The public-command suite spans Make, Git tooling, modes, and multiple runtime domains, so it is not a neutral artifact-contract integration test. |
 | `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `configs/README.md`; `scripts/README.md`; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 22 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level; the five dependency/test configuration files have a canonical [purpose map](../operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration). |
 | `tests/test_slurm_wrapper_contracts.py` | 1 | Permanent `RETAIN_ROOT` cross-owner scheduler-wrapper protection. All scheduler assets themselves remain with their final functional owners. |
@@ -101,9 +102,10 @@ Completed
 recomputed eleven groups and 87 unique paths at its audit boundary: 76
 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
 [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-later retired that one temporary path after no-loss disposition. The eight
-current groups contain `5`, `17`, `27`, `8`, `22`, `1`, `1`, and `1` paths:
-82 total, 82 unique, all 82 `RETAIN_ROOT`, and no current `DEFER` or `RETIRE`.
+later retired that one temporary path after no-loss disposition. The nine
+current groups contain `5`, `17`, `27`, `2`, `8`, `22`, `1`, `1`, and `1`
+paths: 84 total, 84 unique, 82 `RETAIN_ROOT`, 2 `DEFER`, and no current
+`RETIRE`.
 The source-topology campaign remains complete at the local/static
 evidence ceiling; this inventory does not close the broader modernization
 backlog.
