@@ -25,4 +25,3 @@ test:
 NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk
 include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk
-include $(NORAD_MAKE_ROOT)/scripts/make_cluster_demo.mk
