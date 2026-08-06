@@ -56,7 +56,7 @@ scientific stages.
 | Step `08` scientific-evidence contract | Neutral [`step08.py`](../../src/norad/contracts/scientific_evidence/step08.py); no public CLI, package identity, or installation surface | Mirrored [`test_step08.py`](../../tests/contracts/scientific_evidence/test_step08.py) plus affected consumer suites. Neutral Step `09`, the Step `08` and Step `09` validators, Step `09c`, and the artifact index share one exact-file module, `ContractError`, and `Table` identity. Shell/R algorithms, review policy, publication, and artifact reconciliation remain owner-local. |
 | Step `09` scientific-evidence contract | Neutral [`step09.py`](../../src/norad/contracts/scientific_evidence/step09.py); no public CLI, package identity, or installation surface | Mirrored [`test_step09.py`](../../tests/contracts/scientific_evidence/test_step09.py) plus affected consumer suites. The owner exact-loads neutral Step `08`; the Step `09` validator, Step `09c`, and artifact index share one exact ready module identity. Step `09` shell/R method, Step `09c` review policy/publication, and artifact reconciliation remain owner-local. |
 | Step `09c` review-package contract | Neutral [`review_package.py`](../../src/norad/contracts/scientific_evidence/review_package.py); no public CLI, package identity, or installation surface | Mirrored [`test_review_package.py`](../../tests/contracts/scientific_evidence/test_review_package.py) plus affected consumer suites. Step `09c`, artifact indexing, and run-summary science share one exact ready module identity for the public thirteen-file roster, headers, vocabularies, bindings, and state reducer. Step `09c` retains review/input policy, context, validation, publication, locking, rollback, and recovery. |
-| Artifact indexing | [`build_artifact_index.py`](../../src/norad/reporting/build_artifact_index.py), public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/reporting/test_artifact_adapters.py) and its adjacent fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. Artifact indexing consumes the neutral Step `08`, Step `09`, and review-package contracts, has no private Step `09c` dependency, and keeps index reconciliation independently implemented. |
+| Artifact indexing | Public facade [`build_artifact_index.py`](../../src/norad/reporting/build_artifact_index.py), in-flight private implementation package [`_artifact_index/`](../../src/norad/reporting/_artifact_index/README.md), and public starter [`artifact_inventory.example.tsv`](../../configs/artifact_inventory.example.tsv) | [`test_artifact_adapters.py`](../../tests/reporting/test_artifact_adapters.py) and its adjacent fixture builder. Generic inventory mechanics belong here; native adapter semantics remain with their functional owners. The in-flight package structure remains inside the reporting owner and does not add public entry points or claim completion of `SIZE-07A`. Artifact indexing consumes the neutral Step `08`, Step `09`, and review-package contracts, has no private Step `09c` dependency, and keeps index reconciliation independently implemented. |
 | Canonical run-summary assembly | [`build_run_summary.py`](../../src/norad/reporting/build_run_summary.py), private helper [`_run_summary_science.py`](../../src/norad/reporting/_run_summary_science.py), public starter [`artifact_run_contract.example.json`](../../configs/artifact_run_contract.example.json) | [`test_artifact_run_summary.py`](../../tests/reporting/test_artifact_run_summary.py) and its adjacent fixture builder. The helper exact-loads the neutral review-package contract and uses a reporting-local reader/projection over the committed public thirteen-file package, explicitly referenced evidence, and validated index records. It does not load Step `09c`, revalidate private Step `09c` source inputs, or own review/evidence policy. |
 | Static reporting | [`render_run_report.sh`](../../src/norad/reporting/render_run_report.sh), [`render_run_report.py`](../../src/norad/reporting/render_run_report.py), [`render_run_report_bundle.py`](../../src/norad/reporting/render_run_report_bundle.py), owned [`templates/`](../../src/norad/reporting/templates/) and [`styles/`](../../src/norad/reporting/styles/), public starter [`report_table_approvals.example.tsv`](../../configs/report_table_approvals.example.tsv); Make `demo-report` and `report-test` | [shell renderer contract](../../tests/reporting/test_render_run_report.sh), [`test_report_html_v1.py`](../../tests/reporting/test_report_html_v1.py), [`test_report_exports_v1.py`](../../tests/reporting/test_report_exports_v1.py), and report fixtures under [`report_html_v1/`](../../tests/reporting/fixtures/report_html_v1/). Rendering consumes one canonical summary and never reruns analysis. |
 
@@ -67,7 +67,6 @@ pipeline owner graph but still receive one owner:
 
 | Current owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
-| Scheduler scaffolding | [`template.slurm`](../../jobs/template.slurm) | [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). This is a future-job template/probe, not a pipeline stage. |
 | Documentation/Git orchestration | Public commands in [`scripts/git_orchestration/`](../../scripts/git_orchestration/): `apply_fragment_candidate.sh`, `finalize_fragment_integration.sh`, `publish_exact_ref.sh`, `record_fragment_noop.sh`, `validate_documentation.py`, `validate_fragment_candidate.py`, and `validate_fragment_target.py`; private helpers `_common.py` and `_common.sh` add no public surface | [`tests/git_orchestration/`](../../tests/git_orchestration/), [public CLI contracts](../../tests/test_public_cli_contracts.py). These operate on repository state, never scientific artifacts or evidence state. |
 | Developer quality gates | Make `all-checks`, `lint`, `local-real-r-test`, `python-coverage-baseline-update`, `python-coverage-check`, `python-coverage-measure`, `real-r-test`, `shell-test`, `smoke`, `test`, `validation-guarded-r`, `validation-python-coverage`, `validation-report-runtime`, `validation-shell-contracts`, and `validation-static` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages. |
 | Demonstration facade | Make `demo-step03` and `demo-step03-dry-run` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json). They submit the existing Step `03` wrapper and do not own Step `03` behavior. |
@@ -79,21 +78,21 @@ remaining shared/root test surfaces, top-level developer inputs, project
 environment anchors, and intentional operational placeholders. Its audit-time
 87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
 separately owned temporary record, sample-manifest admission moved four
-implementation/test paths, and the manual cluster tool probe moved to its
-final runtime-preflight owner, the 85 current residual paths are partitioned
-once below. Counts are inspection checks, not a permanent repository-size
-baseline; each later tracked-root change, owner migration, or retirement
-updates this current inventory.
+implementation/test paths, the manual cluster tool probe moved to its final
+runtime-preflight owner, and the unused scheduler scaffold and two unconsumed
+configuration profiles were retired, the 82 current residual paths are
+partitioned once below. Counts are inspection checks, not a permanent
+repository-size baseline; each later tracked-root change, owner migration, or
+retirement updates this current inventory.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
-| The 27 `RETAIN_ROOT` public input/reference files under root `configs/`, excluding only the two deferred profiles: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | Public operator/reference inputs retained at root; they are not owner-native implementation assets. |
+| All 27 tracked public input/reference files under root `configs/`: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | `RETAIN_ROOT` public operator/reference inputs; they are not owner-native implementation assets. |
 | `tests/baselines/python_coverage.json`; `tests/test_python_coverage_baseline.py`; `tests/test_validation_orchestrator.py`; both `tests/tools/` files; `tests/test_public_cli_contracts.py` and its two fixture paths | 8 | Repository quality-gate, coverage, and cross-entry-point command infrastructure retained at repository level. The public-command suite spans Make, Git tooling, modes, and multiple runtime domains, so it is not a neutral artifact-contract integration test. |
 | `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `configs/README.md`; `scripts/README.md`; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 22 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level; the five dependency/test configuration files have a canonical [purpose map](../operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration). |
-| `jobs/template.slurm`; `tests/test_slurm_wrapper_contracts.py` | 2 | Deferred generic scheduler scaffold and mixed wrapper characterization. Owner-specific scheduler assets already remain with their functional owners. |
-| `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | Deferred runtime orchestration/profile inputs; no executable orchestrator exists. |
+| `tests/test_slurm_wrapper_contracts.py` | 1 | Permanent `RETAIN_ROOT` cross-owner scheduler-wrapper protection. All scheduler assets themselves remain with their final functional owners. |
 | `tests/data_checks/validate_step05_outputs.sh` | 1 | Permanent repository-level operational inspection utility through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md). It uniquely retains optional scheduler-state lookup, six-sample/cohort status aggregation, output-size and scratch inspection, additional `LB`/`PL` read-group requirements, a best-effort persisted twelve-column TSV snapshot, and aggregate exit `0`/`1`/`2` behavior not supplied by the final Step `05` validator. The duplicate truncating `tee` writers and silent replacement remain characterized defects. |
 | `tests/pending/test_step_04_mark_duplicates.sh` | 1 | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md). The intentional non-runnable pending-plan scaffold remains byte-identical because pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
 Completed
@@ -101,10 +100,10 @@ Completed
 recomputed eleven groups and 87 unique paths at its audit boundary: 76
 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
 [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-later retired that one temporary path after no-loss disposition. The nine
-current groups contain `5`, `17`, `27`, `8`, `22`, `2`, `2`, `1`, and `1`
-paths: 85 total, 85 unique, 81 `RETAIN_ROOT`, 4 `DEFER`, and no current
-`RETIRE`. The source-topology campaign remains complete at the local/static
+later retired that one temporary path after no-loss disposition. The eight
+current groups contain `5`, `17`, `27`, `8`, `22`, `1`, `1`, and `1` paths:
+82 total, 82 unique, all 82 `RETAIN_ROOT`, and no current `DEFER` or `RETIRE`.
+The source-topology campaign remains complete at the local/static
 evidence ceiling; this inventory does not close the broader modernization
 backlog.
 
@@ -147,11 +146,11 @@ the table above remains the current executable-surface roster.
 
 The protected current roster contains 25 public Python entry points (one under
 `scripts/` and 24 final owner-local entry points), 14 final owner-local shell
-entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
-(one under `jobs/` and 15 final owner-local jobs), and 24 public Make targets.
+entry points, 4 R entry points, 7 Git-orchestration entry points, 15 SLURM jobs
+(all final owner-local), and 24 public Make targets.
 Every member is assigned once
-above. The reporting-private Python module, three neutral library sources, four
-neutral contract implementation sources, and three private orchestration files
-are classified separately. No current
+above. The reporting-private Python implementation surfaces, three neutral
+library sources, four neutral contract implementation sources, and three
+private orchestration files are classified separately. No current
 autonomous pipeline orchestrator,
 ingestion executor, or installable-package entry point exists.

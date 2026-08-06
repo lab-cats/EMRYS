@@ -1,217 +1,76 @@
 # Project handoff
 
-This is the canonical current takeover snapshot. Roadmap, status, acceptance,
-and delivery-required lineage live in
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); exact commands live in
-[`RUNBOOK.md`](RUNBOOK.md). Frozen delivery and branch history lives in the
-[`operations-history record`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md).
+This file records only live takeover facts that are not safely reconstructed
+from Git, task cards, or history. Resolve the exact commit, upstream relation,
+and worktree contents from Git; use
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for durable queue order,
+[`RUNBOOK.md`](RUNBOOK.md) for commands, and the
+[`operations history`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md)
+for frozen branch and delivery detail.
 
 ## Checkout
 
-- Branch: `codex/residual-source-topology-convergence`.
-- Campaign base:
-  `3efe461ee7111291852417ad5e4165977937de4c`, the clean, published,
-  upstream-equal `PLAN-03A` documentation/lifecycle close.
-- Latest executable/test checkpoint:
-  `8921ec37348d78e8a9b0a374c155ea8cd1be0d53`, the `MIG-04F` direct
-  validation-roster relocation and fourteen-caller cutover, and the frozen
-  executable basis for this documentation/lifecycle close.
-- Current package predecessor:
-  `8617635eecd848d684c695a5299354066ee02167`, the clean, published,
-  live-remote-equal `DOC-CONS-08F` close.
-- Current tip and upstream relationship: resolve the exact identity and
-  equality from Git; this handoff owns the branch and lifecycle state rather
-  than duplicating a moving commit ID.
-- Completed planning predecessor: documentation-only/non-consuming
-  [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md).
-  It partitions the residual source/test roster, fixes cross-cutting target
-  homes and JIT order, corrects mutable report dependencies, and changes no
-  executable, configuration, dependency, schema, fixture, report template,
-  test-selection, scheduler, runtime, cluster, scientific-review, or biological
-  surface.
-- Completed decision package:
-  [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md)
-  settled the two observed peer-implementation seams without changing a
-  consumed surface. It fixed bottom-up neutral scientific-evidence contracts,
-  a reporting-local committed-package reader/projection, and a neutral
-  `reference_contigs` parser library as the permanent directions.
-- Completed residual migration:
-  [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-  moved the neutral artifact validator, five schemas, direct test, and four
-  valid fixtures to their permanent owners and cut over all reviewed consumers
-  without a wrapper or schema/behavior change.
-- Completed residual extractions:
-  [`LIB-02G`](../tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
-  moved the public Step `08` table/manifest contract and direct suite into
-  their permanent neutral owners, cut over every reviewed Python consumer, and
-  left no Step `08` compatibility owner or package-path dependency. Completed
-  [`LIB-02H`](../tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
-  did the same for the public Step `09` output contract without changing the
-  Step `09c` review-package policy or publication behavior. Completed
-  [`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
-  moved the public thirteen-file Step `09c` review-package roster, headers,
-  vocabularies, bindings, and state reducer into their permanent neutral owner,
-  and eliminated artifact indexing's private Step `09c` dependency. Completed
-  [`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-  then replaced run-summary's remaining private Step `09c` context/policy edge
-  with a reporting-local committed-package reader/projection without changing
-  the normalized record or Step `09c`. Completed
-  [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
-  then moved all six reporting sources, three private assets, five direct
-  suites, and three fixture groups into their final owners with no wrapper and
-  no behavior delta beyond approved path-derived provenance. Completed
-  [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md)
-  then extracted the characterized ordered FASTA, FAI, and DICT parsers into
-  the permanent neutral `reference_contigs` library, added its independent
-  suite, cut over reference provenance plus the final Step `00c`/`05`
-  validators, and removed both peer-owner bridges without moving the evidence
-  command.
-- Completed evidence-owner relocation:
-  [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
-  directly moved the public reference-provenance command and mirrored suite
-  into their fixed final evidence-owner homes, repaired only their self-
-  relative anchors, and cut over every repository path consumer without a
-  wrapper or public starter-config move. Completed
-  [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
-  then directly moved the public runtime-preflight command and mirrored suite
-  into their fixed final evidence-owner homes, repaired only the suite's self-
-  relative anchors, and cut over every repository path consumer without a
-  wrapper or public starter-profile move. Completed
-  [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
-  then directly moved the public storage-inventory command and mirrored suite
-  into their fixed final evidence-owner homes, repaired only the suite's self-
-  relative anchors, and cut over every repository path consumer without a
-  wrapper or public starter-contract move. Completed
-  [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md)
-  then directly moved the independent-contract-golden suite and eight
-  fixture/provenance files into their fixed final contract-integration owner,
-  repairing only the suite's repository-root and owner-local-golden anchors.
-  Completed
-  [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
-  then directly moved the validation-roster suite/helper into their fixed
-  final contract-integration owner and cut over fourteen exact-file callers,
-  repairing only the moved suite's repository-root anchor and caller path
-  literals.
-- Completed no-loss review:
-  [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
-  confirms the unchanged Step `05` operational output checker at its permanent
-  current repository-level owner. Its unique scheduler/cohort/TSV behavior is
-  distinct from the stage validator, and its known duplicate-`tee` and silent-
-  replacement defects remain characterized. Completed documentation-only/non-
-  consuming
-  [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
-  confirms `RETAIN_ROOT` for the byte-identical Step `04` pending scaffold.
-  Its pre-Picard input-sort requirement is absent and adversarial dry-run
-  quoting protection is not independently established.
-- Completed final residual audit: documentation-only/non-consuming
-  [`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-  reconciles the fixed 87-path roster as 76 `RETAIN_ROOT`, 10 `DEFER`, and one
-  separately owned `RETIRE`; verifies every expected final tracked owner,
-  current caller, and prohibited old-path absence; and closes only the source-
-  topology campaign at the local/static evidence ceiling.
-- Completed design/architecture compression: documentation-only/non-consuming
-  [`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
-  preserves current/target separation and exact contract owners while reducing
-  the five views from 2,710 to 2,132 lines and retiring one redundant waterfall
-  diagram after no-loss comparison.
-- Completed demo consolidation: documentation-only/non-consuming
-  [`DOC-CONS-08G`](../tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
-  separates the presenter run-of-show from the PI discussion guide, adds the
-  local demo index, and delegates current evidence/report facts. Its undated
-  cohort paragraph duplicated this handoff and was removed; no demo-history
-  child or evidence change was warranted.
-- Completed temporary-record retirement: documentation-only/non-consuming
-  [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-  confirms [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
-  for former Slice `7A`, preserves the unique read-only batch-intake semantics
-  in nonselectable
-  [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md),
-  repairs the completed JIT backlink, and removes `work/active/JIT-01.md`.
-- Selected package: none.
-- Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
-  validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
-  fourteen-owner DAG topology. The residual artifact-contract owner is also
-  migrated through `MIG-04A`, and the neutral Step `08`, Step `09`, and public
-  review-package contracts are extracted through `LIB-02G`, `LIB-02H`, and
-  `LIB-02I`, reporting's private Step `09c` dependency is removed through
-  `LIB-02J`, and the reporting owner is physically final through `RPT-05A`.
-  The reference-contig seam is final through `LIB-02K`, and reference-
-  provenance evidence is physically final through `MIG-04B`.
-  Runtime-preflight evidence is physically final through `MIG-04C`, and storage
-  evidence is physically final through `MIG-04D`, and the independent-golden
-  owner is physically final through `MIG-04E`. The validation-roster owner and
-  its fourteen exact-file caller cutovers are final through `MIG-04F`.
-  Current and target ownership route through
-  [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-  and
-  [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
-- Default-branch integration remains outside this package and requires a
-  separate explicit decision.
+- Active branch: `codex/residual-source-topology-convergence`.
+- The approved PI-readiness tranche is still in progress. Do not infer a clean
+  tree, final validation result, published tip, or upstream equality from this
+  handoff; inspect Git before acting.
+- The cleanup portion has completed the user pipeline overview, removed the
+  root `jobs/` scaffold, moved the retained manual cluster probe to its
+  evidence owner, retired the unused SLURM template and two unused workflow
+  profiles, and compressed the major documentation views.
+- The standalone size-inventory prerequisite is retired. Each remaining size
+  package refreshes only its own target.
+- `SIZE-07A` is the active implementation slice. `SIZE-07B`, `SIZE-07D`,
+  `SIZE-07E`, `SIZE-07F`, and one bounded, observed-seam `LIB-03` extraction
+  remain in the approved tranche.
 
 ## Active concurrent lanes
 
-No mutable concurrent lane shares this worktree, branch, card, or write set.
-The branch above is the sole integration/control lane for the residual source-
-topology campaign. Frozen recovery sources, completed synthetic-exchange
-identities, and preserved unmanaged worktrees are historical state, not active
-lanes; their exact identities and cautions remain in the
-[`operations-history record`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md#frozen-coordination-and-recovery-identities).
+No independently authorized external integration lane is recorded. Disjoint
+work may coexist in the shared worktree while the current tranche is active;
+Git status and explicit integration coordination are authoritative. Do not
+reset, stash, rebase, clean untracked paths, or modify preserved worktrees to
+manufacture a clean checkout.
 
-The post-`CONCURRENCY-01` first-use strategy condition is satisfied. That
-removes only the discussion pause; it does not select work, accept candidate
-content, or relax planning, lane-packet, integration, validation, or
-publication requirements.
-
-Any future concurrent mutation requires a fresh lane packet under
+Any future independent mutation lane requires a fresh packet under
 [`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#required-lane-packet). Historical
-source preservation does not grant write, integration, publication, runtime,
-or evidence authority.
+recovery material grants no write, integration, publication, runtime, or
+evidence authority.
 
 ## Evidence boundary
 
-| Surface | Current verified state |
+| Surface | Current evidence ceiling |
 | --- | --- |
-| Physical source/test ownership | The neutral validation-report, BAM-validation, and reference-contig libraries; all fourteen semantic DAG owners; the neutral artifact-contract validator/schemas/direct evidence; the neutral Step `08`, Step `09`, and public review-package scientific-evidence contracts/direct suites; the reporting source/assets/direct suites/fixtures; the reference-provenance, runtime-preflight, and storage-inventory source/direct-suite pairs; the independent contract goldens; and the validation-roster agreement are physically final. Their legacy ownership and temporary compatibility paths are absent. `REVIEW-LEGACY-05A` confirms the unchanged Step `05` operator checker at its permanent current repository-level owner, and `REVIEW-LEGACY-04A` confirms the unchanged Step `04` pending scaffold at `RETAIN_ROOT`. `AUDIT-RESIDUAL-04A` independently reconciles all 87 residual paths and current callers with no omission or duplicate owner. This is contract-preserving local migration/static-review evidence, not new runtime or cluster proof. |
-| Steps `00a` through `06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC across the six final Step `02` BAMs. That evidence predates the physical cutovers; migration acceptance was local and does not relabel the new paths as newly cluster-proven. |
+| Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers are in their final owners; legacy compatibility owners are absent. This is contract-preserving local migration and static-review evidence, not new cluster or production proof. Exact topology belongs to [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md). |
+| Steps `00a`–`06` | Earlier production executions remain cluster-proven, including refreshed Step `02b` QC for the six final Step `02` BAMs. That evidence predates physical relocation and does not relabel the new paths as newly cluster-proven. |
 | Step `07` | Implemented and fixture/mock-bcftools tested locally; no real-bcftools or cluster proof. |
-| Steps `08` and `09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` emits CMH-ranked candidates, not validated editing sites. |
-| Step `09c` | Implemented and synthetic-fixture tested locally; no production evidence package or completed scientific review. |
-| Schemas, adapters, run summary, report bundle, and populated demo | Implemented and synthetic-fixture tested, including pinned local rendering where applicable; no production transaction, report, or evidence promotion. |
-| Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
-| Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
-| Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Residual audit and retirement | Documentation-only `AUDIT-RESIDUAL-04A` reconciled 87 total and unique paths at its audit boundary: 76 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed `DOC-CONS-08H` later gave that temporary record's two entries accepted no-loss dispositions and removed it. Four placeholder anchors are now replaced by six adjacent README owners, and the repository-level scripts and configuration indexes are now explicit, so the inventory contains 90 total and unique paths: 80 `RETAIN_ROOT`, 10 `DEFER`, and no current `RETIRE`. No product executable or computational test ran or changed; this remains local/static documentation evidence, not the eight-blocker `AUDIT-99` or any runtime, cluster, production, scientific-review, or biological evidence. |
+| Steps `08`–`09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` produces CMH-ranked candidates, not validated editing sites. |
+| Step `09c` and reporting | Scientific-review packaging, schemas, adapters, run summary, report bundle, and populated demo are synthetic-fixture/local-render tested where applicable. There is no production evidence package, completed scientific review, production transaction, or production report. |
+| Validators and operational helpers | Structured Step `00a`–`09` validators and runtime, reference, and storage helpers have local fixture/report evidence. There is no CSU batch runtime report, production reference or storage report, or approved production retention policy. |
+| Current cleanup/size tranche | Documentation and structural refactors do not promote runtime, cluster, scientific-review, or biological evidence. The tranche is active; this file records no final aggregate gate or publication result. |
 
-Transaction completion establishes only reconciliation of the declared
-transaction. It does not prove every source exists or passed and does not
-promote runtime, cluster, scientific, or biological state. Current validation
-policy and risk routes remain in
-[`TEST_BASELINE.md`](../design/TEST_BASELINE.md); dated totals and timings remain
-in [testing history](../history/testing/).
+A successful transaction proves only reconciliation of its declared inputs and
+outputs. It does not prove every source exists or passed, and it does not
+promote runtime, cluster, scientific, or biological state. Validation policy
+and risk routes belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md);
+dated totals and timings belong in [testing history](../history/testing/).
 
 ## Cohort and preserved scientific evidence
 
-The paired-end cohort remains:
+The operational cohort has three explicit paired strata:
 
-```text
-EV:   ABE_EV_2, ABE_EV_3, ABE_EV4
-PUM1: ABE_PUM1_2, ABE_PUM1_3, ABE_PUM1_4
-```
+| Replicate | EV | PUM1 |
+| --- | --- | --- |
+| `2` | `ABE_EV_2` | `ABE_PUM1_2` |
+| `3` | `ABE_EV_3` | `ABE_PUM1_3` |
+| `4` | `ABE_EV4` | `ABE_PUM1_4` |
 
-Explicit paired strata remain:
+`ABE_EV4` intentionally lacks an underscore. Pairing comes from manifest
+metadata, never from sample-name inference.
 
-```text
-replicate 2: ABE_EV_2 / ABE_PUM1_2
-replicate 3: ABE_EV_3 / ABE_PUM1_3
-replicate 4: ABE_EV4  / ABE_PUM1_4
-```
+Step `03` classified every library as reverse-stranded / first-strand-style:
 
-`ABE_EV4` intentionally lacks an underscore. Pairing comes from explicit
-manifest metadata, never from sample names.
-
-Step `03` found all libraries reverse-stranded / first-strand-style:
-
-| Sample | Failed to determine | `1++,1--,2+-,2-+` | `1+-,1-+,2++,2--` |
+| Sample | Failed | `1++,1--,2+-,2-+` | `1+-,1-+,2++,2--` |
 | --- | ---: | ---: | ---: |
 | `ABE_EV_2` | 0.0828 | 0.0432 | 0.8740 |
 | `ABE_EV_3` | 0.0964 | 0.0420 | 0.8617 |
@@ -220,98 +79,76 @@ Step `03` found all libraries reverse-stranded / first-strand-style:
 | `ABE_PUM1_3` | 0.0955 | 0.0407 | 0.8639 |
 | `ABE_PUM1_4` | 0.0926 | 0.0402 | 0.8672 |
 
-The post-hardening `ABE_EV_2` Step `03` rerun matched its earlier report.
-`ABE_EV_2` remains a mapping outlier, not an established pipeline failure.
-`FWD_like` and `REV_like` are mechanical flag groupings;
-`legacy_provisional_v1` is a compatibility policy, not a validated biological
-strand model.
+The hardened `ABE_EV_2` rerun matched its earlier report. `ABE_EV_2` remains
+a mapping outlier, not an established pipeline failure. `FWD_like` and
+`REV_like` are mechanical groupings; `legacy_provisional_v1` is a
+compatibility policy, not a validated biological strand model.
 
-`science_review_complete_exploratory` remains provisional.
-`biological_interpretation_ready` remains reserved and rejected until a
-separately approved policy defines and unlocks stricter exit criteria. No
-validated editing-site or causal biological conclusion exists.
+`science_review_complete_exploratory` remains provisional, and
+`biological_interpretation_ready` remains reserved and rejected pending a
+separately approved policy. No validated editing site or causal biological
+conclusion exists.
 
 ## Preserved local recovery constraint
 
 An earlier sibling-worktree `renv` activation attempted automatic bootstrap
-before failing on missing packages and may have left ignored local cache
-material. The exact malformed ignored path
-`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` contained only nested
-empty `R-4.6/aarch64-apple-darwin23` directories (`0B`) and is absent from this
-worktree. Its original directory tree remains preserved at
+before failing. The malformed ignored path
+`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` is absent from this
+worktree; its empty original directory tree is quarantined at
 `/private/tmp/norad-r-library-quarantine.Z645n8/macos`.
 
 Do not delete, repair, reuse, or automatically restore that quarantine. No
 package was installed, restored, removed, or updated. Guarded checks use the
-existing primary project library through `RENV_PATHS_LIBRARY`; the earlier
-temporary Python-environment symlink remains removed. The latest unrestricted
-read-only environment check reached dependency validation and reported one
-out-of-date package without printing its identity, so the aggregate R lane is
-explicitly non-green until a separately reviewed dependency-maintenance
-package diagnoses and resolves that drift.
+existing primary project library through `RENV_PATHS_LIBRARY`. Local
+dependency validation still reports an out-of-date package, so the aggregate
+R lane remains non-green until a separately reviewed dependency-maintenance
+package diagnoses and resolves the drift.
 
 ## Current blockers
 
-- The full production `samples.tsv` is not in this checkout. Its immutable
-  cluster copy, explicit replicate values, persistence, and hash require
+- The production `samples.tsv` is not in this checkout. Its immutable cluster
+  copy, explicit replicate values, persistence, and hash still require
   inspection.
-- Step `07` lacks real-bcftools and cluster evidence.
-- CSU batch-visible R and package availability remain unresolved.
-- Guarded local R dependency validation reports one out-of-date package; the
-  checker did not print its identity, and RPT-05A installed or updated no
-  dependency.
-- Storage quota, scratch capacity, and retention policy remain unresolved.
-- The exact Novogene annotation release remains partially unresolved.
-- No production scientific-evidence review has been completed.
+- Step `07` lacks real-bcftools and cluster evidence; Steps `08`, `09`, and
+  `09c` lack production/cluster evidence and completed scientific review.
+- CSU batch-visible R and package availability remain unresolved, and the
+  guarded local dependency check remains non-green. Do not mutate the
+  environment as incidental refactor work.
+- Storage quota, scratch capacity, retention policy, and the exact Novogene
+  annotation release remain unresolved.
 - The Step `09` structured validator does not independently recompute the CMH
   statistic, p-value, common odds ratio, or table estimability from DP/AD
-  counts. The independent oracle characterizes a later compatible correction;
-  it did not change production validation.
-- Exact check rosters and all public Python, shell, R, Make, SLURM, and utility
-  surfaces are characterized. Shared roster-consumer defects, public CLI
-  exceptions, embedded or mode-less jobs, the Bash `3.2` empty-array dry-run
-  defect, default dry-run side effects, and non-uniform submit-CWD, module,
-  file-mode, and output-validation policies remain characterized behavior, not
-  approved design.
-- Publication-fault tests intentionally preserve the confirmed same-size
-  rewrite, late-foreign-final, incomplete-rollback, descriptor, and stale-lock
-  failure states. Passing characterization does not bless those recovery
-  behaviors.
-- Owner-specific scheduler, direct-final publication, replacement, rollback,
-  stale-output, and transaction defects remain exactly as characterized in
-  the completed migration cards and dated refactor log. Physical relocation
-  did not fix or approve them.
+  counts. The independent oracle characterizes a compatible future
+  correction; it did not change production validation.
+- Publication and recovery characterization intentionally retains known
+  same-size rewrite, late-foreign-final, incomplete-rollback, descriptor, and
+  stale-lock failure states. Passing characterization does not approve those
+  behaviors. Other live defects and recheck routes remain indexed in
+  [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md).
 
 ## Immediate resume point
 
-`AUDIT-RESIDUAL-04A` completed the exact 87-path reconciliation and closed the
-source-topology campaign at the local/static evidence ceiling.
-Documentation-only/non-consuming `DOC-CONS-08F` then completed the five-view
-architecture/design compression and retired the redundant universal-waterfall
-diagram without changing an exact contract or evidence state.
-Documentation-only/non-consuming `DOC-CONS-08G` then gave the two demo views
-distinct presenter/audience roles, added their local index, delegated mutable
-facts, and removed the non-unique undated cohort paragraph. Documentation-only/
-non-consuming `DOC-CONS-08H` then gave both temporary-record entries accepted
-no-loss dispositions, repaired the completed JIT backlink, and removed the
-record. No package is selected.
+Continue the already-approved tranche from the live `SIZE-07A` working tree.
+Finish only that target's observed seams, direct contracts/tests, and focused
+checks, then create its own outcome-oriented commit. Do not disturb concurrent
+disjoint edits or broaden the package into behavior, schema, scientific, or
+evidence-policy change.
 
-No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
-runtime execution, cluster, or default-branch package is preloaded.
-`PROGRAM-01`, `CONCURRENCY-03`,
-`TASK-EPIC-01`, `AUDIT-99`,
-recovered TODO work, and all UNREFINED proposals remain outside this package.
+Then complete `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` in order.
+Each owns its target-only live size/cohesion refresh and its own commit. Follow
+with one bounded `LIB-03` extraction based on demonstrated duplication; do not
+create a generic framework speculatively. `DOC-PIPE-04` already has its own
+completed commit.
 
-The approved residual-convergence campaign is fulfilled through completed
-`AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup has now
-completed `DOC-CONS-08H`; no later cleanup package is selected or preloaded.
+Run the comprehensive applicable gate and reconcile genuinely affected central
+documentation once at the end of the tranche. Push once under the existing
+publication authority, report the consolidated evidence and any external
+blocker, and stop without selecting successor work. Until that happens, do not
+claim final validation, publication, or remote equality.
 
-Before continuing, verify the exact branch, `HEAD`, lack or identity of an
-upstream, cleanliness including untracked files, and recovery/lock state. The
-current approval covers bounded documentation cleanup, evidence-directed
-`DOC-PIPE-04` disposition, the complete local gate and demo inspection,
-targeted removal of proven regenerable residue, sequential commits, and
-publication on this campaign branch. Dependency mutation, broad or destructive
-cleanup, preserved-worktree removal, default-branch integration, runtime,
-cluster, scientific-review, evidence-promotion, or biological expansion still
-stops.
+On any interrupted resume, first inspect the exact branch, `HEAD`, upstream,
+worktree (including untracked files), active diff/card, locks, and preserved
+recovery state. Dependency mutation, destructive cleanup, preserved-worktree
+removal, default-branch integration, runtime or cluster execution, scientific
+review, evidence promotion, and biological interpretation remain outside this
+tranche.

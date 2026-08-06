@@ -31,8 +31,7 @@ disposition at the moment that target changes.
 
 ## Completion unblocks
 
-- None. The five target cards retain their other explicit prerequisites and
-  blockers.
+- None.
 
 ## Prerequisites
 

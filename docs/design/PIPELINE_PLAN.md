@@ -1,13 +1,12 @@
 # NORAD pipeline plan
 
-This is the authoritative current pipeline/package/evidence roadmap, status
-matrix, acceptance criteria, and delivery-required branch lineage. Task
-workflow status is the card's directory under [`../tasks/`](../tasks/).
-Current checkout, lanes, blockers, evidence detail, and resume state belong in
-[`HANDOFF.md`](../operations/HANDOFF.md); exact commands belong in
-[`RUNBOOK.md`](../operations/RUNBOOK.md); frozen delivery and legacy branch
-lineage belongs in
-[`operations history`](../history/operations/2026-08-03-refactor-delivery-and-branch-lineage.md).
+This is the canonical current roadmap for pipeline evidence, cross-cutting
+packages, approved delivery order, and package acceptance. Task lifecycle
+state belongs to [`../tasks/`](../tasks/); checkout and resume state to
+[`HANDOFF.md`](../operations/HANDOFF.md); commands to
+[`RUNBOOK.md`](../operations/RUNBOOK.md); rationale to
+[`DECISIONS.md`](DECISIONS.md); and dated delivery evidence to
+[`operations history`](../history/operations/).
 
 ## Pipeline
 
@@ -28,429 +27,201 @@ lineage belongs in
 | `09` | Paired CMH ranking | Six-output transaction, statuses, subsets, mutation spectrum, and PDFs inspected | local real-R fixtures only |
 | `09c` | Validate scientific evidence | Explicit production evidence reconciled and review state lawfully published | local synthetic fixtures only |
 
-The cluster evidence for Steps `00a` through `06` predates their physical
-source cutovers. Migration acceptance was local and did not create new runtime
-or cluster proof. Steps `07` through `09` are not cluster-proven, and Step
-`09c` tooling does not constitute a completed production review.
+Cluster evidence for Steps `00a` through `06` predates physical source
+cutover; migration did not create new runtime proof. Steps `07` through `09`
+remain unproved on the cluster, and Step `09c` tooling is not a completed
+production review.
 
 ## Evidence and reporting packages
 
 | Package family | Responsibility | Current status |
 | --- | --- | --- |
-| Artifact and review contracts | Public artifact, scientific-review, run-summary, report-receipt, adapter, and deterministic summary contracts | implemented and fixture-tested |
-| Static report exports | Atomic self-contained HTML/PDF/summary-TSV/report-receipt publication with explicit table approvals | implemented and locally renderer-tested; no production report |
-| Populated demo | Complete synthetic run with approved science-table roles and bounded HTML/PDF projections | implemented and locally renderer-tested; synthetic evidence only |
+| Artifact and review contracts | Public artifact, scientific-review, run-summary, report-receipt, adapter, and deterministic-summary contracts | implemented and fixture-tested |
+| Static report exports | Atomic HTML/PDF/summary-TSV/report-receipt publication with explicit table approvals | implemented and locally renderer-tested; no production report |
+| Populated demo | Complete synthetic run with approved table roles and bounded HTML/PDF projections | implemented and locally renderer-tested; synthetic evidence only |
 | Runtime preflight | Explicit-profile tool, R-namespace, hash, and path-visibility checks | implemented and fixture-tested; CSU batch execution pending |
-| Reference provenance | Explicit reference identity, hashes, annotation provenance, and contig reconciliation | implemented and fixture-tested; production execution pending |
+| Reference provenance | Reference identity, hashes, annotation provenance, and contig reconciliation | implemented and fixture-tested; production execution pending |
 | Storage inventory and retention | Read-only storage measurement plus explicit policy recording | implemented and fixture-tested; production inventory and approvals pending |
-| Step `00a` through `09` validation reports | Structured step-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; real-runtime or production evidence remains as stated in the pipeline matrix |
-| Refactor audit and test baseline | Current recheck/policy routes plus immutable dated evidence | complete; current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md) |
-| Architecture, migration mechanics, and physical ownership | Fourteen semantic DAG owners, final homes, direct-migration mechanics, neutral validation/BAM/reference libraries, neutral artifact contracts, neutral scientific-evidence contracts, and final reporting ownership | pipeline-owner migration complete through `MIG-03O`; artifact-contract migration complete through `MIG-04A`; Step `08`, Step `09`, and public review-package contract extraction complete through `LIB-02I`; reporting's private Step `09c` edge removed through `LIB-02J`; reporting physically final through `RPT-05A`; reference-contig parsing final through `LIB-02K`; evidence tools physically final through `MIG-04D`; independent-contract-golden convergence complete through `MIG-04E`; validation-roster convergence complete through `MIG-04F`; fixed residual source-topology convergence complete through `AUDIT-RESIDUAL-04A` |
-| Documentation ownership and compression | Canonical owner map, concise root/operations/history/design views, and bounded remaining consolidation cards | `DOC-CONS-08A` through `DOC-CONS-08H` complete; none selected |
-
-Exact historical package totals, timings, branch names, checkpoints, failures,
-and close evidence remain in the dated audit/testing/operations history and
-completed cards rather than this current matrix.
+| Step `00a` through `09` reports | Owner-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; evidence ceilings remain as in the pipeline matrix |
+| Refactor audit and test baseline | Current finding/recheck routes and non-regression policy | current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md); dated evidence is historical |
+| Physical ownership | Fourteen DAG owners, neutral contracts/libraries, reporting, and evidence tools in final homes | source-topology migration complete at the local/static ceiling |
+| Documentation | User pipeline overview and compressed canonical owner views | [`DOC-PIPE-04`](../tasks/COMPLETED/DOC-PIPE-04-create-user-pipeline-overview.md) complete; final central reconciliation in progress |
 
 ## Active critical runway
 
-The neutral validation-report concern and all fourteen semantic DAG owners are
-physically migrated through `MIG-03O`; the required-artifact DAG contains no
-unmigrated owner in that frozen topology. `MIG-04A` also moved the neutral
-artifact validator, schemas, direct test, and valid fixtures to their final
-homes. `LIB-02G`, `LIB-02H`, and `LIB-02I` then moved the neutral Step `08`,
-Step `09`, and public review-package scientific-evidence contracts and direct
-suites to their final homes. `RPT-05A` then moved reporting sources, private
-assets, direct suites, and fixtures to their final owners. `LIB-02K` then
-extracted the exact reference-contig parser seam into its neutral final owner
-and cut over all three consumers. `MIG-04B` then moved reference provenance and
-its mirrored suite into their final evidence-owner homes. `MIG-04C` then moved
-runtime preflight and its mirrored suite into their final evidence-owner homes.
-`MIG-04D` then moved storage inventory and its mirrored suite into their final
-evidence-owner homes. `MIG-04E` then moved the independent-contract-golden
-suite and eight fixture/provenance files into their final owner. `MIG-04F` then
-moved the separate validation-roster suite/helper into its final owner and cut
-over fourteen exact-file callers.
-The repository-health
-runway completed its documentation-gate and lifecycle packages, preserved the
-quarantined malformed local R-library entry, corrected the bounded recursive-
-Make fixture issue, and reached an earlier green complete local gate without
-changing dependencies. Current `renv` metadata drift is recorded in the
-handoff and MIG-04A completion evidence without relabeling that history.
+The physical migration is complete for all fourteen semantic DAG owners,
+artifact and scientific-evidence contracts, reporting, reference-contig
+parsing, evidence tools, contract goldens, and validation-roster agreement.
+Exact final homes live in
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md); current
+public surfaces live in the
+[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md).
 
-Documentation-only
-[`DOC-CONS-08E`](../tasks/COMPLETED/DOC-CONS-08E-separate-live-state-from-history.md)
-is complete. It created the indexed operations-history owner and separated
-frozen narrative from the handoff, roadmap, and concurrency policy without
-changing a roadmap decision, executable behavior, evidence state, or another
-card's lifecycle.
+The approved tranche is deliberately narrow:
 
-Documentation-only/non-consuming
-[`DOC-CONS-08F`](../tasks/COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md)
-is complete. It reduced the five conceptual architecture/design views from
-2,710 to 2,132 lines, preserved exact rosters/contracts with their dedicated
-owners, and retired the redundant universal-waterfall diagram.
-Documentation-only/non-consuming
-[`DOC-CONS-08G`](../tasks/COMPLETED/DOC-CONS-08G-consolidate-demo-views.md)
-is complete. It established distinct presenter and PI/audience roles, added
-the local demo route, delegated current evidence/report behavior, and removed
-the undated non-unique cohort paragraph after no-loss comparison with the
-handoff. Documentation-only/non-consuming
-[`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-is complete. It gave both temporary-record entries accepted no-loss
-dispositions, retained the unique intake semantics without promotion, repaired
-direct backlinks, and removed the record. No package is selected automatically;
-`PROGRAM-01` remains in progress and frozen outside its completed slices.
-`CONCURRENCY-03`, `TASK-EPIC-01`, `AUDIT-99`, recovered TODO work, UNREFINED
-proposals, default-branch integration, and remote runtime or cluster work
-remain unselected.
+1. finish central documentation reconciliation;
+2. complete [`SIZE-07A`](../tasks/TODO/SIZE-07A-decompose-artifact-index-builder.md),
+   [`SIZE-07B`](../tasks/TODO/SIZE-07B-decompose-scientific-validation-tooling.md),
+   [`SIZE-07D`](../tasks/TODO/SIZE-07D-decompose-run-summary-builder.md),
+   [`SIZE-07E`](../tasks/TODO/SIZE-07E-resolve-step08-r-module-size.md), and
+   [`SIZE-07F`](../tasks/TODO/SIZE-07F-decompose-artifact-contract-validator.md)
+   in that order, each with its own outcome commit; and
+3. begin `LIB-03` with one observed repeated seam only, defined just in time.
 
-Documentation-only
-[`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md)
-is published and complete as the residual source-topology documentation
-package. It
-changed no consumed or executable surface, selected no successor, and did not
-reopen the completed fourteen-owner migration campaign.
+`SIZE-07A` is in flight and is not complete. The later size slices remain
+queued. Each size slice owns a live refresh of only its target's size,
+responsibilities, consumers, risks, and disposition; the standalone repo-wide
+refresh was retired through
+[`SIZE-07`](../tasks/COMPLETED/SIZE-07-refresh-large-file-inventory.md).
 
-Documentation-only
-[`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md) is
-complete as the first decision package in the explicitly authorized residual
-convergence campaign. It settled the two observed prohibited peer-
-implementation seams. Completed
-[`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
-performed the first executable move. Completed
-[`LIB-02G`](../tasks/COMPLETED/LIB-02G-extract-step08-scientific-evidence-contract.md)
-then extracted the bounded Step `08` neutral scientific-evidence contract, and
-completed
-[`LIB-02H`](../tasks/COMPLETED/LIB-02H-extract-step09-scientific-evidence-contract.md)
-extracted the bounded Step `09` neutral scientific-evidence contract, and
-completed
-[`LIB-02I`](../tasks/COMPLETED/LIB-02I-extract-step09c-review-package-contract.md)
-extracted the bounded public Step `09c` review-package contract, and completed
-[`LIB-02J`](../tasks/COMPLETED/LIB-02J-remove-run-summary-private-step09c-dependency.md)
-removed reporting's final private Step `09c` implementation dependency, and
-completed
-[`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md)
-performed the direct atomic reporting relocation. Completed
-[`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md)
-then extracted the exact reference-contig parser seam into its neutral final
-owner and cut over all three consumers. Completed
-[`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md)
-then directly relocated reference provenance and its mirrored suite into their
-final evidence-owner homes without a wrapper or public starter-config move.
-Completed
-[`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md)
-then directly relocated runtime preflight and its mirrored suite into their
-final evidence-owner homes without a wrapper or public starter-profile move.
-Completed
-[`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md)
-then directly relocated storage inventory and its mirrored suite into their
-final evidence-owner homes without a wrapper or public starter-contract move.
-Completed
-[`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md)
-then directly relocated the nine-path independent-contract-goldens owner with
-no compatibility path or oracle change. Completed
-[`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md)
-then directly relocated the two-path validation-roster owner and cut over all
-fourteen exact-file callers without a compatibility or package surface.
-Completed documentation-only
-[`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
-then confirmed the unchanged Step `05` operational checker's permanent current
-repository-level owner. Completed documentation-only/non-consuming
-[`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md)
-then confirmed `RETAIN_ROOT` for the unchanged pending Step `04` scaffold: its
-pre-Picard input-sort requirement is absent and adversarial dry-run quoting
-protection is not independently established. Documentation-only/non-consuming
-[`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-then reconciled the fixed 87-path roster, every final tracked owner and current
-caller, and all retained/deferred/separately-retired boundaries. The residual
-source-topology campaign is complete at the local/static evidence ceiling.
+The recorded reciprocal `REVIEW-UX-03` task edges are not an execution blocker
+for this explicitly authorized tranche; correcting general task-edge semantics
+through `TASK-REG-01` is out of scope. RPT-05A and required final-owner moves
+are complete. A slice must still stop if focused inspection exposes a changed
+interface, schema, dependency direction, shared-infrastructure contract,
+scientific meaning, evidence ceiling, or safety authority that the tranche did
+not authorize. Step `08` algorithmic extraction remains specifically barred;
+`SIZE-07E` must use a provably non-algorithmic seam or an explicitly approved,
+time-bounded exception.
 
-Select, plan, execute, validate, document, publish, and prove only one
-dependency-valid package at a time. Preferred order is not blocker metadata,
-and frozen proposal presence does not authorize selection or implementation.
+Formal [`ONBOARD-03A`](../tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md)
+remains blocked on the local-pilot setup/orchestration/E2E family and must not
+claim fresh-clone proof. The current root README and
+[`PIPELINE_OVERVIEW.md`](../architecture/PIPELINE_OVERVIEW.md) provide the
+bounded entry path for a user whose environment is already configured.
 
 ### Residual source-topology convergence
 
-The audit froze an exact 87-path residual roster. After completed
-`DOC-CONS-08H` retired its sole temporary `RETIRE` path and the approved queue
-moved four sample-admission implementation/test paths plus the manual cluster
-tool probe to their final owners, the exact 85-path current residual roster is
-owned by the
-[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
-and exact final homes are owned by
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
-This roadmap owns only disposition and preferred JIT order. `MOVE`,
-`RETAIN_ROOT`, `DEFER`, and `RETIRE` are terminal planning dispositions; none
-authorizes mutation or creates a future card. The `LIB-02F` semantic comparison
-is a prerequisite decision for affected `MOVE` rows, not a fifth path
-disposition.
+The current residual roster contains 82 tracked repository-level paths, all
+`RETAIN_ROOT`. Root `jobs/` is absent; all 15 tracked SLURM files are
+owner-local. The manual tool probe lives with runtime preflight, the unused
+generic template and two unconsumed workflow profiles are retired, and the
+mixed wrapper-contract suite remains permanent cross-owner repository
+protection. There are no current residual `MOVE`, `DEFER`, or `RETIRE` groups.
 
-| Residual group | Disposition | JIT route or boundary |
-| --- | --- | --- |
-| Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
-| Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
-| Reference provenance evidence | `MOVE` complete through [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md); neutral prerequisite complete through [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; the public starter config remains at root and no wrapper exists. |
-| Runtime preflight and manual cluster tool probe | `MOVE` complete through [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md) plus the approved residual-convergence queue | The command, mirrored direct suite, and separate manual SLURM probe occupy their final evidence-owner homes with all repository callers cut over. The public starter profile remains at root; the probe emits scheduler diagnostics and does not wrap or publish the structured preflight. |
-| Storage inventory | `MOVE` complete through [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; both public starter contracts remain at root, no wrapper exists, and retention action remains prohibited. |
-| Independent contract goldens | `MOVE` complete through [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md) | The direct suite and eight fixture/provenance files occupy `tests/contract_integration/independent_contract_goldens/` with byte-identical fixtures, no nested fixture owner, and no compatibility path. |
-| Validation-roster agreement | `MOVE` complete through [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md) | The suite/helper occupy `tests/contract_integration/validation_rosters/`, all fourteen exact-file callers load the final helper directly, and no compatibility or package surface exists. |
-| Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
-| Public config examples, operator selections, and reference schemas, excluding only the deferred workflow profiles | `RETAIN_ROOT` | The sample-manifest starter now remains here as the public input to its final admission owner. Move another asset only if a later inspected contract proves it implementation-native rather than an explicit user input. |
-| Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
-| Legacy Step `05` operational output checker | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) | `tests/data_checks/validate_step05_outputs.sh` remains unchanged at its permanent current repository-level owner. Its optional scheduler-state, cohort-status, output-size, scratch, additional `LB`/`PL` read-group requirements, best-effort TSV, and aggregate-exit behavior is distinct from the final stage validator; known duplicate-`tee` and silent-replacement defects remain characterized. |
-| Pending Step `04` scaffold | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged: pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
-| Temporary `work/active/JIT-01.md` record | `RETIRE` complete through [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Record is absent. Former Slice `7A` routes to completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md); the read-only batch-intake proposal input routes to nonselectable [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md). This was documentation cleanup, not source migration. |
-| Manifest admission, FASTQ pair check, and manifest wrapper | `MOVE` complete through the approved residual-convergence queue | The validator, paired-FASTQ diagnostic, wrapper, and mirrored direct tests occupy `src/norad/ingestion/sample_manifest_admission/` and `tests/ingestion/sample_manifest_admission/`; all repository callers use the final path, the public starter remains under `configs/`, and no ingestion executor exists. |
-| Root scheduler template and mixed wrapper suite | `DEFER` after the manual tool probe moved to its runtime-preflight owner | `jobs/template.slurm` and the repository-level mixed wrapper suite remain deferred; resume only with explicit scheduler work. |
-| Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
-
-Preferred one-owner order is:
-
-1. completed `LIB-02F` settles only the two observed shared seams;
-2. completed `MIG-04A` performs the neutral artifact-contract move;
-3. completed `LIB-02G`, `LIB-02H`, and `LIB-02I` extract the neutral Step `08`,
-   Step `09`, and public review-package contracts; completed `LIB-02J` removes
-   reporting's private Step `09c` dependency;
-4. completed `RPT-05A` moves reporting directly into its final owners;
-5. completed `LIB-02K` extracts the neutral `reference_contigs` parser seam;
-   completed `MIG-04B` moves reference provenance; completed `MIG-04C` moves
-   runtime preflight; completed `MIG-04D` moves storage inventory;
-6. completed `MIG-04E` converges only the independent contract goldens;
-   completed `MIG-04F` converges only the validation-roster owner; completed
-   `REVIEW-LEGACY-05A` confirms only the retained Step `05` data checker; and
-   completed `REVIEW-LEGACY-04A` confirms only the retained Step `04` scaffold;
-7. completed `AUDIT-RESIDUAL-04A` performs only the final residual-layout audit.
-
-No residual package is selected. The source-topology campaign is complete;
-deferred domains remain unbegun and the existing documentation-consolidation
-cards remain separately selectable.
+This count covers only the bounded residual roots defined by the completed
+source-topology audit; it is an inspection check, not a permanent repository-
+size target. Final owner-local implementation and mirrored tests are excluded.
+The functional-owner inventory owns the exact ledger and must change whenever
+a tracked residual path changes disposition.
 
 ### Recovered proposal families
 
-The unselected local-pilot family has three parallel inputs:
-[`SETUP-03A`](../tasks/TODO/SETUP-03A-implement-local-pilot-dependency-profile-and-doctor.md),
-[`INTAKE-03A`](../tasks/TODO/INTAKE-03A-implement-yaml-tsv-run-lifecycle.md),
-and
-[`PROFILE-03A`](../tasks/TODO/PROFILE-03A-materialize-local-pilot-workflow-profile.md).
-Together they feed
-[`CLI-03A`](../tasks/TODO/CLI-03A-implement-local-pilot-control-plane.md)
-→ [`E2E-03A`](../tasks/TODO/E2E-03A-prove-fresh-clone-local-pilot.md)
-→ [`ONBOARD-03A`](../tasks/TODO/ONBOARD-03A-publish-researcher-onboarding.md).
-`INTAKE-03A` is separately blocked by the still-unavailable accepted design
-from `INTAKE-02E`.
+The unselected local-pilot family remains:
 
-These arrows preserve reviewed interface/readiness order, not automatic
-selection or invented blockers. SETUP owns local-environment readiness;
-INTAKE owns admission/normalization; PROFILE owns a non-executable projection;
-CLI remains thin over orchestration; E2E owns clean-clone proof; and ONBOARD
-owns researcher guidance. The family excludes future analysis modules, public
-acquisition, installable distribution, optional-analysis policy, and
-site/container profiles.
+```text
+SETUP-03A + INTAKE-03A + PROFILE-03A
+                -> CLI-03A -> E2E-03A -> ONBOARD-03A
+```
 
-Recovered
-[`DOC-TASK-SCAN-01`](../tasks/TODO/DOC-TASK-SCAN-01-scan-documentation-for-task-intake.md)
-and
-[`GATE-REC-01`](../tasks/TODO/GATE-REC-01-define-machine-readable-gates-and-validation-receipts.md)
-are also unselected, separately bounded TODO proposals. The eight files under
-[`UNREFINED`](../tasks/UNREFINED/) are discovery records only and do not join
-the roadmap until explicitly reviewed and promoted.
-
-Documentation-package readiness remains parent-first: resolve legacy task-edge
-semantics through `TASK-REG-01` or an explicit reviewed exception, correct and
-review `DOC-REF-02`, then synthesize and review only `DOC-PIPE-04`-owned work on
-that accepted parent. This is integration/readiness order, not a new blocker or
-completion claim.
+`INTAKE-03A` also lacks the accepted `INTAKE-02E` design. These are interface
+and readiness relationships, not automatic selection. UNREFINED records and
+other TODO proposals do not enter the approved runway without review and user
+direction.
 
 ## Approved current delivery lineage
 
-```text
-MIG-04F executable cutover 8921ec3
-→ MIG-04F documentation/lifecycle close 65be087
-→ REVIEW-LEGACY-05A selection 0be4ab2
-→ REVIEW-LEGACY-05A decision/lifecycle close 916737b
-→ REVIEW-LEGACY-04A selection 6e7cf7a
-→ REVIEW-LEGACY-04A decision/lifecycle close 1311db3
-→ AUDIT-RESIDUAL-04A selection d8df288
-→ AUDIT-RESIDUAL-04A audit/lifecycle close a772f79
-→ DOC-CONS-08F selection 1da90c5
-→ DOC-CONS-08F documentation/lifecycle close 8617635
-→ DOC-CONS-08G selection 6549f5d
-→ DOC-CONS-08G documentation/lifecycle close db4272c
-→ DOC-CONS-08H selection 0081762
-→ DOC-CONS-08H documentation/lifecycle close 8e1beb8
-→ current standalone documentation reconciliation (this commit)
-```
-
-This standalone documentation-only reconciliation descends directly from the
-published, upstream-equal `DOC-CONS-08H` close at `8e1beb8`. It selects no
-successor and does not reopen the completed source-topology campaign or imply
-`AUDIT-99`, default-branch integration, runtime execution, or cluster action.
-Earlier delivery lineage and frozen source identities are indexed in
-[operations history](../history/operations/).
+The current branch descends from the completed physical-owner and residual-
+topology convergence campaigns. The active tranche uses sequential,
+outcome-oriented commits: `DOC-PIPE-04` has its own completed commit; each of
+`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` must have its
+own commit; the bounded `LIB-03` seam must not be bundled into a size slice.
+Final applicable validation, genuinely affected central reconciliation, and
+one authorized push occur after the tranche. Exact commit ancestry and dated
+delivery evidence belong in Git and
+[`operations history`](../history/operations/), not here.
 
 ## Package acceptance criteria
 
+Every package must:
+
+- stay within one approved owner/outcome and preserve public behavior unless a
+  separately authorized decision says otherwise;
+- update directly affected tests, contracts, and operational documentation;
+- preserve file modes, deterministic bytes, atomic publication, rollback,
+  failure behavior, and evidence vocabulary where they are contracted;
+- keep stage-specific semantics with their stage and introduce a neutral seam
+  only when multiple real consumers and independent tests justify it;
+- record characterization as local, real-runtime, cluster, scientific-review,
+  or biological-readiness evidence without promoting between levels;
+- run focused checks during the tranche and the complete applicable gate on
+  the final combined tree; and
+- close its card in the same canonical outcome commit, repairing only links
+  required by the lifecycle move.
+
+Documentation-only work additionally requires one mutable owner per fact,
+valid lifecycle links, preserved unique scientific/validation evidence, no
+executable or contract behavior change, and a passing documentation gate.
+
 ### Documentation consolidation
 
-- one canonical owner for each mutable fact;
-- one authoritative status matrix and delivery-required lineage in this file;
-- current takeover evidence only in `HANDOFF.md`;
-- executable commands only in `RUNBOOK.md`;
-- detailed task-start freshness, routing, and expansion rules in
-  `TASK_START.md`, with concise enforcement in `AGENTS.md`;
-- durable rationale only in `DECISIONS.md` and open questions only in
-  `QUESTIONS.md`;
-- troubleshooting owns symptom, cause, diagnosis, and fix—not roadmap;
-- current topology remains in `ARCHITECTURE.md`, future constraints in
-  `FUTURE_ARCHITECTURE.md`, and exact final homes in source contracts;
-- standalone Mermaid sources contain no transient status;
-- demos are explicitly presentation material or dated snapshots;
-- every task card has one stable ID and status directory, the required
-  sections, valid links, and no duplicate ID;
-- new or edited active hard dependencies represent genuine technological
-  blockers, remain reciprocal while both cards are mutable, and are acyclic;
-- cards link canonical rationale, state, commands, and topology rather than
-  duplicating them, and lifecycle moves repair every inbound link in the same
-  commit;
-- moving a card to `IN_PROGRESS` starts read-only planning only and requires a
-  separately approved task-specific plan before implementation;
-- unique scientific and validation evidence is preserved;
-- no workflow, validator, schema, configuration, scientific-method, or public-
-  contract behavior changes inside a documentation-only package; and
-- the documentation gate passes. Computational gates apply only to executable
-  or test-affecting changes.
+- roadmap and evidence state stay here; current checkout state stays in
+  `HANDOFF.md`; commands stay in `RUNBOOK.md`; rationale stays in
+  `DECISIONS.md`; and symptoms and recovery stay in `TROUBLESHOOTING.md`;
+- current topology stays in `ARCHITECTURE.md`, target constraints in
+  `FUTURE_ARCHITECTURE.md`, and exact homes in source contracts;
+- cards link to canonical owners instead of restating them; and
+- frozen narrative, timings, hashes, branch history, and completed-package
+  evidence stay in completed cards or dated history.
 
 ### Concurrent authoring and serialized integration
 
-- one canonical integration/control worktree owns accepted history and current
-  state;
-- at most one implementation-candidate or immutable-execution lane coexists
-  with multiple disjoint documentation/card sidecars;
-- every candidate has a unique branch and absolute worktree or locked detached
-  execution identity, plus an exact base, target, owner, role, reservations,
-  prohibited overlap, coupling, external-authority boundary, and validation;
-- candidate branches and card placement remain proposals until the integration
-  owner accepts them;
-- only the integration owner moves canonical lifecycle or publishes lineage,
-  priority, completion, and evidence;
-- coupled documentation remains a draft or triggers a checkpoint and re-plan;
-- final combined validation governs closure, and computational evidence is
-  reusable only when Git and path classification prove executable identity;
-- optional fragments grant no canonical write authority and every request and
-  partial residual receives a terminal disposition; and
-- conflicts, source refs, and unfinished candidates are preserved rather than
-  force-integrated or automatically deleted.
+One integration worktree owns canonical history. Disjoint sidecars may draft
+bounded work, but only the integration owner accepts it, moves lifecycle state,
+runs final combined validation, and publishes. Conflicts, unfinished
+candidates, and external execution identities are preserved for explicit
+resolution rather than force-integrated.
 
 ### Comprehensive refactor program
 
-- [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) owns current finding and recheck
-  routes; immutable findings and rejected approaches remain in audit history;
-- [`TEST_BASELINE.md`](TEST_BASELINE.md) owns current non-regression policy,
-  evidence vocabulary, contract-risk routes, and fixture-independence rules;
-- independent Step `09` characterization remains separate from the production
-  validator and statistical method;
-- validation orchestration preserves public Make targets, quiet failure-first
-  logs, serial fallback, bounded cleanup, and exact covered-file/line/branch
-  comparison;
-- publication-fault characterization keeps known unsafe recovery states
-  explicitly labeled rather than normalizing them into passing behavior;
-- every applicable behavior remains classified as preserved, characterized
-  defect, decision-required, or environment-deferred before correction work;
-- logging characterization and the version-1 target contract do not silently
-  change current output, scheduler, retention, or evidence behavior;
-- architecture, reliability, and usability reviews correct each executable
-  migration plan before implementation;
-- Step `07` through `09` scientific/statistical algorithms remain unchanged
-  until inspected runtime evidence and separate authorization exist; and
-- `refactor-99-final-audit` requires separate selection and closes the local
-  program without beginning cluster work.
+- `REFACTOR_AUDIT.md` owns live findings and recheck routes;
+  `TEST_BASELINE.md` owns non-regression policy and contract-risk routes;
+- independent Step `09` characterization stays separate from the production
+  validator and statistical implementation;
+- coverage compares covered files plus covered lines and branches, with public
+  Make targets and bounded cleanup preserved;
+- known publication/recovery defects remain explicitly characterized until an
+  authorized correction package changes them; and
+- Steps `07` through `09` algorithms remain unchanged without inspected
+  runtime evidence and separate scientific authorization.
 
 ### Report exports
 
-The renderer supports explicit `html`, `pdf`, and `all` formats, defaulting to
-`all`, and publishes an all-or-none HTML/PDF/deterministic-summary-TSV bundle
-with the report receipt last. It uses explicit validated inputs, the canonical
-run-summary/report-receipt contracts, pinned Quarto with bundled Typst, and a
-pinned pure-Python PDF reader.
-
-Validation covers PDF signatures, EOF, extractable text, page order, banners,
-determinism, accessibility, isolation, lock, signal, cleanup, and rollback.
-Rendering never installs software, invokes analysis, discovers inputs, or
-promotes evidence state.
+The renderer publishes an all-or-none HTML/PDF/deterministic-summary-TSV bundle
+with the report receipt last. It validates explicit inputs against canonical
+contracts and never installs software, runs analysis, discovers inputs, or
+promotes evidence state. Renderer tests cover determinism, accessibility,
+isolation, locking, signals, cleanup, and rollback.
 
 ### Populated demo report
 
-`make demo-report` remains a local repeatable synthetic demonstration requiring
-already restored pinned tooling. It builds one 81-artifact, 15-scope run with
-an exploratory Step `09c` review and all 11 approved table roles, performs a
-renderer dry-run before execute, and publishes under ignored
-`results/demo-report/`.
-
-The science-first Overview retains status, CMH-ranked candidates,
-adjudication, and limitations. HTML uses broad script-free native categories
-and local scroll regions; PDF remains linear with compact candidate records.
-The fixture is never described as production, runtime, cluster, completed
-production review, or biological evidence.
+`make demo-report` is a repeatable local synthetic demonstration using already
+restored pinned tooling. It publishes under ignored `results/demo-report/` and
+must never be described as production, cluster, completed scientific review,
+or biological evidence.
 
 ### Foundation packages
 
-- runtime preflight publishes read-only explicit-profile tool, namespace,
-  hash-utility, and visibility checks and never installs software;
-- reference provenance inventories FASTA, FAI, DICT, GTF, BED, STAR index,
-  hashes, annotation provenance, and contig agreement and never repairs them;
-  and
-- storage inventory records roots, sizes, capacity/quota evidence, and policy
-  without deleting, moving, compressing, or cleaning data.
+Runtime preflight only reports declared tools, namespaces, hash utilities, and
+path visibility. Reference provenance only inventories and reconciles declared
+reference identity. Storage inventory only records roots, sizes, capacity or
+quota evidence, and policy. None installs, repairs, deletes, moves, compresses,
+or otherwise mutates the inspected environment or data.
 
 ### Per-step validation reports
 
-Each validator is dry-run-first, explicit-input-only, and publishes:
-
-```text
-results/qc/validation/<step>/<scope>.validation.tsv
-```
-
-with exact columns:
-
-```text
-step_id
-scope_id
-check_id
-status
-observed
-expected
-detail
-```
-
-Each package retains a read-only artifact adapter and end-to-end fixture. No
-generic dispatcher or job array is introduced. Checks cover:
-
-- `00a`: index/source identity, contigs, and `sjdbOverhang`;
-- `00b`: BED12 structure, sorting, blocks, and GTF agreement;
-- `00c`: FASTA/FAI/DICT identity and contig agreement;
-- `01`: STAR outputs, logs, BAM, and mapping summary;
-- `02`: BAM/BAI, sorting, read groups, and alignment RG tags;
-- `02b`: quickcheck and flagstat;
-- `03`: RSeQC structure and paired-orientation fractions;
-- `04`: BAM/BAI/metrics, sorting, RG preservation, and duplication metrics;
-- `05`: parameterized existing output validation;
-- `06`: orientation outputs and count arithmetic;
-- `07`: receipts, VCF structure, selectors, hashes, order, and counts;
-- `08`: three-output transaction, schemas, hashes, ordering, uniqueness, and
-  counts; and
-- `09`: exact headers/basenames/output-parent rules, analysis/cohort/policy
-  identity, complete Step `08` candidate order, count-derived fields,
-  reported-CMH type/range checks, global BH recomputation from reported
-  p-values, exact subset, summary/provenance and spectrum reconciliation, and
-  PDF structure.
-
-Independent CMH statistic, p-value, odds-ratio, and estimability recomputation
-from DP/AD counts remains a critical audited gap.
+Each owner-local validator is dry-run-first, explicit-input-only, and publishes
+`results/qc/validation/<step>/<scope>.validation.tsv` with columns
+`step_id`, `scope_id`, `check_id`, `status`, `observed`, `expected`, and
+`detail`. Each retains an independent artifact adapter and end-to-end fixture;
+no generic dispatcher or job array is introduced. The pipeline matrix defines
+each step's acceptance boundary. Independent CMH statistic, p-value, odds-
+ratio, and estimability recomputation from DP/AD counts remains a critical
+audited gap.
 
 ## Deferred remote lineage
 
-Only after new user direction and completion of the local sequence:
+Remote work requires new user direction after the local tranche:
 
 ```text
 refactor-99-final-audit
@@ -461,9 +232,8 @@ refactor-99-final-audit
                 └── post09-targeted-reruns
 ```
 
-Remote promotion is upstream-sequential. Each validation package inspects
-evidence, regenerates structured summaries and reports, performs a separate
-documentation patch, and reaches a clean pushed gate before the next package.
+Remote promotion is upstream-sequential and cannot inherit local or synthetic
+evidence labels.
 
 ## Scientific exit boundary
 
