@@ -104,7 +104,7 @@ designed safely from filenames alone.
 
 - [ARCH-02B](../COMPLETED/ARCH-02B-define-semantic-stage-map.md) — Fully: semantic names can be derived from inspected responsibilities.
 - [LIB-02F](../COMPLETED/LIB-02F-define-shared-library-ownership.md) — Partially: shared-domain candidates also require the target topology.
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Partially: size findings can be mapped to functional ownership.
+- [SIZE-07](SIZE-07-refresh-large-file-inventory.md) — Partially: size findings can be mapped to functional ownership.
 
 ## Prerequisites
 

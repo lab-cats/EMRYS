@@ -24,7 +24,6 @@ risk.
 
 ## Blocked by
 
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 
 ## Completion unblocks
@@ -33,6 +32,11 @@ risk.
 
 ## Prerequisites
 
+- At task start, refresh only
+  `src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`:
+  record its live line count, responsibilities, consumers/import graph,
+  scientific/contract risks, and mandatory disposition. Do not run or require
+  a repo-wide size inventory.
 - Map every imported symbol and independently protect Step `08`/`09` headers,
   tables, status transitions, hashes, and failure/publication behavior.
 
@@ -63,6 +67,8 @@ risk.
 
 ## Acceptance evidence
 
+- The completion record captures the target-only starting and resulting size,
+  responsibility/consumer map, extracted seams, and final size disposition.
 - Exact public and scientific contract parity passes, including unauthorized
   state, corruption, deterministic, transaction, and independent R/Python/shell
   layers.

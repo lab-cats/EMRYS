@@ -33,7 +33,7 @@ over every applicable contract row before production structure changes.
 - [LOG-01](../COMPLETED/LOG-01-characterize-current-output.md) — Fully: only an affirmative recorded decision releases this target.
 - [DOC-IA-01](DOC-IA-01-define-documentation-ownership-and-navigation.md) — Fully: only an affirmative recorded decision releases this target.
 - [CODEDOC-05](../TODO/CODEDOC-05-inventory-code-documentation.md) — Partially: it also requires the documentation ownership model.
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Partially: it also requires the functional-stage inventory.
+- [SIZE-07](SIZE-07-refresh-large-file-inventory.md) — Partially: it also requires the functional-stage inventory.
 
 ## Prerequisites
 

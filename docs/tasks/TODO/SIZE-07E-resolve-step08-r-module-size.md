@@ -23,7 +23,6 @@ silently override scientific safety.
 
 ## Blocked by
 
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size and responsibility evidence must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 
 ## Completion unblocks
@@ -32,6 +31,11 @@ silently override scientific safety.
 
 ## Prerequisites
 
+- At task start, refresh only
+  `src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R`:
+  record its live line count, responsibilities, callers, scientific/contract
+  risks, and mandatory disposition. Do not run or require a repo-wide size
+  inventory.
 - Inspect guarded real-R coverage, committed fixtures, function boundaries,
   runtime/cluster evidence, and scientific authorization state.
 
@@ -61,6 +65,9 @@ silently override scientific safety.
 
 ## Acceptance evidence
 
+- The completion record captures the target-only starting and resulting size,
+  responsibility/caller map, extracted seam or approved exception, and final
+  size disposition.
 - Extraction path: exact shell/real-R/Python output, error, ordering, hash, and
   transaction parity passes with scientific functions unchanged.
 - Exception path: explicit user approval, scope, rationale, owner, expiry, and

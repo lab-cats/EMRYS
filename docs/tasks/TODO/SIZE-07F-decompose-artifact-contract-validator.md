@@ -22,7 +22,6 @@ producers would create common-mode defects.
 
 ## Blocked by
 
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 
 ## Completion unblocks
@@ -31,6 +30,11 @@ producers would create common-mode defects.
 
 ## Prerequisites
 
+- At task start, refresh only
+  `src/norad/contracts/artifacts/validate_artifact_contracts.py`: record its
+  live line count, responsibilities, consumers/CLI routes, independent-check
+  risks, and mandatory disposition. Do not run or require a repo-wide size
+  inventory.
 - Completed
   [MIG-04A](../COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md)
   places the validator, schemas, direct test, and fixtures in their permanent
@@ -67,6 +71,8 @@ producers would create common-mode defects.
 
 ## Acceptance evidence
 
+- The completion record captures the target-only starting and resulting size,
+  responsibility/consumer map, extracted seams, and final size disposition.
 - Exact roster, schema, status, bytes, exit, malformed-input, mutation, and
   report-publication tests pass.
 - Mutating a producer constant still fails the independent validator/golden.

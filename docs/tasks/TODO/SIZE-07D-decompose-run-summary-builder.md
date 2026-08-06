@@ -22,7 +22,6 @@ central evidence role makes broad edits difficult to review.
 
 ## Blocked by
 
-- [SIZE-07](../TODO/SIZE-07-refresh-large-file-inventory.md) — Required: live size, responsibilities, consumers, and mandatory disposition must be refreshed.
 - [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 - [RPT-05A](../COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decompose the builder inside the final reporting owner rather than creating more temporary flat implementation.
 
@@ -32,6 +31,10 @@ central evidence role makes broad edits difficult to review.
 
 ## Prerequisites
 
+- At task start, refresh only `src/norad/reporting/build_run_summary.py`:
+  record its live line count, responsibilities, consumers/import graph,
+  contract risks, and mandatory disposition. Do not run or require a
+  repo-wide size inventory.
 - Independently protect canonical JSON/TSV/QC/receipt bytes, status projection,
   input mutation, lock, rollback, and report consumers.
 
@@ -62,6 +65,8 @@ central evidence role makes broad edits difficult to review.
 
 ## Acceptance evidence
 
+- The completion record captures the target-only starting and resulting size,
+  responsibility/consumer map, extracted seams, and final size disposition.
 - Exact-byte, schema, status, deterministic, mutation, fault, CLI, artifact, and
   report integration gates pass.
 - No internal model can bypass public validation or evidence-state rules.
