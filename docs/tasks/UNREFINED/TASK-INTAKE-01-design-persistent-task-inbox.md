@@ -25,11 +25,13 @@ while leaving lifecycle, priority, approval, and integration authority intact.
 - A persistent intake branch, if chosen, is not merged wholesale and never
   acts as the canonical integration lane. Selected drafts are re-authored from
   current canonical state in a properly reserved sidecar.
-- Batch processing may produce a read-only classification report. Reviewed
-  dispositions explicitly distinguish a duplicate, an existing-card
-  amendment, a candidate `UNREFINED` proposal, a deferred choice, and a
-  rejection with reason, recorded as append-only resolutions. Classification
-  cannot promote, select, prioritize, approve, complete, delete, or infer work.
+- Batch processing may search the canonical task registry and produce a
+  read-only classification report. Reviewed dispositions explicitly
+  distinguish a duplicate, a proposed existing-card amendment, a proposed
+  new-card candidate, a candidate `UNREFINED` proposal, a deferred choice, and
+  a rejection with reason, recorded as append-only resolutions.
+  Classification cannot create or amend canonical task state, promote, select,
+  prioritize, approve, complete, delete, or infer work.
 - A documentation-to-card scan is a separate proposed owner. Intake may consume
   its reviewed output but does not run or interpret that scan automatically.
 - Inbox-to-UNREFINED and UNREFINED-to-TODO are separate explicit decisions.

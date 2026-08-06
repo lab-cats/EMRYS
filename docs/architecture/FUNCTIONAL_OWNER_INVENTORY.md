@@ -77,10 +77,11 @@ pipeline owner graph but still receive one owner:
 
 `PLAN-03A` inspected the tracked residual implementation-bearing roots,
 remaining shared/root test surfaces, top-level developer inputs, project
-environment anchors, and intentional operational placeholders. The 87 paths
-are partitioned once below. Counts are inspection checks, not a permanent
-repository-size baseline; each later owner migration updates this current
-inventory when paths move.
+environment anchors, and intentional operational placeholders. Its audit-time
+87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
+separately owned temporary record, the 86 current paths are partitioned once
+below. Counts are inspection checks, not a permanent repository-size baseline;
+each later owner migration or retirement updates this current inventory.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
@@ -94,16 +95,17 @@ inventory when paths move.
 | `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | Deferred runtime orchestration/profile inputs; no executable orchestrator exists. |
 | `tests/data_checks/validate_step05_outputs.sh` | 1 | Permanent repository-level operational inspection utility through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md). It uniquely retains optional scheduler-state lookup, six-sample/cohort status aggregation, output-size and scratch inspection, additional `LB`/`PL` read-group requirements, a best-effort persisted twelve-column TSV snapshot, and aggregate exit `0`/`1`/`2` behavior not supplied by the final Step `05` validator. The duplicate truncating `tee` writers and silent replacement remain characterized defects. |
 | `tests/pending/test_step_04_mark_duplicates.sh` | 1 | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md). The intentional non-runnable pending-plan scaffold remains byte-identical because pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
-| `work/active/JIT-01.md` | 1 | `RETIRE` through selected [`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md). Its first `NO_CHANGE` entry is already substantively durable in completed `DOC-GATE-01`; its task-intake entry remains unique. The cleanup card must give both entries a final no-loss disposition and preserve any still-unique material before removal. It is not source-migration scope. |
-
 Completed
 [`AUDIT-RESIDUAL-04A`](../tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-recomputed these eleven groups as `5`, `17`, `26`, `8`, `18`, `5`, `3`, `2`,
-`1`, `1`, and `1` tracked paths: 87 total, 87 unique, and no missing, extra, or
-duplicate assignment. The terminal split is 76 `RETAIN_ROOT`, 10 `DEFER`, and
-one separately owned `RETIRE`. The source-topology campaign is complete at the
-local/static evidence ceiling; this inventory does not close the broader
-modernization backlog.
+recomputed eleven groups and 87 unique paths at its audit boundary: 76
+`RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
+[`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+later retired that one temporary path after no-loss disposition. The ten
+current groups contain `5`, `17`, `26`, `8`, `18`, `5`, `3`, `2`, `1`, and `1`
+paths: 86 total, 86 unique, 76 `RETAIN_ROOT`, 10 `DEFER`, and no current
+`RETIRE`. The source-topology campaign remains complete at the local/static
+evidence ceiling; this inventory does not close the broader modernization
+backlog.
 
 The table does not reclassify already final owner-local paths under
 `src/norad/` or mirrored `tests/stages/`, `tests/analyses/`,

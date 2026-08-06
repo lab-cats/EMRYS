@@ -54,7 +54,7 @@ scientific meaning.
 - [DOC-CONS-08C](DOC-CONS-08C-compress-operational-guidance.md) — Fully: runbook/troubleshooting boundaries and no-loss constraints are settled.
 - [DOC-CONS-08D](DOC-CONS-08D-establish-dated-documentation-history.md) — Fully: the history location and migration rules are settled.
 - [DOC-CONS-08F](../COMPLETED/DOC-CONS-08F-compress-design-and-architecture-views.md) — Fully: conceptual and exact contract-owner boundaries are settled.
-- [DOC-CONS-08H](../IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md) — Fully: the temporary-record disposition is settled, subject to its live prerequisites.
+- [DOC-CONS-08H](DOC-CONS-08H-retire-jit-temporary-work-record.md) — Fully: the temporary-record disposition is settled, subject to its live prerequisites.
 - [DOC-REF-02](../TODO/DOC-REF-02-create-glossary.md) — Fully: glossary ownership and navigation will be settled.
 - [DOC-README-03](../TODO/DOC-README-03-establish-directory-readme-coverage.md) — Fully: directory-audience and detail rules will be settled.
 - [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the semantic stage map is also required.

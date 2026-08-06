@@ -95,10 +95,11 @@ then separated the presenter run-of-show from the PI discussion guide, added a
 local demo index, routed mutable facts to their owners, and removed the
 non-unique undated cohort paragraph without creating a redundant history
 record. That close selected no successor. Documentation-only/non-consuming
-[`DOC-CONS-08H`](docs/tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-is now the sole selected cleanup package. Its scope is limited to two no-loss
-dispositions and retirement of the temporary JIT work record. Scheduler,
-ingestion,
+[`DOC-CONS-08H`](docs/tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+then confirmed the existing documentation-gate owner, preserved the unique
+read-only batch-intake semantics in nonselectable `TASK-INTAKE-01`, repaired
+the completed JIT backlink, and retired the temporary record. No cleanup
+package is selected. Scheduler, ingestion,
 orchestration/profile, cluster, and default-branch work remain deferred.
 `PROGRAM-01` and unrelated work remain frozen outside their completed slices.
 Execute only one dependency-valid package at a time under the

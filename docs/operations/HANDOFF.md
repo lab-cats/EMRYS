@@ -120,10 +120,14 @@ and delivery-required lineage live in
   local demo index, and delegates current evidence/report facts. Its undated
   cohort paragraph duplicated this handoff and was removed; no demo-history
   child or evidence change was warranted.
-- Selected package: documentation-only/non-consuming
-  [`DOC-CONS-08H`](../tasks/IN_PROGRESS/DOC-CONS-08H-retire-jit-temporary-work-record.md).
-  It owns only the two accepted no-loss dispositions, direct backlinks, and
-  retirement of the temporary JIT work record.
+- Completed temporary-record retirement: documentation-only/non-consuming
+  [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
+  confirms [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md)
+  for former Slice `7A`, preserves the unique read-only batch-intake semantics
+  in nonselectable
+  [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md),
+  repairs the completed JIT backlink, and removes `work/active/JIT-01.md`.
+- Selected package: none.
 - Pipeline-owner physical migration: complete. `MIG-03A` extracted the neutral
   validation-report library; `MIG-03B` through `MIG-03O` migrated the frozen
   fourteen-owner DAG topology. The residual artifact-contract owner is also
@@ -176,7 +180,7 @@ or evidence authority.
 | Runtime, reference, and storage helpers | Implemented and locally fixture-tested. No CSU batch runtime report, production reference report, production storage report, or approved production retention policy exists. |
 | Structured step validators | All Step `00a` through `09` validators are implemented and locally fixture/report tested. Their exact checks and limitations belong to the adjacent owner contracts and completed migration cards. |
 | Final migration acceptance | The final `MIG-03O` executable state passed its focused suites, final-path coverage, and exact complete applicable gate after the documentation links were repaired. The earlier sandbox-DNS stop and later eight-link aggregate failure remain non-green attempts; the final pass does not relabel them. Exact commands, totals, timings, and coverage remain in the [`MIG-03O` card](../tasks/COMPLETED/MIG-03O-migrate-assemble-scientific-review-evidence-package-owner.md) and [dated refactor log](../history/audits/2026-08-02-refactor-log.md). |
-| Latest residual package | Documentation-only `AUDIT-RESIDUAL-04A` recomputes the current ledger as 87 total and unique paths: 76 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. All 54 expected final tracked files exist; all 46 Git-moved legacy files and every live old-path reference are absent; fourteen roster consumers use the final helper; and neutral seams have one implementation owner. The audit corrects only the false claim that both JIT cleanup entries remain unique: the first is already durable in completed `DOC-GATE-01`, while the second remains unique for `DOC-CONS-08H`. No product executable or computational test ran or changed; only documentation validation applies. This closes source topology locally and statically, not the eight-blocker `AUDIT-99` or any runtime, cluster, production, scientific-review, or biological evidence. |
+| Residual audit and retirement | Documentation-only `AUDIT-RESIDUAL-04A` reconciled 87 total and unique paths at its audit boundary: 76 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed `DOC-CONS-08H` later gave that temporary record's two entries accepted no-loss dispositions and removed it. The current inventory therefore contains 86 total and unique paths: 76 `RETAIN_ROOT`, 10 `DEFER`, and no current `RETIRE`. No product executable or computational test ran or changed; this remains local/static documentation evidence, not the eight-blocker `AUDIT-99` or any runtime, cluster, production, scientific-review, or biological evidence. |
 
 Transaction completion establishes only reconciliation of the declared
 transaction. It does not prove every source exists or passed and does not
@@ -287,9 +291,10 @@ architecture/design compression and retired the redundant universal-waterfall
 diagram without changing an exact contract or evidence state.
 Documentation-only/non-consuming `DOC-CONS-08G` then gave the two demo views
 distinct presenter/audience roles, added their local index, delegated mutable
-facts, and removed the non-unique undated cohort paragraph. That close selected
-no successor. Documentation-only/non-consuming `DOC-CONS-08H` is now the sole
-selected package for the temporary JIT record and its direct owner routes.
+facts, and removed the non-unique undated cohort paragraph. Documentation-only/
+non-consuming `DOC-CONS-08H` then gave both temporary-record entries accepted
+no-loss dispositions, repaired the completed JIT backlink, and removed the
+record. No package is selected.
 
 No later owner move, broad audit, scheduler, ingestion, orchestration/profile,
 runtime execution, cluster, or default-branch package is preloaded.
@@ -298,9 +303,8 @@ runtime execution, cluster, or default-branch package is preloaded.
 recovered TODO work, and all UNREFINED proposals remain outside this package.
 
 The approved residual-convergence campaign is fulfilled through completed
-`AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup continues
-one JIT package at a time with selected `DOC-CONS-08H`. No later cleanup
-package is preloaded.
+`AUDIT-RESIDUAL-04A`. The separately approved PI-readiness cleanup has now
+completed `DOC-CONS-08H`; no later cleanup package is selected or preloaded.
 
 Before continuing, verify the exact branch, `HEAD`, lack or identity of an
 upstream, cleanliness including untracked files, and recovery/lock state. The

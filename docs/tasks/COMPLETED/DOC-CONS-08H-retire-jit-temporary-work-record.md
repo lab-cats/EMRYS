@@ -91,10 +91,40 @@ retaining it forever would make completed work look active.
 
 Selected on 2026-08-05 from clean, published, live-remote-equal predecessor
 `db4272c925278efd4952091f259e2cd8297dedaa` on
-`codex/residual-source-topology-convergence`. This status-only selection does
-not open or change `work/active/JIT-01.md`, choose either destination, inspect
-sidecar/reconciliation state, retire the record, select a successor, or promote
-evidence. The approved implementation is limited to two no-loss dispositions,
-their accepted canonical owners, direct backlinks, and removal of the empty
-temporary record; it stops if accepted canonical state cannot supply either
-destination.
+`codex/residual-source-topology-convergence`; status-only selection checkpoint
+`0081762f9aecd401a1aaad8eab6873ec2f214648` was published and proved
+live-remote-equal before the temporary record was opened.
+
+The completed documentation-only/non-consuming package:
+
+- confirms that former Slice `7A` is `NO_CHANGE` because completed
+  [`DOC-GATE-01`](DOC-GATE-01-extract-documentation-validator.md) already owns
+  the independently locked extraction behavior and supported logic-free Make
+  exposure; only the cleanup provenance needed a final record;
+- routes the second entry to existing nonselectable
+  [`TASK-INTAKE-01`](../UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md)
+  and adds only the two semantics missing there: read-only batched search of
+  the canonical task registry and a distinct proposed-new-card classification;
+- preserves deduplication plus proposed amend/new/`UNREFINED`/defer/reject
+  outcomes while explicitly prohibiting the classification from creating or
+  amending canonical task state or gaining selection, priority, approval, or
+  implementation authority;
+- repairs the completed JIT card to link both accepted canonical owners,
+  records the two original dispositions once, and removes
+  `work/active/JIT-01.md` with no compatibility record;
+- removes every live inbound/current-inventory row for the retired path and
+  updates the current residual inventory from the audit-time 87 paths and
+  eleven groups to 86 paths and ten groups: 76 `RETAIN_ROOT`, 10 `DEFER`, and
+  no current `RETIRE`; and
+- uses only accepted canonical state. No isolated sidecar or reserved
+  reconciliation path was inspected or inferred.
+
+Independent first-entry ownership, second-entry semantic, and inbound/current-
+inventory reviews found the two destinations authorized and complete after the
+bounded proposal edit. Final no-loss and lifecycle review, `git diff --check`,
+and `make -s documentation-check` pass on the exact completed tree: 231
+Markdown documents, 148 task cards, and 5 Mermaid sources. Computational,
+shell, R, report-runtime, dependency, full-suite, runtime, cluster,
+scientific-review, and biological validation are not applicable because the
+complete selection-to-close diff is non-consuming documentation only. No
+successor is selected by this close.

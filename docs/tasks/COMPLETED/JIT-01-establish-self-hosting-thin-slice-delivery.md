@@ -111,9 +111,18 @@ the repository documentation gate cover the final published content;
 computational, R, shell, report-runtime, and cluster validation are not
 applicable.
 
-The retained [decision record](../../../work/active/JIT-01.md) preserves only
-noncritical input-dependent items. Future sitemap classification and
-touch-move-delete migration are owned by
+The temporary decision record was retained at this completion boundary and was
+later retired by
+[`DOC-CONS-08H`](DOC-CONS-08H-retire-jit-temporary-work-record.md) after both
+cleanup entries received accepted no-loss dispositions. Former Slice `7A` was
+classified `NO_CHANGE`: completed
+[`DOC-GATE-01`](DOC-GATE-01-extract-documentation-validator.md) already owns the
+extraction behavior lock and supported Make exposure. The task-ingestion item
+is preserved without selection or implementation authority in nonselectable
+[`TASK-INTAKE-01`](../UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md),
+including read-only batched registry search, deduplication, and proposed
+amend/new/`UNREFINED`/no-action dispositions. Future sitemap classification and
+touch-move-delete migration remain owned by
 [`DOC-SITEMAP-01`](../TODO/DOC-SITEMAP-01-classify-temporary-task-start-routing.md).
 Publication and exact checkout evidence remain in
 [`HANDOFF.md`](../../operations/HANDOFF.md).
