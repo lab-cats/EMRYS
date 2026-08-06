@@ -15,9 +15,13 @@ alias `09c`). Its public assets are:
   protection plus its adjacent
   [fixture builder](../../../../tests/evidence/assemble_scientific_review_evidence_package/build_fixture.py).
 
-There is no SLURM wrapper, installed command, package import, compatibility
-copy, legacy executable path, symlink, ambient `PYTHONPATH`, or global
-`sys.path` mutation.
+The owner-private [`_scientific_review/`](_scientific_review/README.md)
+package contains cohesive implementation seams behind the public Python
+facade. It is not an additional entry point or supported package API.
+
+There is no SLURM wrapper, installed command, supported package import,
+compatibility copy, legacy executable path, symlink, ambient `PYTHONPATH`, or
+global `sys.path` mutation.
 
 ## Inputs, evidence choices, and dry run
 

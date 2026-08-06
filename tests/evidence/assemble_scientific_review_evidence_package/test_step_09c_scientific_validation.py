@@ -725,6 +725,60 @@ def test_dry_run_validates_fixture_without_publishing(tmp_path: Path) -> None:
     assert not fixture.output_root.exists()
 
 
+def test_build_context_uses_live_private_evidence_owner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    reached_owner = False
+
+    def reject_payload_validation(*_args: Any, **_kwargs: Any) -> None:
+        nonlocal reached_owner
+        reached_owner = True
+        raise FIXTURES.CONTRACT.ContractError(
+            "synthetic live evidence-owner failure"
+        )
+
+    monkeypatch.setattr(
+        FIXTURES.CONTRACT._context_owner,
+        "validate_evidence_payloads",
+        reject_payload_validation,
+    )
+
+    with pytest.raises(
+        FIXTURES.CONTRACT.ContractError,
+        match="live evidence-owner failure",
+    ):
+        FIXTURES.CONTRACT.build_context(arguments)
+
+    assert reached_owner
+
+
+def test_publication_uses_live_facade_writer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    real_write_tsv = FIXTURES.CONTRACT.write_tsv
+    written_names: list[str] = []
+
+    def observe_write(path: Path, header: Any, rows: Any) -> None:
+        written_names.append(path.name)
+        real_write_tsv(path, header, rows)
+
+    monkeypatch.setattr(FIXTURES.CONTRACT, "write_tsv", observe_write)
+
+    FIXTURES.CONTRACT.publish_outputs(context, tables)
+
+    assert written_names == [
+        context.output_paths[key].name
+        for key, _suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
+    ]
+
+
 def test_execute_publishes_exact_transaction_and_summary_marker(
     tmp_path: Path,
 ) -> None:

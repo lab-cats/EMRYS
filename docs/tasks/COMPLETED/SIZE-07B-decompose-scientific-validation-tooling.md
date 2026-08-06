@@ -24,7 +24,7 @@ risk.
 
 ## Blocked by
 
-- [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
+- None.
 
 ## Completion unblocks
 
@@ -86,5 +86,33 @@ risk.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the explicitly approved PI-readiness tranche. The target-only
+refresh measured
+`src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py`
+at 2,886 lines and 108,319 bytes. It owned exact Step `08`, Step `09`, and
+review-package loading; Step `09c` constants and models; plan and evidence-
+manifest intake; scientific audits and review analyses; computational evidence
+and state assembly; explicit context construction; the public CLI; and the
+thirteen-output receipt-last publication transaction. Direct consumers are the
+adjacent shell launcher and fixture/test suite, run-summary fixture generation,
+independent contract goldens, and public CLI contracts.
+
+The exact public path is now a 568-line compatibility, CLI, and publication
+facade over six owner-private modules plus `__init__.py`. The private seams own
+contract identities/constants, intake/models, scientific audits, review
+analysis, computational evidence/summary assembly, and context construction;
+the largest is 570 lines. The facade retains live exact-loader wrappers,
+`read_tsv`, `write_tsv`, stable-input rechecks, locking, staging, rollback,
+recovery, `os.replace`, and summary-last publication hooks. Exact-file callers
+and arbitrary-CWD execution require no `sys.path` mutation. Every resulting
+file is below the 600-line advisory threshold.
+
+Focused local evidence passed: 86 direct Step `09c` Python tests; 185 neutral
+Step `08`/Step `09`/review-package and independent-golden tests; the adjacent
+shell contract; two exact public CLI cases; six downstream run-summary science
+checks; compile/import and exact-file loading checks; moved-body AST parity;
+and `git diff --check`. Added live-owner tests prove context reaches the moved
+evidence validator and all thirteen staged outputs reach the facade-live
+writer. This is local structural and contract-parity evidence only; scientific
+policy, state vocabulary, schemas, output bytes, and the production/cluster/
+review/biological evidence ceilings remain unchanged.
