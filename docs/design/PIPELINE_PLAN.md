@@ -45,9 +45,9 @@ production review.
 | Step `00a` through `09` reports | Owner-local validation, typed artifact adaptation, and summary/report propagation | implemented and locally fixture-tested; evidence ceilings remain as in the pipeline matrix |
 | Refactor audit and test baseline | Current finding/recheck routes and non-regression policy | current routes in [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](TEST_BASELINE.md); dated evidence is historical |
 | Physical ownership | Fourteen DAG owners, neutral contracts/libraries, reporting, and evidence tools in final homes | source-topology migration complete at the local/static ceiling |
-| Documentation | User pipeline overview and compressed canonical owner views | [`DOC-PIPE-04`](../tasks/COMPLETED/DOC-PIPE-04-create-user-pipeline-overview.md) complete; final central reconciliation in progress |
+| Documentation | User pipeline overview and compressed canonical owner views | [`DOC-PIPE-04`](../tasks/COMPLETED/DOC-PIPE-04-create-user-pipeline-overview.md) and final central reconciliation complete |
 
-## Active critical runway
+## Completed PI-readiness tranche
 
 The physical migration is complete for all fourteen semantic DAG owners,
 artifact and scientific-evidence contracts, reporting, reference-contig
@@ -57,7 +57,7 @@ Exact final homes live in
 public surfaces live in the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md).
 
-The approved tranche is deliberately narrow:
+The approved tranche completed this bounded sequence:
 
 1. finish central documentation reconciliation;
 2. complete [`SIZE-07A`](../tasks/COMPLETED/SIZE-07A-decompose-artifact-index-builder.md),
@@ -75,6 +75,9 @@ Each size slice owned a live refresh of only its target's size,
 responsibilities, consumers, risks, and disposition; the standalone repo-wide
 refresh was retired through
 [`SIZE-07`](../tasks/COMPLETED/SIZE-07-refresh-large-file-inventory.md).
+`LIB-03` is complete through one neutral source-only executable resolver used
+by exactly five stage producers; tool-specific policy remains consumer-local.
+No successor package is selected.
 
 The recorded reciprocal `REVIEW-UX-03` task edges are not an execution blocker
 for this explicitly authorized tranche; correcting general task-edge semantics
@@ -121,19 +124,20 @@ and readiness relationships, not automatic selection. UNREFINED records and
 other TODO proposals do not enter the approved runway without review and user
 direction.
 
-## Approved current delivery lineage
+## Completed delivery lineage
 
 The current branch descends from the completed physical-owner and residual-
-topology convergence campaigns. The active tranche uses sequential,
+topology convergence campaigns. The completed tranche used sequential,
 outcome-oriented commits: `DOC-PIPE-04` has its own completed commit; each of
 `SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` has its own
 commit; the bounded
 [`LIB-03`](../tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md)
 seam is likewise a separate outcome commit rather than part of a size slice.
-Final applicable validation, genuinely affected central reconciliation, and
-one authorized push occur after the tranche. Exact commit ancestry and dated
-delivery evidence belong in Git and
-[`operations history`](../history/operations/), not here.
+Final local validation and genuinely affected central reconciliation are
+complete. The guarded R lane remains non-green only because the installed
+`renv` package is out of date; dependency maintenance is a separate package.
+Exact commit ancestry, publication state, and dated delivery evidence belong
+in Git and [`operations history`](../history/operations/), not here.
 
 ## Package acceptance criteria
 

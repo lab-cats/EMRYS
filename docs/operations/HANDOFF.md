@@ -11,26 +11,22 @@ for frozen branch and delivery detail.
 ## Checkout
 
 - Active branch: `codex/residual-source-topology-convergence`.
-- The approved PI-readiness tranche is still in progress. Do not infer a clean
-  tree, final validation result, published tip, or upstream equality from this
-  handoff; inspect Git before acting.
-- The cleanup portion has completed the user pipeline overview, removed the
-  root `jobs/` scaffold, moved the retained manual cluster probe to its
-  evidence owner, retired the unused SLURM template and two unused workflow
-  profiles, and compressed the major documentation views.
-- The standalone size-inventory prerequisite is retired. Each remaining size
-  package refreshes only its own target.
-- `SIZE-07A` is the active implementation slice. `SIZE-07B`, `SIZE-07D`,
-  `SIZE-07E`, `SIZE-07F`, and one bounded, observed-seam `LIB-03` extraction
-  remain in the approved tranche.
+- The approved PI-readiness tranche is locally complete. Inspect Git for the
+  exact clean-tree, tip, publication, and upstream-equality state.
+- Cleanup modernized the user entry path and canonical documentation, removed
+  the root `jobs/` scaffold, moved the retained cluster probe to its evidence
+  owner, and retired unused scheduler/workflow scaffolding.
+- `DOC-PIPE-04`, `SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, `SIZE-07F`,
+  and the bounded `LIB-03` seam each have their own outcome commit. The
+  standalone size-inventory prerequisite is retired, and no successor package
+  is selected.
 
 ## Active concurrent lanes
 
-No independently authorized external integration lane is recorded. Disjoint
-work may coexist in the shared worktree while the current tranche is active;
-Git status and explicit integration coordination are authoritative. Do not
-reset, stash, rebase, clean untracked paths, or modify preserved worktrees to
-manufacture a clean checkout.
+No independently authorized external integration lane or active tranche lane
+is recorded. Git status and explicit integration coordination are
+authoritative; do not reset, stash, rebase, clean untracked paths, or modify
+preserved worktrees to manufacture a clean checkout.
 
 Any future independent mutation lane requires a fresh packet under
 [`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#required-lane-packet). Historical
@@ -47,7 +43,7 @@ evidence authority.
 | Steps `08`–`09` | Implemented and shell/fake-R plus guarded-real-R tested locally; no cluster or production proof. Step `09` produces CMH-ranked candidates, not validated editing sites. |
 | Step `09c` and reporting | Scientific-review packaging, schemas, adapters, run summary, report bundle, and populated demo are synthetic-fixture/local-render tested where applicable. There is no production evidence package, completed scientific review, production transaction, or production report. |
 | Validators and operational helpers | Structured Step `00a`–`09` validators and runtime, reference, and storage helpers have local fixture/report evidence. There is no CSU batch runtime report, production reference or storage report, or approved production retention policy. |
-| Current cleanup/size tranche | Documentation and structural refactors do not promote runtime, cluster, scientific-review, or biological evidence. The tranche is active; this file records no final aggregate gate or publication result. |
+| Completed cleanup/size tranche | Documentation and structural refactors do not promote runtime, cluster, scientific-review, or biological evidence. Final local evidence is `1625` Python passes with `17` skips and coverage `0.851502` line / `0.749803` branch across `71` files, all `14` shell-contract components, and `17` report-runtime passes with `60` deselections. Guarded R stops at the separately owned `renv` freshness check. |
 
 A successful transaction proves only reconciliation of its declared inputs and
 outputs. It does not prove every source exists or passed, and it does not
@@ -91,18 +87,18 @@ conclusion exists.
 
 ## Preserved local recovery constraint
 
-An earlier sibling-worktree `renv` activation attempted automatic bootstrap
-before failing. The malformed ignored path
-`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/` is absent from this
-worktree; its empty original directory tree is quarantined at
-`/private/tmp/norad-r-library-quarantine.Z645n8/macos`.
+An earlier sibling-worktree `renv` activation created the malformed empty path
+`renv/library/macos/R-4.6/aarch64-apple-darwin23/macos/`. It remains absent
+from this worktree. Its former `/private/tmp` quarantine payload is also absent;
+the quarantine root is empty, and the empty directory tree must not be
+fabricated or automatically restored.
 
-Do not delete, repair, reuse, or automatically restore that quarantine. No
-package was installed, restored, removed, or updated. Guarded checks use the
-existing primary project library through `RENV_PATHS_LIBRARY`. Local
-dependency validation still reports an out-of-date package, so the aggregate
-R lane remains non-green until a separately reviewed dependency-maintenance
-package diagnoses and resolves the drift.
+The preserved project library was not installed into, restored, or updated
+during this tranche. Guarded checks bind `RENV_PATHS_LIBRARY` to the project-
+library root (`renv/library`), not its platform-qualified leaf. Final
+dependency validation identifies installed `renv` `1.2.3` as the sole out-of-
+date package, so the aggregate R lane remains non-green until a separately
+reviewed dependency-maintenance package resolves the drift.
 
 ## Current blockers
 
@@ -111,9 +107,9 @@ package diagnoses and resolves the drift.
   inspection.
 - Step `07` lacks real-bcftools and cluster evidence; Steps `08`, `09`, and
   `09c` lack production/cluster evidence and completed scientific review.
-- CSU batch-visible R and package availability remain unresolved, and the
-  guarded local dependency check remains non-green. Do not mutate the
-  environment as incidental refactor work.
+- CSU batch-visible R and package availability remain unresolved. The guarded
+  local dependency check reports only installed `renv` `1.2.3` as out of date;
+  do not mutate the environment as incidental refactor work.
 - Storage quota, scratch capacity, retention policy, and the exact Novogene
   annotation release remain unresolved.
 - The Step `09` structured validator does not independently recompute the CMH
@@ -128,23 +124,15 @@ package diagnoses and resolves the drift.
 
 ## Immediate resume point
 
-Continue the already-approved tranche from the live `SIZE-07A` working tree.
-Finish only that target's observed seams, direct contracts/tests, and focused
-checks, then create its own outcome-oriented commit. Do not disturb concurrent
-disjoint edits or broaden the package into behavior, schema, scientific, or
-evidence-policy change.
+No implementation or documentation slice remains in the approved tranche, and
+no successor is selected. Any later work requires fresh user direction; the
+formal onboarding family, runtime/cluster evidence, dependency maintenance,
+scientific review, and production execution remain separate scopes.
 
-Then complete `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` in order.
-Each owns its target-only live size/cohesion refresh and its own commit. Follow
-with one bounded `LIB-03` extraction based on demonstrated duplication; do not
-create a generic framework speculatively. `DOC-PIPE-04` already has its own
-completed commit.
-
-Run the comprehensive applicable gate and reconcile genuinely affected central
-documentation once at the end of the tranche. Push once under the existing
-publication authority, report the consolidated evidence and any external
-blocker, and stop without selecting successor work. Until that happens, do not
-claim final validation, publication, or remote equality.
+The only non-green local gate component is the explicit `renv` freshness
+check. Resolving it requires a separately reviewed dependency-maintenance
+package and a fresh guarded-R run; it does not invalidate the passing Python,
+shell-contract, report-runtime, or focused real-R evidence recorded above.
 
 On any interrupted resume, first inspect the exact branch, `HEAD`, upstream,
 worktree (including untracked files), active diff/card, locks, and preserved

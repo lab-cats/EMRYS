@@ -255,8 +255,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_00c_prepare_gatk_reference.sh"
                 ),
                 "sha256": (
-                    "ed3e9ca039102c881c4f91cb02fd32e4"
-                    "a67d09ad799300c789cbab27ce1ab0a1"
+                    "96127823a614f2a2480b93b0c21e69cd"
+                    "534396ac13bd37887be3662b2246c289"
                 ),
             }
         ],
@@ -364,8 +364,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_05_split_n_cigar_reads.sh"
                 ),
                 "sha256": (
-                    "e25c8d94d940aa02187e5550c51a71b8"
-                    "fdd8ca75660a07f5851dc215679248ac"
+                    "c328274cfd2212c117ff62c49ff3865c"
+                    "79c48924c6ce3f07d10902c64060e6d2"
                 ),
             }
         ],
@@ -383,8 +383,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_06_split_bam_by_read_orientation.sh"
                 ),
                 "sha256": (
-                    "74399ceb42cb081b213256977b03137d"
-                    "7ae8513c07f98fb4cd06b2f7ee6a2730"
+                    "3311134f23623ced3eb5c7ad89b17d1d"
+                    "098c048068393f9376532756e247b852"
                 ),
             }
         ],
@@ -401,8 +401,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
                 ),
                 "sha256": (
-                    "e3af9900b6f7831f2feafbc6d13f3755"
-                    "a475f02e5013c8b756107ddd90d22297"
+                    "b1572a29afc4600bcba50602b0c275a6f"
+                    "f63760bb7f8d62c3341483f47c08625"
                 ),
             }
         ],
@@ -419,8 +419,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_08_vcf_preprocessing.sh"
                 ),
                 "sha256": (
-                    "578542fefa02aa23667bb40e582cbab21"
-                    "5e6d3efec0a7c2fbb002290f1cfc1f3"
+                    "f7a93c893068d92c66f82b204b2ad601"
+                    "266e2bbd738cb90e5b8fb71b13104621"
                 ),
             }
         ],
@@ -457,8 +457,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_09c_scientific_validation.py"
                 ),
                 "sha256": (
-                    "a3200ffe9d2248e646e5fe4524383e4f"
-                    "3e9e7a9467c26d10217ee1a2315e562a"
+                    "b821f266a0e196692e85077613d0174e"
+                    "e952f13e98f5a7036fd7c854a9af66ac"
                 ),
             }
         ],

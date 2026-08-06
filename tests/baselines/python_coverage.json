@@ -10,12 +10,12 @@
       "path": "scripts/git_orchestration/_common.py"
     },
     {
-      "branch_rate": "0.009804",
-      "covered_branches": 1,
-      "covered_lines": 26,
-      "line_rate": "0.135417",
-      "num_branches": 102,
-      "num_statements": 192,
+      "branch_rate": "1.000000",
+      "covered_branches": 124,
+      "covered_lines": 233,
+      "line_rate": "1.000000",
+      "num_branches": 124,
+      "num_statements": 233,
       "path": "scripts/git_orchestration/validate_documentation.py"
     },
     {
@@ -55,12 +55,57 @@
       "path": "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py"
     },
     {
-      "branch_rate": "0.764831",
-      "covered_branches": 361,
-      "covered_lines": 658,
-      "line_rate": "0.846847",
-      "num_branches": 472,
-      "num_statements": 777,
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/contracts/artifacts/_artifact_contracts/__init__.py"
+    },
+    {
+      "branch_rate": "0.687500",
+      "covered_branches": 22,
+      "covered_lines": 40,
+      "line_rate": "0.833333",
+      "num_branches": 32,
+      "num_statements": 48,
+      "path": "src/norad/contracts/artifacts/_artifact_contracts/artifact.py"
+    },
+    {
+      "branch_rate": "0.762712",
+      "covered_branches": 90,
+      "covered_lines": 190,
+      "line_rate": "0.837004",
+      "num_branches": 118,
+      "num_statements": 227,
+      "path": "src/norad/contracts/artifacts/_artifact_contracts/core.py"
+    },
+    {
+      "branch_rate": "0.764706",
+      "covered_branches": 104,
+      "covered_lines": 170,
+      "line_rate": "0.841584",
+      "num_branches": 136,
+      "num_statements": 202,
+      "path": "src/norad/contracts/artifacts/_artifact_contracts/run_summary.py"
+    },
+    {
+      "branch_rate": "0.756757",
+      "covered_branches": 56,
+      "covered_lines": 97,
+      "line_rate": "0.850877",
+      "num_branches": 74,
+      "num_statements": 114,
+      "path": "src/norad/contracts/artifacts/_artifact_contracts/scientific_review.py"
+    },
+    {
+      "branch_rate": "0.781250",
+      "covered_branches": 100,
+      "covered_lines": 272,
+      "line_rate": "0.897690",
+      "num_branches": 128,
+      "num_statements": 303,
       "path": "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     },
     {
@@ -91,12 +136,75 @@
       "path": "src/norad/contracts/scientific_evidence/step09.py"
     },
     {
-      "branch_rate": "0.729008",
-      "covered_branches": 382,
-      "covered_lines": 927,
-      "line_rate": "0.845803",
-      "num_branches": 524,
-      "num_statements": 1096,
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/__init__.py"
+    },
+    {
+      "branch_rate": "0.688679",
+      "covered_branches": 73,
+      "covered_lines": 131,
+      "line_rate": "0.798780",
+      "num_branches": 106,
+      "num_statements": 164,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/audits.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 8,
+      "covered_lines": 57,
+      "line_rate": "0.934426",
+      "num_branches": 12,
+      "num_statements": 61,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/context.py"
+    },
+    {
+      "branch_rate": "0.800000",
+      "covered_branches": 32,
+      "covered_lines": 131,
+      "line_rate": "0.956204",
+      "num_branches": 40,
+      "num_statements": 137,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/contracts.py"
+    },
+    {
+      "branch_rate": "0.750000",
+      "covered_branches": 48,
+      "covered_lines": 102,
+      "line_rate": "0.871795",
+      "num_branches": 64,
+      "num_statements": 117,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/evidence.py"
+    },
+    {
+      "branch_rate": "0.724490",
+      "covered_branches": 71,
+      "covered_lines": 194,
+      "line_rate": "0.877828",
+      "num_branches": 98,
+      "num_statements": 221,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/intake.py"
+    },
+    {
+      "branch_rate": "0.655738",
+      "covered_branches": 80,
+      "covered_lines": 160,
+      "line_rate": "0.792079",
+      "num_branches": 122,
+      "num_statements": 202,
+      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/review_analysis.py"
+    },
+    {
+      "branch_rate": "0.806122",
+      "covered_branches": 79,
+      "covered_lines": 297,
+      "line_rate": "0.829609",
+      "num_branches": 98,
+      "num_statements": 358,
       "path": "src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py"
     },
     {
@@ -181,30 +289,237 @@
       "path": "src/norad/libraries/validation_report.py"
     },
     {
-      "branch_rate": "0.671717",
-      "covered_branches": 133,
-      "covered_lines": 392,
-      "line_rate": "0.821803",
-      "num_branches": 198,
-      "num_statements": 477,
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/reporting/_artifact_index/__init__.py"
+    },
+    {
+      "branch_rate": "0.406977",
+      "covered_branches": 35,
+      "covered_lines": 113,
+      "line_rate": "0.614130",
+      "num_branches": 86,
+      "num_statements": 184,
+      "path": "src/norad/reporting/_artifact_index/binary_readers.py"
+    },
+    {
+      "branch_rate": "0.815789",
+      "covered_branches": 31,
+      "covered_lines": 106,
+      "line_rate": "0.938053",
+      "num_branches": 38,
+      "num_statements": 113,
+      "path": "src/norad/reporting/_artifact_index/context.py"
+    },
+    {
+      "branch_rate": "0.807692",
+      "covered_branches": 42,
+      "covered_lines": 152,
+      "line_rate": "0.955975",
+      "num_branches": 52,
+      "num_statements": 159,
+      "path": "src/norad/reporting/_artifact_index/contracts.py"
+    },
+    {
+      "branch_rate": "0.695652",
+      "covered_branches": 32,
+      "covered_lines": 126,
+      "line_rate": "0.797468",
+      "num_branches": 46,
+      "num_statements": 158,
+      "path": "src/norad/reporting/_artifact_index/core.py"
+    },
+    {
+      "branch_rate": "0.801724",
+      "covered_branches": 93,
+      "covered_lines": 168,
+      "line_rate": "0.865979",
+      "num_branches": 116,
+      "num_statements": 194,
+      "path": "src/norad/reporting/_artifact_index/inspection.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 96,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 96,
+      "path": "src/norad/reporting/_artifact_index/models.py"
+    },
+    {
+      "branch_rate": "0.675439",
+      "covered_branches": 77,
+      "covered_lines": 144,
+      "line_rate": "0.786885",
+      "num_branches": 114,
+      "num_statements": 183,
+      "path": "src/norad/reporting/_artifact_index/reconcile_native.py"
+    },
+    {
+      "branch_rate": "0.652542",
+      "covered_branches": 77,
+      "covered_lines": 133,
+      "line_rate": "0.764368",
+      "num_branches": 118,
+      "num_statements": 174,
+      "path": "src/norad/reporting/_artifact_index/reconcile_review.py"
+    },
+    {
+      "branch_rate": "0.692308",
+      "covered_branches": 36,
+      "covered_lines": 79,
+      "line_rate": "0.782178",
+      "num_branches": 52,
+      "num_statements": 101,
+      "path": "src/norad/reporting/_artifact_index/reconcile_step09.py"
+    },
+    {
+      "branch_rate": "0.900000",
+      "covered_branches": 27,
+      "covered_lines": 71,
+      "line_rate": "0.865854",
+      "num_branches": 30,
+      "num_statements": 82,
+      "path": "src/norad/reporting/_artifact_index/reconciliation.py"
+    },
+    {
+      "branch_rate": "0.750000",
+      "covered_branches": 27,
+      "covered_lines": 82,
+      "line_rate": "0.836735",
+      "num_branches": 36,
+      "num_statements": 98,
+      "path": "src/norad/reporting/_artifact_index/records.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 14,
+      "covered_lines": 57,
+      "line_rate": "1.000000",
+      "num_branches": 14,
+      "num_statements": 57,
+      "path": "src/norad/reporting/_artifact_index/registry.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 4,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 4,
+      "path": "src/norad/reporting/_artifact_index/rosters.py"
+    },
+    {
+      "branch_rate": "0.729885",
+      "covered_branches": 127,
+      "covered_lines": 255,
+      "line_rate": "0.794393",
+      "num_branches": 174,
+      "num_statements": 321,
+      "path": "src/norad/reporting/_artifact_index/text_readers.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 48,
+      "covered_lines": 90,
+      "line_rate": "0.750000",
+      "num_branches": 72,
+      "num_statements": 120,
+      "path": "src/norad/reporting/_artifact_index/validation.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/reporting/_run_summary/__init__.py"
+    },
+    {
+      "branch_rate": "0.767857",
+      "covered_branches": 43,
+      "covered_lines": 87,
+      "line_rate": "0.852941",
+      "num_branches": 56,
+      "num_statements": 102,
+      "path": "src/norad/reporting/_run_summary/approvals.py"
+    },
+    {
+      "branch_rate": "0.629630",
+      "covered_branches": 34,
+      "covered_lines": 143,
+      "line_rate": "0.781421",
+      "num_branches": 54,
+      "num_statements": 183,
+      "path": "src/norad/reporting/_run_summary/inputs.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 85,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 85,
+      "path": "src/norad/reporting/_run_summary/models.py"
+    },
+    {
+      "branch_rate": "0.947368",
+      "covered_branches": 36,
+      "covered_lines": 102,
+      "line_rate": "0.980769",
+      "num_branches": 38,
+      "num_statements": 104,
+      "path": "src/norad/reporting/_run_summary/projection.py"
+    },
+    {
+      "branch_rate": "0.630435",
+      "covered_branches": 29,
+      "covered_lines": 102,
+      "line_rate": "0.816000",
+      "num_branches": 46,
+      "num_statements": 125,
+      "path": "src/norad/reporting/_run_summary/transaction.py"
+    },
+    {
+      "branch_rate": "0.644444",
+      "covered_branches": 58,
+      "covered_lines": 91,
+      "line_rate": "0.700000",
+      "num_branches": 90,
+      "num_statements": 130,
+      "path": "src/norad/reporting/_run_summary/validation.py"
+    },
+    {
+      "branch_rate": "0.697479",
+      "covered_branches": 166,
+      "covered_lines": 454,
+      "line_rate": "0.840741",
+      "num_branches": 238,
+      "num_statements": 540,
       "path": "src/norad/reporting/_run_summary_science.py"
     },
     {
-      "branch_rate": "0.714286",
-      "covered_branches": 730,
-      "covered_lines": 1764,
-      "line_rate": "0.809546",
-      "num_branches": 1022,
-      "num_statements": 2179,
+      "branch_rate": "0.868421",
+      "covered_branches": 66,
+      "covered_lines": 266,
+      "line_rate": "0.828660",
+      "num_branches": 76,
+      "num_statements": 321,
       "path": "src/norad/reporting/build_artifact_index.py"
     },
     {
-      "branch_rate": "0.740099",
-      "covered_branches": 299,
-      "covered_lines": 874,
-      "line_rate": "0.844444",
-      "num_branches": 404,
-      "num_statements": 1035,
+      "branch_rate": "0.819672",
+      "covered_branches": 100,
+      "covered_lines": 322,
+      "line_rate": "0.882192",
+      "num_branches": 122,
+      "num_statements": 365,
       "path": "src/norad/reporting/build_run_summary.py"
     },
     {
@@ -358,11 +673,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.728640",
-    "covered_branches": 3633,
-    "covered_lines": 10323,
-    "line_rate": "0.833374",
-    "num_branches": 4986,
-    "num_statements": 12387
+    "branch_rate": "0.749803",
+    "covered_branches": 3812,
+    "covered_lines": 11084,
+    "line_rate": "0.851502",
+    "num_branches": 5084,
+    "num_statements": 13017
   }
 }

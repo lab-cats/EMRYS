@@ -30,9 +30,9 @@ Exact measurement, check, and reviewed-update commands live in the
 [`RUNBOOK.md` local gate](../operations/RUNBOOK.md#local-validation-gate).
 
 The current snapshot identity is schema `1.0.0` with coverage.py `7.15.2`.
-Its tracked totals are `10323/12387` lines (`0.833374`) and `3633/4986`
-branches (`0.728640`). The machine-readable snapshot remains authoritative
-after any later accepted update.
+Across `71` tracked Python files, its totals are `11084/13017` lines
+(`0.851502`) and `3812/5084` branches (`0.749803`). The machine-readable
+snapshot remains authoritative after any later accepted update.
 
 The active policy:
 
@@ -80,7 +80,7 @@ archived entry-point matrices.
 | Python, shell, R, file mode, arbitrary CWD, and Make entry points | [`test_public_cli_contracts.py`](../../tests/test_public_cli_contracts.py) plus the applicable direct owner |
 | SLURM directives, modes, modules, CWD, delegation, arguments, outputs, and exits | [`test_slurm_wrapper_contracts.py`](../../tests/test_slurm_wrapper_contracts.py) plus the delegated functional owner |
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
-| Validation publication and neutral BAM/reference helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), and affected consumer transaction suites |
+| Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
 | Public schemas, headers, deterministic bytes, statuses, and shared scientific-state transitions | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
 | Step `09c` input, evidence policy, publication, signal, concurrency, and recovery behavior | [direct Python suite](../../tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py), adjacent shell contract, fixture builder, and neutral [review-package tests](../../tests/contracts/scientific_evidence/test_review_package.py) |
