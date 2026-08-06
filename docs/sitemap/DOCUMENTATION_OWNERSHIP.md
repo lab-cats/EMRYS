@@ -23,11 +23,11 @@ documentation gate remains responsible for exact link and anchor integrity.
 | Presenter | Verified [`docs/demo/README.md`](../demo/README.md) routes → current evidence and limitations in [`HANDOFF.md`](../operations/HANDOFF.md) | Only the indexed presenter/audience guides are current consumers; opaque or dormant preservation material is not silently activated. |
 | Auditor or historian | Completed [task cards](../tasks/COMPLETED/) plus the dated [`docs/history/`](../history/) index, with current recheck routes in [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) | Historical evidence is immutable and dated; it never becomes a second current-state owner. |
 
-A minimal current-state handoff records the snapshot identity, exactly one
-active package, any sensitive active lanes, the evidence delta, preservation
-or recovery notices, genuine blockers, and one exact resume point. Secondary
-task, status, or tranche views link to or derive from those owners rather than
-copying mutable facts.
+A minimal current-state handoff records only non-reconstructable takeover facts:
+sensitive active lanes, external or recovery state, evidence-boundary changes,
+genuine blockers, and an exact resume point when Git and cards are insufficient.
+It is not updated as a commit receipt. Secondary task or tranche views derive
+from cards, Git, and their canonical owners rather than copying mutable facts.
 
 ## Canonical responsibility matrix
 
@@ -47,7 +47,7 @@ copying mutable facts.
 | Neutral cross-language repository conventions | [`ENGINEERING_CONVENTIONS.md`](../operations/ENGINEERING_CONVENTIONS.md) | Stage-local contracts retain stage-specific rules and characterized exceptions; `AGENTS.md` keeps only automatically needed guards. |
 | Durable decisions, rationale, alternatives, and consequences | [`DECISIONS.md`](../design/DECISIONS.md) and its four topic files under [`decisions/`](../design/decisions/) | Link to implementations and contracts without copying their procedures. |
 | Open operational/scientific questions, open design choices, and resolved-choice index | [`QUESTIONS.md`](../design/QUESTIONS.md) | Link a resolved choice to its durable decision. |
-| Pipeline/package/evidence roadmap, acceptance matrix, and branch lineage | [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Link task lifecycle and current checkout rather than restating them. |
+| Pipeline/package/evidence roadmap and acceptance matrix | [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Link task lifecycle and current checkout rather than restating them; Git and dated history own lineage. |
 | Current implemented topology, boundaries, and conceptual data flow | [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) | Link exact stage/edge identities and functional contracts. |
 | Target architecture and deferred constraints | [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) | Link exact target source topology and migration mechanics. |
 | Current functional-owner roster and implementation exceptions | [`FUNCTIONAL_OWNER_INVENTORY.md`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md) | Link each colocated contract; avoid copied contract detail. |
@@ -56,8 +56,8 @@ copying mutable facts.
 | Exact target homes and dependency direction | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) | Target architecture links to it. |
 | Exact reversible migration procedure | [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) | Decisions retain rationale; no architecture document copies the procedure. |
 | Stage-, evidence-, or analysis-local interfaces and scientific limits | The applicable colocated [`CONTRACT.md`](../../src/norad/) | Runbook and architecture link to the functional owner. |
-| Task scope, dependency, deliverables, acceptance, lifecycle, and completion record | [`docs/tasks/README.md`](../tasks/README.md) plus one card | Status is the card directory; mutable state and roadmap remain elsewhere. |
-| Preserved nonselectable proposal intake | [`docs/tasks/README.md`](../tasks/README.md#lifecycle), local [`UNREFINED` rules](../tasks/UNREFINED/README.md), and one proposal file | File presence preserves rough rationale and questions only; no roadmap, priority, dependency, status, or implementation authority flows from it. The documentation validator enforces the lightweight schema without counting proposals as cards. |
+| Task scope, dependency, deliverables, acceptance, lifecycle, and completion record | [`docs/tasks/README.md`](../tasks/README.md) plus one card | Stable cards own explicit state; legacy paths provide compatibility only. Selection and ordinary execution remain transient context. |
+| Preserved nonselectable proposal intake | [`docs/tasks/README.md`](../tasks/README.md#unrefined-proposals), local [`UNREFINED` rules](../tasks/UNREFINED/README.md), and one proposal file | File presence preserves rough rationale and questions only; no roadmap, priority, dependency, status, or implementation authority flows from it. The documentation validator enforces the lightweight schema without counting proposals as cards. |
 | Presentation walkthrough and discussion material | [`docs/demo/README.md`](../demo/README.md) and its two reviewed guides | Keep action-point evidence cautions; current status and report behavior link their owners; move only proven dated snapshots with unique value to history. |
 | Dated audit, testing, operational, or demo snapshots | Shallow [`docs/history/README.md`](../history/) with topic children | Current owners link to the dated record and retain only a current summary. |
 | Standalone diagrams | The applicable source under [`docs/architecture/diagrams/`](../architecture/diagrams/) | Narrative documents link to, but do not embed a second Mermaid source. |
@@ -157,14 +157,14 @@ consolidation changes navigation around cards, not those records.
 
 ### Task registry
 
-All task cards have the maintainer/auditor audience. Their normal inbound links
-come from `TODO.md`, `PIPELINE_PLAN.md`, dependent cards, or completion records;
-their outbound links go to direct dependencies and canonical evidence or
-decision owners. Repeated headings are the intentional registry schema.
+All task cards have the maintainer/auditor audience. Useful views and roadmaps
+may link them, but an external inbound link is not required. Their outbound
+links go to direct dependencies and canonical evidence or decision owners.
+Repeated headings are the intentional registry schema.
 
 | Lifecycle | Exhaustive artifacts | Unique material and disposition |
 | --- | --- | --- |
-| Registry/context | [`docs/tasks/README.md`](../tasks/README.md); [`TODO/README.md`](../tasks/TODO/README.md); [`IN_PROGRESS/README.md`](../tasks/IN_PROGRESS/README.md); [`INTEGRATION_REVIEW/README.md`](../tasks/INTEGRATION_REVIEW/README.md); [`COMPLETED/README.md`](../tasks/COMPLETED/README.md); [`UNREFINED/README.md`](../tasks/UNREFINED/README.md) | The root registry owns lifecycle, dependency semantics, template, and card authority. Status READMEs remain local context; the validator enforces full cards across four actionable statuses and the separate lightweight proposal schema. Future logical indexes belong to `TASK-EPIC-01`, not `TODO.md`. |
+| Registry/context | [`docs/tasks/README.md`](../tasks/README.md); [`cards/README.md`](../tasks/cards/README.md); legacy [`TODO/README.md`](../tasks/TODO/README.md), [`IN_PROGRESS/README.md`](../tasks/IN_PROGRESS/README.md), [`INTEGRATION_REVIEW/README.md`](../tasks/INTEGRATION_REVIEW/README.md), and [`COMPLETED/README.md`](../tasks/COMPLETED/README.md); [`UNREFINED/README.md`](../tasks/UNREFINED/README.md) | The root registry owns stable lifecycle, dependency semantics, template, readiness derivation, and legacy compatibility. The validator enforces explicit-state stable cards, frozen legacy cards, and the separate lightweight proposal schema. |
 | Completed architecture/context | [`ARCH-DOC-00`](../tasks/COMPLETED/ARCH-DOC-00-bootstrap-task-registry-and-capture-decisions.md); [`ARCH-02A`](../tasks/COMPLETED/ARCH-02A-inventory-functional-stages-and-contracts.md); [`ARCH-02B`](../tasks/COMPLETED/ARCH-02B-define-semantic-stage-map.md); [`ARCH-02C`](../tasks/COMPLETED/ARCH-02C-define-vertical-source-contract-and-test-topology.md); [`ARCH-02D`](../tasks/COMPLETED/ARCH-02D-define-direct-migration-mechanics.md); [`CONTEXT-00`](../tasks/COMPLETED/CONTEXT-00-define-minimal-task-start-context.md); [`JIT-01`](../tasks/COMPLETED/JIT-01-establish-self-hosting-thin-slice-delivery.md); [`LIB-02F`](../tasks/COMPLETED/LIB-02F-define-shared-library-ownership.md); [`PLAN-02Z`](../tasks/COMPLETED/PLAN-02Z-integrate-future-task-sequence.md); [`PLAN-03A`](../tasks/COMPLETED/PLAN-03A-inventory-and-sequence-residual-source-topology-convergence.md) | Frozen scope, decisions, acceptance, and completion evidence remain historical. Current residual paths route to the functional inventory, exact target homes to `SOURCE_TOPOLOGY.md`, and JIT disposition/order to `PIPELINE_PLAN.md`. Retain. |
 | Completed concurrency/logging | [`CONCURRENCY-01`](../tasks/COMPLETED/CONCURRENCY-01-enable-isolated-concurrent-documentation-lanes.md); [`CONCURRENCY-02`](../tasks/COMPLETED/CONCURRENCY-02-define-integration-fragment-protocol.md); [`LOG-01`](../tasks/COMPLETED/LOG-01-characterize-current-output.md); [`LOG-02`](../tasks/COMPLETED/LOG-02-define-logging-contract.md) | Frozen policy/evidence packages link to current concurrency and logging owners. Retain; do not treat card prose as current lane or output state. |
 | Completed test characterization | [`TEST-01C`](../tasks/COMPLETED/TEST-01C-characterize-validation-check-rosters.md); [`TEST-01D`](../tasks/COMPLETED/TEST-01D-characterize-public-cli-contracts.md); [`TEST-01E`](../tasks/COMPLETED/TEST-01E-characterize-slurm-wrapper-contracts.md); [`TEST-01F`](../tasks/COMPLETED/TEST-01F-create-independent-contract-goldens.md); [`TEST-01Z`](../tasks/COMPLETED/TEST-01Z-decide-behavior-contract-sufficiency.md) | Exact characterization decisions and acceptance evidence remain immutable. Out links route live baseline truth to `TEST_BASELINE.md` and fixtures. Retain. |
@@ -217,7 +217,7 @@ decision owners. Repeated headings are the intentional registry schema.
 ### Link-graph evidence
 
 The completion audit resolves every local Markdown target and anchor, builds
-the exact inbound graph used to reject orphan cards and diagrams, and confirms
+the exact inbound graph used to reject orphan diagrams, and confirms
 that every current Markdown/Mermaid path appears in this inventory. That exact
 graph is reproducible through the canonical
 [`documentation gate`](../operations/RUNBOOK.md#local-validation-gate); it is
@@ -231,7 +231,7 @@ explicit exhaustive artifact group.
 | --- | --- | --- | --- |
 | `AGENTS.md` approval/task-start guard | Approval boundary and card-selection semantics | Concise root guard linking `TASK_START.md` and task registry | `DOC-CONS-08A` |
 | `AGENTS.md` concurrency detail | Shared-worktree danger, integration authority, evidence binding | Concise root guard; procedure in `CONCURRENT_WORK.md`, current lanes in `HANDOFF.md`, commands in `RUNBOOK.md` | `DOC-CONS-08A` |
-| `AGENTS.md` development-gate procedure | Linear delivery, applicable validation, docpatch reopening | `TASK_DELIVERY.md` and exact `RUNBOOK.md` gate; concise approval/destructive branch guard remains root | `DOC-CONS-08A` |
+| `AGENTS.md` development-gate procedure | Semantic package delivery, proportional validation, and publication boundary | `TASK_DELIVERY.md` and exact `RUNBOOK.md` gate; concise approval/destructive branch guard remains root | `DOC-CONS-08A` |
 | `AGENTS.md` evidence language and biological caution | Exact evidence states, CMH terminology, orientation/biological boundary | Retain automatically loaded in root; link scientific contracts | `DOC-CONS-08A` |
 | `AGENTS.md` local/cluster/data/destructive safety | Fixture limits, login-node boundary, forbidden artifacts, recovery preservation | Retain automatically loaded, with action-point repeats in operations docs | `DOC-CONS-08A` |
 | `AGENTS.md` layout, script/publication, R, and SLURM conventions | Neutral current-workflow engineering constraints and known legacy exceptions | [`ENGINEERING_CONVENTIONS.md`](../operations/ENGINEERING_CONVENTIONS.md) plus stage-local contracts; concise execution, publication, and dependency safety remains root | `DOC-CONS-08A` |
@@ -278,10 +278,10 @@ language.
 | `1–6` | Repository purpose and maintainable research-software standard | Retain concise automatically loaded context. |
 | `8–12` | Correctness over token reduction; targeted context when equivalent | Global reusable preference candidate. Retain until global placement is separately authorized and verified. |
 | `14–17` | Current-state and roadmap routes | Retain concise links. |
-| `19–51` | Plan/review start, exact-current instructions, task router/card, live Git, approval, permitted status-only move | Concise approval and routing guard retained; detail routes to `TASK_START.md` and the task registry with semantic parity. |
+| `19–51` | Plan/review start, exact-current instructions, task router/card, live Git, approval, and selection without lifecycle mutation | Concise approval and routing guard retained; detail routes to `TASK_START.md` and the task registry with semantic parity. |
 | `53–70` | Shared-worktree isolation, lane roles, integration authority, combined evidence | Concise shared-worktree/authority guard retained; procedure routes to `CONCURRENT_WORK.md`. |
 | `72–78` | First-use strategy milestone and coordination-checkpoint procedure | Current prerequisite state is in `HANDOFF.md`; dated completion is in operations history; durable procedure remains in `CONCURRENT_WORK.md` and exact commands in `RUNBOOK.md`. Completed by `DOC-CONS-08E`. |
-| `80–125` | Linear development/docpatch gate, validation selection, runtime promotion | Full procedure moved to [`TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md#package-delivery) and exact gate to `RUNBOOK.md`; concise applicable-gate and upstream-sequential guards remain root. |
+| `80–125` | Semantic package delivery, tranche gate, publication boundary, runtime promotion | Full procedure moved to [`TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md#default-delivery) and exact gate to `RUNBOOK.md`; concise applicable-gate and upstream-sequential guards remain root. |
 | `127–128` | No destructive stage-branch operations without direction | Retain automatically loaded. |
 | `130–157` | Evidence-state vocabulary, cluster-proof boundary, evidence non-equivalence, reserved biological state, CMH term | Retain automatically loaded verbatim or with proven semantic equivalence. Intentional action-point repetition is allowed. |
 | `159–179` | Tiny-fixture, login-node, forbidden-artifact, private-data, destructive production-artifact, lock/recovery safety | Retain automatically loaded. Intentional action-point repetition is allowed. |
@@ -289,7 +289,7 @@ language.
 | `217–255` | Cross-language script, dry-run, publication, and report-rendering conventions | Neutral detail moved to `ENGINEERING_CONVENTIONS.md`; functional detail remains contract-local; concise dry-run, publication, and evidence safety remains root. |
 | `257–268` | No implicit dependency installation, opt-in R environment, exact-command owner | No-install guard retained; exact R behavior moved to `ENGINEERING_CONVENTIONS.md`, rationale stays in `DECISIONS.md`, and commands stay in `RUNBOOK.md`. |
 | `270–277` | SLURM wrapper conventions and module/memory details | Moved to `ENGINEERING_CONVENTIONS.md` and owner contracts with characterized legacy exceptions explicit; exact module command remains in `RUNBOOK.md`. |
-| `279–314` | Single-owner roster, anti-duplication, no embedded programs, docpatch duties | Concise single-owner/no-loss guard retained; executable-document convention moved to `ENGINEERING_CONVENTIONS.md`; impact and close procedure routes to `TASK_START.md`/`TASK_DELIVERY.md`. |
+| `279–314` | Single-owner roster, anti-duplication, no embedded programs, subject-triggered documentation duties | Concise single-owner/no-loss guard retained; executable-document convention moved to `ENGINEERING_CONVENTIONS.md`; impact and close procedure routes to `TASK_START.md`/`TASK_DELIVERY.md`. |
 | `316–324` | Mechanical orientation versus biological interpretation | Retain automatically loaded; intentional scientific action-point repetition is allowed. |
 | `326–330` | Explicit/portable engineering style and anti-premature-abstraction rule | Global reusable preference candidate plus repository-specific convention. Retain until verified destinations exist. |
 

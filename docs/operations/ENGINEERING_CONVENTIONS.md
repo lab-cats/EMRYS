@@ -174,7 +174,7 @@ decisions.
 ## Applying or changing a convention
 
 Changing existing behavior requires the normal selected-card and
-[task-delivery](TASK_DELIVERY.md#package-delivery) workflow. Update the
+[task-delivery](TASK_DELIVERY.md#default-delivery) workflow. Update the
 functional-owner inventory or applicable contract in the same coherent change
 when its roster, interface, protection, or characterized exception is affected.
 A source move follows the

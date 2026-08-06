@@ -12,7 +12,7 @@ concise output, and de-duplicated work. Never omit required inspection,
 reasoning, validation, evidence, or user communication solely to save tokens.
 
 Current state belongs in [`HANDOFF.md`](docs/operations/HANDOFF.md), roadmap and
-status in [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md), exact commands in
+package acceptance in [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md), exact commands in
 [`RUNBOOK.md`](docs/operations/RUNBOOK.md), and documentation ownership in the
 [`ownership map`](docs/sitemap/DOCUMENTATION_OWNERSHIP.md).
 
@@ -37,18 +37,21 @@ assessment, not an automatic complete-corpus read. Broaden for the triggers in
 `TASK_START.md`.
 
 A card preserves scope, dependencies, and acceptance evidence; it does not
-authorize mutation or replace live inspection and an approved plan. When the
-user explicitly selects a TODO card, the integration owner may move it with
-`git mv` to `IN_PROGRESS` and repair inbound links as the only status-only
-mutation before plan approval. That move begins read-only planning only. Task
-lifecycle rules remain in the [`task registry`](docs/tasks/README.md).
-`UNREFINED` proposals cannot be selected. A card in `INTEGRATION_REVIEW` is
-frozen: only review/integration may continue there, and correction authoring
-requires an integration-owner move back to `IN_PROGRESS` first.
+authorize mutation or replace live inspection and an approved plan. Selection
+and ordinary execution are transient work context, not card lifecycle states:
+do not move a card or create a status-only commit when work is selected,
+paused, resumed, accepted, or declined. New actionable cards use stable paths
+under `docs/tasks/cards/`; update explicit card state only when lifecycle is
+itself part of the semantic package. Task lifecycle and legacy compatibility
+remain in the [`task registry`](docs/tasks/README.md). `UNREFINED` proposals
+cannot be selected, and a `review` card is frozen until an approved correction
+returns its explicit state to `planned`.
 
 ## Concurrent work and Git authority
 
-Concurrent mutation must follow
+Sequential work in one authoritative worktree is the default. Use concurrent
+mutation only when independent work is materially worth its coordination cost,
+and then follow
 [`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md). Verify the assigned
 absolute worktree, base, packet, write set, and branch or detached execution
 state. Agent identity is not filesystem isolation. Never share a mutable
@@ -63,32 +66,33 @@ independently. Final validation applies to the combined canonical tree, and
 execution evidence remains bound to its recorded commit and declared inputs.
 
 Do not provision the first active delivery lane until `HANDOFF.md` records the
-required post-`CONCURRENCY-01` strategy discussion as complete. When concurrent
-lanes depend on durable packets, one special documentation-only coordination
-commit may record those packets and directly required status links before the
-ordinary implementation/documentation-patch sequence. Validate, push, and prove
-that checkpoint upstream-equal; it does not establish implementation or
-completion evidence. Detailed procedure remains in `CONCURRENT_WORK.md` and
-exact integration commands remain in `RUNBOOK.md`.
+required post-`CONCURRENCY-01` strategy discussion as complete. A durable lane
+packet is required only when another lane depends on it; publication of that
+checkpoint still requires explicit authority and establishes coordination, not
+implementation or completion evidence. Detailed procedure remains in
+`CONCURRENT_WORK.md` and exact integration commands remain in `RUNBOOK.md`.
 
 Do not merge, rebase, rename, delete, overwrite, or force-push stage branches
 without explicit user direction.
 
 ## Package delivery guard
 
-Follow the [`package-delivery procedure`](docs/operations/TASK_DELIVERY.md#package-delivery)
+Follow the [`package-delivery procedure`](docs/operations/TASK_DELIVERY.md#default-delivery)
 and the exact [`RUNBOOK.md` gate](docs/operations/RUNBOOK.md#local-validation-gate).
-Use a clean descendant of the latest clean documentation-patched predecessor,
-implement only the approved package, run the complete applicable gate against
-the final executable state, and keep implementation/tests separate from the
-impact-directed documentation patch. Executable change after that patch
-reopens the sequence.
+Implement only the approved package. Default to one semantic commit per
+package or slice containing its implementation, tests, directly affected
+canonical documentation, and any real lifecycle change. Use focused checks as
+useful feedback, then run one de-duplicated complete applicable gate on the
+final combined tranche state. Re-run a gate only when later changes invalidate
+its evidence.
 
 A qualifying standalone documentation-only package uses one documentation
 commit and Git/documentation validation without computational Python, shell, R,
 report-runtime, full-suite, or cluster validation. Runtime and cluster
-promotion remain upstream-sequential; never promote a downstream stage before
-its prerequisite runtime gates pass.
+promotion remain upstream-sequential. Publication is a separate authorized
+action: batch pushes at a coherent tranche boundary by default, then prove the
+published ref and upstream equality once. Never promote a downstream stage
+before its prerequisite runtime gates pass.
 
 ## Evidence language
 

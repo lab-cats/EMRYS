@@ -1,23 +1,11 @@
 # Integration-review task cards
 
-This directory contains full task cards whose exact candidate handoff is frozen
-and awaiting asynchronous canonical integration beyond the current unpublished
-integration package.
+This is a legacy compatibility directory. Existing cards without an explicit
+state are inferred as `review` and retain their frozen-candidate boundary. A
+correction adds or changes explicit state to `planned` inside its approved
+semantic package; it does not move the file. Do not create new cards here.
 
-- Only the canonical integration owner may move a card here and repair every
-  inbound lifecycle link in the same commit.
-- Same-package handoff and integration remain `IN_PROGRESS`; they do not create
-  a durable review transition.
-- Scope and candidate bytes cannot change here. A correction returns the card
-  to `IN_PROGRESS` before authoring resumes.
-- `COMPLETED` remains unavailable until canonical integration, final
-  validation, publication, and upstream equality are complete.
-- Exact candidate SHA, worktree, checks, fragment, and lane identity remain in
-  the live handoff rather than being copied into the card.
-
-Cards retain the complete actionable schema and dependency rules in
-[`../README.md`](../README.md), including canonical inbound reachability and
-completed hard blockers. The only authoring-state transition is back to
-`IN_PROGRESS`; acceptance may move the card to `COMPLETED` only after the
-frozen candidate is canonically integrated, finally validated, published, and
-proved upstream-equal.
+New actionable cards use stable paths under [`../cards/`](../cards/) and the
+explicit-state lifecycle in [`../README.md`](../README.md). Exact candidate SHA,
+worktree, checks, fragment, and lane identity remain in the live handoff rather
+than being copied into a card.

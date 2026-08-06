@@ -24,17 +24,19 @@ when current work selection or frozen-scope boundaries are relevant.
 Before proposing a task-specific plan:
 
 1. Inspect the live branch, `HEAD`, worktree, upstream relationship, worktree
-   list, and the latest clean, docpatched package predecessor identified by
-   `HANDOFF.md` and `PIPELINE_PLAN.md`, when applicable. If concurrent work is
+   list, and the latest relevant semantic predecessor identified by Git,
+   `HANDOFF.md`, and `PIPELINE_PLAN.md`, when applicable. If concurrent work is
    recorded, verify the assigned absolute worktree, candidate branch or
    detached execution state, base, lane packet, and write set against
    `CONCURRENT_WORK.md`. Do not infer current state from agent identity,
    conversation, or memory.
 2. Read the selected task card in full. If no card exists, bound the objective
    explicitly and decide whether a card is required before mutation.
-   `UNREFINED` proposals are nonselectable and cannot start work. A card in
-   `INTEGRATION_REVIEW` permits only frozen-candidate review/integration or an
-   integration-owner return to `IN_PROGRESS` before correction authoring.
+   `UNREFINED` proposals are nonselectable and cannot start work. Selecting,
+   pausing, resuming, accepting, or declining work does not move a card or
+   require a status commit. A card whose explicit state is `review` permits
+   only frozen-candidate review/integration until an approved correction
+   returns it to `planned`.
 3. Follow the card's `Required context` links, named anchors, and named local
    surfaces; inspect the directly affected implementation, contracts,
    consumers, tests, and fixtures. For an integration-fragment handoff, also
@@ -43,9 +45,9 @@ Before proposing a task-specific plan:
 4. Read only the applicable current-state, roadmap, command, decision,
    question, troubleshooting, and architecture sections identified below.
 5. Expand immediately when an escalation trigger applies.
-6. State the inspected revision, proposed scope, validation evidence, and any
+6. State the inspected revision, proposed scope, validation plan, and any
    unresolved blocker in the task-specific plan. Obtain approval before
-   mutation, apart from the permitted card-selection move in `AGENTS.md`.
+   mutation.
 
 After approval, follow the bounded slice and card-close procedure in
 [`TASK_DELIVERY.md`](TASK_DELIVERY.md).
@@ -70,35 +72,32 @@ test total is orientation only. Verify mutable claims against the live checkout.
 Compaction does not automatically invalidate context, but reread the exact
 relevant source when the retained summary lacks necessary wording or evidence.
 
-## Proportional planning categories and validation impact
+## Proportional planning and validation
 
-Classify the work on two independent dimensions. The semantic planning
-category is one of `read-only review`, `bounded documentation or low-risk
-maintenance`, or `behavior or architecture planning`. Validation impact is
-separately one of `no mutation`, `documentation-only/non-consuming`, or
-`executable/test-affecting`. If either dimension is uncertain, route it to the
-more conservative applicable treatment.
-
-These are two independently machine-readable fields in the future target, not
-one combined risk or gate class. Their exact metadata schema is not implemented
-here. Until an owning package implements it, state both values plainly in the
-task-specific plan. Tests are evidence selected from affected contracts, risk,
-and acceptance criteria; they are not ritual task-start reading. Semantic
-review breadth and executable validation are orthogonal: safety, scientific,
-architecture, or evidence prose may need broad review without computational
+Choose inspection and validation from the actual change, its consumers, risk,
+and acceptance evidence. Do not manufacture a formal impact record for every
+slice. A documentation-only, non-consuming change normally needs semantic
+review plus Git and documentation checks; an executable or consumed change
+needs its affected behavioral checks. Safety, scientific, architecture, or
+evidence prose may require broad semantic review without computational
 execution, while a small consumed configuration, fixture, or template change
 may require executable validation.
+
+For a homogeneous tranche, establish the affected owner/caller boundary and
+aggregate gate once. Reassess only when a slice crosses that boundary, changes
+the risk, or triggers mandatory expansion. Focused checks are feedback during
+implementation, not a per-slice ceremony.
 
 ## Approval envelope and progress terms
 
 The approved task-specific plan is a bounded approval envelope. It records or
-links the objective and included cards; both classifications above; exact base,
-worktree, branch, and lane identities; write sets and prohibited overlap;
-allowed mutations and local commits; selected validation and evidence ceiling;
-every expressly authorized external or high-impact action; exclusions;
-unresolved choices; and stopping conditions. Routine work inside that envelope
-continues without repeated approval. A scope expansion or authority expansion
-requires a revised plan and approval.
+links the objective and included cards, the authoritative worktree and base,
+affected owners, allowed mutations and local commits, validation and evidence
+ceiling, expressly authorized external or high-impact actions, exclusions,
+unresolved choices, and stopping conditions. Exact lane identities, path
+reservations, and overlap controls are required only when concurrency is
+actually used. Routine work inside the envelope continues without repeated
+approval. A scope or authority expansion requires a revised plan and approval.
 
 Use these progress terms precisely:
 
@@ -110,8 +109,7 @@ Use these progress terms precisely:
 - **authority expansion** adds a mutation or external/high-impact action that
   was not expressly approved.
 
-`Blocked by` and `Completion unblocks` retain the narrower genuine
-technological-blocker meaning owned by the
+`Blocked by` retains the narrower genuine technological-blocker meaning owned by the
 [`task registry`](../tasks/README.md#dependency-semantics). An approval envelope
 cannot silently authorize a future card, integration, publication, network or
 cluster action, dependency installation, destructive cleanup, or architectural,
@@ -154,5 +152,8 @@ completion always outrank context reduction.
 
 ## Documentation impact and validation
 
-At final documentation-impact or validation selection, open only the
+At final documentation-impact or validation selection, use the
 [documentation impact and validation route](../sitemap/TOP_LEVEL.md#documentation-impact-and-validation).
+Update a canonical document only when the package changes that document's
+subject; card selection, a new commit, or routine progress is not itself a
+documentation trigger.

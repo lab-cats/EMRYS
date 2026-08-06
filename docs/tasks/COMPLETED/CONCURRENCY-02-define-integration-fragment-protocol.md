@@ -63,7 +63,7 @@ disposition work without creating another canonical documentation layer.
   [`RUNBOOK.md`](../../operations/RUNBOOK.md#manual-integration-fragment-exchange),
   the task lifecycle in [`../README.md`](../README.md), and the isolated-
   authoring decision in
-  [`DECISIONS.md`](../../design/DECISIONS.md#permit-isolated-concurrent-authoring-with-serialized-integration).
+  [`DECISIONS.md`](../../design/DECISIONS.md#permit-exceptional-isolated-concurrency-with-serialized-integration).
 - The live pilot lane packet and candidate identity in
   [`HANDOFF.md`](../../operations/HANDOFF.md#active-concurrent-lanes), without
   reading pilot card substance as part of this task.

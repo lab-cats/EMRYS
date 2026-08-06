@@ -39,21 +39,25 @@ they existed in an old script.
 
 ## Reviewable delivery
 
-### Use descendant branches and separate docpatch gates
+### Use semantic package commits and tranche publication
 
 The default delivery protocol maintains one linear, attributable Git lineage
-and keeps an executable state and its documentation close as separate
-reviewable commits. Documentation-only work does not need an artificial
-executable checkpoint, and an approved campaign may sequence bounded cards on
-one branch. Exact branch and commit procedure is owned by
+with one semantic commit per package or slice. Implementation, tests, directly
+affected canonical documentation, and any real lifecycle change stay together;
+selection and progress bookkeeping do not create commits. An approved
+homogeneous tranche may sequence bounded packages on one branch, run one final
+aggregate applicable gate, and publish once at its coherent boundary. Exact
+commit, validation, and publication procedure is owned by
 [`TASK_DELIVERY.md`](../../operations/TASK_DELIVERY.md).
 
-### Permit isolated concurrent authoring with serialized integration
+### Permit exceptional isolated concurrency with serialized integration
 
-Concurrent mutation uses isolated branches and worktrees with bounded write
-sets. One authoritative integration lane serializes candidates and validates
-their combined state. A candidate is a proposal, not authorization, current
-state, or evidence. Detailed roles and recovery belong in
+Sequential mutation in one authoritative worktree is the default. When
+independent work materially justifies the coordination cost, concurrent
+mutation uses isolated branches and worktrees with bounded write sets. One
+authoritative integration lane serializes candidates and validates their
+combined state. A candidate is a proposal, not authorization, current state, or
+evidence. Detailed roles and recovery belong in
 [`CONCURRENT_WORK.md`](../../operations/CONCURRENT_WORK.md).
 
 ### Use transient integration fragments for cross-owner proposals
@@ -64,13 +68,12 @@ integration owner verifies its source, gives every request and residual a
 terminal disposition, routes accepted meaning, and removes the fragment before
 publication. This preserves provenance without creating a shadow archive.
 
-### Run one complete computational gate per executable state
+### Run one complete computational gate per final tranche state
 
-Use focused tests during implementation and one complete applicable gate on the
-final executable state. Reuse that evidence for a documentation-only close only
-when Git proves that no executable, dependency, test, schema, fixture,
-template, or gate semantics changed. A non-consuming documentation change needs
-only its Git and documentation checks.
+Use focused tests as useful implementation feedback and one complete applicable
+gate on the homogeneous tranche's final combined executable state. Re-run only
+when later changes invalidate the evidence. A non-consuming documentation
+change needs only its Git and documentation checks.
 
 ### Prefer failure-first validation output
 
@@ -88,19 +91,22 @@ and unchanged. Contradictions or unbounded scientific, evidence, safety,
 recovery, publication, ownership, or public-contract impact broaden inspection;
 a phase boundary alone does not require a full-corpus read.
 
-### Use proportional planning categories and bounded approval envelopes
+### Use bounded approval envelopes and proportional validation
 
-Classify semantic planning and validation impact independently. Tests follow
-affected contracts and risk rather than topic labels. One explicit approval may
-cover routine work inside a fixed objective, write set, evidence boundary,
-exclusions, and stop conditions; scope expansion requires new authority.
+Tests and inspection follow affected contracts, consumers, risk, and acceptance
+rather than a formal per-slice impact classification. One explicit approval may
+cover routine work inside a fixed objective, affected-owner boundary, evidence
+boundary, exclusions, and stop conditions; scope or authority expansion
+requires new approval.
 
-### Make documentation consistency impact-directed
+### Make documentation changes subject-triggered
 
-Use the final diff, canonical ownership, inbound references, targeted searches,
-and the structural documentation gate to find affected documentation. Broaden
-manual review for cross-cutting, contradictory, ownership-changing, or
-unbounded impact rather than rereading the whole corpus by default.
+Update a canonical document when the package changes its subject, not merely
+because work advanced. Use the final semantic diff, canonical ownership,
+targeted searches, and the structural documentation gate to find affected
+documentation. Broaden manual review for cross-cutting, contradictory,
+ownership-changing, or unbounded impact rather than rereading or rewriting the
+whole corpus by default.
 
 ## Maintainability controls
 

@@ -6,15 +6,18 @@ embedded in `RUNBOOK.md` into independently testable programs. They do not
 select work, grant authority, choose dispositions, compose canonical prose,
 resolve conflicts, clean recovery state, or authorize publication.
 
-The read-only validators are:
+The read-only task and validation helpers are:
 
+- [`task_status.py`](task_status.py), which renders deterministic card state,
+  derived readiness, and reverse dependencies from an explicit worktree root
+  without writing a projection or consulting branch identity;
 - [`validate_documentation.py`](validate_documentation.py), which runs the
   repository documentation structure gate for an explicit worktree root. From
   the repository root, the supported `make -s documentation-check` target is a
-  logic-free wrapper over that exact engine. It validates full cards across
-  `TODO`, `IN_PROGRESS`, `INTEGRATION_REVIEW`, and `COMPLETED`, and separately
-  validates nonactionable `UNREFINED` proposals without adding them to card
-  counts or inbound-reference requirements;
+  logic-free wrapper over that exact engine. It validates stable explicit-state
+  cards under `cards/`, accepts the frozen schemas in the four legacy lifecycle
+  directories, derives stable-card reverse edges from `Blocked by`, and
+  separately validates nonactionable `UNREFINED` proposals;
 - [`validate_fragment_candidate.py`](validate_fragment_candidate.py), which
   binds one frozen candidate to its worktree, branch, base, exact diff,
   reservations, fragment shape, and published source ref; and

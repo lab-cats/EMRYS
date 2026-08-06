@@ -9,9 +9,11 @@ Candidate integration-fragment filenames and fields are defined in
 [`docs/fragments/README.md`](../fragments/README.md); that schema owns no lane
 authority, disposition, lifecycle, or publication state.
 
-Concurrency improves throughput; it does not relax task planning, evidence,
-safety, review, or publication gates. A lane packet coordinates approved work
-but never authorizes a task by itself.
+Sequential work in one authoritative worktree is the default. Use concurrency
+only when independent work materially outweighs isolation, handoff, integration,
+and recovery cost. Concurrency does not relax task planning, evidence, safety,
+review, or publication gates. A lane packet coordinates approved work but never
+authorizes a task by itself.
 
 ## Non-negotiable model
 
@@ -44,7 +46,7 @@ integration, validation, or publication requirements.
 | Canonical integration/control | Exactly one | Own accepted history, coordination, integration, current state, and final validation | Sole authoritative publisher |
 | Implementation candidate | At most one, mutually exclusive with immutable execution | Implement one approved package in isolation | Proposal only |
 | Immutable execution | At most one, mutually exclusive with implementation | Run an approved command or job against a pinned commit and declared inputs | Produces evidence attributed only to that commit and inputs |
-| Independent documentation/card sidecar | Multiple | Create disjoint TODO cards or documentation that does not affect an active contract or result | May land as a reviewed standalone documentation commit |
+| Independent documentation/card sidecar | Multiple | Create disjoint stable cards or documentation that does not affect an active contract or result | May land as a reviewed standalone documentation commit |
 | Coupled documentation draft | Multiple when disjoint | Prepare documentation tied to unsettled implementation, acceptance, architecture, test, or evidence state | Cannot land independently |
 
 An implementation lane may draft its directly required documentation when
@@ -75,7 +77,6 @@ Before any concurrent mutation, the integration owner records each lane under
 | Integration target | Canonical branch and intended landing boundary |
 | Task/card | Selected task, or bounded objective if no card exists |
 | Approval envelope | Exact approved plan or durable reference from which this packet is projected |
-| Planning category | Plain-language semantic category and the safeguards it triggers; record separately from validation impact |
 | Candidate write reservations | Exact new card IDs and paths the candidate may edit, including exact deliverables plus zero or one fragment path |
 | Declared canonical targets | For a fragment, each target owner, heading or anchor, mode, and authorization the integration owner must recheck |
 | Prohibited overlap | Active cards, paths, contracts, and owners the lane must not change |
@@ -84,8 +85,7 @@ Before any concurrent mutation, the integration owner records each lane under
 | External-authority boundary | Push, network, production, cluster, install, destructive, or other high-impact actions expressly allowed; everything else remains prohibited |
 | Exclusions and unresolved choices | Work and decisions preserved outside the packet |
 | Stop conditions | Exact boundaries at which the lane hands off or returns to planning |
-| Validation impact | `no mutation`, `documentation-only/non-consuming`, or `executable/test-affecting`, distinct from candidate checks and the final combined gate |
-| Validation | Candidate checks and final combined gate required |
+| Validation | Focused candidate checks justified by risk and the final combined gate required |
 | Execution identity | For execution only: commit, command/job identity, inputs, configuration, and output/log locations |
 
 Candidate write reservations use exact paths or narrow rooted patterns, never
@@ -104,12 +104,13 @@ approval only while every envelope boundary remains true. Preferred order and
 pending integration are sequence state, not technological blockers.
 
 When another authoring or execution lane will rely on the packet, publish it as
-a canonical coordination checkpoint before that lane starts. This is a narrow exception to
-the ordinary implementation/docpatch commit shape: a documentation-only state
-commit containing the active packets and directly required status links. It
-runs the documentation gate, is pushed, and is proved upstream-equal before a
-relying lane is provisioned. It records planning state only—not implementation
-evidence, package completion, or permission to bypass task-specific approval.
+a canonical coordination checkpoint before that lane starts. This is a narrow
+exception to default batch publication: one documentation-only commit containing
+only the active packets and directly required coordination facts. It runs the
+documentation gate, is pushed, and is proved upstream-equal before a relying
+lane is provisioned. It records planning state only—not implementation evidence,
+package completion, card lifecycle, or permission to bypass task-specific
+approval.
 
 ## Write authority
 
@@ -118,14 +119,14 @@ Only the integration owner finalizes:
 - checkout, active-lane, blocker, and resume state in `HANDOFF.md`;
 - live package status and authoritative lineage in `PIPELINE_PLAN.md`;
 - immediate priority in `TODO.md`;
-- card lifecycle moves, inbound status links, completion records, and evidence
-  claims;
+- explicit card lifecycle, completion records, and evidence claims;
 - accepted changes to `AGENTS.md`, `TASK_START.md`, this policy, registry
   lifecycle rules, and integration/recovery commands; and
 - conflict resolution across canonical owners.
 
-A sidecar may author new TODO cards and explicitly reserved documentation. A
-new card remains in `TODO`; it cannot select, approve, or complete itself. A
+A sidecar may author new stable `planned` cards and explicitly reserved
+documentation. It cannot select, approve, review, complete, or retire its own
+card. A
 sidecar may draft an integration-owner path only when the packet labels it
 coupled. The integration owner then decides whether and how it enters the
 canonical package. A sidecar may also author its exact reserved deliverables
@@ -158,51 +159,48 @@ A coupled draft stays on its sidecar until the governing result is stable. If
 it reveals that the active implementation's approved contract or acceptance
 criteria must change, the integration owner checkpoints the active lane and
 returns that task to planning. The change is never silently absorbed as a
-docpatch.
+status-only follow-up or incidental documentation edit.
 
 ## Authoring and handoff lifecycle
 
-1. The integration owner verifies the canonical lane is clean, pushed, and
-   upstream-equal, then records disjoint lane packets.
+1. The integration owner verifies the canonical lane's exact base and clean
+   state, then records disjoint lane packets. A remote-equal checkpoint is
+   required only when another lane must fetch or prove that base.
 2. Each mutating candidate is created from its packet's exact base in its own
    sibling worktree. The lane verifies path, branch, and `HEAD` before editing.
 3. A sidecar edits only its reserved write set. New child or follow-up cards
-   stay TODO and use reserved IDs. An optional fragment is one reserved path;
+   use reserved stable paths and remain `planned`. An optional fragment is one reserved path;
    its target declarations do not expand that set.
 4. A documentation sidecar hands off exactly one clean review-ready commit
    after its base, the complete diff, validation result, and remaining
    coupling. Before canonical application, its frozen SHA must be reachable
    from the exact recorded remote source ref. An implementation candidate hands
-   off exactly one tested implementation/test commit followed by at most one
-   coupled documentation-draft commit. Candidate publication requires normal
-   user authority.
+   off one semantic commit containing implementation, tests, and directly
+   affected documentation; an independently authored coupled draft may follow
+   only when its separate lane was explicitly reserved. Candidate publication
+   requires normal user authority.
 5. The integration owner rechecks coupling and overlap against the latest
    canonical tree, then accepts one candidate at a time.
 6. The integration owner creates a fresh canonical descendant and applies one
-   frozen candidate commit with provenance. Before publication, the owner adds
-   central links/state and amends that still-local commit into one validated
-   documentation package. A card-only sidecar with a pending central inbound
-   link always uses this combined integration path. For an implementation
-   candidate, the tested implementation commit lands first; its optional
-   documentation draft is integrated and amended as the separate canonical
-   docpatch.
-7. The integration owner repairs central links and state, runs the combined
-   applicable gate, publishes the canonical branch, proves upstream equality,
-   and only then closes affected cards or lanes.
+   frozen candidate commit with provenance. It integrates any separately
+   reserved coupled draft, makes only subject-triggered canonical-owner or card
+   changes, and keeps the result semantic rather than creating status receipts.
+7. The integration owner runs the final combined applicable gate, publishes the
+   canonical tranche when authorized, proves the intended ref and upstream
+   equality, and only then closes affected lanes. Card completion depends on
+   its acceptance contract, not routine lane closure.
 
-The selected card normally remains `IN_PROGRESS` through candidate handoff,
-serialized landing, and same-package review. Only the integration owner may
-move it to `INTEGRATION_REVIEW`, and only when a valid exact frozen candidate
-will await asynchronous canonical integration beyond the current unpublished
-package. That move repairs every inbound lifecycle link. No candidate or
-sidecar may make it canonical, and exact SHA, ref, worktree, checks, fragment,
-and lane identity remain solely in `HANDOFF.md`.
+Selection and candidate authoring do not change card state. Only the
+integration owner may set an explicit card state to `review`, and only when a
+valid exact frozen candidate will await asynchronous integration beyond the
+current unpublished package. No candidate or sidecar may make that state
+canonical, and exact SHA, ref, worktree, checks, fragment, and lane identity
+remain solely in `HANDOFF.md`.
 
-No scope or candidate byte may change while a card is in
-`INTEGRATION_REVIEW`. A correction first returns it to `IN_PROGRESS` and
-repairs inbound links. Acceptance moves it to `COMPLETED` only after canonical
-integration, final applicable validation, publication, and upstream equality;
-review-state placement alone is never completion evidence.
+No scope or candidate byte may change while a card is in `review`. An approved
+correction first returns it to `planned`. Acceptance sets it to `completed` only
+when its acceptance evidence and completion record are satisfied; review state
+alone is never completion evidence.
 
 Exact creation, inspection, integration, verification, and optional cleanup
 commands are in the runbook. Merge, rebase, and automatic conflict resolution
@@ -325,10 +323,10 @@ published candidate remains immutable throughout handback and recovery.
 An implementation candidate may begin at canonical commit `B` while one or
 more independent documentation sidecars land serially as canonical commits
 `D1`, `D2`, and so on. The implementation remains a proposal based on `B`.
-After its candidate gate passes, the integration owner applies the one reviewed
-implementation/test commit onto the latest canonical documentation descendant,
-then integrates any separate coupled documentation draft as the canonical
-docpatch. Final applicable validation runs against that combined state.
+After its candidate checks pass, the integration owner applies the reviewed
+semantic commit onto the latest canonical descendant, then integrates any
+separately reserved coupled documentation draft. Final applicable validation
+runs against that combined state.
 
 Computational evidence may be reused only when path classification and Git
 comparison prove every intervening change is non-executable documentation with
@@ -352,15 +350,14 @@ evidence as if it came from the new state.
 ## Validation and recovery
 
 Each candidate checks its own clean diff and task-specific requirements. A
-self-contained independent sidecar must include a legitimate reserved inbound
-reference and pass its documentation gate. A card-only sidecar whose central
-inbound link is intentionally reserved for the integrator is `handoff-ready`,
-not independently complete; its commit stays local while the integrator adds
-that link, amends the combined package, and runs the final gate.
+self-contained independent sidecar passes its applicable focused or
+documentation checks; actionable cards do not require an external inbound
+status link.
 
-The integration owner validates after every landing sufficiently to catch a
-bad boundary early and runs one final combined gate before publication. Only
-the canonical result can close a package or support evidence claims.
+The integration owner may run a focused check after a risky landing when it is
+needed to catch a bad boundary early, and runs one final combined gate before
+publication. Only the canonical result can close a package or support evidence
+claims.
 
 On a handoff-identity failure, application conflict, unexpected candidate
 write, dirty shared worktree, or failed validation:

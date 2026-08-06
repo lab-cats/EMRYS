@@ -94,8 +94,8 @@ A fragment may cite source observations, but it cannot:
 - publish checkout, lane, priority, lineage, blocker, task-lifecycle,
   completion, decision, or acceptance state;
 - promote test, runtime, cluster, scientific, or biological evidence;
-- authorize work, assign its own terminal disposition, or satisfy a required
-  canonical inbound link;
+- authorize work, assign its own terminal disposition, or establish task-card
+  authority;
 - create a question, card, lifecycle location, or `UNREFINED` item merely by
   naming it; or
 - require the integrator to retain the fragment in canonical history.

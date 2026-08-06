@@ -1,215 +1,180 @@
 # NORAD task registry
 
-This directory is the bounded planning registry for future repository work.
-One Markdown file represents one actionable task card. For actionable cards,
-the directory on the canonical integration branch is the only authoritative
-status signal:
+This directory is the bounded planning registry for repository work. One
+Markdown file represents one actionable task card. Cards preserve scope,
+settled decisions, genuine technological dependencies, and acceptance evidence;
+they do not authorize mutation or replace live inspection and an approved plan.
 
-- [`TODO/`](TODO/) — available or blocked work that has not entered planning;
-- [`IN_PROGRESS/`](IN_PROGRESS/) — a task selected for task-specific,
-  read-only planning or approved execution;
-- [`INTEGRATION_REVIEW/`](INTEGRATION_REVIEW/) — a full task card whose exact
-  candidate is frozen for asynchronous canonical integration; and
-- [`COMPLETED/`](COMPLETED/) — historical records whose acceptance evidence
-  has been inspected.
+## Current model
 
-[`UNREFINED/`](UNREFINED/) is a separate nonselectable proposal-intake
-location outside both actionable card status and the committed roadmap.
+Create every new actionable card at a stable path under [`cards/`](cards/):
 
-Cards preserve decisions already made, define scope and dependencies, and
-state what evidence would close the task. They are not implementation plans
-and never authorize mutation. Selecting a card means moving it to
-`IN_PROGRESS` with `git mv`, reading the card in full, following the
-[`task-start router`](../operations/TASK_START.md), inspecting the live
-repository, proposing a task-specific plan, and obtaining user approval before
-editing or running mutating commands.
+```text
+docs/tasks/cards/<CARD-ID>-<slug>.md
+```
 
-The registry begins with the completed `ARCH-DOC-00` bootstrap card. It does
-not reconstruct retrospective cards for earlier refactor packages. Their
-frozen audit history is indexed under [`docs/history/`](../history/), while
-current audit triggers, test baselines, roadmap, and checkout evidence route
-through `REFACTOR_AUDIT.md`, `TEST_BASELINE.md`, `PIPELINE_PLAN.md`, and
-`HANDOFF.md`.
+The filename does not change when the card is selected, paused, reviewed,
+completed, or retired. Its exact explicit `State:` field owns lifecycle state:
 
-## Ownership boundary
+| State | Meaning |
+| --- | --- |
+| `planned` | The card is eligible for planning or execution when approval and blockers allow. It may also be the transiently selected work; selection is not persistent state. |
+| `review` | An exact candidate is intentionally frozen for asynchronous review or integration. Correction authoring first returns the card to `planned`. |
+| `completed` | Acceptance evidence and directly affected canonical documentation have been inspected, and the completion record is non-placeholder. |
+| `retired` | The work is no longer intended as written; the completion record gives the rationale and a successor or explicitly says none. |
 
-Cards own bounded task scope, dependencies, deliverables, acceptance evidence,
-and completion history. They link rather than duplicate durable truth:
+Readiness is derived rather than authored. A `planned` card is ready when every
+direct `Blocked by` card is `completed`; other lifecycle states are not reported
+as ready. Selection, agent activity, branch identity, and preferred sequence do
+not change readiness.
 
-- architectural rationale belongs in
-  [`../design/DECISIONS.md`](../design/DECISIONS.md);
-- current and target topology belong in
-  [`../architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) and
-  [`../architecture/FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md);
-- current checkout and evidence belong in
-  [`../operations/HANDOFF.md`](../operations/HANDOFF.md);
-- exact commands belong in
-  [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md);
-- concurrent lane roles and authority belong in
-  [`../operations/CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md);
-- integration-fragment filenames and candidate fields belong in
-  [`../fragments/README.md`](../fragments/README.md), while authority,
-  dispositions, and lifecycle remain in `CONCURRENT_WORK.md`;
-- task-start freshness, routing, and expansion rules belong in
-  [`../operations/TASK_START.md`](../operations/TASK_START.md);
-- roadmap order belongs in
-  [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md);
-- unresolved choices belong in
-  [`../design/QUESTIONS.md`](../design/QUESTIONS.md).
-- documentation audiences, canonical responsibility boundaries, and
-  consolidation dispositions belong in
-  [`../sitemap/DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
+Use the deterministic read-only view from any checkout root:
 
-`PIPELINE_PLAN.md` owns pipeline/package/evidence state and lineage. The task
-card's directory is the only owner of actionable workflow status; roadmap rows
-link to the card rather than restating that lifecycle.
+```bash
+./scripts/git_orchestration/task_status.py --repo "$(git rev-parse --show-toplevel)"
+```
 
-Do not put live branch names, commit IDs, test totals, or mutable status in a
-TODO card. A completion record links to the canonical evidence owner instead
-of copying mutable snapshots.
+The view sorts by card ID and derives reverse edges and readiness from canonical
+card metadata. It contains no timestamp, branch, SHA, or mutable stored
+projection and must not be committed as a second authority.
 
-The current authored card paths and reciprocal dependency fields remain
-canonical until a separately approved atomic registry migration passes parity
-and final validation. The selected future target uses permanent ID-only card
-paths with reviewed structured lifecycle metadata and one authored
-technological-dependency direction. Lifecycle, reverse-dependency, epic, and
-durable per-tranche Markdown projections plus their current pointer are then
-committed and byte-for-byte check-regenerated. That target is not implemented
-by this documentation package.
+## Lifecycle rules
 
-Every future generated projection must name its generator, relevant canonical
-input digest, exact refresh/check behavior, temporary-space regeneration, and
-deterministic recovery; carry a generated-file banner; and fail closed when
-tracked bytes are stale. Generated views never infer status, dependencies,
-branch identity, or evidence from prose. They may display evidence only from
-an exact matching conforming receipt; while receipt design is deferred, that
-field remains explicitly unavailable. No generated view becomes a second
-authority for its inputs.
+1. Create a stable ID and a complete `planned` card under `cards/`.
+2. Select, plan, pause, resume, accept, or decline work without moving or
+   rewriting the card. Those are execution events, not lifecycle events.
+3. Change explicit state only when lifecycle itself changes and include that
+   update in the package's semantic commit. Never create a status-only
+   selection/deselection commit.
+4. Use `review` only for a frozen candidate that will remain under asynchronous
+   review or integration beyond the current unpublished package. Routine
+   same-package review does not change state.
+5. A correction to a `review` card first returns it to `planned` in the approved
+   correction package. No candidate bytes change while it remains `review`.
+6. Use `completed` only after acceptance evidence and directly affected owners
+   have been inspected. Record durable evidence or link its canonical owner;
+   do not copy mutable branch names, SHAs, test totals, or current-state prose.
+7. Use `retired` when the objective is deliberately abandoned or superseded.
+   Record `Rationale:` and `Successor:` in the completion record; `None.` is a
+   valid explicit successor value.
+8. Completed cards are historical records. Apart from link repair or factual
+   correction, new work receives a new card.
 
-## Lifecycle
+No actionable card needs an external inbound status link. Roadmaps, priority
+views, and generated views may link cards when the relationship is useful, but
+connectivity is not a lifecycle requirement.
 
-1. Create a stable card ID and filename directly in `TODO` unless the card
-   documents work completed by the same approved bootstrap package.
-2. The integration owner moves a selected card to `IN_PROGRESS` with `git mv`
-   and updates every inbound link in the same commit. This starts read-only
-   planning only.
-3. If planning is paused or blocked, move the card back to `TODO`, record the
-   reason in its completion record, and update inbound links. There is no
-   separate `BLOCKED` directory.
-4. Only the integration owner may move an exact frozen candidate from
-   `IN_PROGRESS` to `INTEGRATION_REVIEW`, and only when asynchronous review
-   persists beyond the current unpublished integration package. Update every
-   inbound link in the same commit. Routine same-package handoff remains
-   `IN_PROGRESS`.
-5. A correction to a frozen candidate first returns the card from
-   `INTEGRATION_REVIEW` to `IN_PROGRESS`, with inbound links repaired, before
-   authoring resumes.
-6. Move a card to `COMPLETED` only after its acceptance evidence and required
-   canonical documentation updates have been inspected. Update every inbound
-   link in the same commit.
-7. Completed cards are immutable historical records apart from link repair or
-   factual correction. New work gets a new follow-up card.
+## Legacy compatibility
 
-`UNREFINED` is a preservation classification, not actionable task status. Its
-files cannot be selected, started, prioritized, placed in dependency
-relationships, block or unblock work, claim implementation authority, or
-satisfy a TODO card's canonical inbound-reference requirement. Rough questions
-and unresolved design choices may remain there. Promotion requires explicit
-review, conversion to the complete TODO-card schema, and an integration-owner
-decision. File presence preserves a proposal; it does not approve or schedule
-implementation.
+The existing [`TODO/`](TODO/), [`IN_PROGRESS/`](IN_PROGRESS/),
+[`INTEGRATION_REVIEW/`](INTEGRATION_REVIEW/), and [`COMPLETED/`](COMPLETED/)
+trees remain valid. This cutover deliberately performs no bulk card move,
+reciprocal-edge rewrite, or completed-archive migration.
 
-Each proposal uses one `# CARD-ID — Title` H1 whose ID matches its filename,
-the exact local ``State: [`UNREFINED` proposal](README.md). ...`` declaration,
-and these core headings once in order: `Proposal`, `Why preserve it`, `Settled
-boundaries`, `Questions before refinement`, and `Promotion conditions`.
-Additional proposal headings are permitted. Full actionable-card headings and
-dependency-edge syntax are prohibited. The documentation validator enforces
-this schema without counting proposals as actionable cards or requiring a
-canonical inbound status link. Completed
-[`TASK-LIFECYCLE-01`](COMPLETED/TASK-LIFECYCLE-01-implement-unrefined-and-integration-review-states.md)
-is the implementation record.
+For a legacy card without an explicit state, tooling infers:
 
-Multiple cards may be `IN_PROGRESS` only when
-[`CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md) records isolated,
-non-overlapping lanes. Candidate-directory placement is proposal state until
-the integration owner accepts it; sidecars never move canonical card status.
-`INTEGRATION_REVIEW` is canonical only after that owner records the move. Its
-cards retain the complete actionable schema, reachability, and dependency
-rules; completed blockers are required just as they are for `IN_PROGRESS`.
+| Legacy directory | Inferred state |
+| --- | --- |
+| `TODO` | `planned` |
+| `IN_PROGRESS` | `planned` |
+| `INTEGRATION_REVIEW` | `review` |
+| `COMPLETED` | `completed` |
 
-An integration fragment is not a card or lifecycle location. It cannot select,
-block, authorize, complete, or supply a canonical inbound reference for a
-card. Accepted facts enter their proper owners. Deferred task work must name an
-existing or simultaneously authorized destination; naming a future question,
-card, `UNREFINED` item, or lifecycle state does not create it.
+If a legacy card later changes for a real semantic reason, an exact explicit
+`State:` value overrides its directory without moving the file or repairing
+inbound paths. Legacy cards retain their original heading schema. Legacy
+`Completion unblocks` fields remain accepted and validated for reciprocal
+consistency, but do not add or opportunistically migrate those fields. New
+stable cards use only `Blocked by`; reverse edges are derived.
 
-## Concurrent card creation
-
-The integration owner reserves each sidecar's card IDs and paths before
-mutation. Sidecars create new cards directly in `TODO`, edit only the recorded
-write set, and never select, approve, or complete their own cards. The
-integration owner serializes landing, adds central inbound references, repairs
-status links, and runs the combined documentation gate. A card-only sidecar
-with a deliberately pending central inbound reference is handoff-ready, not
-complete or independently gate-passing.
-
-A sidecar may instead reserve exact deliverables plus at most one
-[`integration fragment`](../fragments/README.md). Its candidate write
-reservations stay exclusive, while its canonical target declarations are
-nonexclusive requests. The integration owner validates and dispositions every
-request, writes accepted registry changes, and removes the fragment before
-canonical publication. Fragment links are ignored when determining canonical
-task-registry connectivity.
-
-Concurrency preparation and preferred landing order never create `Blocked by`
-or `Completion unblocks` metadata.
+The completed archive stays untouched unless a link repair or factual
+correction is itself authorized. New cards must use the stable directory and
+new schema even when they document work completed by the same package.
 
 ## Dependency semantics
 
 `Blocked by` contains only genuine technological blockers: card IDs whose
 incomplete work makes the task unsafe or impossible to proceed. Preferred
-sequence, roadmap order, useful context, and planning convenience are not
-blockers; record them under `Prerequisites`, `Required context`, or the
-canonical roadmap instead.
+sequence, roadmap order, useful context, and planning convenience belong under
+`Prerequisites`, `Required context`, or the roadmap.
 
-`Completion unblocks` labels each relationship:
+Each dependency is authored once, on the blocked card, using:
 
-- `Fully` means the target has no other card blocker after this card completes;
-- `Partially` means completion removes one of several genuine technological
-  blockers, so it does not by itself permit the target to proceed.
+```markdown
+- `CARD-ID` linked to its card — Required: explain the hard gate.
+```
 
-Useful context alone never belongs in `Completion unblocks`. For new or edited
-active cards, maintain reciprocal metadata only between cards that are still
-mutable. Do not rewrite a completed card merely to add a reciprocal link;
-completed evidence needed by new work belongs under `Prerequisites` or
-`Required context`.
+Use `- None.` when there is no direct blocker. Every referenced card must exist;
+hard dependencies must be acyclic and free of self-dependencies. A card in
+`review` or `completed` must have only completed direct blockers. Reverse
+`Unblocks` relationships and readiness are generated by `task_status.py`.
 
-Every card named under `Blocked by` must appear in the source card's
-`Completion unblocks` list as `Fully` or `Partially`, and every `Fully`
-relationship must appear in the target's `Blocked by` list. Every referenced
-card must exist. Hard dependencies must be acyclic and free of
-self-dependencies. Do not create wildcard placeholder cards; an inventory or
-design card creates concrete children after their scope is known.
+Do not use dependencies for concurrency preparation, landing order, context,
+epic membership, or approval state. An inventory or design card creates
+concrete children only after their scope is known; do not create wildcard
+placeholder blockers.
 
-Some existing cards predate this forward rule. Do not copy or opportunistically
-migrate their sequence-only edges. `TASK-REG-01` owns the bounded legacy-graph
-migration and validator correction.
+## Ownership boundary
 
-When an inventory/design task creates a concrete child that is a genuine
-technological blocker, the integration commit replaces the affected mutable
-card's family prerequisite with an explicit direct `Blocked by` link and adds
-reciprocal `Completion unblocks` metadata when both cards remain mutable.
-Sequence, context, and preferred order stay in prose; completed cards are not
-rewritten merely for reciprocity.
+Cards own bounded task scope, dependencies, deliverables, acceptance evidence,
+documentation triggers, and completion history. They link rather than duplicate
+durable truth:
 
-## Card template
+- rationale belongs in [`../design/DECISIONS.md`](../design/DECISIONS.md);
+- current and target topology belong in
+  [`../architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md) and
+  [`../architecture/FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md);
+- non-reconstructable checkout, lane, blocker, and evidence state belongs in
+  [`../operations/HANDOFF.md`](../operations/HANDOFF.md);
+- exact commands belong in
+  [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md);
+- concurrency exception policy belongs in
+  [`../operations/CONCURRENT_WORK.md`](../operations/CONCURRENT_WORK.md);
+- task-start and delivery defaults belong in
+  [`../operations/TASK_START.md`](../operations/TASK_START.md) and
+  [`../operations/TASK_DELIVERY.md`](../operations/TASK_DELIVERY.md);
+- roadmap order and package acceptance belong in
+  [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md);
+- unresolved choices belong in
+  [`../design/QUESTIONS.md`](../design/QUESTIONS.md); and
+- documentation responsibility belongs in
+  [`../sitemap/DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md).
+
+## `UNREFINED` proposals
+
+[`UNREFINED/`](UNREFINED/) is a nonselectable proposal-intake location outside
+the actionable registry. Its files cannot be selected, started, prioritized,
+placed in dependency relationships, block or unblock work, claim implementation
+authority, or satisfy an actionable card. Promotion requires explicit review,
+conversion to the stable actionable schema, and an integration-owner decision.
+File presence preserves an idea; it does not approve or schedule it.
+
+Each proposal uses one `# CARD-ID — Title` H1 whose ID matches its filename,
+the exact local ``State: [`UNREFINED` proposal](README.md). ...`` declaration,
+and these headings once in order: `Proposal`, `Why preserve it`, `Settled
+boundaries`, `Questions before refinement`, and `Promotion conditions`.
+Additional proposal headings are permitted. Actionable-card headings and
+dependency-edge syntax are prohibited.
+
+## Concurrent card creation
+
+Sequential creation in the authoritative worktree is the default. If an
+approved concurrency exception creates cards, the integration owner reserves
+IDs and stable paths before mutation. Sidecars edit only their recorded write
+sets and cannot select, approve, review, complete, retire, or publish their own
+cards. The integration owner serializes accepted changes and runs the final
+combined gate. An integration fragment is not a card or lifecycle location and
+cannot select, block, authorize, complete, or provide registry authority.
+
+## Stable card template
 
 Use the headings below once each and in this order. Replace every instruction
 with card-specific content.
 
 ```markdown
 # CARD-ID — Short task title
+
+State: planned
 
 ## Objective
 
@@ -225,22 +190,16 @@ The problem, evidence, and user value.
 
 ## Blocked by
 
-- `CARD-ID` — Required: link the completed card and explain the hard gate.
-
-## Completion unblocks
-
-- `CARD-ID` — Fully: link the target and explain why it can then start.
-- `CARD-ID` — Partially: link the target and explain which one of several
-  genuine technological blockers this completion removes.
+- None.
 
 ## Prerequisites
 
-- Live, non-card conditions that must be verified.
+- Live non-card conditions that must be verified.
 
 ## Required context
 
 - Exact canonical sections and bounded implementation, contract, consumer,
-  test, and fixture surfaces to inspect in addition to `TASK_START.md`.
+  test, and fixture surfaces to inspect.
 
 ## Questions owned by this card
 
@@ -260,23 +219,24 @@ The problem, evidence, and user value.
 
 ## Acceptance evidence
 
-- Observable proof required to close the card.
+- Observable evidence required to close the task.
 
-## Canonical documentation updates
+## Documentation impact triggers
 
-- Owners that must change if the task is approved and completed.
+- Canonical owners to update only if this task changes their subject.
 
 ## Escalation conditions
 
-- Card-specific conditions that require broader inspection, stopping, or
-  requesting direction in addition to the global `TASK_START.md` triggers.
+- Evidence, semantic, safety, authority, or scope gaps that require direction.
 
 ## Completion record
 
-Not started. On completion, link the inspected evidence and summarize only
-stable historical facts.
+Not complete.
 ```
 
-Run the documentation gate in
-[`../operations/RUNBOOK.md`](../operations/RUNBOOK.md) after creating or moving
-cards.
+The documentation validator enforces stable paths, exact state values, heading
+order, blocker syntax, unique IDs across legacy and stable cards, dependency
+existence and acyclicity, completed-blocker requirements for `review` and
+`completed`, non-placeholder completed records, and structured retirement
+records. It continues to accept the frozen legacy schema during gradual,
+subject-triggered convergence.

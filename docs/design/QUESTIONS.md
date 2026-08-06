@@ -227,7 +227,7 @@ the linked owner.
 | --- | --- | --- |
 | `CHOICE-LIFECYCLE-01`; `CHOICE-TASK-IDENTITY-01`; `CHOICE-TASK-VIEW-01` | [File-backed task registry](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry) | [`docs/tasks/README.md`](../tasks/README.md), `TASK-LIFECYCLE-01`, and `TASK-REG-01` |
 | `CHOICE-CONTEXT-01` | [Revision- and impact-routed context](DECISIONS.md#route-task-context-by-revision-and-impact) | [`TASK_START.md`](../operations/TASK_START.md) |
-| `CHOICE-PROGRAM-02` | [Independent planning and validation categories](DECISIONS.md#use-proportional-planning-categories-and-bounded-approval-envelopes) | `TASK_START.md` and `CONCURRENT_WORK.md` |
+| `CHOICE-PROGRAM-02` | [Bounded approval and proportional validation](DECISIONS.md#use-bounded-approval-envelopes-and-proportional-validation) | `TASK_START.md` and `CONCURRENT_WORK.md` |
 | `CHOICE-TRANCHE-VIEW-01` | [Rolling vertical delivery](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery) | `PROGRAM-01` |
 | `CHOICE-STAGE-01` | [Semantic identities and DAG order](DECISIONS.md#identify-stages-semantically-and-order-them-with-a-dag) | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
 | `CHOICE-ARCH-01` | [Vertical ownership and direct migration](DECISIONS.md#target-a-vertical-package-with-direct-contract-preserving-migrations) | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |

@@ -1,8 +1,7 @@
 # Completed task cards
 
-This directory contains inspected historical completion records. A completed
-card reached this state only after canonical integration, applicable final
-validation, publication, and upstream equality. It does not authorize
-follow-up work; create a new card for new scope. Link repairs and factual
-corrections follow the lifecycle in
-[`../README.md`](../README.md).
+This legacy archive contains inspected historical completion records. Existing
+cards without an explicit state are inferred as `completed`. Do not move new
+cards here or bulk-migrate the archive. A completed record does not authorize
+follow-up work; create a new stable card for new scope. Link repairs and factual
+corrections follow [`../README.md`](../README.md).

@@ -1,8 +1,7 @@
 # TODO task cards
 
-This directory contains tasks that have not entered task-specific planning or
-are paused pending a prerequisite. The cards define future work; they do not
-authorize implementation. Select a task using the lifecycle in
-[`../README.md`](../README.md). An `UNREFINED` proposal must first be converted
-to the complete card schema by the integration owner; it is never selected in
-place.
+This is a legacy compatibility directory. Existing cards without an explicit
+state are inferred as `planned`; selection, pause, resume, and execution do not
+move or rewrite them. Do not create new cards here. New actionable cards use
+stable paths under [`../cards/`](../cards/) and the lifecycle in
+[`../README.md`](../README.md).

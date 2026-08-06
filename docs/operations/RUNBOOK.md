@@ -24,7 +24,8 @@ partials, backups, logs, and recovery markers until ownership and state are know
 - Develop: [concurrent work](#concurrent-worktrees-and-serialized-integration),
   [fragment exchange](#manual-integration-fragment-exchange), and
   [local validation](#local-validation-gate).
-- Workflow: [owner routing](#workflow-contract-and-validation-convention),
+- Workflow: [task lifecycle](#inspect-or-change-task-lifecycle),
+  [owner routing](#workflow-contract-and-validation-convention),
   [reference preparation](#reference-prep), [Steps `01`-`09`](#step-01-star-alignment),
   and [scientific review](#post-step-09-scientific-validation-gate).
 
@@ -522,23 +523,33 @@ ls -lh <output_dir>
 Scheduler success alone is not output validation. Bind logs, accounting,
 inputs, commit, command, and outputs to the same attempt.
 
-## Move A Task Card Between Lifecycle States
+## Inspect Or Change Task Lifecycle
 
-The [`task registry`](../tasks/README.md#lifecycle) owns allowed transitions and
-completion criteria. Move one card and repair every reported inbound lifecycle
-link in the same package:
+The [`task registry`](../tasks/README.md#lifecycle-rules) owns state semantics,
+completion criteria, and legacy compatibility. Inspect the deterministic view:
 
 ```bash
-git mv \
-  docs/tasks/<FROM>/<CARD-ID>-<slug>.md \
-  docs/tasks/<TO>/<CARD-ID>-<slug>.md
-rg -n '<FROM>/<CARD-ID>-<slug>\.md' --glob '*.md' .
+./scripts/git_orchestration/task_status.py \
+  --repo "$(git rev-parse --show-toplevel)"
+```
+
+New cards use `docs/tasks/cards/<CARD-ID>-<slug>.md`. When lifecycle itself
+changes, edit the card's exact `State:` field and completion record inside the
+semantic package, then inspect it:
+
+```bash
+rg -n '^State:|^## Completion record' \
+  docs/tasks/cards/<CARD-ID>-<slug>.md
+git diff -- docs/tasks/cards/<CARD-ID>-<slug>.md
 git diff --check
 make -s documentation-check
 ```
 
-Do not edit a card in `INTEGRATION_REVIEW` until the registry-authorized return
-to `IN_PROGRESS`. `UNREFINED` proposals are not selectable cards.
+Do not move a card for selection, pause, resume, or completion. A legacy card's
+explicit state overrides its directory, so a real lifecycle change does not
+require path or inbound-link repair. Do not edit a `review` card's candidate
+until an approved correction returns it to `planned`. `UNREFINED` proposals are
+not selectable cards.
 
 ## Concurrent Worktrees And Serialized Integration
 
@@ -647,7 +658,7 @@ and the gate reports retained running-lane logs. A failure in one lane does not
 erase passing evidence from another, but the aggregate gate remains non-green.
 
 For a qualifying documentation-only package under
-[`TASK_DELIVERY.md`](TASK_DELIVERY.md#package-delivery):
+[`TASK_DELIVERY.md`](TASK_DELIVERY.md#default-delivery):
 
 ```bash
 git diff --check
@@ -658,9 +669,10 @@ git diff --name-status
 
 The documentation target delegates to
 `scripts/git_orchestration/validate_documentation.py`. It checks paths, anchors,
-task-card schemas and dependencies, orphan cards/diagrams, and basic Mermaid
-structure, including untracked documents. It does not replace semantic review
-of affected architecture or scientific content.
+task-card paths, states, schemas and dependencies, orphan diagrams, and basic
+Mermaid structure, including untracked documents. Task cards do not require an
+external inbound status link. The gate does not replace semantic review of
+affected architecture or scientific content.
 
 ### Python coverage baseline
 

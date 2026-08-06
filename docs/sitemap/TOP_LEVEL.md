@@ -103,7 +103,7 @@ weaken safety, freshness, evidence, ownership, or
 | Prioritized pending work | Applicable section of [`TODO.md`](../../TODO.md) |
 
 Use repository-wide targeted search to find changed names, paths, commands,
-interfaces, schema versions, evidence terms, and inbound references. Search
+interfaces, schema versions, evidence terms, and direct consumers. Search
 coverage may be repository-wide without loading every matching file in full.
 
 ### Situation matrix
@@ -114,7 +114,7 @@ coverage may be repository-wide without loading every matching file in full.
 | Same task with an exact verified baseline | Changes since that baseline; reuse unchanged material while the [freshness-and-sufficiency conditions](../operations/TASK_START.md#context-freshness-and-reuse) still hold |
 | New task in the same verified context | New card in full, live Git state, changes since the prior task, and newly relevant canonical sections |
 | Phase boundary | Closing evidence, new phase/card, applicable lineage and acceptance sections, diff since the prior boundary, and changed or affected owners |
-| Documentation patch | Complete final diff, affected sections and owners, inbound references, and affected diagrams |
+| Semantic package close | Complete package diff, changed subjects, affected owners and direct consumers, and affected diagrams |
 | Starting a candidate lane | Assigned lane packet, absolute worktree, candidate branch or detached execution state, base, write set, prohibited overlaps, and coupling assumptions |
 | Integrating a candidate | Latest canonical state, immutable candidate handoff, complete base-to-candidate diff, overlap/coupling recheck, and combined validation obligation |
 | Authoring a fragment | Published packet, exclusive candidate write reservations, optional fragment path, nonexclusive target declarations, schema, base, coupling, and prohibited authority |
@@ -128,14 +128,14 @@ changes since the prior boundary, then broaden according to impact.
 
 ### Documentation impact and validation
 
-For every final change, use the complete diff from the package predecessor or
-validated implementation commit—not only the current worktree—to identify
-affected documentation and diagrams. Before commit, include staged, unstaged,
-and untracked paths; after commit, compare the exact commits. Search the full
-repository for each changed interface, path, command, schema, status, evidence
-term, and ownership claim. Inspect the affected sections, canonical owners,
-direct references, and changed diagrams. Broaden semantic reading only when an
-expansion trigger applies.
+For every semantic package, use its complete diff—not only the current worktree
+view—to identify changed subjects, affected documentation, and diagrams. Before
+commit, include staged, unstaged, and untracked paths; after commit, compare the
+exact commits. Search the repository for each changed interface, path, command,
+schema, evidence term, and ownership claim. Inspect the affected sections,
+canonical owners, direct consumers, and changed diagrams. Do not update a
+document merely because a commit, selection, or test run occurred. Broaden
+semantic reading only when an expansion trigger applies.
 
 Candidate-only validation is provisional. When concurrent work exists, impact
 classification and closure use the final combined canonical diff after
@@ -148,10 +148,10 @@ latest canonical targets, and inspect the final parent-to-result diff
 separately. Confirm that every request and partial residual has a structured
 terminal record, accepted content has one canonical owner, deferral uses an
 implemented authorized destination, and no candidate fragment survives.
-Fragment backlinks do not establish canonical task-registry connectivity.
+Fragment backlinks do not establish canonical task-registry authority.
 
 Keep the automated repository-wide documentation gate. Its global link,
-anchor, card, dependency, and Mermaid checks provide broad structural coverage
+anchor, card-state, dependency, and Mermaid checks provide broad structural coverage
 without loading the full corpus into agent context. Automated structure does
 not replace targeted semantic comparison.
 
@@ -162,7 +162,7 @@ validation is not applicable. Run only the Git and documentation checks owned
 by [`RUNBOOK.md`](../operations/RUNBOOK.md#local-validation-gate). Do not run
 computational Python, shell, R, or report-runtime test suites.
 
-A documentation patch following implementation may rely on that executable
-state's recorded computational gate when Git proves the state unchanged. A
-standalone documentation-only package records computational validation as not
-applicable rather than claiming a new computational pass.
+Direct documentation committed with implementation shares that package's
+evidence. A later documentation-only package may rely on recorded computational
+evidence when Git proves the executable state unchanged, and records new
+computational validation as not applicable rather than claiming a new pass.

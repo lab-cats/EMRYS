@@ -2,7 +2,7 @@
 
 This is the stable index for durable NORAD decisions and rationale. Detailed
 records are grouped by responsibility under [`decisions/`](decisions/).
-Current status belongs in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), task state in
+Roadmap and package acceptance belong in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), task state in
 [`../tasks/`](../tasks/), evidence in
 [`HANDOFF.md`](../operations/HANDOFF.md), commands in
 [`RUNBOOK.md`](../operations/RUNBOOK.md), and open choices in
@@ -18,25 +18,25 @@ Current status belongs in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), task state in
 
 [Decision and rationale.](decisions/repository-and-delivery.md#develop-locally-and-scale-through-slurm)
 
-### Use descendant branches and separate docpatch gates
+### Use semantic package commits and tranche publication
 
-[Decision and rationale.](decisions/repository-and-delivery.md#use-descendant-branches-and-separate-docpatch-gates)
+[Decision and rationale.](decisions/repository-and-delivery.md#use-semantic-package-commits-and-tranche-publication)
 
 ### Keep executable programs out of Markdown
 
 [Decision and rationale.](decisions/repository-and-delivery.md#keep-executable-programs-out-of-markdown)
 
-### Permit isolated concurrent authoring with serialized integration
+### Permit exceptional isolated concurrency with serialized integration
 
-[Decision and rationale.](decisions/repository-and-delivery.md#permit-isolated-concurrent-authoring-with-serialized-integration)
+[Decision and rationale.](decisions/repository-and-delivery.md#permit-exceptional-isolated-concurrency-with-serialized-integration)
 
 ### Use transient integration fragments for cross-owner proposals
 
 [Decision and rationale.](decisions/repository-and-delivery.md#use-transient-integration-fragments-for-cross-owner-proposals)
 
-### Run one complete computational gate per executable state
+### Run one complete computational gate per final tranche state
 
-[Decision and rationale.](decisions/repository-and-delivery.md#run-one-complete-computational-gate-per-executable-state)
+[Decision and rationale.](decisions/repository-and-delivery.md#run-one-complete-computational-gate-per-final-tranche-state)
 
 ### Prefer failure-first validation output
 
@@ -46,13 +46,13 @@ Current status belongs in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), task state in
 
 [Decision and rationale.](decisions/repository-and-delivery.md#route-task-context-by-revision-and-impact)
 
-### Use proportional planning categories and bounded approval envelopes
+### Use bounded approval envelopes and proportional validation
 
-[Decision and rationale.](decisions/repository-and-delivery.md#use-proportional-planning-categories-and-bounded-approval-envelopes)
+[Decision and rationale.](decisions/repository-and-delivery.md#use-bounded-approval-envelopes-and-proportional-validation)
 
-### Make documentation consistency impact-directed
+### Make documentation changes subject-triggered
 
-[Decision and rationale.](decisions/repository-and-delivery.md#make-documentation-consistency-impact-directed)
+[Decision and rationale.](decisions/repository-and-delivery.md#make-documentation-changes-subject-triggered)
 
 ### Keep active and future tests separate
 
