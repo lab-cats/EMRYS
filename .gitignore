@@ -4,13 +4,13 @@
 data/raw/
 data/full/
 refs/*
-!refs/.gitkeep
+!refs/README.md
 !refs/test_star_index/
-!refs/test_star_index/.gitkeep
+!refs/test_star_index/README.md
 results/*
-!results/.gitkeep
+!results/README.md
 logs/*
-!logs/.gitkeep
+!logs/README.md
 *.out
 *.err
 *.bam
