@@ -7,6 +7,7 @@ import argparse
 import re
 import subprocess
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -28,6 +29,22 @@ CARD_SECTIONS = (
     "Escalation conditions",
     "Completion record",
 )
+STABLE_CARD_SECTIONS = (
+    "Objective",
+    "Why this exists",
+    "Fixed decisions",
+    "Blocked by",
+    "Prerequisites",
+    "Required context",
+    "Questions owned by this card",
+    "In scope",
+    "Out of scope",
+    "Deliverables",
+    "Acceptance evidence",
+    "Documentation impact triggers",
+    "Escalation conditions",
+    "Completion record",
+)
 UNREFINED_SECTIONS = (
     "Proposal",
     "Why preserve it",
@@ -41,8 +58,16 @@ CARD_STATUSES = frozenset(
 STARTED_CARD_STATUSES = frozenset(
     {"IN_PROGRESS", "INTEGRATION_REVIEW", "COMPLETED"}
 )
+CARD_STATES = frozenset({"planned", "review", "completed", "retired"})
+LEGACY_STATE_BY_STATUS = {
+    "TODO": "planned",
+    "IN_PROGRESS": "planned",
+    "INTEGRATION_REVIEW": "review",
+    "COMPLETED": "completed",
+}
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "data:")
 TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$")
+CARD_STATE_PATTERN = re.compile(r"State: (planned|review|completed|retired)")
 UNREFINED_STATE_PATTERN = re.compile(
     r"State: \[`UNREFINED` proposal\]\(README\.md\)\.(?: .+)?"
 )
@@ -50,6 +75,19 @@ UNREFINED_STATE_PATTERN = re.compile(
 
 class DocumentationError(RuntimeError):
     """Raised when the documentation gate itself cannot run safely."""
+
+
+@dataclass(frozen=True)
+class TaskCard:
+    """One parsed actionable card from either registry generation."""
+
+    card_id: str
+    path: Path
+    state: str
+    explicit_state: bool
+    stable_schema: bool
+    blockers: frozenset[str]
+    unblocks: dict[str, str]
 
 
 def git_paths(root: Path, pattern: str) -> list[Path]:
@@ -149,15 +187,18 @@ def validate_links(
     return inbound
 
 
-def validate_cards(
-    root: Path,
-    inbound: dict[Path, set[Path]],
-    problems: list[str],
-) -> int:
+def card_section(text: str, heading: str) -> str:
+    """Return one level-two card section without its heading."""
+    marker = f"## {heading}\n"
+    return text.split(marker, 1)[1].split("\n## ", 1)[0].strip()
+
+
+def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
     """Validate task-card structure, links, and direct dependency semantics."""
     task_root = root / "docs" / "tasks"
     required_readmes = {
         task_root / "README.md",
+        task_root / "cards" / "README.md",
         task_root / "TODO" / "README.md",
         task_root / "IN_PROGRESS" / "README.md",
         task_root / "INTEGRATION_REVIEW" / "README.md",
@@ -168,11 +209,17 @@ def validate_cards(
         if not readme.is_file():
             problems.append(f"missing task-registry README: {readme.relative_to(root)}")
 
-    cards: dict[str, Path] = {}
-    blocked: dict[str, set[str]] = {}
-    unblocks: dict[str, dict[str, str]] = {}
+    cards: dict[str, TaskCard] = {}
     proposals: dict[str, Path] = {}
-    structurally_valid_cards: set[str] = set()
+    actionable_sections = frozenset(CARD_SECTIONS) | frozenset(
+        STABLE_CARD_SECTIONS
+    )
+    required_pattern = re.compile(
+        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$"
+    )
+    unblock_pattern = re.compile(
+        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — (Fully|Partially): .+$"
+    )
     for path in sorted(task_root.rglob("*.md")):
         if path in required_readmes:
             continue
@@ -223,7 +270,11 @@ def validate_cards(
                 )
 
             actionable_heading = next(
-                (heading for heading in headings if heading in CARD_SECTIONS),
+                (
+                    heading
+                    for heading in headings
+                    if heading in actionable_sections
+                ),
                 None,
             )
             if actionable_heading is not None:
@@ -241,7 +292,11 @@ def validate_cards(
                     f"dependency edge in proposal: {path.relative_to(root)}"
                 )
             continue
-        if path.parent.name not in CARD_STATUSES or path.parent.parent != task_root:
+        stable_schema = path.parent == task_root / "cards"
+        legacy_schema = (
+            path.parent.name in CARD_STATUSES and path.parent.parent == task_root
+        )
+        if not stable_schema and not legacy_schema:
             problems.append(f"invalid card location: {path.relative_to(root)}")
             continue
         text = path.read_text(encoding="utf-8")
@@ -257,54 +312,105 @@ def validate_cards(
         card_id = title.group(1)
         if not path.name.startswith(f"{card_id}-"):
             problems.append(f"card ID/filename mismatch: {path.relative_to(root)}")
-        if card_id in cards:
+        if card_id in cards or card_id in proposals:
             problems.append(f"duplicate card ID: {card_id}")
-        cards[card_id] = path
         headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-        if headings != list(CARD_SECTIONS):
+        expected_sections = STABLE_CARD_SECTIONS if stable_schema else CARD_SECTIONS
+        structurally_valid = headings == list(expected_sections)
+        if not structurally_valid:
             problems.append(f"card heading order/count: {path.relative_to(root)}")
-        else:
-            structurally_valid_cards.add(card_id)
 
-    required_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$"
-    )
-    unblock_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — (Fully|Partially): .+$"
-    )
-    for card_id, path in cards.items():
-        if card_id not in structurally_valid_cards:
-            blocked[card_id] = set()
-            unblocks[card_id] = {}
-            continue
-        text = path.read_text(encoding="utf-8")
-        blocked_text = text.split("## Blocked by\n", 1)[1].split(
-            "\n## Completion unblocks", 1
-        )[0]
-        unblocks_text = text.split("## Completion unblocks\n", 1)[1].split(
-            "\n## Prerequisites", 1
-        )[0]
-        blocked_lines = [line for line in blocked_text.splitlines() if line.strip()]
-        unblock_lines = [line for line in unblocks_text.splitlines() if line.strip()]
-        if blocked_lines != ["- None."] and not all(
-            required_pattern.fullmatch(line) for line in blocked_lines
-        ):
-            problems.append(f"invalid Blocked by syntax: {path.relative_to(root)}")
-        if unblock_lines != ["- None."] and not all(
-            unblock_pattern.fullmatch(line) for line in unblock_lines
-        ):
-            problems.append(
-                f"invalid Completion unblocks syntax: {path.relative_to(root)}"
+        state_lines = re.findall(r"^State: .+$", text, flags=re.MULTILINE)
+        state_match = (
+            CARD_STATE_PATTERN.fullmatch(state_lines[0])
+            if len(state_lines) == 1
+            else None
+        )
+        if stable_schema and state_match is None:
+            problems.append(f"invalid card state declaration: {path.relative_to(root)}")
+        elif legacy_schema and state_lines and state_match is None:
+            problems.append(f"invalid card state declaration: {path.relative_to(root)}")
+        explicit_state = state_match is not None
+        state = (
+            state_match.group(1)
+            if state_match is not None
+            else (
+                "planned"
+                if stable_schema
+                else LEGACY_STATE_BY_STATUS[path.parent.name]
             )
-        blocked[card_id] = set(re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text))
-        unblocks[card_id] = {
-            target: mode
-            for target, mode in re.findall(
-                r"\[([A-Z0-9-]+)\]\([^)]+\) — (Fully|Partially):",
-                unblocks_text,
+        )
+
+        blockers: frozenset[str] = frozenset()
+        unblocks: dict[str, str] = {}
+        if structurally_valid:
+            blocked_text = card_section(text, "Blocked by")
+            blocked_lines = [
+                line for line in blocked_text.splitlines() if line.strip()
+            ]
+            if blocked_lines != ["- None."] and not all(
+                required_pattern.fullmatch(line) for line in blocked_lines
+            ):
+                problems.append(f"invalid Blocked by syntax: {path.relative_to(root)}")
+            blockers = frozenset(
+                re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text)
             )
-        }
-        for label, target in re.findall(r"\[([A-Z0-9-]+)\]\(([^)]+\.md)\)", text):
+
+            if not stable_schema:
+                unblocks_text = card_section(text, "Completion unblocks")
+                unblock_lines = [
+                    line for line in unblocks_text.splitlines() if line.strip()
+                ]
+                if unblock_lines != ["- None."] and not all(
+                    unblock_pattern.fullmatch(line) for line in unblock_lines
+                ):
+                    problems.append(
+                        "invalid Completion unblocks syntax: "
+                        f"{path.relative_to(root)}"
+                    )
+                unblocks = {
+                    target: mode
+                    for target, mode in re.findall(
+                        r"\[([A-Z0-9-]+)\]\([^)]+\) — (Fully|Partially):",
+                        unblocks_text,
+                    )
+                }
+
+            completion_record = card_section(text, "Completion record")
+            if state == "completed" and completion_record in {
+                "",
+                "- None.",
+                "None.",
+                "Not complete.",
+                "Pending.",
+                "TBD.",
+            }:
+                problems.append(
+                    f"placeholder completion record: {path.relative_to(root)}"
+                )
+            if state == "retired" and not (
+                re.search(r"(?m)^- Rationale: \S.+$", completion_record)
+                and re.search(r"(?m)^- Successor: \S.+$", completion_record)
+            ):
+                problems.append(
+                    "retired card requires rationale and successor: "
+                    f"{path.relative_to(root)}"
+                )
+
+        cards[card_id] = TaskCard(
+            card_id=card_id,
+            path=path,
+            state=state,
+            explicit_state=explicit_state,
+            stable_schema=stable_schema,
+            blockers=blockers,
+            unblocks=unblocks,
+        )
+
+        card_links = re.findall(
+            r"\[([A-Z0-9-]+)\]\(([^)]+\.md)\)", text
+        )
+        for label, target in card_links:
             resolved = (path.parent / target).resolve()
             if resolved.parent.parent == task_root and not resolved.name.startswith(
                 f"{label}-"
@@ -314,19 +420,19 @@ def validate_cards(
                     f"{label} -> {target}"
                 )
 
-    for target, sources in blocked.items():
-        for source in sources:
+    for target, card in cards.items():
+        for source in card.blockers:
             if source not in cards:
                 problems.append(f"unknown blocker: {target} <- {source}")
-            elif target not in unblocks[source]:
+            elif not card.stable_schema and target not in cards[source].unblocks:
                 problems.append(f"missing reciprocal unblock: {source} -> {target}")
             if source == target:
                 problems.append(f"self dependency: {target}")
-    for source, targets in unblocks.items():
-        for target, mode in targets.items():
+    for source, card in cards.items():
+        for target, mode in card.unblocks.items():
             if target not in cards:
                 problems.append(f"unknown unblock target: {source} -> {target}")
-            elif mode == "Fully" and blocked[target] != {source}:
+            elif mode == "Fully" and cards[target].blockers != {source}:
                 problems.append(f"invalid Fully relationship: {source} -> {target}")
 
     visiting: list[str] = []
@@ -339,7 +445,7 @@ def validate_cards(
         if card_id in visited:
             return
         visiting.append(card_id)
-        for dependency in blocked.get(card_id, set()):
+        for dependency in cards[card_id].blockers:
             if dependency in cards:
                 visit(dependency)
         visiting.pop()
@@ -348,17 +454,20 @@ def validate_cards(
     for card_id in cards:
         visit(card_id)
 
-    for card_id, path in cards.items():
-        if not (inbound.get(path, set()) - {path}):
-            problems.append(f"orphan task card: {path.relative_to(root)}")
-        if path.parent.name in STARTED_CARD_STATUSES:
-            for dependency in blocked[card_id]:
-                if dependency in cards and cards[dependency].parent.name != "COMPLETED":
+    for card_id, card in cards.items():
+        legacy_started = (
+            not card.explicit_state
+            and not card.stable_schema
+            and card.path.parent.name in STARTED_CARD_STATUSES
+        )
+        if card.state in {"review", "completed"} or legacy_started:
+            for dependency in card.blockers:
+                if dependency in cards and cards[dependency].state != "completed":
                     problems.append(
                         "active/completed card has incomplete blocker: "
                         f"{card_id} <- {dependency}"
                     )
-    return len(cards)
+    return cards
 
 
 def validate_diagrams(
@@ -389,11 +498,11 @@ def validate(root: Path) -> tuple[int, int, int]:
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
     inbound = validate_links(root, documents, problems)
-    card_count = validate_cards(root, inbound, problems)
+    cards = validate_cards(root, problems)
     diagram_count = validate_diagrams(root, diagrams, inbound, problems)
     if problems:
         raise DocumentationError("Documentation gate failures:\n" + "\n".join(problems))
-    return len(documents), card_count, diagram_count
+    return len(documents), len(cards), diagram_count
 
 
 def parse_args() -> argparse.Namespace:

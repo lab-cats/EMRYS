@@ -14,6 +14,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = REPO_ROOT / "scripts" / "git_orchestration" / "validate_documentation.py"
+TASK_STATUS = REPO_ROOT / "scripts" / "git_orchestration" / "task_status.py"
 CARD_SECTIONS = (
     "Objective",
     "Why this exists",
@@ -28,6 +29,22 @@ CARD_SECTIONS = (
     "Deliverables",
     "Acceptance evidence",
     "Canonical documentation updates",
+    "Escalation conditions",
+    "Completion record",
+)
+STABLE_CARD_SECTIONS = (
+    "Objective",
+    "Why this exists",
+    "Fixed decisions",
+    "Blocked by",
+    "Prerequisites",
+    "Required context",
+    "Questions owned by this card",
+    "In scope",
+    "Out of scope",
+    "Deliverables",
+    "Acceptance evidence",
+    "Documentation impact triggers",
     "Escalation conditions",
     "Completion record",
 )
@@ -59,12 +76,42 @@ def run(
     )
 
 
+def relative_snapshot(root: Path) -> tuple[str, ...]:
+    return tuple(sorted(str(path.relative_to(root)) for path in root.rglob("*")))
+
+
 def card_text(card_id: str = "TEST-01") -> str:
     sections: list[str] = [f"# {card_id} — Fixture card", ""]
     for heading in CARD_SECTIONS:
         sections.extend((f"## {heading}", ""))
         if heading in {"Blocked by", "Completion unblocks"}:
             sections.extend(("- None.", ""))
+        else:
+            sections.extend(("Fixture text.", ""))
+    return "\n".join(sections)
+
+
+def stable_card_text(
+    card_id: str = "TEST-02",
+    *,
+    state: str = "planned",
+) -> str:
+    sections: list[str] = [
+        f"# {card_id} — Stable fixture card",
+        "",
+        f"State: {state}",
+        "",
+    ]
+    for heading in STABLE_CARD_SECTIONS:
+        sections.extend((f"## {heading}", ""))
+        if heading == "Blocked by":
+            sections.extend(("- None.", ""))
+        elif heading == "Completion record" and state == "retired":
+            sections.extend(
+                ("- Rationale: Fixture retirement.", "- Successor: None.", "")
+            )
+        elif heading == "Completion record" and state != "completed":
+            sections.extend(("Not complete.", ""))
         else:
             sections.extend(("Fixture text.", ""))
     return "\n".join(sections)
@@ -91,6 +138,10 @@ def card_path(
     return repository / "docs" / "tasks" / status / f"{card_id}-fixture-card.md"
 
 
+def stable_card_path(repository: Path, card_id: str = "TEST-02") -> Path:
+    return repository / "docs" / "tasks" / "cards" / f"{card_id}-stable-card.md"
+
+
 def add_card(
     repository: Path,
     card_id: str,
@@ -106,6 +157,17 @@ def add_card(
         + f"\n[{card_id}]({path.relative_to(repository).as_posix()})\n",
         encoding="utf-8",
     )
+    return path
+
+
+def add_stable_card(
+    repository: Path,
+    card_id: str,
+    *,
+    state: str = "planned",
+) -> Path:
+    path = stable_card_path(repository, card_id)
+    path.write_text(stable_card_text(card_id, state=state), encoding="utf-8")
     return path
 
 
@@ -146,6 +208,7 @@ def write_fixture(root: Path) -> Path:
         ),
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
         "docs/tasks/README.md": "# Task registry\n",
+        "docs/tasks/cards/README.md": "# Stable task cards\n",
         "docs/tasks/TODO/README.md": "# TODO tasks\n",
         "docs/tasks/IN_PROGRESS/README.md": "# Active tasks\n",
         "docs/tasks/INTEGRATION_REVIEW/README.md": (
@@ -175,6 +238,17 @@ def validate(
     )
 
 
+def task_status(
+    repository: Path,
+    *,
+    cwd: Path,
+) -> subprocess.CompletedProcess[str]:
+    return run(
+        [sys.executable, str(TASK_STATUS), "--repo", str(repository)],
+        cwd=cwd,
+    )
+
+
 def install_fixture_validator(repository: Path) -> None:
     fixture_validator = (
         repository
@@ -194,7 +268,7 @@ def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(8 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(9 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
 
@@ -203,6 +277,7 @@ def test_frozen_card_heading_oracle_matches_production() -> None:
     production = runpy.run_path(str(VALIDATOR))
 
     assert production["CARD_SECTIONS"] == CARD_SECTIONS
+    assert production["STABLE_CARD_SECTIONS"] == STABLE_CARD_SECTIONS
     assert production["UNREFINED_SECTIONS"] == UNREFINED_SECTIONS
 
 
@@ -508,7 +583,7 @@ def test_accepts_unrefined_proposal_without_actionable_inbound_link(
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(9 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(10 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
 
@@ -704,7 +779,7 @@ def test_accepts_full_card_in_integration_review_lifecycle_location(
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(9 Markdown documents, 2 task cards, 1 Mermaid sources)\n"
+        "(10 Markdown documents, 2 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
 
@@ -985,7 +1060,7 @@ def test_rejects_card_link_label_target_mismatch(tmp_path: Path) -> None:
     )
 
 
-def test_requires_external_inbound_reference_for_card(tmp_path: Path) -> None:
+def test_accepts_card_without_external_inbound_reference(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     readme = repository / "README.md"
     readme.write_text(
@@ -995,11 +1070,10 @@ def test_requires_external_inbound_reference_for_card(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["orphan task card: docs/tasks/TODO/TEST-01-fixture-card.md"],
-    )
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
 
 
 def assert_lifecycle_card_requires_completed_blockers(
@@ -1055,4 +1129,292 @@ def test_integration_review_card_requires_completed_blockers(
     assert_lifecycle_card_requires_completed_blockers(
         tmp_path,
         status="INTEGRATION_REVIEW",
+    )
+
+
+def test_requires_stable_card_registry_readme(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "docs/tasks/cards/README.md").unlink()
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["missing task-registry README: docs/tasks/cards/README.md"],
+    )
+
+
+def test_accepts_stable_card_without_external_inbound_link(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    add_stable_card(repository, "TEST-02")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_requires_exact_stable_card_state(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    card = add_stable_card(repository, "TEST-02")
+    card.write_text(
+        card.read_text(encoding="utf-8").replace("State: planned", "State: active"),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "invalid card state declaration: "
+            "docs/tasks/cards/TEST-02-stable-card.md"
+        ],
+    )
+
+
+def test_rejects_stable_schema_in_legacy_location(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    legacy_path = card_path(repository)
+    legacy_path.write_text(stable_card_text("TEST-01"), encoding="utf-8")
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "card heading order/count: docs/tasks/TODO/TEST-01-fixture-card.md"
+        ],
+    )
+
+
+def test_explicit_state_overrides_legacy_directory_state(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    legacy = card_path(repository)
+    legacy.write_text(
+        legacy.read_text(encoding="utf-8").replace(
+            "# TEST-01 — Fixture card\n\n",
+            "# TEST-01 — Fixture card\n\nState: completed\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_rejects_duplicate_id_across_legacy_and_stable_cards(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    add_stable_card(repository, "TEST-01")
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["duplicate card ID: TEST-01"],
+    )
+
+
+def test_rejects_proposal_id_collision_with_stable_card(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+    proposal.write_text(proposal_text("TEST-02"), encoding="utf-8")
+    add_stable_card(repository, "TEST-02")
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=["duplicate card ID: TEST-02"],
+    )
+
+
+def test_stable_card_authors_only_blocked_by_direction(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    stable = add_stable_card(repository, "TEST-02")
+    replace_card_section(
+        stable,
+        "Blocked by",
+        [
+            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
+            "— Required: fixture."
+        ],
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_rejects_completion_unblocks_heading_in_stable_card(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    stable = add_stable_card(repository, "TEST-02")
+    stable.write_text(
+        stable.read_text(encoding="utf-8").replace(
+            "## Prerequisites",
+            "## Completion unblocks\n\n- None.\n\n## Prerequisites",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "card heading order/count: "
+            "docs/tasks/cards/TEST-02-stable-card.md"
+        ],
+    )
+
+
+def test_review_and_completed_stable_cards_require_completed_blockers(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    stable = add_stable_card(repository, "TEST-02", state="review")
+    replace_card_section(
+        stable,
+        "Blocked by",
+        [
+            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
+            "— Required: fixture."
+        ],
+    )
+
+    expected = [
+        "active/completed card has incomplete blocker: TEST-02 <- TEST-01"
+    ]
+    assert_failures(repository, cwd=tmp_path, expected=expected)
+
+    stable.write_text(
+        stable.read_text(encoding="utf-8").replace(
+            "State: review", "State: completed", 1
+        ).replace(
+            "## Completion record\n\nNot complete.",
+            "## Completion record\n\nFixture evidence.",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    assert_failures(repository, cwd=tmp_path, expected=expected)
+
+
+def test_completed_stable_card_requires_nonplaceholder_record(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    stable = add_stable_card(repository, "TEST-02", state="completed")
+    stable.write_text(
+        stable.read_text(encoding="utf-8").replace(
+            "## Completion record\n\nFixture text.",
+            "## Completion record\n\nNot complete.",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "placeholder completion record: "
+            "docs/tasks/cards/TEST-02-stable-card.md"
+        ],
+    )
+
+
+def test_retired_stable_card_requires_rationale_and_successor(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    stable = add_stable_card(repository, "TEST-02", state="retired")
+    stable.write_text(
+        stable.read_text(encoding="utf-8").replace(
+            "- Rationale: Fixture retirement.\n- Successor: None.",
+            "Retired without a structured record.",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    assert_failures(
+        repository,
+        cwd=tmp_path,
+        expected=[
+            "retired card requires rationale and successor: "
+            "docs/tasks/cards/TEST-02-stable-card.md"
+        ],
+    )
+
+
+def test_task_status_derives_readiness_and_reverse_edges_without_writes(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            "\n[Task card](docs/tasks/TODO/TEST-01-fixture-card.md)\n", "\n"
+        ),
+        encoding="utf-8",
+    )
+    stable = add_stable_card(repository, "TEST-02")
+    replace_card_section(
+        stable,
+        "Blocked by",
+        [
+            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
+            "— Required: fixture."
+        ],
+    )
+    before = relative_snapshot(repository)
+
+    blocked_result = task_status(repository, cwd=tmp_path)
+
+    assert blocked_result.returncode == 0, blocked_result.stderr
+    assert "| TEST-02 | planned | explicit | no | TEST-01 | — |" in (
+        blocked_result.stdout
+    )
+    assert relative_snapshot(repository) == before
+
+    legacy = card_path(repository)
+    legacy.write_text(
+        legacy.read_text(encoding="utf-8").replace(
+            "# TEST-01 — Fixture card\n\n",
+            "# TEST-01 — Fixture card\n\nState: completed\n\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    ready_result = task_status(repository, cwd=tmp_path)
+    branch_result = run(["git", "checkout", "-q", "-b", "alternate"], cwd=repository)
+    assert branch_result.returncode == 0, branch_result.stderr
+    alternate_result = task_status(repository, cwd=tmp_path)
+
+    assert ready_result.returncode == 0, ready_result.stderr
+    assert ready_result.stdout == alternate_result.stdout
+    assert ready_result.stdout == (
+        "# Task status\n\n"
+        "Generated from card metadata; this output is a view, not registry authority.\n\n"
+        "| ID | State | State source | Ready | Blocked by | Unblocks | Path |\n"
+        "| --- | --- | --- | --- | --- | --- | --- |\n"
+        "| TEST-01 | completed | explicit | — | — | TEST-02 | "
+        "docs/tasks/TODO/TEST-01-fixture-card.md |\n"
+        "| TEST-02 | planned | explicit | yes | TEST-01 | — | "
+        "docs/tasks/cards/TEST-02-stable-card.md |\n"
+    )
+
+
+def test_task_status_fails_closed_on_invalid_registry(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    add_stable_card(repository, "TEST-01")
+
+    result = task_status(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == (
+        "ERROR: Task registry failures:\nduplicate card ID: TEST-01\n"
     )

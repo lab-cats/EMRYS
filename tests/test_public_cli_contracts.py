@@ -205,6 +205,7 @@ RSCRIPT_ONLY_ENTRYPOINTS = R_ENTRYPOINTS - DIRECT_R_ENTRYPOINTS
 
 GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS = frozenset(
     {
+        "task_status.py",
         "validate_documentation.py",
         "validate_fragment_candidate.py",
         "validate_fragment_target.py",
