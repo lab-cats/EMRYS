@@ -12,6 +12,9 @@ defects. Package status and current evidence remain in
 
 Canonical current diagrams:
 
+- [`PIPELINE_OVERVIEW.md`](PIPELINE_OVERVIEW.md) and its
+  [`current_user_pipeline.mmd`](diagrams/current_user_pipeline.mmd) source —
+  scientist-facing explanatory phases mapped to the exact semantic owners;
 - [`diagrams/pipeline.mmd`](diagrams/pipeline.mmd) — grouped system projection;
   it does not replace the exact DAG.
 - [`diagrams/reliability.mmd`](diagrams/reliability.mmd) — publication and

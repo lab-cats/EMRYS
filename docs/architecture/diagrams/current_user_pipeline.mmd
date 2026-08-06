@@ -1,0 +1,39 @@
+flowchart LR
+    reference_contracts["Reference + annotation contracts<br/>FASTA / FAI / GTF / BED12"]
+    run_contracts["Sample + partition + analysis contracts<br/>paired FASTQ / manifests / thresholds"]
+    optional_background["Independent background cohort<br/>(optional)"]
+
+    prepare_reference["Prepare reference<br/>STAR index / BED12 / FASTA sidecars"]
+    align["Align reads"]
+    canonicalize["Canonicalize BAM"]
+    inspect["Inspect QC + mechanical orientation<br/>(non-gating evidence)"]
+    prepare_reads["Prepare read evidence<br/>mark duplicates / split N cigar / partition"]
+    observe["Observe declared cohort<br/>partitioned orientation VCFs"]
+    normalize["Normalize + annotate candidates"]
+    rank["Rank paired candidates<br/>CMH-ranked outputs"]
+    review["Scientific review<br/>(optional)"]
+    evidence["Assemble review evidence"]
+    reporting["Read-only reporting<br/>selected HTML and/or PDF + deterministic summary TSV<br/>validated identity-bound receipt last"]
+
+    reference_contracts --> prepare_reference
+    run_contracts --> align
+    prepare_reference -->|STAR index| align
+    align --> canonicalize
+    canonicalize -.->|BAM/BAI evidence branch| inspect
+    canonicalize --> prepare_reads
+    reference_contracts -.->|FAI continues| prepare_reads
+    prepare_reads --> observe
+    run_contracts -.->|sample + partition manifests continue| observe
+    reference_contracts -.->|FASTA / FAI continue| observe
+    observe --> normalize
+    reference_contracts -.->|GTF continues| normalize
+    run_contracts -.->|manifests continue| normalize
+    normalize --> rank
+    run_contracts -.->|manifests + thresholds continue| rank
+    optional_background -.->|if declared| rank
+    rank --> evidence
+    rank -.->|if explicitly supplied| review
+    review -.->|review record| evidence
+    evidence --> reporting
+
+    dependency_legend["Legend: arrows are data or contract dependencies,<br/>not automatic scheduling"]

@@ -114,5 +114,22 @@ currently make the overall scientific flow hard to grasp.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the approved repository-cleanup tranche. The package:
+
+- added a nine-phase scientist-facing table with an exact mapping to all
+  fourteen canonical semantic owners in `STAGE_MAP.md`;
+- added a standalone Mermaid source whose arrows are explicitly data or
+  contract dependencies rather than automatic scheduling;
+- preserved the required external-input lifetimes, non-gating evidence branch,
+  optional background cohort, optional scientific-review branch, direct
+  rank-to-evidence route, and conditional receipt-last reporting boundary;
+- linked the overview from the root entry point and current architecture while
+  leaving the detailed current diagram unchanged; and
+- changed no executable, schema, command, scientific method, evidence state,
+  runtime, cluster, or biological behavior.
+
+Focused acceptance inspection confirmed all fourteen semantic identities are
+represented exactly once across the nine explanatory phases, the table and
+diagram agree on the main flow and optional branches, and the package passes
+whitespace/error diff checks. The tranche-end documentation gate owns the
+combined-tree link and structural validation.

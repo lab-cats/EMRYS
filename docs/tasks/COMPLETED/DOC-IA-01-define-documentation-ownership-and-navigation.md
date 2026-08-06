@@ -57,7 +57,7 @@ scientific meaning.
 - [DOC-CONS-08H](DOC-CONS-08H-retire-jit-temporary-work-record.md) — Fully: the temporary-record disposition is settled, subject to its live prerequisites.
 - [DOC-REF-02](../TODO/DOC-REF-02-create-glossary.md) — Fully: glossary ownership and navigation will be settled.
 - [DOC-README-03](../TODO/DOC-README-03-establish-directory-readme-coverage.md) — Fully: directory-audience and detail rules will be settled.
-- [DOC-PIPE-04](../TODO/DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the semantic stage map is also required.
+- [DOC-PIPE-04](DOC-PIPE-04-create-user-pipeline-overview.md) — Partially: the semantic stage map is also required.
 - [CODEDOC-05](../TODO/CODEDOC-05-inventory-code-documentation.md) — Partially: an affirmative behavior gate is also required.
 - [CONTEXT-09](../TODO/CONTEXT-09-define-local-maintainer-context.md) — Partially: target topology and README coverage are also required.
 

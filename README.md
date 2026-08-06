@@ -6,7 +6,9 @@ repository-path owners span sample-manifest admission, reference preparation,
 RNA-seq alignment and BAM processing, mechanical-orientation-aware cohort
 candidate generation, paired CMH ranking, evidence assembly, and report
 projection. See the
-[current architecture](docs/architecture/ARCHITECTURE.md) for the system map
+[pipeline overview](docs/architecture/PIPELINE_OVERVIEW.md) for the
+scientist-facing flow, the
+[current architecture](docs/architecture/ARCHITECTURE.md) for the system map,
 and [`STAGE_MAP.md`](src/norad/contracts/STAGE_MAP.md) for exact owner identities
 and dependency edges. NORAD does not yet provide a single workflow orchestrator
 or installed command-line application.
