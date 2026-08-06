@@ -63,7 +63,6 @@ JOB_PATHS = {
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
         "step_09_cmh_editing_site_calling.slurm"
     ),
-    "template.slurm": Path("jobs/template.slurm"),
     "tool_check.slurm": Path(
         "src/norad/evidence/runtime_preflight/tool_check.slurm"
     ),
@@ -271,24 +270,6 @@ CONTRACTS = {
         output_validation="wrapper_files",
         exit_propagation="strict",
     ),
-    "template.slurm": WrapperContract(
-        default="lightweight_probe",
-        execute="not_applicable",
-        invalid_mode="not_applicable",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=(
-            "list",
-            "load star/2.7.11b",
-            "load samtools/1.19.2",
-            "load picard/3.1.1",
-            "load python39",
-            "list",
-        ),
-        submit_cwd="caller",
-        delegation="future_template_placeholder",
-        output_validation="probe_only",
-        exit_propagation="strict",
-    ),
     "tool_check.slurm": WrapperContract(
         default="lightweight_probe",
         execute="not_applicable",
@@ -438,14 +419,6 @@ SBATCH_DIRECTIVES = {
         "#SBATCH --export=ALL,TMPDIR=/tmp",
         "#SBATCH --output=logs/%x-%j.out",
         "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "template.slurm": (
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --job-name=norad-template",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=01:00:00",
-        "#SBATCH --cpus-per-task=4",
     ),
     "tool_check.slurm": (
         "#SBATCH --job-name=norad-tool-check",
@@ -1189,7 +1162,7 @@ def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
     assert live_flat_jobs == expected_flat_jobs
     assert set(JOB_PATHS) == set(CONTRACTS) == set(SBATCH_DIRECTIVES)
     assert all(job_path(name).is_file() for name in CONTRACTS)
-    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 16
+    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 15
     for contract in CONTRACTS.values():
         assert all(getattr(contract, field.name) for field in fields(contract))
 
@@ -2574,17 +2547,10 @@ def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, st
 
 
 UTILITY_JOBS = (
-    "template.slurm",
     "tool_check.slurm",
     "validate_manifest.slurm",
 )
 UTILITY_TOOL_CALLS = {
-    "template.slurm": (
-        "python\t--version",
-        "STAR\t--version",
-        "samtools\t--version",
-        "java\t-version",
-    ),
     "tool_check.slurm": (
         "python\t--version",
         "STAR\t--version",
