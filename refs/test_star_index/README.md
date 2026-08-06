@@ -1,7 +1,6 @@
 # Local STAR-index fixture path
 
-This directory preserves the local STAR-index path named by
-[`configs/local_test.yaml`](../../configs/local_test.yaml) and the Step `01`
+This directory preserves the local STAR-index path named by the Step `01`
 dry-run contract. The tracked README is not a valid STAR index and supplies no
 runtime, cluster, scientific, or biological evidence.
 

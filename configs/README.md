@@ -9,7 +9,6 @@ or executable orchestrator for the whole directory.
 
 | Area | Tracked inputs | Consumer and status |
 | --- | --- | --- |
-| Deferred workflow profiles | [`cluster_full.yaml.example`](cluster_full.yaml.example), [`local_test.yaml`](local_test.yaml) | Illustrative cluster and local layouts retained under the [deferred-profile disposition](../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage). No current executable orchestrator consumes either profile. |
 | Sample-manifest starter | [`samples.example.tsv`](samples.example.tsv) | Structural two-row public input for the final [sample-manifest admission owner](../src/norad/ingestion/sample_manifest_admission/README.md). Make and the scheduler smoke job schema-check it without FASTQ existence checks; it is not an ingestion runner, runtime manifest, or runnable data fixture. |
 | Artifact and report projection | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json), [`report_table_approvals.example.tsv`](report_table_approvals.example.tsv) | Synthetic structural inputs for the [reporting owner](../src/norad/reporting/README.md). The [neutral artifact-contract validator](../src/norad/contracts/artifacts/validate_artifact_contracts.py) also accepts an explicit inventory for bounded contract checks. They are fixtures/examples, not a production inventory, run contract, approval, or report. |
 | Reference provenance | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) | Structural starter for the [reference-provenance evidence owner](../src/norad/evidence/reference_provenance/README.md). Replace illustrative paths, hashes, releases, and provenance in an operator-controlled input. |
@@ -42,8 +41,7 @@ input, publication, and review-policy behavior:
 
 This catalog defines no file schema, default, validation behavior, selection,
 or evidence authority. Each group routes to its implemented owner, neutral
-contract, or explicit deferred disposition. The deferred profiles have no
-supported execution semantics, and the Step `09` pairing file remains
+contract, or explicit reference boundary. The Step `09` pairing file remains
 reference-only. Exact commands and preparation rules live in the
 [`RUNBOOK`](../docs/operations/RUNBOOK.md); current evidence state lives in
 [`HANDOFF.md`](../docs/operations/HANDOFF.md). The durable placement rule for
