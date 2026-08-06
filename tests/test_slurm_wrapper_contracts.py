@@ -65,7 +65,9 @@ JOB_PATHS = {
     ),
     "template.slurm": Path("jobs/template.slurm"),
     "tool_check.slurm": Path("jobs/tool_check.slurm"),
-    "validate_manifest.slurm": Path("jobs/validate_manifest.slurm"),
+    "validate_manifest.slurm": Path(
+        "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"
+    ),
 }
 
 
@@ -309,7 +311,9 @@ CONTRACTS = {
         module_policy="strict",
         module_calls=("load python39",),
         submit_cwd="caller",
-        delegation="scripts/validate_manifest.py",
+        delegation=(
+            "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
+        ),
         output_validation="child_exit_only",
         exit_propagation="strict",
     ),
@@ -2588,7 +2592,7 @@ UTILITY_TOOL_CALLS = {
     ),
     "validate_manifest.slurm": (
         "python\t--version",
-        "python\tscripts/validate_manifest.py\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
+        "python\tsrc/norad/ingestion/sample_manifest_admission/validate_manifest.py\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
     ),
 }
 

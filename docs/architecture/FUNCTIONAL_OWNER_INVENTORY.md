@@ -44,7 +44,7 @@ scientific stages.
 
 | Current functional owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
-| Intake contract validation | [`validate_manifest.py`](../../scripts/validate_manifest.py), [`validate_manifest.slurm`](../../jobs/validate_manifest.slurm), [`samples.example.tsv`](../../configs/samples.example.tsv), Make `validate` in the [`Makefile`](../../Makefile) | [`test_validate_manifest.py`](../../tests/test_validate_manifest.py), [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). This validates current manifest input; it is not an ingestion runner. |
+| Sample-manifest admission | Final owner [`sample_manifest_admission/`](../../src/norad/ingestion/sample_manifest_admission/README.md) with `validate_manifest.py`, `check_fastq_pairs.sh`, and `validate_manifest.slurm`; public starter [`samples.example.tsv`](../../configs/samples.example.tsv); Make `validate` in the [`Makefile`](../../Makefile) | Mirrored [`test_validate_manifest.py`](../../tests/ingestion/sample_manifest_admission/test_validate_manifest.py) and [`test_check_fastq_pairs.py`](../../tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py), plus [wrapper contracts](../../tests/test_slurm_wrapper_contracts.py) and [public CLI contracts](../../tests/test_public_cli_contracts.py). This validates the base manifest and an explicitly selected FASTQ pair; it is not an ingestion runner. |
 | Reference provenance evidence | Final owner [`reference_provenance.py`](../../src/norad/evidence/reference_provenance/reference_provenance.py), public starter [`reference_provenance.example.tsv`](../../configs/reference_provenance.example.tsv) | Mirrored [`test_reference_provenance.py`](../../tests/evidence/reference_provenance/test_reference_provenance.py). This inventories declared reference identity and consistency without repairing reference artifacts. Through completed [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) and [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md), it occupies its final evidence home and consumes the one neutral `reference_contigs` identity shared with the final Step `00c`/`05` validators while consumer-specific aggregation and evidence remain local. |
 | Structured runtime inspection | Final owner [`runtime_preflight.py`](../../src/norad/evidence/runtime_preflight/runtime_preflight.py), public starter [`runtime_preflight.example.tsv`](../../configs/runtime_preflight.example.tsv) | Mirrored [`test_runtime_preflight.py`](../../tests/evidence/runtime_preflight/test_runtime_preflight.py). Through completed [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md), the command and direct suite occupy their final evidence-owner homes. Profile-driven availability evidence does not establish workflow runtime or cluster proof. |
 | Legacy manual cluster probe | [`tool_check.slurm`](../../jobs/tool_check.slurm) | [Wrapper contracts](../../tests/test_slurm_wrapper_contracts.py). It emits scheduler logs rather than a structured runtime-preflight transaction and is not a compute stage. |
@@ -79,19 +79,19 @@ pipeline owner graph but still receive one owner:
 remaining shared/root test surfaces, top-level developer inputs, project
 environment anchors, and intentional operational placeholders. Its audit-time
 87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
-separately owned temporary record, the 90 current paths are partitioned once
-below. Counts are inspection checks, not a permanent repository-size baseline;
-each later tracked-root change, owner migration, or retirement updates this
-current inventory.
+separately owned temporary record and sample-manifest admission moved four
+implementation/test paths to its final owner, the 86 current residual paths
+are partitioned once below. Counts are inspection checks, not a permanent
+repository-size baseline; each later tracked-root change, owner migration, or
+retirement updates this current inventory.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
 | `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
-| The 26 `RETAIN_ROOT` public input/reference files under root `configs/`, excluding the separately deferred sample-manifest starter and profiles: three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 26 | Public operator/reference inputs retained at root; they are not owner-native implementation assets. |
+| The 27 `RETAIN_ROOT` public input/reference files under root `configs/`, excluding only the two deferred profiles: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | Public operator/reference inputs retained at root; they are not owner-native implementation assets. |
 | `tests/baselines/python_coverage.json`; `tests/test_python_coverage_baseline.py`; `tests/test_validation_orchestrator.py`; both `tests/tools/` files; `tests/test_public_cli_contracts.py` and its two fixture paths | 8 | Repository quality-gate, coverage, and cross-entry-point command infrastructure retained at repository level. The public-command suite spans Make, Git tooling, modes, and multiple runtime domains, so it is not a neutral artifact-contract integration test. |
 | `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `configs/README.md`; `scripts/README.md`; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 22 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level; the five dependency/test configuration files have a canonical [purpose map](../operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration). |
-| `scripts/validate_manifest.py`; `jobs/validate_manifest.slurm`; `configs/samples.example.tsv`; `tests/test_validate_manifest.py`; `tests/data_checks/check_fastq_pairs.sh` | 5 | Deferred ingestion/admission family; current validator behavior remains supported but no ingestion runner exists. |
 | `jobs/{template.slurm,tool_check.slurm}`; `tests/test_slurm_wrapper_contracts.py` | 3 | Deferred scheduler family and mixed wrapper characterization. Owner-specific scheduler assets already remain with their functional owners. |
 | `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | Deferred runtime orchestration/profile inputs; no executable orchestrator exists. |
 | `tests/data_checks/validate_step05_outputs.sh` | 1 | Permanent repository-level operational inspection utility through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md). It uniquely retains optional scheduler-state lookup, six-sample/cohort status aggregation, output-size and scratch inspection, additional `LB`/`PL` read-group requirements, a best-effort persisted twelve-column TSV snapshot, and aggregate exit `0`/`1`/`2` behavior not supplied by the final Step `05` validator. The duplicate truncating `tee` writers and silent replacement remain characterized defects. |
@@ -101,17 +101,17 @@ Completed
 recomputed eleven groups and 87 unique paths at its audit boundary: 76
 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
 [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
-later retired that one temporary path after no-loss disposition. The ten
-current groups contain `5`, `17`, `26`, `8`, `22`, `5`, `3`, `2`, `1`, and `1`
-paths: 90 total, 90 unique, 80 `RETAIN_ROOT`, 10 `DEFER`, and no current
+later retired that one temporary path after no-loss disposition. The nine
+current groups contain `5`, `17`, `27`, `8`, `22`, `3`, `2`, `1`, and `1`
+paths: 86 total, 86 unique, 81 `RETAIN_ROOT`, 5 `DEFER`, and no current
 `RETIRE`. The source-topology campaign remains complete at the local/static
 evidence ceiling; this inventory does not close the broader modernization
 backlog.
 
 The table does not reclassify already final owner-local paths under
 `src/norad/` or mirrored `tests/stages/`, `tests/analyses/`,
-`tests/evidence/`, `tests/libraries/`, and `tests/contract_integration/`. Root
-callers such as `Makefile`,
+`tests/evidence/`, `tests/ingestion/`, `tests/libraries/`, and
+`tests/contract_integration/`. Root callers such as `Makefile`,
 coverage rows, command rosters, and current documentation remain integration
 surfaces to update atomically when a `MOVE` unit is approved; their own
 repository-level ownership does not change.
@@ -145,10 +145,10 @@ the table above remains the current executable-surface roster.
 
 ## Coverage result
 
-The protected current roster contains 25 public Python entry points (two under
-`scripts/` and 23 final owner-local entry points), 13 final owner-local shell
+The protected current roster contains 25 public Python entry points (one under
+`scripts/` and 24 final owner-local entry points), 14 final owner-local shell
 entry points, 4 R entry points, 7 Git-orchestration entry points, 16 SLURM jobs
-(three under `jobs/` and 13 final owner-local jobs), and 24 public Make targets.
+(two under `jobs/` and 14 final owner-local jobs), and 24 public Make targets.
 Every member is assigned once
 above. The reporting-private Python module, three neutral library sources, four
 neutral contract implementation sources, and three private orchestration files

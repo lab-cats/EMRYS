@@ -26,7 +26,7 @@ module load python39
 python --version
 
 # Run the manifest validator with repository-relative paths.
-python scripts/validate_manifest.py \
+python src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
   --manifest configs/samples.example.tsv \
   --base-dir .
 

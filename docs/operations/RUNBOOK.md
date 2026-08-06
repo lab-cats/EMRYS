@@ -330,7 +330,7 @@ mkdir -p logs
 Run a lightweight manifest-validation smoke job after cloning or pulling:
 
 ```bash
-sbatch jobs/validate_manifest.slurm
+sbatch src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm
 ```
 
 ### SLURM
@@ -3842,7 +3842,8 @@ Use `configs/step_09_pairs.NORAD_EV_PUM1.tsv` only as a reference while editing
 the full manifest; it is not a runtime overlay. Validate the full manifest:
 
 ```bash
-python scripts/validate_manifest.py --manifest samples.tsv
+python src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
+  --manifest samples.tsv
 head -1 samples.tsv
 sed -n '1,8p' configs/step_09_pairs.NORAD_EV_PUM1.tsv
 sha256sum samples.tsv 2>/dev/null || shasum -a 256 samples.tsv

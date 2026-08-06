@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Operator-run real-data check; do not include in default regression tests.
+# Real-data execution is operator-run; default regression uses generated fixtures.
 set -euo pipefail
 
 usage() {
     cat <<'USAGE'
 Usage:
-  tests/data_checks/check_fastq_pairs.sh \
+  src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
     --r1-fastq R1_FASTQ \
     --r2-fastq R2_FASTQ \
     [--sample-id SAMPLE_ID] \
@@ -13,7 +13,7 @@ Usage:
 
 Validate that paired FASTQ files have matching read IDs and read counts.
 
-This is an operator-run real-data check, not a default regression test.
+Real-data execution is operator-run; default regression uses generated fixtures.
 
 Required arguments:
   --r1-fastq    Path to read 1 FASTQ or FASTQ.GZ file.

@@ -2,9 +2,10 @@
 
 NORAD modernizes a legacy Novogene Remora workflow as maintainable research
 software for local characterization and CSU SLURM execution. Its implemented
-repository-path owners span reference preparation, RNA-seq alignment and BAM
-processing, mechanical-orientation-aware cohort candidate generation, paired
-CMH ranking, evidence assembly, and report projection. See the
+repository-path owners span sample-manifest admission, reference preparation,
+RNA-seq alignment and BAM processing, mechanical-orientation-aware cohort
+candidate generation, paired CMH ranking, evidence assembly, and report
+projection. See the
 [current architecture](docs/architecture/ARCHITECTURE.md) for the system map
 and [`STAGE_MAP.md`](src/norad/contracts/STAGE_MAP.md) for exact owner identities
 and dependency edges. NORAD does not yet provide a single workflow orchestrator
@@ -31,6 +32,7 @@ production references may remain operator- or cluster-local.
    This checks manifest structure only. It does not require the example FASTQ
    paths to exist, run ingestion, or establish a runnable data fixture.
 3. Choose the applicable owner through the
+   [sample-manifest admission index](src/norad/ingestion/README.md),
    [transformation-stage index](src/norad/stages/README.md),
    [analysis owner](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md),
    [evidence index](src/norad/evidence/README.md), or
@@ -74,12 +76,13 @@ scientific policy explicitly unlocks it.
 
 | Path | Purpose |
 | --- | --- |
+| [`src/norad/ingestion/`](src/norad/ingestion/README.md) | Bounded sample-manifest admission, paired-FASTQ diagnostics, and the manifest scheduler smoke check; no ingestion runner. |
 | [`src/norad/stages/`](src/norad/stages/README.md) | Transformation owners and their local producer, validator, scheduler, and contract routes. |
 | [`src/norad/analyses/`](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md), [`src/norad/evidence/`](src/norad/evidence/README.md), [`src/norad/reporting/`](src/norad/reporting/README.md) | Paired-CMH analysis, evidence operations, and report projection. |
 | [`src/norad/contracts/`](src/norad/contracts/) and [`src/norad/libraries/`](src/norad/libraries/README.md) | Neutral schemas, validators, topology maps, and explicitly shared libraries. |
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
-| [`scripts/`](scripts/README.md) | Cross-cutting manifest validation, dependency lifecycle, documentation, and Git tooling. |
-| [`jobs/`](jobs/) | Repository-level manifest validation and generic scheduler utilities; owner-specific wrappers live beside their owners under `src/norad/`. |
+| [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
+| [`jobs/`](jobs/) | Remaining generic scheduler template and probe; functional wrappers live beside their owners under `src/norad/`. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
 | [`docs/`](docs/sitemap/README.md) | Architecture, operations, design, task, history, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |

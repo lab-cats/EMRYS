@@ -26,7 +26,7 @@ def summary(lines: tuple[int, int], branches: tuple[int, int]) -> dict[str, int]
 
 def raw_document() -> dict[str, object]:
     files = {
-        "scripts/validate_manifest.py": {
+        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py": {
             "summary": summary((90, 100), (36, 40))
         },
         "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py": {
@@ -78,9 +78,9 @@ def test_snapshot_requires_branch_and_subprocess_coverage() -> None:
         TOOL.build_snapshot(no_branches)
 
     no_subprocess = raw_document()
-    no_subprocess["files"]["scripts/validate_manifest.py"]["summary"] = summary(
-        (0, 100), (0, 40)
-    )
+    no_subprocess["files"][
+        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
+    ]["summary"] = summary((0, 100), (0, 40))
     no_subprocess["totals"]["covered_lines"] -= 90
     no_subprocess["totals"]["covered_branches"] -= 36
     with pytest.raises(TOOL.SnapshotError, match="Subprocess coverage"):

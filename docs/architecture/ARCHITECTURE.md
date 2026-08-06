@@ -20,12 +20,13 @@ Canonical current diagrams:
 ## Conceptual current system
 
 All fourteen numbered workflow, analysis, and evidence owners occupy their
-final functional homes under `src/norad/`. Implemented artifact contracts,
-reporting, and reference/runtime/storage evidence also occupy their approved
-cross-cutting homes. Interfaces intentionally retained at repository level, or
-deferred scheduler, ingestion, orchestration, and profile work, remain
-classified in the inventory; their presence is not an unfinished flat-source
-migration or proof that every target domain exists.
+final functional homes under `src/norad/`. Implemented sample-manifest
+admission, artifact contracts, reporting, and reference/runtime/storage
+evidence also occupy their approved cross-cutting homes. Interfaces
+intentionally retained at repository level, and deferred scheduler, broader
+ingestion-lifecycle, orchestration, and profile work, remain classified in the
+inventory; their presence is not an unfinished flat-source migration or proof
+that every target capability exists.
 
 The supported workflow is a directed graph of explicit reference and read
 inputs, per-sample alignment and BAM transformations, non-gating QC and
@@ -81,6 +82,12 @@ readiness evidence.
 Sample, condition, order, and replicate pairing come from the declared sample
 manifest. The partition manifest defines Step `07` selection. Reference,
 analysis, review-plan, and evidence identities are explicit inputs.
+
+The bounded ingestion owner validates the base manifest shape, optionally
+checks declared path existence, and provides a separate paired-FASTQ
+diagnostic. It does not normalize or freeze a request, manage lifecycle state,
+or execute the pipeline; stricter downstream manifest refinements remain with
+their consuming contracts.
 
 Owners consume declared paths, artifacts, and receipts. They do not infer
 samples, partitions, report tables, or scientific evidence from filenames,

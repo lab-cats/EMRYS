@@ -167,10 +167,12 @@ ownership only; no listed file is moved by this topology contract.
 ## Cross-cutting implemented target homes
 
 The numbered-owner roster above does not classify implemented cross-cutting
-concerns. This table remains the owner of their final homes after movement;
-all five rows occupy those homes through completed `MIG-04A`, `RPT-05A`,
-`MIG-04B`, `MIG-04C`, and `MIG-04D`. Each move used the same direct, one-owner
-mechanics without inventing a new top-level domain.
+concerns. This table remains the owner of their final homes after movement.
+The first five rows occupy those homes through completed `MIG-04A`, `RPT-05A`,
+`MIG-04B`, `MIG-04C`, and `MIG-04D`; sample-manifest admission occupies its
+declared ingestion home through the approved residual-convergence queue. Each
+move used the same direct, one-owner mechanics without inventing a new
+top-level domain.
 
 | Current functional owner | Exact target source home | Owned native assets | Mirrored test home |
 | --- | --- | --- | --- |
@@ -179,6 +181,7 @@ mechanics without inventing a new top-level domain.
 | Reference provenance evidence | `src/norad/evidence/reference_provenance/reference_provenance.py` | The current public evidence command; its shared parsers are final under the neutral seam below | `tests/evidence/reference_provenance/test_reference_provenance.py` |
 | Structured runtime inspection | `src/norad/evidence/runtime_preflight/runtime_preflight.py` | The current explicit-profile, read-only inspection command | `tests/evidence/runtime_preflight/test_runtime_preflight.py` |
 | Storage evidence | `src/norad/evidence/storage_inventory/storage_inventory.py` | The current read-only inventory command; retention action remains prohibited | `tests/evidence/storage_inventory/test_storage_inventory.py` |
+| Sample-manifest admission | `src/norad/ingestion/sample_manifest_admission/` | Manifest validator, paired-FASTQ diagnostic, and functional-owner SLURM smoke wrapper; the public starter remains under root `configs/` | `tests/ingestion/sample_manifest_admission/`; scheduler-wrapper characterization remains repository-level |
 
 ## Approved neutral shared seams
 

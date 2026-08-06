@@ -173,8 +173,9 @@ and frozen proposal presence does not authorize selection or implementation.
 ### Residual source-topology convergence
 
 The audit froze an exact 87-path residual roster. After completed
-`DOC-CONS-08H` retired its sole temporary `RETIRE` path, the exact 90-path
-current residual roster is owned by the
+`DOC-CONS-08H` retired its sole temporary `RETIRE` path and the approved queue
+moved four sample-admission implementation/test paths to their final owner, the
+exact 86-path current residual roster is owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
@@ -194,12 +195,12 @@ disposition.
 | Independent contract goldens | `MOVE` complete through [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md) | The direct suite and eight fixture/provenance files occupy `tests/contract_integration/independent_contract_goldens/` with byte-identical fixtures, no nested fixture owner, and no compatibility path. |
 | Validation-roster agreement | `MOVE` complete through [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md) | The suite/helper occupy `tests/contract_integration/validation_rosters/`, all fourteen exact-file callers load the final helper directly, and no compatibility or package surface exists. |
 | Dependency-lifecycle commands and tests | `RETAIN_ROOT` | Remain explicit repository setup/operator interfaces; revisit only through a separately approved setup-ownership decision. |
-| Public config examples, operator selections, and reference schemas, excluding the separately deferred sample-manifest starter and workflow profiles | `RETAIN_ROOT` | Move only if a later inspected contract proves that one is implementation-native rather than an explicit user input. |
+| Public config examples, operator selections, and reference schemas, excluding only the deferred workflow profiles | `RETAIN_ROOT` | The sample-manifest starter now remains here as the public input to its final admission owner. Move another asset only if a later inspected contract proves it implementation-native rather than an explicit user input. |
 | Documentation/Git orchestration, public-command characterization, quality gates, coverage, and root project anchors | `RETAIN_ROOT` | Repository-development and cross-entry-point protections remain outside runtime domains. |
 | Legacy Step `05` operational output checker | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-05A`](../tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md) | `tests/data_checks/validate_step05_outputs.sh` remains unchanged at its permanent current repository-level owner. Its optional scheduler-state, cohort-status, output-size, scratch, additional `LB`/`PL` read-group requirements, best-effort TSV, and aggregate-exit behavior is distinct from the final stage validator; known duplicate-`tee` and silent-replacement defects remain characterized. |
 | Pending Step `04` scaffold | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged: pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
 | Temporary `work/active/JIT-01.md` record | `RETIRE` complete through [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Record is absent. Former Slice `7A` routes to completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md); the read-only batch-intake proposal input routes to nonselectable [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md). This was documentation cleanup, not source migration. |
-| Manifest admission, FASTQ pair check, and manifest wrapper | `DEFER` | Resume only with explicit ingestion work; no ingestion executor exists. |
+| Manifest admission, FASTQ pair check, and manifest wrapper | `MOVE` complete through the approved residual-convergence queue | The validator, paired-FASTQ diagnostic, wrapper, and mirrored direct tests occupy `src/norad/ingestion/sample_manifest_admission/` and `tests/ingestion/sample_manifest_admission/`; all repository callers use the final path, the public starter remains under `configs/`, and no ingestion executor exists. |
 | Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
 | Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
 

@@ -46,15 +46,6 @@
       "path": "scripts/restore_quarto.py"
     },
     {
-      "branch_rate": "0.769231",
-      "covered_branches": 40,
-      "covered_lines": 100,
-      "line_rate": "0.900901",
-      "num_branches": 52,
-      "num_statements": 111,
-      "path": "scripts/validate_manifest.py"
-    },
-    {
       "branch_rate": "0.838235",
       "covered_branches": 57,
       "covered_lines": 232,
@@ -152,6 +143,15 @@
       "num_branches": 106,
       "num_statements": 281,
       "path": "src/norad/evidence/storage_inventory/storage_inventory.py"
+    },
+    {
+      "branch_rate": "0.769231",
+      "covered_branches": 40,
+      "covered_lines": 100,
+      "line_rate": "0.900901",
+      "num_branches": 52,
+      "num_statements": 111,
+      "path": "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
     },
     {
       "branch_rate": "1.000000",
@@ -349,7 +349,7 @@
     },
     "required_subprocess_coverage": [
       "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
-      "scripts/validate_manifest.py"
+      "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
     ]
   },
   "schema_version": "1.0.0",

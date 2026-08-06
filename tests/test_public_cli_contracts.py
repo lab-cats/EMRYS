@@ -53,7 +53,9 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_manifest.py": Path("scripts/validate_manifest.py"),
+    "validate_manifest.py": Path(
+        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
+    ),
     "validate_step_00a_star_index.py": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     ),
@@ -122,6 +124,9 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 
 SHELL_ENTRYPOINT_PATHS = {
+    "check_fastq_pairs.sh": Path(
+        "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
+    ),
     "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/construct_FASTA_sidecars/"

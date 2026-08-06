@@ -3,8 +3,15 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "validate_manifest.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "ingestion"
+    / "sample_manifest_admission"
+    / "validate_manifest.py"
+)
 
 
 def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path:

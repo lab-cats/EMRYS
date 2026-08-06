@@ -38,9 +38,9 @@ The active comparison policy:
 Coverage uses branch and subprocess measurement over exactly `scripts` and
 `src/norad`, and must include
 `src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py` and
-`scripts/validate_manifest.py`. Low numerical coverage is a review signal; it
-is not by itself proof of a user-visible defect or authority to change
-behavior.
+`src/norad/ingestion/sample_manifest_admission/validate_manifest.py`. Low
+numerical coverage is a review signal; it is not by itself proof of a
+user-visible defect or authority to change behavior.
 
 The tracked Step `00c` validator row resolves to
 `src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py`.
