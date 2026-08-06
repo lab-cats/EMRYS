@@ -32,6 +32,25 @@ else
     exit 0
 fi
 
+step08_engine="$repo_root/src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R"
+foreign_help_cwd="$(mktemp -d "${TMPDIR:-/tmp}/norad-step08-help.XXXXXX")"
+cleanup_help_cwd() {
+    rmdir "$foreign_help_cwd" 2>/dev/null || true
+}
+trap cleanup_help_cwd EXIT
+step08_help="$(
+    cd "$foreign_help_cwd"
+    "$rscript_bin" "$step08_engine" --help
+)"
+[[ "$step08_help" == *"Usage:"* ]] || {
+    printf 'ERROR: Step 08 --help output is missing its usage line.\n' >&2
+    exit 1
+}
+[[ "$step08_help" == *"--cohort-id"* ]] || {
+    printf 'ERROR: Step 08 --help output is missing --cohort-id.\n' >&2
+    exit 1
+}
+
 if ! "$rscript_bin" -e '
 required <- c(
     "VariantAnnotation", "GenomicRanges", "IRanges", "S4Vectors",
@@ -50,15 +69,5 @@ if (length(missing) > 0L) {
 '; then
     exit 1
 fi
-
-step08_help="$("$rscript_bin" src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R --help)"
-[[ "$step08_help" == *"Usage:"* ]] || {
-    printf 'ERROR: Step 08 --help output is missing its usage line.\n' >&2
-    exit 1
-}
-[[ "$step08_help" == *"--cohort-id"* ]] || {
-    printf 'ERROR: Step 08 --help output is missing --cohort-id.\n' >&2
-    exit 1
-}
 
 "$rscript_bin" tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.R "$rscript_bin"

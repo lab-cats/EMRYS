@@ -20,6 +20,14 @@ This directory is the implemented native owner for semantic stage
   tests. Scheduler behavior remains independently owned by the central
   [wrapper-contract suite](../../../../tests/test_slurm_wrapper_contracts.py).
 
+The owner-private
+[`_step_08_input_contract.R`](_step_08_input_contract.R) contains only the
+argument, path, manifest, selector, and partition-admission helpers used by the
+public R program. The entry point resolves that sibling from Rscript's own
+`--file=` invocation path and loads it into the existing program environment;
+it does not search the caller's working directory for the sibling, change that
+directory, load packages, or add another public command.
+
 No installed command, package import, compatibility wrapper, legacy path,
 symlink, ambient `PYTHONPATH`, or global `sys.path` mutation is supported.
 

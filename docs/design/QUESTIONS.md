@@ -132,19 +132,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   standard discovery/install location, and keep repository-specific reference
   material linked rather than inventing `docs/skills/`.
 
-### CHOICE-SIZE-01 — Step 08 R decomposition or explicit exception
-
-- **Question:** Can the oversized Step `08` R module be reduced through a
-  demonstrably non-algorithmic seam, or must it receive a time-bounded exception?
-- **Why it matters:** the mandatory size rule conflicts with the prohibition on
-  unapproved scientific-algorithm refactoring.
-- **Owning card:**
-  [`SIZE-07E`](../tasks/TODO/SIZE-07E-resolve-step08-r-module-size.md).
-- **Decision deadline:** before any Step `08` structural edit.
-- **Recommendation:** extract only proven-neutral argument/I/O/publication seams
-  with exact real-R parity; otherwise record an explicit exception until
-  runtime/scientific evidence and authorization exist.
-
 ### CHOICE-ANALYSIS-01 — Analysis module trust and registration model
 
 - **Question:** How should exploratory custom analyses differ from registered
@@ -244,6 +231,7 @@ the linked owner.
 | `CHOICE-TRANCHE-VIEW-01` | [Rolling vertical delivery](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery) | `PROGRAM-01` |
 | `CHOICE-STAGE-01` | [Semantic identities and DAG order](DECISIONS.md#identify-stages-semantically-and-order-them-with-a-dag) | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
 | `CHOICE-ARCH-01` | [Vertical ownership and direct migration](DECISIONS.md#target-a-vertical-package-with-direct-contract-preserving-migrations) | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |
+| `CHOICE-SIZE-01` | Non-algorithmic Step `08` input/admission extraction; no size exception | [`SIZE-07E`](../tasks/COMPLETED/SIZE-07E-resolve-step08-r-module-size.md) |
 | `CHOICE-LOG-01`; `CHOICE-LOG-02` | [Concise console plus durable logs](DECISIONS.md#separate-concise-console-output-from-durable-detailed-logs) | [Logging target](../architecture/FUTURE_ARCHITECTURE.md#logging-target) |
 | `CHOICE-DOC-01`; `CHOICE-DOC-GATE-01` | [Documentation as architecture](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture) | [Ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md) and `DOC-GATE-01` |
 | Scientific workflow and evidence | [Reference/BAM](DECISIONS.md#reference-and-bam-pipeline), [orientation/analysis](DECISIONS.md#orientation-and-downstream-analysis), and [evidence state](DECISIONS.md#evidence-and-scientific-state) | `STAGE_MAP.md` and local contracts |

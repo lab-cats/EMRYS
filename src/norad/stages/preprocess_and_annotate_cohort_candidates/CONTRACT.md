@@ -91,6 +91,15 @@ owns semantic parsing, candidate construction, provisional orientation policy,
 annotation, and deterministic TSV generation. The shell owns orchestration,
 validation, locking, and publication.
 
+The canonical R facade requires its adjacent owner-private
+[`_step_08_input_contract.R`](_step_08_input_contract.R). It resolves that
+sibling from Rscript's exact `--file=` entry path and sources its argument,
+path, manifest, selector, and partition-admission helpers into the existing
+program environment. The shell's `--r-script` option and `STEP08_R_SCRIPT`
+environment override replace the whole R program for diagnostics; they do not
+override the private helper independently, so a replacement owns its complete
+implementation and dependency behavior.
+
 [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
 owns cluster defaults, modules and optional repository-local R environment,
 execution gating, delegation, and final path checks.

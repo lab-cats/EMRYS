@@ -23,7 +23,7 @@ silently override scientific safety.
 
 ## Blocked by
 
-- [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
+- None.
 
 ## Completion unblocks
 
@@ -46,7 +46,7 @@ silently override scientific safety.
 
 ## Questions owned by this card
 
-- [`CHOICE-SIZE-01`](../../design/QUESTIONS.md#choice-size-01--step-08-r-decomposition-or-explicit-exception).
+- Resolved [`CHOICE-SIZE-01`](../../design/QUESTIONS.md#resolved-index).
 
 ## In scope
 
@@ -85,5 +85,37 @@ silently override scientific safety.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the explicitly approved PI-readiness tranche through the
+non-algorithmic extraction path; no size exception was required. The
+target-only refresh measured
+`src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R`
+at 1,939 lines and 69,505 bytes. The public R program owns declared Step `07`
+input admission, annotation and feature handling, allele/orientation and VCF
+processing, Step `07` receipt reconciliation, deterministic three-table
+serialization, and main orchestration. Its direct callers are the adjacent
+shell transaction owner, the SLURM wrapper through that shell, the guarded
+real-R fixtures, and explicit diagnostic direct invocation.
+
+The exact original `ARGUMENT_NAMES` plus the 22-function argument, path,
+manifest, selector, region, and partition-admission block now live unchanged in
+the adjacent 524-line owner-private `_step_08_input_contract.R`. The public
+facade is 1,454 lines and resolves the required sibling from Rscript's exact
+`--file=` path before `main`, with no working-directory search/change or
+package-loading side effect. The shell's `--r-script` and `STEP08_R_SCRIPT`
+routes remain whole-program diagnostic replacements.
+
+All annotation, allele, orientation, VCF transformation, serialization,
+reconciliation, and main bodies remain text-identical in the public file. The
+remaining facade exceeds the 1,000-line planning threshold but is retained as
+one cohesive scientifically sensitive implementation/serialization boundary:
+further extraction would enter algorithms explicitly barred from this slice,
+while the file is now below the mandatory 1,500-line threshold. The helper is
+below 600 lines.
+
+Focused local evidence passed on the final tree: the guarded `NORAD_USE_RENV`
+real-R semantic, deterministic-output, and negative-fixture suite; the fake
+shell/transaction suite; 17 Python validator tests; 16 targeted SLURM cases;
+both R parses; Bash syntax; root and foreign-CWD help; no-argument and missing-
+sibling errors; exact moved-block/scientific-suffix parity; mode checks; and
+`git diff --check`. This is local fixture/runtime parity only and adds no
+production-scale, cluster, scientific-review, or biological proof.

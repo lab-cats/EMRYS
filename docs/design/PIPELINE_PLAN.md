@@ -63,13 +63,13 @@ The approved tranche is deliberately narrow:
 2. complete [`SIZE-07A`](../tasks/COMPLETED/SIZE-07A-decompose-artifact-index-builder.md),
    [`SIZE-07B`](../tasks/COMPLETED/SIZE-07B-decompose-scientific-validation-tooling.md),
    [`SIZE-07D`](../tasks/COMPLETED/SIZE-07D-decompose-run-summary-builder.md),
-   [`SIZE-07E`](../tasks/TODO/SIZE-07E-resolve-step08-r-module-size.md), and
+   [`SIZE-07E`](../tasks/COMPLETED/SIZE-07E-resolve-step08-r-module-size.md), and
    [`SIZE-07F`](../tasks/TODO/SIZE-07F-decompose-artifact-contract-validator.md)
    in that order, each with its own outcome commit; and
 3. begin `LIB-03` with one observed repeated seam only, defined just in time.
 
-`SIZE-07A`, `SIZE-07B`, and `SIZE-07D` are complete. The later size slices
-remain queued. Each size slice owns a live refresh of only its target's size,
+`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, and `SIZE-07E` are complete. `SIZE-07F`
+remains queued. Each size slice owns a live refresh of only its target's size,
 responsibilities, consumers, risks, and disposition; the standalone repo-wide
 refresh was retired through
 [`SIZE-07`](../tasks/COMPLETED/SIZE-07-refresh-large-file-inventory.md).
