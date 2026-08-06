@@ -15,14 +15,16 @@ producers would create common-mode defects.
 ## Fixed decisions
 
 - Independent public-schema and cross-artifact validation remains mandatory.
-- Preserve exact check IDs/order, statuses, messages where contracted, exit
-  behavior, deterministic report bytes, and failure-first publication.
+- Preserve exact schema bytes/identities, semantic validation, contracted
+  messages, inventory reconciliation, and CLI stdout/stderr/exit behavior.
+- The validator remains read-only; it owns no report publication transaction
+  or check-ID/status roster.
 - Do not import producer rules into the validator solely to reduce duplication.
 - Use bounded child cards if multiple contract families require separate work.
 
 ## Blocked by
 
-- [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
+- None.
 
 ## Completion unblocks
 
@@ -47,8 +49,8 @@ producers would create common-mode defects.
 
 ## Required context
 
-- `RA-008`, `RA-017`, `RA-019`, public schemas, artifact fixtures, check
-  rosters, report publication, exit behavior, and consumer tests.
+- `RA-008`, `RA-017`, `RA-019`, public schemas, artifact fixtures, semantic
+  validators, exact-file consumers, CLI exit behavior, and consumer tests.
 
 ## Questions owned by this card
 
@@ -73,8 +75,8 @@ producers would create common-mode defects.
 
 - The completion record captures the target-only starting and resulting size,
   responsibility/consumer map, extracted seams, and final size disposition.
-- Exact roster, schema, status, bytes, exit, malformed-input, mutation, and
-  report-publication tests pass.
+- Exact schema hashes/identities, semantic and inventory behavior, malformed-
+  input handling, exact-loader identities, and CLI output/exit tests pass.
 - Mutating a producer constant still fails the independent validator/golden.
 
 ## Canonical documentation updates
@@ -89,5 +91,33 @@ producers would create common-mode defects.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the explicitly approved PI-readiness tranche. The target-only
+refresh measured
+`src/norad/contracts/artifacts/validate_artifact_contracts.py` at 1,895 lines
+and 72,138 bytes. It owned five schema locations and strict JSON/schema
+loading; path, run-contract, attempt/evidence, artifact, scientific-review, and
+run-summary semantics; report-receipt semantics; explicit inventory validation
+and reconciliation; exact-file consumer identity; and the read-only CLI.
+Direct consumers are artifact indexing, run-summary science normalization,
+Python and shell report rendering, direct contract/golden suites, and the
+public CLI roster.
+
+The exact public path is now a 573-line schema/document, semantic-dispatch,
+inventory-reconciliation, compatibility, and CLI facade over four owner-
+private modules plus `__init__.py`. Private seams own core schema/path/evidence
+primitives, artifact semantics, scientific-review semantics, and run-summary
+semantics; they range from 131 to 559 lines. The exact owner-relative loader is
+arbitrary-identity/CWD safe, leaves `sys.path` unchanged, rejects unsafe caches,
+cleans failed owned loads, validates child paths, and preserves one shared
+`ContractValidationError`. Every implementation file is below 600 lines.
+
+All 38 predecessor function/class bodies remain AST-equivalent exactly once
+and every predecessor facade binding remains available. The five public schema
+files, paths, `$id`/`$ref` values, and hashes are unchanged. Focused local
+evidence passed: 64 direct contract cases (including six new loader/live-hook
+checks), 82 independent contract goldens, two targeted arbitrary-CWD public
+CLI cases, exact consumer-identity checks, compilation, schema-hash/path
+verification, and `git diff --check`. The original card's references to a
+check-ID/status roster and report publication were stale and were corrected;
+this validator remains read-only. No producer, runtime, cluster, scientific-
+review, or biological evidence was added.

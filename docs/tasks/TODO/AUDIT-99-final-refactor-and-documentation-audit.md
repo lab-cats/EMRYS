@@ -29,7 +29,7 @@ runtime/cluster/scientific promotion.
 - [SIZE-07B](../COMPLETED/SIZE-07B-decompose-scientific-validation-tooling.md) — Required: the scientific-validation mandatory size family must be closed.
 - [SIZE-07D](../COMPLETED/SIZE-07D-decompose-run-summary-builder.md) — Required: the run-summary mandatory size family must be closed.
 - [SIZE-07E](../COMPLETED/SIZE-07E-resolve-step08-r-module-size.md) — Required: the Step 08 size-policy conflict must be explicitly resolved.
-- [SIZE-07F](../TODO/SIZE-07F-decompose-artifact-contract-validator.md) — Required: the artifact-validator mandatory size family must be closed.
+- [SIZE-07F](../COMPLETED/SIZE-07F-decompose-artifact-contract-validator.md) — Required: the artifact-validator mandatory size family must be closed.
 - [DOC-SKILL-10](../TODO/DOC-SKILL-10-build-documentation-health-skill.md) — Required: recurring documentation-health review must be proven.
 
 ## Completion unblocks

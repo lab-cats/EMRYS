@@ -6,8 +6,10 @@ import copy
 import csv
 import importlib.util
 import json
+import os
 import subprocess
 import sys
+import textwrap
 from collections import Counter
 from pathlib import Path
 from types import ModuleType
@@ -69,6 +71,131 @@ def load_contract_module() -> ModuleType:
 
 
 CONTRACT = load_contract_module()
+
+
+def test_private_package_loader_is_exact_cwd_independent_and_path_neutral(
+    tmp_path: Path,
+) -> None:
+    setup = textwrap.dedent(
+        f"""
+        import importlib.util
+        import sys
+        from pathlib import Path
+
+        script = Path({str(SCRIPT)!r})
+        before = tuple(sys.path)
+        facades = []
+        for name in ("artifact_contract_facade_one", "artifact_contract_facade_two"):
+            spec = importlib.util.spec_from_file_location(name, script)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[name] = module
+            spec.loader.exec_module(module)
+            facades.append(module)
+
+        first, second = facades
+        expected_package = script.parent / "_artifact_contracts" / "__init__.py"
+        assert first._INTERNAL_PACKAGE_PATH == expected_package.resolve()
+        assert first._internal_package is second._internal_package
+        assert first.ContractValidationError is second.ContractValidationError
+        for owner, name in (
+            (first._core_owner, "core"),
+            (first._artifact_owner, "artifact"),
+            (first._scientific_review_owner, "scientific_review"),
+            (first._run_summary_owner, "run_summary"),
+        ):
+            assert Path(owner.__file__).resolve() == (
+                expected_package.parent / f"{{name}}.py"
+            ).resolve()
+            assert owner.ContractValidationError is first.ContractValidationError
+        assert tuple(sys.path) == before
+        print("exact private package loaded")
+        """
+    )
+    environment = dict(os.environ)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+
+    result = subprocess.run(
+        [sys.executable, "-c", setup],
+        cwd=tmp_path,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "exact private package loaded\n"
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "no-file"))
+def test_private_package_loader_rejects_unsafe_cache(
+    cache_kind: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name = CONTRACT._INTERNAL_PACKAGE_NAME
+    cached = ModuleType(name)
+    if cache_kind == "foreign":
+        cached.__file__ = str(tmp_path / "foreign_package" / "__init__.py")
+        setattr(cached, CONTRACT._INTERNAL_PACKAGE_READY_ATTRIBUTE, True)
+        expected = "resolves to"
+    elif cache_kind == "partial":
+        cached.__file__ = str(CONTRACT._INTERNAL_PACKAGE_PATH)
+        expected = "partially initialized"
+    else:
+        cached.__file__ = None
+        setattr(cached, CONTRACT._INTERNAL_PACKAGE_READY_ATTRIBUTE, True)
+        expected = "no valid file path"
+    monkeypatch.setitem(sys.modules, name, cached)
+
+    with pytest.raises(ImportError, match=expected):
+        CONTRACT._load_internal_package()
+
+
+def test_private_package_loader_cleans_owned_execution_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failing_owner = tmp_path / "__init__.py"
+    failing_owner.write_text(
+        "raise RuntimeError('injected private-package failure')\n",
+        encoding="utf-8",
+    )
+    name = CONTRACT._INTERNAL_PACKAGE_NAME
+    monkeypatch.delitem(sys.modules, name, raising=False)
+    monkeypatch.setattr(CONTRACT, "_INTERNAL_PACKAGE_PATH", failing_owner)
+
+    with pytest.raises(RuntimeError, match="injected private-package failure"):
+        CONTRACT._load_internal_package()
+
+    assert name not in sys.modules
+
+
+def test_validate_document_and_dispatcher_use_live_facade_hooks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_calls: list[tuple[str, dict[str, Any]]] = []
+
+    def record_document(name: str, document: dict[str, Any]) -> None:
+        document_calls.append((name, document))
+
+    with monkeypatch.context() as patch:
+        patch.setattr(CONTRACT, "validate_document_semantics", record_document)
+        document = CONTRACT.validate_document(
+            "artifact-record",
+            FIXTURES["artifact-record"],
+        )
+
+    assert document_calls == [("artifact-record", document)]
+
+    artifact_calls: list[dict[str, Any]] = []
+    with monkeypatch.context() as patch:
+        patch.setattr(CONTRACT, "validate_artifact_semantics", artifact_calls.append)
+        CONTRACT.validate_document_semantics("artifact-record", document)
+
+    assert artifact_calls == [document]
 
 
 def read_json(path: Path) -> dict[str, Any]:
