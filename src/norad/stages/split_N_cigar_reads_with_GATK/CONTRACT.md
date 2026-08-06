@@ -87,6 +87,11 @@ from neutral [`reference_contigs.py`](../../libraries/reference_contigs.py). No
 package identity, `PYTHONPATH`, wrapper, compatibility import, or peer-stage
 implementation dependency is supported.
 
+The producer sources only `resolve_executable_value` from neutral
+[`executable_resolution.sh`](../../libraries/executable_resolution.sh).
+GATK, samtools, and Java precedence, version checks, and commands remain owned
+here.
+
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.
 

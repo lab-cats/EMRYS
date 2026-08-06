@@ -123,6 +123,9 @@ scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
   under a private identity without package or `PYTHONPATH` support.
+- The producer sources only `resolve_executable_value` from neutral
+  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
+  samtools precedence, checks, and commands remain owned here.
 - Native completion and transaction semantics lack attempt and input identity.
   Restoration is best-effort, cleanup can erase recovery evidence, and the
   output-directory lock does not serialize writers to a shared QC directory.

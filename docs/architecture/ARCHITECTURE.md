@@ -64,6 +64,8 @@ Current shared seams are deliberately narrow:
   CLI behavior;
 - `bam_validation.py` and `reference_contigs.py` own only the reviewed BAM and
   reference-parsing primitives shared by their named consumers;
+- `executable_resolution.sh` owns only the three-argument Bash executable-value
+  resolver sourced by the five named stage producers;
 - the neutral artifact schemas and validator own public structured-artifact
   contracts; and
 - neutral Step `08`, Step `09`, and public review-package contracts own shared

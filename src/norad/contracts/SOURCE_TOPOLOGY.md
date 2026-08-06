@@ -193,10 +193,16 @@ JIT cards and remain narrower than either original owner:
 | --- | --- | --- | --- |
 | Scientific artifact and public review-package contracts | `src/norad/contracts/scientific_evidence/`, beginning with `step08.py`, followed by separately reviewed `step09.py` and `review_package.py`; mirrored tests under `tests/contracts/scientific_evidence/` | Closed public headers/vocabularies; sample/partition and Step `08`/`09` artifact validation; public thirteen-file review-package roster and state reduction; private subordinate parsing needed by those named APIs | Step `08`, Step `09`, Step `09c`, artifact indexing, and reporting may consume the applicable public contract. The neutral owner may not import them or own review-plan/evidence-payload policy, `Artifact`, `ReviewContext`, `build_context`, publication, locking, rollback, recovery, or reporting projection. |
 | Reference contig parsing | `src/norad/libraries/reference_contigs.py`; independent API tests at `tests/libraries/test_reference_contigs.py` | One parser-specific exception plus the exact ordered FASTA, FAI, and DICT contig/length parsers and their private duplicate/empty check | Reference provenance and the Step `00c`/`05` validators consume the library. Agreement decisions, per-role versus short-circuit aggregation, evidence rows, CLI, hashing, snapshots, publication, and recovery stay owner-local. |
+| Bash executable-value resolution | `src/norad/libraries/executable_resolution.sh`; independent behavior and roster tests at `tests/libraries/test_executable_resolution.py` | Only `resolve_executable_value(label, value, default_name)`, with failure delegated to the sourcing consumer's existing `die` function | The Step `00c`, `05`, `06`, `07`, and `08` producers source the exact file. Tool-specific wrappers, CLI/environment/Java-home precedence, version checks, scheduler policy, commands, science, publication, and recovery stay owner-local; separate two-argument, Python, and RSeQC resolvers are excluded. |
 
 The reference-contig seam is implemented through `LIB-02K`: all three
 consumers exact-load the one final neutral identity, while their agreement,
 aggregation, evidence, command, and publication behaviors remain local.
+
+The Bash executable-resolution seam has one sourced definition and five named
+producer consumers. It adds no dispatcher or general shell-helper authority;
+the consumers retain all tool selection and operational behavior around the
+shared value-resolution primitive.
 
 Reporting has removed its Step `09c` implementation dependency through a
 reporting-local reader/projection over the committed public review package,

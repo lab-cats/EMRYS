@@ -141,6 +141,9 @@ cluster, scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
   under a private identity without package or `PYTHONPATH` support.
+- The producer sources only `resolve_executable_value` from neutral
+  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
+  bcftools precedence, checks, and commands remain owned here.
 - Attempt identity, complete provenance, output hashes, and an automated
   recovery interface remain absent. Only manifests are hash-bound and stable-
   rechecked; restoration is best-effort and receipt visibility precedes final

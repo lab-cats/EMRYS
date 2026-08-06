@@ -66,7 +66,9 @@ The approved tranche is deliberately narrow:
    [`SIZE-07E`](../tasks/COMPLETED/SIZE-07E-resolve-step08-r-module-size.md), and
    [`SIZE-07F`](../tasks/COMPLETED/SIZE-07F-decompose-artifact-contract-validator.md)
    in that order, each with its own outcome commit; and
-3. begin `LIB-03` with one observed repeated seam only, defined just in time.
+3. complete
+   [`LIB-03`](../tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md)
+   through one observed repeated seam defined just in time.
 
 `SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` are complete.
 Each size slice owned a live refresh of only its target's size,
@@ -124,8 +126,10 @@ direction.
 The current branch descends from the completed physical-owner and residual-
 topology convergence campaigns. The active tranche uses sequential,
 outcome-oriented commits: `DOC-PIPE-04` has its own completed commit; each of
-`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` must have its
-own commit; the bounded `LIB-03` seam must not be bundled into a size slice.
+`SIZE-07A`, `SIZE-07B`, `SIZE-07D`, `SIZE-07E`, and `SIZE-07F` has its own
+commit; the bounded
+[`LIB-03`](../tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md)
+seam is likewise a separate outcome commit rather than part of a size slice.
 Final applicable validation, genuinely affected central reconciliation, and
 one authorized push occur after the tranche. Exact commit ancestry and dated
 delivery evidence belong in Git and

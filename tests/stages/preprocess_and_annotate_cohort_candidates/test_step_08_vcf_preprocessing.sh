@@ -1508,8 +1508,10 @@ assert_no_step08_scratch "$first_failure_fixture/output" "$first_failure_fixture
 
 printf 'Running Step 08 SLURM wrapper checks...\n'
 wrapper_dry="$test_root/wrapper-dry"
-mkdir -p "$wrapper_dry/$owner_path"
+mkdir -p "$wrapper_dry/$owner_path" "$wrapper_dry/src/norad/libraries"
 cp "$script" "$wrapper_dry/$owner_path/"
+cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$wrapper_dry/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_dry" \
@@ -1530,8 +1532,12 @@ assert_not_exists "$wrapper_dry/output"
 assert_not_exists "$wrapper_dry/qc"
 
 wrapper_execute="$test_root/wrapper-execute"
-mkdir -p "$wrapper_execute/$owner_path"
+mkdir -p \
+    "$wrapper_execute/$owner_path" \
+    "$wrapper_execute/src/norad/libraries"
 cp "$script" "$wrapper_execute/$owner_path/"
+cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$wrapper_execute/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_execute" \

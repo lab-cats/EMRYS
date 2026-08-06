@@ -35,6 +35,15 @@ hashing, snapshots, publication, locking, rollback, and recovery remain with
 the three consumers. The library does not establish a public package or repair
 characterized parser behavior.
 
+`executable_resolution.sh` owns only the three-argument
+`resolve_executable_value(label, value, default_name)` Bash function. The Step
+`00c`, `05`, `06`, `07`, and `08` producers source that exact repository file
+relative to `BASH_SOURCE[0]` after defining their own `die` function. CLI and
+environment precedence, Java-home selection, tool-specific wrappers, version
+checks, commands, and failure policy remain with those five consumers. This
+owner does not cover the separate two-argument, Python-specific, or RSeQC
+resolvers and creates no generic shell framework, package, or public CLI.
+
 The validation-report extraction preserves, rather than fixes, the
 characterized same-size and
 restored-mtime snapshot blindness, unordered-report acceptance, late-foreign
@@ -46,4 +55,5 @@ the dated refactor audit for the exact evidence boundary:
 - [`tests/libraries/test_validation_report.py`](../../../tests/libraries/test_validation_report.py)
 - [`tests/libraries/test_bam_validation.py`](../../../tests/libraries/test_bam_validation.py)
 - [`tests/libraries/test_reference_contigs.py`](../../../tests/libraries/test_reference_contigs.py)
+- [`tests/libraries/test_executable_resolution.py`](../../../tests/libraries/test_executable_resolution.py)
 - [`2026-08-02 refactor log`](../../../docs/history/audits/2026-08-02-refactor-log.md)

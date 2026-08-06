@@ -1076,8 +1076,11 @@ assert_contains "$primary_partitions" $'MT\tregion\tMT'
 assert_contains "$pilot_partitions" $'pilot_1\tregion\t1:1-100000'
 wrapper_root="$test_root/wrapper"
 wrapper_owner="$wrapper_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs"
-mkdir -p "$wrapper_owner"
+wrapper_libraries="$wrapper_root/src/norad/libraries"
+mkdir -p "$wrapper_owner" "$wrapper_libraries"
 cp "$script" "$wrapper_owner/"
+cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$wrapper_libraries/"
 wrapper_filter='INFO/AD[1-]>7 & MAX(FORMAT/DP)>31'
 env \
     PATH="$fake_bin:$PATH" \

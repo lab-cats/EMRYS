@@ -119,6 +119,11 @@ package identity or `sys.path` mutation. Reference provenance and the final
 Step `05` validator share the same ready parser identity while this stage
 retains its per-role aggregation and agreement rows.
 
+The producer sources only `resolve_executable_value` from neutral
+[`executable_resolution.sh`](../../libraries/executable_resolution.sh).
+Samtools, GATK, and Java precedence, version checks, and commands remain owned
+here.
+
 ## Consumers
 
 - The final [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
