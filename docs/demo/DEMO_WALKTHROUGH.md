@@ -4,8 +4,7 @@ This is the presenter run-of-show, not the audience handout, authoritative
 status ledger, report contract, or command owner. During a live demo, use the
 current [`HANDOFF.md`](../operations/HANDOFF.md) and
 [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); run only the exact
-[`RUNBOOK.md`](../operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report)
-procedure.
+[`README.md`](README.md) procedure.
 
 ## Narrative
 
@@ -26,7 +25,7 @@ procedure.
 ## Populated synthetic report
 
 Before presenting, generate the local synthetic report through the
-[runbook procedure](../operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report).
+[demo procedure](README.md).
 Its current implementation and evidence ceiling remain in the
 [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).
 

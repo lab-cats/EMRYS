@@ -7,14 +7,13 @@ entry point already conforms. When a convention conflicts with characterized
 current behavior, the applicable colocated `CONTRACT.md` and the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
 describe current truth; preserve that behavior until a separately approved
-implementation or migration package changes it.
+implementation changes it.
 
-The root [`README.md`](../../README.md#repository-map) owns the implemented
-repository map. [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md)
-owns target homes and dependency direction only; it does not describe a
-physical migration plan. Exact commands belong only in
-[`RUNBOOK.md`](RUNBOOK.md), and durable rationale belongs in
-[`DECISIONS.md`](../design/DECISIONS.md).
+The [architecture index](../architecture/README.md) organizes current system
+views. [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md)
+owns current source domains and dependency direction. Exact commands belong in
+the applicable owner README, cross-cutting commands in [`RUNBOOK.md`](RUNBOOK.md),
+and durable rationale in [`DECISIONS.md`](../design/DECISIONS.md).
 
 ## Authority and owner boundaries
 
@@ -22,9 +21,9 @@ physical migration plan. Exact commands belong only in
   and its linked contracts own exact current interfaces, side effects, defects,
   and legacy exceptions. Documentation must not normalize those exceptions.
 - The [source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md) owns
-  allowed homes and dependency direction, not current layout.
-- The [runbook](RUNBOOK.md) owns supported invocations. This document describes
-  conventions without copying commands.
+  current source domains and dependency direction.
+- Owner READMEs own exact invocations; the [runbook](RUNBOOK.md) owns only
+  genuinely cross-cutting operations.
 - The [decision record](../design/DECISIONS.md) owns rationale and rejected
   alternatives. This document owns the resulting neutral working rules.
 
@@ -37,7 +36,7 @@ owner under `tests/<domain>/<owner>/`. Root `jobs/` and numbered root
 belong to the
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
 and adjacent contracts. Non-runnable future test plans remain separate under
-the [test-placement decision](../design/DECISIONS.md#keep-active-and-future-tests-separate).
+the [test-placement rationale](../design/decisions/repository-and-delivery.md#active-and-future-tests-remain-distinct).
 
 ## Declared inputs, manifests, and paths
 
@@ -51,7 +50,7 @@ Use command-line arguments, explicit configuration, environment overrides, and
 resolved output roots instead of user- or machine-specific paths. Scientific
 and report inputs must be declared rather than discovered by glob. Exact fields
 and refinements remain owner-local; the durable rationale is in the
-[manifest decision](../design/DECISIONS.md#use-tsv-manifests).
+[manifest rationale](../design/decisions/repository-and-delivery.md#explicit-manifests).
 
 ## Public entry-point design
 
@@ -74,12 +73,12 @@ authoritative for exact arguments and characterized behavior.
 
 Documentation must link canonical standalone Mermaid sources rather than keep
 inline copies. Keep only short supported invocations in Markdown; substantive
-executable logic belongs in tested, parameterized files under `scripts/` or its
-separately approved target home.
+executable logic belongs in tested, parameterized files beside its functional
+owner. Root `scripts/` remains repository-control tooling.
 
 ## Dry-run and execution
 
-New or migrated workflow producers and mature SLURM entry points are
+New or changed workflow producers and mature SLURM entry points are
 dry-run-first unless an owner-local contract explicitly records a protected
 current exception. For conforming script interfaces, omitting `--execute`
 validates and prints while `--execute` publishes. Conforming SLURM interfaces
@@ -89,10 +88,10 @@ directories when that could confuse validation. Any currently characterized
 dry-run directory or logging side effect remains current truth until separately
 changed.
 
-See the [dry-run decision](../design/DECISIONS.md#default-to-dry-run), the
+See the [dry-run decision](../design/decisions/execution-evidence-and-reporting.md#default-to-dry-run), the
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md),
 and its linked contracts for the boundary between convention and current
-exceptions. Supported invocations remain in the [runbook](RUNBOOK.md).
+exceptions. Supported invocations remain in the applicable owner README.
 
 ## Validation and publication
 
@@ -104,8 +103,8 @@ transaction marker. The applicable contract owns exact current transaction
 semantics and any characterized defect.
 
 The durable boundaries are recorded in the
-[validated-publication](../design/DECISIONS.md#publish-validated-transactions)
-and [recovery-evidence](../design/DECISIONS.md#preserve-recovery-evidence)
+[validated-publication](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions)
+and [recovery-evidence](../design/decisions/execution-evidence-and-reporting.md#preserve-recovery-evidence)
 decisions. This convention does not imply that an owner-specific validator is a
 neutral shared library.
 
@@ -124,9 +123,9 @@ stages or miscellaneous application inputs:
 
 Presence of these files establishes configuration only. It does not prove that
 dependencies were restored, tests passed, or a local, cluster, production,
-scientific-review, or biological environment is ready. Moving one requires a
-separately bounded migration of every explicit caller, discovery assumption,
-and direct contract test.
+scientific-review, or biological environment is ready. Moving one requires an
+explicitly bounded review of every caller, discovery assumption, and direct
+contract test.
 
 Dependency restoration is an explicit operator action. Compute scripts,
 validators, SLURM jobs, report renderers, and tests must not bootstrap or
@@ -135,7 +134,7 @@ install R, Quarto, system packages, or analysis dependencies.
 The repository-local R environment is opt-in only through
 `NORAD_USE_RENV=1`; `0` leaves normal startup unchanged and any other value
 must fail. Automatic snapshots remain disabled, and lockfile changes require
-review. The [R-environment decision](../design/DECISIONS.md#guard-the-repository-local-r-environment)
+review. The [R-environment decision](../design/decisions/execution-evidence-and-reporting.md#guard-the-repository-local-r-environment)
 owns the rationale; setup and restoration commands remain in the
 [runbook](RUNBOOK.md).
 
@@ -150,11 +149,11 @@ and owner-local contracts explicitly preserve jobs that embed a producer, act
 as probes or scaffolding, create dry-run directories, or otherwise depart from
 this convention.
 
-Record the loaded module state using the exact
-[runbook procedure](RUNBOOK.md#module-list). Do not add an explicit memory
-request without confirmation in the relevant cluster contract. The scheduler
-boundary in [source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md) is
-target architecture, not a claim about completed migration.
+Record the loaded module state as part of the cross-cutting
+[cluster procedure](RUNBOOK.md#cluster-execution-and-promotion). Do not add an
+explicit memory request without confirmation in the relevant cluster contract.
+Current scheduler placement and dependency boundaries are described by
+[source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 
 ## Reporting consumers
 
@@ -164,15 +163,15 @@ It does not discover inputs, run analysis, install tools, or promote evidence
 state. Current reporting surfaces remain in the
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#cross-cutting-product-and-operational-owners);
 rationale remains in the
-[reporting](../design/DECISIONS.md#decouple-reporting-from-computation) and
-[supplemental-table](../design/DECISIONS.md#authorize-supplemental-report-tables-explicitly)
+[reporting](../design/decisions/execution-evidence-and-reporting.md#decouple-reporting-from-computation) and
+[supplemental-table](../design/decisions/execution-evidence-and-reporting.md#authorize-supplemental-report-tables-explicitly)
 decisions.
 
 ## Applying or changing a convention
 
-Changing existing behavior requires the normal selected-card and
-[task-delivery](TASK_DELIVERY.md#default-delivery) workflow. Update the
+Changing existing behavior follows the short
+[workflow kernel](WORKFLOW.md). Update the
 functional-owner inventory or applicable contract in the same coherent change
 when its roster, interface, protection, or characterized exception is affected.
-A source move requires a separately reviewed plan; this document does not
-authorize implementation or physical migration.
+A source move requires a separately reviewed owner-boundary change; this
+document does not authorize implementation.

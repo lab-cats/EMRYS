@@ -20,9 +20,8 @@ sbatch src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.
 
 The job executes implicitly on submission, has no dry-run mode, and resolves
 its hardcoded Novogene inputs and `refs/` outputs from the caller's working
-directory. It is a scheduler input, not a directly executable file. The exact
-operator assumptions and output route remain in the
-[Step `00a` runbook](../../../../docs/operations/RUNBOOK.md#step-00a-star-index).
+directory. It is a scheduler input, not a directly executable file. These
+owner-local instructions are the exact command authority.
 
 Invoke the validator with the repository Python and explicit inputs. Omitting
 `--execute` is the no-write dry run; adding it publishes the declared output:

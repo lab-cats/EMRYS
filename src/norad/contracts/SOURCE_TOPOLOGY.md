@@ -1,424 +1,84 @@
-# Target source, contract, and test topology
+# Source ownership and dependency direction
 
-This file is the canonical detailed owner for NORAD's target source ownership,
-contract placement, allowed dependency direction, and mirrored test homes. It
-defines topology only: the implemented current layout remains documented in
-[`ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md), and migration
-mechanics are defined separately.
+This file owns current source-domain boundaries, approved shared seams, and
+allowed implementation dependencies. The
+[`architecture index`](../../../docs/architecture/README.md) organizes the
+human views; [`STAGE_MAP.md`](STAGE_MAP.md) owns semantic identities and
+artifact edges; the
+[`functional-owner inventory`](../../../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+owns exact public programs, jobs, validators, and tests.
 
-The target does not introduce packaging, descriptor loading, orchestration,
-job materialization, or physical source movement.
+## Current source domains
 
-## Top-level source owners
-
-```text
-src/norad/
-├── cli/
-├── orchestration/
-├── scheduler/
-├── contracts/
-├── libraries/
-├── stages/
-├── analyses/
-├── evidence/
-├── reporting/
-└── ingestion/
-```
-
-| Target owner | Responsibility |
+| Domain | Responsibility |
 | --- | --- |
-| `cli/` | Public command interfaces and argument-to-contract translation. |
-| `orchestration/` | Workflow coordination through declared contracts and owner entry points. |
-| `scheduler/` | Scheduler-facing adapters and templates that delegate functional work. |
-| `contracts/` | Neutral cross-stage identities, DAG and topology contracts, public schemas, shared vocabularies, and independently owned executable validation of those neutral contracts. |
-| `libraries/` | Proven shared implementation with an explicitly approved neutral owner; never a generic utility bucket. |
-| `stages/` | Preprocessing and transformation owners keyed by the public stage slugs in [`STAGE_MAP.md`](STAGE_MAP.md#identity-map). |
-| `analyses/` | First-class scientific analysis modules, distinct from preprocessing stages. |
-| `evidence/` | Evidence-collection and review-package owners that do not become peer computational stages. |
-| `reporting/` | Run-summary normalization and report-generation implementation and owned assets. |
-| `ingestion/` | Request and external-input admission implementation; operational state remains outside source. |
+| `contracts/` | Neutral schemas, shared scientific-evidence contracts, identities, and topology contracts. |
+| `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
+| `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
+| `analyses/` | Scientific analysis owners distinct from preprocessing stages. |
+| `evidence/` | Operational/scientific evidence collection and review packaging that does not become peer computation. |
+| `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
+| `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
 
-Shell, R, SLURM, schemas, styles, templates, and other non-Python assets retain
-their native form under the functional owner that defines their behavior.
-Their future distribution is not settled here.
+Native Python, shell, R, SLURM, schema, style, template, and fixture assets stay
+with the owner whose behavior they implement. Root `configs/` remains the
+public home for explicit starter inputs and reference tables. Repository Git,
+documentation, quality-gate, dependency-restoration, and environment tooling
+under `scripts/` is not scientific-workflow orchestration.
 
-## Mature stage-local contract
+## Functional-owner shape
 
-Every mature preprocessing or transformation stage has this predictable
-target shape:
+Every semantic stage, analysis, or evidence owner has one directory under its
+domain, an operator `README.md`, an adjacent `CONTRACT.md`, owned native assets,
+and a mirrored test directory. The documentation gate derives these expected
+homes from `STAGE_MAP.md`.
 
-```text
-src/norad/stages/<public-slug>/
-├── README.md
-├── CONTRACT.md
-├── stage.v1.yaml
-├── contracts/
-│   └── <stage-local-interface>.v1.schema.json
-└── <owned implementation, validation, and scheduler assets>
-```
+Owner-local tests protect public entry points, local schemas, failure behavior,
+and fixtures. `tests/contracts/` protects neutral contracts;
+`tests/contract_integration/` checks producer/consumer agreement using public
+artifacts; repository-wide scheduler, CLI, coverage, and validation-gate tests
+remain cross-owner development protection.
 
-`README.md` is the human entry point and links to the detailed `CONTRACT.md`
-when the two documents remain distinct. `stage.v1.yaml` is the only machine
-descriptor for that stage version; executables, validators, languages, and job
-templates do not receive competing descriptors.
+## Approved shared seams
 
-The descriptor uses this fixed envelope:
+| Seam | Neutral owner | Current consumers and boundary |
+| --- | --- | --- |
+| Validation-report publication | `libraries/validation_report.py` | Owner validators exact-load one private identity. Parsing/check rosters, evidence rows, CLI, and recovery remain owner-local. |
+| BAM validation | `libraries/bam_validation.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
+| Reference contig parsing | `libraries/reference_contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
+| Executable-value resolution | `libraries/executable_resolution.sh` | Step `00c`, `05`, `06`, `07`, and `08` producers. Tool precedence, version policy, commands, and failures remain local. |
+| Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, Step `09c`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
+| Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |
+| Review-package contract | `contracts/scientific_evidence/review_package.py` | Step `09c`, artifact indexing, and run-summary science share the public package roster/state reducer, not private evidence policy or recovery. |
 
-```yaml
-$schema: ../../contracts/schemas/stage_descriptor.v1.schema.json
-descriptor_version: v1
-kind: stage
-machine_key: norad.stage.<public-slug>.v1
-slug: <public-slug>
-display_title: <display-title>
-historical_aliases: [<historical-alias>]
-documentation: README.md
-interfaces:
-  - role: <input-or-output-role>
-    schema: <relative-path-to-versioned-json-schema>
-```
+These are the complete approved neutral implementation seams. Similar names or
+two local helpers do not create sharing authority. Keep the first use local;
+extract only proven equivalent behavior into the narrowest neutral owner with
+independent API and consumer tests.
 
-The envelope schema is neutral because every stage shares it. An interface
-used only within one stage references that stage's
-`contracts/<name>.v1.schema.json`; a public or cross-stage interface references
-a versioned JSON Schema under `src/norad/contracts/schemas/`. The descriptor
-references schemas and never copies their field definitions.
+## Dependency direction
 
-The descriptor version governs this YAML envelope. It does not alter the
-frozen identity key, implement descriptor loading, or establish a packaging or
-distribution version.
+Invocation and artifact consumption are distinct from source imports. Public
+entry points may be invoked across owners; private implementation may not be
+imported across peers.
 
-## Analysis-module contract
-
-Scientific analyses remain first-class modules rather than being placed under
-`stages/`:
-
-```text
-src/norad/analyses/<public-slug>/
-├── README.md
-├── CONTRACT.md
-├── analysis.v1.yaml
-├── contracts/
-│   └── <analysis-local-interface>.v1.schema.json
-└── <owned implementation, validation, and scheduler assets>
-```
-
-`analysis.v1.yaml` uses the same fixed identity, documentation, and interface-
-reference fields as the stage envelope, with
-`$schema: ../../contracts/schemas/analysis_descriptor.v1.schema.json`,
-`kind: analysis`, and the frozen `norad.analysis.<public-slug>.v1` key. Local
-analysis schemas remain under the analysis owner; cross-stage inputs and
-public analysis outputs reference neutral versioned schemas.
-
-An analysis consumes declared stage artifacts through those contracts. It does
-not import a stage implementation or become a child of the final preprocessing
-stage that happens to precede it in the current DAG.
-
-## Evidence-operation contract
-
-Evidence collection and scientific-review packaging use their own functional
-owner rather than becoming computational stages:
-
-```text
-src/norad/evidence/<public-slug>/
-├── README.md
-├── CONTRACT.md
-├── evidence.v1.yaml
-├── contracts/
-│   └── <evidence-local-interface>.v1.schema.json
-└── <owned implementation, validation, and scheduler assets>
-```
-
-`evidence.v1.yaml` uses the shared envelope fields with
-`$schema: ../../contracts/schemas/evidence_descriptor.v1.schema.json`,
-`kind: evidence`, and the frozen `norad.evidence.<public-slug>.v1` key.
-Evidence-local schemas remain with the owner; public review packages and
-cross-owner evidence interfaces reference neutral versioned schemas.
-
-Evidence owners consume declared artifacts or separately supplied evidence
-through explicit contracts. They do not import stage or analysis
-implementations, and their presence in the DAG does not by itself make them a
-computational gate.
-
-## Functional-owner target homes
-
-The identity map remains canonical in [`STAGE_MAP.md`](STAGE_MAP.md). This
-roster assigns each identity one target home without copying titles, keys,
-aliases, interfaces, or DAG edges. Native-asset classes describe functional
-ownership only; no listed file is moved by this topology contract.
-
-| Public slug | Target source home | Descriptor | Owned native assets | Mirrored test home |
-| --- | --- | --- | --- | --- |
-| `construct_STAR_index` | `src/norad/stages/construct_STAR_index/` | `stage.v1.yaml` | SLURM producer; Python validator | `tests/stages/construct_STAR_index/` |
-| `convert_GTF_to_BED12` | `src/norad/stages/convert_GTF_to_BED12/` | `stage.v1.yaml` | Python producer and validator; SLURM entry point | `tests/stages/convert_GTF_to_BED12/` |
-| `construct_FASTA_sidecars` | `src/norad/stages/construct_FASTA_sidecars/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/construct_FASTA_sidecars/` |
-| `align_RNA_reads_with_STAR` | `src/norad/stages/align_RNA_reads_with_STAR/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/align_RNA_reads_with_STAR/` |
-| `construct_canonical_BAM` | `src/norad/stages/construct_canonical_BAM/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/construct_canonical_BAM/` |
-| `collect_canonical_BAM_QC_evidence` | `src/norad/evidence/collect_canonical_BAM_QC_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_canonical_BAM_QC_evidence/` |
-| `collect_RSeQC_paired_orientation_evidence` | `src/norad/evidence/collect_RSeQC_paired_orientation_evidence/` | `evidence.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/evidence/collect_RSeQC_paired_orientation_evidence/` |
-| `mark_BAM_duplicates_with_Picard` | `src/norad/stages/mark_BAM_duplicates_with_Picard/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/mark_BAM_duplicates_with_Picard/` |
-| `split_N_cigar_reads_with_GATK` | `src/norad/stages/split_N_cigar_reads_with_GATK/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/split_N_cigar_reads_with_GATK/` |
-| `partition_BAM_by_mechanical_read_orientation` | `src/norad/stages/partition_BAM_by_mechanical_read_orientation/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/partition_BAM_by_mechanical_read_orientation/` |
-| `generate_partitioned_cohort_mpileup_VCFs` | `src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/` | `stage.v1.yaml` | Shell producer; Python validator; SLURM entry point | `tests/stages/generate_partitioned_cohort_mpileup_VCFs/` |
-| `preprocess_and_annotate_cohort_candidates` | `src/norad/stages/preprocess_and_annotate_cohort_candidates/` | `stage.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/stages/preprocess_and_annotate_cohort_candidates/` |
-| `rank_cohort_candidates_with_paired_CMH` | `src/norad/analyses/rank_cohort_candidates_with_paired_CMH/` | `analysis.v1.yaml` | Shell transaction entry point; R scientific implementation; Python validator; SLURM entry point | `tests/analyses/rank_cohort_candidates_with_paired_CMH/` |
-| `assemble_scientific_review_evidence_package` | `src/norad/evidence/assemble_scientific_review_evidence_package/` | `evidence.v1.yaml` | Python validation/publication implementation; shell launcher | `tests/evidence/assemble_scientific_review_evidence_package/` |
-
-## Cross-cutting implemented target homes
-
-The numbered-owner roster above does not classify implemented cross-cutting
-concerns. This table remains the owner of their final homes after movement.
-The first five rows occupy those homes through completed `MIG-04A`, `RPT-05A`,
-`MIG-04B`, `MIG-04C`, and `MIG-04D`; sample-manifest admission occupies its
-declared ingestion home through the approved residual-convergence queue. Each
-move used the same direct, one-owner mechanics without inventing a new
-top-level domain.
-
-| Current functional owner | Exact target source home | Owned native assets | Mirrored test home |
+| Owner | May import | May invoke or consume | Prohibited |
 | --- | --- | --- | --- |
-| Artifact contract validation | Public facade `src/norad/contracts/artifacts/validate_artifact_contracts.py`, owner-private `src/norad/contracts/artifacts/_artifact_contracts/`, and the five existing schema basenames under `src/norad/contracts/schemas/artifacts/v1/` | The read-only validator's private semantic modules and five artifact JSON Schemas; no reporting template or producer-local schema | `tests/contracts/artifacts/test_artifact_schema_contracts.py`; current valid fixtures under `tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/` |
-| Artifact indexing, canonical run-summary assembly, and static reporting | The six existing script basenames under `src/norad/reporting/`; `src/norad/reporting/templates/{run_report.qmd,run_report_pdf.qmd}`; `src/norad/reporting/styles/run_report.css` | Artifact index and summary implementation, renderer/bundle/shell launcher, two QMD templates, and one CSS style | Existing direct suite basenames under `tests/reporting/`; fixture groups under `tests/reporting/fixtures/{artifact_adapters_v1,artifact_run_summary_v1,report_html_v1}/` |
-| Reference provenance evidence | `src/norad/evidence/reference_provenance/reference_provenance.py` | The current public evidence command; its shared parsers are final under the neutral seam below | `tests/evidence/reference_provenance/test_reference_provenance.py` |
-| Runtime availability inspection | `src/norad/evidence/runtime_preflight/` | Explicit-profile, read-only inspection command plus the separate manual SLURM module/tool probe; the probe emits scheduler logs and does not delegate to or publish the structured command | `tests/evidence/runtime_preflight/test_runtime_preflight.py`; scheduler characterization remains in `tests/test_slurm_wrapper_contracts.py` |
-| Storage evidence | `src/norad/evidence/storage_inventory/storage_inventory.py` | The current read-only inventory command; retention action remains prohibited | `tests/evidence/storage_inventory/test_storage_inventory.py` |
-| Sample-manifest admission | `src/norad/ingestion/sample_manifest_admission/` | Manifest validator, paired-FASTQ diagnostic, and functional-owner SLURM smoke wrapper; the public starter remains under root `configs/` | `tests/ingestion/sample_manifest_admission/`; scheduler-wrapper characterization remains repository-level |
+| `contracts/` | standard/external libraries only | none | every NORAD implementation domain |
+| `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional/application owners |
+| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
+| `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
+| `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
 
-## Approved neutral shared seams
+Cross-owner data flow follows the explicit edges in `STAGE_MAP.md`. No owner
+infers dependency order from numeric aliases, filenames, globs, neighboring
+directories, validator imports, or historical execution order. Reporting is a
+downstream projection and never promotes computational or scientific state.
 
-`LIB-02F` compared the two implemented peer-dependency leaks by full behavior,
-not by name. The resulting seams were implemented bottom-up through separate
-JIT cards and remain narrower than either original owner:
+## Public-interface and future boundary
 
-| Neutral concern | Exact permanent owner | Allowed shared surface | Consumers and prohibited scope |
-| --- | --- | --- | --- |
-| Scientific artifact and public review-package contracts | `src/norad/contracts/scientific_evidence/`, beginning with `step08.py`, followed by separately reviewed `step09.py` and `review_package.py`; mirrored tests under `tests/contracts/scientific_evidence/` | Closed public headers/vocabularies; sample/partition and Step `08`/`09` artifact validation; public thirteen-file review-package roster and state reduction; private subordinate parsing needed by those named APIs | Step `08`, Step `09`, Step `09c`, artifact indexing, and reporting may consume the applicable public contract. The neutral owner may not import them or own review-plan/evidence-payload policy, `Artifact`, `ReviewContext`, `build_context`, publication, locking, rollback, recovery, or reporting projection. |
-| Reference contig parsing | `src/norad/libraries/reference_contigs.py`; independent API tests at `tests/libraries/test_reference_contigs.py` | One parser-specific exception plus the exact ordered FASTA, FAI, and DICT contig/length parsers and their private duplicate/empty check | Reference provenance and the Step `00c`/`05` validators consume the library. Agreement decisions, per-role versus short-circuit aggregation, evidence rows, CLI, hashing, snapshots, publication, and recovery stay owner-local. |
-| Bash executable-value resolution | `src/norad/libraries/executable_resolution.sh`; independent behavior and roster tests at `tests/libraries/test_executable_resolution.py` | Only `resolve_executable_value(label, value, default_name)`, with failure delegated to the sourcing consumer's existing `die` function | The Step `00c`, `05`, `06`, `07`, and `08` producers source the exact file. Tool-specific wrappers, CLI/environment/Java-home precedence, version checks, scheduler policy, commands, science, publication, and recovery stay owner-local; separate two-argument, Python, and RSeQC resolvers are excluded. |
-
-The reference-contig seam is implemented through `LIB-02K`: all three
-consumers exact-load the one final neutral identity, while their agreement,
-aggregation, evidence, command, and publication behaviors remain local.
-
-The Bash executable-resolution seam has one sourced definition and five named
-producer consumers. It adds no dispatcher or general shell-helper authority;
-the consumers retain all tool selection and operational behavior around the
-shared value-resolution primitive.
-
-Reporting has removed its Step `09c` implementation dependency through a
-reporting-local reader/projection over the committed public review package,
-explicitly referenced evidence, and validated artifact-index records. The
-physical reporting move is complete under `RPT-05A`; source, private assets,
-direct tests, and reporting fixtures occupy the final owners above. Reporting
-does not share the evidence owner's source-to-public reconstruction. Artifact-index
-reconciliation remains independently implemented apart from consuming neutral
-public constants and the closed evidence-state reduction. Step `08`/`09` shell
-and R checks remain independent from the Python executable contract.
-
-These homes do not approve descriptors, package imports, console scripts, or
-distribution. Reporting must not reintroduce a private implementation
-dependency on the Step `09c` evidence owner, and the reference-evidence move
-did not leave Step `00c` or Step `05` importing a peer implementation. The
-reviewed neutral extraction is complete through `LIB-02K`, and the reference-
-evidence source and mirrored suite occupy their final homes through `MIG-04B`
-without reopening that seam or moving the public starter config.
-The structured runtime-inspection source and mirrored suite occupy their final
-homes through `MIG-04C` without moving the public starter profile or changing
-its local-fixture evidence ceiling; final placement is not runtime or cluster
-proof.
-The storage-evidence source and mirrored suite occupy their final homes through
-`MIG-04D` without moving either public starter contract, executing a retention
-action, or changing the local-fixture evidence ceiling; final placement is not
-production storage, quota, retention-approval, runtime, or cluster proof.
-
-The implemented cross-cutting homes, neutral seams, and contract-integration
-homes have been verified against the live tree. Expected final tracked files
-exist, prohibited tracked old paths and compatibility surfaces are absent, and
-current callers use final paths. This is local/static topology evidence, not
-runtime, cluster, production, scientific-review, or biological proof.
-
-Public starter profiles, examples, operator selections, and reference tables
-remain under root `configs/` when callers receive them as explicit inputs.
-They are not owner-native implementation assets merely because one command
-documents or tests them. Neutral JSON Schemas enforced as executable contracts,
-private templates/styles, and other assets loaded as part of implementation
-move with their final owner; public example/reference TSVs do not become
-implementation assets by being schema-shaped.
-
-Dependency restoration and repository-development commands remain explicit
-repository-level interfaces under root `scripts/`. In particular, the R and
-Quarto check/restore commands, their project-root `renv` surfaces, and
-documentation/Git orchestration do not become runtime `cli/`, `libraries/`, or
-scientific-workflow `orchestration/` implementation. A later setup design may
-reconsider that boundary without creating a speculative `setup/` domain here.
-
-Repository-level operational inspection utilities also remain outside a stage
-owner when their contract spans scheduler state, cross-sample aggregation,
-final-output inspection, and a best-effort persisted operator snapshot.
-`tests/data_checks/validate_step05_outputs.sh` therefore remains at its
-permanent `tests/data_checks/` owner. It is distinct from the stage-native
-Step `05` structured validator; this retention does not select a scheduler
-owner, repair characterized defects, or create runtime or cluster evidence.
-
-## Mirrored test ownership
-
-```text
-tests/
-├── stages/<public-slug>/
-├── analyses/<public-slug>/
-├── evidence/<public-slug>/
-├── cli/
-├── orchestration/
-├── scheduler/
-├── contracts/
-├── libraries/
-├── reporting/
-├── ingestion/
-├── contract_integration/
-└── workflow_integration/
-```
-
-An owner-local test home covers that owner's public entry points, native
-assets, local schemas, failure semantics, and independent fixtures. Language-
-specific runners may remain below the owner home, but `tests/shell/` or
-`tests/r/` is not the durable functional owner merely because it selects an
-interpreter.
-
-`tests/contracts/` independently tests neutral schemas, shared vocabularies,
-and executable validation owned by the neutral contract domain.
-`tests/contract_integration/` checks producer/consumer agreement at public
-artifact boundaries without importing either implementation to construct
-expected results. `tests/workflow_integration/` exercises multiple owners only
-through their public entry points and explicit contracts.
-
-Fixtures and goldens remain local to the narrowest test owner. A fixture moves
-to a neutral contract suite only when it represents the shared public contract
-rather than one producer's serialization helper. Test code and fixture
-placement do not create runtime dependency edges.
-
-The independent contract goldens and validation-roster agreement converge
-under `tests/contract_integration/independent_contract_goldens/` and
-`tests/contract_integration/validation_rosters/`, respectively. The independent
-contract goldens occupy the first final owner through `MIG-04E`; the
-validation-roster suite/helper occupy the second final owner through `MIG-04F`,
-with all fourteen reviewed exact-file callers cut over directly and no
-compatibility or package surface. Cross-entry-point public-command
-characterization remains a repository-development suite
-because it spans Make, Git tooling, modes, and several runtime domains. The
-repository-wide SLURM-wrapper characterization converges under
-`tests/workflow_integration/scheduler/` only when scheduler work resumes; until
-then it remains a deferred mixed suite.
-Coverage enforcement, validation-gate orchestration, and documentation/Git
-orchestration tests remain repository-development protections rather than
-runtime-domain tests.
-
-## CLI boundary
-
-`cli/` owns shared user-facing command selection, argument parsing, and
-translation into neutral request contracts. A CLI surface may depend on
-`contracts/` and call an orchestration or functional owner's public entry
-point. It may not import private stage, analysis, evidence, reporting, or
-ingestion implementation or become the owner of their validation and
-publication semantics.
-
-Owner-specific public shell, Python, and R entry points remain with their
-functional owner unless a later migration proves a thin compatibility wrapper
-is required. This boundary does not create an installable console script or a
-packaging contract.
-
-## Library boundary
-
-Implementation begins inside its functional owner. Promotion to `libraries/`
-requires proven equivalent reuse and the narrowest named neutral domain; it is
-not justified by similar filenames or helper signatures. There is no `utils`,
-generic stage dispatcher, universal transaction framework, or forced cross-
-language abstraction.
-
-A neutral library may depend on neutral contracts and on lower-level neutral
-libraries with an acyclic direction. It may not depend on `stages/`,
-`analyses/`, `evidence/`, or another application domain. Functional owners may
-depend on a reviewed library through its public API, with independent library
-and consumer tests. This topology assigns dependency direction but does not
-approve any extraction candidate.
-
-## Reporting boundary
-
-`reporting/` owns the downstream application chain for artifact indexing,
-canonical run-summary construction, view-model projection, renderers, styles,
-and templates. Neutral artifact and report schemas remain under `contracts/`;
-artifact semantics unique to a stage, analysis, or evidence operation remain
-with that producer.
-
-Reporting may depend on neutral contracts and libraries and may consume only
-explicitly declared public artifacts from functional owners. No stage,
-analysis, or evidence implementation depends on reporting. Artifact indexing,
-summary construction, and rendering are consumers and are not peer nodes in
-the computational DAG.
-
-A renderer consumes one explicit validated canonical run summary plus only
-supplemental tables authorized by exact contract. It does not discover inputs,
-run analysis, install tools, or promote evidence state. Native report assets
-remain under the reporting owner; their packaging is deferred.
-
-## Ingestion boundary
-
-`ingestion/` owns admission and normalization of external requests, manifests,
-and input references into neutral contracts. Manifest and request schemas that
-cross into orchestration remain under `contracts/`; ingestion-specific parsing
-and admission behavior remain under `ingestion/`.
-
-Ingestion may depend on neutral contracts and reviewed libraries. It hands an
-explicit validated contract to orchestration and does not import functional-
-owner implementation, infer sample relationships from filenames, execute
-stages, or make evidence claims. Operational inboxes, run-state directories,
-and acquired data remain outside source ownership.
-
-This boundary does not choose request fields, preprocessing profiles,
-acquisition policy, lifecycle directories, or an ingestion runner.
-
-## Orchestration and scheduler boundary
-
-`orchestration/` may depend on neutral contracts and invoke the public entry
-points of stages, analyses, and evidence operations. It may not import their
-private implementation modules, rewrite their local contracts, or infer order
-from paths. The semantic DAG and explicitly declared run inputs are its only
-ordering inputs.
-
-Stage-, analysis-, and evidence-specific SLURM entry points and job templates
-remain with their functional owner. `scheduler/` owns only neutral scheduler
-submission, state, and adapter contracts shared across owners. It may consume
-neutral contracts and invoke an owner's public scheduler surface; functional
-owners do not import scheduler or orchestration implementation.
-
-Repository-documentation Git orchestration and developer quality gates are not
-scientific-workflow orchestration and do not move into this runtime domain.
-This boundary defines ownership only and does not create an orchestrator,
-generate a job, or choose an optional-stage policy.
-
-## Dependency-direction summary
-
-Process invocation and artifact consumption are shown separately from code
-imports; invoking a public entry point does not authorize importing its private
-module.
-
-| Owner | May import | May invoke or consume | Prohibited direction |
-| --- | --- | --- | --- |
-| `contracts/` | no NORAD runtime domain | none | every implementation domain |
-| `libraries/` | `contracts/`; lower neutral libraries in an acyclic chain | none | every functional or application owner |
-| `stages/`, `analyses/`, `evidence/` | `contracts/`; reviewed `libraries/`; owner-local code | owner-local tools; peer artifacts through contracts | peer implementation; `cli/`; `orchestration/`; `scheduler/`; `reporting/`; `ingestion/` |
-| `ingestion/` | `contracts/`; reviewed `libraries/` | external inputs; emit validated request/manifest contracts | functional-owner or orchestration implementation |
-| `reporting/` | `contracts/`; reviewed `libraries/`; reporting-local code | explicit public artifacts and canonical summaries | functional-owner implementation; input discovery |
-| `orchestration/` | `contracts/`; reviewed `libraries/`; orchestration-local code | public functional and reporting entry points | private owner implementation; path- or number-inferred order |
-| `scheduler/` | `contracts/`; reviewed `libraries/`; scheduler-local code | public owner scheduler surfaces | private functional or orchestration implementation |
-| `cli/` | `contracts/`; public orchestration API; CLI-local code | public owner entry points | private application or functional implementation |
-
-## Neutral contract boundary
-
-`contracts/` is neutral: it may not import implementation from `stages/`,
-`analyses/`, `evidence/`, or another runtime domain. Functional owners may
-reference neutral cross-stage contracts and public schemas. An interface used
-only within one functional owner remains local to that owner.
-
-Stages, analyses, and evidence owners never import another functional owner's
-implementation. Cross-owner data flow uses the explicit artifact contracts and
-edges in [`STAGE_MAP.md`](STAGE_MAP.md#direct-dag-edges), while coordination
-invokes public owner entry points rather than private modules.
+Owner-specific public shell, Python, R, and SLURM entry points remain with their
+functional owner. There is no installed CLI, package distribution,
+orchestration engine, scheduler abstraction, descriptor loader, universal
+transaction framework, or generic stage dispatcher. Those remain potential
+future capabilities, not current topology.

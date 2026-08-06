@@ -26,18 +26,20 @@ the comparison implementation and direct tests are
 [`python_coverage_baseline.py`](../../tests/tools/python_coverage_baseline.py)
 and
 [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py).
-Exact measurement, check, and reviewed-update commands live in the
-[`RUNBOOK.md` local gate](../operations/RUNBOOK.md#local-validation-gate).
+Measure and compare through the supported target. A baseline rebase is an
+explicit reviewed mutation:
 
-The current snapshot identity is schema `1.0.0` with coverage.py `7.15.2`.
-Across `69` tracked Python files, its totals are `10873/12804` lines
-(`0.849188`) and `3787/5058` branches (`0.748715`). The machine-readable
-snapshot remains authoritative after any later accepted update. The reviewed
-concurrency-tool retirement removed three measured modules. Against the
-predecessor with those modules removed, coverage increased from `0.848585` line
-/ `0.748613` branch; the lower unadjusted aggregate is a denominator effect of
-deleting unusually highly covered dead code, not reduced coverage of the
-surviving topology.
+```bash
+make python-coverage-check
+make python-coverage-baseline-update
+git diff -- tests/baselines/python_coverage.json
+make python-coverage-check
+```
+
+The snapshot records schema `1.0.0`, coverage.py `7.15.2`, per-file ratios,
+and exact repository totals. It remains authoritative after an accepted
+update; a rebase must reflect a reviewed source/test surface rather than hide
+new uncovered code.
 
 The active policy:
 

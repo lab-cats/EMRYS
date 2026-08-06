@@ -28,8 +28,41 @@ They require run-specific paths, identities, approvals, and provenance and are
 not production evidence.
 
 Direct protection lives in [`tests/reporting/`](../../../tests/reporting/).
-Supported commands and dependency checks live in the
-[`RUNBOOK`](../../../docs/operations/RUNBOOK.md), with recovery routes in
+
+Build an artifact index in dry-run mode, then repeat with `--execute`:
+
+```bash
+.venv/bin/python src/norad/reporting/build_artifact_index.py \
+  --run-id RUN_ID \
+  --run-contract RUN_CONTRACT_JSON \
+  --inventory INVENTORY_TSV \
+  --output-root results/artifacts
+```
+
+Build its canonical run summary from the committed adapter receipt:
+
+```bash
+.venv/bin/python src/norad/reporting/build_run_summary.py \
+  --run-id RUN_ID \
+  --artifact-receipt results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
+  --output-root results/artifacts
+```
+
+Append `--science-review-summary` or `--report-table-approvals` only for exact
+inspected inputs. Execute by repeating with `--execute`.
+
+After the separately authorized `make quarto-restore`, render in dry-run mode
+and then repeat with `--execute`:
+
+```bash
+src/norad/reporting/render_run_report.sh \
+  --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
+  --output-root results/reports \
+  --quarto-bin .tools/quarto/1.9.38/bin/quarto
+```
+
+Use `--formats html`, `--formats pdf`, or `--formats all`. Focused protection is
+`make report-test`. Recovery routes are in
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md).
 
 Outputs belong under the caller's declared ignored results/report root. A

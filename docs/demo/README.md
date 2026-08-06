@@ -8,11 +8,19 @@ owns current checkout state, report behavior, commands, or evidence promotion.
 | [`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md) | Presenter run-of-show: inspection order, report tour, and action-point wording. |
 | [`PI_DEMO_REPORT.md`](PI_DEMO_REPORT.md) | PI/audience discussion guide: evidence-layer table, scientific cautions, and prompts. |
 
+Generate the deterministic ignored bundle after explicit Quarto setup:
+
+```bash
+make demo-report
+```
+
+Optional projections are `DEMO_REPORT_FORMATS=html`,
+`DEMO_REPORT_FORMATS=pdf`, and an explicit ignored `DEMO_REPORT_ROOT`. The
+default bundle is under `results/demo-report/reports/synthetic_full_run_demo/`.
+
 Before presenting, use the current
 [`HANDOFF.md`](../operations/HANDOFF.md) for status, cohort evidence, and
-limitations; use the exact
-[`RUNBOOK.md`](../operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report)
-procedure to generate the synthetic report. Current reporting behavior and its
+limitations. Current reporting behavior and its
 evidence ceiling remain in the
 [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow)
 and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).

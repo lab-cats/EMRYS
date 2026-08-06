@@ -17,8 +17,8 @@ data lifecycle.
   Directory or placeholder-file presence alone does not establish a runnable
   fixture or production evidence.
 
-Exact cluster storage conventions belong in the
-[runbook](../docs/operations/RUNBOOK.md#project-locations). Manifests declare
+Verify site and checkout context through the cross-cutting
+[runbook](../docs/operations/RUNBOOK.md#checkout-and-site-orientation). Manifests declare
 sample paths and metadata, while reference-provenance records characterize
 registered references. Directory placement alone is not provenance, and no
 implemented ingestion owner currently creates an immutable raw-input run

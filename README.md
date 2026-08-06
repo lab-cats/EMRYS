@@ -5,13 +5,11 @@ software for local characterization and CSU SLURM execution. Its implemented
 repository-path owners span sample-manifest admission, reference preparation,
 RNA-seq alignment and BAM processing, mechanical-orientation-aware cohort
 candidate generation, paired CMH ranking, evidence assembly, and report
-projection. See the
-[pipeline overview](docs/architecture/PIPELINE_OVERVIEW.md) for the
-scientist-facing flow, the
-[current architecture](docs/architecture/ARCHITECTURE.md) for the system map,
-and [`STAGE_MAP.md`](src/norad/contracts/STAGE_MAP.md) for exact owner identities
-and dependency edges. NORAD does not yet provide a single workflow orchestrator
-or installed command-line application.
+projection. See the [architecture index](docs/architecture/README.md) for the
+organized current-system authority, including the scientist-facing flow,
+system map, functional-owner inventory, source topology, stage map, and
+diagrams. NORAD does not yet provide a single workflow orchestrator or
+installed command-line application.
 
 ## Start here
 
@@ -43,8 +41,8 @@ production references may remain operator- or cluster-local.
    safety instructions. Use a dry-run or preflight where the owner provides
    one; some legacy-preserving owners do not, and there is no repository-wide
    dry-run.
-4. Use the [runbook](docs/operations/RUNBOOK.md) for supported commands and
-   recovery procedures, and
+4. Use the [runbook](docs/operations/RUNBOOK.md) for cross-cutting operations,
+   the selected owner's README for exact commands, and
    [troubleshooting](docs/operations/TROUBLESHOOTING.md) for symptom-based
    diagnosis.
 
@@ -53,7 +51,7 @@ For current implementation and evidence state, read
 boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
 
 To generate a synthetic presentation bundle, follow the
-[demo-report procedure](docs/operations/RUNBOOK.md#generate-the-populated-synthetic-demo-report),
+[demo-report procedure](docs/demo/README.md),
 which creates or replaces ignored artifacts beneath `results/demo-report/`.
 Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
 fixture is synthetic and provisional; it does not establish production

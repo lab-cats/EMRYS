@@ -140,7 +140,7 @@ job/accounting identity before deciding whether a file belongs to the current
 attempt. There may be no lock, stage, backup, receipt, or recovery marker to
 inspect. Do not delete, adopt, or retry the same names merely because one file
 looks current or the scheduler returned zero. Follow the
-[Step `02b` troubleshooting route](../../../../docs/operations/TROUBLESHOOTING.md#step-02b-producer-or-wrapper-leaves-a-partial-mixed-or-stale-evidence-pair).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 
 Focused local protection is:
 

@@ -5,6 +5,7 @@ RNA-editing candidate workflow. It groups the exact semantic owners into nine
 explanatory phases; those phase labels are not machine identities, public
 slugs, or scheduling commands. The canonical identities and direct artifact
 edges remain in [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
+The [`architecture index`](README.md) routes other system views.
 
 - [Conceptual Mermaid source](diagrams/current_user_pipeline.mmd)
 - [Detailed current system projection](diagrams/pipeline.mmd)

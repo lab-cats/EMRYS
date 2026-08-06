@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Validate live documentation, surviving task cards, and Mermaid sources."""
+"""Validate NORAD documentation ownership and local document structure."""
 
 from __future__ import annotations
 
 import argparse
 import re
 import subprocess
-from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import unquote
 
 
 CARD_SECTIONS = (
@@ -41,10 +39,53 @@ CARD_STATE_BY_DIRECTORY = {
     "IN_PROGRESS": "planned",
     "INTEGRATION_REVIEW": "review",
 }
-EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "data:")
 TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$")
 UNREFINED_STATE_PATTERN = re.compile(
     r"State: \[`UNREFINED` proposal\]\(README\.md\)\.(?: .+)?"
+)
+
+CANONICAL_DOCUMENTS = {
+    "AGENTS.md": "# NORAD safety guard",
+    "README.md": "# NORAD: CSU HPC RNA-seq and RNA-editing workflow",
+    "docs/architecture/README.md": "# Architecture index",
+    "docs/architecture/ARCHITECTURE.md": "# Current architecture",
+    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (
+        "# Current functional-owner inventory"
+    ),
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/architecture/PIPELINE_OVERVIEW.md": "# Current pipeline overview",
+    "docs/design/DECISIONS.md": "# Durable decisions",
+    "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/design/REFACTOR_AUDIT.md": "# Refactor audit index and recheck triggers",
+    "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/RUNBOOK.md": "# Runbook",
+    "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
+    "docs/operations/WORKFLOW.md": "# Workflow kernel",
+    "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
+    "docs/sitemap/README.md": "# Documentation sitemap",
+    "docs/sitemap/TOP_LEVEL.md": "# Top-level documentation map",
+    "src/norad/contracts/SOURCE_TOPOLOGY.md": (
+        "# Source ownership and dependency direction"
+    ),
+    "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
+}
+
+RETIRED_DOCUMENTS = (
+    "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/TASK_DELIVERY.md",
+    "docs/operations/TASK_START.md",
+    "src/norad/contracts/MIGRATION_MECHANICS.md",
+)
+
+CROSS_CUTTING_OWNER_DOCS = (
+    "src/norad/contracts/artifacts/README.md",
+    "src/norad/evidence/reference_provenance/README.md",
+    "src/norad/evidence/runtime_preflight/README.md",
+    "src/norad/evidence/storage_inventory/README.md",
+    "src/norad/ingestion/sample_manifest_admission/README.md",
+    "src/norad/reporting/README.md",
 )
 
 
@@ -106,70 +147,55 @@ def repository_root(value: Path) -> Path:
     return root
 
 
-def anchors(document: Path) -> set[str]:
-    """Return GitHub-style Markdown anchors."""
-    counts: dict[str, int] = {}
-    result: set[str] = set()
-    for line in document.read_text(encoding="utf-8").splitlines():
-        match = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", line)
-        if not match:
-            continue
-        heading = re.sub(r"<[^>]*>", "", match.group(1)).lower()
-        base = re.sub(r"[^\w\- ]", "", heading).replace(" ", "-")
-        number = counts.get(base, 0)
-        counts[base] = number + 1
-        result.add(base if number == 0 else f"{base}-{number}")
-    return result
+def first_heading(path: Path) -> str:
+    """Return the first Markdown H1, or an empty string."""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# "):
+            return line
+    return ""
 
 
-def frozen_link_source(root: Path, document: Path) -> bool:
-    """Return whether link targets in this archived or temporary record are frozen."""
-    parts = document.relative_to(root).parts
-    if parts[:2] == ("docs", "history"):
-        return True
-    return (
-        len(parts) >= 4
-        and parts[:2] == ("docs", "tasks")
-        and parts[2] in {*CARD_STATE_BY_DIRECTORY, "UNREFINED"}
-        and document.name != "README.md"
+def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
+    """Validate the small canonical kernel and mechanically derived owners."""
+    for relative, expected_h1 in CANONICAL_DOCUMENTS.items():
+        path = root / relative
+        if not path.is_file():
+            problems.append(f"missing canonical document: {relative}")
+        elif first_heading(path) != expected_h1:
+            problems.append(f"canonical document H1 mismatch: {relative}")
+
+    for relative in RETIRED_DOCUMENTS:
+        if (root / relative).is_file():
+            problems.append(f"retired documentation owner returned: {relative}")
+
+    for relative in CROSS_CUTTING_OWNER_DOCS:
+        if not (root / relative).is_file():
+            problems.append(f"missing cross-cutting owner documentation: {relative}")
+
+    stage_map = root / "src" / "norad" / "contracts" / "STAGE_MAP.md"
+    if not stage_map.is_file():
+        return
+    identity_pattern = re.compile(
+        r"^\| (stage|analysis|evidence) \| [^|]+ \| `([^`]+)` \|",
+        flags=re.MULTILINE,
     )
-
-
-def validate_links(
-    root: Path,
-    documents: Iterable[Path],
-    problems: list[str],
-) -> dict[Path, set[Path]]:
-    """Validate live local links and collect inbound references."""
-    document_list = list(documents)
-    document_anchors = {document: anchors(document) for document in document_list}
-    inbound: dict[Path, set[Path]] = {}
-    for document in document_list:
-        if frozen_link_source(root, document):
-            continue
-        text = document.read_text(encoding="utf-8")
-        for raw_target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
-            raw_target = raw_target.strip().strip("<>")
-            if raw_target.startswith(EXTERNAL_SCHEMES):
-                continue
-            path_text, separator, fragment = raw_target.partition("#")
-            path = (
-                document
-                if not path_text
-                else (document.parent / unquote(path_text)).resolve()
-            )
-            if not path.exists():
+    identities = identity_pattern.findall(stage_map.read_text(encoding="utf-8"))
+    if len(identities) != 14 or len({slug for _, slug in identities}) != 14:
+        problems.append("STAGE_MAP identity roster must contain 14 unique owners")
+        return
+    domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
+    for kind, slug in identities:
+        domain = domain_by_kind[kind]
+        owner = root / "src" / "norad" / domain / slug
+        tests = root / "tests" / domain / slug
+        for basename in ("README.md", "CONTRACT.md"):
+            if not (owner / basename).is_file():
                 problems.append(
-                    f"missing link: {document.relative_to(root)} -> {raw_target}"
+                    f"missing semantic-owner {basename}: "
+                    f"{(owner / basename).relative_to(root)}"
                 )
-                continue
-            inbound.setdefault(path, set()).add(document)
-            if separator and path.suffix == ".md":
-                if unquote(fragment).lower() not in document_anchors.get(path, set()):
-                    problems.append(
-                        f"missing anchor: {document.relative_to(root)} -> {raw_target}"
-                    )
-    return inbound
+        if not tests.is_dir():
+            problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
 
 
 def card_section(text: str, heading: str) -> str:
@@ -197,32 +223,16 @@ def validate_proposal(root: Path, path: Path, problems: list[str]) -> str | None
     if len(state_lines) != 1 or not UNREFINED_STATE_PATTERN.fullmatch(state_lines[0]):
         problems.append(f"invalid proposal state declaration: {relative}")
     headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-    prior_index = -1
-    valid_heading_order = True
-    for required_heading in UNREFINED_SECTIONS:
-        if headings.count(required_heading) != 1:
-            valid_heading_order = False
-            break
-        heading_index = headings.index(required_heading)
-        if heading_index <= prior_index:
-            valid_heading_order = False
-            break
-        prior_index = heading_index
-    if not valid_heading_order:
+    indices = [headings.index(value) for value in UNREFINED_SECTIONS if headings.count(value) == 1]
+    if len(indices) != len(UNREFINED_SECTIONS) or indices != sorted(indices):
         problems.append(f"proposal heading order/count: {relative}")
     if any(heading in CARD_SECTIONS for heading in headings):
         problems.append(f"actionable card heading in proposal: {relative}")
-    if re.search(
-        r"^- \[[A-Z0-9-]+\]\([^)]+\.md\) — (?:Required|Fully|Partially):",
-        text,
-        flags=re.MULTILINE,
-    ):
-        problems.append(f"dependency edge in proposal: {relative}")
     return proposal_id
 
 
 def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
-    """Validate surviving card structure and dependency semantics."""
+    """Validate card-local structure without judging cross-card references."""
     task_root = root / "docs" / "tasks"
     required_readmes = {
         task_root / "README.md",
@@ -255,10 +265,7 @@ def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
                     problems.append(f"duplicate proposal ID: {proposal_id}")
                 identifiers.add(proposal_id)
             continue
-        if (
-            path.parent.parent != task_root
-            or path.parent.name not in CARD_STATE_BY_DIRECTORY
-        ):
+        if path.parent.parent != task_root or path.parent.name not in CARD_STATE_BY_DIRECTORY:
             problems.append(f"invalid card location: {relative}")
             continue
 
@@ -309,75 +316,31 @@ def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
             blockers=blockers,
             unblocks=unblocks,
         )
-
-    for target, card in cards.items():
-        for source in card.blockers:
-            if source == target:
-                problems.append(f"self dependency: {target}")
-            elif source in cards and target not in cards[source].unblocks:
-                problems.append(f"missing reciprocal unblock: {source} -> {target}")
-    for source, card in cards.items():
-        for target, mode in card.unblocks.items():
-            if target in cards and mode == "Fully" and cards[target].blockers != {source}:
-                problems.append(f"invalid Fully relationship: {source} -> {target}")
-
-    visiting: list[str] = []
-    visited: set[str] = set()
-
-    def visit(card_id: str) -> None:
-        if card_id in visiting:
-            problems.append("dependency cycle: " + " -> ".join(visiting + [card_id]))
-            return
-        if card_id in visited:
-            return
-        visiting.append(card_id)
-        for dependency in cards[card_id].blockers:
-            if dependency in cards:
-                visit(dependency)
-        visiting.pop()
-        visited.add(card_id)
-
-    for card_id in cards:
-        visit(card_id)
-
-    for card_id, card in cards.items():
-        if card.state == "review":
-            for dependency in card.blockers:
-                if dependency in cards:
-                    problems.append(
-                        f"review card has incomplete blocker: {card_id} <- {dependency}"
-                    )
     return cards
 
 
-def validate_diagrams(
-    root: Path,
-    diagrams: Iterable[Path],
-    inbound: dict[Path, set[Path]],
-    problems: list[str],
-) -> int:
-    diagram_list = list(diagrams)
-    for diagram in diagram_list:
-        text = diagram.read_text(encoding="utf-8")
-        meaningful = [line.strip() for line in text.splitlines() if line.strip()]
-        if not meaningful or not re.fullmatch(
-            r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]
-        ):
+def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> int:
+    """Validate standalone Mermaid syntax without requiring inbound links."""
+    for diagram in diagrams:
+        meaningful = [
+            line.strip()
+            for line in diagram.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if not meaningful or not re.fullmatch(r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]):
             problems.append(f"invalid Mermaid declaration: {diagram.relative_to(root)}")
-        if "```" in text:
+        if "```" in diagram.read_text(encoding="utf-8"):
             problems.append(f"Markdown fence in Mermaid source: {diagram.relative_to(root)}")
-        if not (inbound.get(diagram, set()) - {diagram}):
-            problems.append(f"orphan Mermaid source: {diagram.relative_to(root)}")
-    return len(diagram_list)
+    return len(diagrams)
 
 
 def validate(root: Path) -> tuple[int, int, int]:
     documents = git_paths(root, "*.md")
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
-    inbound = validate_links(root, documents, problems)
+    validate_canonical_ownership(root, problems)
     cards = validate_cards(root, problems)
-    diagram_count = validate_diagrams(root, diagrams, inbound, problems)
+    diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:
         raise DocumentationError("Documentation gate failures:\n" + "\n".join(problems))
     return len(documents), len(cards), diagram_count
@@ -385,7 +348,7 @@ def validate(root: Path) -> tuple[int, int, int]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate NORAD live documentation, task cards, and diagrams."
+        description="Validate NORAD documentation ownership and local structure."
     )
     parser.add_argument("--repo", required=True, type=Path)
     return parser.parse_args()

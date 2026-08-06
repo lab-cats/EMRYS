@@ -164,7 +164,7 @@ every writer and downstream reader. Never delete a foreign or recovery lock,
 discard a backup, combine attempts, manufacture a member or summary, or reuse
 an ambiguous root. A separately authorized nonproduction diagnostic retry uses
 a new isolated absolute output root. See the dedicated
-[Step `09c` recovery routes](../../../../docs/operations/TROUBLESHOOTING.md#step-09c-finds-a-lock-partial-output-set-changed-input-or-incomplete-rollback).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 
 ## Private consumers and downstream provenance
 

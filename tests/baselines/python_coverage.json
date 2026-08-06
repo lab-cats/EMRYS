@@ -10,12 +10,12 @@
       "path": "scripts/git_orchestration/task_status.py"
     },
     {
-      "branch_rate": "0.991525",
-      "covered_branches": 117,
-      "covered_lines": 239,
+      "branch_rate": "1.000000",
+      "covered_branches": 86,
+      "covered_lines": 188,
       "line_rate": "1.000000",
-      "num_branches": 118,
-      "num_statements": 239,
+      "num_branches": 86,
+      "num_statements": 188,
       "path": "scripts/git_orchestration/validate_documentation.py"
     },
     {
@@ -655,11 +655,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748715",
-    "covered_branches": 3787,
-    "covered_lines": 10873,
-    "line_rate": "0.849188",
-    "num_branches": 5058,
-    "num_statements": 12804
+    "branch_rate": "0.747314",
+    "covered_branches": 3756,
+    "covered_lines": 10822,
+    "line_rate": "0.848585",
+    "num_branches": 5026,
+    "num_statements": 12753
   }
 }

@@ -190,7 +190,7 @@ yet cleanup can remove owned scratch/lock and no durable recovery marker is
 written. Controlled receipt-publication exit `67` followed by sites-restore
 exit `68` preserves exactly that ambiguous state. This is preservation-first
 manual recovery, not successful rollback or retry authority. Follow the
-dedicated [Step `08` troubleshooting route](../../../../docs/operations/TROUBLESHOOTING.md#step-08-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-transaction)
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md)
 before action.
 
 Focused local protection is:

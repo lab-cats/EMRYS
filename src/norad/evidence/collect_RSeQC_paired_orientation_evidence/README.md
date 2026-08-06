@@ -141,7 +141,7 @@ unrelated directory files, producer stdout/stderr, scheduler stdout/stderr,
 job ID/accounting and logs, selected executable and path, BAM plus admitted
 BAI, and BED12. There is no producer lock, stage, backup, receipt, or recovery
 artifact to inspect. Follow the
-[Step `03` troubleshooting route](../../../../docs/operations/TROUBLESHOOTING.md#step-03-producer-or-wrapper-leaves-a-partial-empty-or-stale-report).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 Git rollback changes tracked implementation only; it never recovers, removes,
 or authenticates runtime evidence.
 

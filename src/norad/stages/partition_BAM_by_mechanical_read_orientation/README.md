@@ -200,7 +200,7 @@ foreign lock, reconstruct a missing file, or adopt stale wrapper success. A
 separately authorized diagnostic retry must use both an isolated output
 directory and an isolated QC directory. Git rollback changes tracked files
 only; it cannot recover, delete, or authenticate runtime artifacts. Follow the
-[`Step 06` recovery route](../../../../docs/operations/TROUBLESHOOTING.md#step-06-producer-or-wrapper-leaves-a-partial-rollback-failure-collision-or-stale-set).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 
 Focused local protection is:
 

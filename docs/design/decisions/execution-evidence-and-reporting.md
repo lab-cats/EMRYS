@@ -147,7 +147,7 @@ installs dependencies or promotes evidence.
 
 Keep console output concise while retaining complete durable diagnostic logs
 under the target contract in
-[`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md#logging-target).
+[`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md#capability-backlog).
 Declared machine responses remain on stdout and human events on stderr. Log
 level changes projection only; it never changes computation, validation,
 publication, recovery, evidence, or exit behavior.

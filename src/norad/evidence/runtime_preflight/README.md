@@ -26,9 +26,31 @@ The committed
 is a structural starter requiring site-specific paths and expectations. Direct
 protection lives in
 [`test_runtime_preflight.py`](../../../../tests/evidence/runtime_preflight/test_runtime_preflight.py).
-Use the [`RUNBOOK`](../../../../docs/operations/RUNBOOK.md) for invocation and
-[`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) for contract,
-status, and publication-lock failures.
+
+Dry-run, execute, focused test, and the separate scheduler probe are:
+
+```bash
+.venv/bin/python src/norad/evidence/runtime_preflight/runtime_preflight.py \
+  --profile configs/runtime_preflight.example.tsv \
+  --output results/qc/runtime/local.runtime_preflight.tsv \
+  --runtime-context local
+
+mkdir -p results/qc/runtime
+.venv/bin/python src/norad/evidence/runtime_preflight/runtime_preflight.py \
+  --profile /explicit/path/to/runtime_profile.tsv \
+  --output results/qc/runtime/runtime_preflight.tsv \
+  --runtime-context cluster_batch \
+  --execute
+
+.venv/bin/python -m pytest -q \
+  tests/evidence/runtime_preflight/test_runtime_preflight.py
+
+mkdir -p logs
+sbatch src/norad/evidence/runtime_preflight/tool_check.slurm
+```
+
+Use [`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) for
+contract, status, and publication-lock failures.
 
 Even an all-pass report or successful manual smoke probe proves only the
 declared availability checks in the declared context. Current evidence is

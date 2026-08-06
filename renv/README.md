@@ -11,7 +11,7 @@ caches, staging, sandbox, and related restored state remain ignored.
 ## Restoration and cleanup
 
 Restoration is an explicit operator action. Use the
-[guarded local-R procedure](../docs/operations/RUNBOOK.md#guarded-local-r-environment)
+[explicit dependency procedure](../docs/operations/RUNBOOK.md#explicit-dependency-setup)
 rather than editing the library, activation script, settings, or lockfile to
 silence drift. Do not blanket-clean `renv/library/` or other ignored dependency
 state: it may be required for local validation and can be expensive to restore.

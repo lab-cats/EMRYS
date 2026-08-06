@@ -58,5 +58,5 @@ or validation evidence.
 
 Current answers and blockers belong in the
 [`HANDOFF.md`](../operations/HANDOFF.md#current-blockers) and
-[`QUESTIONS.md`](../design/QUESTIONS.md#open-operational-and-scientific-questions),
+[`QUESTIONS.md`](../design/QUESTIONS.md#operational-and-scientific-evidence),
 not in this discussion guide.

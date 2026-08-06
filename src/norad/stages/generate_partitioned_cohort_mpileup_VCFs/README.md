@@ -165,6 +165,58 @@ falsely accepted when three stale nonempty finals already exist. Scheduler
 success is not current-attempt, producer-validation, independent-validation,
 cluster, or scientific proof.
 
+## Cohort promotion checks
+
+Before primary promotion, the runtime manifest must validate and match the
+approved pairing reference exactly:
+
+```bash
+python src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
+  --manifest samples.tsv
+
+diff -u \
+  <(tail -n +2 configs/step_09_pairs.NORAD_EV_PUM1.tsv | LC_ALL=C sort) \
+  <(awk -F '\t' '
+      NR == 1 {
+        for (i = 1; i <= NF; i++) {
+          if ($i == "sample_id") sample = i
+          if ($i == "condition") condition = i
+          if ($i == "replicate") replicate = i
+        }
+        if (!sample || !condition || !replicate) exit 1
+        next
+      }
+      $sample == "" || $condition == "" || $replicate == "" { exit 1 }
+      { print $sample "\t" $condition "\t" $replicate }
+    ' samples.tsv | LC_ALL=C sort)
+```
+
+After every manifest-named primary partition validates independently, count
+only that declared universe:
+
+```bash
+set -euo pipefail
+cohort=NORAD_EV_PUM1
+manifest=configs/step_07_partitions.primary_contigs.tsv
+receipts=0
+vcfs=0
+while IFS=$'\t' read -r partition_id selector_type selector_value; do
+  [[ "$partition_id" == partition_id ]] && continue
+  out="results/mpileup/$cohort/$partition_id"
+  test -s "$out/$cohort.$partition_id.step07_outputs.tsv"
+  for orientation in FWD_like REV_like; do
+    test -s "$out/$cohort.$partition_id.$orientation.mpileup.vcf"
+    vcfs=$((vcfs + 1))
+  done
+  receipts=$((receipts + 1))
+done < "$manifest"
+[[ "$receipts" -eq 25 && "$vcfs" -eq 50 ]]
+printf 'primary_receipts=%s primary_vcfs=%s\n' "$receipts" "$vcfs"
+```
+
+These counts supplement per-partition selector, sample-order, hash, row,
+scheduler, lock, and scratch checks; they are not proof by themselves.
+
 ## Recovery, evidence, and rollback
 
 Before cleanup, same-name retry, or recovery, preserve all three finals;
@@ -185,9 +237,9 @@ out every active producer and reader in the final
 owner. Any separately authorized
 diagnostic retry uses an isolated output root and remains nonproduction.
 
-Follow the dedicated
-[`Step 07` recovery route](../../../../docs/operations/TROUBLESHOOTING.md#step-07-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-transaction)
-before action. Git rollback changes tracked files only; it cannot authenticate,
+Follow the common and owner-specific rules in
+[`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) before
+action. Git rollback changes tracked files only; it cannot authenticate,
 recover, delete, or alter runtime outputs, locks, backups, or scheduler logs.
 
 Focused local protection is:

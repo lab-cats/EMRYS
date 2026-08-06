@@ -6,8 +6,8 @@ are large, environment-specific, or derived; this README and the local
 `test_star_index/` documentation are tracked.
 
 Step `00a` owns reference-index construction, while downstream owners consume
-explicit files beneath this root. The supported preparation flow is in the
-[runbook](../docs/operations/RUNBOOK.md#reference-prep). Record real reference
+explicit files beneath this root. Supported preparation commands are routed by
+the [stage-owner index](../src/norad/stages/README.md). Record real reference
 identity, hashes, source, and release using the
 [reference-provenance starter](../configs/reference_provenance.example.tsv)
 before runtime promotion. A path or filename is not provenance.

@@ -40,6 +40,53 @@ UNREFINED_SECTIONS = (
     "Questions before refinement",
     "Promotion conditions",
 )
+CANONICAL_H1S = {
+    "AGENTS.md": "# NORAD safety guard",
+    "README.md": "# NORAD: CSU HPC RNA-seq and RNA-editing workflow",
+    "docs/architecture/README.md": "# Architecture index",
+    "docs/architecture/ARCHITECTURE.md": "# Current architecture",
+    "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/architecture/PIPELINE_OVERVIEW.md": "# Current pipeline overview",
+    "docs/design/DECISIONS.md": "# Durable decisions",
+    "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/design/REFACTOR_AUDIT.md": "# Refactor audit index and recheck triggers",
+    "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/RUNBOOK.md": "# Runbook",
+    "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
+    "docs/operations/WORKFLOW.md": "# Workflow kernel",
+    "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
+    "docs/sitemap/README.md": "# Documentation sitemap",
+    "docs/sitemap/TOP_LEVEL.md": "# Top-level documentation map",
+    "src/norad/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
+    "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
+}
+SEMANTIC_OWNERS = (
+    ("stage", "STAGE-01"),
+    ("stage", "STAGE-02"),
+    ("stage", "STAGE-03"),
+    ("stage", "STAGE-04"),
+    ("stage", "STAGE-05"),
+    ("stage", "STAGE-06"),
+    ("stage", "STAGE-07"),
+    ("stage", "STAGE-08"),
+    ("stage", "STAGE-09"),
+    ("stage", "STAGE-10"),
+    ("analysis", "ANALYSIS-01"),
+    ("evidence", "EVIDENCE-01"),
+    ("evidence", "EVIDENCE-02"),
+    ("evidence", "EVIDENCE-03"),
+)
+CROSS_CUTTING_DOCS = (
+    "src/norad/contracts/artifacts/README.md",
+    "src/norad/evidence/reference_provenance/README.md",
+    "src/norad/evidence/runtime_preflight/README.md",
+    "src/norad/evidence/storage_inventory/README.md",
+    "src/norad/ingestion/sample_manifest_admission/README.md",
+    "src/norad/reporting/README.md",
+)
 
 
 def run(
@@ -99,11 +146,6 @@ def write_fixture(root: Path) -> Path:
     initialized = run(["git", "init", "-q", str(repository)], cwd=root)
     assert initialized.returncode == 0, initialized.stderr
     files = {
-        "README.md": (
-            "# Fixture repository\n\n"
-            "[Task](docs/tasks/TODO/TEST-01-fixture.md)\n\n"
-            "[Diagram](docs/fixture.mmd)\n"
-        ),
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
         "docs/tasks/README.md": "# Task registry\n",
         "docs/tasks/TODO/README.md": "# TODO\n",
@@ -112,6 +154,21 @@ def write_fixture(root: Path) -> Path:
         "docs/tasks/UNREFINED/README.md": "# UNREFINED\n",
         "docs/tasks/TODO/TEST-01-fixture.md": card_text(),
     }
+    files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
+    identity_rows = [
+        f"| {kind} | Fixture | `{slug}` | `norad.{kind}.{slug}.v1` | `00` |"
+        for kind, slug in SEMANTIC_OWNERS
+    ]
+    files["src/norad/contracts/STAGE_MAP.md"] = (
+        "# Semantic workflow identity and DAG\n\n" + "\n".join(identity_rows) + "\n"
+    )
+    files.update({path: "# Owner\n" for path in CROSS_CUTTING_DOCS})
+    domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
+    for kind, slug in SEMANTIC_OWNERS:
+        domain = domain_by_kind[kind]
+        files[f"src/norad/{domain}/{slug}/README.md"] = "# Owner\n"
+        files[f"src/norad/{domain}/{slug}/CONTRACT.md"] = "# Contract\n"
+        files[f"tests/{domain}/{slug}/.keep"] = "fixture\n"
     for relative, text in files.items():
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,11 +233,77 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(7 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(61 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
     after = tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
     assert after == before
+
+
+def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "docs" / "operations" / "WORKFLOW.md").unlink()
+    (repository / "docs" / "operations" / "RUNBOOK.md").write_text(
+        "No heading.\n", encoding="utf-8"
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "missing canonical document: docs/operations/WORKFLOW.md" in result.stderr
+    assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
+
+
+def test_rejects_missing_stage_map_without_cascading_owner_checks(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "src" / "norad" / "contracts" / "STAGE_MAP.md").unlink()
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "missing canonical document: src/norad/contracts/STAGE_MAP.md" in result.stderr
+    assert "STAGE_MAP identity roster" not in result.stderr
+
+
+def test_rejects_incomplete_stage_map_identity_roster(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "src" / "norad" / "contracts" / "STAGE_MAP.md").write_text(
+        "# Semantic workflow identity and DAG\n\n"
+        "| stage | Fixture | `STAGE-01` | `norad.stage.STAGE-01.v1` | `00` |\n",
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "STAGE_MAP identity roster must contain 14 unique owners" in result.stderr
+
+
+def test_rejects_missing_semantic_and_cross_cutting_owner_docs(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / "src" / "norad" / "stages" / "STAGE-01" / "CONTRACT.md").unlink()
+    shutil.rmtree(repository / "tests" / "stages" / "STAGE-02")
+    (repository / "src" / "norad" / "reporting" / "README.md").unlink()
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "missing semantic-owner CONTRACT.md" in result.stderr
+    assert "missing mirrored test owner: tests/stages/STAGE-02" in result.stderr
+    assert "missing cross-cutting owner documentation" in result.stderr
+
+
+def test_rejects_returned_retired_document(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    retired = repository / "docs" / "operations" / "TASK_START.md"
+    retired.write_text("# Retired\n", encoding="utf-8")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "retired documentation owner returned: docs/operations/TASK_START.md" in result.stderr
 
 
 @pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))
@@ -235,7 +358,7 @@ def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
     assert result.stderr == "ERROR: could not inventory *.md: inventory exploded\n"
 
 
-def test_reports_live_missing_links_and_anchors_in_order(tmp_path: Path) -> None:
+def test_ignores_missing_links_and_anchors(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     readme = repository / "README.md"
     readme.write_text(
@@ -245,14 +368,9 @@ def test_reports_live_missing_links_and_anchors_in_order(tmp_path: Path) -> None
         encoding="utf-8",
     )
 
-    assert_failures(
-        repository,
-        tmp_path,
-        [
-            "missing link: README.md -> missing.md",
-            "missing anchor: README.md -> docs/tasks/README.md#absent",
-        ],
-    )
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_accepts_external_links_encoded_paths_and_duplicate_anchors(
@@ -296,11 +414,10 @@ def test_ignores_frozen_history_and_card_link_targets(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_rejects_invalid_or_orphan_mermaid(tmp_path: Path) -> None:
+def test_rejects_invalid_mermaid_source(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     diagram = repository / "docs" / "fixture.mmd"
     diagram.write_text("sequenceDiagram\n```\n", encoding="utf-8")
-    (repository / "README.md").write_text("# No diagram link\n", encoding="utf-8")
 
     assert_failures(
         repository,
@@ -308,7 +425,6 @@ def test_rejects_invalid_or_orphan_mermaid(tmp_path: Path) -> None:
         [
             "invalid Mermaid declaration: docs/fixture.mmd",
             "Markdown fence in Mermaid source: docs/fixture.mmd",
-            "orphan Mermaid source: docs/fixture.mmd",
         ],
     )
 
@@ -378,7 +494,7 @@ def test_missing_blocker_is_satisfied_and_visible_in_status(tmp_path: Path) -> N
     assert "| TEST-01 | planned | yes | DONE-01 | — | " in status.stdout
 
 
-def test_surviving_dependencies_require_reciprocity_and_reject_cycles(
+def test_ignores_cross_card_cycles(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
@@ -412,11 +528,10 @@ def test_surviving_dependencies_require_reciprocity_and_reject_cycles(
 
     result = validate(repository, cwd=tmp_path)
 
-    assert result.returncode == 1
-    assert "dependency cycle: TEST-01 -> TEST-02 -> TEST-01" in result.stderr
+    assert result.returncode == 0, result.stderr
 
 
-def test_rejects_missing_reciprocal_edge_between_surviving_cards(
+def test_ignores_missing_reciprocal_edge_between_surviving_cards(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
@@ -429,14 +544,12 @@ def test_rejects_missing_reciprocal_edge_between_surviving_cards(
         ),
     )
 
-    assert_failures(
-        repository,
-        tmp_path,
-        ["missing reciprocal unblock: TEST-01 -> TEST-02"],
-    )
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
 
 
-def test_review_card_rejects_surviving_blocker(tmp_path: Path) -> None:
+def test_ignores_review_card_references(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
     first.write_text(
@@ -459,11 +572,9 @@ def test_review_card_rejects_surviving_blocker(tmp_path: Path) -> None:
         ),
     )
 
-    assert_failures(
-        repository,
-        tmp_path,
-        ["review card has incomplete blocker: TEST-02 <- TEST-01"],
-    )
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_validates_unrefined_shape_without_counting_it_as_card(tmp_path: Path) -> None:
@@ -473,7 +584,7 @@ def test_validates_unrefined_shape_without_counting_it_as_card(tmp_path: Path) -
 
     accepted = validate(repository, cwd=tmp_path)
     assert accepted.returncode == 0, accepted.stderr
-    assert "(8 Markdown documents, 1 task cards, 1 Mermaid sources)" in accepted.stdout
+    assert "(62 Markdown documents, 1 task cards, 1 Mermaid sources)" in accepted.stdout
 
     proposal.write_text(
         proposal.read_text(encoding="utf-8")
@@ -484,7 +595,6 @@ def test_validates_unrefined_shape_without_counting_it_as_card(tmp_path: Path) -
     rejected = validate(repository, cwd=tmp_path)
     assert rejected.returncode == 1
     assert "actionable card heading in proposal" in rejected.stderr
-    assert "dependency edge in proposal" in rejected.stderr
 
 
 def test_task_status_derives_open_edges_without_writes(tmp_path: Path) -> None:
@@ -593,7 +703,7 @@ def test_reports_invalid_duplicate_and_malformed_cards(tmp_path: Path) -> None:
     )
 
 
-def test_reports_self_dependency_and_invalid_fully_edge(tmp_path: Path) -> None:
+def test_ignores_self_dependency_and_fully_reference_semantics(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
     first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
     first.write_text(
@@ -623,9 +733,7 @@ def test_reports_self_dependency_and_invalid_fully_edge(tmp_path: Path) -> None:
 
     result = validate(repository, cwd=tmp_path)
 
-    assert result.returncode == 1
-    assert "self dependency: TEST-01" in result.stderr
-    assert "invalid Fully relationship: TEST-01 -> TEST-02" in result.stderr
+    assert result.returncode == 0, result.stderr
 
 
 def test_task_status_renders_review_and_fails_closed_on_bad_registry(

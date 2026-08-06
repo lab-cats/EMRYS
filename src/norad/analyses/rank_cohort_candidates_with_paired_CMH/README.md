@@ -150,6 +150,40 @@ the Step `08` inputs/sites contract, and neutral
 continues. None of these exact-file bridges creates a package API, and the
 validator no longer loads the Step `09c` implementation.
 
+After owner validation, reconcile the complete table and exact significant
+subset in an allocated production compute context:
+
+```bash
+set -euo pipefail
+analysis=NORAD_EV_vs_PUM1
+out="results/editing/$analysis"
+all="$out/$analysis.cmh_all_sites.tsv"
+significant="$out/$analysis.cmh_significant_sites.tsv"
+summary="$out/$analysis.cmh_summary.tsv"
+spectrum="$out/$analysis.mutation_spectrum.tsv"
+step08="results/vcf_preprocessed/NORAD_EV_PUM1/NORAD_EV_PUM1.step08_sites.tsv"
+
+[[ "$(awk 'END { print NR - 1 }' "$all")" -eq \
+   "$(awk 'END { print NR - 1 }' "$step08")" ]]
+[[ "$(awk 'END { print NR - 1 }' "$summary")" -eq 1 ]]
+[[ "$(awk 'END { print NR - 1 }' "$spectrum")" -eq 12 ]]
+
+diff -u \
+  <(awk -F '\t' '
+      NR == 1 {
+        for (i = 1; i <= NF; i++) if ($i == "call_status") status = i
+        if (!status) exit 1
+        print
+        next
+      }
+      $status == "significant_up" || $status == "significant_down" { print }
+    ' "$all") \
+  "$significant"
+```
+
+The empty diff supplements schemas, hashes, reconciled totals, PDF structure,
+scheduler/log inspection, and lock/run-token inspection.
+
 ## Guarded R and scheduler
 
 The owner-specific real-R and independent-oracle diagnostics are:
@@ -218,4 +252,8 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
   tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
-Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md) and the dedicated [troubleshooting routes](../../../../docs/operations/TROUBLESHOOTING.md#step-09-finds-a-lock-or-incomplete-six-output-set). The owner is locally shell/R/fixture tested; this does not establish scheduler, cluster, production, scientific-review, editing-site, or biological proof.
+Current behavior, recovery states, and evidence limits are owned by
+[`CONTRACT.md`](CONTRACT.md) and the common/owner-specific
+[`troubleshooting rules`](../../../../docs/operations/TROUBLESHOOTING.md). The
+owner is locally shell/R/fixture tested; this does not establish scheduler,
+cluster, production, scientific-review, editing-site, or biological proof.

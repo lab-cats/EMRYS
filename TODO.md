@@ -20,5 +20,5 @@ create a status commit.
 - Current checkout, evidence, and exact resume point:
   [`HANDOFF.md`](docs/operations/HANDOFF.md). Live blockers remain in its
   [current-blockers section](docs/operations/HANDOFF.md#current-blockers).
-- Open operational and scientific questions:
-  [`QUESTIONS.md`](docs/design/QUESTIONS.md#open-operational-and-scientific-questions).
+- Open operational and scientific evidence gaps:
+  [`QUESTIONS.md`](docs/design/QUESTIONS.md#operational-and-scientific-evidence).

@@ -208,7 +208,7 @@ backups, lock, scratch, and any recovery marker. Their absence does not prove
 clean state. Use an isolated output directory for any separately authorized
 diagnostic retry. Git rollback changes tracked implementation only; it cannot
 restore, remove, or authenticate runtime artifacts. Follow the
-[Step `05` recovery route](../../../../docs/operations/TROUBLESHOOTING.md#step-05-producer-or-wrapper-leaves-a-partial-rollback-failure-or-stale-pair).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 
 Focused local protection is:
 

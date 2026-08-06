@@ -155,7 +155,7 @@ owner or other readers. There are no producer lock,
 stage, backup, receipt, or recovery artifacts whose absence proves clean state.
 Use an isolated output/metrics destination for a separately authorized retry;
 do not delete or adopt a mixed or stale final triplet as recovery. Follow the
-[Step `04` troubleshooting route](../../../../docs/operations/TROUBLESHOOTING.md#step-04-producer-or-wrapper-leaves-a-partial-mixed-or-stale-output-triplet).
+[common recovery rules](../../../../docs/operations/TROUBLESHOOTING.md).
 Git rollback changes tracked implementation only; it cannot recover, remove,
 or authenticate runtime artifacts.
 

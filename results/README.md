@@ -16,4 +16,4 @@ Generated does not mean disposable. Before deleting a subtree, identify its
 owner and confirm that no active process, lock, recovery marker, validated
 evidence, report, or retention requirement depends on it. Storage inventory
 and retention contracts record operator decisions but never execute deletion;
-see the [runbook](../docs/operations/RUNBOOK.md#inventory-storage-and-record-retention-policy).
+see the [storage-inventory owner](../src/norad/evidence/storage_inventory/README.md).

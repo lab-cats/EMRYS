@@ -1,132 +1,75 @@
-# Repository and delivery decisions
+# Repository and delivery rationale
 
-These decisions govern how maintainers change NORAD. Exact commands belong in
-the [`RUNBOOK`](../../operations/RUNBOOK.md), current task mechanics in
-[`TASK_DELIVERY.md`](../../operations/TASK_DELIVERY.md), and current state in
-the task registry and handoff.
+## Representation and execution
 
-## Repository conventions
+### Explicit manifests
 
-### Use TSV manifests
+Use ordered TSVs for samples, partitions, inventories, approvals, and evidence
+because shell, Python, and R can inspect the same bytes. Exact headers and row
+order are public contracts. A future YAML run request may carry policy while
+referencing the sample TSV.
 
-Use tab-separated manifests for sample, partition, inventory, approval, and
-evidence tables. TSV remains easy to inspect consistently from shell, Python,
-and R, so exact headers and row order are public contracts. A future YAML run
-request may carry policy while referencing a TSV sample manifest.
+### Local development, SLURM production
 
-### Develop locally and scale through SLURM
+Editing, fixtures, mocks, and syntax checks run locally. Heavy production
+computation runs through owner-local SLURM entry points, never on the login
+node.
 
-Editing, fixtures, mocks, and syntax checks run locally; heavy production
-computation runs through SLURM. Heavy work does not run on the login node.
-
-### Keep executable programs out of Markdown
+### Programs stay out of Markdown
 
 Markdown may show short invocations, but branching, validation, mutation,
-recovery, and publication logic belongs in parameterized, tested source files.
-Documentation explains authority, sequence, inputs, outputs, and
-interpretation and links to the executable owner.
+recovery, and publication logic belongs in parameterized tested source.
+Legacy scripts are protocol evidence, not authority to retain hardcoded paths,
+samples, or assumptions.
 
-### Keep active and future tests separate
+### Active and future tests remain distinct
 
-Runnable tests live in active test owners. Non-runnable plans remain explicitly
-separate and are not wired into validation targets.
-
-### Treat legacy scripts as protocol references
-
-Translate useful legacy behavior into parameterized, tested interfaces. Do not
-preserve hardcoded paths, samples, or undocumented assumptions merely because
-they existed in an old script.
+Runnable tests live in active test owners. Non-runnable ideas remain explicit
+scaffolds and are never wired into the validation gate.
 
 ## Reviewable delivery
 
-### Use semantic package commits and tranche publication
+### Semantic packages and separate publication
 
-The default delivery protocol maintains one linear, attributable Git lineage
-with one semantic commit per package or slice. Implementation, tests, directly
-affected canonical documentation, and any real lifecycle change stay together;
-selection and progress bookkeeping do not create commits. An approved
-homogeneous tranche may sequence bounded packages on one branch, run one final
-aggregate applicable gate, and publish once at its coherent boundary. Exact
-commit, validation, and publication procedure is owned by
-[`TASK_DELIVERY.md`](../../operations/TASK_DELIVERY.md).
+One bounded package normally produces one semantic commit containing its
+implementation, direct tests, contracts, and subject-affected documentation.
+Selection and progress bookkeeping create no commits. Publication remains a
+separate authorized action. The exact current procedure is the
+[`workflow kernel`](../../operations/WORKFLOW.md).
 
-### Run one complete computational gate per final tranche state
+### Proportional, final-state validation
 
-Use focused tests as useful implementation feedback and one complete applicable
-gate on the homogeneous tranche's final combined executable state. Re-run only
-when later changes invalidate the evidence. A non-consuming documentation
-change needs only its Git and documentation checks.
+Focused tests provide feedback. Run one complete applicable gate on the final
+affected state and rerun only evidence invalidated by later changes. A
+non-consuming documentation change needs Git and documentation checks; an
+executable or consumed change needs its behavioral gate.
 
-### Prefer failure-first validation output
+### Failure-first output
 
-Routine success stays concise; failures and explicit verbose runs retain full,
-attributable diagnostics. Parallel defaults require exact result and coverage
-parity, measured benefit, bounded cleanup, pinned dependencies, and a
-deterministic serial fallback. Historical tuning measurements are not ongoing
-performance guarantees.
+Routine success remains concise while failures retain attributable diagnostics.
+Parallel validation must preserve exact results and coverage, bound cleanup,
+pin dependencies, and retain a deterministic serial fallback. Measured tuning
+thresholds are activation criteria, not permanent speed guarantees.
 
-### Route task context by revision and impact
+### Context and approval follow impact
 
-Start from live Git state, the selected task, its bounded surfaces, and the
-applicable canonical sections. Reuse context only when its revision is known
-and unchanged. Contradictions or unbounded scientific, evidence, safety,
-recovery, publication, ownership, or public-contract impact broaden inspection;
-a phase boundary alone does not require a full-corpus read.
+Start from live Git state, the bounded task, affected owners, and direct
+consumers. Reuse exact unchanged context; broaden for contradiction, public
+contracts, science, safety, recovery, publication, ownership, dependencies, or
+unbounded impact. Approval covers only its stated objective, mutation,
+authority, evidence ceiling, exclusions, and stop conditions.
 
-### Use bounded approval envelopes and proportional validation
+## Maintainability
 
-Tests and inspection follow affected contracts, consumers, risk, and acceptance
-rather than a formal per-slice impact classification. One explicit approval may
-cover routine work inside a fixed objective, affected-owner boundary, evidence
-boundary, exclusions, and stop conditions; scope or authority expansion
-requires new approval.
+Documentation changes when its subject changes. Exact commands and defects
+stay with functional owners; current state, roadmap, and cross-cutting rules
+stay with their named canonical documents. Purposeful action-point safety
+repetition may remain.
 
-### Make documentation changes subject-triggered
+Coverage measures regression but cannot replace scenario, shell, real-R,
+runtime, transaction, oracle, cluster, or scientific testing. Materially
+changed large files receive cohesion review; split by responsibility, never an
+arbitrary line quota.
 
-Update a canonical document when the package changes its subject, not merely
-because work advanced. Use the final semantic diff, canonical ownership,
-targeted searches, and the structural documentation gate to find affected
-documentation. Broaden manual review for cross-cutting, contradictory,
-ownership-changing, or unbounded impact rather than rereading or rewriting the
-whole corpus by default.
-
-## Maintainability controls
-
-### Measure Python coverage without replacing scenario gates
-
-Measure line and branch coverage across the complete Python suite and configured
-subprocesses against a deterministic reviewed baseline. Reject ratio
-regressions and removed modules; new shared Python modules start at 90% line and
-85% branch coverage. Coverage does not replace independent scenarios, public
-contract checks, real-R tests, cluster execution, or scientific review.
-
-### Documentation ownership
-
-Each information category has one canonical owner in
-[`DOCUMENTATION_OWNERSHIP.md`](../../sitemap/DOCUMENTATION_OWNERSHIP.md).
-Documents link instead of copying mutable state, commands, identities, counts,
-or diagrams. Unique meaning must be discoverable at its destination before an
-old copy is removed; purposeful action-point safety repetition may remain.
-
-### Treat documentation and maintainer context as architecture
-
-Use shallow parent READMEs and detailed local owner documentation so routine
-work can remain bounded. Headers own purpose and interfaces; comments explain
-non-obvious rationale, scientific limits, safety, and recovery. Correctness and
-discoverability outrank compression, and operational prose links tested
-programs instead of embedding them.
-
-### Apply risk-based source-size thresholds
-
-A materially changed file above 600 lines receives a cohesion review, and new
-files normally remain below 600. A file above 1,000 lines needs a decomposition
-plan or explicit justification before architectural mutation. During the
-active repo-spanning refactor, a file above 1,500 lines must be eliminated
-unless the owner approves an explicit exception. Split by responsibility and
-scenario, never by arbitrary line count.
-
-### Defer repository skills until the underlying practice is proven
-
-Automate a workflow as a repository skill only after repeated use has stabilized
-its judgment, inputs, and safety boundary. A skill must not become another
-unowned checklist or encode unsettled policy.
+Automate a repository workflow only after repeated use stabilizes its inputs,
+judgment, and safety boundary. Automation must not encode unsettled policy.

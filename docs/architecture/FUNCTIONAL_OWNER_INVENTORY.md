@@ -1,8 +1,7 @@
 # Current functional-owner inventory
 
-This is the implementation-backed `ARCH-02A` ownership roster. It assigns
-every current public script, SLURM job, validator, and Make interface exactly
-once without changing historical execution order. Functional-owner slugs are
+This implementation-backed roster assigns every current public script, SLURM
+job, validator, and Make interface exactly once. Functional-owner slugs are
 the stable public identities owned by
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); this inventory owns
 their current executable surfaces and direct protection, not identity or DAG
@@ -88,15 +87,13 @@ Only dispositions that remain deferred or exceptional are repeated here:
 | `tests/data_checks/validate_step05_outputs.sh` | `RETAIN_ROOT`; permanent repository-level Step `05` operational inspection utility with behavior distinct from the owner-local validator. |
 | `tests/pending/test_step_04_mark_duplicates.sh` | `RETAIN_ROOT`; intentional non-runnable pending-plan scaffold. |
 
-No current residual path is classified `MOVE` or `RETIRE`. Root `jobs/` is
-absent, all 15 tracked SLURM assets are owner-local, and the current public
-surface roster is assigned once in the tables above.
+Root `jobs/` is absent and scheduler assets remain owner-local.
 
 Private helpers remain part of their listed public or neutral owner and add no
 entry point. Owner-specific refinements live in adjacent contracts; the
 approved neutral seams, consumer rosters, and dependency direction live in
-[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
+[`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-shared-seams).
 
-The protected roster contains 25 public Python entry points, 14 owner-local
-shell entry points, 4 R entry points, 7 Git-orchestration entry points, 15
-owner-local SLURM jobs, and 24 public Make targets.
+The executable and scheduler rosters are validated mechanically by the suites
+linked at the top of this file; this document explains ownership rather than
+copying generated totals.

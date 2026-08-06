@@ -1,13 +1,13 @@
 # Current architecture
 
-This document is the canonical conceptual map of the implemented NORAD
-system. Exact semantic identities and DAG edges belong in
+This document owns the conceptual map of the implemented NORAD system within
+the [`architecture index`](README.md). Exact semantic identities and DAG edges belong in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); current public
 surfaces and direct protection belong in the
 [`functional-owner inventory`](FUNCTIONAL_OWNER_INVENTORY.md); and each
 owner-local `CONTRACT.md` owns exact interface and failure behavior.
 
-Canonical current views:
+Current projections:
 
 - [`PIPELINE_OVERVIEW.md`](PIPELINE_OVERVIEW.md) and its
   [Mermaid source](diagrams/current_user_pipeline.mmd) provide the

@@ -167,7 +167,7 @@ and the exact bytes of every final and backup path before a separately
 authorized recovery decision. In particular, a prior-BAI-only state can remain
 without a BAM, lock, backup, receipt, or recovery marker. Absence of any of
 those paths does not authorize deletion, adoption, or retry. The exact response
-route is in [troubleshooting](../../../../docs/operations/TROUBLESHOOTING.md#step-02-canonical-bam-rollback-leaves-a-prior-bai-only-lockless-pair).
+route is in [troubleshooting](../../../../docs/operations/TROUBLESHOOTING.md).
 
 Run the focused local migration surface with:
 
