@@ -220,7 +220,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert "python-coverage-measure:" in makefile
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile
-    assert "--new-shared-module scripts/git_orchestration/_common.py" in makefile
+    assert "--new-shared-module scripts/git_orchestration/_common.py" not in makefile
     assert (
         "--new-shared-module src/norad/contracts/scientific_evidence/step08.py"
         in makefile

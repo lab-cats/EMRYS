@@ -206,45 +206,4 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
   tests/test_slurm_wrapper_contracts.py -k step_08_vcf_preprocessing
 ```
 
-Published runtime/input, transaction/recovery, signal/concurrency, validator,
-and scheduler baselines are `d29f87b`, `44e649d`, `6e2e2f6`, `3f02d19`, and
-`7a667ee`. Executable checkpoint `5e51496` moved exactly eight files and
-updated ten reviewed integration owners. At that migration checkpoint, shell
-mode/bytes/lines/SHA-256 was `0755` / `39,954` / `1,024` /
-`578542fefa02aa23667bb40e582cbab215e6d3efec0a7c2fbb002290f1cfc1f3`;
-R was `0644` / `69,505` / `1,939` /
-`50cae0523ea68f87535866cbe9e86d38c3812f96a2c8a06ebd66a72177268699`;
-validator was `0644` / `12,918` / `346` /
-`57a227c478c0caec60fe2ff8d84f7feb1fce28c5248338f1369b2a186284c78f`;
-and the mode-`0644` job was `4,597` bytes / `134` lines /
-`e51d0df86609ca5d3d39b60f6036ee225bc17c11b6a83d68c683603842c57de6`.
-
-The owner validator passed `17` tests; the complete shell suite passed; and the
-five focused integration owners passed within a `597`-test run. Complete shell
-contracts and isolated real-R semantic suites passed, and report runtime passed
-`17` tests with `60` deselected. Coverage passed `1,219` tests with `17` skips
-and the one intentionally stale documentation assertion deselected; Step `08`
-is tracked at `162/167` lines and `42/48` branches, with global floors
-`9601/11758` and `3367/4784`.
-
-The aggregate gate was not green. Static preflight passed, but guarded
-`r-check` stopped on the inherited malformed ignored library entry plus
-unavailable Bioconductor DNS and cancelled the other aggregate lanes. An
-untouched full Python run separately reached `1,219` passes and `17` skips
-before its sole documentation assertion listed twelve deferred migration links
-plus nine inherited `UNREFINED` locations. No dependency changed. Separately
-passing lanes do not turn the aggregate result green.
-
-Artifact provenance changes only Step `08`'s implementation path and reviewed
-shell hash in [`build_artifact_index.py`](../../reporting/build_artifact_index.py).
-Artifact identities, native receipt versus summary failure-marker distinction,
-schemas, ordering, reconciliation, consumers, and scientific meaning are
-unchanged.
-
-Git rollback reverts the documentation close, executable `5e51496`, scheduler
-`7a667ee`, validator `3f02d19`, signal/concurrency `6e2e2f6`, transaction/
-recovery `44e649d`, then runtime/input `d29f87b`. Git cannot authenticate,
-recover, delete, or alter runtime outputs, locks, backups, R state, or scheduler
-logs. See [`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03M`](../../../../docs/tasks/COMPLETED/MIG-03M-migrate-preprocess-and-annotate-cohort-candidates-owner.md)
-for the complete boundary.
+Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally shell/R/fixture tested; this does not establish scheduler, cluster, production, scientific-review, variant/editing-site, or biological proof.

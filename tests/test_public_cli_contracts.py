@@ -207,21 +207,10 @@ GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS = frozenset(
     {
         "task_status.py",
         "validate_documentation.py",
-        "validate_fragment_candidate.py",
-        "validate_fragment_target.py",
     }
 )
-GIT_ORCHESTRATION_SHELL_ENTRYPOINTS = frozenset(
-    {
-        "apply_fragment_candidate.sh",
-        "finalize_fragment_integration.sh",
-        "publish_exact_ref.sh",
-        "record_fragment_noop.sh",
-    }
-)
-GIT_ORCHESTRATION_PRIVATE_FILES = frozenset(
-    {"README.md", "_common.py", "_common.sh"}
-)
+GIT_ORCHESTRATION_SHELL_ENTRYPOINTS = frozenset()
+GIT_ORCHESTRATION_PRIVATE_FILES = frozenset({"README.md"})
 
 MAKE_TARGET_DECISIONS = {
     "test": "local_gate",

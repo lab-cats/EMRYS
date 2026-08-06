@@ -51,8 +51,8 @@ functional implementation; meaningfully different cross-language behavior may
 remain separate. Approved shared seams are recorded in
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#approved-neutral-shared-seams).
 
-Any remaining physical move follows the direct, no-permanent-wrapper model in
-[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md).
+Any future physical move requires its own reviewed plan and must preserve the
+allowed homes and dependency direction in `SOURCE_TOPOLOGY.md`.
 
 ## Intake, identity, attempts, and promotion
 

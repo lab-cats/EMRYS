@@ -26,14 +26,6 @@ Roadmap and package acceptance belong in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md),
 
 [Decision and rationale.](decisions/repository-and-delivery.md#keep-executable-programs-out-of-markdown)
 
-### Permit exceptional isolated concurrency with serialized integration
-
-[Decision and rationale.](decisions/repository-and-delivery.md#permit-exceptional-isolated-concurrency-with-serialized-integration)
-
-### Use transient integration fragments for cross-owner proposals
-
-[Decision and rationale.](decisions/repository-and-delivery.md#use-transient-integration-fragments-for-cross-owner-proposals)
-
 ### Run one complete computational gate per final tranche state
 
 [Decision and rationale.](decisions/repository-and-delivery.md#run-one-complete-computational-gate-per-final-tranche-state)

@@ -15,9 +15,9 @@ exact current version, read it before planning.
 
 ## Temporary critical runway
 
-Open only the
-[temporary critical runway route](../sitemap/TOP_LEVEL.md#temporary-critical-runway)
-when current work selection or frozen-scope boundaries are relevant.
+No fixed refactor runway or successor package is active. Select and approve one
+bounded package at a time; do not infer authority from a former program,
+branch, or completed card.
 
 ## Minimum start
 
@@ -25,23 +25,17 @@ Before proposing a task-specific plan:
 
 1. Inspect the live branch, `HEAD`, worktree, upstream relationship, worktree
    list, and the latest relevant semantic predecessor identified by Git,
-   `HANDOFF.md`, and `PIPELINE_PLAN.md`, when applicable. If concurrent work is
-   recorded, verify the assigned absolute worktree, candidate branch or
-   detached execution state, base, lane packet, and write set against
-   `CONCURRENT_WORK.md`. Do not infer current state from agent identity,
+   `HANDOFF.md`, and `PIPELINE_PLAN.md`, when applicable. Use one authoritative
+   mutable worktree and do not infer current state from agent identity,
    conversation, or memory.
 2. Read the selected task card in full. If no card exists, bound the objective
    explicitly and decide whether a card is required before mutation.
    `UNREFINED` proposals are nonselectable and cannot start work. Selecting,
    pausing, resuming, accepting, or declining work does not move a card or
-   require a status commit. A card whose explicit state is `review` permits
-   only frozen-candidate review/integration until an approved correction
-   returns it to `planned`.
+   require a status commit.
 3. Follow the card's `Required context` links, named anchors, and named local
    surfaces; inspect the directly affected implementation, contracts,
-   consumers, tests, and fixtures. For an integration-fragment handoff, also
-   read the candidate-side schema and inspect the exact blob at the frozen
-   published source SHA; do not substitute a moving worktree copy.
+   consumers, tests, and fixtures.
 4. Read only the applicable current-state, roadmap, command, decision,
    question, troubleshooting, and architecture sections identified below.
 5. Expand immediately when an escalation trigger applies.
@@ -94,10 +88,9 @@ The approved task-specific plan is a bounded approval envelope. It records or
 links the objective and included cards, the authoritative worktree and base,
 affected owners, allowed mutations and local commits, validation and evidence
 ceiling, expressly authorized external or high-impact actions, exclusions,
-unresolved choices, and stopping conditions. Exact lane identities, path
-reservations, and overlap controls are required only when concurrency is
-actually used. Routine work inside the envelope continues without repeated
-approval. A scope or authority expansion requires a revised plan and approval.
+unresolved choices, and stopping conditions. Routine work inside the envelope
+continues without repeated approval. A scope or authority expansion requires a
+revised plan and approval.
 
 Use these progress terms precisely:
 
@@ -117,15 +110,20 @@ scientific, or evidence-promotion decision.
 
 ## Canonical routing
 
-Open only the needed entry in the
-[canonical routing table](../sitemap/TOP_LEVEL.md#canonical-routing); do not
-read the entire top-level map.
+Use [`HANDOFF.md`](HANDOFF.md) for current blockers and evidence ceilings,
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for pipeline status,
+[`RUNBOOK.md`](RUNBOOK.md) for commands,
+[`DECISIONS.md`](../design/DECISIONS.md) for rationale,
+[`QUESTIONS.md`](../design/QUESTIONS.md) for open choices, and the current or
+target architecture owner for topology.
 
 ## Situation matrix
 
-Open only the applicable row in the
-[situation matrix](../sitemap/TOP_LEVEL.md#situation-matrix); do not read the
-entire top-level map.
+Unknown context requires the governing instructions, live Git state, selected
+card, and directly routed owners. Known unchanged context may reuse its exact
+revision. Cross-cutting, ownership-changing, contradictory, scientific,
+publication, recovery, or public-contract work expands to every affected owner
+and direct consumer.
 
 ## Mandatory expansion triggers
 
@@ -138,10 +136,8 @@ Broaden inspection when any of these applies:
   promise changes;
 - scientific method, evidence language, biological interpretation, or
   promotion state is involved;
-- safety, concurrency, locking, publication, rollback, cleanup, recovery,
+- safety, locking, publication, rollback, cleanup, recovery,
   cluster execution, credentials, or production artifacts are involved;
-- a concurrent lane packet is missing or stale, the worktree/branch/base does
-  not match it, write sets overlap, or a coupling assumption changed;
 - shared code, dependencies, configuration, test-harness selection or
   execution, generated inputs, or several stages/domains may be affected; or
 - the affected surface cannot be bounded confidently from the selected card,
@@ -152,8 +148,8 @@ completion always outrank context reduction.
 
 ## Documentation impact and validation
 
-At final documentation-impact or validation selection, use the
-[documentation impact and validation route](../sitemap/TOP_LEVEL.md#documentation-impact-and-validation).
-Update a canonical document only when the package changes that document's
-subject; card selection, a new commit, or routine progress is not itself a
-documentation trigger.
+Use the complete semantic diff and targeted searches for changed paths,
+commands, interfaces, schemas, evidence terms, and owners. Update a canonical
+document only when the package changes its subject; card selection, a new
+commit, or routine progress is not itself a documentation trigger. Run the
+repository-wide documentation gate for structural coverage.

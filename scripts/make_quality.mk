@@ -122,7 +122,6 @@ python-coverage-check: python-coverage-measure
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
 		--current "$(PYTHON_COVERAGE_CURRENT)" \
-		--new-shared-module scripts/git_orchestration/_common.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/step08.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \
@@ -142,7 +141,6 @@ validation-guarded-r:
 validation-static:
 	git diff --check
 	bash -n $(SHELL_SYNTAX_PATHS)
-	bash -n scripts/git_orchestration/*.sh
 	bash -n $(SLURM_SYNTAX_PATHS)
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
@@ -154,7 +152,6 @@ validate:
 
 smoke:
 	bash -n $(SHELL_SYNTAX_PATHS)
-	bash -n scripts/git_orchestration/*.sh
 	bash -n $(SLURM_SYNTAX_PATHS)
 
 lint:

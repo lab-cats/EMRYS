@@ -40,37 +40,17 @@ A card preserves scope, dependencies, and acceptance evidence; it does not
 authorize mutation or replace live inspection and an approved plan. Selection
 and ordinary execution are transient work context, not card lifecycle states:
 do not move a card or create a status-only commit when work is selected,
-paused, resumed, accepted, or declined. New actionable cards use stable paths
-under `docs/tasks/cards/`; update explicit card state only when lifecycle is
-itself part of the semantic package. Task lifecycle and legacy compatibility
-remain in the [`task registry`](docs/tasks/README.md). `UNREFINED` proposals
-cannot be selected, and a `review` card is frozen until an approved correction
-returns its explicit state to `planned`.
+paused, resumed, accepted, or declined. Keep surviving cards at their existing
+paths and delete a card when it is completed or retired; do not maintain a
+completed-card archive or repair surviving cards merely because old targets
+disappear. Rules remain in the [`task registry`](docs/tasks/README.md).
+`UNREFINED` proposals cannot be selected.
 
-## Concurrent work and Git authority
+## Git authority
 
-Sequential work in one authoritative worktree is the default. Use concurrent
-mutation only when independent work is materially worth its coordination cost,
-and then follow
-[`CONCURRENT_WORK.md`](docs/operations/CONCURRENT_WORK.md). Verify the assigned
-absolute worktree, base, packet, write set, and branch or detached execution
-state. Agent identity is not filesystem isolation. Never share a mutable
-worktree, branch, card ID, or path across lanes; use one canonical integration
-lane, at most one implementation-candidate or immutable-execution lane, and
-only disjoint documentation/card sidecars.
-
-Candidate state is proposal state. Only the integration owner updates canonical
-status, priority, lineage, lifecycle, completion, or evidence and serializes
-accepted changes into canonical history. Coupled documentation cannot land
-independently. Final validation applies to the combined canonical tree, and
-execution evidence remains bound to its recorded commit and declared inputs.
-
-Do not provision the first active delivery lane until `HANDOFF.md` records the
-required post-`CONCURRENCY-01` strategy discussion as complete. A durable lane
-packet is required only when another lane depends on it; publication of that
-checkpoint still requires explicit authority and establishes coordination, not
-implementation or completion evidence. Detailed procedure remains in
-`CONCURRENT_WORK.md` and exact integration commands remain in `RUNBOOK.md`.
+Use one authoritative mutable worktree and branch at a time. Inspect other
+worktrees read-only unless the user explicitly changes the authority boundary.
+Do not share a mutable worktree or branch between actors.
 
 Do not merge, rebase, rename, delete, overwrite, or force-push stage branches
 without explicit user direction.
@@ -171,11 +151,12 @@ install R, Quarto, system packages, or analysis dependencies.
 
 ## Documentation and topology routes
 
-Each mutable fact has one canonical owner. Move unique information before
-removing its old copy, repair links in the same change, and retain intentional
-action-point safety repetition. Do not duplicate live branch names, commit IDs,
-test totals, tool versions, roadmaps, or next-step narratives; link instead.
-Detailed ownership and no-loss dispositions remain in the
+Each mutable fact has one canonical live owner. Preserve operative contracts,
+defects, safety rules, and evidence ceilings before removing an owner; task
+cards and immutable history are not live path-repair obligations. Retain
+intentional action-point safety repetition. Do not duplicate live branch names,
+commit IDs, test totals, tool versions, roadmaps, or next-step narratives.
+Ownership boundaries remain in the
 [`ownership map`](docs/sitemap/DOCUMENTATION_OWNERSHIP.md), while documentation
 impact and card close follow [`TASK_START.md`](docs/operations/TASK_START.md)
 and [`TASK_DELIVERY.md`](docs/operations/TASK_DELIVERY.md).
@@ -183,9 +164,8 @@ and [`TASK_DELIVERY.md`](docs/operations/TASK_DELIVERY.md).
 The implemented repository map belongs in [`README.md`](README.md#repository-map).
 Target principles remain in
 [`FUTURE_ARCHITECTURE.md`](docs/architecture/FUTURE_ARCHITECTURE.md); exact
-target homes and migration mechanics remain in
-[`SOURCE_TOPOLOGY.md`](src/norad/contracts/SOURCE_TOPOLOGY.md) and
-[`MIGRATION_MECHANICS.md`](src/norad/contracts/MIGRATION_MECHANICS.md). Target
+target homes and dependency direction remain in
+[`SOURCE_TOPOLOGY.md`](src/norad/contracts/SOURCE_TOPOLOGY.md). Target
 architecture is not implemented current truth.
 
 ## Biological interpretation caution

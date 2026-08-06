@@ -43,8 +43,7 @@ environment precedence, Java-home selection, tool-specific wrappers, version
 checks, commands, and failure policy remain with those five consumers. This
 owner does not cover the separate two-argument, Python-specific, or RSeQC
 resolvers and creates no generic shell framework, package, or public CLI. The
-bounded extraction record is
-[`LIB-03`](../../../docs/tasks/COMPLETED/LIB-03-extract-stage-executable-resolution.md).
+consumer roster is protected by direct tests.
 
 The validation-report extraction preserves, rather than fixes, the
 characterized same-size and

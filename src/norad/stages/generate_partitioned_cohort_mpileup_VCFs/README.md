@@ -200,44 +200,4 @@ bash tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools
   tests/test_slurm_wrapper_contracts.py -k step_07_bcftools_mpileup
 ```
 
-Published pipeline/selector, transaction/recovery, stability/provenance,
-validator, and scheduler baselines are `c813ea3`, `ed58fd3`, `82d7049`,
-`65277f7`, and `523144e`. Executable checkpoint `60eb356` moved exactly five
-files and updated nine reviewed integration owners. Final producer mode/bytes/
-lines/SHA-256 is `0755` / `31,526` / `893` /
-`e3af9900b6f7831f2feafbc6d13f3755a475f02e5013c8b756107ddd90d22297`;
-validator is `0644` / `13,524` / `334` /
-`3191a379a4c2e1d589eeb3f327314d91dcb70f5e79da6e2b4f344ffb2b68763b`;
-and the mode-`0644` job is `4,421` bytes / `133` lines /
-`fbd8144a362cdd688ac14efcd8c003a3527b878d90ab525277a92018ac9a1ed6`.
-
-The direct shell suite passed, as did `35` moved-validator/scheduler tests with
-`142` unrelated scheduler cases deselected and `28` focused integration tests.
-The complete shell-contract lane and pinned report-runtime lane passed; the
-isolated guarded Step `08` and Step `09` real-R semantic suites passed. Python
-ran `1,199` passes and `17` skips before its sole documentation assertion
-listed ten intentionally deferred MIG-03L links plus nine inherited
-`UNREFINED` locations. Step `07` measured `177/198` lines and `51/72` branches;
-the tracked global floors are `9561/11720` lines and `3351/4772` branches with
-every non-target baseline row exact, and the standalone policy comparison
-passed.
-
-The aggregate gate was not green. Static preflight passed; guarded `r-check`
-stopped on an inherited malformed ignored `macos` library entry and unavailable
-Bioconductor DNS before the orchestrator could complete the other lanes. No
-dependency changed. The separately run shell, report, and guarded real-R
-semantic lanes passed. This is local fixture/fake-tool and local-runtime
-evidence only: no real bcftools workflow, scheduler, cluster, production,
-scientific-review, variant/editing-site, or biological evidence was created.
-
-Artifact provenance changes only Step `07`'s implementation path and reviewed
-hash in [`build_artifact_index.py`](../../reporting/build_artifact_index.py).
-Public artifact identities, schemas, ordering, reconciliation, consumers, and
-scientific meaning are unchanged.
-
-Rollback reverts this documentation close, executable `60eb356`, scheduler
-`523144e`, validator `65277f7`, stability/provenance `82d7049`, transaction/
-recovery `ed58fd3`, then pipeline/selector `c813ea3`. See
-[`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03L`](../../../../docs/tasks/COMPLETED/MIG-03L-migrate-generate-partitioned-cohort-mpileup-vcfs-owner.md)
-for the complete boundary.
+Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally fixture/fake-tool tested; this does not establish real-bcftools, scheduler, cluster, production, scientific-review, editing-site, or biological proof.

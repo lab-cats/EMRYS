@@ -161,43 +161,4 @@ bash tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer
   tests/test_slurm_wrapper_contracts.py -k step_03_infer_strandedness_and_orientation
 ```
 
-Published old-path baseline `88f4994` froze direct-final partial/empty
-replacement, malformed-nonempty success, arbitrary-CWD, stable-input,
-virtualenv/PATH, dry-run-log, and stale-output behavior. Executable checkpoint
-`24ed9b1` moved exactly five files and updated nine callers/harnesses. Final
-producer mode/bytes/lines/SHA-256 is `0644` / `6,857` / `209` /
-`01aa11cc60d9042ac541cfe445aec3e562a198a761c45449e82e96b7b9ab0784`;
-validator is `0644` / `6,888` / `183` /
-`d92eac61eeedec553b2541e446256836406f81c75e5fb8f6b12369f11bf58e67`;
-and the mode-`0644` job is `4,121` bytes / `123` lines /
-`d65fde6e7cb3d0ebccf76cb7101dffaf0ea42edfa49e1387d4cac3c3568d8c08`.
-
-Final focused wiring passed `143` assertions. Serial coverage passed `1,120`
-tests with `17` skips and one explicit documentation-validator deselection.
-The moved validator measured `103/115` lines and `28/34` branches; global
-coverage measured `9508/11677` lines and `3331/4756` branches. Every non-target
-row remained exact and the standalone policy comparison passed.
-
-The aggregate gate was not fully green. Static, shell, guarded-R, and report-
-runtime lanes passed in the network-enabled rerun using the existing project
-library without installing, restoring, deleting, or updating a dependency.
-Python reported `1,120` passes and `17` skips before its sole documentation
-assertion listed ten intentionally deferred migration links plus nine inherited
-`UNREFINED` card-location findings. This documentation close repairs the ten
-links; the inherited nine remain nonpassing. The initial sandboxed guarded-R
-attempt stopped on Bioconductor DNS and retained the inherited malformed
-`macos` warning. No result is represented as a green aggregate gate.
-
-Artifact evidence changes only the final producer path and reviewed SHA-256
-above. Rollback reverts the documentation close, executable checkpoint
-`24ed9b1`, then test baseline `88f4994`; it never deletes runtime artifacts or
-restores a legacy duplicate. See [`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03H`](../../../../docs/tasks/COMPLETED/MIG-03H-migrate-collect-rseqc-paired-orientation-evidence-owner.md)
-for the complete boundary.
-
-The migration added no wrapper, alias, symlink, package marker, public import
-identity, descriptor, schema, transaction, receipt, recovery marker,
-scheduler abstraction, strandedness classifier, or manifest mutation. Its
-evidence ceiling is local fixture/mock, guarded local-R, pinned report-runtime,
-and local coverage only—not new real RSeQC, scheduler, cluster, production,
-scientific-review, or biological proof.
+Current behavior and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally fixture/mock and guarded-R tested; this does not establish new real-RSeQC, scheduler, cluster, production, scientific-review, or biological proof.

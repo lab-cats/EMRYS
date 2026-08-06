@@ -109,8 +109,10 @@ state are deliberately outside this architecture map.
 | Where are public commands, jobs, validators, Make surfaces, and tests? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What does one operation validate, publish, or preserve on failure? | Its adjacent `CONTRACT.md` linked from the inventory |
 | Which source homes and dependency directions are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
-| How is a future direct move performed safely? | [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |
 | Which commands and operational procedures are supported? | [`RUNBOOK.md`](../operations/RUNBOOK.md) |
 | Where are recovery procedures and symptom diagnosis? | [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | Where do reporting, scientific, execution, and evidence rules live? | [`DECISIONS.md`](../design/DECISIONS.md), owner-local contracts, and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) |
 | What is currently proved, blocked, or awaiting external execution? | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
+
+The standalone [reliability flow](diagrams/reliability.mmd) is a concise
+non-authoritative view of validation and publication boundaries.

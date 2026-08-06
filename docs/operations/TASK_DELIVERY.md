@@ -1,8 +1,7 @@
 # Task delivery
 
 Task selection and context routing remain in
-[`TASK_START.md`](TASK_START.md), with conditional routes in the
-[top-level sitemap](../sitemap/TOP_LEVEL.md#temporary-task-start-routing).
+[`TASK_START.md`](TASK_START.md).
 
 ## Default delivery
 
@@ -64,8 +63,8 @@ only affected owners and direct references:
 
 | Changed subject | Update |
 | --- | --- |
-| Card scope, dependency, explicit lifecycle state, acceptance, retirement, or completion evidence | The stable card; ordinary selection and execution do not change it |
-| Non-reconstructable checkout state, active concurrent lane, external blocker, recovery fact, or evidence boundary | `HANDOFF.md` |
+| Card scope, dependency, or acceptance | The surviving card only when that subject changes; completion or retirement deletes the card |
+| Non-reconstructable checkout state, external blocker, recovery fact, or evidence boundary | `HANDOFF.md` |
 | Durable roadmap order, package acceptance policy, or approved runway | `PIPELINE_PLAN.md` |
 | Supported command or operator procedure | `RUNBOOK.md` |
 | Durable rationale or settled constraint | `DECISIONS.md` and its topic owner |
@@ -75,18 +74,19 @@ only affected owners and direct references:
 
 A commit, branch, test run, card selection, pause, resume, or repeated unchanged
 fact is not by itself a documentation trigger. `HANDOFF.md` is not a commit
-receipt, `PIPELINE_PLAN.md` is not a per-slice log, and stable card paths remove
-the need for inbound status-link repair. Use the repository-wide documentation
-gate for structural coverage; broaden semantic inspection only for cross-
-cutting change, ownership change, contradiction, or an unbounded impact.
+receipt, `PIPELINE_PLAN.md` is not a per-slice log, and deleted completed
+cards do not create an inbound path-repair obligation for surviving cards. Use
+the repository-wide documentation gate for structural coverage; broaden
+semantic inspection only for cross-cutting change, ownership change,
+contradiction, or an unbounded impact.
 
 ## Publication boundary
 
 Local commits do not imply publication authority. By default, publish a
 coherent accepted tranche in one batch after final review, aggregate validation,
 clean-worktree inspection, and history inspection. Then prove the intended
-remote ref and upstream equality once. Push earlier only when another approved
-lane or operator action genuinely depends on a durable remote checkpoint.
+remote ref and upstream equality once. Push earlier only when an approved
+operator action genuinely depends on a durable remote checkpoint.
 
 Runtime and cluster promotion remain upstream-sequential, including during an
 approved local-only descendant sequence. Never promote a downstream stage
@@ -162,14 +162,13 @@ lifecycle is part of the package subject:
 1. **Review** — semantically assess the final change and its affected owners.
 2. **Validation** — run the applicable automated structural or behavioral
    checks.
-3. **Verification** — prove the acceptance and lifecycle conditions. Record
-   `State: completed` and a non-placeholder completion record in the same
-   semantic commit. Publication is required only when the card's acceptance
+3. **Verification** — prove the acceptance conditions, then delete the card in
+   the same semantic commit. Publication is required only when acceptance
    explicitly says so.
 
 If the work merely selected, paused, resumed, or declined a card, there is no
-card-close mutation. A `retired` card records a rationale and successor or
-explicitly says that no successor exists.
+card mutation. Retiring work also deletes its card after any still-live fact is
+moved to its canonical owner.
 
 Exact commands remain in the
 [`RUNBOOK.md` local validation gate](RUNBOOK.md#local-validation-gate). This

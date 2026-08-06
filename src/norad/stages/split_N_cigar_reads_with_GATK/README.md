@@ -220,44 +220,4 @@ bash tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads
   tests/test_slurm_wrapper_contracts.py -k step_05
 ```
 
-Published transaction, admission/signal, validator, and scheduler baselines
-are `42bf851`, `3913215`, `8eb3a0b`, and `ec240ae`. Executable checkpoint
-`ef4cad7` moved exactly five files and updated ten reviewed integration owners.
-Final producer mode/bytes/lines/SHA-256 is `0644` / `18,920` / `596` /
-`e25c8d94d940aa02187e5550c51a71b8fdd8ca75660a07f5851dc215679248ac`;
-validator is `0644` / `12,584` / `334` /
-`f1a1128510de0c4e2b40800185c6cc039c7bb4ed5bf158396d87ee5d0730cdf3`;
-and the mode-`0644` job is `5,383` bytes / `167` lines /
-`3931b0976a9c97438b5980706a86203eb49ed472390a5a2f201830ae7ccfa147`.
-
-The final shell suite passed, as did `14` validator tests, `24` selected
-scheduler tests with `118` unrelated cases deselected, and `392` focused
-integration tests. Coverage passed `1,159` tests with `17` skips and one
-explicit documentation-validator deselection. The moved validator measured
-`178/192` lines and `45/54` branches; global coverage measured `9550/11720`
-lines and `3347/4772` branches. Every non-target row remained exact and the
-standalone policy comparison passed.
-
-The aggregate gate was not fully green. Static preflight, shell contracts,
-guarded R, and report runtime passed. Python ran `1,159` passes and `17` skips
-before its sole documentation assertion listed ten intentionally deferred Step
-`05` migration links plus nine inherited `UNREFINED` locations. This close
-repairs the ten links; the inherited nine remain nonpassing. No result is
-represented as a green aggregate gate, and no dependency changed.
-
-Artifact evidence changes only the final producer path and reviewed hash.
-Historical GATK/Java/samtools and six-sample cluster observations remain
-historical; this migration created no real tool, scheduler, cluster,
-production, scientific-review, or biological evidence. Rollback reverts the
-documentation close, executable checkpoint `ef4cad7`, scheduler baseline
-`ec240ae`, validator baseline `8eb3a0b`, admission/signal baseline `3913215`,
-then transaction baseline `42bf851`; it never changes runtime evidence. See
-[`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03J`](../../../../docs/tasks/COMPLETED/MIG-03J-migrate-split-n-cigar-reads-with-gatk-owner.md)
-for the complete boundary.
-
-The migration added no wrapper, alias, symlink, package marker, public import
-identity, descriptor, schema, transaction, receipt, recovery marker, scheduler
-abstraction, reference parser, GATK policy, or manifest mutation. Its evidence
-ceiling is local fixtures/mocks, guarded local R, pinned report runtime, and
-local coverage only.
+Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally fixture/mock tested; this does not establish new GATK, Java, samtools, scheduler, cluster, production, scientific-review, or biological proof.

@@ -882,15 +882,6 @@ local report-contract behavior. Preserve the state banner and limitations; do
 not claim production pipeline execution, cluster proof, completed production
 science review, or biological readiness.
 
-## Concurrent lane is in the wrong worktree, overlaps, or cannot integrate
-
-Stop mutation when worktree, branch, base, candidate SHA, reserved paths, or
-coupling differs from the lane packet. Use the read-only inspection steps under
-[concurrent worktrees](RUNBOOK.md#concurrent-worktrees-and-serialized-integration).
-Do not stash, switch, reset, clean, prune, merge, rebase, or resolve overlap
-opportunistically. Preserve candidate commits and conflict evidence; the
-integration owner repairs the packet or returns the governing task to planning.
-
 ## Evidence ceilings and success criteria
 
 A computational owner is `cluster-proven` only when its declared dry-run and

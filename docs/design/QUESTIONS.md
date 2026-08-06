@@ -190,20 +190,6 @@ task's planning deadline rather than rediscovered by an implementation agent.
   required success, preserve optional failure visibly, and never move raw data
   automatically.
 
-### CHOICE-PROGRAM-01 — First planning cohorts and delivery tranche
-
-- **Question:** Which live cards share a genuine decision boundary, and which
-  smallest low-risk vertical slice should become the first current tranche?
-- **Why it matters:** excessive grouping recreates the waterfall program,
-  while premature standalone work can settle cross-cutting contracts twice.
-- **Owning card:**
-  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
-- **Decision deadline:** before `PROGRAM-01` initializes the first durable
-  per-tranche artifact/current pointer or selects a post-program delivery card.
-- **Recommendation:** group only expensive-to-reverse shared invariants; choose
-  the smallest evidence-supported vertical slice and let integrated feedback
-  shape later tranches.
-
 ### CHOICE-EPIC-01 — Initial logical epic taxonomy and membership
 
 - **Question:** Which stable epic IDs describe the live task families, and may
@@ -211,7 +197,7 @@ task's planning deadline rather than rediscovered by an implementation agent.
 - **Why it matters:** too many epics duplicate card state and context, while a
   rigid single hierarchy makes cross-cutting work difficult to find.
 - **Owning card:**
-  [`PROGRAM-01`](../tasks/IN_PROGRESS/PROGRAM-01-define-rolling-wave-planning-and-coordination-cohorts.md).
+  [`TASK-EPIC-01`](../tasks/TODO/TASK-EPIC-01-implement-logical-epic-definitions-and-indexes.md).
 - **Decision deadline:** before `TASK-EPIC-01` task-specific planning.
 - **Recommendation:** derive a small stable taxonomy from durable ownership,
   use one primary membership when it is honest, and permit additional
@@ -225,15 +211,14 @@ the linked owner.
 
 | Resolved ID or topic | Durable decision | Exact owner |
 | --- | --- | --- |
-| `CHOICE-LIFECYCLE-01`; `CHOICE-TASK-IDENTITY-01`; `CHOICE-TASK-VIEW-01` | [File-backed task registry](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry) | [`docs/tasks/README.md`](../tasks/README.md), `TASK-LIFECYCLE-01`, and `TASK-REG-01` |
+| `CHOICE-LIFECYCLE-01`; `CHOICE-TASK-IDENTITY-01`; `CHOICE-TASK-VIEW-01` | [File-backed task registry](DECISIONS.md#govern-future-work-through-a-file-backed-task-registry) | [`docs/tasks/README.md`](../tasks/README.md) and `TASK-REG-01` |
 | `CHOICE-CONTEXT-01` | [Revision- and impact-routed context](DECISIONS.md#route-task-context-by-revision-and-impact) | [`TASK_START.md`](../operations/TASK_START.md) |
-| `CHOICE-PROGRAM-02` | [Bounded approval and proportional validation](DECISIONS.md#use-bounded-approval-envelopes-and-proportional-validation) | `TASK_START.md` and `CONCURRENT_WORK.md` |
-| `CHOICE-TRANCHE-VIEW-01` | [Rolling vertical delivery](DECISIONS.md#use-an-architecture-runway-with-rolling-vertical-delivery) | `PROGRAM-01` |
+| `CHOICE-PROGRAM-02` | [Bounded approval and proportional validation](DECISIONS.md#use-bounded-approval-envelopes-and-proportional-validation) | [`TASK_START.md`](../operations/TASK_START.md) |
 | `CHOICE-STAGE-01` | [Semantic identities and DAG order](DECISIONS.md#identify-stages-semantically-and-order-them-with-a-dag) | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
-| `CHOICE-ARCH-01` | [Vertical ownership and direct migration](DECISIONS.md#target-a-vertical-package-with-direct-contract-preserving-migrations) | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and [`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md) |
-| `CHOICE-SIZE-01` | Non-algorithmic Step `08` input/admission extraction; no size exception | [`SIZE-07E`](../tasks/COMPLETED/SIZE-07E-resolve-step08-r-module-size.md) |
+| `CHOICE-ARCH-01` | [Vertical ownership and direct migration](DECISIONS.md#target-a-vertical-package-with-direct-contract-preserving-migrations) | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
+| `CHOICE-SIZE-01` | Non-algorithmic Step `08` input/admission extraction; no size exception | [`TEST_BASELINE.md`](TEST_BASELINE.md) |
 | `CHOICE-LOG-01`; `CHOICE-LOG-02` | [Concise console plus durable logs](DECISIONS.md#separate-concise-console-output-from-durable-detailed-logs) | [Logging target](../architecture/FUTURE_ARCHITECTURE.md#logging-target) |
-| `CHOICE-DOC-01`; `CHOICE-DOC-GATE-01` | [Documentation as architecture](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture) | [Ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md) and `DOC-GATE-01` |
+| `CHOICE-DOC-01`; `CHOICE-DOC-GATE-01` | [Documentation as architecture](DECISIONS.md#treat-documentation-and-maintainer-context-as-architecture) | [Ownership map](../sitemap/DOCUMENTATION_OWNERSHIP.md) |
 | Scientific workflow and evidence | [Reference/BAM](DECISIONS.md#reference-and-bam-pipeline), [orientation/analysis](DECISIONS.md#orientation-and-downstream-analysis), and [evidence state](DECISIONS.md#evidence-and-scientific-state) | `STAGE_MAP.md` and local contracts |
 | Structured artifacts and current reporting | [Artifact/reporting decisions](DECISIONS.md#structured-artifacts-and-reporting) | Neutral schemas and current reporting owner |
 | YAML+TSV intake direction | [Run request and manifest](DECISIONS.md#use-yaml-run-requests-with-tsv-sample-manifests) | `INTAKE-02E`; exact fields/paths remain open in `CHOICE-INTAKE-01` |

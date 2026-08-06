@@ -152,40 +152,4 @@ bash tests/evidence/collect_canonical_BAM_QC_evidence/test_step_02b_bam_qc.sh
   tests/test_slurm_wrapper_contracts.py -k step_02b_bam_qc
 ```
 
-Published baseline checkpoint `0904faf` froze PATH absence, mixed-attempt
-faults, validator mismatch/mutation behavior, arbitrary-CWD repeatability, and
-stale scheduler false success. Executable checkpoint `2f186dd` moved exactly
-five files and updated nine callers/harnesses. Final producer mode/bytes/lines/
-SHA-256 is `0755` / `4,062` / `163` /
-`92895b2dbd1117e72703e8261a66ce1a7cc34db6000280e23753cd5f9132101c`;
-validator is `0644` / `6,934` / `186` /
-`fa25aeba0e6bd2e9fd0fc90229590cced4e6f44bb7b83310215500b9fb51fe96`;
-and the intentionally mode-`0644` job is `2,139` bytes / `87` lines /
-`119e0cc7f8937a03c7e766c60aede204ae743ee735300eceda126333fe51a77c`.
-
-Serial coverage passed `1,113` tests with `17` skips and one explicit
-documentation-validator deselection. The moved validator measured `103/110`
-lines and `24/30` branches; global coverage was `9505/11677` lines and
-`3328/4756` branches, with every non-target row exact and the standalone
-policy comparison passing.
-
-The aggregate gate was not fully green. Its network-enabled run passed static,
-shell, guarded-R, and report-runtime lanes. Python reported `1,113` passes and
-`17` skips before its sole documentation assertion listed ten intentionally
-deferred migration links plus nine inherited `UNREFINED` card-location
-findings. This close repairs the ten links; the inherited nine remain
-nonpassing. No result is represented as a green aggregate gate.
-
-Artifact evidence records the final producer path and SHA-256 above without
-changing artifact identities, schemas, contents, ordering, or consumers.
-Rollback reverts the documentation close, executable checkpoint `2f186dd`,
-then test baseline `0904faf`; it never deletes runtime artifacts or restores a
-legacy duplicate. See [`CONTRACT.md`](CONTRACT.md) and the completed
-[`MIG-03G`](../../../../docs/tasks/COMPLETED/MIG-03G-migrate-collect-canonical-bam-qc-evidence-owner.md)
-record for complete boundaries.
-
-The migration added no wrapper, alias, symlink, package marker, public import
-identity, descriptor, schema, transaction, receipt, recovery marker, or
-scheduler abstraction. Its evidence is local fixture/mock, guarded local-R,
-pinned report-runtime, and local coverage evidence only—not new real samtools,
-scheduler, cluster, production, scientific-review, or biological proof.
+Current behavior and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally fixture/mock tested; this does not establish new real-samtools, scheduler, cluster, production, scientific-review, or biological proof.

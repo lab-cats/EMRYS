@@ -1,15 +1,16 @@
-"""Independent behavior locks for the documentation validator."""
+"""Behavior locks for live documentation and surviving task-card validation."""
 
 from __future__ import annotations
 
 import os
-import runpy
 import shlex
 import shutil
 import stat
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -29,22 +30,6 @@ CARD_SECTIONS = (
     "Deliverables",
     "Acceptance evidence",
     "Canonical documentation updates",
-    "Escalation conditions",
-    "Completion record",
-)
-STABLE_CARD_SECTIONS = (
-    "Objective",
-    "Why this exists",
-    "Fixed decisions",
-    "Blocked by",
-    "Prerequisites",
-    "Required context",
-    "Questions owned by this card",
-    "In scope",
-    "Out of scope",
-    "Deliverables",
-    "Acceptance evidence",
-    "Documentation impact triggers",
     "Escalation conditions",
     "Completion record",
 )
@@ -76,122 +61,36 @@ def run(
     )
 
 
-def relative_snapshot(root: Path) -> tuple[str, ...]:
-    return tuple(sorted(str(path.relative_to(root)) for path in root.rglob("*")))
-
-
-def card_text(card_id: str = "TEST-01") -> str:
-    sections: list[str] = [f"# {card_id} — Fixture card", ""]
-    for heading in CARD_SECTIONS:
-        sections.extend((f"## {heading}", ""))
-        if heading in {"Blocked by", "Completion unblocks"}:
-            sections.extend(("- None.", ""))
-        else:
-            sections.extend(("Fixture text.", ""))
-    return "\n".join(sections)
-
-
-def stable_card_text(
-    card_id: str = "TEST-02",
+def card_text(
+    card_id: str = "TEST-01",
     *,
-    state: str = "planned",
+    blocked_by: str = "- None.",
+    unblocks: str = "- None.",
 ) -> str:
-    sections: list[str] = [
-        f"# {card_id} — Stable fixture card",
-        "",
-        f"State: {state}",
-        "",
-    ]
-    for heading in STABLE_CARD_SECTIONS:
-        sections.extend((f"## {heading}", ""))
+    lines = [f"# {card_id} — Fixture card", ""]
+    for heading in CARD_SECTIONS:
+        lines.extend((f"## {heading}", ""))
         if heading == "Blocked by":
-            sections.extend(("- None.", ""))
-        elif heading == "Completion record" and state == "retired":
-            sections.extend(
-                ("- Rationale: Fixture retirement.", "- Successor: None.", "")
-            )
-        elif heading == "Completion record" and state != "completed":
-            sections.extend(("Not complete.", ""))
+            lines.extend((blocked_by, ""))
+        elif heading == "Completion unblocks":
+            lines.extend((unblocks, ""))
+        elif heading == "Completion record":
+            lines.extend(("Not complete.", ""))
         else:
-            sections.extend(("Fixture text.", ""))
-    return "\n".join(sections)
+            lines.extend(("Fixture text.", ""))
+    return "\n".join(lines)
 
 
-def proposal_text(proposal_id: str = "TEST-02") -> str:
-    sections: list[str] = [
+def proposal_text(proposal_id: str = "IDEA-01") -> str:
+    lines = [
         f"# {proposal_id} — Fixture proposal",
         "",
         "State: [`UNREFINED` proposal](README.md). Fixture only.",
         "",
     ]
     for heading in UNREFINED_SECTIONS:
-        sections.extend((f"## {heading}", "", "Fixture text.", ""))
-    return "\n".join(sections)
-
-
-def card_path(
-    repository: Path,
-    card_id: str = "TEST-01",
-    *,
-    status: str = "TODO",
-) -> Path:
-    return repository / "docs" / "tasks" / status / f"{card_id}-fixture-card.md"
-
-
-def stable_card_path(repository: Path, card_id: str = "TEST-02") -> Path:
-    return repository / "docs" / "tasks" / "cards" / f"{card_id}-stable-card.md"
-
-
-def add_card(
-    repository: Path,
-    card_id: str,
-    *,
-    status: str = "TODO",
-) -> Path:
-    path = card_path(repository, card_id, status=status)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(card_text(card_id), encoding="utf-8")
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8")
-        + f"\n[{card_id}]({path.relative_to(repository).as_posix()})\n",
-        encoding="utf-8",
-    )
-    return path
-
-
-def add_stable_card(
-    repository: Path,
-    card_id: str,
-    *,
-    state: str = "planned",
-) -> Path:
-    path = stable_card_path(repository, card_id)
-    path.write_text(stable_card_text(card_id, state=state), encoding="utf-8")
-    return path
-
-
-def replace_card_section(path: Path, heading: str, lines: list[str]) -> None:
-    text = path.read_text(encoding="utf-8")
-    marker = f"## {heading}\n\n- None."
-    replacement = f"## {heading}\n\n" + "\n".join(lines)
-    assert marker in text
-    path.write_text(text.replace(marker, replacement), encoding="utf-8")
-
-
-def assert_failures(
-    repository: Path,
-    *,
-    cwd: Path,
-    expected: list[str],
-) -> None:
-    result = validate(repository, cwd=cwd)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr == (
-        "ERROR: Documentation gate failures:\n" + "\n".join(expected) + "\n"
-    )
+        lines.extend((f"## {heading}", "", "Fixture text.", ""))
+    return "\n".join(lines)
 
 
 def write_fixture(root: Path) -> Path:
@@ -199,24 +98,19 @@ def write_fixture(root: Path) -> Path:
     repository.mkdir()
     initialized = run(["git", "init", "-q", str(repository)], cwd=root)
     assert initialized.returncode == 0, initialized.stderr
-
     files = {
         "README.md": (
             "# Fixture repository\n\n"
-            "[Task card](docs/tasks/TODO/TEST-01-fixture-card.md)\n\n"
+            "[Task](docs/tasks/TODO/TEST-01-fixture.md)\n\n"
             "[Diagram](docs/fixture.mmd)\n"
         ),
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
         "docs/tasks/README.md": "# Task registry\n",
-        "docs/tasks/cards/README.md": "# Stable task cards\n",
-        "docs/tasks/TODO/README.md": "# TODO tasks\n",
-        "docs/tasks/IN_PROGRESS/README.md": "# Active tasks\n",
-        "docs/tasks/INTEGRATION_REVIEW/README.md": (
-            "# Integration-review task cards\n"
-        ),
-        "docs/tasks/COMPLETED/README.md": "# Completed tasks\n",
-        "docs/tasks/UNREFINED/README.md": "# UNREFINED — Proposal intake\n",
-        "docs/tasks/TODO/TEST-01-fixture-card.md": card_text(),
+        "docs/tasks/TODO/README.md": "# TODO\n",
+        "docs/tasks/IN_PROGRESS/README.md": "# In progress\n",
+        "docs/tasks/INTEGRATION_REVIEW/README.md": "# Review\n",
+        "docs/tasks/UNREFINED/README.md": "# UNREFINED\n",
+        "docs/tasks/TODO/TEST-01-fixture.md": card_text(),
     }
     for relative, text in files.items():
         path = repository / relative
@@ -238,84 +132,80 @@ def validate(
     )
 
 
-def task_status(
-    repository: Path,
-    *,
-    cwd: Path,
-) -> subprocess.CompletedProcess[str]:
+def task_status(repository: Path, *, cwd: Path) -> subprocess.CompletedProcess[str]:
     return run(
         [sys.executable, str(TASK_STATUS), "--repo", str(repository)],
         cwd=cwd,
     )
 
 
-def install_fixture_validator(repository: Path) -> None:
-    fixture_validator = (
-        repository
-        / "scripts"
-        / "git_orchestration"
-        / "validate_documentation.py"
+def add_card(
+    repository: Path,
+    card_id: str,
+    *,
+    directory: str = "TODO",
+    blocked_by: str = "- None.",
+    unblocks: str = "- None.",
+) -> Path:
+    path = repository / "docs" / "tasks" / directory / f"{card_id}-fixture.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        card_text(card_id, blocked_by=blocked_by, unblocks=unblocks),
+        encoding="utf-8",
     )
-    fixture_validator.parent.mkdir(parents=True)
-    shutil.copy2(VALIDATOR, fixture_validator)
+    return path
 
 
-def test_accepts_minimal_repository_and_reports_exact_counts(tmp_path: Path) -> None:
+def assert_failures(repository: Path, tmp_path: Path, expected: list[str]) -> None:
+    result = validate(repository, cwd=tmp_path)
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == (
+        "ERROR: Documentation gate failures:\n" + "\n".join(expected) + "\n"
+    )
+
+
+def test_accepts_minimal_repository_and_reports_counts_without_writes(
+    tmp_path: Path,
+) -> None:
     repository = write_fixture(tmp_path)
+    before = tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(9 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(7 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
+    after = tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
+    assert after == before
 
 
-def test_frozen_card_heading_oracle_matches_production() -> None:
-    production = runpy.run_path(str(VALIDATOR))
+@pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))
+def test_rejects_invalid_repository_roots(tmp_path: Path, kind: str) -> None:
+    if kind == "missing":
+        root = tmp_path / "missing"
+        expected = "ERROR: repository path is unavailable:"
+    elif kind == "non_git":
+        root = tmp_path / "plain"
+        root.mkdir()
+        expected = f"ERROR: not a Git worktree: {root}:"
+    else:
+        repository = write_fixture(tmp_path)
+        root = repository / "nested"
+        root.mkdir()
+        expected = f"ERROR: repository path is not the worktree root: {root}\n"
 
-    assert production["CARD_SECTIONS"] == CARD_SECTIONS
-    assert production["STABLE_CARD_SECTIONS"] == STABLE_CARD_SECTIONS
-    assert production["UNREFINED_SECTIONS"] == UNREFINED_SECTIONS
-
-
-def test_rejects_unavailable_root(tmp_path: Path) -> None:
-    missing = tmp_path / "missing"
-
-    result = validate(missing, cwd=tmp_path)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr.startswith(
-        f"ERROR: repository path is unavailable: {missing}:"
-    )
-
-
-def test_rejects_non_git_root(tmp_path: Path) -> None:
-    repository = tmp_path / "not-git"
-    repository.mkdir()
-
-    result = validate(repository, cwd=tmp_path)
+    result = validate(root, cwd=tmp_path)
 
     assert result.returncode == 1
     assert result.stdout == ""
-    assert result.stderr.startswith(f"ERROR: not a Git worktree: {repository}:")
-
-
-def test_rejects_nested_non_root(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    nested = repository / "nested"
-    nested.mkdir()
-
-    result = validate(nested, cwd=tmp_path)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr == (
-        f"ERROR: repository path is not the worktree root: {nested}\n"
-    )
+    if kind == "nested":
+        assert result.stderr == expected
+    else:
+        assert result.stderr.startswith(expected)
 
 
 def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
@@ -342,143 +232,42 @@ def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr == (
-        "ERROR: could not inventory *.md: inventory exploded\n"
-    )
+    assert result.stderr == "ERROR: could not inventory *.md: inventory exploded\n"
 
 
-def test_make_documentation_check_matches_direct_cli(tmp_path: Path) -> None:
+def test_reports_live_missing_links_and_anchors_in_order(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    install_fixture_validator(repository)
+    readme = repository / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        + "\n[Missing](missing.md)\n"
+        + "[Missing anchor](docs/tasks/README.md#absent)\n",
+        encoding="utf-8",
+    )
 
-    direct = validate(repository, cwd=tmp_path)
-    wrapped = run(
+    assert_failures(
+        repository,
+        tmp_path,
         [
-            "make",
-            "-s",
-            "--no-print-directory",
-            "-f",
-            str(REPO_ROOT / "Makefile"),
-            "documentation-check",
+            "missing link: README.md -> missing.md",
+            "missing anchor: README.md -> docs/tasks/README.md#absent",
         ],
-        cwd=repository,
-    )
-
-    assert (wrapped.returncode, wrapped.stdout, wrapped.stderr) == (
-        direct.returncode,
-        direct.stdout,
-        direct.stderr,
     )
 
 
-def test_make_documentation_check_retains_engine_failure_diagnostic(
+def test_accepts_external_links_encoded_paths_and_duplicate_anchors(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
-    install_fixture_validator(repository)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8") + "\n[Missing](missing.md)\n",
-        encoding="utf-8",
-    )
-
-    direct = validate(repository, cwd=tmp_path)
-    wrapped = run(
-        [
-            "make",
-            "-s",
-            "--no-print-directory",
-            "-f",
-            str(REPO_ROOT / "Makefile"),
-            "documentation-check",
-        ],
-        cwd=repository,
-    )
-
-    assert direct.returncode == 1
-    assert wrapped.returncode == 2
-    assert wrapped.stdout == direct.stdout == ""
-    make_level = int(os.environ.get("MAKELEVEL", "0"))
-    make_label = "make" if make_level == 0 else f"make[{make_level}]"
-    assert wrapped.stderr == (
-        direct.stderr + f"{make_label}: *** [documentation-check] Error 1\n"
-    )
-
-
-def test_aggregate_cli_diagnostics_are_complete_and_ordered(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "README.md").write_text(
-        "# Fixture repository\n\n"
-        "[Missing](missing.md)\n\n"
-        "[Missing anchor](docs/tasks/README.md#absent)\n\n"
-        "[Task card](docs/tasks/TODO/TEST-01-fixture-card.md)\n\n"
-        "[Diagram](docs/fixture.mmd)\n",
-        encoding="utf-8",
-    )
-    (repository / "docs/fixture.mmd").write_text(
-        "sequenceDiagram\n```\n",
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr == (
-        "ERROR: Documentation gate failures:\n"
-        "missing link: README.md -> missing.md\n"
-        "missing anchor: README.md -> docs/tasks/README.md#absent\n"
-        "invalid Mermaid declaration: docs/fixture.mmd\n"
-        "Markdown fence in Mermaid source: docs/fixture.mmd\n"
-    )
-
-
-def test_reports_missing_local_link(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8") + "\n[Missing](docs/missing.md)\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["missing link: README.md -> docs/missing.md"],
-    )
-
-
-def test_reports_missing_markdown_anchor(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
+    encoded = repository / "docs" / "encoded file.md"
+    encoded.write_text("# Encoded heading\n\n## Repeat\n\n## Repeat\n", encoding="utf-8")
     readme = repository / "README.md"
     readme.write_text(
         readme.read_text(encoding="utf-8")
-        + "\n[Missing anchor](docs/tasks/README.md#missing)\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "missing anchor: README.md -> docs/tasks/README.md#missing"
-        ],
-    )
-
-
-def test_accepts_duplicate_github_anchors_and_url_decoding(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    encoded = repository / "docs/encoded file.md"
-    encoded.write_text(
-        "# Encoded heading\n\n## Repeat\n\n## Repeat\n",
-        encoding="utf-8",
-    )
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8")
-        + "\n[Encoded](<docs/encoded%20file.md#encoded-heading>)\n"
-        + "[First](<docs/encoded%20file.md#repeat>)\n"
+        + "\n[HTTPS](https://example.test)\n"
+        + "[Mail](mailto:test@example.test)\n"
+        + "[Data](data:text/plain,fixture)\n"
+        + "[Encoded](<docs/encoded%20file.md#encoded-heading>)\n"
         + "[Second](<docs/encoded%20file.md#repeat%2D1>)\n",
         encoding="utf-8",
     )
@@ -486,935 +275,378 @@ def test_accepts_duplicate_github_anchors_and_url_decoding(tmp_path: Path) -> No
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
 
 
-def test_ignores_supported_external_link_schemes(tmp_path: Path) -> None:
+def test_ignores_frozen_history_and_card_link_targets(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8")
-        + "\n[HTTP](http://example.test/resource)\n"
-        + "[HTTPS](https://example.test/resource)\n"
-        + "[Mail](mailto:fixture@example.test)\n"
-        + "[Data](data:text/plain,fixture)\n",
+    history = repository / "docs" / "history" / "frozen.md"
+    history.parent.mkdir()
+    history.write_text("# Frozen\n\n[Gone](../missing.md)\n", encoding="utf-8")
+    card = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    card.write_text(
+        card.read_text(encoding="utf-8").replace(
+            "## Required context\n\nFixture text.",
+            "## Required context\n\n[Gone](../COMPLETED/GONE-01.md)",
+        ),
         encoding="utf-8",
     )
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
 
 
-def test_accepts_each_supported_mermaid_flowchart_direction(tmp_path: Path) -> None:
+def test_rejects_invalid_or_orphan_mermaid(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    diagram = repository / "docs/fixture.mmd"
-
-    for direction in ("LR", "RL", "TB", "BT", "TD"):
-        diagram.write_text(f"flowchart {direction}\n    A --> B\n", encoding="utf-8")
-        result = validate(repository, cwd=tmp_path)
-        assert result.returncode == 0, (direction, result.stderr)
-        assert result.stderr == ""
-
-
-def test_requires_external_inbound_reference_for_mermaid(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8").replace(
-            "\n[Diagram](docs/fixture.mmd)\n", "\n"
-        ),
-        encoding="utf-8",
-    )
+    diagram = repository / "docs" / "fixture.mmd"
+    diagram.write_text("sequenceDiagram\n```\n", encoding="utf-8")
+    (repository / "README.md").write_text("# No diagram link\n", encoding="utf-8")
 
     assert_failures(
         repository,
-        cwd=tmp_path,
-        expected=["orphan Mermaid source: docs/fixture.mmd"],
-    )
-
-
-def test_requires_each_task_registry_readme(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/TODO/README.md").unlink()
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["missing task-registry README: docs/tasks/TODO/README.md"],
-    )
-
-
-def test_rejects_card_outside_current_lifecycle_locations(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    path = repository / "docs/tasks/ARCHIVE/TEST-02-fixture-card.md"
-    path.parent.mkdir()
-    path.write_text(card_text("TEST-02"), encoding="utf-8")
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8")
-        + "\n[TEST-02](docs/tasks/ARCHIVE/TEST-02-fixture-card.md)\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid card location: "
-            "docs/tasks/ARCHIVE/TEST-02-fixture-card.md"
+        tmp_path,
+        [
+            "invalid Mermaid declaration: docs/fixture.mmd",
+            "Markdown fence in Mermaid source: docs/fixture.mmd",
+            "orphan Mermaid source: docs/fixture.mmd",
         ],
     )
 
 
-def test_accepts_unrefined_proposal_without_actionable_inbound_link(
+def test_rejects_missing_registry_readme_and_obsolete_card_location(
     tmp_path: Path,
 ) -> None:
     repository = write_fixture(tmp_path)
-    proposal_root = repository / "docs/tasks/UNREFINED"
-    (proposal_root / "TEST-02-fixture-proposal.md").write_text(
-        proposal_text(),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == (
-        "PASS documentation structure "
-        "(10 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
-    )
-    assert result.stderr == ""
-
-
-def test_accepts_additional_unrefined_proposal_sections(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(
-        proposal_text().replace(
-            "## Questions before refinement",
-            "## Optional context\n\nFixture text.\n\n"
-            "## Questions before refinement",
-        ),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-
-
-def test_requires_unrefined_registry_readme(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/UNREFINED/README.md").unlink()
+    (repository / "docs" / "tasks" / "IN_PROGRESS" / "README.md").unlink()
+    obsolete = repository / "docs" / "tasks" / "cards" / "OLD-01-fixture.md"
+    obsolete.parent.mkdir()
+    obsolete.write_text(card_text("OLD-01"), encoding="utf-8")
 
     assert_failures(
         repository,
-        cwd=tmp_path,
-        expected=[
-            "missing task-registry README: docs/tasks/UNREFINED/README.md"
+        tmp_path,
+        [
+            "missing task-registry README: docs/tasks/IN_PROGRESS/README.md",
+            "invalid card location: docs/tasks/cards/OLD-01-fixture.md",
         ],
     )
 
 
-def test_requires_canonical_proposal_h1(tmp_path: Path) -> None:
+def test_rejects_card_identity_structure_and_state_declaration(
+    tmp_path: Path,
+) -> None:
     repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(
-        proposal_text().replace(
-            "# TEST-02 — Fixture proposal", "# TEST-02 Fixture proposal"
-        ),
-        encoding="utf-8",
+    card = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    text = card.read_text(encoding="utf-8")
+    text = text.replace("# TEST-01 — Fixture card", "# WRONG-01 — Fixture card")
+    text = text.replace("## Why this exists\n\nFixture text.\n\n", "")
+    text = text.replace(
+        "# WRONG-01 — Fixture card\n\n",
+        "# WRONG-01 — Fixture card\n\nState: planned\n\n",
     )
+    card.write_text(text, encoding="utf-8")
 
     assert_failures(
         repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid proposal H1: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
+        tmp_path,
+        [
+            "card ID/filename mismatch: docs/tasks/TODO/TEST-01-fixture.md",
+            "card heading order/count: docs/tasks/TODO/TEST-01-fixture.md",
+            "obsolete card state declaration: docs/tasks/TODO/TEST-01-fixture.md",
         ],
     )
 
 
-def test_requires_proposal_id_to_match_filename(tmp_path: Path) -> None:
+def test_missing_blocker_is_satisfied_and_visible_in_status(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/WRONG-02-fixture-proposal.md"
+    card = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    card.write_text(
+        card_text(
+            blocked_by=(
+                "- [DONE-01](../COMPLETED/DONE-01-fixture.md) "
+                "— Required: Historical prerequisite."
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    validation = validate(repository, cwd=tmp_path)
+    status = task_status(repository, cwd=tmp_path)
+
+    assert validation.returncode == 0, validation.stderr
+    assert status.returncode == 0, status.stderr
+    assert "| TEST-01 | planned | yes | DONE-01 | — | " in status.stdout
+
+
+def test_surviving_dependencies_require_reciprocity_and_reject_cycles(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    first.write_text(
+        card_text(
+            "TEST-01",
+            blocked_by=(
+                "- [TEST-02](TEST-02-fixture.md) "
+                "— Required: Second card."
+            ),
+            unblocks=(
+                "- [TEST-02](TEST-02-fixture.md) "
+                "— Partially: Second card."
+            ),
+        ),
+        encoding="utf-8",
+    )
+    add_card(
+        repository,
+        "TEST-02",
+        blocked_by=(
+            "- [TEST-01](TEST-01-fixture.md) "
+            "— Required: First card."
+        ),
+        unblocks=(
+            "- [TEST-01](TEST-01-fixture.md) "
+            "— Partially: First card."
+        ),
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "dependency cycle: TEST-01 -> TEST-02 -> TEST-01" in result.stderr
+
+
+def test_rejects_missing_reciprocal_edge_between_surviving_cards(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    add_card(
+        repository,
+        "TEST-02",
+        blocked_by=(
+            "- [TEST-01](TEST-01-fixture.md) "
+            "— Required: First card."
+        ),
+    )
+
+    assert_failures(
+        repository,
+        tmp_path,
+        ["missing reciprocal unblock: TEST-01 -> TEST-02"],
+    )
+
+
+def test_review_card_rejects_surviving_blocker(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    first.write_text(
+        card_text(
+            "TEST-01",
+            unblocks=(
+                "- [TEST-02](../INTEGRATION_REVIEW/TEST-02-fixture.md) "
+                "— Partially: Review."
+            ),
+        ),
+        encoding="utf-8",
+    )
+    add_card(
+        repository,
+        "TEST-02",
+        directory="INTEGRATION_REVIEW",
+        blocked_by=(
+            "- [TEST-01](../TODO/TEST-01-fixture.md) "
+            "— Required: Open prerequisite."
+        ),
+    )
+
+    assert_failures(
+        repository,
+        tmp_path,
+        ["review card has incomplete blocker: TEST-02 <- TEST-01"],
+    )
+
+
+def test_validates_unrefined_shape_without_counting_it_as_card(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal = repository / "docs" / "tasks" / "UNREFINED" / "IDEA-01-fixture.md"
     proposal.write_text(proposal_text(), encoding="utf-8")
 
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "proposal ID/filename mismatch: "
-            "docs/tasks/UNREFINED/WRONG-02-fixture-proposal.md"
-        ],
-    )
+    accepted = validate(repository, cwd=tmp_path)
+    assert accepted.returncode == 0, accepted.stderr
+    assert "(8 Markdown documents, 1 task cards, 1 Mermaid sources)" in accepted.stdout
 
-
-def test_rejects_proposal_id_collision_with_actionable_card(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-01-fixture-proposal.md"
-    proposal.write_text(proposal_text("TEST-01"), encoding="utf-8")
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["duplicate proposal ID: TEST-01"],
-    )
-
-
-def test_requires_exact_unrefined_state_declaration(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
     proposal.write_text(
-        proposal_text().replace("`UNREFINED` proposal", "`TODO` card"),
+        proposal.read_text(encoding="utf-8")
+        + "\n## Blocked by\n\n"
+        + "- [TEST-01](../TODO/TEST-01-fixture.md) — Required: Invalid.\n",
         encoding="utf-8",
     )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid proposal state declaration: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-        ],
-    )
+    rejected = validate(repository, cwd=tmp_path)
+    assert rejected.returncode == 1
+    assert "actionable card heading in proposal" in rejected.stderr
+    assert "dependency edge in proposal" in rejected.stderr
 
 
-def test_requires_ordered_unrefined_core_sections(tmp_path: Path) -> None:
+def test_task_status_derives_open_edges_without_writes(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(
-        proposal_text().replace(
-            "## Questions before refinement", "## Open questions"
+    first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    first.write_text(
+        card_text(
+            "TEST-01",
+            unblocks=(
+                "- [TEST-02](TEST-02-fixture.md) "
+                "— Fully: Only prerequisite."
+            ),
         ),
         encoding="utf-8",
     )
-
-    assert_failures(
+    add_card(
         repository,
-        cwd=tmp_path,
-        expected=[
-            "proposal heading order/count: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-        ],
-    )
-
-
-def test_rejects_out_of_order_unrefined_core_sections(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    text = proposal_text()
-    questions = "## Questions before refinement\n\nFixture text.\n\n"
-    promotion = "## Promotion conditions\n\nFixture text.\n"
-    assert questions in text
-    assert promotion in text
-    proposal.write_text(
-        text.replace(questions, "ORDER-SLOT", 1)
-        .replace(promotion, questions, 1)
-        .replace("ORDER-SLOT", promotion, 1),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "proposal heading order/count: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-        ],
-    )
-
-
-def test_rejects_actionable_card_heading_in_proposal(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(
-        proposal_text() + "\n## Completion record\n\nNot complete.\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "actionable card heading in proposal: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md "
-            "-> Completion record"
-        ],
-    )
-
-
-def test_rejects_dependency_edge_in_proposal(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(
-        proposal_text()
-        + "\n- [TEST-01](../TODO/TEST-01-fixture-card.md) "
-        + "— Required: fixture.\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "dependency edge in proposal: "
-            "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-        ],
-    )
-
-
-def test_accepts_full_card_in_integration_review_lifecycle_location(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    add_card(repository, "TEST-02", status="INTEGRATION_REVIEW")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == (
-        "PASS documentation structure "
-        "(10 Markdown documents, 2 task cards, 1 Mermaid sources)\n"
-    )
-    assert result.stderr == ""
-
-
-def test_requires_integration_review_registry_readme(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/INTEGRATION_REVIEW/README.md").unlink()
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "missing task-registry README: "
-            "docs/tasks/INTEGRATION_REVIEW/README.md"
-        ],
-    )
-
-
-def test_requires_one_canonical_card_h1(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    path = card_path(repository)
-    path.write_text(
-        path.read_text(encoding="utf-8").replace(
-            "# TEST-01 — Fixture card", "# TEST-01 Fixture card"
+        "TEST-02",
+        blocked_by=(
+            "- [TEST-01](TEST-01-fixture.md) "
+            "— Required: First card."
         ),
-        encoding="utf-8",
     )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["invalid card H1: docs/tasks/TODO/TEST-01-fixture-card.md"],
-    )
-
-
-def test_requires_card_id_to_match_filename(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    old_path = card_path(repository)
-    new_path = old_path.with_name("WRONG-01-fixture-card.md")
-    old_path.rename(new_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8").replace(old_path.name, new_path.name),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "card ID/filename mismatch: "
-            "docs/tasks/TODO/WRONG-01-fixture-card.md"
-        ],
-    )
-
-
-def test_rejects_duplicate_card_ids(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    duplicate = repository / "docs/tasks/TODO/TEST-01-second-card.md"
-    duplicate.write_text(card_text(), encoding="utf-8")
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8")
-        + "\n[Duplicate](docs/tasks/TODO/TEST-01-second-card.md)\n",
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["duplicate card ID: TEST-01"],
-    )
-
-
-def test_requires_exact_card_heading_order(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    path = card_path(repository)
-    path.write_text(
-        path.read_text(encoding="utf-8").replace(
-            "## Objective", "## Renamed objective"
-        ),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "card heading order/count: docs/tasks/TODO/TEST-01-fixture-card.md"
-        ],
-    )
-
-
-def test_requires_blocked_by_syntax(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    replace_card_section(card_path(repository), "Blocked by", ["- not canonical"])
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid Blocked by syntax: docs/tasks/TODO/TEST-01-fixture-card.md"
-        ],
-    )
-
-
-def test_requires_completion_unblocks_syntax(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    replace_card_section(
-        card_path(repository), "Completion unblocks", ["- not canonical"]
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid Completion unblocks syntax: "
-            "docs/tasks/TODO/TEST-01-fixture-card.md"
-        ],
-    )
-
-
-def test_rejects_unknown_blocker(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/unknown.md").write_text("# Unknown\n", encoding="utf-8")
-    replace_card_section(
-        card_path(repository),
-        "Blocked by",
-        ["- [UNKNOWN-01](../../unknown.md) — Required: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["unknown blocker: TEST-01 <- UNKNOWN-01"],
-    )
-
-
-def test_rejects_unknown_unblock_target(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/unknown.md").write_text("# Unknown\n", encoding="utf-8")
-    replace_card_section(
-        card_path(repository),
-        "Completion unblocks",
-        ["- [UNKNOWN-01](../../unknown.md) — Partially: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["unknown unblock target: TEST-01 -> UNKNOWN-01"],
-    )
-
-
-def test_requires_reciprocal_unblock(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    dependent = add_card(repository, "TEST-02")
-    replace_card_section(
-        dependent,
-        "Blocked by",
-        ["- [TEST-01](TEST-01-fixture-card.md) — Required: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["missing reciprocal unblock: TEST-01 -> TEST-02"],
-    )
-
-
-def test_reports_self_dependency_and_resulting_cycle(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    path = card_path(repository)
-    replace_card_section(
-        path,
-        "Blocked by",
-        ["- [TEST-01](TEST-01-fixture-card.md) — Required: fixture."],
-    )
-    replace_card_section(
-        path,
-        "Completion unblocks",
-        ["- [TEST-01](TEST-01-fixture-card.md) — Fully: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "self dependency: TEST-01",
-            "dependency cycle: TEST-01 -> TEST-01",
-        ],
-    )
-
-
-def test_reports_multi_card_dependency_cycle(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    first = card_path(repository)
-    second = add_card(repository, "TEST-02")
-    replace_card_section(
-        first,
-        "Blocked by",
-        ["- [TEST-02](TEST-02-fixture-card.md) — Required: fixture."],
-    )
-    replace_card_section(
-        first,
-        "Completion unblocks",
-        ["- [TEST-02](TEST-02-fixture-card.md) — Partially: fixture."],
-    )
-    replace_card_section(
-        second,
-        "Blocked by",
-        ["- [TEST-01](TEST-01-fixture-card.md) — Required: fixture."],
-    )
-    replace_card_section(
-        second,
-        "Completion unblocks",
-        ["- [TEST-01](TEST-01-fixture-card.md) — Partially: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["dependency cycle: TEST-01 -> TEST-02 -> TEST-01"],
-    )
-
-
-def test_fully_unblock_must_be_the_only_direct_blocker(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    first = card_path(repository)
-    second = add_card(repository, "TEST-02")
-    third = add_card(repository, "TEST-03")
-    replace_card_section(
-        first,
-        "Completion unblocks",
-        ["- [TEST-02](TEST-02-fixture-card.md) — Fully: fixture."],
-    )
-    replace_card_section(
-        second,
-        "Blocked by",
-        [
-            "- [TEST-01](TEST-01-fixture-card.md) — Required: fixture.",
-            "- [TEST-03](TEST-03-fixture-card.md) — Required: fixture.",
-        ],
-    )
-    replace_card_section(
-        third,
-        "Completion unblocks",
-        ["- [TEST-02](TEST-02-fixture-card.md) — Partially: fixture."],
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["invalid Fully relationship: TEST-01 -> TEST-02"],
-    )
-
-
-def test_rejects_card_link_label_target_mismatch(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    path = card_path(repository)
-    path.write_text(
-        path.read_text(encoding="utf-8").replace(
-            "Fixture text.",
-            "Fixture text. [TEST-02](TEST-01-fixture-card.md)",
-            1,
-        ),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "card-link label/target mismatch: "
-            "docs/tasks/TODO/TEST-01-fixture-card.md "
-            "TEST-02 -> TEST-01-fixture-card.md"
-        ],
-    )
-
-
-def test_accepts_card_without_external_inbound_reference(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8").replace(
-            "\n[Task card](docs/tasks/TODO/TEST-01-fixture-card.md)\n", "\n"
-        ),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-
-
-def assert_lifecycle_card_requires_completed_blockers(
-    tmp_path: Path,
-    *,
-    status: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    blocker = card_path(repository)
-    lifecycle_card = add_card(repository, "TEST-02", status=status)
-    replace_card_section(
-        blocker,
-        "Completion unblocks",
-        [
-            f"- [TEST-02](../{status}/TEST-02-fixture-card.md) "
-            "— Fully: fixture."
-        ],
-    )
-    replace_card_section(
-        lifecycle_card,
-        "Blocked by",
-        [
-            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
-            "— Required: fixture."
-        ],
-    )
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "active/completed card has incomplete blocker: TEST-02 <- TEST-01"
-        ],
-    )
-
-
-def test_active_card_requires_completed_blockers(tmp_path: Path) -> None:
-    assert_lifecycle_card_requires_completed_blockers(
-        tmp_path,
-        status="IN_PROGRESS",
-    )
-
-
-def test_completed_card_requires_completed_blockers(tmp_path: Path) -> None:
-    assert_lifecycle_card_requires_completed_blockers(
-        tmp_path,
-        status="COMPLETED",
-    )
-
-
-def test_integration_review_card_requires_completed_blockers(
-    tmp_path: Path,
-) -> None:
-    assert_lifecycle_card_requires_completed_blockers(
-        tmp_path,
-        status="INTEGRATION_REVIEW",
-    )
-
-
-def test_requires_stable_card_registry_readme(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/cards/README.md").unlink()
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["missing task-registry README: docs/tasks/cards/README.md"],
-    )
-
-
-def test_accepts_stable_card_without_external_inbound_link(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    add_stable_card(repository, "TEST-02")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-
-
-def test_requires_exact_stable_card_state(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    card = add_stable_card(repository, "TEST-02")
-    card.write_text(
-        card.read_text(encoding="utf-8").replace("State: planned", "State: active"),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "invalid card state declaration: "
-            "docs/tasks/cards/TEST-02-stable-card.md"
-        ],
-    )
-
-
-def test_rejects_stable_schema_in_legacy_location(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    legacy_path = card_path(repository)
-    legacy_path.write_text(stable_card_text("TEST-01"), encoding="utf-8")
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "card heading order/count: docs/tasks/TODO/TEST-01-fixture-card.md"
-        ],
-    )
-
-
-def test_explicit_state_overrides_legacy_directory_state(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    legacy = card_path(repository)
-    legacy.write_text(
-        legacy.read_text(encoding="utf-8").replace(
-            "# TEST-01 — Fixture card\n\n",
-            "# TEST-01 — Fixture card\n\nState: completed\n\n",
-            1,
-        ),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-
-
-def test_rejects_duplicate_id_across_legacy_and_stable_cards(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    add_stable_card(repository, "TEST-01")
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["duplicate card ID: TEST-01"],
-    )
-
-
-def test_rejects_proposal_id_collision_with_stable_card(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    proposal = repository / "docs/tasks/UNREFINED/TEST-02-fixture-proposal.md"
-    proposal.write_text(proposal_text("TEST-02"), encoding="utf-8")
-    add_stable_card(repository, "TEST-02")
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=["duplicate card ID: TEST-02"],
-    )
-
-
-def test_stable_card_authors_only_blocked_by_direction(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    stable = add_stable_card(repository, "TEST-02")
-    replace_card_section(
-        stable,
-        "Blocked by",
-        [
-            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
-            "— Required: fixture."
-        ],
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-
-
-def test_rejects_completion_unblocks_heading_in_stable_card(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    stable = add_stable_card(repository, "TEST-02")
-    stable.write_text(
-        stable.read_text(encoding="utf-8").replace(
-            "## Prerequisites",
-            "## Completion unblocks\n\n- None.\n\n## Prerequisites",
-            1,
-        ),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "card heading order/count: "
-            "docs/tasks/cards/TEST-02-stable-card.md"
-        ],
-    )
-
-
-def test_review_and_completed_stable_cards_require_completed_blockers(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    stable = add_stable_card(repository, "TEST-02", state="review")
-    replace_card_section(
-        stable,
-        "Blocked by",
-        [
-            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
-            "— Required: fixture."
-        ],
-    )
-
-    expected = [
-        "active/completed card has incomplete blocker: TEST-02 <- TEST-01"
-    ]
-    assert_failures(repository, cwd=tmp_path, expected=expected)
-
-    stable.write_text(
-        stable.read_text(encoding="utf-8").replace(
-            "State: review", "State: completed", 1
-        ).replace(
-            "## Completion record\n\nNot complete.",
-            "## Completion record\n\nFixture evidence.",
-            1,
-        ),
-        encoding="utf-8",
-    )
-    assert_failures(repository, cwd=tmp_path, expected=expected)
-
-
-def test_completed_stable_card_requires_nonplaceholder_record(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    stable = add_stable_card(repository, "TEST-02", state="completed")
-    stable.write_text(
-        stable.read_text(encoding="utf-8").replace(
-            "## Completion record\n\nFixture text.",
-            "## Completion record\n\nNot complete.",
-            1,
-        ),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "placeholder completion record: "
-            "docs/tasks/cards/TEST-02-stable-card.md"
-        ],
-    )
-
-
-def test_retired_stable_card_requires_rationale_and_successor(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    stable = add_stable_card(repository, "TEST-02", state="retired")
-    stable.write_text(
-        stable.read_text(encoding="utf-8").replace(
-            "- Rationale: Fixture retirement.\n- Successor: None.",
-            "Retired without a structured record.",
-            1,
-        ),
-        encoding="utf-8",
-    )
-
-    assert_failures(
-        repository,
-        cwd=tmp_path,
-        expected=[
-            "retired card requires rationale and successor: "
-            "docs/tasks/cards/TEST-02-stable-card.md"
-        ],
-    )
-
-
-def test_task_status_derives_readiness_and_reverse_edges_without_writes(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    readme = repository / "README.md"
-    readme.write_text(
-        readme.read_text(encoding="utf-8").replace(
-            "\n[Task card](docs/tasks/TODO/TEST-01-fixture-card.md)\n", "\n"
-        ),
-        encoding="utf-8",
-    )
-    stable = add_stable_card(repository, "TEST-02")
-    replace_card_section(
-        stable,
-        "Blocked by",
-        [
-            "- [TEST-01](../TODO/TEST-01-fixture-card.md) "
-            "— Required: fixture."
-        ],
-    )
-    before = relative_snapshot(repository)
-
-    blocked_result = task_status(repository, cwd=tmp_path)
-
-    assert blocked_result.returncode == 0, blocked_result.stderr
-    assert "| TEST-02 | planned | explicit | no | TEST-01 | — |" in (
-        blocked_result.stdout
-    )
-    assert relative_snapshot(repository) == before
-
-    legacy = card_path(repository)
-    legacy.write_text(
-        legacy.read_text(encoding="utf-8").replace(
-            "# TEST-01 — Fixture card\n\n",
-            "# TEST-01 — Fixture card\n\nState: completed\n\n",
-            1,
-        ),
-        encoding="utf-8",
-    )
-    ready_result = task_status(repository, cwd=tmp_path)
-    branch_result = run(["git", "checkout", "-q", "-b", "alternate"], cwd=repository)
-    assert branch_result.returncode == 0, branch_result.stderr
-    alternate_result = task_status(repository, cwd=tmp_path)
-
-    assert ready_result.returncode == 0, ready_result.stderr
-    assert ready_result.stdout == alternate_result.stdout
-    assert ready_result.stdout == (
-        "# Task status\n\n"
-        "Generated from card metadata; this output is a view, not registry authority.\n\n"
-        "| ID | State | State source | Ready | Blocked by | Unblocks | Path |\n"
-        "| --- | --- | --- | --- | --- | --- | --- |\n"
-        "| TEST-01 | completed | explicit | — | — | TEST-02 | "
-        "docs/tasks/TODO/TEST-01-fixture-card.md |\n"
-        "| TEST-02 | planned | explicit | yes | TEST-01 | — | "
-        "docs/tasks/cards/TEST-02-stable-card.md |\n"
-    )
-
-
-def test_task_status_fails_closed_on_invalid_registry(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    add_stable_card(repository, "TEST-01")
+    before = tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
 
     result = task_status(repository, cwd=tmp_path)
 
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr == (
-        "ERROR: Task registry failures:\nduplicate card ID: TEST-01\n"
+    assert result.returncode == 0, result.stderr
+    assert "| TEST-01 | planned | yes | — | TEST-02 | " in result.stdout
+    assert "| TEST-02 | planned | no | TEST-01 | — | " in result.stdout
+    after = tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
+    assert after == before
+
+
+def test_reports_invalid_and_duplicate_proposal_identities(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal_root = repository / "docs" / "tasks" / "UNREFINED"
+    (proposal_root / "BAD-01-invalid.md").write_text(
+        proposal_text("BAD-01").replace(
+            "# BAD-01 — Fixture proposal", "# malformed proposal"
+        ),
+        encoding="utf-8",
     )
+    (proposal_root / "IDEA-01-one.md").write_text(
+        proposal_text("IDEA-01"), encoding="utf-8"
+    )
+    (proposal_root / "IDEA-01-two.md").write_text(
+        proposal_text("IDEA-01"), encoding="utf-8"
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "invalid proposal H1: docs/tasks/UNREFINED/BAD-01-invalid.md" in result.stderr
+    assert "duplicate proposal ID: IDEA-01" in result.stderr
+
+
+def test_reports_invalid_proposal_state_and_heading_orders(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    proposal_root = repository / "docs" / "tasks" / "UNREFINED"
+    missing = proposal_text("IDEA-01").replace(
+        "State: [`UNREFINED` proposal](README.md). Fixture only.",
+        "State: invalid.",
+    ).replace("## Promotion conditions", "## Extra")
+    (proposal_root / "IDEA-01-missing.md").write_text(missing, encoding="utf-8")
+    swapped = proposal_text("IDEA-02")
+    swapped = swapped.replace("## Proposal", "## HOLD", 1)
+    swapped = swapped.replace("## Why preserve it", "## Proposal", 1)
+    swapped = swapped.replace("## HOLD", "## Why preserve it", 1)
+    (proposal_root / "IDEA-02-swapped.md").write_text(swapped, encoding="utf-8")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "invalid proposal state declaration" in result.stderr
+    assert result.stderr.count("proposal heading order/count") == 2
+
+
+def test_reports_invalid_duplicate_and_malformed_cards(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    todo = repository / "docs" / "tasks" / "TODO"
+    (todo / "BAD-01-invalid.md").write_text(
+        card_text("BAD-01").replace("# BAD-01 — Fixture card", "# malformed"),
+        encoding="utf-8",
+    )
+    (todo / "TEST-01-duplicate.md").write_text(
+        card_text("TEST-01"), encoding="utf-8"
+    )
+    malformed = add_card(
+        repository,
+        "BAD-02",
+        blocked_by="- malformed blocker",
+        unblocks="- malformed unblock",
+    )
+    assert malformed.is_file()
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "invalid card H1: docs/tasks/TODO/BAD-01-invalid.md" in result.stderr
+    assert "duplicate card ID: TEST-01" in result.stderr
+    assert "invalid Blocked by syntax: docs/tasks/TODO/BAD-02-fixture.md" in result.stderr
+    assert (
+        "invalid Completion unblocks syntax: docs/tasks/TODO/BAD-02-fixture.md"
+        in result.stderr
+    )
+
+
+def test_reports_self_dependency_and_invalid_fully_edge(tmp_path: Path) -> None:
+    repository = write_fixture(tmp_path)
+    first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    first.write_text(
+        card_text(
+            "TEST-01",
+            blocked_by=(
+                "- [TEST-01](TEST-01-fixture.md) "
+                "— Required: Invalid self edge."
+            ),
+            unblocks=(
+                "- [TEST-01](TEST-01-fixture.md) "
+                "— Partially: Invalid self edge.\n"
+                "- [TEST-02](TEST-02-fixture.md) "
+                "— Fully: Claims sole prerequisite."
+            ),
+        ),
+        encoding="utf-8",
+    )
+    add_card(
+        repository,
+        "TEST-02",
+        blocked_by=(
+            "- [TEST-01](TEST-01-fixture.md) — Required: First.\n"
+            "- [DONE-01](../COMPLETED/DONE-01.md) — Required: Historical."
+        ),
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert result.returncode == 1
+    assert "self dependency: TEST-01" in result.stderr
+    assert "invalid Fully relationship: TEST-01 -> TEST-02" in result.stderr
+
+
+def test_task_status_renders_review_and_fails_closed_on_bad_registry(
+    tmp_path: Path,
+) -> None:
+    repository = write_fixture(tmp_path)
+    add_card(repository, "TEST-02", directory="INTEGRATION_REVIEW")
+
+    accepted = task_status(repository, cwd=tmp_path)
+    assert accepted.returncode == 0, accepted.stderr
+    assert "| TEST-02 | review | — | — | — | " in accepted.stdout
+
+    first = repository / "docs" / "tasks" / "TODO" / "TEST-01-fixture.md"
+    first.write_text(
+        first.read_text(encoding="utf-8").replace(
+            "# TEST-01 — Fixture card\n\n",
+            "# TEST-01 — Fixture card\n\nState: planned\n\n",
+        ),
+        encoding="utf-8",
+    )
+    rejected = task_status(repository, cwd=tmp_path)
+    assert rejected.returncode == 1
+    assert rejected.stdout == ""
+    assert rejected.stderr.startswith("ERROR: Task registry failures:\n")

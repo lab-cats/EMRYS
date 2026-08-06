@@ -21,8 +21,7 @@ partials, backups, logs, and recovery markers until ownership and state are know
 - Operate: [runtime and evidence helpers](#artifact-and-future-operational-helpers),
   [job inspection](#manual-job-checking), and
   [cluster execution](#cluster-execution-pattern).
-- Develop: [concurrent work](#concurrent-worktrees-and-serialized-integration),
-  [fragment exchange](#manual-integration-fragment-exchange), and
+- Develop: [task lifecycle](#inspect-or-change-task-lifecycle) and
   [local validation](#local-validation-gate).
 - Workflow: [task lifecycle](#inspect-or-change-task-lifecycle),
   [owner routing](#workflow-contract-and-validation-convention),
@@ -525,96 +524,27 @@ inputs, commit, command, and outputs to the same attempt.
 
 ## Inspect Or Change Task Lifecycle
 
-The [`task registry`](../tasks/README.md#lifecycle-rules) owns state semantics,
-completion criteria, and legacy compatibility. Inspect the deterministic view:
+The [task registry](../tasks/README.md) owns card structure and completion
+deletion. Inspect the deterministic view:
 
 ```bash
 ./scripts/git_orchestration/task_status.py \
   --repo "$(git rev-parse --show-toplevel)"
 ```
 
-New cards use `docs/tasks/cards/<CARD-ID>-<slug>.md`. When lifecycle itself
-changes, edit the card's exact `State:` field and completion record inside the
-semantic package, then inspect it:
+New cards use `docs/tasks/TODO/<CARD-ID>-<slug>.md`. Existing cards retain
+their paths. Inspect a changed card and the documentation gate:
 
 ```bash
-rg -n '^State:|^## Completion record' \
-  docs/tasks/cards/<CARD-ID>-<slug>.md
-git diff -- docs/tasks/cards/<CARD-ID>-<slug>.md
+git diff -- docs/tasks/<directory>/<CARD-ID>-<slug>.md
 git diff --check
 make -s documentation-check
 ```
 
-Do not move a card for selection, pause, resume, or completion. A legacy card's
-explicit state overrides its directory, so a real lifecycle change does not
-require path or inbound-link repair. Do not edit a `review` card's candidate
-until an approved correction returns it to `planned`. `UNREFINED` proposals are
-not selectable cards.
-
-## Concurrent Worktrees And Serialized Integration
-
-[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md) owns authority, lane packets,
-coupling, handoff, and recovery. Verify identity and cleanliness before any
-candidate operation:
-
-```bash
-git rev-parse --show-toplevel
-git branch --show-current
-git rev-parse HEAD
-git status --porcelain=v1
-git worktree list --porcelain
-```
-
-Do not infer that a worktree is available from its name. Do not switch, pull,
-merge, rebase, stash, reset, clean, unlock, remove, amend, or publish another
-lane. Preserve a frozen candidate and any failure state until the integration
-owner decides its disposition.
-
-### Verify The Canonical Integration Lane
-
-The canonical owner verifies the exact path, branch, clean status, upstream,
-local/remote SHA, and ahead/behind result required by the active lane packet.
-Network fetch and publication require authority for the named ref. Equality
-against a stale local remote-tracking ref is not remote verification.
-
-### Manual Integration Fragment Exchange
-
-The fragment schema is in [`docs/fragments/README.md`](../fragments/README.md),
-authority is in
-[`CONCURRENT_WORK.md`](CONCURRENT_WORK.md#integration-fragment-authority-and-lifecycle),
-and tested command interfaces are indexed by
-[`scripts/git_orchestration/README.md`](../../scripts/git_orchestration/README.md).
-
-Use the tools in this order:
-
-1. `validate_fragment_candidate.py` binds the frozen candidate, base, exact
-   diff, reservations, fragment, and source ref.
-2. `validate_fragment_target.py` checks each declared canonical target; the
-   integration owner reviews drift and assigns every request a disposition.
-3. `apply_fragment_candidate.sh` runs dry first, then with `--execute` to apply
-   a valid candidate, or `record_fragment_noop.sh` records a true no-change
-   outcome.
-4. `finalize_fragment_integration.sh` runs dry first, then with `--execute` to
-   stage only declared final paths, remove the fragment, and bind reviewed
-   disposition trailers.
-5. Run the complete applicable gate, then use `publish_exact_ref.sh` dry first
-   and with `--execute` only under publication authority.
-
-Inspect each complete interface before use:
-
-```bash
-python3 scripts/git_orchestration/validate_fragment_candidate.py --help
-python3 scripts/git_orchestration/validate_fragment_target.py --help
-scripts/git_orchestration/apply_fragment_candidate.sh --help
-scripts/git_orchestration/finalize_fragment_integration.sh --help
-scripts/git_orchestration/record_fragment_noop.sh --help
-scripts/git_orchestration/publish_exact_ref.sh --help
-```
-
-If application or finalization fails, do not reset, clean, stash, amend, delete,
-or overwrite the recovery state. Record the parent, branch, `HEAD`, status,
-staged and unstaged diffs, untracked paths, and source ref; preserve or lock the
-worktree and follow the helper diagnostic.
+Do not move a card for selection, pause, resume, or completion. Delete it when
+the work is completed or retired. Do not repair surviving card links merely
+because a deleted card or retired planning document was their former target.
+`UNREFINED` proposals are not selectable cards.
 
 ## Local Validation Gate
 
@@ -634,8 +564,7 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks
 
 The gate runs static preflight, complete Python coverage, shell contracts,
 guarded local R plus real-R Step `08`/`09` tests, and pinned report-runtime
-tests. Diagnose concurrency-specific behavior serially or stream an explicitly
-verbose run:
+tests. Diagnose failures serially or stream an explicitly verbose run:
 
 ```bash
 RSCRIPT_BIN=/usr/local/bin/Rscript \

@@ -169,46 +169,4 @@ bash tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.s
   tests/test_slurm_wrapper_contracts.py -k step_04_mark_duplicates
 ```
 
-Published producer, validator, and scheduler baselines are `de52e93`,
-`3d73d52`, and `3e805ac`; executable checkpoint `803fcc4` moved exactly five
-files and updated ten reviewed integration owners. Final producer mode/bytes/
-lines/SHA-256 is `0644` / `7,232` / `241` /
-`b845aa910ccabaf8799e000dc62e8939b0203c7848511524fadf51c79292eb2d`;
-validator is `0644` / `10,275` / `277` /
-`17a541e7b9d9822df5de0721747187621035f0dae7aaa0f1a35995f727bfb178`;
-and the mode-`0644` job is `4,911` bytes / `161` lines /
-`4e41c4cd7ee1ec36169797bfc4897968e38010e78aec35d16c6921dfd55217fc`.
-
-The final direct shell suite, `9` validator tests, `18` selected scheduler
-tests with `108` unrelated cases deselected, and `68` focused integration
-assertions passed. Coverage passed `1,134` tests with `17` skips and one
-explicit documentation-validator deselection. The moved validator measured
-`146/155` lines and `35/42` branches; global coverage measured `9510/11677`
-lines and `3333/4756` branches. Every non-target row remained exact and the
-standalone comparison passed.
-
-The aggregate gate was not fully green. Its first sandboxed attempt passed
-static preflight and stopped when guarded R could not resolve Bioconductor
-metadata, retaining the inherited malformed `macos` warning. The exact
-network-enabled rerun used the existing project library and changed no
-dependency. Static, shell, guarded-R, and report-runtime lanes passed. Python
-ran `1,134` passes and `17` skips before its sole documentation assertion
-listed ten intentionally deferred migration links plus nine inherited
-`UNREFINED` locations. This close repairs the ten links; the inherited nine
-remain nonpassing. No result is represented as a green aggregate gate.
-
-Artifact evidence changes only the final producer path and reviewed hash.
-Historical cluster and Picard metrics in the runbook remain historical; this
-migration created no real Picard, Java, samtools, scheduler, cluster,
-production, scientific-review, or biological evidence. Rollback reverts the
-documentation close, executable checkpoint `803fcc4`, scheduler baseline
-`3e805ac`, validator baseline `3d73d52`, then producer baseline `de52e93`; it
-never alters runtime evidence. See [`CONTRACT.md`](CONTRACT.md) and completed
-[`MIG-03I`](../../../../docs/tasks/COMPLETED/MIG-03I-migrate-mark-bam-duplicates-with-picard-owner.md)
-for the complete boundary.
-
-The migration added no wrapper, alias, symlink, package marker, public import
-identity, descriptor, schema, transaction, receipt, recovery marker, scheduler
-abstraction, duplicate-classification policy, or manifest mutation. Its
-evidence ceiling is local fixtures/mocks, guarded local R, pinned report
-runtime, and local coverage only.
+Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md). The owner is locally fixture/mock tested; this does not establish new Picard, Java, samtools, scheduler, cluster, production, scientific-review, or biological proof.

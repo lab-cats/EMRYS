@@ -218,35 +218,4 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
   tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
-Published runtime/input, publication-order, signal/concurrency, validator, and
-scheduler baselines are `fd015e4`, `3828496`, `7aced51`, `1ba3001`, and
-`d35b674`. Executable checkpoint `50e1bb3` moved exactly eleven files and
-updated ten reviewed integration owners. At that migration checkpoint, the
-shell, R program, validator, and job matched their reviewed modes and SHA-256
-identities in the completed migration card.
-
-The final shell suite passed; `56` owner-local Python tests passed; the
-selected scheduler suite passed `15` tests with `157` deselected; and guarded
-real-R passed. The first exact aggregate gate passed static, shell, guarded-R,
-and report-runtime lanes, then reached `1,294` Python passes and `17` skips
-with exactly one documentation-validator failure listing the twelve deferred
-old Step `09` links; coverage did not run after that failure. This is not a
-green aggregate result and no dependency changed.
-
-After the separate documentation close repaired those links, `git diff
---check` and `make -s documentation-check` passed for `209` Markdown documents,
-`129` task cards, and `6` Mermaid sources. The exact network-enabled aggregate
-rerun then passed static, shell, guarded-R, report-runtime, and Python coverage
-with summary status `0` in `197.374s`. This later green run is final local card
-evidence; it does not turn the earlier run into a pass or establish scheduler,
-cluster, production, scientific-review, editing-site, or biological proof.
-
-Git rollback reverts the documentation close, executable `50e1bb3`, scheduler
-`d35b674`, validator `1ba3001`, signal/concurrency `7aced51`, publication order
-`3828496`, then runtime/input `fd015e4`. Git cannot authenticate, recover,
-delete, or alter runtime outputs, locks, backups, R state, or scheduler logs.
-See [`CONTRACT.md`](CONTRACT.md), the dedicated
-[troubleshooting routes](../../../../docs/operations/TROUBLESHOOTING.md#step-09-finds-a-lock-or-incomplete-six-output-set),
-and completed
-[`MIG-03N`](../../../../docs/tasks/COMPLETED/MIG-03N-migrate-rank-cohort-candidates-with-paired-cmh-owner.md)
-for the complete boundary.
+Current behavior, recovery states, and evidence limits are owned by [`CONTRACT.md`](CONTRACT.md) and the dedicated [troubleshooting routes](../../../../docs/operations/TROUBLESHOOTING.md#step-09-finds-a-lock-or-incomplete-six-output-set). The owner is locally shell/R/fixture tested; this does not establish scheduler, cluster, production, scientific-review, editing-site, or biological proof.

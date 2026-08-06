@@ -230,14 +230,11 @@ The storage-evidence source and mirrored suite occupy their final homes through
 action, or changing the local-fixture evidence ceiling; final placement is not
 production storage, quota, retention-approval, runtime, or cluster proof.
 
-Completed
-[`AUDIT-RESIDUAL-04A`](../../../docs/tasks/COMPLETED/AUDIT-RESIDUAL-04A-confirm-residual-source-topology-convergence.md)
-reverified these implemented cross-cutting homes, the neutral seams, and the
-contract-integration homes against the live tree. Every expected final tracked
-file exists, prohibited tracked old paths and compatibility surfaces are
-absent, and current callers use final paths. This is local/static topology
-evidence, not runtime, cluster, production, scientific-review, or biological
-proof.
+The implemented cross-cutting homes, neutral seams, and contract-integration
+homes have been verified against the live tree. Expected final tracked files
+exist, prohibited tracked old paths and compatibility surfaces are absent, and
+current callers use final paths. This is local/static topology evidence, not
+runtime, cluster, production, scientific-review, or biological proof.
 
 Public starter profiles, examples, operator selections, and reference tables
 remain under root `configs/` when callers receive them as explicit inputs.
@@ -257,13 +254,10 @@ reconsider that boundary without creating a speculative `setup/` domain here.
 Repository-level operational inspection utilities also remain outside a stage
 owner when their contract spans scheduler state, cross-sample aggregation,
 final-output inspection, and a best-effort persisted operator snapshot.
-Completed
-[`REVIEW-LEGACY-05A`](../../../docs/tasks/COMPLETED/REVIEW-LEGACY-05A-confirm-step05-operational-checker-owner.md)
-therefore fixes `tests/data_checks/validate_step05_outputs.sh` at its permanent
-current `tests/data_checks/` owner. It is distinct from the stage-native Step
-`05` structured validator; this retention does not select a scheduler owner,
-repair the checker's characterized defects, or create runtime or cluster
-evidence.
+`tests/data_checks/validate_step05_outputs.sh` therefore remains at its
+permanent `tests/data_checks/` owner. It is distinct from the stage-native
+Step `05` structured validator; this retention does not select a scheduler
+owner, repair characterized defects, or create runtime or cluster evidence.
 
 ## Mirrored test ownership
 

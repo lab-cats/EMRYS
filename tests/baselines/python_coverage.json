@@ -1,40 +1,22 @@
 {
   "files": [
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 16,
-      "covered_lines": 103,
+      "branch_rate": "0.937500",
+      "covered_branches": 15,
+      "covered_lines": 45,
       "line_rate": "1.000000",
       "num_branches": 16,
-      "num_statements": 103,
-      "path": "scripts/git_orchestration/_common.py"
+      "num_statements": 45,
+      "path": "scripts/git_orchestration/task_status.py"
     },
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 124,
-      "covered_lines": 233,
+      "branch_rate": "0.991525",
+      "covered_branches": 117,
+      "covered_lines": 239,
       "line_rate": "1.000000",
-      "num_branches": 124,
-      "num_statements": 233,
+      "num_branches": 118,
+      "num_statements": 239,
       "path": "scripts/git_orchestration/validate_documentation.py"
-    },
-    {
-      "branch_rate": "0.916667",
-      "covered_branches": 11,
-      "covered_lines": 101,
-      "line_rate": "0.990196",
-      "num_branches": 12,
-      "num_statements": 102,
-      "path": "scripts/git_orchestration/validate_fragment_candidate.py"
-    },
-    {
-      "branch_rate": "0.750000",
-      "covered_branches": 6,
-      "covered_lines": 58,
-      "line_rate": "0.983051",
-      "num_branches": 8,
-      "num_statements": 59,
-      "path": "scripts/git_orchestration/validate_fragment_target.py"
     },
     {
       "branch_rate": "0.661538",
@@ -673,11 +655,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.749803",
-    "covered_branches": 3812,
-    "covered_lines": 11084,
-    "line_rate": "0.851502",
-    "num_branches": 5084,
-    "num_statements": 13017
+    "branch_rate": "0.748715",
+    "covered_branches": 3787,
+    "covered_lines": 10873,
+    "line_rate": "0.849188",
+    "num_branches": 5058,
+    "num_statements": 12804
   }
 }

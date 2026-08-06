@@ -50,24 +50,6 @@ aggregate applicable gate, and publish once at its coherent boundary. Exact
 commit, validation, and publication procedure is owned by
 [`TASK_DELIVERY.md`](../../operations/TASK_DELIVERY.md).
 
-### Permit exceptional isolated concurrency with serialized integration
-
-Sequential mutation in one authoritative worktree is the default. When
-independent work materially justifies the coordination cost, concurrent
-mutation uses isolated branches and worktrees with bounded write sets. One
-authoritative integration lane serializes candidates and validates their
-combined state. A candidate is a proposal, not authorization, current state, or
-evidence. Detailed roles and recovery belong in
-[`CONCURRENT_WORK.md`](../../operations/CONCURRENT_WORK.md).
-
-### Use transient integration fragments for cross-owner proposals
-
-An isolated candidate may request a canonical-owner change through one
-structured transient fragment. The fragment grants no authority; the
-integration owner verifies its source, gives every request and residual a
-terminal disposition, routes accepted meaning, and removes the fragment before
-publication. This preserves provenance without creating a shadow archive.
-
 ### Run one complete computational gate per final tranche state
 
 Use focused tests as useful implementation feedback and one complete applicable

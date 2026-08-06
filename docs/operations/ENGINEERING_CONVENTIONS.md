@@ -11,10 +11,8 @@ implementation or migration package changes it.
 
 The root [`README.md`](../../README.md#repository-map) owns the implemented
 repository map. [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md)
-owns target homes and dependency direction only, while
-[`MIGRATION_MECHANICS.md`](../../src/norad/contracts/MIGRATION_MECHANICS.md)
-owns future relocation procedure. Neither target document describes a physical
-migration already performed. Exact commands belong only in
+owns target homes and dependency direction only; it does not describe a
+physical migration plan. Exact commands belong only in
 [`RUNBOOK.md`](RUNBOOK.md), and durable rationale belongs in
 [`DECISIONS.md`](../design/DECISIONS.md).
 
@@ -23,9 +21,8 @@ migration already performed. Exact commands belong only in
 - The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and its linked contracts own exact current interfaces, side effects, defects,
   and legacy exceptions. Documentation must not normalize those exceptions.
-- The [source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md) and
-  [migration mechanics](../../src/norad/contracts/MIGRATION_MECHANICS.md) own
-  target structure and movement rules, not current layout.
+- The [source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md) owns
+  allowed homes and dependency direction, not current layout.
 - The [runbook](RUNBOOK.md) owns supported invocations. This document describes
   conventions without copying commands.
 - The [decision record](../design/DECISIONS.md) owns rationale and rejected
@@ -177,6 +174,5 @@ Changing existing behavior requires the normal selected-card and
 [task-delivery](TASK_DELIVERY.md#default-delivery) workflow. Update the
 functional-owner inventory or applicable contract in the same coherent change
 when its roster, interface, protection, or characterized exception is affected.
-A source move follows the
-[migration mechanics](../../src/norad/contracts/MIGRATION_MECHANICS.md); this
-document does not authorize implementation or physical migration.
+A source move requires a separately reviewed plan; this document does not
+authorize implementation or physical migration.
