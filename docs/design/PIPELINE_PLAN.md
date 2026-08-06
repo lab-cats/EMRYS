@@ -263,106 +263,28 @@ completion claim.
 ## Approved current delivery lineage
 
 ```text
-MIG-03O documentation/lifecycle close 9cb4bb8
-└── DOC-CONS-08E selection 9bb7a1a
-    └── DOC-CONS-08E documentation/lifecycle close a8aa28b
-        └── PLAN-03A registration 0e6b4cb
-            └── PLAN-03A selection b84bf55
-                └── PLAN-03A documentation/lifecycle close 3efe461
-                    └── LIB-02F selection 3896081
-                        └── LIB-02F decision/lifecycle close 96c6436
-                            └── MIG-04A selection ca5497f
-                                └── MIG-04A executable cutover 17090ac
-                                    └── MIG-04A documentation/lifecycle close
-                                        + LIB-02G registration ec0b00f
-                                        └── LIB-02G selection e5f54e0
-                                            └── LIB-02G executable cutover f72cc0f
-                                                └── LIB-02G documentation/lifecycle close
-                                                    + LIB-02H registration
-                                                    d38f782
-                                                    └── LIB-02H selection 7bde6f4
-                                                        └── LIB-02H executable cutover
-                                                            97f9169
-                                                            └── LIB-02H documentation/
-                                                                lifecycle close 524bfd1
-                                                                └── LIB-02I selection
-                                                                    d416e47
-                                                                    └── LIB-02I executable cutover
-                                                                        95f795e
-                                                                        └── LIB-02I documentation/
-                                                                            lifecycle close 1c04809
-                                                                            └── LIB-02J selection
-                                                                                d18856f
-                                                                                └── LIB-02J executable cutover
-                                                                                    2538006
-                                                                                    └── LIB-02J documentation/
-                                                                                        lifecycle close 387d818
-                                                                                        └── RPT-05A selection
-                                                                                            ef513fa
-                                                                                            └── RPT-05A executable cutover
-                                                                                                7c10c17
-                                                                                                └── RPT-05A documentation/
-                                                                                                    lifecycle close 8a5cf28
-                                                                                                    └── LIB-02K selection
-                                                                                                        af3ac62
-                                                                                                        └── LIB-02K loader-parity
-                                                                                                            clarification 596bee7
-                                                                                                            └── LIB-02K executable
-                                                                                                                extraction d931214
-                                                                                                                └── LIB-02K documentation/
-                                                                                                                    lifecycle close
-                                                                                                                    696d403
-                                                                                                                    └── MIG-04B selection
-                                                                                                                        e4223ba
-                                                                                                                        └── MIG-04B executable
-                                                                                                                            relocation bbc09c9
-                                                                                                                            └── MIG-04B documentation/
-                                                                                                                                lifecycle close ad5a2bf
-                                                                                                                                └── MIG-04C selection
-                                                                                                                                    13853f2
-                                                                                                                                    └── MIG-04C executable
-                                                                                                                                        relocation 2585542
-                                                                                                                                        └── MIG-04C documentation/
-                                                                                                                                            lifecycle close e52f4e8
-                                                                                                                                            └── MIG-04D selection
-                                                                                                                                                2f13d63
-                                                                                                                                                └── MIG-04D executable
-                                                                                                                                                    relocation b5160f3
-                                                                                                                                                    └── MIG-04D documentation/
-                                                                                                                                                        lifecycle close 797aede
-                                                                                                                                                        └── MIG-04E selection
-                                                                                                                                                            7942741
-                                                                                                                                                            └── MIG-04E executable
-                                                                                                                                                                relocation 9434b0a
-                                                                                                                                                                └── MIG-04E documentation/
-                                                                                                                                                                    lifecycle close 26daa84
-                                                                                                                                                                    └── MIG-04F selection
-                                                                                                                                                                        9f67b0c
-                                                                                                                                                                        └── MIG-04F executable
-                                                                                                                                                                            relocation 8921ec3
-                                                                                                                                                                            └── MIG-04F documentation/
-                                                                                                                                                                                lifecycle close 65be087
-                                                                                                                                                                                └── REVIEW-LEGACY-05A
-                                                                                                                                                                                    selection 0be4ab2
-                                                                                                                                                                                    └── REVIEW-LEGACY-05A
-                                                                                                                                                                                        decision/lifecycle close 916737b
-                                                                                                                                                                                        └── REVIEW-LEGACY-04A
-                                                                                                                                                                                            selection 6e7cf7a
-                                                                                                                                                                                            └── REVIEW-LEGACY-04A
-                                                                                                                                                                                                decision/lifecycle close 1311db3
-                                                                                                                                                                                                └── AUDIT-RESIDUAL-04A
-                                                                                                                                                                                                    selection d8df288
-                                                                                                                                                                                                    └── AUDIT-RESIDUAL-04A
-                                                                                                                                                                                                        audit/lifecycle close
-                                                                                                                                                                                                        (commit containing this plan)
+MIG-04F executable cutover 8921ec3
+→ MIG-04F documentation/lifecycle close 65be087
+→ REVIEW-LEGACY-05A selection 0be4ab2
+→ REVIEW-LEGACY-05A decision/lifecycle close 916737b
+→ REVIEW-LEGACY-04A selection 6e7cf7a
+→ REVIEW-LEGACY-04A decision/lifecycle close 1311db3
+→ AUDIT-RESIDUAL-04A selection d8df288
+→ AUDIT-RESIDUAL-04A audit/lifecycle close a772f79
+→ DOC-CONS-08F selection 1da90c5
+→ DOC-CONS-08F documentation/lifecycle close 8617635
+→ DOC-CONS-08G selection 6549f5d
+→ DOC-CONS-08G documentation/lifecycle close db4272c
+→ DOC-CONS-08H selection 0081762
+→ DOC-CONS-08H documentation/lifecycle close 8e1beb8
+→ current standalone documentation reconciliation (this commit)
 ```
 
-The final node is the `AUDIT-RESIDUAL-04A` audit/lifecycle close represented by
-this plan. It completes only the fixed 87-path residual source-topology
-campaign and selects no successor; no broad `AUDIT-99`, default-branch
-integration, runtime execution, or cluster action is implied.
-The complete legacy
-lineage and frozen source identities are indexed in
+This standalone documentation-only reconciliation descends directly from the
+published, upstream-equal `DOC-CONS-08H` close at `8e1beb8`. It selects no
+successor and does not reopen the completed source-topology campaign or imply
+`AUDIT-99`, default-branch integration, runtime execution, or cluster action.
+Earlier delivery lineage and frozen source identities are indexed in
 [operations history](../history/operations/).
 
 ## Package acceptance criteria
