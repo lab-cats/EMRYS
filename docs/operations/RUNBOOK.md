@@ -367,11 +367,9 @@ Use:
 TMPDIR=/tmp
 ```
 
-Submit execute jobs like:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
-```
+Scheduler entry points are owner-local under `src/norad/`. Use the exact
+stage-specific submit command in the applicable section below; a root `jobs/`
+path no longer exists.
 
 Known cluster warning:
 
@@ -2129,11 +2127,9 @@ For later gates, use `validate-step-07` -> `validate-step-08` ->
 `post09-targeted-reruns`. Never create the descendant before the predecessor's
 inspected evidence/report docpatch, clean-history check, and push.
 
-Dry-run:
-
-```bash
-sbatch jobs/<step>.slurm
-```
+Dry-run and execute arguments are owner-specific. Use the exact commands in
+the applicable stage section below; the former generic root scheduler path no
+longer exists.
 
 Check dry-run:
 
@@ -2141,12 +2137,6 @@ Check dry-run:
 sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
 tail -120 logs/<log-prefix>-<JOBID>.out
 tail -120 logs/<log-prefix>-<JOBID>.err
-```
-
-Execute:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
 ```
 
 Check execute job:
