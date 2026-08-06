@@ -173,7 +173,7 @@ and frozen proposal presence does not authorize selection or implementation.
 ### Residual source-topology convergence
 
 The audit froze an exact 87-path residual roster. After completed
-`DOC-CONS-08H` retired its sole temporary `RETIRE` path, the exact 88-path
+`DOC-CONS-08H` retired its sole temporary `RETIRE` path, the exact 89-path
 current residual roster is owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by

@@ -79,7 +79,7 @@ pipeline owner graph but still receive one owner:
 remaining shared/root test surfaces, top-level developer inputs, project
 environment anchors, and intentional operational placeholders. Its audit-time
 87-path roster is historical; after completed `DOC-CONS-08H` retired the sole
-separately owned temporary record, the 88 current paths are partitioned once
+separately owned temporary record, the 89 current paths are partitioned once
 below. Counts are inspection checks, not a permanent repository-size baseline;
 each later tracked-root change, owner migration, or retirement updates this
 current inventory.
@@ -90,7 +90,7 @@ current inventory.
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
 | The 26 non-profile files under root `configs/`: three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 26 | Public operator/reference inputs retained at root; they are not owner-native implementation assets. |
 | `tests/baselines/python_coverage.json`; `tests/test_python_coverage_baseline.py`; `tests/test_validation_orchestrator.py`; both `tests/tools/` files; `tests/test_public_cli_contracts.py` and its two fixture paths | 8 | Repository quality-gate, coverage, and cross-entry-point command infrastructure retained at repository level. The public-command suite spans Make, Git tooling, modes, and multiple runtime domains, so it is not a neutral artifact-contract integration test. |
-| `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 20 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level. |
+| `.Rprofile`, `.coveragerc`, `.gitignore`, `AGENTS.md`, `Makefile`, `README.md`, `TODO.md`, `pytest.ini`, `renv.lock`, `requirements.txt`; all four tracked `renv/` project files; `scripts/README.md`; `data/README.md`; `data/test/.gitkeep`; `logs/README.md`; `refs/README.md`; `refs/test_star_index/README.md`; `results/README.md` | 21 | Project configuration, documentation routing, dependency environment, and intentional operational/fixture roots retained at repository level. |
 | `scripts/validate_manifest.py`; `jobs/validate_manifest.slurm`; `samples.example.tsv`; `tests/test_validate_manifest.py`; `tests/data_checks/check_fastq_pairs.sh` | 5 | Deferred ingestion/admission family; current validator behavior remains supported but no ingestion runner exists. |
 | `jobs/{template.slurm,tool_check.slurm}`; `tests/test_slurm_wrapper_contracts.py` | 3 | Deferred scheduler family and mixed wrapper characterization. Owner-specific scheduler assets already remain with their functional owners. |
 | `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | Deferred runtime orchestration/profile inputs; no executable orchestrator exists. |
@@ -102,8 +102,8 @@ recomputed eleven groups and 87 unique paths at its audit boundary: 76
 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
 [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
 later retired that one temporary path after no-loss disposition. The ten
-current groups contain `5`, `17`, `26`, `8`, `20`, `5`, `3`, `2`, `1`, and `1`
-paths: 88 total, 88 unique, 78 `RETAIN_ROOT`, 10 `DEFER`, and no current
+current groups contain `5`, `17`, `26`, `8`, `21`, `5`, `3`, `2`, `1`, and `1`
+paths: 89 total, 89 unique, 79 `RETAIN_ROOT`, 10 `DEFER`, and no current
 `RETIRE`. The source-topology campaign remains complete at the local/static
 evidence ceiling; this inventory does not close the broader modernization
 backlog.
