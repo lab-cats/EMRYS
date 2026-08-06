@@ -2588,7 +2588,7 @@ UTILITY_TOOL_CALLS = {
     ),
     "validate_manifest.slurm": (
         "python\t--version",
-        "python\tscripts/validate_manifest.py\t--manifest\tsamples.example.tsv\t--base-dir\t.",
+        "python\tscripts/validate_manifest.py\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
     ),
 }
 
@@ -2599,7 +2599,7 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
     tmp_path: Path,
 ) -> None:
     submit, _, environment = prepare_legacy_environment(tmp_path)
-    touch(submit / "samples.example.tsv")
+    touch(submit / "configs/samples.example.tsv")
     picard = Path(environment["PICARD"])
 
     result = subprocess.run(

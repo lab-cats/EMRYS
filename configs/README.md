@@ -10,6 +10,7 @@ or executable orchestrator for the whole directory.
 | Area | Tracked inputs | Consumer and status |
 | --- | --- | --- |
 | Deferred workflow profiles | [`cluster_full.yaml.example`](cluster_full.yaml.example), [`local_test.yaml`](local_test.yaml) | Illustrative cluster and local layouts retained under the [deferred-profile disposition](../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage). No current executable orchestrator consumes either profile. |
+| Sample-manifest starter | [`samples.example.tsv`](samples.example.tsv) | Structural two-row input retained under the [deferred ingestion/admission disposition](../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage) for repository-level [manifest validation](../scripts/README.md). Make and the scheduler smoke job schema-check it without FASTQ existence checks; it is not an ingestion runner, runtime manifest, or runnable data fixture. |
 | Artifact and report projection | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json), [`report_table_approvals.example.tsv`](report_table_approvals.example.tsv) | Synthetic structural inputs for the [reporting owner](../src/norad/reporting/README.md). The [neutral artifact-contract validator](../src/norad/contracts/artifacts/validate_artifact_contracts.py) also accepts an explicit inventory for bounded contract checks. They are fixtures/examples, not a production inventory, run contract, approval, or report. |
 | Reference provenance | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) | Structural starter for the [reference-provenance evidence owner](../src/norad/evidence/reference_provenance/README.md). Replace illustrative paths, hashes, releases, and provenance in an operator-controlled input. |
 | Runtime availability | [`runtime_preflight.example.tsv`](runtime_preflight.example.tsv) | Structural starter for the [runtime-preflight evidence owner](../src/norad/evidence/runtime_preflight/README.md). Its illustrative probes do not establish local, batch, or cluster availability. |
@@ -55,6 +56,10 @@ examples, and all thirteen Step `09c` schema-reference tables. The other listed
 assets have no exact-file automated test. A linked owner may validate a
 supplied file; that does not prove every tracked starter or reference here is
 current or production-ready.
+
+The repository static gate also schema-checks the tracked sample-manifest
+starter. It does not request FASTQ existence checks or turn the declared paths
+into fixtures.
 
 An `.example` name means structural or synthetic starter, not a ready-to-run
 production selection. Other tracked reference and selection files still

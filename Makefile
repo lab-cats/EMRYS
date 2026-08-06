@@ -256,10 +256,10 @@ validation-static:
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
 	"$(REPORT_PYTHON_BIN)" scripts/validate_manifest.py \
-		--manifest samples.example.tsv
+		--manifest configs/samples.example.tsv
 
 validate:
-	python scripts/validate_manifest.py --manifest samples.example.tsv
+	python scripts/validate_manifest.py --manifest configs/samples.example.tsv
 
 smoke:
 	bash -n src/norad/reporting/render_run_report.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh

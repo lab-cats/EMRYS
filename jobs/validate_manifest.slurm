@@ -27,7 +27,7 @@ python --version
 
 # Run the manifest validator with repository-relative paths.
 python scripts/validate_manifest.py \
-  --manifest samples.example.tsv \
+  --manifest configs/samples.example.tsv \
   --base-dir .
 
 echo "Finished: $(date)"

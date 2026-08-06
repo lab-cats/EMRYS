@@ -259,7 +259,7 @@
     "python -m pytest"
   ],
   "validate": [
-    "python scripts/validate_manifest.py --manifest samples.example.tsv"
+    "python scripts/validate_manifest.py --manifest configs/samples.example.tsv"
   ],
   "validation-guarded-r": [
     "<MAKE> -s r-check",
@@ -350,6 +350,6 @@
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad tests",
     "\"<REPO_ROOT>/.venv/bin/python\" scripts/validate_manifest.py \\",
-    "\t\t--manifest samples.example.tsv"
+    "\t\t--manifest configs/samples.example.tsv"
   ]
 }
