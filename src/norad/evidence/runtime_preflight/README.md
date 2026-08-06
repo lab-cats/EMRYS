@@ -12,6 +12,15 @@ absolute-path visibility. Rows report `pass`, `fail`, `blocked`, or
 nothing; execute mode publishes the requested TSV. Exit zero means probing and
 any requested publication completed, not that every required probe passed.
 
+[`tool_check.slurm`](tool_check.slurm) is a separate manual cluster smoke
+probe. It attempts to load its declared CSU Python, STAR, samtools, and Picard module names and
+records scheduler context, module state, resolved executable paths, and tool
+versions in SLURM logs. It does not call `runtime_preflight.py`, publish a
+structured report, run analysis, or prove that the workflow works on the
+cluster. Its module loads and required probes fail strictly; only the optional
+Picard version probe is tolerated. Central wrapper characterization lives in
+[`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py).
+
 The committed
 [`runtime_preflight.example.tsv`](../../../../configs/runtime_preflight.example.tsv)
 is a structural starter requiring site-specific paths and expectations. Direct
@@ -21,6 +30,7 @@ Use the [`RUNBOOK`](../../../../docs/operations/RUNBOOK.md) for invocation and
 [`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) for contract,
 status, and publication-lock failures.
 
-Even an all-pass report proves only the declared availability checks in the
-declared context. Current evidence is local fixture evidence; CSU batch
-execution and workflow/cluster proof remain absent.
+Even an all-pass report or successful manual smoke probe proves only the
+declared availability checks in the declared context. Current evidence is
+local fixture and mocked-wrapper evidence; CSU batch execution and
+workflow/cluster proof remain absent.

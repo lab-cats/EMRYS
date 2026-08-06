@@ -174,8 +174,9 @@ and frozen proposal presence does not authorize selection or implementation.
 
 The audit froze an exact 87-path residual roster. After completed
 `DOC-CONS-08H` retired its sole temporary `RETIRE` path and the approved queue
-moved four sample-admission implementation/test paths to their final owner, the
-exact 86-path current residual roster is owned by the
+moved four sample-admission implementation/test paths plus the manual cluster
+tool probe to their final owners, the exact 85-path current residual roster is
+owned by the
 [`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#residual-tracked-path-coverage),
 and exact final homes are owned by
 [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md#cross-cutting-implemented-target-homes).
@@ -190,7 +191,7 @@ disposition.
 | Artifact schemas and contract validator | `MOVE` complete through [`MIG-04A`](../tasks/COMPLETED/MIG-04A-migrate-artifact-contract-validation-to-final-neutral-owner.md) | The validator, five schemas, direct test, and fixtures occupy their final neutral owners with all reviewed consumers cut over. |
 | Artifact indexing, run-summary construction, and static reporting | `MOVE` complete through [`RPT-05A`](../tasks/COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) | The six reporting sources, three private assets, direct suites, and reporting fixtures occupy their final owners with all repository callers cut over and no wrapper. |
 | Reference provenance evidence | `MOVE` complete through [`MIG-04B`](../tasks/COMPLETED/MIG-04B-migrate-reference-provenance-to-final-evidence-owner.md); neutral prerequisite complete through [`LIB-02K`](../tasks/COMPLETED/LIB-02K-extract-reference-contig-parser-library.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; the public starter config remains at root and no wrapper exists. |
-| Runtime preflight | `MOVE` complete through [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; the public starter profile remains at root and no wrapper exists. |
+| Runtime preflight and manual cluster tool probe | `MOVE` complete through [`MIG-04C`](../tasks/COMPLETED/MIG-04C-migrate-runtime-preflight-to-final-evidence-owner.md) plus the approved residual-convergence queue | The command, mirrored direct suite, and separate manual SLURM probe occupy their final evidence-owner homes with all repository callers cut over. The public starter profile remains at root; the probe emits scheduler diagnostics and does not wrap or publish the structured preflight. |
 | Storage inventory | `MOVE` complete through [`MIG-04D`](../tasks/COMPLETED/MIG-04D-migrate-storage-inventory-to-final-evidence-owner.md) | The command and mirrored direct suite occupy their final evidence-owner homes with all repository callers cut over; both public starter contracts remain at root, no wrapper exists, and retention action remains prohibited. |
 | Independent contract goldens | `MOVE` complete through [`MIG-04E`](../tasks/COMPLETED/MIG-04E-converge-independent-contract-goldens.md) | The direct suite and eight fixture/provenance files occupy `tests/contract_integration/independent_contract_goldens/` with byte-identical fixtures, no nested fixture owner, and no compatibility path. |
 | Validation-roster agreement | `MOVE` complete through [`MIG-04F`](../tasks/COMPLETED/MIG-04F-converge-validation-roster-agreement.md) | The suite/helper occupy `tests/contract_integration/validation_rosters/`, all fourteen exact-file callers load the final helper directly, and no compatibility or package surface exists. |
@@ -201,7 +202,7 @@ disposition.
 | Pending Step `04` scaffold | `RETAIN_ROOT` confirmed through completed [`REVIEW-LEGACY-04A`](../tasks/COMPLETED/REVIEW-LEGACY-04A-retire-step04-pending-test-scaffold.md) | Preserve the intentional non-runnable scaffold unchanged: pre-Picard input-sort validation is absent and adversarial dry-run quoting protection is not independently established. |
 | Temporary `work/active/JIT-01.md` record | `RETIRE` complete through [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md) | Record is absent. Former Slice `7A` routes to completed [`DOC-GATE-01`](../tasks/COMPLETED/DOC-GATE-01-extract-documentation-validator.md); the read-only batch-intake proposal input routes to nonselectable [`TASK-INTAKE-01`](../tasks/UNREFINED/TASK-INTAKE-01-design-persistent-task-inbox.md). This was documentation cleanup, not source migration. |
 | Manifest admission, FASTQ pair check, and manifest wrapper | `MOVE` complete through the approved residual-convergence queue | The validator, paired-FASTQ diagnostic, wrapper, and mirrored direct tests occupy `src/norad/ingestion/sample_manifest_admission/` and `tests/ingestion/sample_manifest_admission/`; all repository callers use the final path, the public starter remains under `configs/`, and no ingestion executor exists. |
-| Root scheduler probes/template and mixed wrapper suite | `DEFER` | Resume only with explicit scheduler work. |
+| Root scheduler template and mixed wrapper suite | `DEFER` after the manual tool probe moved to its runtime-preflight owner | `jobs/template.slurm` and the repository-level mixed wrapper suite remain deferred; resume only with explicit scheduler work. |
 | Cluster/local workflow profiles | `DEFER` | Resume only with explicit runtime-orchestration/profile work; no orchestrator exists. |
 
 Preferred one-owner order is:

@@ -525,6 +525,20 @@ all-pass CSU batch report establishes only the declared availability probes.
 It does not execute Steps `07`-`09`, validate production inputs, or establish
 runtime or cluster proof.
 
+The separate manual cluster module/tool smoke probe is diagnostic-only. From
+the repository root, create the scheduler log directory before submission:
+
+```bash
+mkdir -p logs
+sbatch src/norad/evidence/runtime_preflight/tool_check.slurm
+```
+
+The probe attempts to load its declared CSU Python, STAR, samtools, and Picard
+module names and records job context, module state, executable paths, and versions
+in scheduler logs. It does not publish the structured runtime-preflight TSV or
+run workflow analysis; a successful job is availability evidence only, not
+cluster or production validation.
+
 ### Inventory Storage And Record Retention Policy
 
 Use `configs/storage_roots.example.tsv` and

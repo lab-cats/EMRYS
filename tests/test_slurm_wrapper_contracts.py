@@ -64,7 +64,9 @@ JOB_PATHS = {
         "step_09_cmh_editing_site_calling.slurm"
     ),
     "template.slurm": Path("jobs/template.slurm"),
-    "tool_check.slurm": Path("jobs/tool_check.slurm"),
+    "tool_check.slurm": Path(
+        "src/norad/evidence/runtime_preflight/tool_check.slurm"
+    ),
     "validate_manifest.slurm": Path(
         "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"
     ),

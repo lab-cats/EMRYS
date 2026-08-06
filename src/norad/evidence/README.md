@@ -10,7 +10,7 @@ report projections, or neutral contracts.
 | [`collect_RSeQC_paired_orientation_evidence`](collect_RSeQC_paired_orientation_evidence/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
 | [`assemble_scientific_review_evidence_package`](assemble_scientific_review_evidence_package/README.md) | Numbered evidence operation `09c`; validates and packages declared review evidence without granting scientific approval. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
-| [`runtime_preflight`](runtime_preflight/README.md) | Records explicitly declared runtime-availability probes without installation or workflow execution. |
+| [`runtime_preflight`](runtime_preflight/README.md) | Records declared runtime-availability probes and owns the separate manual cluster module/tool smoke probe; neither installs software or executes the workflow. |
 | [`storage_inventory`](storage_inventory/README.md) | Measures declared storage roots and records retention-policy state without acting on it. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct

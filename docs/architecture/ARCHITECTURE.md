@@ -149,8 +149,11 @@ defines and authorizes its exits.
 
 Local restoration is explicit and opt-in; compute and validation never install
 software. Runtime preflight evaluates one declared profile in an explicit
-context and records availability observations. Even an all-pass batch profile
-is not workflow runtime validation or cluster proof.
+context and records availability observations. A colocated manual SLURM probe
+attempts to load its declared cluster module names and records diagnostic logs without
+delegating to or publishing structured preflight evidence. Even an all-pass
+batch profile or successful probe is not workflow runtime validation or
+cluster proof.
 
 ### Reference provenance
 

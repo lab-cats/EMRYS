@@ -82,7 +82,7 @@ scientific policy explicitly unlocks it.
 | [`src/norad/contracts/`](src/norad/contracts/) and [`src/norad/libraries/`](src/norad/libraries/README.md) | Neutral schemas, validators, topology maps, and explicitly shared libraries. |
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
 | [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
-| [`jobs/`](jobs/) | Remaining generic scheduler template and probe; functional wrappers live beside their owners under `src/norad/`. |
+| [`jobs/`](jobs/) | Remaining generic scheduler scaffold; implemented wrappers and probes live beside their owners under `src/norad/`. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
 | [`docs/`](docs/sitemap/README.md) | Architecture, operations, design, task, history, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
