@@ -11,6 +11,7 @@ not a general-purpose utility namespace or an installed command package.
 | R environment | [`check_r_environment.R`](check_r_environment.R), [`restore_r_environment.R`](restore_r_environment.R) | Checks the guarded project R environment or explicitly restores the ignored local `renv` library from `renv.lock`. Restore is the mutating operation. |
 | Quarto environment | [`restore_quarto.py`](restore_quarto.py) | Explicitly restores the checksum-pinned report renderer into ignored local tool storage. Report rendering never installs it implicitly. |
 | Git and documentation mechanics | Seven commands documented in [`git_orchestration/`](git_orchestration/README.md): three `validate_*.py` validators plus `apply_fragment_candidate.sh`, `finalize_fragment_integration.sh`, `record_fragment_noop.sh`, and `publish_exact_ref.sh` | Validates or performs bounded fragment, documentation, commit, and exact-ref publication mechanics. `_common.py` and `_common.sh` are private support; none of these helpers select work, grant authority, choose content, resolve conflicts, or discard recovery state. |
+| Make recipe ownership | [`make_quality.mk`](make_quality.mk), [`make_reporting.mk`](make_reporting.mk), [`make_cluster_demo.mk`](make_cluster_demo.mk) | Private, fail-closed fragments loaded only by the root [`Makefile`](../Makefile). Public target names, variables, and default behavior remain at the root interface; the fragments are not standalone commands. |
 
 Supported invocations and recovery procedures live in the
 [`RUNBOOK`](../docs/operations/RUNBOOK.md) and

@@ -111,7 +111,9 @@ def assert_no_restore_residue(install_root: Path) -> None:
 
 
 def test_pinned_public_contract_matches_makefile_and_official_digest() -> None:
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
+        encoding="utf-8"
+    )
     source = SCRIPT.read_text(encoding="utf-8")
     assert RESTORE.QUARTO_VERSION == "1.9.38"
     assert RESTORE.QUARTO_SHA256 == (

@@ -74,19 +74,25 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")
     assert config.getboolean("run", "parallel")
 
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    root_makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    quality_makefile = (
+        REPO_ROOT / "scripts" / "make_quality.mk"
+    ).read_text(encoding="utf-8")
+    reporting_makefile = (
+        REPO_ROOT / "scripts" / "make_reporting.mk"
+    ).read_text(encoding="utf-8")
     for target in (
         "validation-python-coverage:",
         "validation-shell-contracts:",
         "validation-guarded-r:",
-        "validation-report-runtime:",
         "validation-static:",
         "all-checks:",
-        "demo-report:",
     ):
-        assert target in makefile
-    assert "tests/tools/run_validation.py" in makefile
-    assert "PYTHON_COVERAGE_PYTEST_ARGS" in makefile
+        assert target in quality_makefile
+    for target in ("validation-report-runtime:", "demo-report:"):
+        assert target in reporting_makefile
+    assert "tests/tools/run_validation.py" in quality_makefile
+    assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
 
 
 def test_selected_environment_has_exact_parallel_dependencies() -> None:

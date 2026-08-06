@@ -97,7 +97,7 @@ bounded entry path for a user whose environment is already configured.
 
 ### Residual source-topology convergence
 
-The current residual roster contains 84 tracked repository-level paths: 82
+The current residual roster contains 87 tracked repository-level paths: 85
 `RETAIN_ROOT` and two `DEFER`. Root `jobs/` is absent; all 15 tracked SLURM
 files are owner-local. The manual tool probe lives with runtime preflight and
 the unused generic template is retired. The two unconsumed workflow profiles

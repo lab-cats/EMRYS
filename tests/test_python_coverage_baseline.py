@@ -214,7 +214,9 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     ]
     assert config.get("run", "patch").split() == ["subprocess"]
 
-    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
+        encoding="utf-8"
+    )
     assert "python-coverage-measure:" in makefile
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile

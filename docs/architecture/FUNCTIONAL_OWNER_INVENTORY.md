@@ -69,7 +69,7 @@ pipeline owner graph but still receive one owner:
 | Current owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
 | Documentation/Git orchestration | Public commands in [`scripts/git_orchestration/`](../../scripts/git_orchestration/): `apply_fragment_candidate.sh`, `finalize_fragment_integration.sh`, `publish_exact_ref.sh`, `record_fragment_noop.sh`, `validate_documentation.py`, `validate_fragment_candidate.py`, and `validate_fragment_target.py`; private helpers `_common.py` and `_common.sh` add no public surface | [`tests/git_orchestration/`](../../tests/git_orchestration/), [public CLI contracts](../../tests/test_public_cli_contracts.py). These operate on repository state, never scientific artifacts or evidence state. |
-| Developer quality gates | Make `all-checks`, `lint`, `local-real-r-test`, `python-coverage-baseline-update`, `python-coverage-check`, `python-coverage-measure`, `real-r-test`, `shell-test`, `smoke`, `test`, `validation-guarded-r`, `validation-python-coverage`, `validation-report-runtime`, `validation-shell-contracts`, and `validation-static` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages. |
+| Developer quality gates | Public targets and variables in the root [`Makefile`](../../Makefile), with private recipes grouped by [quality](../../scripts/make_quality.mk), [reporting](../../scripts/make_reporting.mk), and [cluster demonstration](../../scripts/make_cluster_demo.mk) ownership | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages; the includes add no public entry point. |
 | Demonstration facade | Make `demo-step03` and `demo-step03-dry-run` in the [`Makefile`](../../Makefile) | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json). They submit the existing Step `03` wrapper and do not own Step `03` behavior. |
 
 ## Residual tracked-path coverage
@@ -88,7 +88,7 @@ retirement updates this current inventory.
 
 | Exact current path group | Paths | Current owner or boundary |
 | --- | ---: | --- |
-| `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 5 | Explicit repository dependency lifecycle; intentionally repository-level pending any separately approved setup redesign. |
+| `scripts/{check_r_environment.R,restore_r_environment.R,restore_quarto.py,make_quality.mk,make_reporting.mk,make_cluster_demo.mk}`; `tests/shell/test_local_r_environment.sh`; `tests/test_quarto_restore.py` | 8 | Explicit repository dependency lifecycle and private Make recipe ownership; intentionally repository-level pending any separately approved setup redesign. |
 | All ten tracked `scripts/git_orchestration/` paths and all seven tracked `tests/git_orchestration/` paths | 17 | Repository documentation/Git orchestration; intentionally outside scientific-workflow orchestration. |
 | All 27 tracked public input/reference files under root `configs/`: one sample-manifest starter, three reporting starters, one reference starter, one runtime starter, two storage/retention starters, three Step `07` operator inputs, one Step `09` reference manifest, and fifteen Step `09c` examples/schema references | 27 | `RETAIN_ROOT` public operator/reference inputs; they are not owner-native implementation assets. |
 | `configs/{cluster_full.yaml.example,local_test.yaml}` | 2 | `DEFER`; inert illustrative workflow profiles retained without supported execution semantics until an actual orchestration owner exists. |
@@ -103,8 +103,8 @@ recomputed eleven groups and 87 unique paths at its audit boundary: 76
 `RETAIN_ROOT`, 10 `DEFER`, and one separately owned `RETIRE`. Completed
 [`DOC-CONS-08H`](../tasks/COMPLETED/DOC-CONS-08H-retire-jit-temporary-work-record.md)
 later retired that one temporary path after no-loss disposition. The nine
-current groups contain `5`, `17`, `27`, `2`, `8`, `22`, `1`, `1`, and `1`
-paths: 84 total, 84 unique, 82 `RETAIN_ROOT`, 2 `DEFER`, and no current
+current groups contain `8`, `17`, `27`, `2`, `8`, `22`, `1`, `1`, and `1`
+paths: 87 total, 87 unique, 85 `RETAIN_ROOT`, 2 `DEFER`, and no current
 `RETIRE`.
 The source-topology campaign remains complete at the local/static
 evidence ceiling; this inventory does not close the broader modernization

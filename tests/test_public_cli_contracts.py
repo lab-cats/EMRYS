@@ -612,9 +612,21 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
         for line in makefile_lines
         if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
     }
+    include_lines = [
+        line for line in makefile_lines if line.startswith("include ")
+    ]
 
     assert live_targets == set(MAKE_TARGET_DECISIONS)
     assert configurable_variables == MAKE_CONTEXT_VARIABLES
+    assert (
+        "NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))"
+        in makefile_lines
+    )
+    assert include_lines == [
+        "include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk",
+        "include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk",
+        "include $(NORAD_MAKE_ROOT)/scripts/make_cluster_demo.mk",
+    ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {
         "cluster_deferred",
         "explicit_output",
@@ -668,6 +680,7 @@ def test_make_expansion_oracle_rejects_recipe_mutation(
             str(REPO_ROOT),
             "-f",
             str(mutated_makefile),
+            f"NORAD_MAKE_ROOT={REPO_ROOT}",
             "test",
         ],
         cwd=tmp_path,
