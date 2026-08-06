@@ -432,6 +432,25 @@ def test_help_and_dry_run_validate_without_summary_writes(
     assert_no_summary_outputs(run_summary_fixture)
 
 
+def test_live_run_summary_header_owner_controls_serialized_bytes(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = RUN_SUMMARY.RUN_SUMMARY_HEADER
+    mutated = (original[1], original[0], *original[2:])
+    monkeypatch.setattr(RUN_SUMMARY, "RUN_SUMMARY_HEADER", mutated)
+
+    context = context_for(run_summary_fixture)
+
+    assert context.summary_tsv_bytes.splitlines()[0] == (
+        "\t".join(mutated).encode()
+    )
+    assert context.summary_tsv_bytes != RUN_SUMMARY.adapter.tsv_bytes(
+        original,
+        context.summary_rows,
+    )
+
+
 def test_execute_publishes_exact_canonical_schema_valid_transaction(
     run_summary_fixture: Any,
 ) -> None:

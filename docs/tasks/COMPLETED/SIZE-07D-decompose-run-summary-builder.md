@@ -22,7 +22,6 @@ central evidence role makes broad edits difficult to review.
 
 ## Blocked by
 
-- [REVIEW-UX-03](../TODO/REVIEW-UX-03-review-usability-plan.md) — Required: all independent architecture/reliability/usability reviews must be incorporated.
 - [RPT-05A](../COMPLETED/RPT-05A-relocate-reporting-to-final-source-home.md) — Required: decompose the builder inside the final reporting owner rather than creating more temporary flat implementation.
 
 ## Completion unblocks
@@ -83,5 +82,36 @@ central evidence role makes broad edits difficult to review.
 
 ## Completion record
 
-Not started. Select this card for read-only planning; implementation requires
-separate approval.
+Completed in the explicitly approved PI-readiness tranche. The target-only
+refresh measured `src/norad/reporting/build_run_summary.py` at 2,793 lines and
+98,275 bytes. It owned CLI/input admission, immutable transaction snapshots,
+report-table approvals, run/status/science projection, canonical JSON/TSV/QC
+and receipt validation, context preparation, predecessor reconciliation, and
+receipt-last publication/rollback. Direct consumers are the Make/runbook CLI
+route, reporting fixtures and direct tests, independent contract goldens, and
+the HTML/export report integrations.
+
+The exact public path is now a 954-line compatibility, preparation, CLI, and
+publication facade over six reporting-private modules plus `__init__.py`.
+Private seams own models/headers, inputs, approvals, transaction helpers,
+projection, and validation; they range from 230 to 406 lines. The facade keeps
+the live `_build_document` hook, shared adapter/contract/science identities,
+input rechecks, canonical serialization, public-schema validation, locking,
+signals, replacement, rollback/recovery, and receipt-last transaction. Every
+changed file is below 1,000 lines and each new private module is below 600.
+
+The unchanged `_run_summary_science.py` remains 1,312 lines and 48,135 bytes.
+It is retained with explicit justification: it is one cohesive, read-only
+committed Step `09c` package validation/normalization boundary, has no private
+Step `09c` implementation dependency, is below the mandatory 1,500-line
+threshold, and was not materially changed in this target-only slice. A future
+architectural edit to that scientific-policy boundary requires its own bounded
+decomposition plan.
+
+Focused local evidence passed: 72 direct transaction/fault tests; the new live
+header/serializer test; 84 independent-golden and HTML/export consumer tests;
+two exact public-CLI arbitrary-CWD cases; compile/import identity checks; moved-
+body AST parity; facade-binding review; and `git diff --check`. This is local
+structural and contract-parity evidence only; public bytes, evidence policy,
+and production, cluster, scientific-review, and biological evidence ceilings
+remain unchanged.

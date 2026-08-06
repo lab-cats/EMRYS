@@ -37,7 +37,7 @@ logic, while report assets remain explicitly owned and inspectable.
 - [RPT-03](../TODO/RPT-03-build-format-neutral-report-projection.md) — Partially: feature implementation also requires its approved science contract and independent review.
 - [RPT-05B](../TODO/RPT-05B-decompose-report-rendering-modules.md) — Fully: decomposition can occur inside the final ownership boundary.
 - [SIZE-07A](../COMPLETED/SIZE-07A-decompose-artifact-index-builder.md) — Partially: decomposition also requires its live size refresh and independent review.
-- [SIZE-07D](../TODO/SIZE-07D-decompose-run-summary-builder.md) — Partially: decomposition also requires its live size refresh and independent review.
+- [SIZE-07D](../COMPLETED/SIZE-07D-decompose-run-summary-builder.md) — Partially: decomposition also requires its live size refresh and independent review.
 
 ## Prerequisites
 
