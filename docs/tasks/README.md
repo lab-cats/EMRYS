@@ -6,7 +6,7 @@ the former scope and evidence.
 
 Existing cards keep their current paths under `TODO/`, `IN_PROGRESS/`, or
 `INTEGRATION_REVIEW/`; selecting, pausing, resuming, or completing work does
-not move or rewrite a card. New actionable cards start under `TODO/`.
+not move or rewrite a card. New actionable cards start under `cards/`.
 Nonselectable proposals remain under `UNREFINED/`.
 
 ## Read-only status
