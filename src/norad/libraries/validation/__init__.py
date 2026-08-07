@@ -3,6 +3,9 @@
 from norad.libraries.validation.errors import ValidationError, fail
 from norad.libraries.validation.inputs import (
     Snapshot,
+    lexical_path,
+    resolve_from_base,
+    snapshots,
     regular_snapshot,
     integer_stdout,
     require_unchanged,
@@ -16,7 +19,7 @@ from norad.libraries.validation.report import (
     row,
     validate_report,
 )
-from norad.libraries.validation.tsv import attempt, read_header
+from norad.libraries.validation.tsv import attempt, read_header, read_tsv, sha256_file
 from norad.libraries.validation.runtime import Runtime, finish
 
 __all__ = (
@@ -24,6 +27,9 @@ __all__ = (
     "attempt",
     "Runtime",
     "Snapshot",
+    "lexical_path",
+    "resolve_from_base",
+    "snapshots",
     "integer_stdout",
     "ValidationError",
     "clean",
@@ -35,6 +41,8 @@ __all__ = (
     "require_unchanged",
     "row",
     "read_header",
+    "read_tsv",
+    "sha256_file",
     "stable_text",
     "validate_report",
 )

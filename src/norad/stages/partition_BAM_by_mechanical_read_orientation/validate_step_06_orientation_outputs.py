@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import csv
 import math
 import sys
@@ -50,13 +49,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def read_counts(path: Path, scope_id: str) -> tuple[dict[str, int | float], str]:
     try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.DictReader(stream, delimiter="\t")
-            if tuple(reader.fieldnames or ()) != COUNTS_HEADER:
-                return {}, "header mismatch"
-            rows = list(reader)
+        header, rows = report.read_tsv(path)
     except (OSError, UnicodeError, csv.Error) as exc:
         return {}, report.clean(exc)
+    if tuple(header) != COUNTS_HEADER:
+        return {}, "header mismatch"
     if len(rows) != 1 or rows[0]["sample_id"] != scope_id:
         return {}, "expected one row for the declared sample"
     values: dict[str, int | float] = {}
@@ -77,16 +74,13 @@ def read_counts(path: Path, scope_id: str) -> tuple[dict[str, int | float], str]
 
 def build(args: argparse.Namespace):
     paths = {
-        "fwd_bam": args.fwd_bam.resolve(strict=False),
-        "fwd_bai": args.fwd_bai.resolve(strict=False),
-        "rev_bam": args.rev_bam.resolve(strict=False),
-        "rev_bai": args.rev_bai.resolve(strict=False),
-        "counts": args.counts.resolve(strict=False),
+        "fwd_bam": report.lexical_path(args.fwd_bam),
+        "fwd_bai": report.lexical_path(args.fwd_bai),
+        "rev_bam": report.lexical_path(args.rev_bam),
+        "rev_bai": report.lexical_path(args.rev_bai),
+        "counts": report.lexical_path(args.counts),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 06 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 06")
     magic = {role: path.read_bytes()[:4] for role, path in paths.items() if role != "counts"}
     containers_ok = (
         magic["fwd_bam"] in {b"BAM\x01", b"\x1f\x8b\x08\x04"}

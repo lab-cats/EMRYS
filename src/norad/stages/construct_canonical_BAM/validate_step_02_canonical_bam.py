@@ -37,17 +37,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def build(args: argparse.Namespace):
-    bam = args.bam.resolve(strict=False)
-    bai = args.bai.resolve(strict=False)
-    tool = args.samtools_bin.resolve(strict=False)
-    snapshots = {
-        path: report.regular_snapshot(path, label)
-        for path, label in (
-            (bam, "Step 02 BAM"),
-            (bai, "Step 02 BAI"),
-            (tool, "samtools executable"),
-        )
-    }
+    bam = report.lexical_path(args.bam)
+    bai = report.lexical_path(args.bai)
+    tool = report.lexical_path(args.samtools_bin)
+    snapshots = report.snapshots(
+        {"bam": bam, "bai": bai, "samtools": tool}, label="Step 02"
+    )
     if not tool.stat().st_mode & 0o111:
         report.fail(f"samtools executable is not executable: {tool}")
     bam_magic = bam.read_bytes()[:4]

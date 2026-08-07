@@ -44,17 +44,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def build(args: argparse.Namespace):
     paths = {
-        "sample_manifest": args.sample_manifest.resolve(strict=False),
-        "partition_manifest": args.partition_manifest.resolve(strict=False),
-        "annotation_gtf": args.annotation_gtf.resolve(strict=False),
-        "sites": args.sites.resolve(strict=False),
-        "inputs": args.inputs.resolve(strict=False),
-        "summary": args.summary.resolve(strict=False),
+        "sample_manifest": report.lexical_path(args.sample_manifest),
+        "partition_manifest": report.lexical_path(args.partition_manifest),
+        "annotation_gtf": report.lexical_path(args.annotation_gtf),
+        "sites": report.lexical_path(args.sites),
+        "inputs": report.lexical_path(args.inputs),
+        "summary": report.lexical_path(args.summary),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 08 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 08")
     sample_result, sample_detail = report.attempt(
         lambda: step08.validate_sample_manifest(paths["sample_manifest"]),
         catches=(OSError, UnicodeError, csv.Error, step08.ContractError),

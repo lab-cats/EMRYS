@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import io
 import sys
 from pathlib import Path
@@ -89,8 +88,8 @@ def inspect_rows(rows: Sequence[tuple[str, ...]]) -> tuple[bool, bool, bool, boo
 def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
         report.fail("scope-id must be nonempty and contain no whitespace")
-    bed = args.bed12.resolve(strict=False)
-    gtf = args.source_gtf.resolve(strict=False)
+    bed = report.lexical_path(args.bed12)
+    gtf = report.lexical_path(args.source_gtf)
     rows, bed_snapshot = parse_bed(bed)
     _, gtf_snapshot = report.stable_text(gtf, "Source GTF")
     structural, sorted_rows, blocks_valid, unique_names = inspect_rows(rows)

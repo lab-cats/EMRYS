@@ -36,14 +36,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def build(args: argparse.Namespace):
     paths = {
-        "fasta": args.reference_fasta.resolve(strict=False),
-        "fai": args.reference_fai.resolve(strict=False),
-        "dict": args.reference_dict.resolve(strict=False),
+        "fasta": report.lexical_path(args.reference_fasta),
+        "fai": report.lexical_path(args.reference_fai),
+        "dict": report.lexical_path(args.reference_dict),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Reference {role.upper()}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Reference")
     parsed = {}
     errors = {}
     parsers = {

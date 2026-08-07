@@ -50,28 +50,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def absolute(path: Path) -> Path:
-    """Return an absolute lexical path without following a final symlink."""
-    return path.expanduser().absolute()
-
-
 def build(args: argparse.Namespace):
     paths = {
-        "sample_manifest": absolute(args.sample_manifest),
-        "partition_manifest": absolute(args.partition_manifest),
-        "step08_sites": absolute(args.step08_sites),
-        "step08_inputs": absolute(args.step08_inputs),
-        "all_sites": absolute(args.all_sites),
-        "significant_sites": absolute(args.significant_sites),
-        "summary": absolute(args.summary),
-        "mutation_spectrum": absolute(args.mutation_spectrum),
-        "mutation_spectrum_pdf": absolute(args.mutation_spectrum_pdf),
-        "depth_delta_pdf": absolute(args.depth_delta_pdf),
+        "sample_manifest": report.lexical_path(args.sample_manifest),
+        "partition_manifest": report.lexical_path(args.partition_manifest),
+        "step08_sites": report.lexical_path(args.step08_sites),
+        "step08_inputs": report.lexical_path(args.step08_inputs),
+        "all_sites": report.lexical_path(args.all_sites),
+        "significant_sites": report.lexical_path(args.significant_sites),
+        "summary": report.lexical_path(args.summary),
+        "mutation_spectrum": report.lexical_path(args.mutation_spectrum),
+        "mutation_spectrum_pdf": report.lexical_path(args.mutation_spectrum_pdf),
+        "depth_delta_pdf": report.lexical_path(args.depth_delta_pdf),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 09 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 09")
     suffixes = {
         "all_sites": ".cmh_all_sites.tsv",
         "significant_sites": ".cmh_significant_sites.tsv",

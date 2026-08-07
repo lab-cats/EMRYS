@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -101,16 +100,13 @@ def valid_sj(path: Path) -> tuple[bool, str]:
 
 def build(args: argparse.Namespace):
     paths = {
-        "bam": args.bam.resolve(strict=False),
-        "log_final": args.log_final.resolve(strict=False),
-        "log_out": args.log_out.resolve(strict=False),
-        "log_progress": args.log_progress.resolve(strict=False),
-        "sj_out": args.sj_out.resolve(strict=False),
+        "bam": report.lexical_path(args.bam),
+        "log_final": report.lexical_path(args.log_final),
+        "log_out": report.lexical_path(args.log_out),
+        "log_progress": report.lexical_path(args.log_progress),
+        "sj_out": report.lexical_path(args.sj_out),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 01 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 01")
     nonempty = all(snapshot.size > 0 for snapshot in snapshots.values())
     bam_prefix = paths["bam"].read_bytes()[:4]
     bam_valid = bam_prefix == b"BAM\x01" or bam_prefix == b"\x1f\x8b\x08\x04"

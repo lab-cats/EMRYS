@@ -13,16 +13,16 @@ import csv
 import sys
 from pathlib import Path
 
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.libraries import validation as report
 
 REQUIRED_COLUMNS = ("sample_id", "r1_fastq", "r2_fastq", "strandedness", "condition")
 OPTIONAL_COLUMNS = ("notes", "replicate")
 ALLOWED_COLUMNS = set(REQUIRED_COLUMNS) | set(OPTIONAL_COLUMNS)
 VALID_STRANDEDNESS = {"forward", "reverse", "unstranded", "unknown"}
-
-
-# Keep the manifest schema explicit so future workflow steps share one contract.
-class ManifestValidationError(Exception):
-    """Raised when a sample manifest fails validation."""
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,19 +59,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def resolve_path(path_value: str, base_dir: Path) -> Path:
-    path = Path(path_value)
-    if path.is_absolute():
-        return path
-    return base_dir / path
-
-
 def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict[str, set[str] | int]:
     # Validate the manifest path before opening it so path failures are clear.
     if not manifest.exists():
-        raise ManifestValidationError(f"Manifest does not exist: {manifest}")
+        raise report.ValidationError(f"Manifest does not exist: {manifest}")
     if not manifest.is_file():
-        raise ManifestValidationError(f"Manifest is not a file: {manifest}")
+        raise report.ValidationError(f"Manifest is not a file: {manifest}")
 
     errors: list[str] = []
     sample_rows: dict[str, int] = {}
@@ -83,7 +76,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
     with manifest.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         if reader.fieldnames is None:
-            raise ManifestValidationError(f"Manifest is empty or missing a header: {manifest}")
+            raise report.ValidationError(f"Manifest is empty or missing a header: {manifest}")
 
         fieldnames = [field.strip() for field in reader.fieldnames]
         reader.fieldnames = fieldnames
@@ -106,7 +99,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
             errors.append(f"Unexpected column(s): {', '.join(unexpected_columns)}")
 
         if errors:
-            raise ManifestValidationError(format_errors(errors))
+            raise report.ValidationError(format_errors(errors))
 
         # Validate each sample row while accumulating a small run summary.
         for row_number, row in enumerate(reader, start=2):
@@ -165,7 +158,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
                 for column, fastq_path in (("r1_fastq", r1_fastq), ("r2_fastq", r2_fastq)):
                     if not fastq_path:
                         continue
-                    resolved_path = resolve_path(fastq_path, base_dir)
+                    resolved_path = report.resolve_from_base(base_dir, fastq_path)
                     if not resolved_path.exists():
                         errors.append(
                             f"Row {row_number}: {column} file does not exist: {resolved_path}"
@@ -176,7 +169,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
 
     # Report all row-level errors together so users can fix the manifest in one pass.
     if errors:
-        raise ManifestValidationError(format_errors(errors))
+        raise report.ValidationError(format_errors(errors))
 
     return {
         "sample_count": sample_count,
@@ -201,11 +194,13 @@ def print_summary(summary: dict[str, set[str] | int]) -> None:
 
 def main() -> int:
     args = parse_args()
+    manifest = report.lexical_path(args.manifest)
+    base_dir = report.lexical_path(args.base_dir)
 
     # Return a nonzero exit code for SLURM wrappers and local smoke tests.
     try:
-        summary = validate_manifest(args.manifest, args.base_dir, args.check_files)
-    except ManifestValidationError as error:
+        summary = validate_manifest(manifest, base_dir, args.check_files)
+    except report.ValidationError as error:
         print(error, file=sys.stderr)
         return 1
 

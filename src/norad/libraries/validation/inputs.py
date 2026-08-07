@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import stat
 from dataclasses import dataclass
+from collections.abc import Mapping
 from pathlib import Path
 
 from norad.libraries.validation.errors import fail
@@ -48,6 +49,28 @@ def require_unchanged(snapshots: dict[Path, Snapshot]) -> None:
     for path, expected in snapshots.items():
         if regular_snapshot(path, f"Input {path.name}") != expected:
             fail(f"Input changed after validation: {path}")
+
+
+def lexical_path(path: Path) -> Path:
+    """Return an absolute lexical path without resolving symlinks."""
+    return path.expanduser().absolute()
+
+
+def resolve_from_base(base_dir: Path, path: str | Path) -> Path:
+    """Resolve a possibly-relative path against an explicit base and expand."""
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = base_dir / candidate
+    return candidate.expanduser().absolute()
+
+
+def snapshots(
+    paths: Mapping[str, Path], *, label: str
+) -> dict[Path, Snapshot]:
+    """Build regular snapshots for a role->path map with a shared label prefix."""
+    return {
+        path: regular_snapshot(path, f"{label} {role}") for role, path in paths.items()
+    }
 
 
 def integer_stdout(result: subprocess.CompletedProcess[str], label: str) -> int:

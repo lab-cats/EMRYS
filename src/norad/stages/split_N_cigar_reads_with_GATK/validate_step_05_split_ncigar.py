@@ -43,17 +43,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def build(args: argparse.Namespace):
     paths = {
-        "bam": args.bam.resolve(strict=False),
-        "bai": args.bai.resolve(strict=False),
-        "fasta": args.reference_fasta.resolve(strict=False),
-        "fai": args.reference_fai.resolve(strict=False),
-        "dict": args.reference_dict.resolve(strict=False),
-        "samtools": args.samtools_bin.resolve(strict=False),
+        "bam": report.lexical_path(args.bam),
+        "bai": report.lexical_path(args.bai),
+        "fasta": report.lexical_path(args.reference_fasta),
+        "fai": report.lexical_path(args.reference_fai),
+        "dict": report.lexical_path(args.reference_dict),
+        "samtools": report.lexical_path(args.samtools_bin),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 05 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 05")
     if not paths["samtools"].stat().st_mode & 0o111:
         report.fail(f"samtools executable is not executable: {paths['samtools']}")
     bam_magic = paths["bam"].read_bytes()[:4]

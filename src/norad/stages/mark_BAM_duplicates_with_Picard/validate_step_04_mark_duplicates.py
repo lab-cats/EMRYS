@@ -74,15 +74,12 @@ def parse_metrics(path: Path) -> tuple[bool, str]:
 
 def build(args: argparse.Namespace):
     paths = {
-        "bam": args.bam.resolve(strict=False),
-        "bai": args.bai.resolve(strict=False),
-        "metrics": args.metrics.resolve(strict=False),
-        "samtools": args.samtools_bin.resolve(strict=False),
+        "bam": report.lexical_path(args.bam),
+        "bai": report.lexical_path(args.bai),
+        "metrics": report.lexical_path(args.metrics),
+        "samtools": report.lexical_path(args.samtools_bin),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 04 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 04")
     if not paths["samtools"].stat().st_mode & 0o111:
         report.fail(f"samtools executable is not executable: {paths['samtools']}")
     bam_magic = paths["bam"].read_bytes()[:4]

@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import csv
-import hashlib
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -49,22 +47,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    with path.open(encoding="utf-8", newline="") as stream:
-        reader = csv.DictReader(stream, delimiter="\t")
-        return list(reader.fieldnames or ()), list(reader)
-
-
 def read_sample_ids(path: Path) -> list[str]:
-    header, rows = read_tsv(path)
+    header, rows = report.read_tsv(path)
     if "sample_id" not in header:
         raise report.ValidationError("Sample manifest lacks sample_id")
     values = [row["sample_id"] for row in rows]
@@ -74,7 +58,7 @@ def read_sample_ids(path: Path) -> list[str]:
 
 
 def read_partition(path: Path, partition_id: str) -> tuple[str, str]:
-    header, rows = read_tsv(path)
+    header, rows = report.read_tsv(path)
     required = {"partition_id", "selector_type", "selector_value"}
     if not required.issubset(header):
         raise report.ValidationError("Partition manifest lacks required columns")
@@ -124,9 +108,7 @@ def selector_ok(
             if start < 1 or end < start or end > contigs[contig]:
                 return False
         return True
-    selector_path = Path(selector_value)
-    if not selector_path.is_absolute():
-        selector_path = partition_manifest.parent / selector_path
+    selector_path = report.resolve_from_base(partition_manifest.parent, selector_value)
     try:
         with selector_path.open(encoding="utf-8") as stream:
             rows = [
@@ -169,17 +151,14 @@ def read_vcf(path: Path) -> tuple[list[str], int]:
 
 def build(args: argparse.Namespace):
     paths = {
-        "sample_manifest": args.sample_manifest.resolve(strict=False),
-        "partition_manifest": args.partition_manifest.resolve(strict=False),
-        "reference_fai": args.reference_fai.resolve(strict=False),
-        "fwd_vcf": args.fwd_vcf.resolve(strict=False),
-        "rev_vcf": args.rev_vcf.resolve(strict=False),
-        "receipt": args.receipt.resolve(strict=False),
+        "sample_manifest": report.lexical_path(args.sample_manifest),
+        "partition_manifest": report.lexical_path(args.partition_manifest),
+        "reference_fai": report.lexical_path(args.reference_fai),
+        "fwd_vcf": report.lexical_path(args.fwd_vcf),
+        "rev_vcf": report.lexical_path(args.rev_vcf),
+        "receipt": report.lexical_path(args.receipt),
     }
-    snapshots = {
-        path: report.regular_snapshot(path, f"Step 07 {role}")
-        for role, path in paths.items()
-    }
+    snapshots = report.snapshots(paths, label="Step 07")
     sample_ids = read_sample_ids(paths["sample_manifest"])
     selector_type, selector_value = read_partition(
         paths["partition_manifest"], args.partition_id
@@ -187,7 +166,7 @@ def build(args: argparse.Namespace):
     contigs = read_fai(paths["reference_fai"])
     fwd_samples, fwd_count = read_vcf(paths["fwd_vcf"])
     rev_samples, rev_count = read_vcf(paths["rev_vcf"])
-    receipt_header, receipt_rows = read_tsv(paths["receipt"])
+    receipt_header, receipt_rows = report.read_tsv(paths["receipt"])
     receipt_structure = (
         tuple(receipt_header) == RECEIPT_HEADER
         and len(receipt_rows) == 2
@@ -210,8 +189,12 @@ def build(args: argparse.Namespace):
         )
     )
     manifest_identity = receipt_structure and all(
-        row["sample_manifest_sha256"] == sha256(paths["sample_manifest"])
-        and row["partition_manifest_sha256"] == sha256(paths["partition_manifest"])
+        row["sample_manifest_sha256"] == report.sha256_file(
+            paths["sample_manifest"]
+        )
+        and row["partition_manifest_sha256"] == report.sha256_file(
+            paths["partition_manifest"]
+        )
         and row["sample_count"].isdigit()
         and int(row["sample_count"]) == len(sample_ids)
         for row in receipt_rows

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -65,15 +64,12 @@ def parse_flagstat(path: Path) -> tuple[dict[str, tuple[int, int]], list[str]]:
 
 
 def build(args: argparse.Namespace):
-    quickcheck = args.quickcheck.resolve(strict=False)
-    flagstat = args.flagstat.resolve(strict=False)
-    snapshots = {
-        path: report.regular_snapshot(path, label)
-        for path, label in (
-            (quickcheck, "Step 02b quickcheck report"),
-            (flagstat, "Step 02b flagstat report"),
-        )
-    }
+    quickcheck = report.lexical_path(args.quickcheck)
+    flagstat = report.lexical_path(args.flagstat)
+    snapshots = report.snapshots(
+        {"quickcheck": quickcheck, "flagstat": flagstat},
+        label="Step 02b",
+    )
     quick_text = quickcheck.read_text(encoding="utf-8").strip()
     quick_ok = quick_text == "PASS: samtools quickcheck completed with no errors."
     values, errors = parse_flagstat(flagstat)

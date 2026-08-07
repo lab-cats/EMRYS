@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import math
 import sys
 from pathlib import Path
@@ -73,8 +72,8 @@ def parse_report(path: Path) -> tuple[dict[str, float], list[str]]:
 def build(args: argparse.Namespace):
     if not math.isfinite(args.sum_tolerance) or not 0 <= args.sum_tolerance <= 0.1:
         report.fail("--sum-tolerance must be finite and between 0 and 0.1")
-    source = args.infer_report.resolve(strict=False)
-    snapshots = {source: report.regular_snapshot(source, "Step 03 RSeQC report")}
+    source = report.lexical_path(args.infer_report)
+    snapshots = report.snapshots({"report": source}, label="Step 03 RSeQC")
     values, errors = parse_report(source)
     fractions = [values.get(label) for label in LABELS]
     valid = [value is not None and 0 <= value <= 1 for value in fractions]

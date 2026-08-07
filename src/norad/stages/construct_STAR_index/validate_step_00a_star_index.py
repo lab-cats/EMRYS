@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -123,24 +122,17 @@ def index_contigs(
     return parsed, (names_snapshot, lengths_snapshot)
 
 
-def normalized_declared_path(value: str, path_base: Path) -> Path:
-    path = Path(value)
-    if not path.is_absolute():
-        path = path_base / path
-    return path.resolve(strict=False)
-
-
 def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
         report.fail("scope-id must be nonempty and contain no whitespace")
     if args.expected_sjdb_overhang < 0:
         report.fail("expected-sjdb-overhang must be nonnegative")
-    index_dir = args.index_dir.resolve(strict=False)
+    index_dir = report.lexical_path(args.index_dir)
     if not index_dir.is_dir() or index_dir.is_symlink():
         report.fail(
             f"STAR index directory must be an existing real directory: {index_dir}"
         )
-    path_base = args.parameter_path_base.resolve(strict=False)
+    path_base = report.lexical_path(args.parameter_path_base)
     if not path_base.is_dir() or path_base.is_symlink():
         report.fail(
             f"Parameter path base must be an existing real directory: {path_base}"
@@ -158,8 +150,8 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     members_pass = not missing
     parameters, parameter_snapshot = parse_parameters(index_dir / "genomeParameters.txt")
     snapshots[index_dir / "genomeParameters.txt"] = parameter_snapshot
-    fasta = args.reference_fasta.resolve(strict=False)
-    gtf = args.reference_gtf.resolve(strict=False)
+    fasta = report.lexical_path(args.reference_fasta)
+    gtf = report.lexical_path(args.reference_gtf)
     fasta_records, fasta_snapshot = fasta_contigs(fasta)
     snapshots[fasta] = fasta_snapshot
     _, gtf_snapshot = report.stable_text(gtf, "Reference GTF")
@@ -170,11 +162,11 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     fasta_values = parameters.get("genomeFastaFiles", [])
     gtf_values = parameters.get("sjdbGTFfile", [])
     overhang_values = parameters.get("sjdbOverhang", [])
-    fasta_match = len(fasta_values) == 1 and normalized_declared_path(
-        fasta_values[0], path_base
+    fasta_match = len(fasta_values) == 1 and report.resolve_from_base(
+        path_base, fasta_values[0]
     ) == fasta
-    gtf_match = len(gtf_values) == 1 and normalized_declared_path(
-        gtf_values[0], path_base
+    gtf_match = len(gtf_values) == 1 and report.resolve_from_base(
+        path_base, gtf_values[0]
     ) == gtf
     try:
         observed_overhang = int(overhang_values[0]) if len(overhang_values) == 1 else None
