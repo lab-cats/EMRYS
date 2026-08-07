@@ -55,16 +55,14 @@ def build(args: argparse.Namespace):
     structure, bam_magic, bai_magic = bam_report.validate_bam_bai_pair(
         paths["bam"], paths["bai"]
     )
-    quick = bam_report.run_tool(
-        paths["samtools"], "quickcheck", "-v", str(paths["bam"])
-    )
-    header = bam_report.run_tool(
-        paths["samtools"], "view", "-H", str(paths["bam"])
-    )
-    if header.returncode != 0:
-        report.fail(f"samtools view -H failed: {report.clean(header.stderr)}")
-    coordinate, matching_rg, header_detail = bam_report.parse_header(
-        header.stdout, args.scope_id
+    (
+        quickcheck_ok,
+        quickcheck_detail,
+        coordinate,
+        matching_rg,
+        header_detail,
+    ) = bam_report.validate_samtools_readiness(
+        paths["samtools"], paths["bam"], args.scope_id
     )
     sidecar_error = ""
     try:
@@ -85,8 +83,8 @@ def build(args: argparse.Namespace):
             "BAM/BGZF and BAI/CSI magic", "split-N-cigar pair containers",
         ),
         report.row(
-            "05", args.scope_id, "samtools_quickcheck", quick.returncode == 0,
-            report.clean(quick.stderr) or f"exit={quick.returncode}",
+            "05", args.scope_id, "samtools_quickcheck", quickcheck_ok,
+            quickcheck_detail,
             "exit=0 with empty diagnostics", "samtools quickcheck -v",
         ),
         report.row(

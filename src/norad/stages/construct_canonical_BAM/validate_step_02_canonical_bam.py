@@ -45,13 +45,13 @@ def build(args: argparse.Namespace):
     )
     report.require_executable(tool, "samtools executable")
     structure, bam_magic, bai_magic = bam_report.validate_bam_bai_pair(bam, bai)
-    quickcheck = bam_report.run_tool(tool, "quickcheck", "-v", str(bam))
-    header = bam_report.run_tool(tool, "view", "-H", str(bam))
-    if header.returncode != 0:
-        report.fail(f"samtools view -H failed: {report.clean(header.stderr)}")
-    coordinate, matching_rg, header_detail = bam_report.parse_header(
-        header.stdout, args.scope_id
-    )
+    (
+        quickcheck_ok,
+        quickcheck_detail,
+        coordinate,
+        matching_rg,
+        header_detail,
+    ) = bam_report.validate_samtools_readiness(tool, bam, args.scope_id)
     total = report.integer_stdout(
         bam_report.run_tool(tool, "view", "-c", str(bam)), "alignment count"
     )
@@ -66,8 +66,8 @@ def build(args: argparse.Namespace):
         report.row("02", args.scope_id, "bam_bai_structure", structure,
              f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
              "BAM/BGZF and BAI/CSI magic", "canonical pair containers"),
-        report.row("02", args.scope_id, "samtools_quickcheck", quickcheck.returncode == 0,
-             report.clean(quickcheck.stderr) or f"exit={quickcheck.returncode}",
+        report.row("02", args.scope_id, "samtools_quickcheck", quickcheck_ok,
+             quickcheck_detail,
              "exit=0 with empty diagnostics", "samtools quickcheck -v"),
         report.row("02", args.scope_id, "coordinate_sorting", coordinate, header_detail,
              "one @HD with SO:coordinate", "canonical BAM sort order"),

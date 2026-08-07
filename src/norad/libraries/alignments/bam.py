@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from norad.libraries.validation import read_bytes
+from norad.libraries.validation import ValidationError, clean, read_bytes
 
 
 BAM_MAGIC_PREFIXES = {b"BAM\x01", b"\x1f\x8b\x08\x04"}
@@ -29,6 +29,21 @@ def validate_bam_signature(bam: Path) -> tuple[bool, bytes]:
     """Validate a BAM magic signature and return the observed signature."""
     bam_magic = read_bam_prefix(bam)
     return (bam_magic_ok(bam_magic), bam_magic)
+
+
+def validate_samtools_readiness(
+    tool: Path, bam: Path, scope_id: str
+) -> tuple[bool, str, bool, bool, str]:
+    """Run quickcheck and parse @HD/@RG from the BAM header."""
+    quickcheck = run_tool(tool, "quickcheck", "-v", str(bam))
+    quickcheck_ok = quickcheck.returncode == 0
+    quickcheck_observed = clean(quickcheck.stderr) or f"exit={quickcheck.returncode}"
+
+    header = run_tool(tool, "view", "-H", str(bam))
+    if header.returncode != 0:
+        raise ValidationError(f"samtools view -H failed: {clean(header.stderr)}")
+    coordinate, matching_rg, header_detail = parse_header(header.stdout, scope_id)
+    return quickcheck_ok, quickcheck_observed, coordinate, matching_rg, header_detail
 
 
 def run_tool(tool: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
