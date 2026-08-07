@@ -1,39 +1,15 @@
 flowchart TD
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph contracts["Manifest/config/provenance contracts"]
-        direction TB
-        manifest["Manifest<br/>what data exist"]
-        config["Analysis config<br/>what analysis to run"]
-        provenance["Provenance<br/>what code/reference/tools produced results"]
-        registry["Artifact registry<br/>what outputs exist and where"]
-    end
-
-    subgraph artifacts["Validated artifact inputs"]
-        direction TB
-        fastqs["Validated FASTQ inputs"]
-        ready["Validated analysis-ready artifacts"]
-    end
-
-    subgraph modules["Assay module execution"]
-        direction TB
-        module["Assay-specific analysis modules"]
-        results["Module result artifacts"]
-    end
-
-    manifest --> fastqs --> ready
-    manifest --> module
-    config --> module
-    ready --> module
-    provenance --> module
-    module --> results --> registry
-    provenance --> registry
-    registry --> reports["Report-ready artifact index"]
-
-    class manifest,config,provenance,registry contract
-    class fastqs current
-    class ready,module,results future
-    class reports reporting
+    ready["Ready YAML request"] --> manifest["Referenced TSV sample manifest"]
+    ready --> claim["Atomic request claim"]
+    manifest --> claim
+    raw["Stationary FASTQ and registered reference inputs"] --> normalize["Resolve, validate, hash, and normalize"]
+    claim --> normalize
+    normalize --> identity{"Normalized contract identity"}
+    identity -->|"Same contract"| run["Existing immutable run"]
+    identity -->|"Changed input or policy"| newrun["New immutable run"]
+    run --> attempt["New inspectable attempt"]
+    newrun --> attempt
+    attempt --> execute["Required DAG, validators, evidence, and requested report"]
+    execute -->|"Failure"| resumable["Failed and resumable request state"]
+    execute -->|"Current success contract"| promote["Promote request and run metadata"]
+    raw -.->|Never moved automatically| promote

@@ -1,188 +1,118 @@
-# NORAD Pipeline Architecture
+# Current architecture
 
-This page is a compact visual map for PI demo use. It summarizes the pipeline shape, validated boundaries, output contracts, and reliability pattern without replacing `docs/design/PIPELINE_PLAN.md` or `docs/operations/RUNBOOK.md` as the detailed sources of truth.
+This document owns the conceptual map of the implemented NORAD system within
+the [`architecture index`](README.md). Exact semantic identities and DAG edges belong in
+[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); current public
+surfaces and direct protection belong in the
+[`functional-owner inventory`](FUNCTIONAL_OWNER_INVENTORY.md); and each
+owner-local `CONTRACT.md` owns exact interface and failure behavior.
 
-For deferred modular architecture ideas, see `docs/architecture/FUTURE_ARCHITECTURE.md`.
+Current projections:
 
-## One-Screen Summary
+- [`PIPELINE_OVERVIEW.md`](PIPELINE_OVERVIEW.md) and its
+  [Mermaid source](diagrams/current_user_pipeline.mmd) provide the
+  scientist-facing phase view;
+- [`pipeline.mmd`](diagrams/pipeline.mmd) provides the grouped system
+  projection; and
+- [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) remains the exact
+  machine-independent dependency authority.
 
-This project rebuilds a legacy hardcoded RNA-editing/RNA-seq workflow into a staged, dry-run-first, testable SLURM pipeline.
+## Implemented system shape
 
-Steps `00a`-`00c` are cluster-proven reference prep. Steps `01`-`06` are cluster-proven across all six samples. Steps `07`-`09` are pending / not implemented / not cluster-proven, and Step `07` is the next implementation boundary.
+All fourteen numbered workflow, analysis, and evidence owners occupy their
+functional homes under `src/norad/`. Sample-manifest admission, neutral
+contracts and libraries, reporting, and reference/runtime/storage evidence
+occupy separate cross-cutting owners. Numeric step labels are historical
+aliases rather than a complete execution order.
 
-Current boundary:
+NORAD currently exposes owner-local commands and SLURM entry points; it has no
+implemented one-command pipeline orchestrator. Operators select the applicable
+entry point and supply its declared inputs. Deferred orchestration profiles do
+not change that boundary.
 
-```text
-cluster-proven reference prep through Steps 00a-00c
--> cluster-proven sample workflow through Step 06
--> Step 07 next pending boundary
--> Steps 08-09 pending editing-site path
-```
+| Component group | Implemented owners | Principal inputs | Principal outputs |
+| --- | --- | --- | --- |
+| Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
+| Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
+| Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
+| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
+| Scientific-review evidence | Evidence owner `09c` | Explicit review plan, declared evidence, and Step `09` products | Versioned review package and review summary |
+| Reporting | `src/norad/reporting/` | Explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, HTML/PDF bundle, and report receipt |
+| Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
+| Operational evidence | Runtime preflight, reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
-## Pipeline Dataflow
+Exact files, scheduler wrappers, validators, and direct tests are linked from
+the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
 
-```mermaid
-flowchart LR
-    classDef proven fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef boundary fill:#fff8e1,stroke:#f9a825,color:#5f4300,stroke-width:2px
-    classDef pending fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
-    classDef input fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+## Ownership and dependency direction
 
-    subgraph ref["Reference prep"]
-        direction TB
-        s00a["00a STAR index<br/>cluster-proven"]
-        s00b["00b GTF -> BED12<br/>cluster-proven"]
-        s00c["00c GATK sidecars<br/>cluster-proven"]
-    end
-
-    subgraph sample["Sample preprocessing"]
-        direction TB
-        fastq["FASTQ<br/>raw paired-end reads"]
-        s01["01 STAR alignment<br/>cluster-proven"]
-        s02["02 canonical BAM<br/>cluster-proven"]
-        s02b["02b BAM QC<br/>cluster-proven"]
-        s03["03 strandedness<br/>cluster-proven"]
-        s04["04 MarkDuplicates<br/>cluster-proven"]
-        s05["05 SplitNCigarReads<br/>cluster-proven"]
-        s06["06 read-orientation split<br/>cluster-proven"]
-    end
-
-    subgraph downstream["Downstream editing workflow"]
-        direction TB
-        s07["07 bcftools mpileup<br/>next boundary<br/>pending"]
-        s08["08 VCF preprocessing<br/>pending"]
-        s09["09 CMH/editing-site calling<br/>pending"]
-    end
-
-    fastq --> s01 --> s02
-    s00a --> s01
-    s00b --> s03
-    s00c --> s05
-    s02 --> s02b
-    s02 --> s03
-    s02 --> s04 --> s05 --> s06 --> s07 --> s08 --> s09
-
-    class fastq input
-    class s00a,s00b,s00c,s01,s02,s02b,s03,s04,s05,s06 proven
-    class s07 boundary
-    class s08,s09 pending
-```
-
-Standalone Mermaid source: `docs/architecture/diagrams/pipeline.mmd`.
-
-## Step Status Matrix
-
-| Step | Main output | Status | Notes |
-| ---- | ----------- | ------ | ----- |
-| `00a` | `refs/novogene_star_index/` | cluster-proven reference prep | STAR index built with `sjdbOverhang=149`. |
-| `00b` | `refs/novogene_ref/genome.bed` | cluster-proven reference prep | BED12 generated for RSeQC. |
-| `00c` | `refs/novogene_ref/genome.fa.fai`, `refs/novogene_ref/genome.dict` | cluster-proven reference prep | GATK sidecars validated once, not inside per-sample jobs. |
-| `01` | `results/star/<sample>/` | cluster-proven across all six samples | STAR alignment. |
-| `02` | `results/bam/<sample>/<sample>.sorted.bam(.bai)` | cluster-proven across all six samples | Canonical coordinate-sorted, read-group-tagged BAM. |
-| `02b` | `results/qc/bam/<sample>.*.txt` | cluster-proven across all six samples | BAM quickcheck/flagstat QC. |
-| `03` | `results/qc/strandedness/<sample>.infer_experiment.txt` | cluster-proven across all six samples | All six libraries are reverse-stranded / first-strand-style. |
-| `04` | `results/markdup/<sample>/<sample>.markdup.bam(.bai)` | cluster-proven across all six samples | Duplicate reads are marked, not removed. |
-| `05` | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` | cluster-proven across all six samples | GATK temp handling hardened to project storage. |
-| `06` | `results/orientation/<sample>/`, `results/qc/orientation/` | cluster-proven across all six samples | Mechanical `FWD_like` / `REV_like` split. |
-| `07` | per-chromosome/per-orientation VCF files | pending / not implemented / not cluster-proven | Next implementation boundary; bcftools path is known, but workflow behavior is still pending. |
-| `08` | cleaned/annotated VCF-like tables | pending / not implemented / not cluster-proven | R/Rscript availability still unresolved. |
-| `09` | CMH/editing-site result tables and plots | pending / not implemented / not cluster-proven | Final deliverable format still needs PI-guided definition. |
-
-## Data Contracts
-
-| Stage | Contract |
-| ----- | -------- |
-| STAR alignment | `results/star/<sample>/` |
-| Canonical BAM | `results/bam/<sample>/<sample>.sorted.bam(.bai)` |
-| MarkDuplicates | `results/markdup/<sample>/<sample>.markdup.bam(.bai)` |
-| SplitNCigarReads | `results/split_ncigar/<sample>/<sample>.split_ncigar.bam(.bai)` |
-| Read-orientation BAMs | `results/orientation/<sample>/<sample>.FWD_like.bam(.bai)` and `results/orientation/<sample>/<sample>.REV_like.bam(.bai)` |
-| Orientation QC | `results/qc/orientation/<sample>.orientation_counts.tsv` |
-
-## Reliability Workflow
-
-```mermaid
-flowchart LR
-    classDef gate fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef cluster fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef safeguard fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef docs fill:#f5f5f5,stroke:#616161,color:#424242
-
-    local["local implementation<br/>macOS / VS Code"]
-    tests["local tests<br/>syntax + fake tools"]
-    gitpush["commit / push"]
-    pull["cluster pull<br/>CSU checkout"]
-    dryrun["SLURM dry-run<br/>default gate"]
-    execute["execute<br/>explicit EXECUTE=1"]
-    validate["validate outputs<br/>logs + contracts"]
-    docupdate["update docs<br/>status + troubleshooting"]
-
-    fake["fake-tool tests"]
-    drydefault["dry-run default"]
-    execflag["explicit EXECUTE=1"]
-    locks["locks"]
-    runtoken["run-token temp files"]
-    publish["validate before publish"]
-    rollback["rollback"]
-    cleanup["cleanup"]
-    trouble["troubleshooting docs"]
-
-    local --> tests --> gitpush --> pull --> dryrun --> execute --> validate --> docupdate
-
-    fake -.-> tests
-    drydefault -.-> dryrun
-    execflag -.-> execute
-    locks -.-> execute
-    runtoken -.-> execute
-    publish -.-> validate
-    rollback -.-> validate
-    cleanup -.-> validate
-    trouble -.-> docupdate
-
-    class local,tests,gitpush gate
-    class pull,dryrun,execute,validate cluster
-    class fake,drydefault,execflag,locks,runtoken,publish,rollback,cleanup,trouble safeguard
-    class docupdate docs
-```
-
-Standalone Mermaid source: `docs/architecture/diagrams/reliability.mmd`.
-
-Safeguards:
-
-- dry-run default
-- explicit `EXECUTE=1`
-- per-sample locks
-- run-token temp files
-- validate-before-publish
-- rollback protection
-- cleanup on failure
-- fake-tool shell tests
-- troubleshooting docs
-
-## Local Vs Cluster Responsibilities
-
-| Local macOS | CSU/ADAM SLURM |
-| ----------- | -------------- |
-| Edit scripts/docs/tests. | Run real STAR/samtools/Picard/GATK/bcftools jobs. |
-| Run fake-tool shell tests and syntax checks. | Execute sample-scale workflows through `jobs/*.slurm`. |
-| Validate command construction and dry-run behavior. | Inspect SLURM logs, scheduler status, and output files. |
-| Commit/push reviewed changes. | Pull committed changes before dry-run and execute gates. |
-
-## Biological Interpretation Caution
-
-`FWD_like` and `REV_like` are mechanical read-orientation groups based on legacy samtools flag filters. They are not automatically biological strand, transcript strand, sense, or antisense labels.
+Cross-owner flow uses declared artifacts and neutral contracts. A functional
+owner does not import another owner's private implementation. The allowed
+direction is:
 
 ```text
-FWD_like = samtools view -f 99 plus samtools view -f 147
-REV_like = samtools view -f 83 plus samtools view -f 163
+caller inputs
+    -> ingestion/reference/stage/evidence/analysis owners
+    -> owner validation and receipts
+    -> neutral artifact adaptation
+    -> canonical run summary
+    -> static report rendering
 ```
 
-`samtools view -f FLAG` means a record has all bits in `FLAG`; it is not exact flag equality.
+Approved shared seams remain narrow: validation-report publication, BAM
+validation, reference-contig parsing, executable-value resolution, artifact
+contracts, and the neutral Step `08`, Step `09`, and review-package
+contracts. Their exact consumer rosters and allowed dependency directions live
+in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
+Private bridges and colocated helper packages remain part of their public
+owner; they do not create additional pipeline components or a generic utility
+layer.
 
-## What Remains
+## Identity, inputs, and outputs
 
-1. Implement Step `07` bcftools mpileup.
-2. Validate Step `07` on a narrow scope before full-cohort execution.
-3. Port Step `08` VCF preprocessing.
-4. Port Step `09` CMH/editing-site calling.
-5. Review QC and biological interpretation with PI guidance.
+Sample identity, condition, order, and replicate pairing come from the
+declared sample manifest. Partition selection, reference identity, analysis
+pairing, review plans, evidence attachments, and report-table approvals are
+also explicit inputs. Owners consume declared paths, artifacts, and receipts
+rather than infer them from filenames, globs, neighboring source directories,
+or numeric step order.
+
+Native owner outputs and validation artifacts remain authoritative for their
+own stage or evidence boundary. Downstream consumers reference those outputs
+through declared contracts; reporting does not become the owner of upstream
+computation or review evidence.
+
+## Publication and evidence flow
+
+The downstream product flow is one-way:
+
+1. Native owners publish their declared artifacts and owner-local validation
+   evidence.
+2. Read-only adapters inspect an explicit inventory and publish versioned
+   artifact records, an ordered index, and a receipt.
+3. The run-summary owner consumes one committed adapter receipt plus explicitly
+   supplied scientific-review and report-table inputs and publishes canonical
+   JSON with deterministic TSV projections.
+4. Static renderers consume that canonical summary and authorized supplemental
+   tables to publish selected report formats and a receipt.
+
+Operational evidence owners sit beside this product flow. Runtime, reference,
+and storage observations can inform execution or review, but do not become
+computational pipeline stages. The exact evidence ceilings and current proof
+state are deliberately outside this architecture map.
+
+## Canonical detail routes
+
+| Question | Canonical owner |
+| --- | --- |
+| What are the exact semantic owners, inputs, outputs, and DAG edges? | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
+| Where are public commands, jobs, validators, Make surfaces, and tests? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
+| What does one operation validate, publish, or preserve on failure? | Its adjacent `CONTRACT.md` linked from the inventory |
+| Which source homes and dependency directions are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
+| Which commands and operational procedures are supported? | [`RUNBOOK.md`](../operations/RUNBOOK.md) |
+| Where are recovery procedures and symptom diagnosis? | [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
+| Where do reporting, scientific, execution, and evidence rules live? | [`DECISIONS.md`](../design/DECISIONS.md), owner-local contracts, and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) |
+| What is currently proved, blocked, or awaiting external execution? | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
+
+The standalone [reliability flow](diagrams/reliability.mmd) is a concise
+non-authoritative view of validation and publication boundaries.

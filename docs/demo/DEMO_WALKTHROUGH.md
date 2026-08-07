@@ -1,39 +1,73 @@
-# Demo Walkthrough
+# NORAD presenter walkthrough
 
-This is a short read-only path for PI demo use. It points to the current sources of truth rather than replacing them.
+This is the presenter run-of-show, not the audience handout, authoritative
+status ledger, report contract, or command owner. During a live demo, use the
+current [`HANDOFF.md`](../operations/HANDOFF.md) and
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); run only the exact
+[`README.md`](README.md) procedure.
 
-## 1. Demo Goal
+## Narrative
 
-Show that the legacy NORAD / Novogene Remora workflow has been rebuilt into a reproducible preprocessing backbone, with a clear boundary between validated RNA-seq preprocessing and the pending downstream editing-site calling workflow.
+1. The repository translates a legacy, path-bound workflow into explicit
+   scripts, SLURM wrappers, manifests, tests, and receipts.
+2. Reference preparation and BAM processing establish reproducible inputs.
+3. Library-orientation evidence is preserved without equating mechanical read
+   groups with biological strand.
+4. Cohort mpileup, deterministic preprocessing, and paired CMH analysis retain
+   every candidate with explicit status.
+5. Scientific-review tooling records evidence and limitations separately from
+   computation.
+6. Read-only artifact adapters and a canonical run summary make missing and
+   failed evidence visible.
+7. Static reports project that summary without running analysis or promoting
+   state.
 
-Current boundary:
+## Populated synthetic report
 
-```text
-Steps 00a-00c cluster-proven reference prep
--> Steps 01-06 cluster-proven across all six samples
--> Steps 07-09 pending editing-site workflow
-```
+Before presenting, generate the local synthetic report through the
+[demo procedure](README.md).
+Its current implementation and evidence ceiling remain in the
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).
 
-## 2. Suggested 5-10 Minute Flow
+Start in the open Overview category: the evidence banner, status, CMH-ranked
+candidates, adjudication, and limitations appear first. Then expand QC and
+orientation, Replicates and sensitivity, Review decisions, and Evidence and
+provenance. Use the linked plan and runbook for current rendering behavior.
 
-1. `README.md` - project overview and current status.
-2. `docs/architecture/ARCHITECTURE.md` - visual dataflow and engineering architecture.
-3. `docs/demo/PI_DEMO_REPORT.md` - PI Decision Brief plus preliminary validation and QC summary.
-4. `docs/design/PIPELINE_PLAN.md` - exact step contracts and validation status.
-5. Operations troubleshooting guide - Step `05` `/tmp` temp-spill failure and hardening.
-6. Optional terminal evidence - Step `05` / Step `06` validation outputs if available.
+## Suggested inspection order
 
-## 3. Talk Track
+1. [`../../README.md`](../../README.md)
+2. [`../architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md)
+3. [`../architecture/diagrams/pipeline.mmd`](../architecture/diagrams/pipeline.mmd)
+4. [`../operations/HANDOFF.md`](../operations/HANDOFF.md)
+5. [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md)
+6. [PI discussion guide](PI_DEMO_REPORT.md)
+7. [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md)
 
-- The legacy hardcoded workflow has been translated into staged, testable pipeline steps with explicit inputs and outputs.
-- SLURM execution is dry-run-first, with real execution gated by explicit `EXECUTE=1`.
-- Reference prep and sample preprocessing are cluster-proven through Step `06` across the six-sample cohort.
-- Step `06` publishes `FWD_like` / `REV_like` mechanical read-orientation BAMs and orientation counts TSVs for all six samples.
-- A real cluster failure in Step `05` was diagnosed as GATK/HTSJDK temp spill to node-local `/tmp` and hardened with project-storage temp handling.
-- Biological interpretation is intentionally cautious: read-orientation labels are mechanical flag groups, not biological strand labels.
-- Downstream Steps `07`-`09` remain the next editing-site workflow work.
+## Scientific wording
 
-## 4. What Not To Claim
+Say:
 
-- Do not claim final biological editing-site results yet.
-- Do not equate `FWD_like` / `REV_like` with biological strand, sense, antisense, or transcript-strand labels.
+- reverse-stranded / first-strand-style libraries;
+- mechanical `FWD_like` and `REV_like` groups;
+- CMH-ranked candidates;
+- implemented, locally tested, real-runtime tested, or cluster-proven only
+  when the handoff supports that exact state;
+- exploratory/provisional when scientific review remains non-final.
+
+Do not say:
+
+- validated editing sites;
+- biologically proven orientation;
+- production review completed from fixture evidence;
+- report generation validated the computation;
+- cluster-proven based on a tool probe or local test.
+
+## Cohort evidence cue
+
+At the cohort-evidence stop, display the current
+[`HANDOFF.md`](../operations/HANDOFF.md#cohort-and-preserved-scientific-evidence)
+table and caveats directly. Do not copy its fractions or sample status into
+this guide. Emphasize at the action point that orientation evidence is not
+biological-strand proof and that a mapping outlier is not, by itself, a
+pipeline failure.

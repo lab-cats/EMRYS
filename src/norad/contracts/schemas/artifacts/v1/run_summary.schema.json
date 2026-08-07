@@ -1,0 +1,480 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:artifacts:run-summary:v1.1",
+  "title": "NORAD run summary v1.1",
+  "description": "The canonical structured entry point for reporting one immutable NORAD run contract, including every expected scope and explicit missing or incomplete evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "record_type",
+    "run_id",
+    "run_contract",
+    "summary_state",
+    "generated_at",
+    "inventory",
+    "artifact_receipt",
+    "attempts",
+    "superseded_attempt_ids",
+    "expected_scopes",
+    "artifacts",
+    "computational_rollup",
+    "scientific_review",
+    "science_status",
+    "tools",
+    "parameters",
+    "qc_metrics",
+    "limitations",
+    "approved_report_tables",
+    "candidate_terminology",
+    "warnings",
+    "errors",
+    "provenance"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "norad.run_summary"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "record_type": {
+      "const": "run_summary"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "run_contract": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/run_contract"
+    },
+    "summary_state": {
+      "enum": [
+        "complete",
+        "incomplete",
+        "failed"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "inventory": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+    },
+    "artifact_receipt": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/attempt"
+      }
+    },
+    "superseded_attempt_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+      },
+      "uniqueItems": true
+    },
+    "expected_scopes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/expected_scope"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:artifact-record:v1"
+      }
+    },
+    "computational_rollup": {
+      "$ref": "#/$defs/computational_rollup"
+    },
+    "scientific_review": {
+      "$ref": "#/$defs/scientific_review"
+    },
+    "science_status": {
+      "enum": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ]
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/tool"
+      }
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "qc_metrics": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/metric"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:scientific-review-record:v1.1#/$defs/limitation"
+      }
+    },
+    "approved_report_tables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/report_table"
+      }
+    },
+    "candidate_terminology": {
+      "const": "CMH-ranked candidates"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "provenance": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/provenance"
+    }
+  },
+  "$defs": {
+    "expected_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "artifact_ids",
+        "aggregate_state",
+        "implementation_status",
+        "local_test_status",
+        "runtime_validation_status",
+        "cluster_dry_run_status",
+        "cluster_proof_status",
+        "warnings",
+        "errors"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/scope"
+        },
+        "artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          },
+          "uniqueItems": true
+        },
+        "aggregate_state": {
+          "enum": [
+            "complete",
+            "missing",
+            "incomplete",
+            "failed",
+            "externally_unavailable"
+          ]
+        },
+        "implementation_status": {
+          "enum": [
+            "not_implemented",
+            "implemented",
+            "mixed"
+          ]
+        },
+        "local_test_status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "runtime_validation_status": {
+          "enum": [
+            "not_run",
+            "blocked",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "cluster_dry_run_status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "cluster_proof_status": {
+          "enum": [
+            "not_run",
+            "proven",
+            "failed",
+            "mixed"
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+          }
+        }
+      }
+    },
+    "computational_rollup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_artifact_count",
+        "complete_artifact_count",
+        "missing_artifact_count",
+        "incomplete_artifact_count",
+        "failed_artifact_count",
+        "externally_unavailable_artifact_count",
+        "implementation_status",
+        "local_test_status",
+        "runtime_validation_status",
+        "cluster_dry_run_status",
+        "cluster_proof_status"
+      ],
+      "properties": {
+        "expected_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incomplete_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "externally_unavailable_artifact_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "implementation_status": {
+          "enum": [
+            "not_implemented",
+            "implemented",
+            "mixed"
+          ]
+        },
+        "local_test_status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "runtime_validation_status": {
+          "enum": [
+            "not_run",
+            "blocked",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "cluster_dry_run_status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed",
+            "mixed"
+          ]
+        },
+        "cluster_proof_status": {
+          "enum": [
+            "not_run",
+            "proven",
+            "failed",
+            "mixed"
+          ]
+        }
+      }
+    },
+    "scientific_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_state",
+        "source",
+        "record",
+        "overall_status"
+      ],
+      "properties": {
+        "record_state": {
+          "enum": [
+            "present",
+            "missing",
+            "incomplete",
+            "failed",
+            "externally_unavailable"
+          ]
+        },
+        "source": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:scientific-review-record:v1.1"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overall_status": {
+          "enum": [
+            "evidence_incomplete",
+            "science_review_complete_exploratory"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "record_state": {
+                "const": "present"
+              }
+            },
+            "required": [
+              "record_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+              },
+              "record": {
+                "$ref": "urn:norad:schema:artifacts:scientific-review-record:v1.1"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "record": {
+                "type": "null"
+              },
+              "overall_status": {
+                "const": "evidence_incomplete"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "report_table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table_id",
+        "artifact_id",
+        "role",
+        "title",
+        "path",
+        "sha256",
+        "row_count",
+        "display_row_limit",
+        "approval"
+      ],
+      "properties": {
+        "table_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "artifact_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "role": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "title": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/sha256"
+        },
+        "row_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "display_row_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "policy_version",
+            "approved_by",
+            "approved_at"
+          ],
+          "properties": {
+            "status": {
+              "const": "approved"
+            },
+            "policy_version": {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+            },
+            "approved_by": {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+            },
+            "approved_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    }
+  }
+}

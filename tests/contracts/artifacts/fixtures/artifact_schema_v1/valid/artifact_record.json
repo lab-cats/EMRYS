@@ -1,0 +1,123 @@
+{
+  "schema_name": "norad.artifact_record",
+  "schema_version": "1.0.0",
+  "record_type": "artifact_record",
+  "run_id": "run_fixture",
+  "run_contract": {
+    "run_contract_sha256": "284446856367c83d6a7ff61008230d979c33238f77aae087fb87405d9c216245",
+    "sample_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "reference_contract_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "partition_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "primary_analysis_id": "synthetic_analysis",
+    "primary_analysis_policy_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "artifact_id": "analysis.synthetic.cmh_summary",
+  "scope": {
+    "step_id": "09",
+    "scope_type": "analysis",
+    "scope_id": "synthetic_analysis"
+  },
+  "adapter": "step09_cmh_summary_v1",
+  "expectation": {
+    "required": true,
+    "source_path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_summary.tsv"
+  },
+  "availability_status": "present",
+  "completion_status": "complete",
+  "state_reason": null,
+  "attempt_provenance_status": "recorded",
+  "attempts": [
+    {
+      "attempt_id": "attempt-001",
+      "state": "succeeded",
+      "started_at": "2000-01-01T00:00:00Z",
+      "finished_at": "2000-01-01T00:00:01Z",
+      "exit_code": 0,
+      "supersedes_attempt_id": null,
+      "evidence": [],
+      "warnings": [],
+      "errors": []
+    }
+  ],
+  "selected_attempt_id": "attempt-001",
+  "implementation": {
+    "status": "implemented",
+    "git_commit": "fixturecommit",
+    "evidence": []
+  },
+  "local_testing": {
+    "status": "passed",
+    "evidence": [
+      {
+        "evidence_id": "artifact_schema_test",
+        "role": "local_test",
+        "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  "runtime_validation": {
+    "status": "blocked",
+    "detail": "Synthetic fixture only; production runtime evidence is unavailable.",
+    "evidence": []
+  },
+  "cluster_validation": {
+    "dry_run_status": "not_run",
+    "proof_status": "not_run",
+    "evidence": []
+  },
+  "source": {
+    "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_summary.tsv",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "size_bytes": 123,
+    "row_count": 1,
+    "media_type": "text/tab-separated-values"
+  },
+  "members": [],
+  "tools": [
+    {
+      "name": "R",
+      "version": "4.6.1",
+      "role": "synthetic_fixture",
+      "path": null,
+      "sha256": null
+    }
+  ],
+  "parameters": {
+    "control_condition": "EV",
+    "treatment_condition": "PUM1"
+  },
+  "metrics": [
+    {
+      "metric_id": "candidate_count",
+      "name": "Candidate count",
+      "value": 2,
+      "unit": "rows",
+      "status": "not_assessed",
+      "source_artifact_id": "analysis.synthetic.cmh_summary"
+    }
+  ],
+  "scientific_state": {
+    "overall_status": "evidence_incomplete",
+    "orientation_status": "provisional",
+    "orientation_policy": "legacy_provisional_v1",
+    "review_id": "synthetic_review"
+  },
+  "warnings": [
+    {
+      "code": "production_evidence_unavailable",
+      "message": "This record is a synthetic fixture and is not production evidence.",
+      "related_artifact_ids": [
+        "analysis.synthetic.cmh_summary"
+      ],
+      "evidence": []
+    }
+  ],
+  "errors": [],
+  "provenance": {
+    "producer": "artifact_schema_fixture",
+    "producer_version": "1.0.0",
+    "git_commit": "fixturecommit",
+    "created_at": "2000-01-01T00:00:02Z"
+  }
+}

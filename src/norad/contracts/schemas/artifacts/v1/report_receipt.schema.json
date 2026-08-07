@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:artifacts:report-receipt:v1.1",
+  "title": "NORAD report receipt v1.1",
+  "description": "The summary-last receipt for one successfully published static NORAD report bundle. Report generation never constitutes analysis or validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "record_type",
+    "run_id",
+    "attempt_id",
+    "generated_at",
+    "publication_state",
+    "transaction_state",
+    "science_status",
+    "readiness_authorization",
+    "input_run_summary",
+    "requested_formats",
+    "renderer",
+    "template",
+    "outputs",
+    "state_banner",
+    "truncations",
+    "schema_versions",
+    "analysis_execution_performed",
+    "external_network_assets_used",
+    "validation_claimed",
+    "warnings",
+    "errors",
+    "provenance"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "norad.report_receipt"
+    },
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "record_type": {
+      "const": "report_receipt"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "attempt_id": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "publication_state": {
+      "const": "complete"
+    },
+    "transaction_state": {
+      "const": "complete"
+    },
+    "science_status": {
+      "enum": [
+        "evidence_incomplete",
+        "science_review_complete_exploratory"
+      ]
+    },
+    "readiness_authorization": {
+      "type": "null"
+    },
+    "input_run_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "schema_name",
+        "schema_version"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/sha256"
+        },
+        "schema_name": {
+          "const": "norad.run_summary"
+        },
+        "schema_version": {
+          "const": "1.1.0"
+        }
+      }
+    },
+    "requested_formats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "html",
+          "pdf"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "executable",
+        "pandoc_version",
+        "pdf_engine"
+      ],
+      "properties": {
+        "name": {
+          "const": "quarto"
+        },
+        "version": {
+          "const": "1.9.38"
+        },
+        "executable": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "pandoc_version": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "pdf_engine": {
+          "enum": [
+            "typst",
+            null
+          ]
+        }
+      }
+    },
+    "template": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/report_output"
+      }
+    },
+    "state_banner": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+    },
+    "truncations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/truncation"
+      }
+    },
+    "schema_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_record",
+        "scientific_review_record",
+        "run_summary",
+        "report_receipt"
+      ],
+      "properties": {
+        "artifact_record": {
+          "const": "1.0.0"
+        },
+        "scientific_review_record": {
+          "const": "1.1.0"
+        },
+        "run_summary": {
+          "const": "1.1.0"
+        },
+        "report_receipt": {
+          "const": "1.1.0"
+        }
+      }
+    },
+    "analysis_execution_performed": {
+      "const": false
+    },
+    "external_network_assets_used": {
+      "const": false
+    },
+    "validation_claimed": {
+      "const": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "provenance": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/provenance"
+    }
+  },
+  "$defs": {
+    "report_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "output_id",
+        "kind",
+        "path",
+        "sha256",
+        "size_bytes",
+        "media_type",
+        "self_contained",
+        "page_count",
+        "state_banner_every_page"
+      ],
+      "properties": {
+        "output_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "kind": {
+          "enum": [
+            "html",
+            "pdf",
+            "run_summary_tsv"
+          ]
+        },
+        "path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "media_type": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        },
+        "self_contained": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "page_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "state_banner_every_page": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "html"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "const": "text/html"
+              },
+              "self_contained": {
+                "const": true
+              },
+              "page_count": {
+                "type": "null"
+              },
+              "state_banner_every_page": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "pdf"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "const": "application/pdf"
+              },
+              "self_contained": {
+                "type": "null"
+              },
+              "page_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "state_banner_every_page": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "run_summary_tsv"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "const": "text/tab-separated-values"
+              },
+              "self_contained": {
+                "type": "null"
+              },
+              "page_count": {
+                "type": "null"
+              },
+              "state_banner_every_page": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "truncation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table_id",
+        "report_section",
+        "full_table_path",
+        "full_table_sha256",
+        "full_row_count",
+        "displayed_row_count"
+      ],
+      "properties": {
+        "table_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "report_section": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "full_table_path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "full_table_sha256": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/sha256"
+        },
+        "full_row_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "displayed_row_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "science_status": {
+            "const": "evidence_incomplete"
+          }
+        },
+        "required": [
+          "science_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state_banner": {
+            "const": "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION."
+          },
+          "readiness_authorization": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "science_status": {
+            "const": "science_review_complete_exploratory"
+          }
+        },
+        "required": [
+          "science_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state_banner": {
+            "const": "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED."
+          },
+          "readiness_authorization": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "requested_formats": {
+            "contains": {
+              "const": "pdf"
+            }
+          }
+        },
+        "required": [
+          "requested_formats"
+        ]
+      },
+      "then": {
+        "properties": {
+          "renderer": {
+            "properties": {
+              "pdf_engine": {
+                "const": "typst"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "renderer": {
+            "properties": {
+              "pdf_engine": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

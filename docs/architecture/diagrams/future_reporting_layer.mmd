@@ -1,39 +1,18 @@
 flowchart TD
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph inputs["Machine-readable artifacts"]
-        direction TB
-        run_summary["run_summary.json"]
-        artifacts_tsv["artifacts.tsv"]
-        qc_summary["qc_summary.tsv"]
-        module_outputs["module outputs"]
-        provenance["runtime/provenance records"]
-    end
-
-    generator["Report generator"]
-
-    subgraph outputs["Generated reports"]
-        direction TB
-        qc_report["QC summary"]
-        validation_report["Preprocessing validation report"]
-        candidate_report["Assay-specific candidate report"]
-        pi_report["PI/demo report"]
-        handoff_report["Handoff/operator report"]
-    end
-
-    run_summary --> generator
-    artifacts_tsv --> generator
-    qc_summary --> generator
-    module_outputs --> generator
-    provenance --> generator
-    generator --> qc_report
-    generator --> validation_report
-    generator --> candidate_report
-    generator --> pi_report
-    generator --> handoff_report
-
-    class run_summary,artifacts_tsv,qc_summary,module_outputs,provenance contract
-    class generator future
-    class qc_report,validation_report,candidate_report,pi_report,handoff_report reporting
+    native["Native step and module outputs"] --> adapters["Explicit read-only adapters"]
+    evidence["Validation and scientific evidence"] --> adapters
+    approvals["Exact table approvals"] --> summary["Canonical run summary"]
+    adapters --> summary
+    summary --> view["Versioned format-neutral view model"]
+    view --> science["Science profile<br/>future default"]
+    view --> comprehensive["Comprehensive profile<br/>explicit retained view"]
+    science --> sciencehtml["Accessible science HTML"]
+    science --> sciencepdf["Semantically equivalent science PDF"]
+    comprehensive --> fullhtml["Comprehensive HTML"]
+    comprehensive --> fullpdf["Comprehensive PDF"]
+    summary --> tsv["Deterministic summary TSV"]
+    sciencehtml --> receipt["Profile-specific report receipt published last"]
+    sciencepdf --> receipt
+    fullhtml --> receipt
+    fullpdf --> receipt
+    tsv --> receipt

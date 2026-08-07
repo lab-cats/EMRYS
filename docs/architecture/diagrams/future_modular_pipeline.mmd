@@ -1,51 +1,15 @@
 flowchart LR
-    classDef current fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    classDef future fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    classDef deferred fill:#f5f5f5,stroke:#757575,color:#424242,stroke-dasharray:4 3
-    classDef contract fill:#fff8e1,stroke:#f9a825,color:#5f4300
-    classDef reporting fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-
-    subgraph sources["Data sources"]
-        direction TB
-        lab["Lab-generated FASTQs on ADAM"]
-        public["Public genomics datasets<br/>deferred import"]
-    end
-
-    subgraph contracts["Configuration/contracts"]
-        direction TB
-        manifest["Sample manifest"]
-        config["Analysis config"]
-    end
-
-    subgraph core["Core preprocessing"]
-        direction TB
-        backbone["Core preprocessing backbone"]
-        ready["Validated analysis-ready artifacts"]
-        registry["Artifact registry"]
-    end
-
-    subgraph modules["Analysis modules"]
-        direction TB
-        assays["Assay-specific analysis modules"]
-        results["Standardized result artifacts"]
-    end
-
-    subgraph reports["Reporting"]
-        direction TB
-        report_layer["Reporting layer"]
-        outputs["QC reports / PI reports / candidate result reports / handoff reports"]
-    end
-
-    lab --> manifest
-    public -.-> manifest
-    manifest --> backbone
-    config --> backbone
-    backbone --> ready --> registry --> assays --> results --> report_layer --> outputs
-
-    class lab current
-    class public deferred
-    class manifest,config contract
-    class backbone,ready future
-    class registry contract
-    class assays,results future
-    class report_layer,outputs reporting
+    request["Versioned run request"] --> profile["Selected preprocessing profile DAG"]
+    samples["Typed sample manifest"] --> profile
+    reference["Registered reference contract"] --> profile
+    profile --> artifacts["Typed branch artifacts"]
+    artifacts --> builtin["Registered analysis module"]
+    artifacts --> custom["Exploratory custom analysis module"]
+    builtin --> native["Native module outputs"]
+    custom --> native
+    native --> validators["Owner-local stage and module validators"]
+    native --> adapters["Explicit read-only adapters"]
+    validators --> adapters
+    adapters --> summary["Canonical run summary"]
+    summary --> view["Versioned report view model"]
+    view --> reports["Science and comprehensive reports"]

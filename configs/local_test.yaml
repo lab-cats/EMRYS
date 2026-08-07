@@ -1,5 +1,5 @@
 project_root: "."
-sample_manifest: "samples.example.tsv"
+sample_manifest: "configs/samples.example.tsv"
 
 data_dir: "data/test"
 results_dir: "results/test"

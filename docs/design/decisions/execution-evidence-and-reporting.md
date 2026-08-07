@@ -1,0 +1,158 @@
+# Execution, evidence, and reporting decisions
+
+These decisions govern execution safety, runtime observations, evidence state,
+artifact contracts, and reporting. Exact interfaces remain with their
+functional owners; this file retains the reasons and non-negotiable boundaries.
+
+## Execution and publication
+
+### Default to dry-run
+
+Public workflow execution requires an explicit execute action. Operators must
+be able to inspect resolved inputs, outputs, tools, and commands before
+publication; wrapper-specific controls remain part of each public contract.
+
+### Publish validated transactions
+
+Multi-file publishers use owned locks, run-token staging, input rechecks,
+validation before replacement, rollback, cleanup, and a receipt or summary
+published last. Transaction completion describes the publication set and does
+not imply that every underlying evidence item passed or exists.
+
+### Preserve recovery evidence
+
+Do not automatically delete a lock, backup, partial output, or recovery marker
+when ownership, rollback, and cleanup cannot be proved. Optimistic cleanup can
+destroy the only evidence needed for safe recovery.
+
+### Characterize unsafe publication states before correcting them
+
+Protect intended behavior and explicitly label known unsafe states with
+adversarial tests before changing publication, rollback, signal, descriptor, or
+cleanup code. Characterization records an observed boundary; it does not
+approve the defect or make unlike transaction implementations interchangeable.
+
+## Runtime environments
+
+### Guard the repository-local R environment
+
+Repository R activation is opt-in through `NORAD_USE_RENV=1`; normal startup is
+unchanged when it is disabled, and invalid values fail. Restoration is an
+explicit operator action. Compute and tests never bootstrap packages.
+
+### Restore report tooling explicitly
+
+Quarto restoration is separate from rendering and testing. Installed identity,
+receipt, tree, and version validate before reuse; rendering never installs or
+repairs tooling.
+
+### Probe runtime availability from explicit profiles
+
+Runtime preflight evaluates one exact profile in one explicitly declared
+context and installs or repairs nothing. Local or login-shell availability does
+not establish batch visibility. Even an all-pass batch report is availability
+evidence, not workflow runtime validation or cluster proof.
+
+### Reconcile references without repair
+
+Reference provenance hashes and reconciles one explicit inventory, including
+annotation identity and contig agreement, without repairing or regenerating
+shared artifacts. Names and colocation do not establish provenance.
+
+### Measure storage without acting on retention policy
+
+Storage evidence measures declared roots and records retention-policy approval
+separately. Observation never authorizes deletion, movement, archival,
+compression, or any other data mutation.
+
+## Evidence and scientific state
+
+### Separate computational proof and scientific interpretation
+
+Implementation, fixture testing, real-runtime testing, cluster dry-run, cluster
+proof, scientific review, and biological readiness are separate claims.
+Cluster proof requires inspected scheduler, log, command, and output evidence;
+report generation is not validation.
+
+### Preserve two post-review states
+
+`science_review_complete_exploratory` records completed but provisional review.
+`biological_interpretation_ready` remains reserved for stricter, separately
+approved exits. Current tools reject an unauthorized ready state.
+
+### Require explicit evidence relationships
+
+Passed, failed, or proven claims require their defined evidence roles. Runtime
+and cluster roles additionally bind exact underlying paths and hashes. Blocked,
+not-run, and unavailable states are never proof.
+
+## Structured artifacts and reporting
+
+### Decouple reporting from computation
+
+Keep native compute outputs unchanged behind explicit read-only adapters.
+Renderers consume one canonical structured summary and never discover inputs or
+rerun analysis.
+
+### Use versioned closed schemas
+
+Public artifact, scientific-review, run-summary, and report-receipt documents
+use explicit versions and closed shapes. Incompatible changes require a version
+increment rather than a silent field change.
+
+### Inventory physical artifacts explicitly
+
+Each expected-artifact row names one concrete path. Artifact IDs and paths are
+unique; logical-scope rows remain stable and contiguous. Reject globs,
+unresolved templates, traversal components, and implicit machine substitution.
+
+### Bind run identity to immutable analysis inputs
+
+Run identity binds explicit sample, reference, partition, and primary-analysis
+policy identities. Changing an identity component creates a new run; inventory
+revisions remain adapter-attempt metadata rather than silent identity changes.
+
+### Represent missing and failed evidence
+
+Keep every expected scope visible when it is missing, failed, incomplete,
+externally unavailable, blocked, or not run. Absence is a state, not a row to
+drop.
+
+### Adapt step validation reports without promotion
+
+Step-specific read-only adapters preserve failed checks as failed artifact and
+expected-scope states through summaries and reports. A published validation
+report records only its explicit checks and creates no cluster, scientific, or
+biological promotion.
+
+### Authorize supplemental report tables explicitly
+
+A supplemental table enters the canonical summary only through a nonempty
+approval bound to the run contract and active scientific review. Its exact
+path, hash, row count, role, display limit, policy, approver, and time must
+reconcile. Omission authorizes nothing, and canonical summaries are not
+hand-edited.
+
+### Render deterministic, static reports
+
+Reports are self-contained, script-free, accessible projections of one
+canonical summary. They preserve exact scientific-state language, disclose
+truncation with source identity, and keep HTML and PDF semantically aligned
+through one format-neutral projection. Publication is transactional and never
+installs dependencies or promotes evidence.
+
+## Operator output and durable logs
+
+### Separate concise console output from durable detailed logs
+
+Keep console output concise while retaining complete durable diagnostic logs
+under the target contract in
+[`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md#capability-backlog).
+Declared machine responses remain on stdout and human events on stderr. Log
+level changes projection only; it never changes computation, validation,
+publication, recovery, evidence, or exit behavior.
+
+One operation owns one no-clobber log, delegated components do not append
+concurrently, and receipts remain authoritative transaction markers. Logs are
+protected operator data: no automatic upload, truncation, rotation, deletion,
+or evidence promotion without a separate authorized relationship.

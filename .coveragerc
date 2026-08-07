@@ -1,0 +1,15 @@
+[run]
+branch = True
+parallel = True
+source =
+    scripts
+    src/norad
+relative_files = True
+patch =
+    subprocess
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+sort = Name

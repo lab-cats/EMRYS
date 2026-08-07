@@ -1,625 +1,80 @@
 # Troubleshooting
 
-Troubleshooting notes for the NORAD / Novogene Remora RNA-seq pipeline.
-
-Use this file when something fails or behaves weirdly. For normal operation, see `docs/operations/RUNBOOK.md`.
-
-## `TMPDIR [/local/tmp] is not writeable`
-
-### Symptom
-
-SLURM stderr contains:
-
-```text
-slurmstepd: error: TMPDIR [/local/tmp] is not writeable
-slurmstepd: error: Setting TMPDIR to /tmp
-```
-
-### Cause
-
-The cluster default temporary directory may point to `/local/tmp`, which is not writable on some compute nodes.
-
-### Fix
-
-Submit execute jobs with:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1 jobs/<step>.slurm
-```
-
-SLURM wrappers should include:
-
-```bash
-#SBATCH --export=ALL,TMPDIR=/tmp
-```
-
-and should also explicitly set:
-
-```bash
-export TMPDIR="${TMPDIR:-/tmp}"
-```
-
-### Notes
-
-This warning has not been fatal when the job logs show:
-
-```text
-TMPDIR: /tmp
-```
-
-## `picard: command not found`
-
-### Symptom
-
-Running `picard` directly fails:
-
-```text
-picard: command not found
-```
-
-### Cause
-
-On CSU, Picard is exposed through a jar path set by the `picard/3.1.1` module, not necessarily as a standalone `picard` executable.
-
-### Fix
-
-Use:
-
-```bash
-module load picard/3.1.1
-java -jar "$PICARD" MarkDuplicates ...
-```
-
-Known module behavior:
-
-```text
-picard/3.1.1 loads java/17.0.10
-PICARD=/cm/shared/apps/picard/picard/build/libs/picard.jar
-```
-
-The module name alone does not prove the effective Java runtime. For Step `04`,
-inspect the selected Java executable and its actual `java -version` output.
-
-## Picard `UnsupportedClassVersionError`
-
-### Symptom
-
-Step `04` fails before or during Picard startup with an error like:
-
-```text
-UnsupportedClassVersionError
-```
-
-The observed Java class-file mismatch was:
-
-```text
-Picard requires class-file version 61
-selected runtime supports class-file version 55
-```
-
-Class-file version 61 corresponds to Java 17. Class-file version 55 corresponds
-to Java 11.
-
-### Cause
-
-Picard 3.1.1 requires Java 17, but the selected runtime on the compute node was
-Java 11. This is not a Picard algorithm defect and not a pipeline-logic defect;
-it exposes inconsistent Java availability across compute nodes.
-
-Observed node-specific behavior:
-
-```text
-node003:
-  selected executable: /usr/bin/java
-  actual runtime: OpenJDK 17.0.15
-  Picard 3.1.1 launched successfully
-  ABE_EV_2 MarkDuplicates completed successfully
-
-node007:
-  /usr/bin/java reported OpenJDK 11.0.24
-  Java 11 could not run Picard classes compiled for Java 17
-  the Java 17 module's advertised JAVA_HOME path did not exist
-```
-
-The Java module advertised:
-
-```text
-JAVA_HOME=/usr/lib/jvm/java-17-openjdk-17.0.10.0.7-2.el9.x86_64
-```
-
-That path was missing on `node007`. On the successful `node003` run,
-`JAVA_HOME` still referred to the advertised Java 17.0.10 path, but the selected
-executable was `/usr/bin/java` and its actual runtime was Java 17.0.15.
-
-### Fix
-
-Do not infer the effective Java runtime from the module name or `JAVA_HOME`
-alone. The selected executable and actual `java -version` output must be logged
-and validated.
-
-Step `04` resolves Java in this order:
-
-```text
-1. JAVA_BIN_OVERRIDE, when explicitly provided
-2. $JAVA_HOME/bin/java, only if it exists and is executable
-3. command -v java
-```
-
-The wrapper then fails before Picard starts if the selected runtime is below
-Java 17.
-
-If CSU HPC provides a supported Java 17 executable, pass it explicitly:
-
-```bash
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,JAVA_BIN_OVERRIDE=/path/to/java \
-  jobs/step_04_mark_duplicates.slurm
-```
-
-Temporary workaround:
-
-```text
---nodelist=node003
-```
-
-This is only an operational workaround while Java 17 availability is clarified.
-Do not embed `node003` as a permanent default, describe node pinning as a
-pipeline architecture requirement, assume node003 will remain the solution, or
-recommend copying a JDK from the head node or another compute node.
-
-## `#SBATCH --mem=1G` fails
-
-### Symptom
-
-Submitting a job with explicit memory such as `#SBATCH --mem=1G` fails:
-
-```text
-Memory specification can not be satisfied
-Batch job submission failed: Requested node configuration is not available
-```
-
-### Cause
-
-CSU partition/memory rules may not allow the requested memory specification, or the partition may require memory requests in a different form.
-
-### Fix
-
-Avoid explicit `--mem` until CSU memory rules are confirmed.
-
-Prefer known-working resource requests from existing jobs:
-
-```bash
-#SBATCH --partition=short
-#SBATCH --time=00:30:00
-#SBATCH --cpus-per-task=1
-```
-
-or use the resource pattern already proven for the relevant step.
-
-### Notes
-
-Observed working jobs so far did not require explicit memory requests.
-
-## `logs/...out: No such file or directory` at submit time
-
-### Symptom
-
-SLURM job fails or logs are missing because the `logs/` directory does not exist.
-
-### Cause
-
-SLURM does not create parent directories for:
-
-```bash
-#SBATCH --output=logs/%x-%j.out
-#SBATCH --error=logs/%x-%j.err
-```
-
-### Fix
-
-Before submitting jobs:
-
-```bash
-mkdir -p logs
-```
-
-## Tailing the wrong log file
-
-### Symptom
-
-A job completed, but tailing the expected log fails:
-
-```text
-tail: cannot open 'logs/norad-sort-index-bam-<JOBID>.out' for reading: No such file or directory
-```
-
-### Cause
-
-Different jobs have different log prefixes. For example:
-
-```text
-Step 02:  norad-sort-index-bam-<JOBID>.out
-Step 02b: norad-bam-qc-<JOBID>.out
-Step 03:  norad-infer-strandedness-<JOBID>.out
-```
-
-### Fix
-
-Find the actual log name first:
-
-```bash
-ls -ltr logs | tail
-```
-
-Then tail the matching files:
-
-```bash
-tail -120 logs/<actual-prefix>-<JOBID>.out
-tail -120 logs/<actual-prefix>-<JOBID>.err
-```
-
-If the cluster shell helpers are installed:
-
-```bash
-sjcheck <JOBID>
-sjtail <JOBID>
-```
-
-## STAR BAM flagstat counts look larger than input reads
-
-### Symptom
-
-`samtools flagstat` shows many more total records than STAR input reads.
-
-Example from `ABE_EV_2` STAR BAM:
-
-```text
-77,561,040 total records
-35,326,360 primary
-42,234,680 secondary
-```
-
-### Cause
-
-STAR outputs secondary alignments for multimapping reads. `flagstat` counts alignment records, not original input reads.
-
-### Fix
-
-Use STAR `Log.final.out` for input-level mapping rates.
-
-For `ABE_EV_2`, STAR reported:
-
-```text
-Input reads: 21,358,987
-Unique mapped: 58.50%
-Multi-mapped: 24.19%
-Too many loci: 0.52%
-Unmapped too short: 16.55%
-Approximate total mapped: 83.21%
-```
-
-`flagstat` is still useful for BAM-level QC, but interpret total records carefully when secondary alignments are present.
-
-## Step 02b `samtools: command not found` despite loaded module
-
-### Symptom
-
-Step `02b` fails immediately because `samtools` is not found on `PATH`, even though module output lists:
-
-```text
-samtools/1.19.2
-```
-
-### Cause
-
-This is a cluster environment/PATH inconsistency, not a BAM/QC failure.
-
-### Fix
-
-Prepend the known samtools bin directory to `PATH` before rerunning:
-
-```bash
-export PATH="/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin:$PATH"
-```
-
-The Step `02b` cohort rerun succeeded across all six final hardened Step `02` BAMs with that path available.
-
-## RSeQC `infer_experiment.py` not found
-
-### Symptom
-
-Step 03 fails because `infer_experiment.py` cannot be found.
-
-### Cause
-
-RSeQC is not currently known as a global module; it is available through the project virtual environment.
-
-### Fix
-
-Use the project executable:
-
-```bash
-.venv/bin/infer_experiment.py
-```
-
-Step 03 should prefer:
-
-```text
-.venv/bin/infer_experiment.py
-```
-
-if present, otherwise fall back to:
-
-```text
-infer_experiment.py
-```
-
-The SLURM wrapper should source `.venv/bin/activate` if available.
-
-## RSeQC `infer_experiment.py` path exists but is not executable
-
-### Symptom
-
-Step 03 fails tool validation even though the path exists.
-
-### Cause
-
-Path-style tool arguments are required to be executable.
-
-### Fix
-
-Make it executable if appropriate:
-
-```bash
-chmod +x .venv/bin/infer_experiment.py
-```
-
-or pass a valid executable path with:
-
-```bash
---infer-experiment-bin <path>
-```
-
-Step 03 validation rule:
-
-```text
-If the binary contains '/', require [[ -x "$bin" ]].
-If it is command-name style, require command -v "$bin".
-```
-
-## Step 03 strandedness result looks ambiguous
-
-### Symptom
-
-RSeQC output has high failed fraction or no dominant strandedness group.
-
-### Cause
-
-Possible causes include:
-
-* wrong annotation BED12
-* wrong BAM
-* unstranded library
-* poor/incompatible annotation
-* sample-specific issue
-
-### Fix
-
-For `ABE_EV_2`, the result was not ambiguous:
-
-```text
-Fraction failed: 0.0828
-Group 1: 0.0432
-Group 2: 0.8740
-```
-
-This strongly supports reverse-stranded / first-strand behavior.
-
-If another sample is ambiguous, compare:
-
-```bash
-cat results/qc/strandedness/<sample>.infer_experiment.txt
-```
-
-and check that the BAM and BED12 paths are correct.
-
-## `module avail gatk` shows nothing
-
-### Symptom
-
-No visible GATK module appears with:
-
-```bash
-module avail gatk
-```
-
-### Cause
-
-GATK may not be exposed through `module avail gatk`, even though a direct cluster installation exists.
-
-### Fix
-
-Use the validated direct path used by the Step `05` SLURM wrapper:
-
-```text
-/cm/shared/apps/gatk/gatk-4.6.1.0/gatk
-```
-
-Confirmed probe evidence:
-
-```text
-node: node002
-Java: OpenJDK 17.0.14
-GATK: 4.6.1.0
-tool probe exit code: 0:0
-```
-
-Still log and validate the actual Java runtime. The historical Java inconsistency remains relevant: `node002` and `node003` have provided Java 17, while `node007` previously exposed Java 11 / a missing Java 17 path.
-
-Step `05` still validates the actual Java runtime before execute-mode GATK use.
-
-## Step 05 GATK `No space left on device` from `/tmp`
-
-### Symptom
-
-Step `05` `GATK SplitNCigarReads` starts successfully, completes traversal pass 1, enters traversal pass 2, then fails during HTSJDK temporary spill/write/close behavior with a message like:
-
-```text
-htsjdk.samtools.util.RuntimeIOException: Problem writing temporary file file:///tmp/sortingcollection...
-No space left on device
-```
-
-The failure may mention `SortingCollection` temporary spill files under `/tmp`.
-
-### Cause
-
-GATK/HTSJDK used node-local `/tmp` for internal `SortingCollection` spill files; node-local `/tmp` was too small.
-
-This was useful partial evidence that the Step `05` inputs, tools, and reference sidecars were mostly working. It is now resolved hardening context because the later six-sample Step `05` revalidation passed final split-N-cigar BAM/BAI output inspection.
-
-### Fix
-
-Use a per-run project-storage GATK temp directory with all relevant GATK/Java temp controls:
-
-```text
---java-options -Djava.io.tmpdir=<project temp dir>
---tmp-dir <project temp dir>
-TMPDIR=<project temp dir> for the GATK process
-```
-
-After failure, cleanup should remove only owned temp BAM/BAI files, alternate GATK-created sidecars, GATK temp directories, and owned locks.
-
-The later Step `05` revalidation is cluster-proven across all six samples; keep this entry as the record of why GATK temp files must stay on project storage.
-
-## Step 00c FAI/DICT validation fails
-
-### Symptom
-
-Step `00c` fails with a message that the FASTA index and sequence dictionary contigs/lengths do not agree.
-
-### Cause
-
-`refs/novogene_ref/genome.fa.fai` and `refs/novogene_ref/genome.dict` are shared reference sidecars. If either file is stale, empty, partially written, or generated from a different FASTA, GATK-compatible reference validation is unsafe.
-
-### Fix
-
-Do not let Step `05` create or repair these files inside a per-sample job. Inspect the existing sidecars, confirm they belong to `refs/novogene_ref/genome.fa`, and rerun formal Step `00c` only after deciding how to handle the invalid shared reference files.
-
-Step `00c` intentionally does not overwrite invalid existing sidecars by default.
-
-## Scaffolded downstream job accidentally submitted
-
-### Symptom
-
-A downstream job like Step `07`-`09` is submitted but exits immediately, says `not implemented`, or exits with code `2`.
-
-### Cause
-
-Steps `07`-`09` are scaffolded and intentionally non-runnable until
-implemented.
-
-Steps `05` and `06` are implemented and cluster-proven across all six samples. If Step `05` or Step `06` exits as a scaffold, the cluster checkout is stale and should be updated before submission.
-
-Scaffolded files include:
-
-```text
-jobs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
-jobs/step_08_vcf_preprocessing.slurm
-jobs/step_09_cmh_editing_site_calling.slurm
-scripts/step_07_bcftools_mpileup_by_chrom_and_strand.sh
-scripts/step_08_vcf_preprocessing.sh
-scripts/step_09_cmh_editing_site_calling.sh
-```
-
-### Fix
-
-Do not run scaffolded downstream jobs.
-
-Scaffolded steps:
-
-```text
-07 bcftools mpileup
-08 VCF preprocessing
-09 CMH editing-site calling
-```
-
-Implement locally, test, commit/push, pull on cluster, then dry-run/execute only
-after the step is active.
-
-Step `05` outputs now use `results/split_ncigar/<sample_id>/` and consume Step `04` outputs under `results/markdup/<sample_id>/`.
-
-## Wrong log interpretation: empty `.err` file
-
-### Symptom
-
-The `.err` file exists but is empty.
-
-### Cause
-
-For many successful jobs, stderr is empty. This is fine.
-
-### Fix
-
-Use `sacct` and output validation to decide success:
-
-```bash
-sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
-```
-
-Success means:
-
-```text
-COMPLETED 0:0
-```
-
-and expected output files exist and are non-empty where appropriate.
-
-## Picard `SAMRecord.getReadGroup() is null`
-
-### Symptom
-
-Picard MarkDuplicates fails immediately with:
-
-```text
-SAMRecord.getReadGroup() is null
-```
-
-### Cause
-
-The canonical BAM lacks valid read-group metadata. Either the header has no
-matching `@RG` line, records lack `RG` tags, or both.
-
-### Diagnose
-
-```bash
-samtools view -H <bam> | grep '^@RG'
-samtools view -c <bam>
-samtools view -c -d "RG:<sample_id>" <bam>
-```
-
-The current one-sample-per-BAM contract expects exactly one `@RG` line and all
-alignment records tagged with `RG:<sample_id>`.
-
-### Fix
-
-Regenerate the canonical BAM through hardened Step 02. Do not patch around
-missing read groups in Step 04.
-
-## Future Troubleshooting Taxonomy
-
-A future troubleshooting index may summarize repeated failure patterns as symptom, likely cause, confirmation command, and fix. Keep this as a deferred roadmap idea until enough real failures exist; do not add entries for helpers, validators, cleanup tools, reports, or config files that are not implemented.
-
-## General success checklist
-
-A job is only “proven” when all of these are true:
-
-```text
-1. Dry-run completed 0:0.
-2. Dry-run command/context looked correct.
-3. Execute job completed 0:0.
-4. stderr is empty or contains only known harmless messages.
-5. Expected output files exist.
-6. Expected output files are non-empty where appropriate.
-7. Output content makes biological/computational sense.
-```
-
-Do not proceed to the next step until this checklist passes.
+Use this guide to preserve evidence, classify a failure, and route recovery.
+Exact commands live in the adjacent owner README; exact interfaces and checks
+live in its `CONTRACT.md`.
+
+## Common recovery rules
+
+Before retry, deletion, restoration, or adoption of uncertain output:
+
+1. Stop new writers and downstream readers. Inspect scheduler/process state,
+   the lock owner, and every declared output root.
+2. Preserve stable outputs, run-token staging, temporary, backup, quarantine,
+   recovery, and lock paths; logs and accounting; command and checkout; tools
+   and environment; input identities and hashes; filesystem identity; and
+   unrelated directory entries.
+3. Treat an absent lock, backup, receipt, or marker as missing evidence—not a
+   clean state. A visible receipt or summary is valid only when the complete
+   transaction validates.
+4. Never delete a foreign lock, combine attempts, manufacture a receipt, infer
+   ownership from names or timestamps, or overwrite a late or identity-changed
+   path.
+5. Choose and record one recovery target: a validated predecessor, a validated
+   new transaction, or a clean first-publication state. Remove only residue
+   whose ownership is proved.
+6. Use an isolated absolute output root for diagnostics that must not disturb
+   the questioned state. Diagnostic success is not production evidence.
+
+Git rollback changes tracked implementation only. It does not authenticate or
+restore runtime artifacts. Validator exit `0` can coexist with failed evidence
+rows; exit `2` means unsafe input, CLI, tool, or publication failure.
+
+## Common environment and operation matrix
+
+| Symptom | Response |
+| --- | --- |
+| `logs/...: No such file or directory` at submission | Create `logs/` before `sbatch`; SLURM opens streams before the job body. |
+| Empty `.err` or `COMPLETED 0:0` | Inspect both streams, accounting, outputs, and owner validation; neither is proof alone. |
+| Wrong log prefix | Locate the job's actual files; do not borrow a prefix from another owner. |
+| `/local/tmp` is unwritable | Confirm the effective writable `TMPDIR`; use the Step `05` project-storage route for large GATK spill. |
+| Tool/module appears on login but not in a job | Establish the exact executable in the approved batch context. Module names are not runtime proof. |
+| Picard `UnsupportedClassVersionError` | Step `04` requires the effective Java major version to be at least 17. Validate the selected executable, not `JAVA_HOME` alone. |
+| R or namespace unavailable | Use explicit guarded restoration/checks; local availability does not prove batch visibility. Never bootstrap from compute. |
+| Quiet local gate appears silent | Wait for the lane result or inspect retained failure/interruption logs; use serial or verbose mode for diagnosis. |
+| Coverage regression | Inspect the exact environment, subprocess data, module, and JSON diff. Never update the baseline merely to pass. |
+| Schema fixture or synthetic report passes | Report local contract evidence only; it is not production, cluster, scientific-review, or biological proof. |
+
+## Owner-specific defect matrix
+
+These are current characterized boundaries, not approved behavior. Follow the
+linked owner after applying the common rules.
+
+| Owner | Characterized defect or evidence limit | Required disposition |
+| --- | --- | --- |
+| [`construct_STAR_index`](../../src/norad/stages/construct_STAR_index/README.md) | Reference/index disagreement or ambiguous validation-report predecessor can survive around publication. | Preserve index, parameters, reference identities, report transaction, lock, and logs; rebuild only through the owner. |
+| [`convert_GTF_to_BED12`](../../src/norad/stages/convert_GTF_to_BED12/README.md) | Final/intermediate BED may disagree with deterministic GTF normalization. | Preserve both plus GTF and logs; never hand-edit BED12. |
+| [`construct_FASTA_sidecars`](../../src/norad/stages/construct_FASTA_sidecars/README.md) | FAI may publish before DICT failure; malformed or mismatched sidecars are not repaired. | Preserve FASTA, both sidecars, stage/backup/lock state, and provenance; recover through the owner. |
+| [`align_RNA_reads_with_STAR`](../../src/norad/stages/align_RNA_reads_with_STAR/README.md) | Five direct final outputs may be partial or mixed after failure. | Preserve the entire attempt and scheduler evidence; diagnose in an isolated root. |
+| [`construct_canonical_BAM`](../../src/norad/stages/construct_canonical_BAM/README.md) | A severe restoration failure can lose the prior BAM while leaving a prior BAI with no recovery marker. | Stop downstream readers; preserve the whole directory and reconstruct only after separate review. |
+| [`collect_canonical_BAM_QC_evidence`](../../src/norad/evidence/collect_canonical_BAM_QC_evidence/README.md) | Direct-final quickcheck/flagstat writes can leave a partial, mixed, or stale pair accepted by existence checks. | Establish attempt identity for both files before retry or reuse. |
+| [`collect_RSeQC_paired_orientation_evidence`](../../src/norad/evidence/collect_RSeQC_paired_orientation_evidence/README.md) | Direct stdout redirection can leave partial, empty, or stale reports. | Preserve report, streams, BAM/BAI, BED12, tool, and job identity; retain mechanical labels. |
+| [`mark_BAM_duplicates_with_Picard`](../../src/norad/stages/mark_BAM_duplicates_with_Picard/README.md) | BAM, BAI, and metrics are not an all-or-none transaction and may be mixed or stale. | Stop Step `05`; preserve the triplet, input, Java/Picard/samtools identities, streams, and directory metadata. |
+| [`split_N_cigar_reads_with_GATK`](../../src/norad/stages/split_N_cigar_reads_with_GATK/README.md) | Best-effort restoration may lose the prior BAM, restore only BAI, and erase recovery evidence. | Stop Step `06`; isolate diagnostics and preserve all final, staged, backup, temp, lock, reference, and scheduler state. |
+| [`partition_BAM_by_mechanical_read_orientation`](../../src/norad/stages/partition_BAM_by_mechanical_read_orientation/README.md) | Two output roots can collide on shared counts; severe rollback can lose one prior BAM and stale files may pass existence checks. | Stop every writer/reader to both roots; isolate both roots for diagnosis and preserve all five outputs and locks. |
+| [`generate_partitioned_cohort_mpileup_VCFs`](../../src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/README.md) | Receipt visibility precedes final validation; restoration can leave a prior final absent and wrapper checks can accept a stale set. | Preserve VCFs, receipt, manifests, input pairs, run-token paths, lock, selector, and tool identity. A header-only VCF is valid only when its zero count reconciles. |
+| [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/preprocess_and_annotate_cohort_candidates/README.md) | Cross-root rollback lacks a durable marker; receipt visibility precedes final validation and stale triples may pass existence checks. | Stop Step `09`; preserve both roots, all transactions and manifests, R environment, locks, backups, and streams. |
+| [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md) | Scheduler success can accept stale six-file output; severe rollback and lock states remain. Production validation does not independently recompute CMH statistics. | Preserve all six outputs, upstream transaction, selected R program/runtime, streams, lock, backups, and scheduler identity; retain the separate test oracle evidence ceiling. |
+| [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/assemble_scientific_review_evidence_package/README.md) | Signal paths can leave unvalidated 13-file finals or remove recovery state; visible summary or absent lock is not commit proof. | Recover explicitly to one complete previous set or no set; never infer reviewer decisions or biological readiness. |
+| [Runtime preflight](../../src/norad/evidence/runtime_preflight/README.md) | Exit `0` may contain `fail`, `blocked`, or `not_checked`; publisher recovery differs from other helpers. | Inspect every row and exact context; preserve report, lock, and run-token paths. |
+| [Reference provenance](../../src/norad/evidence/reference_provenance/README.md) | Hash/contig disagreement is observation only. | Correct declarations or regenerate through the upstream owner; never repair references in the evidence tool. |
+| [Storage inventory](../../src/norad/evidence/storage_inventory/README.md) | Measurement or policy state grants no retention authority; its three-file publication can remain ambiguous. | Preserve the transaction and approval state; never mutate storage content through this tool. |
+| [Artifact contracts and reporting](../../src/norad/reporting/README.md) | Schema, adapter, summary, Quarto, and report transactions have distinct locks, identities, receipts, and rollback boundaries. Completion markers do not promote evidence. | Recover within the exact owner transaction; never mix records, edit hashes/statuses, install from rendering, or call synthetic output production evidence. |
+
+## Scientific and evidence ceiling
+
+`FWD_like` and `REV_like` remain mechanical groupings. Step `09` produces
+CMH-ranked candidates, not validated editing sites. A report, review package,
+application log, transaction receipt, or successful computation cannot promote
+scientific or biological state. `science_review_complete_exploratory` remains
+provisional; `biological_interpretation_ready` remains reserved.

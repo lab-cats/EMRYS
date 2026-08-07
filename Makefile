@@ -1,38 +1,27 @@
 DEMO_SAMPLE ?= ABE_EV_2
+RSCRIPT_BIN ?= Rscript
+PYTHON_BIN ?= python3
+REPORT_PYTHON_BIN ?= $(CURDIR)/.venv/bin/python
+PYTHON_COVERAGE_ROOT ?= $(CURDIR)/.coverage-work
+PYTHON_COVERAGE_DATA ?= $(PYTHON_COVERAGE_ROOT)/.coverage
+PYTHON_COVERAGE_RAW ?= $(PYTHON_COVERAGE_ROOT)/coverage.json
+PYTHON_COVERAGE_CURRENT ?= $(PYTHON_COVERAGE_ROOT)/python_coverage.current.json
+PYTHON_COVERAGE_BASELINE ?= $(CURDIR)/tests/baselines/python_coverage.json
+PYTHON_COVERAGE_PYTEST_ARGS ?=
+QUARTO_TOOLS_ROOT ?= $(CURDIR)/.tools/quarto
+QUARTO_BIN ?= $(QUARTO_TOOLS_ROOT)/$(QUARTO_VERSION)/bin/quarto
+VALIDATION_JOBS ?= 3
+VALIDATION_PYTHON_WORKERS ?= 2
+VALIDATION_ARGS ?=
+REPORT_TEST_RESULT ?=
+DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
+DEMO_REPORT_FORMATS ?= all
 
-.PHONY: test validate lint demo-step03
+.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks demo-step03-dry-run demo-step03
 
 test:
 	python -m pytest
 
-shell-test:
-	bash tests/shell/test_step_00c_prepare_gatk_reference.sh
-	bash tests/shell/test_step_01_star_align.sh
-	bash tests/shell/test_step_02_sort_index_bam.sh
-	bash tests/shell/test_step_02b_bam_qc.sh
-	bash tests/shell/test_step_03_infer_strandedness_and_orientation.sh
-	bash tests/shell/test_step_04_mark_duplicates.sh
-	bash tests/shell/test_step_05_split_n_cigar_reads.sh
-	bash tests/shell/test_step_06_split_bam_by_read_orientation.sh
-
-validate:
-	python scripts/validate_manifest.py --manifest samples.example.tsv
-
-smoke:
-	bash -n scripts/*.sh
-	bash -n jobs/*.slurm
-
-lint:
-	python -m compileall scripts tests
-
-all-checks: test shell-test validate smoke
-
-demo-step03-dry-run:
-	mkdir -p logs
-	sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=$(DEMO_SAMPLE) \
-		jobs/step_03_infer_strandedness_and_orientation.slurm
-
-demo-step03:
-	mkdir -p logs
-	sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,SAMPLE_ID=$(DEMO_SAMPLE) \
-		jobs/step_03_infer_strandedness_and_orientation.slurm
+NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk
+include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk

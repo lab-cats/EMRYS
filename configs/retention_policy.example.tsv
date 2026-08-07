@@ -1,0 +1,3 @@
+policy_id	storage_id	artifact_class	action	retention_days	approval_status	approved_by	approved_at	notes
+retention_v1	project_storage	native_outputs	retain	indefinite	pending	NA	NA	Requires operator approval
+retention_v1	scratch	temporary_intermediates	review_then_delete	30	pending	NA	NA	No deletion is performed by the inventory tool
