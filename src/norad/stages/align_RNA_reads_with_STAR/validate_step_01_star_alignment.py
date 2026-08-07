@@ -108,7 +108,7 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 01")
     nonempty = all(snapshot.size > 0 for snapshot in snapshots.values())
-    bam_prefix = paths["bam"].read_bytes()[:4]
+    bam_prefix = report.read_bytes(paths["bam"], "BAM file")[:4]
     bam_valid = bam_prefix == b"BAM\x01" or bam_prefix == b"\x1f\x8b\x08\x04"
     final_values: dict[str, str] = {}
     final_error = ""
