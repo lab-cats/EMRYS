@@ -43,8 +43,7 @@ def build(args: argparse.Namespace):
     snapshots = report.snapshots(
         {"bam": bam, "bai": bai, "samtools": tool}, label="Step 02"
     )
-    if not tool.stat().st_mode & 0o111:
-        report.fail(f"samtools executable is not executable: {tool}")
+    report.require_executable(tool, "samtools executable")
     bam_magic = report.read_bytes(bam, "BAM file")[:4]
     bai_magic = report.read_bytes(bai, "BAI file")[:4]
     structure = (

@@ -10,6 +10,7 @@ from norad.libraries.validation.inputs import (
     read_bytes,
     integer_stdout,
     require_unchanged,
+    require_executable,
     stable_text,
 )
 from norad.libraries.validation.publication import publish
@@ -40,6 +41,7 @@ __all__ = (
     "regular_snapshot",
     "read_bytes",
     "render",
+    "require_executable",
     "require_unchanged",
     "row",
     "read_header",

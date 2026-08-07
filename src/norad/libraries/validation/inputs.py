@@ -31,6 +31,13 @@ def regular_snapshot(path: Path, label: str, *, nonempty: bool = True) -> Snapsh
     return Snapshot(value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns)
 
 
+def require_executable(path: Path, label: str) -> None:
+    """Fail unless path points to an executable regular file."""
+    regular_snapshot(path, label)
+    if not (path.stat().st_mode & 0o111):
+        fail(f"{label} is not executable: {path}")
+
+
 def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
     before = regular_snapshot(path, label)
     try:
