@@ -15,6 +15,14 @@ COUNTS_HEADER = (
     "assigned_fraction",
 )
 
+LEGACY_PROVISIONAL_ORIENTATION_POLICY = "legacy_provisional_v1"
+
+
+def validate_legacy_orientation_policy(value: str) -> tuple[bool, str]:
+    if value == LEGACY_PROVISIONAL_ORIENTATION_POLICY:
+        return True, "orientation_policy=legacy_provisional_v1"
+    return False, f"unsupported orientation_policy={value!r}; expected legacy_provisional_v1"
+
 
 def read_orientation_counts(
     path: Path, scope_id: str

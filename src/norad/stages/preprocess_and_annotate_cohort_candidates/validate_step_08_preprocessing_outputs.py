@@ -15,6 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.alignments import orientation as alignment_orientation
 
 from norad.contracts.scientific_evidence import step08
 
@@ -110,7 +111,9 @@ def build(args: argparse.Namespace):
             row["cohort_id"] == args.cohort_id
             and row["annotation_gtf"] == str(paths["annotation_gtf"])
             and row["annotation_gtf_sha256"] == annotation_hash
-            and row["orientation_policy"] == "legacy_provisional_v1"
+            and alignment_orientation.validate_legacy_orientation_policy(
+                row["orientation_policy"]
+            )[0]
             for row in inputs_table.rows
         )
         if not identity_ok:
@@ -159,7 +162,9 @@ def build(args: argparse.Namespace):
                 row["cohort_id"] != args.cohort_id
                 or row["annotation_gtf"] != str(paths["annotation_gtf"])
                 or row["annotation_gtf_sha256"] != annotation_hash
-                or row["orientation_policy"] != "legacy_provisional_v1"
+                or not alignment_orientation.validate_legacy_orientation_policy(
+                    row["orientation_policy"]
+                )[0]
             ):
                 summary_table = None
                 summary_detail = "summary cohort, annotation identity, or policy mismatch"
