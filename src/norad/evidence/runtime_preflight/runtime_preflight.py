@@ -24,6 +24,12 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+from norad.libraries import validation as report
+
+
 PROFILE_HEADER = (
     "check_id",
     "check_type",
@@ -124,21 +130,18 @@ def _single_line(value: str) -> str:
 
 def _read_regular_file(path: Path, label: str) -> bytes:
     try:
-        before = path.lstat()
-    except OSError as exc:
-        _fail(f"{label} is unavailable: {path}: {exc}")
-    if stat.S_ISLNK(before.st_mode):
-        _fail(f"{label} must not be a symbolic link: {path}")
-    if not stat.S_ISREG(before.st_mode):
-        _fail(f"{label} must be a regular file: {path}")
+        before = report.regular_snapshot(path, label)
+    except report.ValidationError as exc:
+        _fail(str(exc).replace("a regular non-symlink file", "a symbolic link"))
     try:
         data = path.read_bytes()
-        after = path.lstat()
     except OSError as exc:
         _fail(f"Could not read {label}: {path}: {exc}")
-    identity_before = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
-    identity_after = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
-    if identity_before != identity_after:
+    try:
+        after = report.regular_snapshot(path, label)
+    except report.ValidationError as exc:
+        _fail(str(exc).replace("a regular non-symlink file", "a symbolic link"))
+    if before != after:
         _fail(f"{label} changed while it was read: {path}")
     return data
 
