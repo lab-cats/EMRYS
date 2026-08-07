@@ -12,52 +12,20 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
 from typing import Iterable, Mapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
-STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
-STEP08_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "step08.py"
-)
-STEP09_MODULE_NAME = "_norad_step09_scientific_evidence_contract"
-STEP09_READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
-STEP09_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "step09.py"
-)
-REVIEW_PACKAGE_MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
-REVIEW_PACKAGE_READY_ATTRIBUTE = "_NORAD_REVIEW_PACKAGE_CONTRACT_READY"
-REVIEW_PACKAGE_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "review_package.py"
-)
-CONTRACT_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py"
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.evidence.assemble_scientific_review_evidence_package import (
+    step_09c_scientific_validation as contract,
 )
 REVIEW_ID = "review_fixture"
 COHORT_ID = "cohort"
@@ -77,102 +45,10 @@ PAIRINGS = (
 )
 
 
-def load_step08_contract() -> ModuleType:
-    cached = sys.modules.get(STEP08_MODULE_NAME)
-    if cached is not None:
-        if Path(cached.__file__).resolve(strict=False) != STEP08_PATH.resolve(
-            strict=False
-        ):
-            raise RuntimeError("Cached Step 08 contract has the wrong path")
-        if getattr(cached, STEP08_READY_ATTRIBUTE, False) is not True:
-            raise RuntimeError("Cached Step 08 contract is partially initialized")
-        return cached
-    spec = importlib.util.spec_from_file_location(STEP08_MODULE_NAME, STEP08_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load Step 08 contract: {STEP08_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, STEP08_READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(spec.name) is module:
-            del sys.modules[spec.name]
-        raise
-    return module
-
-
-def load_step09_contract() -> ModuleType:
-    cached = sys.modules.get(STEP09_MODULE_NAME)
-    if cached is not None:
-        if Path(cached.__file__).resolve(strict=False) != STEP09_PATH.resolve(
-            strict=False
-        ):
-            raise RuntimeError("Cached Step 09 contract has the wrong path")
-        if getattr(cached, STEP09_READY_ATTRIBUTE, False) is not True:
-            raise RuntimeError("Cached Step 09 contract is partially initialized")
-        return cached
-    spec = importlib.util.spec_from_file_location(STEP09_MODULE_NAME, STEP09_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load Step 09 contract: {STEP09_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, STEP09_READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(spec.name) is module:
-            del sys.modules[spec.name]
-        raise
-    return module
-
-
-def load_review_package_contract() -> ModuleType:
-    cached = sys.modules.get(REVIEW_PACKAGE_MODULE_NAME)
-    if cached is not None:
-        if Path(cached.__file__).resolve(
-            strict=False
-        ) != REVIEW_PACKAGE_PATH.resolve(strict=False):
-            raise RuntimeError("Cached review-package contract has the wrong path")
-        if getattr(cached, REVIEW_PACKAGE_READY_ATTRIBUTE, False) is not True:
-            raise RuntimeError("Cached review-package contract is partially initialized")
-        return cached
-    spec = importlib.util.spec_from_file_location(
-        REVIEW_PACKAGE_MODULE_NAME,
-        REVIEW_PACKAGE_PATH,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(
-            f"Could not load review-package contract: {REVIEW_PACKAGE_PATH}"
-        )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, REVIEW_PACKAGE_READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(spec.name) is module:
-            del sys.modules[spec.name]
-        raise
-    return module
-
-
-def load_contract() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "norad_step09c_contract", CONTRACT_PATH
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load Step 09c contract: {CONTRACT_PATH}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-STEP08 = load_step08_contract()
-STEP09 = load_step09_contract()
-REVIEW_PACKAGE = load_review_package_contract()
-CONTRACT = load_contract()
+STEP08 = step08
+STEP09 = step09
+REVIEW_PACKAGE = review_package
+CONTRACT = contract
 if STEP09.step08 is not STEP08:
     raise RuntimeError("Step 09 fixture resolved a different Step 08 contract")
 if CONTRACT.step08 is not STEP08:

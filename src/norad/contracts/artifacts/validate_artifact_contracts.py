@@ -12,8 +12,6 @@ import argparse
 import csv
 import glob
 import hashlib
-import importlib
-import importlib.util
 import json
 import re
 import sys
@@ -26,91 +24,18 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
-_INTERNAL_PACKAGE_NAME = "_norad_artifact_contract_validator_private"
-_INTERNAL_PACKAGE_PATH = (
-    Path(__file__).resolve().parent / "_artifact_contracts" / "__init__.py"
-).resolve(strict=False)
-_INTERNAL_PACKAGE_READY_ATTRIBUTE = (
-    "_NORAD_ARTIFACT_CONTRACT_VALIDATOR_PRIVATE_READY"
+_SRC_ROOT = Path(__file__).resolve().parents[3]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.contracts.artifacts._artifact_contracts import artifact as _artifact_owner
+from norad.contracts.artifacts._artifact_contracts import core as _core_owner
+from norad.contracts.artifacts._artifact_contracts import (
+    run_summary as _run_summary_owner,
 )
-
-
-def _validated_internal_package(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached artifact-contract private package has no valid file path"
-        ) from exc
-    if module_path != _INTERNAL_PACKAGE_PATH:
-        raise ImportError(
-            "cached artifact-contract private package resolves to "
-            f"{module_path}, expected {_INTERNAL_PACKAGE_PATH}"
-        )
-    if getattr(module, _INTERNAL_PACKAGE_READY_ATTRIBUTE, False) is not True:
-        raise ImportError(
-            "cached artifact-contract private package is partially initialized"
-        )
-    return module
-
-
-def _load_internal_package() -> object:
-    cached = sys.modules.get(_INTERNAL_PACKAGE_NAME)
-    if cached is not None:
-        return _validated_internal_package(cached)
-    package_dir = _INTERNAL_PACKAGE_PATH.parent
-    spec = importlib.util.spec_from_file_location(
-        _INTERNAL_PACKAGE_NAME,
-        _INTERNAL_PACKAGE_PATH,
-        submodule_search_locations=[str(package_dir)],
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError(
-            "unable to create an exact-file artifact-contract private "
-            "package specification"
-        )
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_INTERNAL_PACKAGE_NAME, module)
-    if existing is not module:
-        return _validated_internal_package(existing)
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, _INTERNAL_PACKAGE_READY_ATTRIBUTE, True)
-        _validated_internal_package(module)
-    except BaseException:
-        if sys.modules.get(_INTERNAL_PACKAGE_NAME) is module:
-            del sys.modules[_INTERNAL_PACKAGE_NAME]
-        raise
-    return module
-
-
-_internal_package = _load_internal_package()
-
-
-def _load_internal_module(name: str) -> object:
-    module = importlib.import_module(f"{_INTERNAL_PACKAGE_NAME}.{name}")
-    expected_path = (_INTERNAL_PACKAGE_PATH.parent / f"{name}.py").resolve(
-        strict=False
-    )
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            f"cached artifact-contract private module {name!r} has no "
-            "valid file path"
-        ) from exc
-    if module_path != expected_path:
-        raise ImportError(
-            f"cached artifact-contract private module {name!r} resolves to "
-            f"{module_path}, expected {expected_path}"
-        )
-    return module
-
-
-_core_owner = _load_internal_module("core")
-_artifact_owner = _load_internal_module("artifact")
-_scientific_review_owner = _load_internal_module("scientific_review")
-_run_summary_owner = _load_internal_module("run_summary")
+from norad.contracts.artifacts._artifact_contracts import (
+    scientific_review as _scientific_review_owner,
+)
 
 
 REPO_ROOT = _core_owner.REPO_ROOT

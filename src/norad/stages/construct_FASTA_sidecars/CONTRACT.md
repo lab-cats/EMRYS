@@ -110,10 +110,10 @@ Input rejected by snapshot validation, an invalid CLI/output contract, or an
 unsafe publication state exits with code `2` without publishing a new report.
 Characterized raw parser exceptions remain uncaught and also publish nothing.
 
-The validator exact-loads FASTA, `FAI`, and `DICT` parsers from the neutral
-[`reference_contigs.py`](../../libraries/reference_contigs.py) owner and report
+The validator imports FASTA, `FAI`, and `DICT` parsers from the neutral
+[`references/contigs.py`](../../libraries/references/contigs.py) owner and report
 rendering, locking, and publication from the neutral
-[`validation_report.py`](../../libraries/validation_report.py) owner. Both
+[`validation/report.py`](../../libraries/validation/report.py) owner. Both
 lookups resolve exact repository files independently of caller CWD without
 package identity or `sys.path` mutation. Reference provenance and the final
 Step `05` validator share the same ready parser identity while this stage
@@ -175,7 +175,7 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   publication but does not publish an atomic two-output transaction.
 - The validator is colocated with this stage but reuses reference parsers from
   the neutral `reference_contigs` owner and publication helpers from the
-  neutral validation-report owner through exact-file bridges.
+  neutral validation-report owner through shared bridges.
 - The scheduler wrapper owns cluster-specific tool and Java resolution around
   the parameterized shell entrypoint.
 

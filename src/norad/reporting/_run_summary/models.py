@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import build_artifact_index as adapter
+from norad.reporting import build_artifact_index as adapter
 
 
 contracts = adapter.contracts

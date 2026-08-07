@@ -135,7 +135,7 @@ interpretation readiness is established in this checkout.
 
 ## Current ownership boundaries and deferred decisions
 
-- The review implementation exact-loads neutral
+- The review implementation imports neutral
   [`step08.py`](../../contracts/scientific_evidence/step08.py) for the public
   Step `08` manifest/table contract and shared `ContractError`/`Table`
   identity, and neutral
@@ -146,9 +146,8 @@ interpretation readiness is established in this checkout.
 - Public review-package roster, headers, vocabularies, bindings, and state
   reduction belong to neutral
   [`review_package.py`](../../contracts/scientific_evidence/review_package.py).
-  This implementation, artifact indexing, and run-summary science exact-load
-  that standard-library-only owner under one ready-marked identity without
-  creating a package API.
+  This implementation, artifact indexing, and run-summary science import
+  that standard-library-only package module.
 - Artifact indexing and run-summary science no longer load this private
   implementation. Run-summary science uses a reporting-local reader/projection
   over the committed public package, explicitly referenced evidence, and

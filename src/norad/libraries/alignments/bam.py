@@ -1,4 +1,4 @@
-"""Private shared samtools execution and BAM-header validation helpers."""
+"""Shared samtools execution and BAM-header validation helpers."""
 
 from __future__ import annotations
 
@@ -25,6 +25,3 @@ def parse_header(text: str, scope_id: str) -> tuple[bool, bool, str]:
         and f"SM:{scope_id}" in rg[0].split("\t")
     )
     return coordinate, matching, f"HD={len(hd)} RG={len(rg)}"
-
-
-_NORAD_BAM_VALIDATION_READY = True

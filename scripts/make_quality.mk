@@ -55,7 +55,7 @@ validation-shell-contracts:
 shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_references/contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
@@ -125,9 +125,13 @@ python-coverage-check: python-coverage-measure
 		--new-shared-module src/norad/contracts/scientific_evidence/step08.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
 		--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \
-		--new-shared-module src/norad/libraries/validation_report.py \
-		--new-shared-module src/norad/libraries/bam_validation.py \
-		--new-shared-module src/norad/libraries/reference_contigs.py
+		--new-shared-module src/norad/libraries/validation/errors.py \
+		--new-shared-module src/norad/libraries/validation/inputs.py \
+		--new-shared-module src/norad/libraries/validation/publication.py \
+		--new-shared-module src/norad/libraries/validation/report.py \
+		--new-shared-module src/norad/libraries/validation/runtime.py \
+		--new-shared-module src/norad/libraries/alignments/bam.py \
+		--new-shared-module src/norad/libraries/references/contigs.py
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"

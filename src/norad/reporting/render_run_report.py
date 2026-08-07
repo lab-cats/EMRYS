@@ -14,7 +14,6 @@ import argparse
 import csv
 import hashlib
 import html
-import importlib.util
 import json
 import os
 import re
@@ -36,63 +35,13 @@ from jsonschema import Draft202012Validator, FormatChecker
 import yaml
 
 
-_ARTIFACT_CONTRACTS_MODULE_NAME = "_norad_artifact_contracts"
-_ARTIFACT_CONTRACTS_MODULE_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "src"
-    / "norad"
-    / "contracts"
-    / "artifacts"
-    / "validate_artifact_contracts.py"
-).resolve(strict=False)
-_ARTIFACT_CONTRACTS_READY_ATTRIBUTE = "_NORAD_ARTIFACT_CONTRACTS_READY"
+_SRC_ROOT = Path(__file__).resolve().parents[2]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.contracts.artifacts import validate_artifact_contracts as contracts
 
 
-def _validated_artifact_contracts(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached artifact-contract owner has no valid file path"
-        ) from exc
-    if module_path != _ARTIFACT_CONTRACTS_MODULE_PATH:
-        raise ImportError(
-            f"cached artifact-contract owner resolves to {module_path}, "
-            f"expected {_ARTIFACT_CONTRACTS_MODULE_PATH}"
-        )
-    if getattr(module, _ARTIFACT_CONTRACTS_READY_ATTRIBUTE, False) is not True:
-        raise ImportError("cached artifact-contract owner is partially initialized")
-    return module
-
-
-def _load_artifact_contracts() -> object:
-    cached = sys.modules.get(_ARTIFACT_CONTRACTS_MODULE_NAME)
-    if cached is not None:
-        return _validated_artifact_contracts(cached)
-    spec = importlib.util.spec_from_file_location(
-        _ARTIFACT_CONTRACTS_MODULE_NAME,
-        _ARTIFACT_CONTRACTS_MODULE_PATH,
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError(
-            "unable to create an exact-file artifact-contract module specification"
-        )
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_ARTIFACT_CONTRACTS_MODULE_NAME, module)
-    if existing is not module:
-        return _validated_artifact_contracts(existing)
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, _ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
-        _validated_artifact_contracts(module)
-    except BaseException:
-        if sys.modules.get(_ARTIFACT_CONTRACTS_MODULE_NAME) is module:
-            del sys.modules[_ARTIFACT_CONTRACTS_MODULE_NAME]
-        raise
-    return module
-
-
-contracts = _load_artifact_contracts()
 
 
 PRODUCER = "render_run_report"
@@ -3138,7 +3087,7 @@ def html_core_main(argv: Sequence[str] | None = None) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the public report-bundle interface."""
 
-    import render_run_report_bundle
+    from norad.reporting import render_run_report_bundle
 
     return render_run_report_bundle.main(
         list(sys.argv[1:] if argv is None else argv)

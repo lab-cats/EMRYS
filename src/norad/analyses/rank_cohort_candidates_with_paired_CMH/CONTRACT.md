@@ -149,16 +149,16 @@ cluster, completed scientific review, or biological interpretation readiness.
 ## Current ownership boundaries and deferred decisions
 
 - The Step `08` input contract now belongs to neutral
-  [`step08.py`](../../contracts/scientific_evidence/step08.py), exact-loaded by
+  [`step08.py`](../../contracts/scientific_evidence/step08.py), imported by
   neutral Step `09`, this validator, Step `09c`, and the artifact index under one
   shared module/error/table identity.
 - Step `09` schemas and reusable validators now belong to neutral
-  [`step09.py`](../../contracts/scientific_evidence/step09.py), exact-loaded by
+  [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
   this validator, Step `09c`, and artifact indexing under one shared ready-owner
   identity. Review policy and publication remain with Step `09c`.
 - Method/schema/status logic is duplicated across shell, R, Python, oracle,
   artifact, and scientific-review surfaces; shared report publication belongs
-  to neutral [`validation_report.py`](../../libraries/validation_report.py).
+  to neutral [`validation/report.py`](../../libraries/validation/report.py).
 - Producer-recorded relative paths are later interpreted from a consumer's
   working directory, and the summary omits implementation, runtime, R/package,
   attempt, and sibling-output identities.

@@ -17,6 +17,11 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+
 PROFILE_HEADER = (
     "reference_id", "artifact_id", "role", "path", "required",
     "expected_sha256", "provenance_source", "provenance_release", "notes",
@@ -51,84 +56,7 @@ class ProvenanceError(RuntimeError):
     pass
 
 
-_REFERENCE_CONTIGS_MODULE_NAME = "_norad_reference_contigs"
-_REFERENCE_CONTIGS_MODULE_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "libraries"
-    / "reference_contigs.py"
-).resolve(strict=False)
-_REFERENCE_CONTIGS_READY_ATTRIBUTE = "_NORAD_REFERENCE_CONTIGS_READY"
-_REFERENCE_CONTIGS_REQUIRED_CALLABLES = (
-    "parse_fasta",
-    "parse_fai",
-    "parse_dict",
-)
-
-
-def _validated_reference_contigs(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached reference-contig owner has no valid file path"
-        ) from exc
-    if module_path != _REFERENCE_CONTIGS_MODULE_PATH:
-        raise ImportError(
-            f"cached reference-contig owner resolves to {module_path}, "
-            f"expected {_REFERENCE_CONTIGS_MODULE_PATH}"
-        )
-    if getattr(module, _REFERENCE_CONTIGS_READY_ATTRIBUTE, False) is not True:
-        raise ImportError("cached reference-contig owner is partially initialized")
-    parser_error = getattr(module, "ReferenceContigError", None)
-    if not (
-        isinstance(parser_error, type) and issubclass(parser_error, RuntimeError)
-    ):
-        raise ImportError(
-            "cached reference-contig owner has invalid ReferenceContigError"
-        )
-    for name in _REFERENCE_CONTIGS_REQUIRED_CALLABLES:
-        if not callable(getattr(module, name, None)):
-            raise ImportError(f"cached reference-contig owner has invalid {name}")
-    return module
-
-
-def _load_reference_contigs() -> object:
-    cached = sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME)
-    if cached is not None:
-        return _validated_reference_contigs(cached)
-    spec = importlib.util.spec_from_file_location(
-        _REFERENCE_CONTIGS_MODULE_NAME, _REFERENCE_CONTIGS_MODULE_PATH
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError("unable to create an exact-file module specification")
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_REFERENCE_CONTIGS_MODULE_NAME, module)
-    if existing is not module:
-        return _validated_reference_contigs(existing)
-    try:
-        spec.loader.exec_module(module)
-        _validated_reference_contigs(module)
-    except BaseException:
-        if sys.modules.get(_REFERENCE_CONTIGS_MODULE_NAME) is module:
-            del sys.modules[_REFERENCE_CONTIGS_MODULE_NAME]
-        raise
-    return module
-
-
-def _load_reference_contigs_or_exit() -> object:
-    try:
-        return _load_reference_contigs()
-    except Exception as exc:
-        reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
-        print(
-            "ERROR: unable to load NORAD reference-contig owner at "
-            f"{_REFERENCE_CONTIGS_MODULE_PATH}: {type(exc).__name__}: {reason}",
-            file=sys.stderr,
-        )
-        raise SystemExit(2) from None
-
-
-reference_contigs = _load_reference_contigs_or_exit()
+from norad.libraries.references import contigs as reference_contigs
 
 
 @dataclass(frozen=True)

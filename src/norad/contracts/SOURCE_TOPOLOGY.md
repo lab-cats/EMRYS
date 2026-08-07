@@ -43,9 +43,9 @@ remain cross-owner development protection.
 
 | Seam | Neutral owner | Current consumers and boundary |
 | --- | --- | --- |
-| Validation-report publication | `libraries/validation_report.py` | Owner validators exact-load one private identity. Parsing/check rosters, evidence rows, CLI, and recovery remain owner-local. |
-| BAM validation | `libraries/bam_validation.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
-| Reference contig parsing | `libraries/reference_contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
+| Validation-report publication | `libraries/validation/` | Owner validators import the shared facade; errors, snapshots, rows, publication, and runtime lifecycle have separate modules. Parsing/check rosters, evidence rows, and CLI remain owner-local. |
+| BAM validation | `libraries/alignments/bam.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
+| Reference contig parsing | `libraries/references/contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
 | Executable-value resolution | `libraries/executable_resolution.sh` | Step `00c`, `05`, `06`, `07`, and `08` producers. Tool precedence, version policy, commands, and failures remain local. |
 | Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, Step `09c`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
 | Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |

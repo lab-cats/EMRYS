@@ -2,76 +2,12 @@
 
 from __future__ import annotations
 
-import importlib.util
 import math
 import re
-import sys
 from pathlib import Path
 from typing import Mapping, Sequence
 
-
-_STEP08_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
-_STEP08_MODULE_PATH = (
-    Path(__file__).resolve().with_name("step08.py").resolve(strict=False)
-)
-_STEP08_READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
-
-
-def _validated_step08_contract(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached Step 08 scientific-evidence contract has no valid file path"
-        ) from exc
-    if module_path != _STEP08_MODULE_PATH:
-        raise ImportError(
-            "cached Step 08 scientific-evidence contract resolves to "
-            f"{module_path}, expected {_STEP08_MODULE_PATH}"
-        )
-    if getattr(module, _STEP08_READY_ATTRIBUTE, False) is not True:
-        raise ImportError(
-            "cached Step 08 scientific-evidence contract is partially initialized"
-        )
-    return module
-
-
-def _load_step08_contract() -> object:
-    cached = sys.modules.get(_STEP08_MODULE_NAME)
-    if cached is not None:
-        return _validated_step08_contract(cached)
-    spec = importlib.util.spec_from_file_location(
-        _STEP08_MODULE_NAME, _STEP08_MODULE_PATH
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError(
-            "unable to create an exact-file Step 08 module specification"
-        )
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_STEP08_MODULE_NAME, module)
-    if existing is not module:
-        return _validated_step08_contract(existing)
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, _STEP08_READY_ATTRIBUTE, True)
-        _validated_step08_contract(module)
-    except BaseException:
-        if sys.modules.get(_STEP08_MODULE_NAME) is module:
-            del sys.modules[_STEP08_MODULE_NAME]
-        raise
-    return module
-
-
-try:
-    step08 = _load_step08_contract()
-except Exception as exc:
-    reason = " ".join(str(exc).replace("\x00", "").split()) or "no detail"
-    print(
-        "ERROR: unable to load Step 08 scientific-evidence contract at "
-        f"{_STEP08_MODULE_PATH}: {type(exc).__name__}: {reason}",
-        file=sys.stderr,
-    )
-    raise SystemExit(2) from None
+from norad.contracts.scientific_evidence import step08
 
 
 ContractError = step08.ContractError

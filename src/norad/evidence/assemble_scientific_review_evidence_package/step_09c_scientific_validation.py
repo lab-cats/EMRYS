@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import importlib.util
 import os
 import re
 import shutil
@@ -24,146 +23,18 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 
-
-_INTERNAL_PACKAGE_NAME = "_norad_step09c_scientific_review"
-_INTERNAL_PACKAGE_PATH = (
-    Path(__file__).resolve().parent / "_scientific_review" / "__init__.py"
-).resolve(strict=False)
-_INTERNAL_PACKAGE_READY_ATTRIBUTE = "_NORAD_STEP09C_INTERNAL_READY"
+_SRC_ROOT = Path(__file__).resolve().parents[3]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
 
 
-def _validated_internal_package(module: object) -> object:
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            "cached Step 09c internal package has no valid file path"
-        ) from exc
-    if module_path != _INTERNAL_PACKAGE_PATH:
-        raise ImportError(
-            f"cached Step 09c internal package resolves to {module_path}, "
-            f"expected {_INTERNAL_PACKAGE_PATH}"
-        )
-    if getattr(module, _INTERNAL_PACKAGE_READY_ATTRIBUTE, False) is not True:
-        raise ImportError("cached Step 09c internal package is partially initialized")
-    return module
 
-
-def _load_internal_package() -> object:
-    cached = sys.modules.get(_INTERNAL_PACKAGE_NAME)
-    if cached is not None:
-        return _validated_internal_package(cached)
-    package_dir = _INTERNAL_PACKAGE_PATH.parent
-    spec = importlib.util.spec_from_file_location(
-        _INTERNAL_PACKAGE_NAME,
-        _INTERNAL_PACKAGE_PATH,
-        submodule_search_locations=[str(package_dir)],
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError(
-            "unable to create an exact-file Step 09c internal package specification"
-        )
-    module = importlib.util.module_from_spec(spec)
-    existing = sys.modules.setdefault(_INTERNAL_PACKAGE_NAME, module)
-    if existing is not module:
-        return _validated_internal_package(existing)
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, _INTERNAL_PACKAGE_READY_ATTRIBUTE, True)
-        _validated_internal_package(module)
-    except BaseException:
-        if sys.modules.get(_INTERNAL_PACKAGE_NAME) is module:
-            del sys.modules[_INTERNAL_PACKAGE_NAME]
-        raise
-    return module
-
-
-_internal_package = _load_internal_package()
-
-
-def _load_internal_module(name: str) -> object:
-    module = importlib.import_module(f"{_INTERNAL_PACKAGE_NAME}.{name}")
-    expected_path = (_INTERNAL_PACKAGE_PATH.parent / f"{name}.py").resolve(
-        strict=False
-    )
-    try:
-        module_path = Path(getattr(module, "__file__")).resolve(strict=False)
-    except (OSError, TypeError) as exc:
-        raise ImportError(
-            f"cached Step 09c internal module {name!r} has no valid file path"
-        ) from exc
-    if module_path != expected_path:
-        raise ImportError(
-            f"cached Step 09c internal module {name!r} resolves to "
-            f"{module_path}, expected {expected_path}"
-        )
-    return module
-
-
-_contract_owner = _load_internal_module("contracts")
-_intake_owner = _load_internal_module("intake")
-_audit_owner = _load_internal_module("audits")
-_review_analysis_owner = _load_internal_module("review_analysis")
-_evidence_owner = _load_internal_module("evidence")
-_context_owner = _load_internal_module("context")
-
-_STEP08_MODULE_NAME = _contract_owner._STEP08_MODULE_NAME
-_STEP08_MODULE_PATH = _contract_owner._STEP08_MODULE_PATH
-_STEP08_READY_ATTRIBUTE = _contract_owner._STEP08_READY_ATTRIBUTE
-_STEP09_MODULE_NAME = _contract_owner._STEP09_MODULE_NAME
-_STEP09_MODULE_PATH = _contract_owner._STEP09_MODULE_PATH
-_STEP09_READY_ATTRIBUTE = _contract_owner._STEP09_READY_ATTRIBUTE
-_REVIEW_PACKAGE_MODULE_NAME = _contract_owner._REVIEW_PACKAGE_MODULE_NAME
-_REVIEW_PACKAGE_MODULE_PATH = _contract_owner._REVIEW_PACKAGE_MODULE_PATH
-_REVIEW_PACKAGE_READY_ATTRIBUTE = _contract_owner._REVIEW_PACKAGE_READY_ATTRIBUTE
-
-_CONTRACT_LOADER_GLOBALS = (
-    "_STEP08_MODULE_NAME",
-    "_STEP08_MODULE_PATH",
-    "_STEP08_READY_ATTRIBUTE",
-    "_STEP09_MODULE_NAME",
-    "_STEP09_MODULE_PATH",
-    "_STEP09_READY_ATTRIBUTE",
-    "_REVIEW_PACKAGE_MODULE_NAME",
-    "_REVIEW_PACKAGE_MODULE_PATH",
-    "_REVIEW_PACKAGE_READY_ATTRIBUTE",
-)
-
-
-def _sync_contract_loader_globals() -> None:
-    for name in _CONTRACT_LOADER_GLOBALS:
-        setattr(_contract_owner, name, globals()[name])
-
-
-def _validated_step08_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._validated_step08_contract(module)
-
-
-def _load_step08_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._load_step08_contract()
-
-
-def _validated_step09_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._validated_step09_contract(module)
-
-
-def _load_step09_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._load_step09_contract()
-
-
-def _validated_review_package_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._validated_review_package_contract(module)
-
-
-def _load_review_package_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owner._load_review_package_contract()
-
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import audits as _audit_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import context as _context_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import contracts as _contract_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import evidence as _evidence_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import intake as _intake_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import review_analysis as _review_analysis_owner
 
 step08 = _contract_owner.step08
 step09 = _contract_owner.step09

@@ -14,7 +14,6 @@ import argparse
 import csv
 import errno
 import hashlib
-import importlib.util
 import json
 import os
 import re
@@ -34,101 +33,21 @@ from typing import Any, Iterable, Mapping, Sequence
 from jsonschema import Draft202012Validator, FormatChecker
 
 
-from _artifact_index import contracts as _contract_owners
+_SRC_ROOT = Path(__file__).resolve().parents[2]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
 
-_ARTIFACT_CONTRACTS_MODULE_NAME = (
-    _contract_owners._ARTIFACT_CONTRACTS_MODULE_NAME
-)
-_ARTIFACT_CONTRACTS_MODULE_PATH = (
-    _contract_owners._ARTIFACT_CONTRACTS_MODULE_PATH
-)
-_ARTIFACT_CONTRACTS_READY_ATTRIBUTE = (
-    _contract_owners._ARTIFACT_CONTRACTS_READY_ATTRIBUTE
-)
-_STEP08_MODULE_NAME = _contract_owners._STEP08_MODULE_NAME
-_STEP08_MODULE_PATH = _contract_owners._STEP08_MODULE_PATH
-_STEP08_READY_ATTRIBUTE = _contract_owners._STEP08_READY_ATTRIBUTE
-_STEP09_MODULE_NAME = _contract_owners._STEP09_MODULE_NAME
-_STEP09_MODULE_PATH = _contract_owners._STEP09_MODULE_PATH
-_STEP09_READY_ATTRIBUTE = _contract_owners._STEP09_READY_ATTRIBUTE
-_REVIEW_PACKAGE_MODULE_NAME = _contract_owners._REVIEW_PACKAGE_MODULE_NAME
-_REVIEW_PACKAGE_MODULE_PATH = _contract_owners._REVIEW_PACKAGE_MODULE_PATH
-_REVIEW_PACKAGE_READY_ATTRIBUTE = (
-    _contract_owners._REVIEW_PACKAGE_READY_ATTRIBUTE
-)
+from norad.reporting._artifact_index import contracts as _contract_owners
 
 contracts = _contract_owners.contracts
 step08 = _contract_owners.step08
 step09 = _contract_owners.step09
 review_package = _contract_owners.review_package
 
-_CONTRACT_LOADER_GLOBALS = (
-    "_ARTIFACT_CONTRACTS_MODULE_NAME",
-    "_ARTIFACT_CONTRACTS_MODULE_PATH",
-    "_ARTIFACT_CONTRACTS_READY_ATTRIBUTE",
-    "_STEP08_MODULE_NAME",
-    "_STEP08_MODULE_PATH",
-    "_STEP08_READY_ATTRIBUTE",
-    "_STEP09_MODULE_NAME",
-    "_STEP09_MODULE_PATH",
-    "_STEP09_READY_ATTRIBUTE",
-    "_REVIEW_PACKAGE_MODULE_NAME",
-    "_REVIEW_PACKAGE_MODULE_PATH",
-    "_REVIEW_PACKAGE_READY_ATTRIBUTE",
-)
-
-
-def _sync_contract_loader_globals() -> None:
-    """Propagate compatibility-facade overrides to the exact loader owner."""
-    for name in _CONTRACT_LOADER_GLOBALS:
-        setattr(_contract_owners, name, globals()[name])
-
-
-def _validated_artifact_contracts(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._validated_artifact_contracts(module)
-
-
-def _load_artifact_contracts() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._load_artifact_contracts()
-
-
-def _validated_step08_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._validated_step08_contract(module)
-
-
-def _load_step08_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._load_step08_contract()
-
-
-def _validated_step09_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._validated_step09_contract(module)
-
-
-def _load_step09_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._load_step09_contract()
-
-
-def _validated_review_package_contract(module: object) -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._validated_review_package_contract(module)
-
-
-def _load_review_package_contract() -> object:
-    _sync_contract_loader_globals()
-    return _contract_owners._load_review_package_contract()
-
-
-
 
 # The exact script path remains the public CLI and compatibility facade.  The
 # implementation modules are private to the reporting owner.
-from _artifact_index.binary_readers import (
+from norad.reporting._artifact_index.binary_readers import (
     BGZF_EOF_BLOCK,
     MAX_BAM_HEADER_BYTES,
     inspect_bai_structure,
@@ -139,14 +58,14 @@ from _artifact_index.binary_readers import (
     read_bgzf_block,
     read_exact_binary,
 )
-from _artifact_index.context import (
+from norad.reporting._artifact_index.context import (
     prepare_context,
     print_context,
     recheck_inputs,
     source_snapshot_matches,
     validate_context_in_memory,
 )
-from _artifact_index.core import (
+from norad.reporting._artifact_index.core import (
     canonical_digest,
     canonical_json_bytes,
     declared_contract_path,
@@ -161,13 +80,13 @@ from _artifact_index.core import (
     utc_now,
     validate_inventory_registry,
 )
-from _artifact_index.inspection import (
+from norad.reporting._artifact_index.inspection import (
     apply_run_contract_checks,
     build_metrics,
     inspect_present,
     inspect_source,
 )
-from _artifact_index.models import (
+from norad.reporting._artifact_index.models import (
     ANCHOR_HASH_FIELDS,
     ARTIFACT_INDEX_HEADER,
     ARTIFACT_INDEX_SCHEMA_VERSION,
@@ -190,7 +109,7 @@ from _artifact_index.models import (
     LockOwnership,
     SourceSnapshot,
 )
-from _artifact_index.reconcile_native import (
+from norad.reporting._artifact_index.reconcile_native import (
     mark_native_transaction_failed,
     native_int,
     reconcile_step00c,
@@ -199,7 +118,7 @@ from _artifact_index.reconcile_native import (
     reconcile_step08,
     require_referenced_source,
 )
-from _artifact_index.reconcile_review import (
+from norad.reporting._artifact_index.reconcile_review import (
     reconcile_step09c,
     split_native_safe_ids,
     step09c_candidate_keys,
@@ -207,18 +126,18 @@ from _artifact_index.reconcile_review import (
     validate_step09c_evidence_index,
     validate_step09c_payloads,
 )
-from _artifact_index.reconcile_step09 import (
+from norad.reporting._artifact_index.reconcile_step09 import (
     reconcile_step09,
     validate_significant_exact_subset,
     validate_step09_mutation_spectrum,
     validate_step09_statuses,
 )
-from _artifact_index.reconciliation import (
+from norad.reporting._artifact_index.reconciliation import (
     reconcile_native_transactions,
     reconcile_scope_transactions,
     resolve_scientific_states,
 )
-from _artifact_index.records import (
+from norad.reporting._artifact_index.records import (
     build_artifact_record,
     build_index_rows,
     build_receipt_row,
@@ -230,13 +149,13 @@ from _artifact_index.records import (
     validate_existing_identity,
     validate_record_in_memory,
 )
-from _artifact_index.registry import (
+from norad.reporting._artifact_index.registry import (
     ADAPTER_REGISTRY,
     add_spec,
     build_adapter_registry,
 )
-from _artifact_index.rosters import SCOPE_ADAPTER_ROSTERS, STEP_PRODUCERS
-from _artifact_index.text_readers import (
+from norad.reporting._artifact_index.rosters import SCOPE_ADAPTER_ROSTERS, STEP_PRODUCERS
+from norad.reporting._artifact_index.text_readers import (
     extract_parameters,
     inspect_bed12,
     inspect_dict,
@@ -251,7 +170,7 @@ from _artifact_index.text_readers import (
     validate_native_run_anchors,
     validate_sample_block_header,
 )
-from _artifact_index.validation import (
+from norad.reporting._artifact_index.validation import (
     parse_nonnegative_receipt_int,
     validate_published_transaction,
 )

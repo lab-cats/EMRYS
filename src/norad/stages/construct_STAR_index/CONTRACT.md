@@ -164,11 +164,10 @@ Current evidence status remains owned by the canonical roadmap and handoff.
 ## Neutral publication dependency
 
 General report rendering, validation, snapshot, locking, and publication live
-in the neutral exact-file owner
-[`validation_report.py`](../../libraries/validation_report.py). This validator
-loads that file through its private caller-local bridge while its five checks
-remain stage-local. No package marker, public import identity, compatibility
-wrapper, or global `sys.path` mutation is part of that dependency.
+in the neutral shared owner
+[`validation/report.py`](../../libraries/validation/report.py). This validator
+imports the validation facade while its five checks remain stage-local. The
+shared module has no public CLI.
 
 ## Deferred decisions
 

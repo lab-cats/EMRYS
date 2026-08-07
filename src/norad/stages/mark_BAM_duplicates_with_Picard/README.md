@@ -104,10 +104,10 @@ mkdir -p results/qc/validation/04
 
 From another CWD, use absolute interpreter, validator, BAM, BAI, metrics,
 samtools, and output paths for dry-run, execute, and repeat. The validator
-privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and
-[`bam_validation.py`](../../libraries/bam_validation.py); no package identity,
-public helper CLI, `PYTHONPATH`, wrapper, or compatibility import is supported.
+imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) and
+[`alignments/bam.py`](../../libraries/alignments/bam.py) through the `norad`
+package; neither helper exposes a public CLI.
 
 Validator exit `0` means five rows were validly rendered or published; one or
 more rows may still have `status=fail`. Unsafe input, a header-tool failure,

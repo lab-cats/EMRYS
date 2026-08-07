@@ -137,8 +137,8 @@ A content mismatch is represented by a `status=fail` row and does not repair
 the evidence. Missing, unreadable, or unsafe input, an invalid CLI/output
 contract, or unsafe report publication exits with code `2` without publishing
 a new validation report. General report rendering, snapshots, locking, and
-publication are privately exact-loaded from neutral
-[`validation_report.py`](../../libraries/validation_report.py).
+publication are privately imported from neutral
+[`validation/report.py`](../../libraries/validation/report.py).
 
 ## Consumers
 
@@ -191,7 +191,7 @@ roadmap and handoff.
 - Producer success, validator success, and artifact-adapter success are not
   one identical quickcheck contract.
 - Cross-cutting validation-publication code is owned by neutral
-  `src/norad/libraries/validation_report.py`, while scheduler runtime bindings
+  `src/norad/libraries/validation/report.py`, while scheduler runtime bindings
   remain in the wrapper.
 
 The direct migration implemented this evidence owner without changing its

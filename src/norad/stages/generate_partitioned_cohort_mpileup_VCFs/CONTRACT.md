@@ -139,8 +139,8 @@ cluster, scientific-review, or biological evidence.
   validator, downstream preprocessing, and artifact adapters; this owner keeps
   its native receipt and five-check roster.
 - Shared report publication remains in neutral
-  [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
-  under a private identity without package or `PYTHONPATH` support.
+  [`validation/report.py`](../../libraries/validation/report.py), imported
+  through `norad.libraries.validation`.
 - The producer sources only `resolve_executable_value` from neutral
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   bcftools precedence, checks, and commands remain owned here.

@@ -126,7 +126,7 @@ def test_check_rejects_global_regression(
 def test_new_shared_module_thresholds_are_explicit() -> None:
     baseline = TOOL.build_snapshot(raw_document())
     current = copy.deepcopy(baseline)
-    shared_path = "src/norad/libraries/validation_report.py"
+    shared_path = "src/norad/libraries/validation/report.py"
     new_module = TOOL.measured_file(
         shared_path, summary((95, 100), (18, 20))
     )
@@ -234,8 +234,18 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
         "src/norad/contracts/scientific_evidence/review_package.py" in makefile
     )
     assert (
-        "--new-shared-module src/norad/libraries/validation_report.py" in makefile
+        "--new-shared-module src/norad/libraries/validation/report.py" in makefile
     )
+    for shared_module in (
+        "errors.py",
+        "inputs.py",
+        "publication.py",
+        "runtime.py",
+    ):
+        assert (
+            "--new-shared-module "
+            f"src/norad/libraries/validation/{shared_module}" in makefile
+        )
     assert "compileall -q scripts src/norad tests" in makefile
 
 

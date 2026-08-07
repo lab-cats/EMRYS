@@ -147,11 +147,10 @@ Unsafe input, a stable-input mismatch, private-owner integrity failure, or
 unsafe publication exits `2` without a new report and preserves a valid
 predecessor when one exists.
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py), validates the
-exact owner, and preserves foreign module-cache and `sys.path` state. No
-package identity, installed command, wrapper, compatibility import, ambient
-`PYTHONPATH`, or global path mutation is supported.
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) through
+`norad.libraries.validation`. The shared library exposes no installed command
+or public CLI.
 
 ## Scheduler
 

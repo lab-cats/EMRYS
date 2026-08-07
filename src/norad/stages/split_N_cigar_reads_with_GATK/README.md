@@ -147,13 +147,12 @@ no invocation-directory residue:
   --output /absolute/results/qc/validation/05/ABE_EV_2.validation.tsv
 ```
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py), neutral
-[`bam_validation.py`](../../libraries/bam_validation.py), and neutral
-[`reference_contigs.py`](../../libraries/reference_contigs.py).
-Each bridge validates the exact owner and preserves foreign cache state without
-changing `sys.path`; no package identity, `PYTHONPATH`, wrapper, compatibility
-import, or public helper CLI is supported.
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py), neutral
+[`alignments/bam.py`](../../libraries/alignments/bam.py), and neutral
+[`references/contigs.py`](../../libraries/references/contigs.py).
+All three use normal `norad.libraries` package imports and expose no public
+helper CLI.
 
 Validator exit `0` means five rows were validly rendered or published; one or
 more rows may still have `status=fail`. Quickcheck nonzero is published as a

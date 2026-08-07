@@ -97,8 +97,8 @@ mkdir -p results/qc/validation/03
 ```
 
 From another CWD, use absolute interpreter, validator, input, and output paths
-for dry-run, execute, and repeat. The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py); no package
+for dry-run, execute, and repeat. The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py); no package
 identity, `PYTHONPATH` change, wrapper, or compatibility import is supported.
 
 Validator exit `0` means the evidence was validly rendered or published; one

@@ -140,14 +140,14 @@ estimability, CMH statistic, p-value, or common odds ratio. Its current
 separate real-R fixture and independent oracle protect that boundary; neither
 turns the production validator into independent statistical proof.
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py), neutral
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py), neutral
 [`step08.py`](../../contracts/scientific_evidence/step08.py) for manifests and
 the Step `08` inputs/sites contract, and neutral
 [`step09.py`](../../contracts/scientific_evidence/step09.py) for the public Step
 `09` output contract. The validator's direct Step `08` load and neutral Step
 `09`'s Step `08` dependency must resolve the same object before the validator
-continues. None of these exact-file bridges creates a package API, and the
+continues. None of these shared bridges creates a package API, and the
 validator no longer loads the Step `09c` implementation.
 
 After owner validation, reconcile the complete table and exact significant

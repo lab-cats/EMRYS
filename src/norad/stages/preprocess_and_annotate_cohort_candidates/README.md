@@ -131,12 +131,12 @@ it does not reopen Step `07` files to recompute their hashes. Equivalent
 annotation spellings can fail identity evidence; arbitrary unique candidate
 IDs and reversed site rows can pass.
 
-It privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and neutral
+It imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) and neutral
 [`step08.py`](../../contracts/scientific_evidence/step08.py) under separate
 private identities. The latter owns the public Step `08` manifest/table
 headers, `ContractError`/`Table` identity, and reconciliation used by this
-validator, Step `09`, Step `09c`, and artifact indexing. The exact-file bridge
+validator, Step `09`, Step `09c`, and artifact indexing. The shared bridge
 adds no public package API, installation step, or `sys.path` mutation.
 
 ## Guarded R and scheduler

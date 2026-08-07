@@ -119,9 +119,9 @@ The GTF-agreement check imports the converter's parsing and BED-record builder,
 so it compares against the producer's normalization logic rather than an
 independent implementation. The producer is its same-owner sibling. Snapshot,
 rendering, validation, locking, and publication functions come from the neutral
-exact-file [`validation_report.py`](../../libraries/validation_report.py)
-owner through a private owner-relative loader. Neither dependency creates a
-public package import identity or cross-stage implementation edge.
+shared [`validation/report.py`](../../libraries/validation/report.py)
+owner through `norad.libraries.validation`. Neither dependency creates a
+cross-stage scientific implementation edge.
 
 ## Consumers
 
@@ -173,9 +173,9 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   wrapper's bedtools command.
 - The validator reuses producer normalization code for its strongest agreement
   check.
-- Cross-cutting validation publication lives in the neutral exact-file
-  [`validation_report.py`](../../libraries/validation_report.py) owner and is
-  loaded by the validator through its private owner-relative bridge.
+- Cross-cutting validation publication lives in the neutral shared
+  [`validation/report.py`](../../libraries/validation/report.py) owner and is
+  imported through the validation package facade.
 
 This inventory records the remaining reference-materialization, duplicated-
 sorting, and oracle boundaries without choosing an unreviewed correction.

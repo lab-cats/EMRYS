@@ -114,11 +114,11 @@ From another CWD, make the interpreter, validator, BAM, BAI, samtools, and
 output paths absolute. Dry-run, execute, and repeat are supported from that
 location; validation creates no invocation-directory residue.
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) and
-[`bam_validation.py`](../../libraries/bam_validation.py). The latter owns only
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) and
+[`alignments/bam.py`](../../libraries/alignments/bam.py). The latter owns only
 `run_tool` and `parse_header` and is shared with the final Step `04` and Step
-`05` validators. An exact-loader diagnostic is a checkout-integrity failure:
+`05` validators. An importer diagnostic is a checkout-integrity failure:
 inspect the named private file and checkout. Do not add `PYTHONPATH`, install a
 package, invoke the helper as a CLI, or restore a legacy Step `02` path.
 

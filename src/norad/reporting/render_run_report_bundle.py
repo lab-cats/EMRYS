@@ -29,7 +29,11 @@ from typing import Any, Mapping, Sequence
 from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
 
-import render_run_report as html_report
+_SRC_ROOT = Path(__file__).resolve().parents[2]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.reporting import render_run_report as html_report
 
 
 contracts = html_report.contracts

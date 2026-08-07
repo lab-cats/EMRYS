@@ -2,8 +2,8 @@
 
 This private package supports the public
 [`validate_artifact_contracts.py`](../validate_artifact_contracts.py) command
-and compatibility facade. It does not add an installed or supported import
-surface.
+and compatibility facade. The package remains private to the artifact-contract
+owner.
 
 | Module | Owned responsibility |
 | --- | --- |
@@ -12,7 +12,7 @@ surface.
 | [`scientific_review.py`](scientific_review.py) | Scientific-review-record semantic validation. |
 | [`run_summary.py`](run_summary.py) | Run-summary status reduction and semantic validation. |
 
-The public facade exact-loads this directory by its owner-relative path without
-changing `sys.path`. It retains schema validation, report-receipt semantics,
+The public facade imports these modules through the `norad.contracts` package.
+It retains schema validation, report-receipt semantics,
 the semantic dispatcher, inventory reconciliation, and CLI orchestration. All
 modules share the one `ContractValidationError` defined in `core.py`.

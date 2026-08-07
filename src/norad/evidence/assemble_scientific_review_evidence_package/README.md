@@ -170,26 +170,20 @@ a new isolated absolute output root. See the dedicated
 
 The final Step `09` validator, this implementation, and
 [`build_artifact_index.py`](../../reporting/build_artifact_index.py)
-privately exact-load both neutral
-[`step08.py`](../../contracts/scientific_evidence/step08.py) under
-`_norad_step08_scientific_evidence_contract` and neutral
-[`step09.py`](../../contracts/scientific_evidence/step09.py) under
-`_norad_step09_scientific_evidence_contract`. The Step `09` contract reuses the
-Step `08` `ContractError` and `Table`; all three consumers fail closed if any
-shared owner identity splits.
+import neutral [`step08.py`](../../contracts/scientific_evidence/step08.py) and
+[`step09.py`](../../contracts/scientific_evidence/step09.py) through the
+`norad.contracts.scientific_evidence` package. The Step `09` contract reuses
+the Step `08` `ContractError` and `Table` identities.
 
 This implementation, the artifact index, and
 [`_run_summary_science.py`](../../reporting/_run_summary_science.py)
-exact-load neutral
+import neutral
 [`review_package.py`](../../contracts/scientific_evidence/review_package.py)
-under `_norad_review_package_scientific_evidence_contract` for the public
-thirteen-file roster, headers, vocabularies, bindings, and evidence-status
-reducer. These loader families validate cached-owner identity and readiness,
-insert before execution, clean only their own partial cache entry, leave
-`sys.path` unchanged, and expose no public package identity.
+through the same contract package for the public thirteen-file roster, headers,
+vocabularies, bindings, and evidence-status reducer.
 
 The artifact index and run-summary science no longer load this final Step
-`09c` Python file. Run-summary science exact-loads the neutral review-package
+`09c` Python file. Run-summary science imports the neutral review-package
 owner and uses a reporting-local reader/projection over the committed public
 package, explicitly referenced evidence, and validated artifact-index records.
 The Step `09` validator consumes the neutral Step `09` owner directly and does

@@ -235,14 +235,11 @@ MAKE_TARGET_DECISIONS = {
     "smoke": "local_gate",
     "lint": "local_gate",
     "all-checks": "local_gate",
-    "demo-step03-dry-run": "cluster_deferred",
-    "demo-step03": "cluster_deferred",
 }
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
         "DEMO_REPORT_FORMATS",
         "DEMO_REPORT_ROOT",
-        "DEMO_SAMPLE",
         "PYTHON_BIN",
         "PYTHON_COVERAGE_BASELINE",
         "PYTHON_COVERAGE_CURRENT",
@@ -615,10 +612,8 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
     assert include_lines == [
         "include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk",
         "include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk",
-        "include $(NORAD_MAKE_ROOT)/scripts/make_cluster_demo.mk",
     ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {
-        "cluster_deferred",
         "explicit_output",
         "internal_lane",
         "local_gate",

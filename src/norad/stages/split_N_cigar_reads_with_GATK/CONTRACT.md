@@ -79,11 +79,11 @@ Exact checks are:
 The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
 matching `ID`/`SM` read group, and exact ordered FASTA/FAI/DICT contig/length
 agreement. It does not prove BAM/BAI correspondence, output relation to the
-marked input, or GATK split-N-cigar semantics. It privately exact-loads
+marked input, or GATK split-N-cigar semantics. It imports
 report/BAM helpers from neutral
-[`validation_report.py`](../../libraries/validation_report.py) and
-[`bam_validation.py`](../../libraries/bam_validation.py), and reference parsers
-from neutral [`reference_contigs.py`](../../libraries/reference_contigs.py). No
+[`validation/report.py`](../../libraries/validation/report.py) and
+[`alignments/bam.py`](../../libraries/alignments/bam.py), and reference parsers
+from neutral [`references/contigs.py`](../../libraries/references/contigs.py). No
 package identity, `PYTHONPATH`, wrapper, compatibility import, or peer-stage
 implementation dependency is supported.
 

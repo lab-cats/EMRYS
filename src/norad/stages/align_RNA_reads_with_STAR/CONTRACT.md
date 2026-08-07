@@ -125,9 +125,9 @@ the STAR outputs. Missing, unreadable, or unsafe input, an invalid CLI/output
 contract, or unsafe publication state exits with code `2` without publishing a
 new report.
 
-The validator exact-loads general report rendering, snapshot, validation,
+The validator imports general report rendering, snapshot, validation,
 locking, and publication functions from the neutral
-[`validation_report.py`](../../libraries/validation_report.py) owner. It adds no
+[`validation/report.py`](../../libraries/validation/report.py) owner. It adds no
 package identity or `sys.path` mutation.
 
 ## Consumers
@@ -180,7 +180,7 @@ roadmap and handoff.
   the only explicit structural output checks.
 - Coordinate sorting occurs in STAR and again inside the canonical-BAM stage,
   where the second operation is coupled to read-group tagging and publication.
-- Cross-cutting validation-publication code is owned by the neutral exact-file
+- Cross-cutting validation-publication code is owned by the neutral shared
   library under `src/norad/libraries/`.
 - The scheduler wrapper owns cluster module loading and mutable local fixture
   setup around the parameterized producer.

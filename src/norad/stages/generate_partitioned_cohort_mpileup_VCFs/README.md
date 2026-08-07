@@ -134,10 +134,9 @@ identity. Producer-valid compressed regions currently publish failed selector
 evidence, while some out-of-bounds BED/VCF and unchecked VCF semantics can
 pass. Relative receipt VCF paths can disagree with resolved validator paths.
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) under a private
-identity. It adds no package identity, public helper API, wrapper, or ambient
-path behavior.
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) through the
+validation package facade. It adds no public helper CLI.
 
 ## Scheduler
 

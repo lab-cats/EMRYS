@@ -92,8 +92,8 @@ mkdir -p results/qc/validation/02b
 
 From another CWD, use absolute interpreter, validator, input, and output
 paths. Dry-run, execute, and repeat leave no invocation-directory residue.
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py); no package
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py); no package
 identity, `PYTHONPATH` change, wrapper, or compatibility import is supported.
 
 Producer exit `0` does not imply a passing validation row. In particular, a

@@ -10,7 +10,7 @@ derives the inventory's single reference ID rather than accepting a separate
 ID argument. Its dry run is the default and writes nothing. Supported artifact
 roles cover FASTA, FAI, dictionary, GTF, BED12, STAR chromosome-name and
 chromosome-length files, and STAR index members. The implementation reuses the
-neutral [`reference_contigs.py`](../../libraries/reference_contigs.py) parser
+neutral [`references/contigs.py`](../../libraries/references/contigs.py) parser
 without creating a package API.
 
 Execute mode publishes under `<output-root>/<reference-id>/`:

@@ -72,6 +72,3 @@ def _unique_contigs(
     if not rows or len({name for name, _ in rows}) != len(rows):
         _fail(f"{label} contigs are empty or duplicated")
     return rows
-
-
-_NORAD_REFERENCE_CONTIGS_READY = True

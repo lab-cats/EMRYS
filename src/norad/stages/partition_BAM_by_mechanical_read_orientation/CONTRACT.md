@@ -121,8 +121,8 @@ scientific-review, or biological evidence.
 - Counts schema/arithmetic remains repeated in producer, validator, and artifact
   reconciliation code; this stage owns its native schema and check roster.
 - Shared report publication remains in neutral
-  [`validation_report.py`](../../libraries/validation_report.py), exact-loaded
-  under a private identity without package or `PYTHONPATH` support.
+  [`validation/report.py`](../../libraries/validation/report.py), imported
+  through `norad.libraries.validation`.
 - The producer sources only `resolve_executable_value` from neutral
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   samtools precedence, checks, and commands remain owned here.

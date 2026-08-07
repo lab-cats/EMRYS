@@ -66,8 +66,8 @@ the owned report deterministically after stable-input validation. From another
 working directory, use absolute paths for the interpreter, validator, three
 inputs, and output.
 
-The validator exact-loads the neutral
-[`reference_contigs.py`](../../libraries/reference_contigs.py) parser owner and
+The validator imports the neutral
+[`references/contigs.py`](../../libraries/references/contigs.py) parser owner and
 the neutral validation-report library. An exact reference-loader failure is a
 checkout-integrity diagnostic; do not work around it by changing `PYTHONPATH`.
 Reference provenance and the final

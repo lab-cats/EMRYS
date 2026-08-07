@@ -27,15 +27,18 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-import _run_summary_science as science
-import build_artifact_index as adapter
+_SRC_ROOT = Path(__file__).resolve().parents[2]
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
 
-from _run_summary.approvals import (
+from norad.reporting import _run_summary_science as science
+from norad.reporting import build_artifact_index as adapter
+from norad.reporting._run_summary.approvals import (
     _canonical_nonnegative_integer,
     _normalize_report_table_approvals,
     _parse_approval_timestamp,
 )
-from _run_summary.inputs import (
+from norad.reporting._run_summary.inputs import (
     _capture_file_snapshot,
     _capture_report_table_snapshot,
     _fail,
@@ -50,7 +53,7 @@ from _run_summary.inputs import (
     _verify_report_table_snapshot,
     parse_arguments,
 )
-from _run_summary.models import (
+from norad.reporting._run_summary.models import (
     LEGACY_PRODUCER_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
@@ -71,7 +74,7 @@ from _run_summary.models import (
     adapter as _owner_adapter,
     contracts as _owner_contracts,
 )
-from _run_summary.projection import (
+from norad.reporting._run_summary.projection import (
     _artifact_statuses,
     _build_attempts,
     _build_expected_scopes,
@@ -85,7 +88,7 @@ from _run_summary.projection import (
     _issue_for_duplicate_metrics,
     _metric_value_type,
 )
-from _run_summary.transaction import (
+from norad.reporting._run_summary.transaction import (
     _assert_output_directory_identity,
     _canonical_key,
     _load_input_transaction,
@@ -95,7 +98,7 @@ from _run_summary.transaction import (
     _receipt_int,
     _stable_unique,
 )
-from _run_summary.validation import (
+from norad.reporting._run_summary.validation import (
     _build_receipt_row,
     _load_existing_summary_receipt,
     _validate_document,
@@ -104,9 +107,9 @@ from _run_summary.validation import (
 
 
 if adapter is not _owner_adapter or adapter.contracts is not _owner_contracts:
-    raise ImportError("run-summary modules did not resolve one exact adapter owner")
+    raise ImportError("run-summary modules did not resolve one adapter owner")
 if science.contracts is not adapter.contracts:
-    raise ImportError("artifact-contract consumers did not resolve one exact owner")
+    raise ImportError("artifact-contract consumers did not resolve one owner")
 contracts = adapter.contracts
 
 

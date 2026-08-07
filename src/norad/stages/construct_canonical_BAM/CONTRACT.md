@@ -142,16 +142,14 @@ the canonical pair. Missing, unreadable, or unsafe input, a failed tool call
 needed to construct evidence, an invalid CLI/output contract, or unsafe
 publication state exits with code `2` without publishing a new report.
 
-The validator privately exact-loads neutral
-[`validation_report.py`](../../libraries/validation_report.py) for report
+The validator imports neutral
+[`validation/report.py`](../../libraries/validation/report.py) for report
 rendering, snapshots, locking, and publication, and neutral
-[`bam_validation.py`](../../libraries/bam_validation.py) for `run_tool` and
-`parse_header`. The final Step `04` and Step `05` validators exact-load
-the same BAM helper rather than importing this owner. Each BAM-helper loader verifies
-the cached path, readiness, and callable API, preserves foreign cache state and
-`sys.path`, removes only a loader-owned partial after execution failure, and
-fails closed before report publication. Neither neutral file is a package or
-public CLI; stage-specific checks stay here.
+[`alignments/bam.py`](../../libraries/alignments/bam.py) for `run_tool` and
+`parse_header`. The final Step `04` and Step `05` validators import
+the same BAM helper rather than importing this owner. Normal package imports
+provide one module identity; neither neutral module has a public CLI, and
+stage-specific checks stay here.
 
 ## Consumers
 
@@ -191,7 +189,7 @@ their functional ownership.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
   characterizes the imported shared validation-report publication behavior.
 - [`test_bam_validation.py`](../../../../tests/libraries/test_bam_validation.py)
-  protects exact helper behavior and the three-caller loader matrix.
+  protects helper behavior shared by the three consumers.
 - [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
@@ -211,7 +209,7 @@ roadmap and handoff.
 - The producer and validator disagree on zero-record, library, and platform
   requirements.
 - Cross-cutting BAM parsing and validation-publication helpers live in neutral
-  exact-loaded source owners without package identity.
+  package modules.
 - The scheduler wrapper owns cluster module loading and dry-run directory side
   effects around a side-effect-free producer.
 

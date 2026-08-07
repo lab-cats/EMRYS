@@ -83,16 +83,6 @@
   "documentation-check": [
     "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\""
   ],
-  "demo-step03": [
-    "mkdir -p logs",
-    "sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=1,SAMPLE_ID=ABE_EV_2 \\",
-    "\t\tsrc/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm"
-  ],
-  "demo-step03-dry-run": [
-    "mkdir -p logs",
-    "sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2 \\",
-    "\t\tsrc/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm"
-  ],
   "lint": [
     "python -m compileall scripts src/norad tests"
   ],
@@ -154,9 +144,13 @@
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step08.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
-    "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
-    "\t\t--new-shared-module src/norad/libraries/bam_validation.py \\",
-    "\t\t--new-shared-module src/norad/libraries/reference_contigs.py"
+    "\t\t--new-shared-module src/norad/libraries/validation/errors.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/inputs.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/publication.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/report.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/runtime.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/bam.py \\",
+    "\t\t--new-shared-module src/norad/libraries/references/contigs.py"
   ],
   "python-coverage-measure": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",
@@ -233,7 +227,7 @@
     "bash tests/reporting/test_render_run_report.sh",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_reference_contigs.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_references/contigs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py",
@@ -302,9 +296,13 @@
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step08.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/step09.py \\",
     "\t\t--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \\",
-    "\t\t--new-shared-module src/norad/libraries/validation_report.py \\",
-    "\t\t--new-shared-module src/norad/libraries/bam_validation.py \\",
-    "\t\t--new-shared-module src/norad/libraries/reference_contigs.py"
+    "\t\t--new-shared-module src/norad/libraries/validation/errors.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/inputs.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/publication.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/report.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/runtime.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/bam.py \\",
+    "\t\t--new-shared-module src/norad/libraries/references/contigs.py"
   ],
   "validation-report-runtime": [
     "test -n \"\" || { \\",

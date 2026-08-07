@@ -67,7 +67,7 @@ created nothing.
 accepts explicit BAM, BAI, metrics, samtools, scope, and report paths. Dry-run
 prints the common seven-column TSV; `--execute` snapshot-rechecks inputs and
 publishes it through neutral private
-[`validation_report.py`](../../libraries/validation_report.py).
+[`validation/report.py`](../../libraries/validation/report.py).
 
 Exact checks are:
 
@@ -87,8 +87,8 @@ diagnostics are nonempty.
 
 Content mismatches publish `status=fail` rows; unsafe inputs, evidence-building
 tool failures, and publication-contract failures exit `2`. BAM tool/header
-helpers are privately exact-loaded from neutral
-[`bam_validation.py`](../../libraries/bam_validation.py); neither helper has a
+helpers are privately imported from neutral
+[`alignments/bam.py`](../../libraries/alignments/bam.py); neither helper has a
 public package or CLI identity.
 
 ## Consumers and protected evidence
@@ -116,7 +116,7 @@ scientific-review, or biological evidence.
 - Final-path multi-output publication lacks transactional ownership.
 - Sample/library/platform metadata is hardcoded or scope-derived rather than
   manifest-bound.
-- The neutral BAM and report helpers remain private exact-file owners rather
+- The neutral BAM and report helpers remain private shared owners rather
   than installed or public package APIs.
 - Receipt/recovery policy, sample/tool identity binding, and safe multi-output
   publication remain deferred.
