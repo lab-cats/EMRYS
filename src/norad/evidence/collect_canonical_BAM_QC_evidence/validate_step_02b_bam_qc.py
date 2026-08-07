@@ -38,10 +38,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_flagstat(path: Path) -> tuple[dict[str, tuple[int, int]], list[str]]:
+def parse_flagstat(text: str) -> tuple[dict[str, tuple[int, int]], list[str]]:
     values: dict[str, tuple[int, int]] = {}
     errors: list[str] = []
-    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for number, raw in enumerate(text.splitlines(), 1):
         if not raw:
             continue
         match = COUNT_RE.match(raw)
@@ -70,9 +70,9 @@ def build(args: argparse.Namespace):
         {"quickcheck": quickcheck, "flagstat": flagstat},
         label="Step 02b",
     )
-    quick_text = quickcheck.read_text(encoding="utf-8").strip()
+    quick_text = report.stable_text(quickcheck, "Quickcheck output")[0].strip()
     quick_ok = quick_text == "PASS: samtools quickcheck completed with no errors."
-    values, errors = parse_flagstat(flagstat)
+    values, errors = parse_flagstat(report.stable_text(flagstat, "Flagstat output")[0])
     total = sum(values.get("total", (-1, -1)))
     mapped = sum(values.get("mapped", (-1, -1)))
     flagstat_ok = not errors and {"total", "mapped"} <= values.keys()
