@@ -146,10 +146,6 @@ def _require_contract_file(label: str, value: str) -> Path:
     return _require_regular_file(label, contracts.resolve_contract_path(value))
 
 
-def _sha256_file(path: Path) -> str:
-    return contracts.sha256_file(path)
-
-
 def _read_tsv(
     label: str,
     value: str | Path,
@@ -197,7 +193,7 @@ def _confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
     for path, expected_hash in input_hashes.items():
         if not path.is_file():
             _fail(f"A reporting input disappeared during normalization: {path}")
-        if _sha256_file(path) != expected_hash:
+        if contracts.sha256_file(path) != expected_hash:
             _fail(f"A reporting input changed during normalization: {path}")
 
 
@@ -483,7 +479,7 @@ def _read_committed_review_package(
             header,
         )
         output_tables[key] = (header, table.rows)
-        remember_input(table.path, _sha256_file(table.path))
+        remember_input(table.path, contracts.sha256_file(table.path))
 
     plan_rows = output_tables["review_plan"][1]
     if len(plan_rows) != 1:
@@ -513,7 +509,7 @@ def _read_committed_review_package(
         source_path = _require_regular_file(
             f"Scientific evidence {evidence_id}", row["source_path"]
         )
-        observed_hash = _sha256_file(source_path)
+        observed_hash = contracts.sha256_file(source_path)
         if observed_hash != row["observed_sha256"]:
             _fail(f"Scientific evidence {evidence_id} hash differs.")
         expected_header = (
@@ -551,7 +547,7 @@ def _read_committed_review_package(
                     f"{payload['validation_scope']}",
                     _resolve_recorded_path(payload["evidence_path"]),
                 )
-                payload_hash = _sha256_file(payload_path)
+                payload_hash = contracts.sha256_file(payload_path)
                 if payload_hash != payload["evidence_sha256"]:
                     _fail(
                         f"Computational payload {evidence_id} "
@@ -836,7 +832,7 @@ def _normalize_computational_evidence(
                 evidence_path = str(evidence_path_object)
                 evidence_sha256 = payload["evidence_sha256"]
                 if (
-                    _sha256_file(evidence_path_object) != evidence_sha256
+                    contracts.sha256_file(evidence_path_object) != evidence_sha256
                 ):
                     _fail(
                         f"Computational payload {evidence_id} "
