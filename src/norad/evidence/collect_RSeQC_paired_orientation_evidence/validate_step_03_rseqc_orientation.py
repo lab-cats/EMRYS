@@ -15,7 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
-
+from norad.libraries.evidence import qc as qc_report
 
 
 LABELS = (
@@ -42,39 +42,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_report(text: str) -> tuple[dict[str, float], list[str]]:
-    values: dict[str, float] = {}
-    errors: list[str] = []
-    for number, raw in enumerate(text.splitlines(), 1):
-        if ":" not in raw:
-            continue
-        label, lexeme = (part.strip() for part in raw.rsplit(":", 1))
-        if label not in LABELS:
-            continue
-        if label in values:
-            errors.append(f"duplicate label at line {number}")
-            continue
-        try:
-            value = float(lexeme)
-        except ValueError:
-            errors.append(f"invalid fraction at line {number}")
-            continue
-        if not math.isfinite(value):
-            errors.append(f"nonfinite fraction at line {number}")
-            continue
-        values[label] = value
-    missing = [label for label in LABELS if label not in values]
-    if missing:
-        errors.append(f"missing {len(missing)} required labels")
-    return values, errors
-
-
 def build(args: argparse.Namespace):
     if not math.isfinite(args.sum_tolerance) or not 0 <= args.sum_tolerance <= 0.1:
         report.fail("--sum-tolerance must be finite and between 0 and 0.1")
     source = report.lexical_path(args.infer_report)
     snapshots = report.snapshots({"report": source}, label="Step 03 RSeQC")
-    values, errors = parse_report(report.stable_text(source, "RSeQC inference report")[0])
+    values, errors = qc_report.parse_fraction_report(
+        report.stable_text(source, "RSeQC inference report")[0], LABELS
+    )
     fractions = [values.get(label) for label in LABELS]
     valid = [value is not None and 0 <= value <= 1 for value in fractions]
     observed_sum = sum(value for value in fractions if value is not None)

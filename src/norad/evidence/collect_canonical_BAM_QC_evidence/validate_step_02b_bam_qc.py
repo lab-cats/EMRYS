@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -15,7 +14,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
-
+from norad.libraries.evidence import qc as qc_report
 
 
 CHECK_IDS = {
@@ -25,7 +24,6 @@ CHECK_IDS = {
     "mapped_records",
     "count_consistency",
 }
-COUNT_RE = re.compile(r"^([0-9]+) \+ ([0-9]+) (.+)$")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -38,31 +36,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_flagstat(text: str) -> tuple[dict[str, tuple[int, int]], list[str]]:
-    values: dict[str, tuple[int, int]] = {}
-    errors: list[str] = []
-    for number, raw in enumerate(text.splitlines(), 1):
-        if not raw:
-            continue
-        match = COUNT_RE.match(raw)
-        if match is None:
-            errors.append(f"line {number} malformed")
-            continue
-        passed, failed, label = int(match.group(1)), int(match.group(2)), match.group(3)
-        key = (
-            "total"
-            if label.startswith("in total ")
-            else "mapped"
-            if label.startswith("mapped ")
-            else ""
-        )
-        if key:
-            if key in values:
-                errors.append(f"duplicate {key} row")
-            values[key] = (passed, failed)
-    return values, errors
-
-
 def build(args: argparse.Namespace):
     quickcheck = report.lexical_path(args.quickcheck)
     flagstat = report.lexical_path(args.flagstat)
@@ -72,7 +45,7 @@ def build(args: argparse.Namespace):
     )
     quick_text = report.stable_text(quickcheck, "Quickcheck output")[0].strip()
     quick_ok = quick_text == "PASS: samtools quickcheck completed with no errors."
-    values, errors = parse_flagstat(report.stable_text(flagstat, "Flagstat output")[0])
+    values, errors = qc_report.parse_flagstat(report.stable_text(flagstat, "Flagstat output")[0])
     total = sum(values.get("total", (-1, -1)))
     mapped = sum(values.get("mapped", (-1, -1)))
     flagstat_ok = not errors and {"total", "mapped"} <= values.keys()
