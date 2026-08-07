@@ -88,26 +88,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def read_regular(path: Path, label: str) -> bytes:
-    try:
-        before = report.regular_snapshot(path, label)
-    except report.ValidationError as exc:
-        fail(str(exc))
-    try:
-        data = path.read_bytes()
-    except OSError as exc:
-        fail(f"{label} is unavailable: {path}: {exc}")
-    try:
-        after = report.regular_snapshot(path, label)
-    except report.ValidationError as exc:
-        fail(str(exc))
-    if before != after:
-        fail(f"{label} changed while read: {path}")
-    return data
-
-
 def table(path: Path, header: tuple[str, ...], label: str) -> tuple[bytes, list[dict[str, str]]]:
-    data = read_regular(path, label)
+    data = report.read_bytes(path, label)
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -347,7 +329,7 @@ def publish(output_root: Path, generated: dict[str, bytes]) -> None:
                 if finals[key].is_symlink() or not finals[key].is_file():
                     fail("Existing storage/retention output is unsafe")
                 validate(
-                    read_regular(finals[key], f"Existing {names[key]}"),
+                    report.read_bytes(finals[key], f"Existing {names[key]}"),
                     expected[key][0],
                     expected[key][1],
                 )
@@ -389,9 +371,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.execute:
             print("Dry-run complete; no output was written.")
             return 0
-        if read_regular(args.roots, "Storage roots") != roots_data:
+        if report.read_bytes(args.roots, "Storage roots") != roots_data:
             fail("Storage roots changed after measurement")
-        if read_regular(args.retention_policy, "Retention policy") != policy_data:
+        if report.read_bytes(args.retention_policy, "Retention policy") != policy_data:
             fail("Retention policy changed after measurement")
         publish(args.output_root, generated)
         print(f"Published storage/retention report: {args.output_root}")

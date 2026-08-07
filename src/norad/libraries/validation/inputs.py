@@ -43,6 +43,19 @@ def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
     return text, after
 
 
+def read_bytes(path: Path, label: str) -> bytes:
+    """Read file bytes while validating unchanged regular input snapshots."""
+    before = regular_snapshot(path, label)
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        fail(f"{label} is unavailable: {path}: {exc}")
+    after = regular_snapshot(path, label)
+    if before != after:
+        fail(f"{label} changed while read: {path}")
+    return data
+
+
 def require_unchanged(snapshots: dict[Path, Snapshot]) -> None:
     """Fail if any declared validator input changed after evidence collection."""
 
