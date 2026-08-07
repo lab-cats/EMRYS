@@ -4,6 +4,7 @@ from norad.libraries.validation.errors import ValidationError, fail
 from norad.libraries.validation.inputs import (
     Snapshot,
     regular_snapshot,
+    integer_stdout,
     require_unchanged,
     stable_text,
 )
@@ -15,12 +16,15 @@ from norad.libraries.validation.report import (
     row,
     validate_report,
 )
+from norad.libraries.validation.tsv import attempt, read_header
 from norad.libraries.validation.runtime import Runtime, finish
 
 __all__ = (
     "HEADER",
+    "attempt",
     "Runtime",
     "Snapshot",
+    "integer_stdout",
     "ValidationError",
     "clean",
     "fail",
@@ -30,7 +34,7 @@ __all__ = (
     "render",
     "require_unchanged",
     "row",
+    "read_header",
     "stable_text",
     "validate_report",
 )
-

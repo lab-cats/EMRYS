@@ -7,7 +7,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
-from typing import Callable, Sequence, TypeVar
+from typing import Sequence
 
 
 _SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
@@ -26,7 +26,6 @@ CHECK_IDS = {
     "sites_order_uniqueness",
     "summary_count_reconciliation",
 }
-T = TypeVar("T")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -43,18 +42,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def attempt(function: Callable[[], T]) -> tuple[T | None, str]:
-    try:
-        return function(), "validated"
-    except (OSError, UnicodeError, csv.Error, step08.ContractError) as exc:
-        return None, report.clean(exc)
-
-
-def header(path: Path) -> tuple[str, ...]:
-    with path.open(encoding="utf-8", newline="") as stream:
-        return tuple(next(csv.reader(stream, delimiter="\t")))
-
-
 def build(args: argparse.Namespace):
     paths = {
         "sample_manifest": args.sample_manifest.resolve(strict=False),
@@ -68,11 +55,13 @@ def build(args: argparse.Namespace):
         path: report.regular_snapshot(path, f"Step 08 {role}")
         for role, path in paths.items()
     }
-    sample_result, sample_detail = attempt(
-        lambda: step08.validate_sample_manifest(paths["sample_manifest"])
+    sample_result, sample_detail = report.attempt(
+        lambda: step08.validate_sample_manifest(paths["sample_manifest"]),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
-    partition_table, partition_detail = attempt(
-        lambda: step08.validate_partition_manifest(paths["partition_manifest"])
+    partition_table, partition_detail = report.attempt(
+        lambda: step08.validate_partition_manifest(paths["partition_manifest"]),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     sample_hash = step08.sha256_file(paths["sample_manifest"])
     partition_hash = step08.sha256_file(paths["partition_manifest"])
@@ -86,12 +75,13 @@ def build(args: argparse.Namespace):
             + tuple(f"AD__{sample}" for sample in sample_result[1])
             + tuple(f"AF__{sample}" for sample in sample_result[1])
         )
-    observed_headers, header_detail = attempt(
+    observed_headers, header_detail = report.attempt(
         lambda: (
-            header(paths["sites"]),
-            header(paths["inputs"]),
-            header(paths["summary"]),
-        )
+            report.read_header(paths["sites"]),
+            report.read_header(paths["inputs"]),
+            report.read_header(paths["summary"]),
+        ),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     transaction_ok = (
         observed_headers is not None
@@ -107,14 +97,15 @@ def build(args: argparse.Namespace):
     inputs_table = None
     inputs_detail = "prerequisite manifest validation failed"
     if sample_result is not None and partition_table is not None:
-        inputs_table, inputs_detail = attempt(
+        inputs_table, inputs_detail = report.attempt(
             lambda: step08.validate_step08_inputs(
                 paths["inputs"],
                 sample_result[1],
                 partition_table.rows,
                 sample_hash,
                 partition_hash,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
     identity_ok = False
     if inputs_table is not None:
@@ -135,13 +126,14 @@ def build(args: argparse.Namespace):
         and partition_table is not None
         and inputs_table is not None
     ):
-        sites_table, sites_detail = attempt(
+        sites_table, sites_detail = report.attempt(
             lambda: step08.validate_step08_sites(
                 paths["sites"],
                 sample_result[1],
                 partition_table.rows,
                 inputs_table.rows,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
 
     summary_table = None
@@ -152,7 +144,7 @@ def build(args: argparse.Namespace):
         and inputs_table is not None
         and sites_table is not None
     ):
-        summary_table, summary_detail = attempt(
+        summary_table, summary_detail = report.attempt(
             lambda: step08.validate_step08_summary(
                 paths["summary"],
                 sample_result[1],
@@ -161,7 +153,8 @@ def build(args: argparse.Namespace):
                 sites_table.rows,
                 sample_hash,
                 partition_hash,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
         if summary_table is not None:
             row = summary_table.rows[0]
@@ -176,28 +169,33 @@ def build(args: argparse.Namespace):
 
     scope_id = args.cohort_id
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "08", scope_id, check_id, "pass" if passed else "fail",
-            report.clean(observed), report.clean(expected), report.clean(detail),
-        )
-
     rows = [
-        item("output_transaction", transaction_ok, header_detail,
-             "three exact Step 08 TSV headers", "sites, inputs, and summary"),
-        item("manifest_annotation_identity", identity_ok,
-             f"sample={sample_detail}; partition={partition_detail}",
-             "cohort, manifest hashes, annotation path/hash, provisional policy",
-             inputs_detail),
-        item("input_receipt_reconciliation", inputs_table is not None,
-             inputs_detail, "complete partition x orientation receipt",
-             "ordered inputs, types, hashes, and per-row arithmetic"),
-        item("sites_order_uniqueness", sites_table is not None,
-             sites_detail, "typed unique candidates and per-scope counts",
-             "sites schema, sample columns, order, uniqueness, and AF arithmetic"),
-        item("summary_count_reconciliation", summary_table is not None,
-             summary_detail, "one exact aggregate row matching inputs and sites",
-             "three-output transaction count reconciliation"),
+        report.row(
+            "08", scope_id, "output_transaction", transaction_ok,
+            header_detail, "three exact Step 08 TSV headers",
+            "sites, inputs, and summary",
+        ),
+        report.row(
+            "08", scope_id, "manifest_annotation_identity", identity_ok,
+            f"sample={sample_detail}; partition={partition_detail}",
+            "cohort, manifest hashes, annotation path/hash, provisional policy",
+            inputs_detail,
+        ),
+        report.row(
+            "08", scope_id, "input_receipt_reconciliation", inputs_table is not None,
+            inputs_detail, "complete partition x orientation receipt",
+            "ordered inputs, types, hashes, and per-row arithmetic",
+        ),
+        report.row(
+            "08", scope_id, "sites_order_uniqueness", sites_table is not None,
+            sites_detail, "typed unique candidates and per-scope counts",
+            "sites schema, sample columns, order, uniqueness, and AF arithmetic",
+        ),
+        report.row(
+            "08", scope_id, "summary_count_reconciliation", summary_table is not None,
+            summary_detail, "one exact aggregate row matching inputs and sites",
+            "three-output transaction count reconciliation",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, scope_id, step_id="08", check_ids=CHECK_IDS)

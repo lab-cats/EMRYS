@@ -105,15 +105,30 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     expected_lines = [record.to_line() for record in expected_records]
     observed_lines = ["\t".join(values) for values in rows]
     agreement = observed_lines == expected_lines
-    def evidence(check_id: str, passed: bool, observed: object, expected: object, detail: str) -> tuple[str, ...]:
-        return ("00b", args.scope_id, check_id, "pass" if passed else "fail", report.clean(observed), report.clean(expected), report.clean(detail))
-
     output_rows = (
-        evidence("bed12_structure", structural, len(rows), "valid BED12 rows", "12 columns and legal coordinates/fields"),
-        evidence("coordinate_sorting", sorted_rows, "sorted" if sorted_rows else "unsorted", "chrom,start,end,name", "deterministic BED order"),
-        evidence("block_structure", blocks_valid, "valid" if blocks_valid else "invalid", "blockCount/sizes/starts reconcile", "BED blocks remain within transcript span"),
-        evidence("unique_transcript_names", unique_names, len({item[3] for item in rows}), len(rows), "one row per transcript name"),
-        evidence("gtf_transcript_agreement", agreement, len(rows), len(expected_lines), "BED12 bytes equal deterministic normalization of explicit GTF"),
+        report.row(
+            "00b", args.scope_id, "bed12_structure", structural, len(rows),
+            "valid BED12 rows", "12 columns and legal coordinates/fields",
+        ),
+        report.row(
+            "00b", args.scope_id, "coordinate_sorting", sorted_rows,
+            "sorted" if sorted_rows else "unsorted", "chrom,start,end,name",
+            "deterministic BED order",
+        ),
+        report.row(
+            "00b", args.scope_id, "block_structure", blocks_valid,
+            "valid" if blocks_valid else "invalid", "blockCount/sizes/starts reconcile",
+            "BED blocks remain within transcript span",
+        ),
+        report.row(
+            "00b", args.scope_id, "unique_transcript_names", unique_names,
+            len({item[3] for item in rows}), len(rows), "one row per transcript name",
+        ),
+        report.row(
+            "00b", args.scope_id, "gtf_transcript_agreement", agreement, len(rows),
+            len(expected_lines),
+            "BED12 bytes equal deterministic normalization of explicit GTF",
+        ),
     )
     data = report.render(output_rows)
     report.validate_report(
@@ -135,33 +150,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         data, snapshots = build_report(args)
-        print("Step: 00b")
-        print(f"Scope: {args.scope_id}")
-        print(f"BED12: {args.bed12}")
-        print(f"Source GTF: {args.source_gtf}")
-        print(f"Output: {args.output}")
-        print(data.decode(), end="")
-        if not args.execute:
-            print("Dry-run complete; no output was written.")
-            return 0
-        for path, expected in snapshots.items():
-            if report.regular_snapshot(path, f"Input {path.name}") != expected:
-                report.fail(f"Input changed after validation: {path}")
-        report.publish(
-            args.output,
+        return report.finish(
+            report.Runtime(
+                step_id='00b',
+                scope_id=args.scope_id,
+                check_ids={
+                    "bed12_structure",
+                    "coordinate_sorting",
+                    "block_structure",
+                    "unique_transcript_names",
+                    "gtf_transcript_agreement",
+                },
+                output=args.output,
+                execute=args.execute,
+                published_label='Step 00b',
+            ),
             data,
-            args.scope_id,
-            step_id="00b",
-            check_ids={
-                "bed12_structure",
-                "coordinate_sorting",
-                "block_structure",
-                "unique_transcript_names",
-                "gtf_transcript_agreement",
-            },
+            snapshots,
         )
-        print(f"Published Step 00b validation report: {args.output}")
-        return 0
     except report.ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

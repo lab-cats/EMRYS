@@ -23,6 +23,13 @@ REQUIRED_MEMBERS = (
     "exonInfo.tab", "geneInfo.tab", "sjdbInfo.txt",
     "sjdbList.fromGTF.out.tab", "sjdbList.out.tab", "transcriptInfo.tab",
 )
+CHECK_IDS = {
+    "index_members",
+    "fasta_identity",
+    "gtf_identity",
+    "contig_names_lengths",
+    "sjdb_overhang",
+}
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -123,13 +130,6 @@ def normalized_declared_path(value: str, path_base: Path) -> Path:
     return path.resolve(strict=False)
 
 
-def row(scope_id: str, check_id: str, passed: bool, observed: object, expected: object, detail: str) -> tuple[str, ...]:
-    return (
-        "00a", scope_id, check_id, "pass" if passed else "fail",
-        report.clean(observed), report.clean(expected), report.clean(detail),
-    )
-
-
 def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
         report.fail("scope-id must be nonempty and contain no whitespace")
@@ -181,24 +181,36 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     except ValueError:
         observed_overhang = None
     rows = (
-        row(args.scope_id, "index_members", members_pass,
+        report.row(
+            "00a", args.scope_id, "index_members", members_pass,
             len(REQUIRED_MEMBERS) - len(missing), len(REQUIRED_MEMBERS),
-            "all required members present" if members_pass else "missing: " + ",".join(missing)),
-        row(args.scope_id, "fasta_identity", fasta_match,
+            "all required members present" if members_pass else "missing: " + ",".join(missing),
+        ),
+        report.row(
+            "00a", args.scope_id, "fasta_identity", fasta_match,
             fasta_values[0] if len(fasta_values) == 1 else "invalid", str(fasta),
-            "genomeFastaFiles resolves to the explicit FASTA"),
-        row(args.scope_id, "gtf_identity", gtf_match,
+            "genomeFastaFiles resolves to the explicit FASTA",
+        ),
+        report.row(
+            "00a", args.scope_id, "gtf_identity", gtf_match,
             gtf_values[0] if len(gtf_values) == 1 else "invalid", str(gtf),
-            "sjdbGTFfile resolves to the explicit GTF"),
-        row(args.scope_id, "contig_names_lengths", star_records == fasta_records,
+            "sjdbGTFfile resolves to the explicit GTF",
+        ),
+        report.row(
+            "00a", args.scope_id, "contig_names_lengths", star_records == fasta_records,
             f"{len(star_records)} STAR contigs", f"{len(fasta_records)} FASTA contigs",
-            "ordered contig names and lengths agree" if star_records == fasta_records else "ordered contig names or lengths differ"),
-        row(args.scope_id, "sjdb_overhang", observed_overhang == args.expected_sjdb_overhang,
+            "ordered contig names and lengths agree" if star_records == fasta_records else "ordered contig names or lengths differ",
+        ),
+        report.row(
+            "00a", args.scope_id, "sjdb_overhang", observed_overhang == args.expected_sjdb_overhang,
             observed_overhang if observed_overhang is not None else "invalid",
-            args.expected_sjdb_overhang, "configured STAR splice-junction overhang"),
+            args.expected_sjdb_overhang, "configured STAR splice-junction overhang",
+        ),
     )
     data = report.render(rows)
-    report.validate_report(data, args.scope_id)
+    report.validate_report(
+        data, args.scope_id, step_id="00a", check_ids=CHECK_IDS
+    )
     return data, snapshots
 
 
@@ -206,21 +218,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         data, snapshots = build_report(args)
-        print(f"Step: 00a")
-        print(f"Scope: {args.scope_id}")
-        print(f"STAR index: {args.index_dir}")
-        print(f"Parameter path base: {args.parameter_path_base}")
-        print(f"Output: {args.output}")
-        print(data.decode("utf-8"), end="")
-        if not args.execute:
-            print("Dry-run complete; no output was written.")
-            return 0
-        for path, expected in snapshots.items():
-            if report.regular_snapshot(path, f"Input {path.name}") != expected:
-                report.fail(f"Input changed after validation: {path}")
-        report.publish(args.output, data, args.scope_id)
-        print(f"Published Step 00a validation report: {args.output}")
-        return 0
+        return report.finish(
+            report.Runtime(
+                step_id="00a",
+                scope_id=args.scope_id,
+                check_ids=CHECK_IDS,
+                output=args.output,
+                execute=args.execute,
+                published_label="Step 00a",
+            ),
+            data,
+            snapshots,
+            before_report=lambda: (
+                print(f"Step: 00a"),
+                print(f"Scope: {args.scope_id}"),
+                print(f"STAR index: {args.index_dir}"),
+                print(f"Parameter path base: {args.parameter_path_base}"),
+                print(f"Output: {args.output}"),
+            ),
+        )
     except report.ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

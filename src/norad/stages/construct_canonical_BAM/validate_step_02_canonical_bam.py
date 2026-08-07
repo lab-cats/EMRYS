@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -37,18 +36,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def integer_stdout(result: subprocess.CompletedProcess[str], label: str) -> int:
-    if result.returncode != 0:
-        report.fail(f"{label} failed: {report.clean(result.stderr)}")
-    try:
-        value = int(result.stdout.strip())
-    except ValueError:
-        report.fail(f"{label} returned a noninteger count")
-    if value < 0:
-        report.fail(f"{label} returned a negative count")
-    return value
-
-
 def build(args: argparse.Namespace):
     bam = args.bam.resolve(strict=False)
     bai = args.bai.resolve(strict=False)
@@ -76,10 +63,10 @@ def build(args: argparse.Namespace):
     coordinate, matching_rg, header_detail = bam_report.parse_header(
         header.stdout, args.scope_id
     )
-    total = integer_stdout(
+    total = report.integer_stdout(
         bam_report.run_tool(tool, "view", "-c", str(bam)), "alignment count"
     )
-    tagged = integer_stdout(
+    tagged = report.integer_stdout(
         bam_report.run_tool(
             tool, "view", "-c", "-d", f"RG:{args.scope_id}", str(bam)
         ),

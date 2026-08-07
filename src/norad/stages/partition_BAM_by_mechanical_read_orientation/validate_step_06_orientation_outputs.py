@@ -116,33 +116,38 @@ def build(args: argparse.Namespace):
         ) <= 0.0000005
     )
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "06", args.scope_id, check_id, "pass" if passed else "fail",
-            report.clean(observed), report.clean(expected), report.clean(detail),
-        )
-
     rows = [
-        item("output_containers", containers_ok,
-             " ".join(f"{key}={value.hex()}" for key, value in magic.items()),
-             "two BAM/BGZF and two BAI/CSI signatures",
-             "orientation output containers"),
-        item("counts_structure", structure_ok, structure_detail,
-             "one exact typed sample row", "orientation counts table"),
-        item("fwd_count_arithmetic", fwd_ok,
-             f"{values.get('flag_99_records')}+{values.get('flag_147_records')}="
-             f"{values.get('fwd_like_records')}",
-             "flag99 + flag147 = FWD_like", "mechanical FWD_like counts"),
-        item("rev_count_arithmetic", rev_ok,
-             f"{values.get('flag_83_records')}+{values.get('flag_163_records')}="
-             f"{values.get('rev_like_records')}",
-             "flag83 + flag163 = REV_like", "mechanical REV_like counts"),
-        item("assigned_count_arithmetic", assigned_ok,
-             f"input={values.get('input_records')} assigned={values.get('assigned_records')} "
-             f"unassigned={values.get('unassigned_records')} "
-             f"fraction={values.get('assigned_fraction')}",
-             "groups sum; assigned + unassigned = input; fraction reconciles",
-             "complete orientation count arithmetic"),
+        report.row(
+            "06", args.scope_id, "output_containers", containers_ok,
+            " ".join(f"{key}={value.hex()}" for key, value in magic.items()),
+            "two BAM/BGZF and two BAI/CSI signatures",
+            "orientation output containers",
+        ),
+        report.row(
+            "06", args.scope_id, "counts_structure", structure_ok,
+            structure_detail,
+            "one exact typed sample row", "orientation counts table",
+        ),
+        report.row(
+            "06", args.scope_id, "fwd_count_arithmetic", fwd_ok,
+            f"{values.get('flag_99_records')}+{values.get('flag_147_records')}="
+            f"{values.get('fwd_like_records')}",
+            "flag99 + flag147 = FWD_like", "mechanical FWD_like counts",
+        ),
+        report.row(
+            "06", args.scope_id, "rev_count_arithmetic", rev_ok,
+            f"{values.get('flag_83_records')}+{values.get('flag_163_records')}="
+            f"{values.get('rev_like_records')}",
+            "flag83 + flag163 = REV_like", "mechanical REV_like counts",
+        ),
+        report.row(
+            "06", args.scope_id, "assigned_count_arithmetic", assigned_ok,
+            f"input={values.get('input_records')} assigned={values.get('assigned_records')} "
+            f"unassigned={values.get('unassigned_records')} "
+            f"fraction={values.get('assigned_fraction')}",
+            "groups sum; assigned + unassigned = input; fraction reconciles",
+            "complete orientation count arithmetic",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, args.scope_id, step_id="06", check_ids=CHECK_IDS)

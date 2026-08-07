@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import stat
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,3 +49,14 @@ def require_unchanged(snapshots: dict[Path, Snapshot]) -> None:
         if regular_snapshot(path, f"Input {path.name}") != expected:
             fail(f"Input changed after validation: {path}")
 
+
+def integer_stdout(result: subprocess.CompletedProcess[str], label: str) -> int:
+    if result.returncode != 0:
+        fail(f"{label} failed: {result.stderr}")
+    try:
+        value = int(result.stdout.strip())
+    except ValueError:
+        fail(f"{label} returned a noninteger count")
+    if value < 0:
+        fail(f"{label} returned a negative count")
+    return value

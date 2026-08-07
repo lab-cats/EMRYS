@@ -123,28 +123,32 @@ def build(args: argparse.Namespace):
     mapping_ok, mapping_observed = valid_mapping_summary(final_values)
     sj_ok, sj_observed = valid_sj(paths["sj_out"])
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "01",
-            args.scope_id,
-            check_id,
-            "pass" if passed else "fail",
-            report.clean(observed),
-            report.clean(expected),
-            report.clean(detail),
-        )
-
     rows = [
-        item("output_files", nonempty, len(paths), "5 nonempty explicit outputs",
-             "BAM, final/general/progress logs, and SJ table"),
-        item("bam_structure", bam_valid, bam_prefix.hex(), "BAM or BGZF magic",
-             "alignment output container"),
-        item("final_log_structure", bool(final_values), len(final_values) if final_values else final_error,
-             "nonempty unique key/value rows", "STAR Log.final.out structure"),
-        item("mapping_summary", mapping_ok, mapping_observed,
-             "three required percentages in 0..100", "STAR mapping summary"),
-        item("splice_junction_structure", sj_ok, sj_observed,
-             "zero or more valid 9-column rows", "STAR SJ.out.tab structure"),
+        report.row(
+            "01", args.scope_id, "output_files", nonempty,
+            len(paths), "5 nonempty explicit outputs",
+            "BAM, final/general/progress logs, and SJ table",
+        ),
+        report.row(
+            "01", args.scope_id, "bam_structure", bam_valid,
+            bam_prefix.hex(), "BAM or BGZF magic",
+            "alignment output container",
+        ),
+        report.row(
+            "01", args.scope_id, "final_log_structure", bool(final_values),
+            len(final_values) if final_values else final_error,
+            "nonempty unique key/value rows", "STAR Log.final.out structure",
+        ),
+        report.row(
+            "01", args.scope_id, "mapping_summary", mapping_ok,
+            mapping_observed, "three required percentages in 0..100",
+            "STAR mapping summary",
+        ),
+        report.row(
+            "01", args.scope_id, "splice_junction_structure", sj_ok,
+            sj_observed, "zero or more valid 9-column rows",
+            "STAR SJ.out.tab structure",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, args.scope_id, step_id="01", check_ids=CHECK_IDS)

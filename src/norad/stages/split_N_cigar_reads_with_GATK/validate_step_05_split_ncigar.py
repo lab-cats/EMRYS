@@ -85,27 +85,31 @@ def build(args: argparse.Namespace):
         sidecar_error = report.clean(exc)
         sidecar_observed = sidecar_error
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "05", args.scope_id, check_id, "pass" if passed else "fail",
-            report.clean(observed), report.clean(expected), report.clean(detail),
-        )
-
     rows = [
-        item("bam_bai_structure", structure,
-             f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
-             "BAM/BGZF and BAI/CSI magic", "split-N-cigar pair containers"),
-        item("samtools_quickcheck", quick.returncode == 0,
-             report.clean(quick.stderr) or f"exit={quick.returncode}",
-             "exit=0 with empty diagnostics", "samtools quickcheck -v"),
-        item("coordinate_sorting", coordinate, header_detail,
-             "one @HD with SO:coordinate", "split BAM sort order"),
-        item("read_group_preservation", matching_rg, header_detail,
-             f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
-             "canonical sample read group is preserved"),
-        item("reference_sidecars", sidecars_ok, sidecar_observed,
-             "ordered FASTA/FAI/DICT contigs and lengths agree",
-             "explicit GATK reference prerequisites"),
+        report.row(
+            "05", args.scope_id, "bam_bai_structure", structure,
+            f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
+            "BAM/BGZF and BAI/CSI magic", "split-N-cigar pair containers",
+        ),
+        report.row(
+            "05", args.scope_id, "samtools_quickcheck", quick.returncode == 0,
+            report.clean(quick.stderr) or f"exit={quick.returncode}",
+            "exit=0 with empty diagnostics", "samtools quickcheck -v",
+        ),
+        report.row(
+            "05", args.scope_id, "coordinate_sorting", coordinate,
+            header_detail, "one @HD with SO:coordinate", "split BAM sort order",
+        ),
+        report.row(
+            "05", args.scope_id, "read_group_preservation", matching_rg,
+            header_detail, f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
+            "canonical sample read group is preserved",
+        ),
+        report.row(
+            "05", args.scope_id, "reference_sidecars", sidecars_ok,
+            sidecar_observed, "ordered FASTA/FAI/DICT contigs and lengths agree",
+            "explicit GATK reference prerequisites",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, args.scope_id, step_id="05", check_ids=CHECK_IDS)

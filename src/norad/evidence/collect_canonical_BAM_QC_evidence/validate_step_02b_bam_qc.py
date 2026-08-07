@@ -84,24 +84,52 @@ def build(args: argparse.Namespace):
     mapped_ok = flagstat_ok and mapped >= 0
     consistent = total_ok and mapped_ok and mapped <= total
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "02b", args.scope_id, check_id, "pass" if passed else "fail",
-            report.clean(observed), report.clean(expected), report.clean(detail),
-        )
-
     rows = [
-        item("quickcheck_structure", quick_ok, quick_text or "empty",
-             "exact PASS marker", "captured samtools quickcheck result"),
-        item("flagstat_structure", flagstat_ok,
-             "; ".join(errors) if errors else ",".join(sorted(values)),
-             "unique total and mapped rows", "flagstat report structure"),
-        item("total_records", total_ok, total if total_ok else "invalid",
-             "nonnegative integer", "QC-passed plus QC-failed total"),
-        item("mapped_records", mapped_ok, mapped if mapped_ok else "invalid",
-             "nonnegative integer", "QC-passed plus QC-failed mapped"),
-        item("count_consistency", consistent, f"mapped={mapped} total={total}",
-             "mapped <= total", "flagstat count reconciliation"),
+        report.row(
+            "02b",
+            args.scope_id,
+            "quickcheck_structure",
+            quick_ok,
+            quick_text or "empty",
+            "exact PASS marker",
+            "captured samtools quickcheck result",
+        ),
+        report.row(
+            "02b",
+            args.scope_id,
+            "flagstat_structure",
+            flagstat_ok,
+            "; ".join(errors) if errors else ",".join(sorted(values)),
+            "unique total and mapped rows",
+            "flagstat report structure",
+        ),
+        report.row(
+            "02b",
+            args.scope_id,
+            "total_records",
+            total_ok,
+            total if total_ok else "invalid",
+            "nonnegative integer",
+            "QC-passed plus QC-failed total",
+        ),
+        report.row(
+            "02b",
+            args.scope_id,
+            "mapped_records",
+            mapped_ok,
+            mapped if mapped_ok else "invalid",
+            "nonnegative integer",
+            "QC-passed plus QC-failed mapped",
+        ),
+        report.row(
+            "02b",
+            args.scope_id,
+            "count_consistency",
+            consistent,
+            f"mapped={mapped} total={total}",
+            "mapped <= total",
+            "flagstat count reconciliation",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, args.scope_id, step_id="02b", check_ids=CHECK_IDS)

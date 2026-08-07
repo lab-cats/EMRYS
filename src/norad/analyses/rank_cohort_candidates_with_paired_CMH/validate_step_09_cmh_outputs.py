@@ -7,7 +7,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
-from typing import Callable, Sequence, TypeVar
+from typing import Sequence
 
 
 _SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
@@ -31,9 +31,6 @@ CHECK_IDS = {
     "mutation_spectrum_reconciliation",
     "pdf_structure",
 }
-T = TypeVar("T")
-
-
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--analysis-id", required=True)
@@ -51,18 +48,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
-
-
-def attempt(function: Callable[[], T]) -> tuple[T | None, str]:
-    try:
-        return function(), "validated"
-    except (OSError, UnicodeError, csv.Error, step08.ContractError) as exc:
-        return None, report.clean(exc)
-
-
-def header(path: Path) -> tuple[str, ...]:
-    with path.open(encoding="utf-8", newline="") as stream:
-        return tuple(next(csv.reader(stream, delimiter="\t")))
 
 
 def absolute(path: Path) -> Path:
@@ -108,29 +93,33 @@ def build(args: argparse.Namespace):
         ) == len(native_paths)
     )
 
-    _, id_detail = attempt(
+    _, id_detail = report.attempt(
         lambda: (
             step08.validate_safe_id("analysis_id", args.analysis_id),
             step08.validate_safe_id("cohort_id", args.cohort_id),
-        )
+        ),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
-    sample_result, sample_detail = attempt(
-        lambda: step08.validate_sample_manifest(paths["sample_manifest"])
+    sample_result, sample_detail = report.attempt(
+        lambda: step08.validate_sample_manifest(paths["sample_manifest"]),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
-    partition_table, partition_detail = attempt(
-        lambda: step08.validate_partition_manifest(paths["partition_manifest"])
+    partition_table, partition_detail = report.attempt(
+        lambda: step08.validate_partition_manifest(paths["partition_manifest"]),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     step08_inputs = None
     step08_input_detail = "manifest prerequisite failed"
     if sample_result is not None and partition_table is not None:
-        step08_inputs, step08_input_detail = attempt(
+        step08_inputs, step08_input_detail = report.attempt(
             lambda: step08.validate_step08_inputs(
                 paths["step08_inputs"],
                 sample_result[1],
                 partition_table.rows,
                 step08.sha256_file(paths["sample_manifest"]),
                 step08.sha256_file(paths["partition_manifest"]),
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
     cohort_policy_ok = (
         step08_inputs is not None
@@ -151,13 +140,14 @@ def build(args: argparse.Namespace):
         and partition_table is not None
         and step08_inputs is not None
     ):
-        step08_sites, step08_sites_detail = attempt(
+        step08_sites, step08_sites_detail = report.attempt(
             lambda: step08.validate_step08_sites(
                 paths["step08_sites"],
                 sample_result[1],
                 partition_table.rows,
                 step08_inputs.rows,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
 
     expected_result_header = None
@@ -168,13 +158,14 @@ def build(args: argparse.Namespace):
             + tuple(f"AD__{sample}" for sample in sample_result[1])
             + tuple(f"AF__{sample}" for sample in sample_result[1])
         )
-    observed_headers, header_detail = attempt(
+    observed_headers, header_detail = report.attempt(
         lambda: (
-            header(paths["all_sites"]),
-            header(paths["significant_sites"]),
-            header(paths["summary"]),
-            header(paths["mutation_spectrum"]),
-        )
+            report.read_header(paths["all_sites"]),
+            report.read_header(paths["significant_sites"]),
+            report.read_header(paths["summary"]),
+            report.read_header(paths["mutation_spectrum"]),
+        ),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     transaction_ok = (
         transaction_ok
@@ -192,23 +183,25 @@ def build(args: argparse.Namespace):
     significant_sites = None
     result_detail = "Step 08 prerequisite failed"
     if sample_result is not None and step08_sites is not None:
-        all_sites, all_detail = attempt(
+        all_sites, all_detail = report.attempt(
             lambda: step09.validate_step09_results(
                 "Step 09 all-sites",
                 paths["all_sites"],
                 sample_result[1],
                 args.analysis_id,
                 step08_sites.rows,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
-        significant_sites, significant_detail = attempt(
+        significant_sites, significant_detail = report.attempt(
             lambda: step09.validate_step09_results(
                 "Step 09 significant-sites",
                 paths["significant_sites"],
                 sample_result[1],
                 args.analysis_id,
                 step08_sites.rows,
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
         result_detail = f"all={all_detail}; significant={significant_detail}"
     candidate_order_ok = (
@@ -229,7 +222,7 @@ def build(args: argparse.Namespace):
         and step08_inputs is not None
         and all_sites is not None
     ):
-        summary, summary_detail = attempt(
+        summary, summary_detail = report.attempt(
             lambda: step09.validate_step09_summary(
                 paths["summary"],
                 args.analysis_id,
@@ -246,58 +239,60 @@ def build(args: argparse.Namespace):
                 step08.sha256_file(paths["step08_sites"]),
                 step08.sha256_file(paths["step08_inputs"]),
                 step08_inputs.rows[0]["orientation_policy"],
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
     semantic_ok = False
     semantic_detail = "result or summary prerequisite failed"
     if summary is not None and all_sites is not None and sample_result is not None:
-        _, semantic_detail = attempt(
+        _, semantic_detail = report.attempt(
             lambda: step09.validate_step09_result_semantics(
                 all_sites.rows, summary.rows[0], sample_result[2]
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
         semantic_ok = semantic_detail == "validated"
 
     subset_ok = False
     subset_detail = "result prerequisite failed"
     if all_sites is not None and significant_sites is not None:
-        subset_result, subset_detail = attempt(
+        subset_result, subset_detail = report.attempt(
             lambda: step09.validate_significant_subset(
                 all_sites.rows, significant_sites.rows
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
         subset_ok = subset_detail == "validated"
 
     mutation = None
     mutation_detail = "all-sites prerequisite failed"
     if all_sites is not None:
-        mutation, mutation_detail = attempt(
+        mutation, mutation_detail = report.attempt(
             lambda: step09.validate_mutation_spectrum(
                 paths["mutation_spectrum"], args.analysis_id, all_sites.rows
-            )
+            ),
+            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
 
-    _, mutation_pdf_detail = attempt(
+    _, mutation_pdf_detail = report.attempt(
         lambda: step09.validate_pdf(
             "Step 09 mutation-spectrum PDF", paths["mutation_spectrum_pdf"]
-        )
+        ),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
-    _, depth_pdf_detail = attempt(
+    _, depth_pdf_detail = report.attempt(
         lambda: step09.validate_pdf(
             "Step 09 depth-delta PDF", paths["depth_delta_pdf"]
-        )
+        ),
+        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     pdf_ok = mutation_pdf_detail == depth_pdf_detail == "validated"
     scope_id = args.analysis_id
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "09", scope_id, check_id, "pass" if passed else "fail",
-            report.clean(observed), report.clean(expected), report.clean(detail),
-        )
-
     rows = [
-        item(
+        report.row(
+            "09",
+            scope_id,
             "output_transaction",
             transaction_ok,
             f"headers={header_detail}; six regular snapshots",
@@ -305,7 +300,9 @@ def build(args: argparse.Namespace):
             "six distinct physical files",
             "native Step 09 output transaction",
         ),
-        item(
+        report.row(
+            "09",
+            scope_id,
             "upstream_identity_and_candidate_order",
             (
                 id_detail == "validated"
@@ -320,28 +317,51 @@ def build(args: argparse.Namespace):
             f"partition={partition_detail}; inputs={step08_input_detail}; "
             f"sites={step08_sites_detail}",
         ),
-        item(
+        report.row(
+            "09",
+            scope_id,
             "status_semantics",
             semantic_ok,
             semantic_detail,
             "recomputed target/test/call, depth, AF, background, CMH, and BH",
             "native Step 09 statistical-state contract",
         ),
-        item("significant_subset", subset_ok, subset_detail,
-             "exact ordered significant subset", "all-sites versus significant-sites"),
-        item(
+        report.row(
+            "09",
+            scope_id,
+            "significant_subset",
+            subset_ok,
+            subset_detail,
+            "exact ordered significant subset",
+            "all-sites versus significant-sites",
+        ),
+        report.row(
+            "09",
+            scope_id,
             "summary_count_reconciliation",
             summary is not None,
             summary_detail,
             "one analysis/cohort-bound summary with exact counts and provenance",
             "paths, hashes, pairings, context, policy, and thresholds",
         ),
-        item("mutation_spectrum_reconciliation", mutation is not None, mutation_detail,
-             "canonical 12-SNV spectrum matching all-sites",
-             "mutation counts, fractions, and significant directions"),
-        item("pdf_structure", pdf_ok,
-             f"mutation={mutation_pdf_detail}; depth={depth_pdf_detail}",
-             "two structurally valid PDFs", "plot output containers"),
+        report.row(
+            "09",
+            scope_id,
+            "mutation_spectrum_reconciliation",
+            mutation is not None,
+            mutation_detail,
+            "canonical 12-SNV spectrum matching all-sites",
+            "mutation counts, fractions, and significant directions",
+        ),
+        report.row(
+            "09",
+            scope_id,
+            "pdf_structure",
+            pdf_ok,
+            f"mutation={mutation_pdf_detail}; depth={depth_pdf_detail}",
+            "two structurally valid PDFs",
+            "plot output containers",
+        ),
     ]
     data = report.render(rows)
     report.validate_report(data, scope_id, step_id="09", check_ids=CHECK_IDS)

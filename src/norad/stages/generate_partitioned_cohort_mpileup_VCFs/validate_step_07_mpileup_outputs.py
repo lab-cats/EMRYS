@@ -226,31 +226,36 @@ def build(args: argparse.Namespace):
         )
     )
 
-    def item(check_id: str, passed: bool, observed: object, expected: str, detail: str):
-        return (
-            "07", f"{args.cohort_id}__{args.partition_id}", check_id,
-            "pass" if passed else "fail", report.clean(observed),
-            report.clean(expected), report.clean(detail),
-        )
+    scope_id = f"{args.cohort_id}__{args.partition_id}"
 
     rows = [
-        item("receipt_structure", receipt_structure, f"rows={len(receipt_rows)}",
+        report.row(
+            "07", scope_id, "receipt_structure", receipt_structure,
+             f"rows={len(receipt_rows)}",
              "exact header; FWD_like then REV_like rows", "receipt transaction"),
-        item("vcf_structure", vcf_structure,
-             f"FWD={len(fwd_samples)} REV={len(rev_samples)} samples",
-             "valid VCFs with manifest sample order", "explicit VCF structure"),
-        item("selector_reconciliation", selector_reconciliation,
-             f"{selector_type}={selector_value}", "declared valid selector in both rows",
-             "partition selector and FAI universe"),
-        item("manifest_identity_and_sample_order", manifest_identity and vcf_structure,
-             f"samples={len(sample_ids)}", "manifest hashes, count, and VCF order reconcile",
-             "immutable manifest identity"),
-        item("vcf_record_counts", counts_ok,
-             f"FWD_like={fwd_count} REV_like={rev_count}",
-             "receipt paths and counts match exact VCFs", "transaction record counts"),
+        report.row(
+            "07", scope_id, "vcf_structure", vcf_structure,
+            f"FWD={len(fwd_samples)} REV={len(rev_samples)} samples",
+            "valid VCFs with manifest sample order", "explicit VCF structure",
+        ),
+        report.row(
+            "07", scope_id, "selector_reconciliation", selector_reconciliation,
+            f"{selector_type}={selector_value}",
+            "declared valid selector in both rows", "partition selector and FAI universe",
+        ),
+        report.row(
+            "07", scope_id, "manifest_identity_and_sample_order",
+            manifest_identity and vcf_structure,
+            f"samples={len(sample_ids)}", "manifest hashes, count, and VCF order reconcile",
+            "immutable manifest identity",
+        ),
+        report.row(
+            "07", scope_id, "vcf_record_counts", counts_ok,
+            f"FWD_like={fwd_count} REV_like={rev_count}",
+            "receipt paths and counts match exact VCFs", "transaction record counts",
+        ),
     ]
     data = report.render(rows)
-    scope_id = f"{args.cohort_id}__{args.partition_id}"
     report.validate_report(data, scope_id, step_id="07", check_ids=CHECK_IDS)
     return data, snapshots
 
