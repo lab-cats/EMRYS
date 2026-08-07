@@ -44,12 +44,7 @@ def build(args: argparse.Namespace):
         {"bam": bam, "bai": bai, "samtools": tool}, label="Step 02"
     )
     report.require_executable(tool, "samtools executable")
-    bam_magic = bam_report.read_bam_prefix(bam)
-    bai_magic = bam_report.read_bai_prefix(bai)
-    structure = (
-        bam_report.bam_magic_ok(bam_magic)
-        and bam_report.bai_magic_ok(bai_magic)
-    )
+    structure, bam_magic, bai_magic = bam_report.validate_bam_bai_pair(bam, bai)
     quickcheck = bam_report.run_tool(tool, "quickcheck", "-v", str(bam))
     header = bam_report.run_tool(tool, "view", "-H", str(bam))
     if header.returncode != 0:

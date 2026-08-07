@@ -46,18 +46,19 @@ def build(args: argparse.Namespace):
         "counts": report.lexical_path(args.counts),
     }
     snapshots = report.snapshots(paths, label="Step 06")
-    magic = {
-        "fwd_bam": bam_report.read_bam_prefix(paths["fwd_bam"]),
-        "fwd_bai": bam_report.read_bai_prefix(paths["fwd_bai"]),
-        "rev_bam": bam_report.read_bam_prefix(paths["rev_bam"]),
-        "rev_bai": bam_report.read_bai_prefix(paths["rev_bai"]),
-    }
-    containers_ok = (
-        bam_report.bam_magic_ok(magic["fwd_bam"])
-        and bam_report.bam_magic_ok(magic["rev_bam"])
-        and bam_report.bai_magic_ok(magic["fwd_bai"])
-        and bam_report.bai_magic_ok(magic["rev_bai"])
+    fwd_container_ok, fwd_bam_magic, fwd_bai_magic = bam_report.validate_bam_bai_pair(
+        paths["fwd_bam"], paths["fwd_bai"]
     )
+    rev_container_ok, rev_bam_magic, rev_bai_magic = bam_report.validate_bam_bai_pair(
+        paths["rev_bam"], paths["rev_bai"]
+    )
+    magic = {
+        "fwd_bam": fwd_bam_magic,
+        "fwd_bai": fwd_bai_magic,
+        "rev_bam": rev_bam_magic,
+        "rev_bai": rev_bai_magic,
+    }
+    containers_ok = fwd_container_ok and rev_container_ok
     values, structure_detail = orientation.read_orientation_counts(
         paths["counts"], args.scope_id
     )

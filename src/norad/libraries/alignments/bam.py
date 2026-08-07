@@ -12,6 +12,19 @@ BAM_MAGIC_PREFIXES = {b"BAM\x01", b"\x1f\x8b\x08\x04"}
 BAI_MAGIC_PREFIXES = {b"BAI\x01", b"CSI\x01"}
 
 
+def validate_bam_bai_pair(
+    bam: Path, bai: Path
+) -> tuple[bool, bytes, bytes]:
+    """Validate BAM/BAI magic signatures and return both observed signatures."""
+    bam_magic = read_bam_prefix(bam)
+    bai_magic = read_bai_prefix(bai)
+    return (
+        bam_magic_ok(bam_magic) and bai_magic_ok(bai_magic),
+        bam_magic,
+        bai_magic,
+    )
+
+
 def run_tool(tool: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [str(tool), *arguments],
