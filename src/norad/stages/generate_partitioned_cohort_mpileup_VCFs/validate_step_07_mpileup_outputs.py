@@ -15,6 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.references import contigs as reference_contigs
 
 
 
@@ -73,18 +74,10 @@ def read_partition(path: Path, partition_id: str) -> tuple[str, str]:
 
 
 def read_fai(path: Path) -> dict[str, int]:
-    contigs: dict[str, int] = {}
-    with path.open(encoding="utf-8") as stream:
-        for number, line in enumerate(stream, 1):
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) < 2 or not fields[1].isdigit() or int(fields[1]) < 1:
-                raise report.ValidationError(f"Invalid FAI row {number}")
-            if fields[0] in contigs:
-                raise report.ValidationError(f"Duplicate FAI contig: {fields[0]}")
-            contigs[fields[0]] = int(fields[1])
-    if not contigs:
-        raise report.ValidationError("FAI contains no contigs")
-    return contigs
+    try:
+        return {name: length for name, length in reference_contigs.parse_fai(path)}
+    except reference_contigs.ReferenceContigError as exc:
+        raise report.ValidationError(str(exc))
 
 
 def selector_ok(
@@ -110,12 +103,12 @@ def selector_ok(
         return True
     selector_path = report.resolve_from_base(partition_manifest.parent, selector_value)
     try:
-        with selector_path.open(encoding="utf-8") as stream:
-            rows = [
-                line.rstrip("\n").split("\t") for line in stream
-                if line.strip() and not line.startswith("#")
-            ]
-    except (OSError, UnicodeError):
+        rows = [
+            line.split("\t")
+            for line in report.stable_text(selector_path, "Partition selector file")[0].splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+    except (OSError, UnicodeError, report.ValidationError):
         return False
     return bool(rows) and all(row and row[0] in contigs for row in rows)
 
@@ -123,27 +116,26 @@ def selector_ok(
 def read_vcf(path: Path) -> tuple[list[str], int]:
     samples: list[str] | None = None
     count = 0
-    with path.open(encoding="utf-8") as stream:
-        for line in stream:
-            if line.startswith("##"):
-                continue
-            if line.startswith("#CHROM\t"):
-                fields = line.rstrip("\n").split("\t")
-                if fields[:9] != [
-                    "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
-                    "INFO", "FORMAT",
-                ]:
-                    raise report.ValidationError(f"Invalid VCF header: {path}")
-                samples = fields[9:]
-                continue
-            if line.startswith("#"):
-                continue
-            if samples is None:
-                raise report.ValidationError(f"VCF data precedes header: {path}")
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) != 9 + len(samples) or not fields[1].isdigit():
-                raise report.ValidationError(f"Invalid VCF data row: {path}")
-            count += 1
+    for line in report.stable_text(path, "VCF")[0].splitlines():
+        if line.startswith("##"):
+            continue
+        if line.startswith("#CHROM\t"):
+            fields = line.split("\t")
+            if fields[:9] != [
+                "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
+                "INFO", "FORMAT",
+            ]:
+                raise report.ValidationError(f"Invalid VCF header: {path}")
+            samples = fields[9:]
+            continue
+        if line.startswith("#"):
+            continue
+        if samples is None:
+            raise report.ValidationError(f"VCF data precedes header: {path}")
+        fields = line.split("\t")
+        if len(fields) != 9 + len(samples) or not fields[1].isdigit():
+            raise report.ValidationError(f"Invalid VCF data row: {path}")
+        count += 1
     if samples is None:
         raise report.ValidationError(f"VCF lacks #CHROM header: {path}")
     return samples, count
