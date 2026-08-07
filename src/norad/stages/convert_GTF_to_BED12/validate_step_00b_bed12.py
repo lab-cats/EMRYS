@@ -17,6 +17,7 @@ if str(_SRC_ROOT) not in sys.path:
 from norad.libraries import validation as report
 
 import gtf_to_bed12
+from norad.libraries.alignments import bed as bed_report
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -29,70 +30,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_bed(path: Path) -> tuple[list[tuple[str, ...]], report.Snapshot]:
-    text, snapshot = report.stable_text(path, "BED12")
-    rows: list[tuple[str, ...]] = []
-    for number, raw in enumerate(text.splitlines(), 1):
-        fields = tuple(raw.split("\t"))
-        if len(fields) != 12:
-            report.fail(f"BED12 row {number} must contain exactly 12 columns")
-        rows.append(fields)
-    if not rows:
-        report.fail("BED12 must contain at least one row")
-    return rows, snapshot
-
-
-def inspect_rows(rows: Sequence[tuple[str, ...]]) -> tuple[bool, bool, bool, bool]:
-    structural = True
-    blocks_valid = True
-    unique_names = True
-    parsed_keys: list[tuple[str, int, int, str]] = []
-    names: set[str] = set()
-    for fields in rows:
-        try:
-            start = int(fields[1])
-            end = int(fields[2])
-            thick_start = int(fields[6])
-            thick_end = int(fields[7])
-            count = int(fields[9])
-            sizes = tuple(int(value) for value in fields[10].rstrip(",").split(","))
-            starts = tuple(int(value) for value in fields[11].rstrip(",").split(","))
-        except ValueError:
-            structural = False
-            continue
-        if (
-            not fields[0] or not fields[3] or fields[4] != "0"
-            or fields[5] not in gtf_to_bed12.VALID_STRANDS
-            or start < 0 or end <= start or thick_start != start
-            or thick_end != end or fields[8] != "0" or count <= 0
-        ):
-            structural = False
-        if (
-            len(sizes) != count or len(starts) != count
-            or any(size <= 0 for size in sizes)
-            or any(offset < 0 for offset in starts)
-            or tuple(sorted(starts)) != starts
-            or any(offset + size > end - start for offset, size in zip(starts, sizes, strict=False))
-            or starts[0] != 0
-            or starts[-1] + sizes[-1] != end - start
-        ):
-            blocks_valid = False
-        if fields[3] in names:
-            unique_names = False
-        names.add(fields[3])
-        parsed_keys.append((fields[0], start, end, fields[3]))
-    sorted_rows = structural and parsed_keys == sorted(parsed_keys)
-    return structural, sorted_rows, blocks_valid, unique_names
-
-
 def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
         report.fail("scope-id must be nonempty and contain no whitespace")
     bed = report.lexical_path(args.bed12)
     gtf = report.lexical_path(args.source_gtf)
-    rows, bed_snapshot = parse_bed(bed)
+    rows, bed_snapshot = bed_report.parse_bed12(bed)
     _, gtf_snapshot = report.stable_text(gtf, "Source GTF")
-    structural, sorted_rows, blocks_valid, unique_names = inspect_rows(rows)
+    structural, sorted_rows, blocks_valid, unique_names = bed_report.inspect_bed12_rows(
+        rows
+    )
     warnings = io.StringIO()
     try:
         transcripts = gtf_to_bed12.parse_gtf(
