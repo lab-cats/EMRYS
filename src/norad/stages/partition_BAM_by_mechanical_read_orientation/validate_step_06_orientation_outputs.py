@@ -4,8 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import math
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -17,15 +15,8 @@ if str(_SRC_ROOT) not in sys.path:
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import bam as bam_report
+from norad.libraries.alignments import orientation
 
-
-
-COUNTS_HEADER = (
-    "sample_id", "input_records", "flag_99_records", "flag_147_records",
-    "flag_83_records", "flag_163_records", "fwd_like_records",
-    "rev_like_records", "assigned_records", "unassigned_records",
-    "assigned_fraction",
-)
 CHECK_IDS = {
     "output_containers",
     "counts_structure",
@@ -46,33 +37,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
-
-
-def read_counts(path: Path, scope_id: str) -> tuple[dict[str, int | float], str]:
-    try:
-        header, rows = report.read_tsv(path)
-    except (OSError, UnicodeError, csv.Error) as exc:
-        return {}, report.clean(exc)
-    if tuple(header) != COUNTS_HEADER:
-        return {}, "header mismatch"
-    if len(rows) != 1 or rows[0]["sample_id"] != scope_id:
-        return {}, "expected one row for the declared sample"
-    values: dict[str, int | float] = {}
-    try:
-        for key in COUNTS_HEADER[1:-1]:
-            value = int(rows[0][key])
-            if value < 0:
-                raise ValueError
-            values[key] = value
-        fraction = float(rows[0]["assigned_fraction"])
-        if not math.isfinite(fraction) or not 0 <= fraction <= 1:
-            raise ValueError
-        values["assigned_fraction"] = fraction
-    except ValueError:
-        return {}, "counts must be nonnegative integers and fraction in 0..1"
-    return values, "one typed sample row"
-
-
 def build(args: argparse.Namespace):
     paths = {
         "fwd_bam": report.lexical_path(args.fwd_bam),
@@ -94,7 +58,9 @@ def build(args: argparse.Namespace):
         and bam_report.bai_magic_ok(magic["fwd_bai"])
         and bam_report.bai_magic_ok(magic["rev_bai"])
     )
-    values, structure_detail = read_counts(paths["counts"], args.scope_id)
+    values, structure_detail = orientation.read_orientation_counts(
+        paths["counts"], args.scope_id
+    )
     structure_ok = bool(values)
     fwd_ok = structure_ok and (
         values["flag_99_records"] + values["flag_147_records"]
