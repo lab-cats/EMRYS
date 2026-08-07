@@ -45,8 +45,8 @@ def build(args: argparse.Namespace):
     )
     if not tool.stat().st_mode & 0o111:
         report.fail(f"samtools executable is not executable: {tool}")
-    bam_magic = bam.read_bytes()[:4]
-    bai_magic = bai.read_bytes()[:4]
+    bam_magic = report.read_bytes(bam, "BAM file")[:4]
+    bai_magic = report.read_bytes(bai, "BAI file")[:4]
     structure = (
         bam_magic in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
         and bai_magic in {b"BAI\x01", b"CSI\x01"}
