@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import math
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
+
+
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.libraries import validation as report
 
 
 class ContractError(RuntimeError):
@@ -157,14 +164,10 @@ def values_close(left: float | None, right: float | None) -> bool:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
     try:
-        with path.open("rb") as stream:
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
+        return report.sha256_file(path)
     except OSError as exc:
         fail(f"Could not hash {path}: {exc}")
-    return digest.hexdigest()
 
 
 def require_file(label: str, value: str | Path) -> Path:
