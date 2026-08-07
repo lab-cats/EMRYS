@@ -6,6 +6,7 @@ import glob
 import hashlib
 import json
 import re
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,12 @@ from typing import Any, Iterable
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
+
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+from norad.libraries import validation as report
+
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 SCHEMA_ROOT = (
@@ -211,14 +218,10 @@ def format_json_path(parts: Iterable[Any]) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
     try:
-        with path.open("rb") as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
+        return report.sha256_file(path)
     except OSError as exc:
         raise ContractValidationError(f"Could not hash {path}: {exc}") from exc
-    return digest.hexdigest()
 
 
 def canonical_run_contract_sha256(run_contract: dict[str, Any]) -> str:
