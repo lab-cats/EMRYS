@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
+
+from norad.libraries import validation as report
+from norad.libraries.references import contigs as reference_contigs
 
 
 PERCENT_KEYS = {
@@ -59,3 +63,49 @@ def valid_splice_junction_table(text: str) -> tuple[bool, str]:
             return False, f"line {line_number} contains invalid coordinates/counts"
         count += 1
     return True, f"{count} splice-junction rows"
+
+
+def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]:
+    text, snapshot = report.stable_text(path, "STAR genomeParameters")
+    parsed: dict[str, list[str]] = {}
+    for number, raw in enumerate(text.splitlines(), 1):
+        fields = raw.split()
+        if not fields:
+            continue
+        if len(fields) < 2:
+            raise ValueError(f"STAR genomeParameters line {number} has no value")
+        if fields[0] in parsed:
+            raise ValueError(f"STAR genomeParameters repeats {fields[0]!r}")
+        parsed[fields[0]] = fields[1:]
+    return parsed, snapshot
+
+
+def parse_fasta(path: Path) -> tuple[list[tuple[str, int]], report.Snapshot]:
+    text, snapshot = report.stable_text(path, "Reference FASTA")
+    try:
+        contigs = reference_contigs.parse_fasta_lines(text.splitlines())
+    except reference_contigs.ReferenceContigError as exc:
+        raise ValueError(str(exc))
+    return contigs, snapshot
+
+
+def parse_star_index_contigs(
+    index_dir: Path,
+) -> tuple[list[tuple[str, int]], tuple[report.Snapshot, report.Snapshot]]:
+    names_text, names_snapshot = report.stable_text(
+        index_dir / "chrName.txt", "STAR chrName"
+    )
+    lengths_text, lengths_snapshot = report.stable_text(
+        index_dir / "chrLength.txt", "STAR chrLength"
+    )
+    names = names_text.splitlines()
+    lengths = lengths_text.splitlines()
+    if not names or len(names) != len(lengths) or len(names) != len(set(names)):
+        raise ValueError("STAR chrName/chrLength rows are empty, duplicate, or misaligned")
+    try:
+        parsed = [(name, int(length)) for name, length in zip(names, lengths, strict=True)]
+    except ValueError as exc:
+        raise ValueError(f"STAR chrLength contains a non-integer: {exc}") from exc
+    if any(not name or length <= 0 for name, length in parsed):
+        raise ValueError("STAR contig names and lengths must be nonempty and positive")
+    return parsed, (names_snapshot, lengths_snapshot)

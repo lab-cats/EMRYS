@@ -14,7 +14,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
-from norad.libraries.references import contigs as reference_contigs
+from norad.libraries.alignments import star as star_report
 
 
 REQUIRED_MEMBERS = (
@@ -50,52 +50,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]:
-    text, snapshot = report.stable_text(path, "STAR genomeParameters")
-    parsed: dict[str, list[str]] = {}
-    for number, raw in enumerate(text.splitlines(), 1):
-        fields = raw.split()
-        if not fields:
-            continue
-        if len(fields) < 2:
-            report.fail(f"STAR genomeParameters line {number} has no value")
-        if fields[0] in parsed:
-            report.fail(f"STAR genomeParameters repeats {fields[0]!r}")
-        parsed[fields[0]] = fields[1:]
-    return parsed, snapshot
-
-
-def fasta_contigs(path: Path) -> tuple[list[tuple[str, int]], report.Snapshot]:
-    text, snapshot = report.stable_text(path, "Reference FASTA")
-    try:
-        contigs = reference_contigs.parse_fasta_lines(text.splitlines())
-    except reference_contigs.ReferenceContigError as exc:
-        report.fail(str(exc))
-    return contigs, snapshot
-
-
-def index_contigs(
-    index_dir: Path,
-) -> tuple[list[tuple[str, int]], tuple[report.Snapshot, report.Snapshot]]:
-    names_text, names_snapshot = report.stable_text(
-        index_dir / "chrName.txt", "STAR chrName"
-    )
-    lengths_text, lengths_snapshot = report.stable_text(
-        index_dir / "chrLength.txt", "STAR chrLength"
-    )
-    names = names_text.splitlines()
-    lengths = lengths_text.splitlines()
-    if not names or len(names) != len(lengths) or len(names) != len(set(names)):
-        report.fail("STAR chrName/chrLength rows are empty, duplicate, or misaligned")
-    try:
-        parsed = [(name, int(length)) for name, length in zip(names, lengths, strict=True)]
-    except ValueError as exc:
-        report.fail(f"STAR chrLength contains a non-integer: {exc}")
-    if any(not name or length <= 0 for name, length in parsed):
-        report.fail("STAR contig names and lengths must be nonempty and positive")
-    return parsed, (names_snapshot, lengths_snapshot)
-
-
 def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
     if not args.scope_id or any(char.isspace() for char in args.scope_id):
         report.fail("scope-id must be nonempty and contain no whitespace")
@@ -111,6 +65,8 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
         report.fail(
             f"Parameter path base must be an existing real directory: {path_base}"
         )
+    fasta = report.lexical_path(args.reference_fasta)
+    gtf = report.lexical_path(args.reference_gtf)
     snapshots: dict[Path, report.Snapshot] = {}
     missing: list[str] = []
     for name in REQUIRED_MEMBERS:
@@ -122,15 +78,18 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
         except report.ValidationError:
             missing.append(name)
     members_pass = not missing
-    parameters, parameter_snapshot = parse_parameters(index_dir / "genomeParameters.txt")
+    try:
+        parameters, parameter_snapshot = star_report.parse_parameters(
+            index_dir / "genomeParameters.txt"
+        )
+        fasta_records, fasta_snapshot = star_report.parse_fasta(fasta)
+        star_records, star_snapshots = star_report.parse_star_index_contigs(index_dir)
+    except ValueError as exc:
+        report.fail(str(exc))
     snapshots[index_dir / "genomeParameters.txt"] = parameter_snapshot
-    fasta = report.lexical_path(args.reference_fasta)
-    gtf = report.lexical_path(args.reference_gtf)
-    fasta_records, fasta_snapshot = fasta_contigs(fasta)
     snapshots[fasta] = fasta_snapshot
     _, gtf_snapshot = report.stable_text(gtf, "Reference GTF")
     snapshots[gtf] = gtf_snapshot
-    star_records, star_snapshots = index_contigs(index_dir)
     snapshots[index_dir / "chrName.txt"] = star_snapshots[0]
     snapshots[index_dir / "chrLength.txt"] = star_snapshots[1]
     fasta_values = parameters.get("genomeFastaFiles", [])
