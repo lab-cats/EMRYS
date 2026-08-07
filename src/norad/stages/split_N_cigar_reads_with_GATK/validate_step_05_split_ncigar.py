@@ -52,11 +52,8 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 05")
     report.require_executable(paths["samtools"], "samtools executable")
-    bam_magic = bam_report.read_bam_prefix(paths["bam"])
-    bai_magic = bam_report.read_bai_prefix(paths["bai"])
-    structure = (
-        bam_report.bam_magic_ok(bam_magic)
-        and bam_report.bai_magic_ok(bai_magic)
+    structure, bam_magic, bai_magic = bam_report.validate_bam_bai_pair(
+        paths["bam"], paths["bai"]
     )
     quick = bam_report.run_tool(
         paths["samtools"], "quickcheck", "-v", str(paths["bam"])
