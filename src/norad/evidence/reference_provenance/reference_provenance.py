@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
 import os
 import re
 import stat
@@ -20,6 +19,7 @@ from typing import Iterable, Sequence
 _SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
+from norad.libraries import validation as report
 
 
 PROFILE_HEADER = (
@@ -52,7 +52,7 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
-class ProvenanceError(RuntimeError):
+class ProvenanceError(report.ValidationError):
     pass
 
 
@@ -100,22 +100,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def clean(value: object) -> str:
-    return " ".join(str(value).replace("\x00", "").split())
-
-
 def read_regular(path: Path, label: str) -> bytes:
+    before = report.regular_snapshot(path, label)
     try:
-        before = path.lstat()
+        data = path.read_bytes()
     except OSError as exc:
         fail(f"{label} is unavailable: {path}: {exc}")
-    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
-        fail(f"{label} must be a regular non-symlink file: {path}")
-    data = path.read_bytes()
-    after = path.lstat()
-    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
-    ):
+    after = report.regular_snapshot(path, label)
+    if before != after:
         fail(f"{label} changed while read: {path}")
     return data
 
@@ -132,11 +124,7 @@ def load_inventory(path: Path, base_dir: Path) -> tuple[bytes, list[Item]]:
     rows = list(reader)
     if not rows:
         fail("Reference inventory must contain data rows")
-    try:
-        base_metadata = base_dir.lstat()
-    except OSError as exc:
-        fail(f"Reference base directory is unavailable: {base_dir}: {exc}")
-    if stat.S_ISLNK(base_metadata.st_mode) or not stat.S_ISDIR(base_metadata.st_mode):
+    if not base_dir.is_dir() or base_dir.is_symlink():
         fail(f"Reference base directory must be a real directory: {base_dir}")
     base = base_dir.resolve()
     items: list[Item] = []
@@ -203,7 +191,7 @@ def observe(items: Sequence[Item]) -> list[Observation]:
             metadata = item.path.lstat()
         except OSError as exc:
             status = "missing_required" if item.required else "missing_optional"
-            observations.append(Observation(item, status, detail=clean(exc)))
+            observations.append(Observation(item, status, detail=report.clean(exc)))
             continue
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
             observations.append(Observation(item, "invalid", detail="not a regular non-symlink file"))
@@ -211,7 +199,7 @@ def observe(items: Sequence[Item]) -> list[Observation]:
         try:
             data = read_regular(item.path, item.artifact_id)
         except ProvenanceError as exc:
-            observations.append(Observation(item, "invalid", detail=clean(exc)))
+            observations.append(Observation(item, "invalid", detail=report.clean(exc)))
             continue
         digest = hashlib.sha256(data).hexdigest()
         status = "hash_mismatch" if item.expected_sha256 != "NA" and digest != item.expected_sha256 else "present"
@@ -278,11 +266,11 @@ def collect_contigs(observations: Sequence[Observation]) -> tuple[dict[str, list
             ProvenanceError,
             reference_contigs.ReferenceContigError,
         ) as exc:
-            errors[role] = clean(exc)
+            errors[role] = report.clean(exc)
     try:
         parsed["star"] = parse_star(observations)
     except (OSError, UnicodeError, ProvenanceError) as exc:
-        errors["star"] = clean(exc)
+        errors["star"] = report.clean(exc)
     return parsed, errors
 
 
@@ -299,7 +287,7 @@ def agreement(parsed: dict[str, list[tuple[str, int | None]]], role: str) -> str
 
 def tsv(header: Iterable[str], rows: Iterable[Iterable[object]]) -> bytes:
     lines = ["\t".join(header)]
-    lines.extend("\t".join(clean(value) for value in row) for row in rows)
+    lines.extend("\t".join(report.clean(value) for value in row) for row in rows)
     return ("\n".join(lines) + "\n").encode()
 
 
