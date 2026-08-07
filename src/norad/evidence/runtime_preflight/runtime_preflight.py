@@ -130,20 +130,9 @@ def _single_line(value: str) -> str:
 
 def _read_regular_file(path: Path, label: str) -> bytes:
     try:
-        before = report.regular_snapshot(path, label)
+        return report.read_bytes(path, label)
     except report.ValidationError as exc:
         _fail(str(exc).replace("a regular non-symlink file", "a symbolic link"))
-    try:
-        data = path.read_bytes()
-    except OSError as exc:
-        _fail(f"Could not read {label}: {path}: {exc}")
-    try:
-        after = report.regular_snapshot(path, label)
-    except report.ValidationError as exc:
-        _fail(str(exc).replace("a regular non-symlink file", "a symbolic link"))
-    if before != after:
-        _fail(f"{label} changed while it was read: {path}")
-    return data
 
 
 def _parse_probe_args(raw: str, row_number: int) -> tuple[str, ...]:
