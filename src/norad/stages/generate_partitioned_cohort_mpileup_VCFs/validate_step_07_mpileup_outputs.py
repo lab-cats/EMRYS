@@ -15,7 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
-from norad.libraries.references import contigs as reference_contigs
+from norad.libraries.validation import mpileup as mpileup_report
 
 
 
@@ -48,99 +48,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def read_sample_ids(path: Path) -> list[str]:
-    header, rows = report.read_tsv(path)
-    if "sample_id" not in header:
-        raise report.ValidationError("Sample manifest lacks sample_id")
-    values = [row["sample_id"] for row in rows]
-    if not values or any(not value for value in values) or len(values) != len(set(values)):
-        raise report.ValidationError("Sample manifest IDs must be nonempty and unique")
-    return values
-
-
-def read_partition(path: Path, partition_id: str) -> tuple[str, str]:
-    header, rows = report.read_tsv(path)
-    required = {"partition_id", "selector_type", "selector_value"}
-    if not required.issubset(header):
-        raise report.ValidationError("Partition manifest lacks required columns")
-    matches = [row for row in rows if row["partition_id"] == partition_id]
-    if len(matches) != 1:
-        raise report.ValidationError("Expected one declared partition row")
-    selector_type = matches[0]["selector_type"]
-    selector_value = matches[0]["selector_value"]
-    if selector_type not in {"region", "regions_file"} or not selector_value:
-        raise report.ValidationError("Partition selector is invalid")
-    return selector_type, selector_value
-
-
-def read_fai(path: Path) -> dict[str, int]:
-    try:
-        return {name: length for name, length in reference_contigs.parse_fai(path)}
-    except reference_contigs.ReferenceContigError as exc:
-        raise report.ValidationError(str(exc))
-
-
-def selector_ok(
-    selector_type: str, selector_value: str, partition_manifest: Path,
-    contigs: dict[str, int],
-) -> bool:
-    if selector_type == "region":
-        for region in selector_value.split(","):
-            if not region:
-                return False
-            contig, separator, coordinates = region.partition(":")
-            if contig not in contigs:
-                return False
-            if not separator:
-                continue
-            bounds = coordinates.rstrip("-").split("-", 1)
-            if not all(value.isdigit() for value in bounds):
-                return False
-            start = int(bounds[0])
-            end = int(bounds[-1]) if not coordinates.endswith("-") else contigs[contig]
-            if start < 1 or end < start or end > contigs[contig]:
-                return False
-        return True
-    selector_path = report.resolve_from_base(partition_manifest.parent, selector_value)
-    try:
-        rows = [
-            line.split("\t")
-            for line in report.stable_text(selector_path, "Partition selector file")[0].splitlines()
-            if line.strip() and not line.startswith("#")
-        ]
-    except (OSError, UnicodeError, report.ValidationError):
-        return False
-    return bool(rows) and all(row and row[0] in contigs for row in rows)
-
-
-def read_vcf(path: Path) -> tuple[list[str], int]:
-    samples: list[str] | None = None
-    count = 0
-    for line in report.stable_text(path, "VCF")[0].splitlines():
-        if line.startswith("##"):
-            continue
-        if line.startswith("#CHROM\t"):
-            fields = line.split("\t")
-            if fields[:9] != [
-                "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
-                "INFO", "FORMAT",
-            ]:
-                raise report.ValidationError(f"Invalid VCF header: {path}")
-            samples = fields[9:]
-            continue
-        if line.startswith("#"):
-            continue
-        if samples is None:
-            raise report.ValidationError(f"VCF data precedes header: {path}")
-        fields = line.split("\t")
-        if len(fields) != 9 + len(samples) or not fields[1].isdigit():
-            raise report.ValidationError(f"Invalid VCF data row: {path}")
-        count += 1
-    if samples is None:
-        raise report.ValidationError(f"VCF lacks #CHROM header: {path}")
-    return samples, count
-
-
 def build(args: argparse.Namespace):
     paths = {
         "sample_manifest": report.lexical_path(args.sample_manifest),
@@ -151,13 +58,13 @@ def build(args: argparse.Namespace):
         "receipt": report.lexical_path(args.receipt),
     }
     snapshots = report.snapshots(paths, label="Step 07")
-    sample_ids = read_sample_ids(paths["sample_manifest"])
-    selector_type, selector_value = read_partition(
+    sample_ids = mpileup_report.read_sample_ids(paths["sample_manifest"])
+    selector_type, selector_value = mpileup_report.read_partition(
         paths["partition_manifest"], args.partition_id
     )
-    contigs = read_fai(paths["reference_fai"])
-    fwd_samples, fwd_count = read_vcf(paths["fwd_vcf"])
-    rev_samples, rev_count = read_vcf(paths["rev_vcf"])
+    contigs = mpileup_report.read_fai(paths["reference_fai"])
+    fwd_samples, fwd_count = mpileup_report.read_vcf(paths["fwd_vcf"])
+    rev_samples, rev_count = mpileup_report.read_vcf(paths["rev_vcf"])
     receipt_header, receipt_rows = report.read_tsv(paths["receipt"])
     receipt_structure = (
         tuple(receipt_header) == RECEIPT_HEADER
@@ -172,7 +79,9 @@ def build(args: argparse.Namespace):
     by_orientation = {row.get("orientation", ""): row for row in receipt_rows}
     vcf_structure = fwd_samples == sample_ids and rev_samples == sample_ids
     selector_reconciliation = (
-        selector_ok(selector_type, selector_value, paths["partition_manifest"], contigs)
+        mpileup_report.selector_ok(
+            selector_type, selector_value, paths["partition_manifest"], contigs
+        )
         and receipt_structure
         and all(
             row["selector_type"] == selector_type
