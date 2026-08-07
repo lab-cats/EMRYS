@@ -100,26 +100,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def read_regular(path: Path, label: str) -> bytes:
-    try:
-        before = report.regular_snapshot(path, label)
-    except report.ValidationError as exc:
-        fail(str(exc))
-    try:
-        data = path.read_bytes()
-    except OSError as exc:
-        fail(f"{label} is unavailable: {path}: {exc}")
-    try:
-        after = report.regular_snapshot(path, label)
-    except report.ValidationError as exc:
-        fail(str(exc))
-    if before != after:
-        fail(f"{label} changed while read: {path}")
-    return data
-
-
 def load_inventory(path: Path, base_dir: Path) -> tuple[bytes, list[Item]]:
-    raw = read_regular(path, "Reference inventory")
+    raw = report.read_bytes(path, "Reference inventory")
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -203,8 +185,8 @@ def observe(items: Sequence[Item]) -> list[Observation]:
             observations.append(Observation(item, "invalid", detail="not a regular non-symlink file"))
             continue
         try:
-            data = read_regular(item.path, item.artifact_id)
-        except ProvenanceError as exc:
+            data = report.read_bytes(item.path, item.artifact_id)
+        except (ProvenanceError, report.ValidationError) as exc:
             observations.append(Observation(item, "invalid", detail=report.clean(exc)))
             continue
         digest = hashlib.sha256(data).hexdigest()
@@ -376,15 +358,27 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
         os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
         os.fsync(descriptor)
         if all(present):
-            validate_output(read_regular(finals["artifacts"], "prior artifacts"), ARTIFACT_HEADER)
-            validate_output(read_regular(finals["contigs"], "prior contigs"), CONTIG_HEADER)
-            validate_output(read_regular(finals["summary"], "prior summary"), SUMMARY_HEADER, 1)
+            validate_output(
+                report.read_bytes(finals["artifacts"], "prior artifacts"), ARTIFACT_HEADER
+            )
+            validate_output(
+                report.read_bytes(finals["contigs"], "prior contigs"), CONTIG_HEADER
+            )
+            validate_output(
+                report.read_bytes(finals["summary"], "prior summary"), SUMMARY_HEADER, 1
+            )
         for key in ("artifacts", "contigs", "summary"):
             with staged[key].open("xb") as handle:
                 handle.write(outputs[key]); handle.flush(); os.fsync(handle.fileno())
-        validate_output(read_regular(staged["artifacts"], "staged artifacts"), ARTIFACT_HEADER)
-        validate_output(read_regular(staged["contigs"], "staged contigs"), CONTIG_HEADER)
-        validate_output(read_regular(staged["summary"], "staged summary"), SUMMARY_HEADER, 1)
+        validate_output(
+            report.read_bytes(staged["artifacts"], "staged artifacts"), ARTIFACT_HEADER
+        )
+        validate_output(
+            report.read_bytes(staged["contigs"], "staged contigs"), CONTIG_HEADER
+        )
+        validate_output(
+            report.read_bytes(staged["summary"], "staged summary"), SUMMARY_HEADER, 1
+        )
         if all(present):
             for key in finals:
                 os.replace(finals[key], backups[key])
@@ -427,7 +421,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.execute:
             print("Dry-run complete; no output was written.")
             return 0
-        if hashlib.sha256(read_regular(args.inventory, "Reference inventory")).digest() != hashlib.sha256(raw).digest():
+        if hashlib.sha256(
+            report.read_bytes(args.inventory, "Reference inventory")
+        ).digest() != hashlib.sha256(raw).digest():
             fail("Reference inventory changed after inspection")
         refreshed = observe(items)
         snapshots = [
@@ -442,6 +438,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Published reference provenance: {args.output_root / reference_id}")
         return 0
     except ProvenanceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    except report.ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
