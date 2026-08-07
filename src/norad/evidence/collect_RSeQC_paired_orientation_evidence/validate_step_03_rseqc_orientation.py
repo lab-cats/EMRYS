@@ -42,10 +42,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_report(path: Path) -> tuple[dict[str, float], list[str]]:
+def parse_report(text: str) -> tuple[dict[str, float], list[str]]:
     values: dict[str, float] = {}
     errors: list[str] = []
-    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for number, raw in enumerate(text.splitlines(), 1):
         if ":" not in raw:
             continue
         label, lexeme = (part.strip() for part in raw.rsplit(":", 1))
@@ -74,7 +74,7 @@ def build(args: argparse.Namespace):
         report.fail("--sum-tolerance must be finite and between 0 and 0.1")
     source = report.lexical_path(args.infer_report)
     snapshots = report.snapshots({"report": source}, label="Step 03 RSeQC")
-    values, errors = parse_report(source)
+    values, errors = parse_report(report.stable_text(source, "RSeQC inference report")[0])
     fractions = [values.get(label) for label in LABELS]
     valid = [value is not None and 0 <= value <= 1 for value in fractions]
     observed_sum = sum(value for value in fractions if value is not None)
