@@ -39,11 +39,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_metrics(path: Path) -> tuple[bool, str]:
-    lines = [
-        line for line in path.read_text(encoding="utf-8").splitlines()
-        if line and not line.startswith("#")
-    ]
+def parse_metrics(text: str) -> tuple[bool, str]:
+    lines = [line for line in text.splitlines() if line and not line.startswith("#")]
     if len(lines) < 2:
         return False, "missing metrics header/data row"
     header = lines[0].split("\t")
@@ -99,7 +96,9 @@ def build(args: argparse.Namespace):
     coordinate, matching_rg, header_detail = bam_report.parse_header(
         header.stdout, args.scope_id
     )
-    metrics_ok, metrics_detail = parse_metrics(paths["metrics"])
+    metrics_ok, metrics_detail = parse_metrics(
+        report.stable_text(paths["metrics"], "Picard metrics")[0]
+    )
 
     rows = [
         report.row(
