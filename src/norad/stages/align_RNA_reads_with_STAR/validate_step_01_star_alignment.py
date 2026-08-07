@@ -45,11 +45,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_final_log(path: Path) -> dict[str, str]:
+def parse_final_log(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
-    for line_number, raw in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), start=1
-    ):
+    for line_number, raw in enumerate(text.splitlines(), start=1):
         if "|" not in raw:
             continue
         key, value = (part.strip() for part in raw.split("|", 1))
@@ -77,11 +75,9 @@ def valid_mapping_summary(values: dict[str, str]) -> tuple[bool, str]:
     return True, "; ".join(parsed)
 
 
-def valid_sj(path: Path) -> tuple[bool, str]:
+def valid_sj(text: str) -> tuple[bool, str]:
     count = 0
-    for line_number, raw in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), start=1
-    ):
+    for line_number, raw in enumerate(text.splitlines(), start=1):
         if not raw:
             continue
         fields = raw.split("\t")
@@ -113,11 +109,15 @@ def build(args: argparse.Namespace):
     final_values: dict[str, str] = {}
     final_error = ""
     try:
-        final_values = parse_final_log(paths["log_final"])
+        final_values = parse_final_log(
+            report.stable_text(paths["log_final"], "STAR final log")[0]
+        )
     except report.ValidationError as exc:
         final_error = report.clean(exc)
     mapping_ok, mapping_observed = valid_mapping_summary(final_values)
-    sj_ok, sj_observed = valid_sj(paths["sj_out"])
+    sj_ok, sj_observed = valid_sj(
+        report.stable_text(paths["sj_out"], "STAR splice-junction table")[0]
+    )
 
     rows = [
         report.row(
