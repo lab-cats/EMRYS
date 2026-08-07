@@ -101,12 +101,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def read_regular(path: Path, label: str) -> bytes:
-    before = report.regular_snapshot(path, label)
+    try:
+        before = report.regular_snapshot(path, label)
+    except report.ValidationError as exc:
+        fail(str(exc))
     try:
         data = path.read_bytes()
     except OSError as exc:
         fail(f"{label} is unavailable: {path}: {exc}")
-    after = report.regular_snapshot(path, label)
+    try:
+        after = report.regular_snapshot(path, label)
+    except report.ValidationError as exc:
+        fail(str(exc))
     if before != after:
         fail(f"{label} changed while read: {path}")
     return data
