@@ -82,8 +82,8 @@ def build(args: argparse.Namespace):
     snapshots = report.snapshots(paths, label="Step 04")
     if not paths["samtools"].stat().st_mode & 0o111:
         report.fail(f"samtools executable is not executable: {paths['samtools']}")
-    bam_magic = paths["bam"].read_bytes()[:4]
-    bai_magic = paths["bai"].read_bytes()[:4]
+    bam_magic = report.read_bytes(paths["bam"], "BAM")[:4]
+    bai_magic = report.read_bytes(paths["bai"], "BAI")[:4]
     structure = (
         bam_magic in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
         and bai_magic in {b"BAI\x01", b"CSI\x01"}
