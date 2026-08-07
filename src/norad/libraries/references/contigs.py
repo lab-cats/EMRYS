@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from collections.abc import Iterable
 
 
 class ReferenceContigError(RuntimeError):
@@ -15,10 +16,14 @@ def _fail(message: str) -> None:
 
 
 def parse_fasta(path: Path) -> list[tuple[str, int]]:
+    return parse_fasta_lines(path.read_text(encoding="utf-8").splitlines())
+
+
+def parse_fasta_lines(lines: Iterable[str]) -> list[tuple[str, int]]:
     result: list[tuple[str, int]] = []
     name: str | None = None
     length = 0
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in lines:
         if raw_line.startswith(">"):
             if name is not None:
                 result.append((name, length))

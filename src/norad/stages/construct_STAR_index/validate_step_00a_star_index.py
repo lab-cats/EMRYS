@@ -14,6 +14,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.references import contigs as reference_contigs
 
 
 REQUIRED_MEMBERS = (
@@ -65,39 +66,12 @@ def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]
 
 
 def fasta_contigs(path: Path) -> tuple[list[tuple[str, int]], report.Snapshot]:
-    before = report.regular_snapshot(path, "Reference FASTA")
-    contigs: list[tuple[str, int]] = []
-    name: str | None = None
-    length = 0
-    seen: set[str] = set()
+    text, snapshot = report.stable_text(path, "Reference FASTA")
     try:
-        with path.open(encoding="utf-8") as stream:
-            for number, raw in enumerate(stream, 1):
-                line = raw.rstrip("\n")
-                if line.startswith(">"):
-                    if name is not None:
-                        contigs.append((name, length))
-                    name = line[1:].split()[0]
-                    if not name or name in seen:
-                        report.fail(
-                            f"Reference FASTA line {number} has invalid or duplicate contig"
-                        )
-                    seen.add(name)
-                    length = 0
-                else:
-                    if name is None or not line:
-                        report.fail(f"Reference FASTA line {number} is invalid")
-                    length += len(line)
-    except (OSError, UnicodeError) as exc:
-        report.fail(f"Reference FASTA cannot be read: {exc}")
-    if name is not None:
-        contigs.append((name, length))
-    if not contigs or any(length <= 0 for _, length in contigs):
-        report.fail("Reference FASTA must contain nonempty contigs")
-    after = report.regular_snapshot(path, "Reference FASTA")
-    if before != after:
-        report.fail("Reference FASTA changed while read")
-    return contigs, after
+        contigs = reference_contigs.parse_fasta_lines(text.splitlines())
+    except reference_contigs.ReferenceContigError as exc:
+        report.fail(str(exc))
+    return contigs, snapshot
 
 
 def index_contigs(
