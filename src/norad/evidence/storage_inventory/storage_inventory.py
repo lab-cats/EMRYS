@@ -16,6 +16,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 
+_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+from norad.libraries import validation as report
+
 
 ROOT_HEADER = (
     "storage_id", "path", "required", "purpose", "quota_bytes_expected", "notes",
@@ -41,7 +47,7 @@ ACTIONS = {"retain", "archive", "review_then_delete"}
 APPROVALS = {"approved", "pending", "rejected"}
 
 
-class StorageError(RuntimeError):
+class StorageError(report.ValidationError):
     pass
 
 
@@ -73,10 +79,6 @@ def fail(message: str) -> None:
     raise StorageError(message)
 
 
-def clean(value: object) -> str:
-    return " ".join(str(value).replace("\x00", "").split())
-
-
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--roots", required=True, type=Path)
@@ -87,18 +89,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def read_regular(path: Path, label: str) -> bytes:
+    before = report.regular_snapshot(path, label)
     try:
-        before = path.lstat()
+        data = path.read_bytes()
     except OSError as exc:
         fail(f"{label} is unavailable: {path}: {exc}")
-    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
-        fail(f"{label} must be a regular non-symlink file: {path}")
-    data = path.read_bytes()
-    after = path.lstat()
-    identity = lambda value: (
-        value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns
-    )
-    if identity(before) != identity(after):
+    after = report.regular_snapshot(path, label)
+    if before != after:
         fail(f"{label} changed while read: {path}")
     return data
 
@@ -209,7 +206,7 @@ def measure(root: Root) -> tuple[object, ...]:
         return (
             root.storage_id, root.declared_path, str(root.path),
             str(root.required).lower(), root.purpose, status,
-            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, clean(exc),
+            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, report.clean(exc),
         )
     if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
         return (
@@ -246,7 +243,7 @@ def measure(root: Root) -> tuple[object, ...]:
         return (
             root.storage_id, root.declared_path, str(root.path),
             str(root.required).lower(), root.purpose, "measurement_error",
-            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, clean(exc),
+            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, report.clean(exc),
         )
     return (
         root.storage_id, root.declared_path, str(root.path),
@@ -259,7 +256,7 @@ def measure(root: Root) -> tuple[object, ...]:
 
 def render_tsv(header: Iterable[str], rows: Iterable[Iterable[object]]) -> bytes:
     output = ["\t".join(header)]
-    output.extend("\t".join(clean(value) for value in row) for row in rows)
+    output.extend("\t".join(report.clean(value) for value in row) for row in rows)
     return ("\n".join(output) + "\n").encode()
 
 
