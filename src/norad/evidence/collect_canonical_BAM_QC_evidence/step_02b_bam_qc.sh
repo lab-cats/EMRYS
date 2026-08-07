@@ -30,24 +30,16 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/executable_resolution.sh
+source "$script_dir/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 sample_id=""
 bam=""
@@ -100,7 +92,7 @@ else
     die "BAM index does not exist. Expected either: $bam.bai or ${bam%.bam}.bai"
 fi
 
-command -v samtools >/dev/null 2>&1 || die "samtools executable was not found on PATH. Load the samtools module or update PATH."
+samtools_bin="$(resolve_executable_value "samtools" "" "samtools")"
 
 mkdir -p "$output_dir"
 
@@ -122,14 +114,14 @@ printf '  Flagstat output: %s\n' "$FLAGSTAT_OUT"
 printf '  Mode: %s\n' "$mode"
 
 quickcheck_command=(
-    samtools
+    "$samtools_bin"
     quickcheck
     -v
     "$bam"
 )
 
 flagstat_command=(
-    samtools
+    "$samtools_bin"
     flagstat
     "$bam"
 )

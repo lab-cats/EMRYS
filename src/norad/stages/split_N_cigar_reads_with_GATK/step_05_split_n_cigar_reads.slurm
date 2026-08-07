@@ -12,18 +12,11 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after Step 04 has
 # produced duplicate-marked BAMs and Step 00c sidecars exist.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 

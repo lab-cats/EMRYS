@@ -42,49 +42,29 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
 die2() {
     printf 'ERROR: %s\n' "$*" >&2
     exit 2
 }
 
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
-
-validate_executable() {
-    local label="$1"
-    local bin="$2"
-
-    if [[ "$bin" == */* ]]; then
-        [[ -e "$bin" ]] || die "$label does not exist: $bin"
-        [[ -x "$bin" ]] || die "$label exists but is not executable: $bin"
-    else
-        command -v "$bin" >/dev/null 2>&1 || die "$label executable was not found on PATH: $bin"
-    fi
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/executable_resolution.sh
+source "$script_dir/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 sample_id=""
 input_bam=""
 output_dir=""
 metrics_dir=""
 picard_jar=""
-java_bin="java"
-samtools_bin="samtools"
+java_bin_arg=""
+samtools_bin_arg=""
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -116,12 +96,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --java-bin)
             require_value "$1" "${2:-}"
-            java_bin="$2"
+            java_bin_arg="$2"
             shift 2
             ;;
         --samtools-bin)
             require_value "$1" "${2:-}"
-            samtools_bin="$2"
+            samtools_bin_arg="$2"
             shift 2
             ;;
         --execute)
@@ -160,8 +140,8 @@ tmp_dir="${TMPDIR:-/tmp}"
 [[ -f "$input_bai" ]] || die "Input BAM index does not exist or is not a file: $input_bai"
 [[ -f "$picard_jar" ]] || die "Picard jar does not exist or is not a file: $picard_jar"
 [[ -r "$picard_jar" ]] || die "Picard jar is not readable: $picard_jar"
-validate_executable "Java" "$java_bin"
-validate_executable "samtools" "$samtools_bin"
+java_bin="$(resolve_executable_value "Java" "$java_bin_arg" "java")"
+samtools_bin="$(resolve_executable_value "samtools" "$samtools_bin_arg" "samtools")"
 
 [[ -d "$tmp_dir" ]] || die2 "TMP_DIR does not exist or is not a directory: $tmp_dir"
 [[ -w "$tmp_dir" ]] || die2 "TMP_DIR is not writable: $tmp_dir"

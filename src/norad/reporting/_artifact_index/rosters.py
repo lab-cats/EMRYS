@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+from norad.libraries.alignments import orientation as alignment_orientation
+
 SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
     "00a": Counter(
         {
@@ -61,12 +63,16 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
     ),
     "06": Counter(
         {
-            "step06_fwd_bam_v1": 1,
-            "step06_fwd_bai_v1": 1,
-            "step06_rev_bam_v1": 1,
-            "step06_rev_bai_v1": 1,
             "step06_orientation_counts_v1": 1,
             "step06_validation_report_v1": 1,
+            **{
+                f"step06_{prefix}_bam_v1": 1
+                for prefix in alignment_orientation.ORIENTATION_PREFIXES
+            },
+            **{
+                f"step06_{prefix}_bai_v1": 1
+                for prefix in alignment_orientation.ORIENTATION_PREFIXES
+            },
         }
     ),
     "07": Counter(

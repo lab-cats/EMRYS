@@ -255,8 +255,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_00c_prepare_gatk_reference.sh"
                 ),
                 "sha256": (
-                    "96127823a614f2a2480b93b0c21e69cd"
-                    "534396ac13bd37887be3662b2246c289"
+                    "cc1c467136670ddde2923f1b8f106e814"
+                    "fbdb22dc21e0225c2158b20714d1636"
                 ),
             }
         ],
@@ -273,8 +273,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_01_star_align.sh"
                 ),
                 "sha256": (
-                    "718625e101a700b4da56b8e30249b1b4"
-                    "2f8dea81546a763fc9db246be9a3edaf"
+                    "f7f0eedb27c328b2e06668a57376007f"
+                    "25b61e32a2229a0d6992442b48e535ab"
                 ),
             }
         ],
@@ -291,8 +291,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_02_sort_index_bam.sh"
                 ),
                 "sha256": (
-                    "602c9b6f71d7fb38533e29e294fcdd36"
-                    "85339614daa6efa264ba413669dd0cd3"
+                    "77a1367474b8ec161a2e1a65c4d973711"
+                    "46329b4563acb72244c1a8bcfe61cef"
                 ),
             }
         ],
@@ -309,8 +309,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_02b_bam_qc.sh"
                 ),
                 "sha256": (
-                    "92895b2dbd1117e72703e8261a66ce1a"
-                    "7cc34db6000280e23753cd5f9132101c"
+                    "5469efa8f8c6598ce5031224c32cef6bd"
+                    "d84872a9c9a3d53de6824bc39cbdd8c"
                 ),
             }
         ],
@@ -328,8 +328,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_03_infer_strandedness_and_orientation.sh"
                 ),
                 "sha256": (
-                    "01aa11cc60d9042ac541cfe445aec3e5"
-                    "62a198a761c45449e82e96b7b9ab0784"
+                    "fbac2e0e184dd259b2cf0acbcecf3592"
+                    "d470b211e4b2fe33ea110d624d556854"
                 ),
             }
         ],
@@ -346,8 +346,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_04_mark_duplicates.sh"
                 ),
                 "sha256": (
-                    "b845aa910ccabaf8799e000dc62e8939b"
-                    "0203c7848511524fadf51c79292eb2d"
+                    "5d520d1e72a0e117f5252eb821db855"
+                    "683699edfc5fd572cebe53822b35c9ce1"
                 ),
             }
         ],
@@ -364,8 +364,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_05_split_n_cigar_reads.sh"
                 ),
                 "sha256": (
-                    "c328274cfd2212c117ff62c49ff3865c"
-                    "79c48924c6ce3f07d10902c64060e6d2"
+                    "8ec751d5254c79e4fbfb40a6355071b0"
+                    "95a3421a63b9fa07a0b0d66dd28f30f0"
                 ),
             }
         ],
@@ -378,13 +378,13 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                 "evidence_id": "implementation_06",
                 "role": "implementation",
                 "path": (
-                    "src/norad/stages/"
-                    "partition_BAM_by_mechanical_read_orientation/"
-                    "step_06_split_bam_by_read_orientation.sh"
+                "src/norad/stages/"
+                "partition_BAM_by_mechanical_read_orientation/"
+                "step_06_split_bam_by_read_orientation.sh"
                 ),
                 "sha256": (
-                    "3311134f23623ced3eb5c7ad89b17d1d"
-                    "098c048068393f9376532756e247b852"
+                    "4a6146cb5937c7499447eec8d55120ae"
+                    "d0359577fcf7535bad671b9d294333c5"
                 ),
             }
         ],
@@ -393,38 +393,38 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
         "status": "implemented",
         "git_commit": git_commit,
         "evidence": [
-            {
-                "evidence_id": "implementation_07",
-                "role": "implementation",
-                "path": (
-                    "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+                {
+                    "evidence_id": "implementation_07",
+                    "role": "implementation",
+                    "path": (
+                        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
                     "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-                ),
-                "sha256": (
-                    "b1572a29afc4600bcba50602b0c275a6f"
-                    "f63760bb7f8d62c3341483f47c08625"
-                ),
-            }
-        ],
-    }
+                    ),
+                    "sha256": (
+                        "45e53576306c8391c26e779f148ec7d54220a1ec0"
+                        "0aecd4b95c64ce37d2730e3"
+                    ),
+                }
+            ],
+        }
     assert evidence["08"] == {
         "status": "implemented",
         "git_commit": git_commit,
         "evidence": [
-            {
-                "evidence_id": "implementation_08",
-                "role": "implementation",
-                "path": (
-                    "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-                    "step_08_vcf_preprocessing.sh"
-                ),
-                "sha256": (
-                    "f7a93c893068d92c66f82b204b2ad601"
-                    "266e2bbd738cb90e5b8fb71b13104621"
-                ),
-            }
-        ],
-    }
+                {
+                    "evidence_id": "implementation_08",
+                    "role": "implementation",
+                    "path": (
+                        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+                        "step_08_vcf_preprocessing.sh"
+                    ),
+                    "sha256": (
+                        "1961df5b655fa9e68d445df1f70e6e832"
+                        "3c0dd87d78bd48ea7509b3717c4cd55"
+                    ),
+                }
+            ],
+        }
     assert evidence["09"] == {
         "status": "implemented",
         "git_commit": git_commit,
@@ -438,8 +438,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_09_cmh_editing_site_calling.sh"
                 ),
                 "sha256": (
-                    "7926d13bd9f0192522a20224c24716b7"
-                    "b8dca7a1348803cb7e8aefa1b056123a"
+                    "1d3c8096b1450cde4f4851e193826b58"
+                    "a38b75e561bda5a898f0ca63c553bb60"
                 ),
             }
         ],

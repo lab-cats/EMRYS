@@ -16,8 +16,7 @@ if str(_SRC_ROOT) not in sys.path:
 
 from norad.libraries import validation as report
 from norad.libraries.validation import mpileup as mpileup_report
-
-
+from norad.libraries.alignments import orientation as alignment_orientation
 
 RECEIPT_HEADER = (
     "cohort_id", "partition_id", "selector_type", "selector_value",
@@ -63,21 +62,26 @@ def build(args: argparse.Namespace):
         paths["partition_manifest"], args.partition_id
     )
     contigs = mpileup_report.read_fai(paths["reference_fai"])
-    fwd_samples, fwd_count = mpileup_report.read_vcf(paths["fwd_vcf"])
-    rev_samples, rev_count = mpileup_report.read_vcf(paths["rev_vcf"])
+    vcf_readings = []
+    for orientation, vcf_key in (
+        (alignment_orientation.ORIENTATIONS[0], "fwd_vcf"),
+        (alignment_orientation.ORIENTATIONS[1], "rev_vcf"),
+    ):
+        samples, count = mpileup_report.read_vcf(paths[vcf_key])
+        vcf_readings.append((orientation, paths[vcf_key], samples, count))
     receipt_header, receipt_rows = report.read_tsv(paths["receipt"])
     receipt_structure = (
         tuple(receipt_header) == RECEIPT_HEADER
         and len(receipt_rows) == 2
-        and [row["orientation"] for row in receipt_rows] == ["FWD_like", "REV_like"]
+        and tuple(row["orientation"] for row in receipt_rows)
+        == alignment_orientation.ORIENTATIONS
         and all(
             row["cohort_id"] == args.cohort_id
             and row["partition_id"] == args.partition_id
             for row in receipt_rows
         )
     )
-    by_orientation = {row.get("orientation", ""): row for row in receipt_rows}
-    vcf_structure = fwd_samples == sample_ids and rev_samples == sample_ids
+    vcf_structure = all(samples == sample_ids for _, _, samples, _ in vcf_readings)
     selector_reconciliation = (
         mpileup_report.selector_ok(
             selector_type, selector_value, paths["partition_manifest"], contigs
@@ -101,13 +105,11 @@ def build(args: argparse.Namespace):
         for row in receipt_rows
     )
     counts_ok = receipt_structure and all(
-        by_orientation[orientation]["vcf_path"] == str(path)
-        and by_orientation[orientation]["vcf_record_count"].isdigit()
-        and int(by_orientation[orientation]["vcf_record_count"]) == count
-        for orientation, path, count in (
-            ("FWD_like", paths["fwd_vcf"], fwd_count),
-            ("REV_like", paths["rev_vcf"], rev_count),
-        )
+        row["orientation"] == orientation
+        and row["vcf_path"] == str(vcf_path)
+        and row["vcf_record_count"].isdigit()
+        and int(row["vcf_record_count"]) == count
+        for row, (orientation, vcf_path, _, count) in zip(receipt_rows, vcf_readings)
     )
 
     scope_id = f"{args.cohort_id}__{args.partition_id}"
@@ -116,10 +118,13 @@ def build(args: argparse.Namespace):
         report.row(
             "07", scope_id, "receipt_structure", receipt_structure,
              f"rows={len(receipt_rows)}",
-             "exact header; FWD_like then REV_like rows", "receipt transaction"),
+             f"exact header; {', '.join(alignment_orientation.ORIENTATIONS)} rows",
+             "receipt transaction"),
         report.row(
             "07", scope_id, "vcf_structure", vcf_structure,
-            f"FWD={len(fwd_samples)} REV={len(rev_samples)} samples",
+            " ".join(
+                f"{orientation}={len(samples)}" for orientation, _, samples, _ in vcf_readings
+            ) + " samples",
             "valid VCFs with manifest sample order", "explicit VCF structure",
         ),
         report.row(
@@ -135,7 +140,9 @@ def build(args: argparse.Namespace):
         ),
         report.row(
             "07", scope_id, "vcf_record_counts", counts_ok,
-            f"FWD_like={fwd_count} REV_like={rev_count}",
+            " ".join(
+                f"{orientation}={count}" for orientation, _, _, count in vcf_readings
+            ),
             "receipt paths and counts match exact VCFs", "transaction record counts",
         ),
     ]

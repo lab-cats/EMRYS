@@ -35,24 +35,16 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/executable_resolution.sh
+source "$script_dir/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 # Defaults are empty so missing required arguments fail loudly below.
 sample_id=""
@@ -104,13 +96,13 @@ done
 [[ -n "$threads" ]] || die "Missing required argument: --threads."
 
 [[ -f "$input_alignment" ]] || die "Input alignment does not exist or is not a file: $input_alignment"
-command -v samtools >/dev/null 2>&1 || die "samtools executable was not found on PATH. Load the samtools module or update PATH."
+
+samtools_bin="$(resolve_executable_value "samtools" "" "samtools")"
 
 if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
     die "--threads must be a positive integer; got: $threads"
 fi
 
-samtools_bin="samtools"
 run_token="${SLURM_JOB_ID:-$$}"
 
 # Canonical output names are stable by design; downstream steps depend on them.

@@ -46,43 +46,19 @@ def build(args: argparse.Namespace):
         "counts": report.lexical_path(args.counts),
     }
     snapshots = report.snapshots(paths, label="Step 06")
-    fwd_container_ok, fwd_bam_magic, fwd_bai_magic = bam_report.validate_bam_bai_pair(
-        paths["fwd_bam"], paths["fwd_bai"]
-    )
-    rev_container_ok, rev_bam_magic, rev_bai_magic = bam_report.validate_bam_bai_pair(
-        paths["rev_bam"], paths["rev_bai"]
-    )
-    magic = {
-        "fwd_bam": fwd_bam_magic,
-        "fwd_bai": fwd_bai_magic,
-        "rev_bam": rev_bam_magic,
-        "rev_bai": rev_bai_magic,
-    }
-    containers_ok = fwd_container_ok and rev_container_ok
+    magic = {}
+    containers_ok = True
+    for bam_key, bai_key in (("fwd_bam", "fwd_bai"), ("rev_bam", "rev_bai")):
+        ok, bam_magic, bai_magic = bam_report.validate_bam_bai_pair(
+            paths[bam_key], paths[bai_key]
+        )
+        containers_ok = containers_ok and ok
+        magic[bam_key] = bam_magic
+        magic[bai_key] = bai_magic
     values, structure_detail = orientation.read_orientation_counts(
         paths["counts"], args.scope_id
     )
     structure_ok = bool(values)
-    fwd_ok = structure_ok and (
-        values["flag_99_records"] + values["flag_147_records"]
-        == values["fwd_like_records"]
-    )
-    rev_ok = structure_ok and (
-        values["flag_83_records"] + values["flag_163_records"]
-        == values["rev_like_records"]
-    )
-    assigned_ok = structure_ok and (
-        values["fwd_like_records"] + values["rev_like_records"]
-        == values["assigned_records"]
-        and values["assigned_records"] + values["unassigned_records"]
-        == values["input_records"]
-        and values["input_records"] > 0
-        and abs(
-            values["assigned_fraction"]
-            - values["assigned_records"] / values["input_records"]
-        ) <= 0.0000005
-    )
-
     rows = [
         report.row(
             "06", args.scope_id, "output_containers", containers_ok,
@@ -95,27 +71,47 @@ def build(args: argparse.Namespace):
             structure_detail,
             "one exact typed sample row", "orientation counts table",
         ),
-        report.row(
-            "06", args.scope_id, "fwd_count_arithmetic", fwd_ok,
-            f"{values.get('flag_99_records')}+{values.get('flag_147_records')}="
-            f"{values.get('fwd_like_records')}",
-            "flag99 + flag147 = FWD_like", "mechanical FWD_like counts",
-        ),
-        report.row(
-            "06", args.scope_id, "rev_count_arithmetic", rev_ok,
-            f"{values.get('flag_83_records')}+{values.get('flag_163_records')}="
-            f"{values.get('rev_like_records')}",
-            "flag83 + flag163 = REV_like", "mechanical REV_like counts",
-        ),
-        report.row(
-            "06", args.scope_id, "assigned_count_arithmetic", assigned_ok,
-            f"input={values.get('input_records')} assigned={values.get('assigned_records')} "
-            f"unassigned={values.get('unassigned_records')} "
-            f"fraction={values.get('assigned_fraction')}",
-            "groups sum; assigned + unassigned = input; fraction reconciles",
-            "complete orientation count arithmetic",
-        ),
     ]
+    for check_id, orientation_key in zip(
+        ("fwd_count_arithmetic", "rev_count_arithmetic"), orientation.ORIENTATIONS
+    ):
+        count_ok, count_detail = orientation.mechanical_like_count_detail(
+            values, orientation_key
+        )
+        rows.append(
+            report.row(
+                "06", args.scope_id,
+                check_id,
+                structure_ok and count_ok,
+                count_detail,
+                f"mechanical {orientation_key} counts",
+                f"mechanical {orientation_key} counts",
+            )
+        )
+    assigned_ok = structure_ok and (
+        values["fwd_like_records"] + values["rev_like_records"]
+        == values["assigned_records"]
+        and values["assigned_records"] + values["unassigned_records"]
+        == values["input_records"]
+        and values["input_records"] > 0
+        and abs(
+            values["assigned_fraction"]
+            - values["assigned_records"] / values["input_records"]
+        ) <= 0.0000005
+    )
+    rows.extend(
+        [
+            report.row(
+                "06", args.scope_id, "assigned_count_arithmetic", assigned_ok,
+                f"input={values.get('input_records')} "
+                f"assigned={values.get('assigned_records')} "
+                f"unassigned={values.get('unassigned_records')} "
+                f"fraction={values.get('assigned_fraction')}",
+                "groups sum; assigned + unassigned = input; fraction reconciles",
+                "complete orientation count arithmetic",
+            ),
+        ]
+    )
     data = report.render(rows)
     report.validate_report(data, args.scope_id, step_id="06", check_ids=CHECK_IDS)
     return data, snapshots

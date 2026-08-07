@@ -11,17 +11,10 @@
 # installation is intentionally outside this job; provide an operator-validated
 # Rscript through RSCRIPT_BIN_OVERRIDE.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 

@@ -46,31 +46,14 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 
 die2() {
     printf 'ERROR: %s\n' "$*" >&2
     exit 2
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
 }
 
 resolve_gatk() {

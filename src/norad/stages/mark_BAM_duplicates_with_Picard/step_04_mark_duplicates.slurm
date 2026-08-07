@@ -12,18 +12,11 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly for real execution
 # after Step 02 has produced the canonical sorted BAM and index.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 

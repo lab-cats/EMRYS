@@ -6,6 +6,7 @@
 # validates the public command-line shape, resolves Python, prints the exact
 # delegated command, and preserves the implementation's exit status.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'USAGE'
@@ -36,38 +37,11 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
+# shellcheck source=../../libraries/executable_resolution.sh
+source "$script_dir/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-    [[ -n "$value" && "$value" != --* ]] || die "$option requires a value."
-}
-
-resolve_executable() {
-    local value="$1"
-    local resolved
-
-    if [[ "$value" == */* ]]; then
-        [[ -e "$value" ]] || die "Python executable does not exist: $value"
-        [[ -x "$value" ]] || die "Python path is not executable: $value"
-        printf '%s\n' "$value"
-        return
-    fi
-
-    resolved="$(command -v "$value" || true)"
-    [[ -n "$resolved" ]] ||
-        die "Python executable was not found on PATH: $value"
-    printf '%s\n' "$resolved"
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 review_id=""
 sample_manifest=""
@@ -163,13 +137,16 @@ do
         die "Missing required argument: --${required_name//_/-}."
 done
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python_script="$script_dir/step_09c_scientific_validation.py"
 [[ -f "$python_script" && -r "$python_script" ]] ||
     die "Step 09c Python implementation does not exist or is not readable: $python_script"
 
 python_value="${PYTHON_BIN_OVERRIDE:-python3}"
-python_bin="$(resolve_executable "$python_value")"
+if [[ "$python_value" == */* ]]; then
+    [[ -e "$python_value" ]] || die "Python executable does not exist: $python_value"
+    [[ -x "$python_value" ]] || die "Python path is not executable: $python_value"
+fi
+python_bin="$(resolve_executable_value "Python" "$python_value" "python3")"
 
 command_args=(
     "$python_bin"

@@ -26,23 +26,15 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'FAIL: %s\n' "$*" >&2
-    exit 1
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
-
-is_gzip_path() {
-    [[ "$1" == *.gz ]]
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+DIE_PREFIX="FAIL"
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 fastq_stream() {
     local file="$1"

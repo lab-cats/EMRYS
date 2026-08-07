@@ -801,8 +801,9 @@ validate_step07_receipt <- function(
     }
     if (!identical(receipt$orientation, ORIENTATIONS)) {
         abort(
-            "Step 07 receipt orientations must be exactly FWD_like then ",
-            "REV_like: ", path
+            "Step 07 receipt orientations must be exactly ",
+            paste(ORIENTATIONS, collapse = " then "), ": ",
+            path
         )
     }
     required_values <- as.matrix(receipt)
@@ -1055,13 +1056,14 @@ process_vcf <- function(
 
     genomic_ref <- genomic_ref[supported]
     genomic_alt <- genomic_alt[supported]
-    annotation_strand <- if (orientation == "FWD_like") "+" else "-"
-    rna_ref <- if (orientation == "FWD_like") {
+    is_forward_orientation <- orientation == ORIENTATIONS[[1L]]
+    annotation_strand <- if (is_forward_orientation) "+" else "-"
+    rna_ref <- if (is_forward_orientation) {
         complement_base(genomic_ref)
     } else {
         genomic_ref
     }
-    rna_alt <- if (orientation == "FWD_like") {
+    rna_alt <- if (is_forward_orientation) {
         complement_base(genomic_alt)
     } else {
         genomic_alt
@@ -1398,9 +1400,12 @@ main <- function() {
         !identical(reread_sites$candidate_id, sites$candidate_id)) {
         abort("Written Step 08 candidate order changed during serialization.")
     }
-    if (!all(
-        reread_inputs$orientation_policy == ORIENTATION_POLICY
-    ) || reread_summary$orientation_policy[[1L]] != ORIENTATION_POLICY) {
+    if (!all(!is.na(reread_inputs$orientation_policy) &
+            reread_inputs$orientation_policy == ORIENTATION_POLICY) ||
+        !(
+            !is.na(reread_summary$orientation_policy[[1L]]) &&
+            reread_summary$orientation_policy[[1L]] == ORIENTATION_POLICY
+        )) {
         abort("Written Step 08 orientation policy failed revalidation.")
     }
     successful <- TRUE

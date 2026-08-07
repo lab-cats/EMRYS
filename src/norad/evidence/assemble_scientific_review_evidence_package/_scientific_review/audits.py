@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
+from norad.libraries.alignments import orientation as alignment_orientation
 from .contracts import NA_VALUE, review_package, step08, step09, values_close
 from .intake import complement_base, validate_candidate_reference, validate_iso_date
 
@@ -29,7 +30,9 @@ def validate_orientation_evidence(
         if row["partition_id"] not in partition_ids:
             step08.fail("Orientation audit references an unknown partition.")
         step08.validate_enum(
-            "Orientation audit orientation", row["orientation"], step08.ORIENTATIONS
+            "Orientation audit orientation",
+            row["orientation"],
+            alignment_orientation.ORIENTATIONS,
         )
         observed_orientations.add(row["orientation"])
         if any(
@@ -69,11 +72,9 @@ def validate_orientation_evidence(
                 "Orientation audit transcript_strand differs from the "
                 "candidate annotation strand."
             )
-        expected_flags = (
-            ("99", "147")
-            if row["orientation"] == "FWD_like"
-            else ("83", "163")
-        )
+        expected_flags = alignment_orientation.MECHANICAL_ORIENTATION_FLAG_GROUPS[
+            row["orientation"]
+        ]
         if row["flag_group"] not in expected_flags:
             step08.fail(
                 "Orientation audit flag_group is incompatible with its "
@@ -132,7 +133,11 @@ def validate_orientation_evidence(
             "Complete orientation audit row count differs from "
             "locus_target_count."
         )
-    if complete and rows and observed_orientations != set(step08.ORIENTATIONS):
+    if (
+        complete
+        and rows
+        and observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS
+    ):
         step08.fail("Complete orientation audit must cover both required orientations.")
     del review_id
 
@@ -154,7 +159,7 @@ def validate_annotation_evidence(
             candidates,
         )
         step08.validate_enum(
-            "Annotation audit orientation", row["orientation"], step08.ORIENTATIONS
+            "Annotation audit orientation", row["orientation"], alignment_orientation.ORIENTATIONS
         )
         if row["annotation_strand"] not in ("+", "-"):
             step08.fail("Annotation audit annotation_strand must be + or -.")
@@ -239,7 +244,7 @@ def validate_annotation_evidence(
             step08.fail("Complete annotation audit is missing required case types.")
         if observed_strands != {"+", "-"}:
             step08.fail("Complete annotation audit must cover both annotation strands.")
-        if observed_orientations != set(step08.ORIENTATIONS):
+        if observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS:
             step08.fail("Complete annotation audit must cover both orientations.")
 
 

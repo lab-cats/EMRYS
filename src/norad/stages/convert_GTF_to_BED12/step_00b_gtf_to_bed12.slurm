@@ -12,9 +12,11 @@
 # Environment variables can override the input GTF, intermediate BED, final BED,
 # and Python executable without editing this SLURM wrapper.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 # Run from the submitted repository checkout so relative paths are predictable.
-cd "$SLURM_SUBMIT_DIR"
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 # Resolve configurable paths and keep defaults suitable for the prepared reference.
 GTF="${GTF:-refs/novogene_ref/genome.gtf}"
@@ -24,18 +26,15 @@ PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 
 # Validate paths before running conversion or sorting.
 if [[ "$UNSORTED_BED" == "$BED" ]]; then
-echo "ERROR: UNSORTED_BED and BED must be different paths." >&2
-exit 1
+    die "UNSORTED_BED and BED must be different paths."
 fi
 
 if [[ ! -f "$GTF" ]]; then
-echo "ERROR: GTF not found: $GTF" >&2
-exit 1
+    die "GTF not found: $GTF"
 fi
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
-echo "ERROR: Python executable not found or not executable: $PYTHON_BIN" >&2
-exit 1
+    die "Python executable not found or not executable: $PYTHON_BIN"
 fi
 
 mkdir -p logs
@@ -75,8 +74,7 @@ src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py
 )
 
 printf 'Command:'
-printf ' %q' "${gtf_to_bed12_cmd[@]}"
-printf '\n'
+print_command "${gtf_to_bed12_cmd[@]}"
 
 "${gtf_to_bed12_cmd[@]}"
 
@@ -90,7 +88,7 @@ sort
 )
 
 printf 'Command:'
-printf ' %q' "${bedtools_sort_cmd[@]}"
+print_command "${bedtools_sort_cmd[@]}"
 printf ' > %q\n' "$BED"
 
 "${bedtools_sort_cmd[@]}" > "$BED"

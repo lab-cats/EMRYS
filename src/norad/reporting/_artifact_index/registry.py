@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
+from norad.libraries.alignments import orientation as alignment_orientation
 from .contracts import review_package, step08, step09
 from .models import (
     AdapterSpec,
@@ -293,31 +294,27 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=5,
         allow_header_only=False,
     )
-    for adapter_id, suffix in (
-        ("step06_fwd_bam_v1", ".FWD_like.bam"),
-        ("step06_rev_bam_v1", ".REV_like.bam"),
+    for orientation, adapter_prefix in zip(
+        alignment_orientation.ORIENTATIONS,
+        alignment_orientation.ORIENTATION_PREFIXES,
     ):
         add_spec(
             registry,
-            adapter_id,
+            f"step06_{adapter_prefix}_bam_v1",
             "06",
             "sample",
             "bam",
             "application/x-bam",
-            suffixes=(suffix,),
+            suffixes=(f".{orientation}.bam",),
         )
-    for adapter_id, suffix in (
-        ("step06_fwd_bai_v1", ".FWD_like.bam.bai"),
-        ("step06_rev_bai_v1", ".REV_like.bam.bai"),
-    ):
         add_spec(
             registry,
-            adapter_id,
+            f"step06_{adapter_prefix}_bai_v1",
             "06",
             "sample",
             "bai",
             "application/octet-stream",
-            suffixes=(suffix,),
+            suffixes=(f".{orientation}.bam.bai",),
         )
     add_spec(
         registry,

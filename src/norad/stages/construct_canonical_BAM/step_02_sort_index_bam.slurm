@@ -10,18 +10,11 @@
 #
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly for real execution.
 set -euo pipefail
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 export TMPDIR=/tmp
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 INPUT_ALIGNMENT="${INPUT_ALIGNMENT:-results/star/${SAMPLE_ID}/${SAMPLE_ID}.Aligned.sortedByCoord.out.bam}"
@@ -33,8 +26,7 @@ case "$EXECUTE" in
     0) execute_args=() ;;
     1) execute_args=(--execute) ;;
     *)
-        echo "ERROR: EXECUTE must be 0 or 1; got: $EXECUTE" >&2
-        exit 1
+        die "EXECUTE must be 0 or 1; got: $EXECUTE"
         ;;
 esac
 

@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 from norad.contracts.scientific_evidence import step08
+from norad.libraries.alignments import orientation as alignment_orientation
 
 
 ContractError = step08.ContractError
+IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
 Table = step08.Table
 NA_VALUE = step08.NA_VALUE
 values_close = step08.values_close
@@ -388,12 +390,13 @@ def validate_step09_summary(
     ) != len(replicates):
         step08.fail("Step 09 summary replicate_count differs from the sample manifest.")
     if (
-        step08_orientation_policy != "legacy_provisional_v1"
+        not IS_LEGACY_ORIENTATION_POLICY(step08_orientation_policy)[0]
+        or not IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
         or row["orientation_policy"] != step08_orientation_policy
     ):
         step08.fail(
             "Step 09 summary and Step 08 must use "
-            "orientation_policy=legacy_provisional_v1."
+            f"orientation_policy={alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
         )
     if any(
         result["orientation_policy"] != row["orientation_policy"]

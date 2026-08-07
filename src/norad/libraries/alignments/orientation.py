@@ -15,13 +15,52 @@ COUNTS_HEADER = (
     "assigned_fraction",
 )
 
+ORIENTATIONS = ("FWD_like", "REV_like")
+ORIENTATION_PREFIXES = tuple(
+    orientation.split("_")[0].lower() for orientation in ORIENTATIONS
+)
+MECHANICAL_ORIENTATION_FLAG_GROUPS = {
+    ORIENTATIONS[0]: ("99", "147"),
+    ORIENTATIONS[1]: ("83", "163"),
+}
+REQUIRED_ORIENTATIONS = frozenset(ORIENTATIONS)
 LEGACY_PROVISIONAL_ORIENTATION_POLICY = "legacy_provisional_v1"
+
+
+def infer_orientation_from_path(path: Path | str) -> str | None:
+    filename = Path(path).name
+    for orientation in ORIENTATIONS:
+        if f".{orientation}." in filename:
+            return orientation
+    return None
 
 
 def validate_legacy_orientation_policy(value: str) -> tuple[bool, str]:
     if value == LEGACY_PROVISIONAL_ORIENTATION_POLICY:
         return True, "orientation_policy=legacy_provisional_v1"
     return False, f"unsupported orientation_policy={value!r}; expected legacy_provisional_v1"
+
+
+def mechanical_like_count_detail(
+    values: dict[str, int | float], orientation: str
+) -> tuple[bool, str]:
+    if orientation not in ORIENTATIONS:
+        return False, f"unsupported orientation={orientation!r}"
+    like_field = f"{orientation.lower()}_records"
+    left_field = (
+        f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][0]}_records"
+    )
+    right_field = (
+        f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][1]}_records"
+    )
+    left_value = values.get(left_field)
+    right_value = values.get(right_field)
+    like_value = values.get(like_field)
+    return (
+        left_value is not None and right_value is not None and like_value is not None
+        and left_value + right_value == like_value,
+        f"{left_value}+{right_value}={like_value}",
+    )
 
 
 def read_orientation_counts(

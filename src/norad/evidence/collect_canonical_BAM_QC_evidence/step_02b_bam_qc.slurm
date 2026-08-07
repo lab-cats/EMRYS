@@ -11,16 +11,9 @@
 #
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly for real execution.
 set -euo pipefail
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 BAM="${BAM:-results/bam/${SAMPLE_ID}/${SAMPLE_ID}.sorted.bam}"

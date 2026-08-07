@@ -14,16 +14,8 @@
 set -euo pipefail
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 

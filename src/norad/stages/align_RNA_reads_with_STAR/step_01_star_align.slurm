@@ -12,16 +12,9 @@
 # Defaults support a dry-run smoke test. Real cluster execution should pass
 # sample-specific paths through environment variables and set EXECUTE=1.
 set -euo pipefail
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 # Defaults support a safe dry-run smoke test.
 SAMPLE_ID="${SAMPLE_ID:-sample_001}"

@@ -26,6 +26,7 @@ from .models import (
 )
 from .registry import ADAPTER_REGISTRY
 from .rosters import SCOPE_ADAPTER_ROSTERS
+from norad.libraries.alignments import orientation as alignment_orientation
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -241,9 +242,11 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
                 for row in scope_rows
                 if row["adapter"] == "step07_mpileup_vcf_v1"
             ]
-            if sum(".FWD_like." in name for name in vcf_names) != 1 or sum(
-                ".REV_like." in name for name in vcf_names
-            ) != 1:
+            observed_orientations = {
+                alignment_orientation.infer_orientation_from_path(name)
+                for name in vcf_names
+            }
+            if observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS:
                 raise ArtifactIndexError(
                     f"Inventory scope {scope!r} must declare one FWD_like "
                     "and one REV_like Step 07 VCF"

@@ -16,6 +16,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.alignments import orientation as alignment_orientation
 
 
 class ContractError(RuntimeError):
@@ -25,8 +26,7 @@ class ContractError(RuntimeError):
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 NA_VALUE = "NA"
-ORIENTATIONS = ("FWD_like", "REV_like")
-
+ORIENTATIONS = alignment_orientation.ORIENTATIONS
 STEP08_METADATA_HEADER = (
     "partition_id",
     "candidate_id",
@@ -302,7 +302,7 @@ def validate_step08_inputs(
     expected = [
         (partition, orientation)
         for partition in partitions
-        for orientation in ORIENTATIONS
+        for orientation in alignment_orientation.ORIENTATIONS
     ]
     if len(table.rows) != len(expected):
         fail(
@@ -426,7 +426,7 @@ def validate_step08_sites(
         validate_enum(
             f"Step 08 sites row {row_number} orientation",
             row["orientation"],
-            ORIENTATIONS,
+            alignment_orientation.ORIENTATIONS,
         )
         scope = (row["partition_id"], row["orientation"])
         observed_by_scope[scope] += 1

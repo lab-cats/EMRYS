@@ -13,18 +13,10 @@
 # Step 07 receipt/VCF set has been inspected and the supported Rscript runtime
 # and required Bioconductor packages are available.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 

@@ -13,20 +13,12 @@
 # analysis script. Defaults run in dry-run mode; set EXECUTE=1 explicitly for
 # real execution after Step 02 has produced the canonical BAM and index.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/../../libraries/argument_parsing.sh"
 
 # CSU compute nodes can have an unwritable default local tmp path. Pin TMPDIR to
 # /tmp unless the submit command intentionally overrides it.
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
 
 # Resolve repo-relative defaults from the directory where sbatch was submitted.
 # The fallback keeps local syntax checks and wrapper smoke tests simple.

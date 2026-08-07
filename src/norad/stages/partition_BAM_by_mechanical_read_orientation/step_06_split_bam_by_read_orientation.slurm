@@ -14,16 +14,10 @@
 set -euo pipefail
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-die() {
-    echo "ERROR: $*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/orientation.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
@@ -58,10 +52,10 @@ echo "Input BAM: $INPUT_BAM"
 echo "Input BAI: $INPUT_BAM.bai"
 echo "Output directory: $OUTPUT_DIR"
 echo "QC directory: $QC_DIR"
-echo "FWD_like BAM: $OUTPUT_DIR/${SAMPLE_ID}.FWD_like.bam"
-echo "FWD_like BAI: $OUTPUT_DIR/${SAMPLE_ID}.FWD_like.bam.bai"
-echo "REV_like BAM: $OUTPUT_DIR/${SAMPLE_ID}.REV_like.bam"
-echo "REV_like BAI: $OUTPUT_DIR/${SAMPLE_ID}.REV_like.bam.bai"
+for orientation in "${ORIENTATIONS[@]}"; do
+    echo "${orientation} BAM: $OUTPUT_DIR/${SAMPLE_ID}.${orientation}.bam"
+    echo "${orientation} BAI: $OUTPUT_DIR/${SAMPLE_ID}.${orientation}.bam.bai"
+done
 echo "Counts TSV: $QC_DIR/${SAMPLE_ID}.orientation_counts.tsv"
 echo "Threads: $THREADS"
 echo "samtools: $SAMTOOLS_BIN"
@@ -110,10 +104,12 @@ REV_BAI="$REV_BAM.bai"
 COUNTS_TSV="$QC_DIR/${SAMPLE_ID}.orientation_counts.tsv"
 
 if [[ "$EXECUTE" == "1" ]]; then
-    [[ -s "$FWD_BAM" ]] || die "Expected FWD_like BAM does not exist or is empty: $FWD_BAM"
-    [[ -s "$FWD_BAI" ]] || die "Expected FWD_like BAI does not exist or is empty: $FWD_BAI"
-    [[ -s "$REV_BAM" ]] || die "Expected REV_like BAM does not exist or is empty: $REV_BAM"
-    [[ -s "$REV_BAI" ]] || die "Expected REV_like BAI does not exist or is empty: $REV_BAI"
+    for orientation in "${ORIENTATIONS[@]}"; do
+        bam_path="$OUTPUT_DIR/${SAMPLE_ID}.${orientation}.bam"
+        bai_path="$bam_path.bai"
+        [[ -s "$bam_path" ]] || die "Expected ${orientation} BAM does not exist or is empty: $bam_path"
+        [[ -s "$bai_path" ]] || die "Expected ${orientation} BAI does not exist or is empty: $bai_path"
+    done
     [[ -s "$COUNTS_TSV" ]] || die "Expected counts TSV does not exist or is empty: $COUNTS_TSV"
 
     echo "Validated Step 06 read-orientation outputs:"

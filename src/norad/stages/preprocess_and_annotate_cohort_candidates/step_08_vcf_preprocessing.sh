@@ -51,26 +51,14 @@ legacy_provisional_v1 and is not a biological validation claim.
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/file_checks.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+# shellcheck source=../../libraries/orientation.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 
 resolve_rscript() {
     local value="${rscript_bin_arg:-}"
@@ -78,43 +66,6 @@ resolve_rscript() {
         value="$RSCRIPT_BIN_OVERRIDE"
     fi
     resolve_executable_value "Rscript" "$value" "Rscript"
-}
-
-validate_nonempty_file() {
-    local label="$1"
-    local path="$2"
-    [[ -s "$path" ]] || die "$label does not exist or is empty: $path"
-}
-
-validate_safe_id() {
-    local label="$1"
-    local value="$2"
-    if ! [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-        die "$label must match [A-Za-z0-9][A-Za-z0-9._-]*; got: $value"
-    fi
-}
-
-sha256_file() {
-    local path="$1"
-
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$path" | awk '{print $1}'
-    elif command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$path" | awk '{print $1}'
-    elif command -v python3 >/dev/null 2>&1; then
-        python3 -c '
-import hashlib
-import sys
-
-digest = hashlib.sha256()
-with open(sys.argv[1], "rb") as handle:
-    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-        digest.update(chunk)
-print(digest.hexdigest())
-' "$path"
-    else
-        die "No SHA-256 implementation found (sha256sum, shasum, or python3)."
-    fi
 }
 
 read_sample_ids() {
@@ -228,18 +179,6 @@ confirm_input_hashes() {
         die "Annotation GTF changed during Step 08: $annotation_gtf"
 }
 
-validate_exact_header() {
-    local label="$1"
-    local path="$2"
-    local expected_header="$3"
-    local observed_header
-
-    [[ -s "$path" ]] || die "$label does not exist or is empty: $path"
-    IFS= read -r observed_header < "$path"
-    [[ "$observed_header" == "$expected_header" ]] ||
-        die "$label header is invalid: $path"
-}
-
 validate_nonnegative_integer_value() {
     local label="$1"
     local value="$2"
@@ -345,8 +284,8 @@ validate_step07_receipt_preflight() {
        "$fwd_value" == "$selector_value" &&
        "$rev_value" == "$selector_value" ]] ||
         die "Step 07 receipt cohort, partition, or selector mismatch: $path"
-    [[ "$fwd_orientation" == "FWD_like" &&
-       "$rev_orientation" == "REV_like" ]] ||
+    [[ "$fwd_orientation" == "${ORIENTATIONS[0]}" &&
+       "$rev_orientation" == "${ORIENTATIONS[1]}" ]] ||
         die "Step 07 receipt orientations must be FWD_like then REV_like: $path"
     [[ -e "$fwd_path" && -e "$rev_path" &&
        "$fwd_path" -ef "$fwd_vcf" &&
@@ -450,11 +389,8 @@ validate_output_tables() {
 
     row_number=2
     for partition_index in "${!partition_ids[@]}"; do
-        for orientation_index in 0 1; do
-            expected_orientation="FWD_like"
-            if [[ "$orientation_index" -eq 1 ]]; then
-                expected_orientation="REV_like"
-            fi
+        for orientation_index in "${!ORIENTATIONS[@]}"; do
+            expected_orientation="${ORIENTATIONS[$orientation_index]}"
             vcf_index=$((partition_index * 2 + orientation_index))
             input_line="$(sed -n "${row_number}p" "$inputs_path")"
             IFS=$'\t' read -r \
@@ -487,8 +423,8 @@ validate_output_tables() {
                "$i_partition_hash" == "$partition_manifest_sha256" &&
                "$i_annotation" == "$annotation_gtf" &&
                "$i_annotation_hash" == "$annotation_gtf_sha256" &&
-               "$i_sample_count" == "$sample_count" &&
-               "$i_policy" == "legacy_provisional_v1" ]] ||
+               "$i_policy" == "$ORIENTATION_POLICY" &&
+               "$i_sample_count" == "$sample_count" ]] ||
                 die "Step 08 input receipt row $row_number contains invalid manifest, annotation, sample-count, or policy metadata."
 
             validate_nonnegative_integer_value \
@@ -525,7 +461,11 @@ validate_output_tables() {
     done
 
     partition_csv="$(IFS=,; printf '%s' "${partition_ids[*]}")"
-    awk -F '\t' -v partitions="$partition_csv" '
+    awk -F '\t' \
+        -v partitions="$partition_csv" \
+        -v orientation_fwd="${ORIENTATIONS[0]}" \
+        -v orientation_rev="${ORIENTATIONS[1]}" \
+        -v orientation_policy="$ORIENTATION_POLICY" '
         BEGIN {
             count = split(partitions, values, ",")
             for (partition_index = 1;
@@ -536,10 +476,10 @@ validate_output_tables() {
         }
         NR > 1 {
             if (!($1 in valid) || $2 == "" || seen[$2]++ ||
-                ($3 != "FWD_like" && $3 != "REV_like") ||
+                ($3 != orientation_fwd && $3 != orientation_rev) ||
                 $5 !~ /^[1-9][0-9]*$/ ||
                 $6 !~ /^[1-9][0-9]*$/ ||
-                $22 != "legacy_provisional_v1") {
+                $22 != orientation_policy) {
                 exit 1
             }
         }
@@ -580,7 +520,8 @@ validate_output_tables() {
        "$s_partition_hash" == "$partition_manifest_sha256" &&
        "$s_annotation" == "$annotation_gtf" &&
        "$s_annotation_hash" == "$annotation_gtf_sha256" &&
-       "$s_policy" == "legacy_provisional_v1" ]] ||
+       "$s_policy" == "$ORIENTATION_POLICY"
+    ]] ||
         die "Step 08 summary does not exactly reconcile its declared inputs and published sites."
 }
 

@@ -1511,6 +1511,9 @@ wrapper_dry="$test_root/wrapper-dry"
 mkdir -p "$wrapper_dry/$owner_path" "$wrapper_dry/src/norad/libraries"
 cp "$script" "$wrapper_dry/$owner_path/"
 cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$repo_root/src/norad/libraries/file_checks.sh" \
+    "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$repo_root/src/norad/libraries/orientation.sh" \
     "$wrapper_dry/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
@@ -1537,6 +1540,9 @@ mkdir -p \
     "$wrapper_execute/src/norad/libraries"
 cp "$script" "$wrapper_execute/$owner_path/"
 cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$repo_root/src/norad/libraries/file_checks.sh" \
+    "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$repo_root/src/norad/libraries/orientation.sh" \
     "$wrapper_execute/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \

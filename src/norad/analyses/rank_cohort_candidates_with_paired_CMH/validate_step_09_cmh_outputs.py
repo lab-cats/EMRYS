@@ -15,11 +15,14 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.alignments import orientation as alignment_orientation
 
 from norad.contracts.scientific_evidence import step08, step09
 
 if step09.step08 is not step08:
     raise ImportError("Step 09 contract and validator resolved different Step 08 objects")
+
+IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
 
 
 CHECK_IDS = {
@@ -117,13 +120,13 @@ def build(args: argparse.Namespace):
         step08_inputs is not None
         and all(
             row["cohort_id"] == args.cohort_id
-            and row["orientation_policy"] == "legacy_provisional_v1"
+            and IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
             for row in step08_inputs.rows
         )
     )
     if step08_inputs is not None and not cohort_policy_ok:
         step08_input_detail = (
-            "explicit cohort identity or legacy_provisional_v1 policy mismatch"
+            f"explicit cohort identity or {alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY} policy mismatch"
         )
     step08_sites = None
     step08_sites_detail = "Step 08 input prerequisite failed"

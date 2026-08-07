@@ -27,6 +27,7 @@ CHECK_IDS = {
     "sites_order_uniqueness",
     "summary_count_reconciliation",
 }
+IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -64,6 +65,7 @@ def build(args: argparse.Namespace):
     sample_hash = step08.sha256_file(paths["sample_manifest"])
     partition_hash = step08.sha256_file(paths["partition_manifest"])
     annotation_hash = step08.sha256_file(paths["annotation_gtf"])
+    annotation_path_text = str(paths["annotation_gtf"].resolve())
 
     expected_sites_header = None
     if sample_result is not None:
@@ -109,11 +111,9 @@ def build(args: argparse.Namespace):
     if inputs_table is not None:
         identity_ok = all(
             row["cohort_id"] == args.cohort_id
-            and row["annotation_gtf"] == str(paths["annotation_gtf"])
+            and row["annotation_gtf"] == annotation_path_text
             and row["annotation_gtf_sha256"] == annotation_hash
-            and alignment_orientation.validate_legacy_orientation_policy(
-                row["orientation_policy"]
-            )[0]
+            and IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
             for row in inputs_table.rows
         )
         if not identity_ok:
@@ -160,11 +160,9 @@ def build(args: argparse.Namespace):
             row = summary_table.rows[0]
             if (
                 row["cohort_id"] != args.cohort_id
-                or row["annotation_gtf"] != str(paths["annotation_gtf"])
+                or row["annotation_gtf"] != annotation_path_text
                 or row["annotation_gtf_sha256"] != annotation_hash
-                or not alignment_orientation.validate_legacy_orientation_policy(
-                    row["orientation_policy"]
-                )[0]
+                or not IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
             ):
                 summary_table = None
                 summary_detail = "summary cohort, annotation identity, or policy mismatch"

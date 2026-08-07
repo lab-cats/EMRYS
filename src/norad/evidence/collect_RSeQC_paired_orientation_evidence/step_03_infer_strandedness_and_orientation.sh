@@ -43,24 +43,16 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/executable_resolution.sh
+source "$script_dir/../../libraries/executable_resolution.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 default_infer_experiment_bin() {
     # The CSU project environment installs RSeQC in the repo virtualenv. Falling
@@ -70,20 +62,6 @@ default_infer_experiment_bin() {
         printf '.venv/bin/infer_experiment.py\n'
     else
         printf 'infer_experiment.py\n'
-    fi
-}
-
-validate_infer_experiment_bin() {
-    local bin="$1"
-
-    # Path-like values must point to an executable file so a typo or broken
-    # virtualenv fails before a cluster job starts doing real work. Plain command
-    # names are resolved through PATH.
-    if [[ "$bin" == */* ]]; then
-        [[ -e "$bin" ]] || die "infer_experiment.py does not exist: $bin"
-        [[ -x "$bin" ]] || die "infer_experiment.py exists but is not executable: $bin"
-    else
-        command -v "$bin" >/dev/null 2>&1 || die "infer_experiment.py executable was not found on PATH: $bin"
     fi
 }
 
@@ -158,7 +136,8 @@ else
 fi
 
 [[ -f "$bed12" ]] || die "BED12 annotation does not exist or is not a file: $bed12"
-validate_infer_experiment_bin "$infer_experiment_bin"
+infer_experiment_bin_print="$infer_experiment_bin"
+infer_experiment_bin="$(resolve_executable_value "infer_experiment.py" "$infer_experiment_bin" "infer_experiment.py")"
 
 output_file="$output_dir/${sample_id}.infer_experiment.txt"
 
@@ -176,7 +155,7 @@ printf '  BAM index found: %s\n' "$bam_index"
 printf '  BED12 annotation: %s\n' "$bed12"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Output file: %s\n' "$output_file"
-printf '  infer_experiment.py: %s\n' "$infer_experiment_bin"
+printf '  infer_experiment.py: %s\n' "$infer_experiment_bin_print"
 printf '  Mode: %s\n' "$mode"
 
 infer_command=(

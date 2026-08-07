@@ -39,38 +39,10 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-    [[ -n "$value" && "$value" != --* ]] || die "$option requires a value."
-}
-
-resolve_executable() {
-    local value="$1"
-    local resolved
-
-    if [[ "$value" == */* ]]; then
-        [[ -e "$value" ]] || die "Python executable does not exist: $value"
-        [[ -x "$value" ]] || die "Python path is not executable: $value"
-        printf '%s\n' "$value"
-        return
-    fi
-
-    resolved="$(command -v "$value" || true)"
-    [[ -n "$resolved" ]] ||
-        die "Python executable was not found on PATH: $value"
-    printf '%s\n' "$resolved"
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
+# shellcheck source=../libraries/executable_resolution.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/executable_resolution.sh"
+# shellcheck source=../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/argument_parsing.sh"
 
 run_summary=""
 output_root=""
@@ -150,7 +122,7 @@ elif [[ -x "$repo_root/.venv/bin/python" ]]; then
 else
     python_value="python3"
 fi
-python_bin="$(resolve_executable "$python_value")"
+python_bin="$(resolve_executable_value "Python executable" "$python_value" "python3")"
 
 preflight_code='
 import importlib.util

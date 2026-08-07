@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
+from norad.libraries.alignments import orientation as alignment_orientation
 from .contracts import (
     COMPUTATIONAL_VALIDATION_HEADER,
     EVIDENCE_MANIFEST_HEADER,
@@ -255,10 +256,10 @@ def validate_review_plan(
     required_orientations = split_ids(
         "required_orientations", plan["required_orientations"]
     )
-    if required_orientations != list(step08.ORIENTATIONS):
+    if required_orientations != list(alignment_orientation.ORIENTATIONS):
         step08.fail(
             "required_orientations must be exactly "
-            "FWD_like,REV_like in that order."
+            f"{','.join(alignment_orientation.ORIENTATIONS)} in that order."
         )
     required_strands = plan["required_annotation_strands"].split(",")
     if required_strands != ["+", "-"]:

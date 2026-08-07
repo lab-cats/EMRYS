@@ -32,6 +32,12 @@ CONSUMERS = {
     ROOT
     / "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
     "step_08_vcf_preprocessing.sh": (0o755, 1),
+    ROOT
+    / "src/norad/evidence/assemble_scientific_review_evidence_package/"
+    "step_09c_scientific_validation.sh": (0o755, 0),
+    ROOT
+    / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+    "step_09_cmh_editing_site_calling.sh": (0o755, 1),
 }
 
 
@@ -238,13 +244,23 @@ def test_one_owner_and_exact_five_consumer_roster() -> None:
 
     for consumer, (expected_mode, expected_calls) in CONSUMERS.items():
         source = consumer.read_text(encoding="utf-8")
-        die_start = source.index("die() {")
-        die_end = source.index("\n}\n", die_start)
         source_index = source.index(SOURCE_LINE)
 
         assert source.count(SOURCE_LINE) == 1
-        assert die_end < source_index
-        assert source.count('resolve_executable_value "') == expected_calls
+        if "die() {" in source:
+            die_start = source.index("die() {")
+            die_end = source.index("\n}\n", die_start)
+            assert die_end < source_index
+        else:
+            arg_source = (
+                'source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"'
+            )
+            arg_index = source.index(arg_source)
+            assert arg_index > source_index
+        calls = source.count('resolve_executable_value "')
+        assert calls == expected_calls
+        if expected_calls:
+            assert source_index < source.index('resolve_executable_value "')
         assert mode(consumer) == expected_mode
 
     all_sources = [

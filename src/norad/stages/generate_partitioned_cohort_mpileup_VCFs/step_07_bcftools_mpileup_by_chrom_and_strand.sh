@@ -58,26 +58,14 @@ not assign transcript strand or biological sense/antisense meaning.
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/file_checks.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+# shellcheck source=../../libraries/orientation.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 
 resolve_bcftools() {
     local value="${bcftools_bin_arg:-}"
@@ -85,34 +73,6 @@ resolve_bcftools() {
         value="$BCFTOOLS_BIN_OVERRIDE"
     fi
     resolve_executable_value "bcftools" "$value" "bcftools"
-}
-
-validate_nonempty_file() {
-    local label="$1"
-    local path="$2"
-    [[ -s "$path" ]] || die "$label does not exist or is empty: $path"
-}
-
-validate_safe_id() {
-    local label="$1"
-    local value="$2"
-    if ! [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-        die "$label must match [A-Za-z0-9][A-Za-z0-9._-]*; got: $value"
-    fi
-}
-
-sha256_file() {
-    local path="$1"
-
-    if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$path" | awk '{print $1}'
-    elif command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$path" | awk '{print $1}'
-    elif command -v python3 >/dev/null 2>&1; then
-        python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$path"
-    else
-        die "No SHA-256 implementation found (sha256sum, shasum, or python3)."
-    fi
 }
 
 confirm_input_manifest_hashes() {
@@ -585,12 +545,12 @@ fwd_bams=()
 rev_bams=()
 for sample_id in "${sample_ids[@]}"; do
     validate_safe_id "sample_id" "$sample_id"
-    fwd_bam="$orientation_root/$sample_id/$sample_id.FWD_like.bam"
-    rev_bam="$orientation_root/$sample_id/$sample_id.REV_like.bam"
-    validate_nonempty_file "FWD_like BAM for $sample_id" "$fwd_bam"
-    validate_nonempty_file "FWD_like BAI for $sample_id" "$fwd_bam.bai"
-    validate_nonempty_file "REV_like BAM for $sample_id" "$rev_bam"
-    validate_nonempty_file "REV_like BAI for $sample_id" "$rev_bam.bai"
+    fwd_bam="$orientation_root/$sample_id/$sample_id.${ORIENTATIONS[0]}.bam"
+    rev_bam="$orientation_root/$sample_id/$sample_id.${ORIENTATIONS[1]}.bam"
+    validate_nonempty_file "${ORIENTATIONS[0]} BAM for $sample_id" "$fwd_bam"
+    validate_nonempty_file "${ORIENTATIONS[0]} BAI for $sample_id" "$fwd_bam.bai"
+    validate_nonempty_file "${ORIENTATIONS[1]} BAM for $sample_id" "$rev_bam"
+    validate_nonempty_file "${ORIENTATIONS[1]} BAI for $sample_id" "$rev_bam.bai"
     fwd_bams+=("$fwd_bam")
     rev_bams+=("$rev_bam")
 done
@@ -600,15 +560,14 @@ sample_count="${#sample_ids[@]}"
 run_token="${SLURM_JOB_ID:-$$}"
 
 partition_output_dir="$output_root/$cohort_id/$partition_id"
-final_fwd_vcf="$partition_output_dir/$cohort_id.$partition_id.FWD_like.mpileup.vcf"
-final_rev_vcf="$partition_output_dir/$cohort_id.$partition_id.REV_like.mpileup.vcf"
+final_fwd_vcf="$partition_output_dir/$cohort_id.$partition_id.${ORIENTATIONS[0]}.mpileup.vcf"
+final_rev_vcf="$partition_output_dir/$cohort_id.$partition_id.${ORIENTATIONS[1]}.mpileup.vcf"
 final_receipt="$partition_output_dir/$cohort_id.$partition_id.step07_outputs.tsv"
-
-tmp_fwd_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.FWD_like.tmp.vcf"
-tmp_rev_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.REV_like.tmp.vcf"
+tmp_fwd_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.${ORIENTATIONS[0]}.tmp.vcf"
+tmp_rev_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.${ORIENTATIONS[1]}.tmp.vcf"
 tmp_receipt="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.outputs.tmp.tsv"
-backup_fwd_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.FWD_like.vcf"
-backup_rev_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.REV_like.vcf"
+backup_fwd_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.${ORIENTATIONS[0]}.vcf"
+backup_rev_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.${ORIENTATIONS[1]}.vcf"
 backup_receipt="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.outputs.tsv"
 lock_path="$partition_output_dir/.$cohort_id.$partition_id.step07.lock"
 lock_owner_file="$lock_path/owner"
@@ -624,6 +583,13 @@ fwd_mpileup_command=(
     -a "$annotations"
     "${fwd_bams[@]}"
 )
+fwd_filter_command=(
+    "$bcftools_bin" filter
+    -i "$filter_expression"
+    -Ov
+    -o "$tmp_fwd_vcf"
+    -
+)
 rev_mpileup_command=(
     "$bcftools_bin" mpileup
     -Ou
@@ -633,13 +599,6 @@ rev_mpileup_command=(
     -I
     -a "$annotations"
     "${rev_bams[@]}"
-)
-fwd_filter_command=(
-    "$bcftools_bin" filter
-    -i "$filter_expression"
-    -Ov
-    -o "$tmp_fwd_vcf"
-    -
 )
 rev_filter_command=(
     "$bcftools_bin" filter
@@ -666,19 +625,19 @@ printf '  Reference FASTA: %s\n' "$reference_fasta"
 printf '  Reference FAI: %s\n' "$reference_fasta.fai"
 printf '  Orientation root: %s\n' "$orientation_root"
 printf '  Output directory: %s\n' "$partition_output_dir"
-printf '  FWD_like VCF: %s\n' "$final_fwd_vcf"
-printf '  REV_like VCF: %s\n' "$final_rev_vcf"
+printf '  %s VCF: %s\n' "${ORIENTATIONS[0]}" "$final_fwd_vcf"
+printf '  %s VCF: %s\n' "${ORIENTATIONS[1]}" "$final_rev_vcf"
 printf '  Receipt: %s\n' "$final_receipt"
 printf '  bcftools: %s\n' "$bcftools_bin"
 printf '  Maximum depth: %s\n' "$max_depth"
 printf '  Filter expression: %s\n' "$filter_expression"
 printf '  Orientation policy: mechanical FWD_like/REV_like labels only\n'
 
-printf 'FWD_like pipeline:\n'
+printf '%s pipeline:\n' "${ORIENTATIONS[0]}"
 print_command "${fwd_mpileup_command[@]}"
 printf '  | '
 print_command "${fwd_filter_command[@]}"
-printf 'REV_like pipeline:\n'
+printf '%s pipeline:\n' "${ORIENTATIONS[1]}"
 print_command "${rev_mpileup_command[@]}"
 printf '  | '
 print_command "${rev_filter_command[@]}"
@@ -690,8 +649,8 @@ printf '  bcftools view -H record counts are written to the receipt\n'
 printf '  header-only VCFs are valid\n'
 printf 'Planned publication:\n'
 printf '  Lock: %s\n' "$lock_path"
-printf '  Temporary FWD_like VCF: %s\n' "$tmp_fwd_vcf"
-printf '  Temporary REV_like VCF: %s\n' "$tmp_rev_vcf"
+printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[0]}" "$tmp_fwd_vcf"
+printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[1]}" "$tmp_rev_vcf"
 printf '  Temporary receipt: %s\n' "$tmp_receipt"
 printf '  Publish the validated VCF/VCF/receipt set with rollback protection\n'
 
@@ -732,7 +691,8 @@ cleanup() {
         else
             # The final paths were confirmed absent before publication began,
             # so any of them present now belong to this failed invocation.
-            rm -f "$final_fwd_vcf" "$final_rev_vcf" "$final_receipt" || true
+            rm -f "$final_fwd_vcf" "$final_rev_vcf" || true
+            rm -f "$final_receipt" || true
         fi
     fi
 
@@ -788,10 +748,7 @@ if ! printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_owner_file"; t
 fi
 lock_owner_written=true
 
-for owned_path in \
-    "$tmp_fwd_vcf" "$tmp_rev_vcf" "$tmp_receipt" \
-    "$backup_fwd_vcf" "$backup_rev_vcf" "$backup_receipt"
-do
+for owned_path in "$tmp_fwd_vcf" "$tmp_rev_vcf" "$tmp_receipt" "$backup_fwd_vcf" "$backup_rev_vcf" "$backup_receipt"; do
     if [[ -e "$owned_path" ]]; then
         arm_signal_traps
         die "Refusing to reuse an existing Step 07 scratch path: $owned_path"
@@ -817,25 +774,27 @@ if ! "${rev_mpileup_command[@]}" | "${rev_filter_command[@]}"; then
 fi
 
 confirm_input_manifest_hashes
-validate_vcf "FWD_like temporary" "$tmp_fwd_vcf" "$expected_samples"
-validate_vcf "REV_like temporary" "$tmp_rev_vcf" "$expected_samples"
-fwd_record_count="$(vcf_record_count "$tmp_fwd_vcf")" ||
-    die "Could not count FWD_like VCF records."
-rev_record_count="$(vcf_record_count "$tmp_rev_vcf")" ||
-    die "Could not count REV_like VCF records."
-[[ "$fwd_record_count" =~ ^[0-9]+$ ]] || die "Invalid FWD_like VCF record count: $fwd_record_count"
-[[ "$rev_record_count" =~ ^[0-9]+$ ]] || die "Invalid REV_like VCF record count: $rev_record_count"
+validate_vcf "Published ${ORIENTATIONS[0]} temporary" "$tmp_fwd_vcf" "$expected_samples"
+validate_vcf "Published ${ORIENTATIONS[1]} temporary" "$tmp_rev_vcf" "$expected_samples"
+tmp_fwd_count="$(vcf_record_count "$tmp_fwd_vcf")" ||
+    die "Could not count ${ORIENTATIONS[0]} VCF records."
+tmp_rev_count="$(vcf_record_count "$tmp_rev_vcf")" ||
+    die "Could not count ${ORIENTATIONS[1]} VCF records."
+[[ "$tmp_fwd_count" =~ ^[0-9]+$ ]] || die "Invalid ${ORIENTATIONS[0]} VCF record count: $tmp_fwd_count"
+[[ "$tmp_rev_count" =~ ^[0-9]+$ ]] || die "Invalid ${ORIENTATIONS[1]} VCF record count: $tmp_rev_count"
 
 {
     printf 'cohort_id\tpartition_id\tselector_type\tselector_value\torientation\tvcf_path\tsample_manifest_sha256\tpartition_manifest_sha256\tsample_count\tvcf_record_count\n'
-    printf '%s\t%s\t%s\t%s\tFWD_like\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$cohort_id" "$partition_id" "$selector_type" "$selector_value" \
+        "${ORIENTATIONS[0]}" \
         "$final_fwd_vcf" "$sample_manifest_sha256" "$partition_manifest_sha256" \
-        "$sample_count" "$fwd_record_count"
-    printf '%s\t%s\t%s\t%s\tREV_like\t%s\t%s\t%s\t%s\t%s\n' \
+        "$sample_count" "$tmp_fwd_count"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$cohort_id" "$partition_id" "$selector_type" "$selector_value" \
+        "${ORIENTATIONS[1]}" \
         "$final_rev_vcf" "$sample_manifest_sha256" "$partition_manifest_sha256" \
-        "$sample_count" "$rev_record_count"
+        "$sample_count" "$tmp_rev_count"
 } > "$tmp_receipt"
 validate_receipt "$tmp_receipt"
 
@@ -853,15 +812,15 @@ mv "$tmp_fwd_vcf" "$final_fwd_vcf"
 mv "$tmp_rev_vcf" "$final_rev_vcf"
 mv "$tmp_receipt" "$final_receipt"
 
-validate_vcf "Published FWD_like" "$final_fwd_vcf" "$expected_samples"
-validate_vcf "Published REV_like" "$final_rev_vcf" "$expected_samples"
+validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
+validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
 validate_receipt "$final_receipt"
 published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
 published_rev_count="$(vcf_record_count "$final_rev_vcf")"
-[[ "$published_fwd_count" == "$fwd_record_count" ]] ||
-    die "Published FWD_like VCF record count changed during publication."
-[[ "$published_rev_count" == "$rev_record_count" ]] ||
-    die "Published REV_like VCF record count changed during publication."
+[[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
+    die "Published ${ORIENTATIONS[0]} VCF record count changed during publication."
+[[ "$published_rev_count" == "$tmp_rev_count" ]] ||
+    die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
 
 # The receipt is published last and final validation marks the transaction
 # committed. Downstream stages must require the receipt rather than globbing
@@ -870,6 +829,10 @@ publication_committed=true
 rm -f "$backup_fwd_vcf" "$backup_rev_vcf" "$backup_receipt"
 
 printf 'Step 07 execute complete.\n'
-printf 'Published FWD_like VCF: %s (%s records)\n' "$final_fwd_vcf" "$fwd_record_count"
-printf 'Published REV_like VCF: %s (%s records)\n' "$final_rev_vcf" "$rev_record_count"
+printf 'Published %s VCF: %s (%s records)\n' \
+    "${ORIENTATIONS[0]}" \
+    "$final_fwd_vcf" "$tmp_fwd_count"
+printf 'Published %s VCF: %s (%s records)\n' \
+    "${ORIENTATIONS[1]}" \
+    "$final_rev_vcf" "$tmp_rev_count"
 printf 'Published receipt: %s\n' "$final_receipt"

@@ -48,27 +48,12 @@ These are mechanical read-orientation groups, not biological strand labels.
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
-
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 
 resolve_samtools() {
     local value="${samtools_bin_arg:-}"
@@ -76,13 +61,6 @@ resolve_samtools() {
         value="$SAMTOOLS_BIN_OVERRIDE"
     fi
     resolve_executable_value "samtools" "$value" "samtools"
-}
-
-validate_existing_file() {
-    local label="$1"
-    local path="$2"
-
-    [[ -s "$path" ]] || die "$label does not exist or is empty: $path"
 }
 
 validate_count() {
@@ -573,8 +551,8 @@ write_counts_tsv() {
     } > "$tmp_counts_tsv"
 }
 
-validate_existing_file "Input BAM" "$input_bam"
-validate_existing_file "Input BAI" "$input_bai"
+validate_nonempty_file "Input BAM" "$input_bam"
+validate_nonempty_file "Input BAI" "$input_bai"
 
 mode="dry-run"
 if [[ "$execute" == true ]]; then

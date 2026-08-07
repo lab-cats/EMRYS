@@ -7,9 +7,20 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from norad.libraries.alignments import orientation as alignment_orientation
 from .contracts import step08
 from .core import declared_contract_path, issue
 from .models import ArtifactIndexError, Inspection, STEP06_COUNTS_HEADER
+
+
+def infer_orient_from_path(path: Path) -> str:
+    orientation = alignment_orientation.infer_orientation_from_path(path)
+    if orientation is None:
+        raise ArtifactIndexError(
+            f"Unable to infer mechanical orientation from filename: {path}"
+        )
+    return orientation
+
 
 def native_int(row: Mapping[str, str], field_name: str) -> int:
     value = row.get(field_name, "")
@@ -96,7 +107,7 @@ def require_referenced_source(
             raise ArtifactIndexError(
                 f"Native reference row count {row_count_field} disagrees "
                 f"with {path_field}"
-            )
+    )
     return target
 
 
@@ -136,14 +147,11 @@ def reconcile_step06(members: Sequence[Inspection]) -> None:
         raise ArtifactIndexError(
             "Step 06 count sample_id disagrees with inventory scope"
         )
-    if values["fwd_like_records"] != (
-        values["flag_99_records"] + values["flag_147_records"]
-    ):
-        raise ArtifactIndexError("Step 06 FWD_like count arithmetic is invalid")
-    if values["rev_like_records"] != (
-        values["flag_83_records"] + values["flag_163_records"]
-    ):
-        raise ArtifactIndexError("Step 06 REV_like count arithmetic is invalid")
+    for orientation in alignment_orientation.ORIENTATIONS:
+        if not alignment_orientation.mechanical_like_count_detail(values, orientation)[0]:
+            raise ArtifactIndexError(
+                f"Step 06 {orientation} count arithmetic is invalid"
+            )
     if values["assigned_records"] != (
         values["fwd_like_records"] + values["rev_like_records"]
     ):
@@ -231,11 +239,7 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
             raise ArtifactIndexError(
                 "Step 07 receipt does not declare every inventory VCF path"
             )
-        orientation = (
-            "FWD_like"
-            if ".FWD_like." in vcf.resolved_path.name
-            else "REV_like"
-        )
+        orientation = infer_orient_from_path(vcf.resolved_path)
         observed_orientations.add(orientation)
         if (
             row["cohort_id"] != cohort_id
@@ -256,7 +260,7 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
             raise ArtifactIndexError(
                 "Step 07 receipt record count disagrees with its VCF"
             )
-    if observed_orientations != {"FWD_like", "REV_like"}:
+    if observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS:
         raise ArtifactIndexError(
             "Step 07 transaction lacks one neutral orientation"
         )
@@ -338,11 +342,7 @@ def reconcile_step08(
             row_count_field=None,
             source_lookup=source_lookup,
         )
-        expected_orientation = (
-            "FWD_like"
-            if ".FWD_like." in vcf.resolved_path.name
-            else "REV_like"
-        )
+        expected_orientation = infer_orient_from_path(vcf.resolved_path)
         if (
             row["orientation"] != expected_orientation
             or vcf.native.get("samples") != samples
@@ -404,7 +404,7 @@ def reconcile_step08(
         for field_name in sum_fields:
             observed_sums[field_name] += native_int(row, field_name)
     if any(
-        orientations != {"FWD_like", "REV_like"}
+        orientations != alignment_orientation.REQUIRED_ORIENTATIONS
         for orientations in partitions.values()
     ) or len(input_rows) != 2 * len(partitions):
         raise ArtifactIndexError(
