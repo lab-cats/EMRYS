@@ -25,6 +25,12 @@ def validate_bam_bai_pair(
     )
 
 
+def validate_bam_signature(bam: Path) -> tuple[bool, bytes]:
+    """Validate a BAM magic signature and return the observed signature."""
+    bam_magic = read_bam_prefix(bam)
+    return (bam_magic_ok(bam_magic), bam_magic)
+
+
 def run_tool(tool: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [str(tool), *arguments],

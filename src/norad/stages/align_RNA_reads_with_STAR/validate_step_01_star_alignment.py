@@ -48,8 +48,7 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 01")
     nonempty = all(snapshot.size > 0 for snapshot in snapshots.values())
-    bam_prefix = bam_report.read_bam_prefix(paths["bam"])
-    bam_valid = bam_report.bam_magic_ok(bam_prefix)
+    bam_valid, bam_prefix = bam_report.validate_bam_signature(paths["bam"])
     final_values: dict[str, str] = {}
     final_error = ""
     try:
