@@ -16,6 +16,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.alignments import bam as bam_report
 
 
 
@@ -82,16 +83,16 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 06")
     magic = {
-        "fwd_bam": report.read_bytes(paths["fwd_bam"], "Forward BAM file")[:4],
-        "fwd_bai": report.read_bytes(paths["fwd_bai"], "Forward BAI file")[:4],
-        "rev_bam": report.read_bytes(paths["rev_bam"], "Reverse BAM file")[:4],
-        "rev_bai": report.read_bytes(paths["rev_bai"], "Reverse BAI file")[:4],
+        "fwd_bam": bam_report.read_bam_prefix(paths["fwd_bam"]),
+        "fwd_bai": bam_report.read_bai_prefix(paths["fwd_bai"]),
+        "rev_bam": bam_report.read_bam_prefix(paths["rev_bam"]),
+        "rev_bai": bam_report.read_bai_prefix(paths["rev_bai"]),
     }
     containers_ok = (
-        magic["fwd_bam"] in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
-        and magic["rev_bam"] in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
-        and magic["fwd_bai"] in {b"BAI\x01", b"CSI\x01"}
-        and magic["rev_bai"] in {b"BAI\x01", b"CSI\x01"}
+        bam_report.bam_magic_ok(magic["fwd_bam"])
+        and bam_report.bam_magic_ok(magic["rev_bam"])
+        and bam_report.bai_magic_ok(magic["fwd_bai"])
+        and bam_report.bai_magic_ok(magic["rev_bai"])
     )
     values, structure_detail = read_counts(paths["counts"], args.scope_id)
     structure_ok = bool(values)

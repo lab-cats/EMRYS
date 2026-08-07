@@ -78,11 +78,11 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 04")
     report.require_executable(paths["samtools"], "samtools executable")
-    bam_magic = report.read_bytes(paths["bam"], "BAM")[:4]
-    bai_magic = report.read_bytes(paths["bai"], "BAI")[:4]
+    bam_magic = bam_report.read_bam_prefix(paths["bam"])
+    bai_magic = bam_report.read_bai_prefix(paths["bai"])
     structure = (
-        bam_magic in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
-        and bai_magic in {b"BAI\x01", b"CSI\x01"}
+        bam_report.bam_magic_ok(bam_magic)
+        and bam_report.bai_magic_ok(bai_magic)
     )
     quick = bam_report.run_tool(
         paths["samtools"], "quickcheck", "-v", str(paths["bam"])

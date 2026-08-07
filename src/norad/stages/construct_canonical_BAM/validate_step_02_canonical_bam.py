@@ -44,11 +44,11 @@ def build(args: argparse.Namespace):
         {"bam": bam, "bai": bai, "samtools": tool}, label="Step 02"
     )
     report.require_executable(tool, "samtools executable")
-    bam_magic = report.read_bytes(bam, "BAM file")[:4]
-    bai_magic = report.read_bytes(bai, "BAI file")[:4]
+    bam_magic = bam_report.read_bam_prefix(bam)
+    bai_magic = bam_report.read_bai_prefix(bai)
     structure = (
-        bam_magic in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
-        and bai_magic in {b"BAI\x01", b"CSI\x01"}
+        bam_report.bam_magic_ok(bam_magic)
+        and bam_report.bai_magic_ok(bai_magic)
     )
     quickcheck = bam_report.run_tool(tool, "quickcheck", "-v", str(bam))
     header = bam_report.run_tool(tool, "view", "-H", str(bam))

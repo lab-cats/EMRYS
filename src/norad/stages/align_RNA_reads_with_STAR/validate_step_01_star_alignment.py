@@ -15,6 +15,7 @@ if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
+from norad.libraries.alignments import bam as bam_report
 
 
 
@@ -104,8 +105,8 @@ def build(args: argparse.Namespace):
     }
     snapshots = report.snapshots(paths, label="Step 01")
     nonempty = all(snapshot.size > 0 for snapshot in snapshots.values())
-    bam_prefix = report.read_bytes(paths["bam"], "BAM file")[:4]
-    bam_valid = bam_prefix == b"BAM\x01" or bam_prefix == b"\x1f\x8b\x08\x04"
+    bam_prefix = bam_report.read_bam_prefix(paths["bam"])
+    bam_valid = bam_report.bam_magic_ok(bam_prefix)
     final_values: dict[str, str] = {}
     final_error = ""
     try:
