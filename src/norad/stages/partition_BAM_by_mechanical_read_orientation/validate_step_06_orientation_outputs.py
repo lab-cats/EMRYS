@@ -81,7 +81,12 @@ def build(args: argparse.Namespace):
         "counts": report.lexical_path(args.counts),
     }
     snapshots = report.snapshots(paths, label="Step 06")
-    magic = {role: path.read_bytes()[:4] for role, path in paths.items() if role != "counts"}
+    magic = {
+        "fwd_bam": report.read_bytes(paths["fwd_bam"], "Forward BAM file")[:4],
+        "fwd_bai": report.read_bytes(paths["fwd_bai"], "Forward BAI file")[:4],
+        "rev_bam": report.read_bytes(paths["rev_bam"], "Reverse BAM file")[:4],
+        "rev_bai": report.read_bytes(paths["rev_bai"], "Reverse BAI file")[:4],
+    }
     containers_ok = (
         magic["fwd_bam"] in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
         and magic["rev_bam"] in {b"BAM\x01", b"\x1f\x8b\x08\x04"}
