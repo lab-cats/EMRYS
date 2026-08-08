@@ -1514,6 +1514,7 @@ cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
     "$repo_root/src/norad/libraries/file_checks.sh" \
     "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$repo_root/src/norad/libraries/orientation.sh" \
+    "$repo_root/src/norad/libraries/signal_traps.sh" \
     "$wrapper_dry/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
@@ -1543,6 +1544,7 @@ cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
     "$repo_root/src/norad/libraries/file_checks.sh" \
     "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$repo_root/src/norad/libraries/orientation.sh" \
+    "$repo_root/src/norad/libraries/signal_traps.sh" \
     "$wrapper_execute/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \

@@ -37,6 +37,8 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/signal_traps.sh
+source "$script_dir/../../libraries/signal_traps.sh"
 
 
 validate_condition() {

@@ -1083,6 +1083,7 @@ cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
     "$repo_root/src/norad/libraries/file_checks.sh" \
     "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$repo_root/src/norad/libraries/orientation.sh" \
+    "$repo_root/src/norad/libraries/signal_traps.sh" \
     "$wrapper_libraries/"
 wrapper_filter='INFO/AD[1-]>7 & MAX(FORMAT/DP)>31'
 env \

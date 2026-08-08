@@ -59,6 +59,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/signal_traps.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
 resolve_rscript() {
     local value="${rscript_bin_arg:-}"
@@ -853,20 +855,7 @@ cleanup() {
     fi
 }
 
-arm_signal_traps() {
-    trap 'exit 129' HUP
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
-}
-
-on_exit() {
-    local status=$?
-    trap - EXIT HUP INT TERM
-    cleanup "$status"
-    exit "$status"
-}
-trap on_exit EXIT
-arm_signal_traps
+set_exit_trap cleanup
 
 # Avoid a stale-lock window between the atomic mkdir and owner-file write.
 trap '' HUP INT TERM

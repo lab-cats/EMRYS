@@ -41,6 +41,8 @@ if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/signal_traps.sh
+source "$script_dir/../../libraries/signal_traps.sh"
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
@@ -239,36 +241,6 @@ confirm_canonical_pair_state() {
     fi
 }
 
-acquire_lock() {
-    local owner="run_token=$run_token"
-
-    # mkdir is atomic for the lock directory; never break another invocation's lock.
-    if mkdir "$lock_path" 2>/dev/null; then
-        printf '%s\n' "$owner" > "$lock_owner_file"
-        lock_acquired=true
-        return
-    fi
-
-    if [[ -f "$lock_owner_file" ]]; then
-        die "Step 02 lock already exists at $lock_path; owner: $(cat "$lock_owner_file")"
-    fi
-
-    die "Step 02 lock already exists at $lock_path; owner: unknown"
-}
-
-remove_owned_lock() {
-    if [[ "$lock_acquired" != true ]]; then
-        return
-    fi
-
-    # Only the invocation that wrote the owner file may remove this lock.
-    if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
-        rm -f "$lock_owner_file"
-        rmdir "$lock_path" 2>/dev/null || true
-        lock_acquired=false
-    fi
-}
-
 rollback_publish() {
     if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
         return
@@ -384,18 +356,8 @@ fi
 
 mkdir -p "$output_dir"
 
-on_exit() {
-    local status=$?
-
-    # Prevent recursive cleanup if a signal trap exits and then EXIT fires too.
-    trap - EXIT HUP INT TERM
-
-    cleanup "$status"
-    exit "$status"
-}
-
-trap on_exit EXIT HUP INT TERM
-acquire_lock
+set_exit_trap cleanup
+acquire_lock "Step 02"
 
 # Build and validate the replacement completely before touching canonical paths.
 "${sort_command[@]}"

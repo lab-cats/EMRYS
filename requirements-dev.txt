@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Dev-only tooling for local quality gates.
+ruff
+vulture
+pylint

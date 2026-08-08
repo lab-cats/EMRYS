@@ -50,70 +50,8 @@ USAGE
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
-
-die2() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 2
-}
-
-resolve_gatk() {
-    local value="${gatk_bin_arg:-}"
-    if [[ -z "$value" && -n "${GATK_BIN_OVERRIDE:-}" ]]; then
-        value="$GATK_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "GATK" "$value" "gatk"
-}
-
-resolve_samtools() {
-    local value="${samtools_bin_arg:-}"
-    if [[ -z "$value" && -n "${SAMTOOLS_BIN_OVERRIDE:-}" ]]; then
-        value="$SAMTOOLS_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "samtools" "$value" "samtools"
-}
-
-resolve_java() {
-    local value="${java_bin_arg:-}"
-    if [[ -z "$value" && -n "${JAVA_BIN_OVERRIDE:-}" ]]; then
-        value="$JAVA_BIN_OVERRIDE"
-    fi
-    if [[ -z "$value" && -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
-        value="${JAVA_HOME}/bin/java"
-    fi
-    resolve_executable_value "Java" "$value" "java"
-}
-
-validate_java_version() {
-    local java_bin="$1"
-    local version_output
-    local version_line
-    local java_major
-
-    version_output="$("$java_bin" -version 2>&1)" || die2 "Java version check failed: $java_bin"
-    version_line="$(printf '%s\n' "$version_output" | head -n 1)"
-
-    if [[ "$version_line" =~ version\ \"1\.([0-9]+) ]]; then
-        java_major="${BASH_REMATCH[1]}"
-    elif [[ "$version_line" =~ version\ \"([0-9]+) ]]; then
-        java_major="${BASH_REMATCH[1]}"
-    else
-        printf '%s\n' "$version_output" >&2
-        die2 "Could not determine Java version from: $version_line"
-    fi
-
-    if (( java_major < 17 )); then
-        printf '%s\n' "$version_output" >&2
-        die2 "GATK SplitNCigarReads requires Java 17 or newer; found Java $java_major at $java_bin"
-    fi
-
-    printf '%s\n' "$version_output"
-}
-
-validate_gatk_version() {
-    local gatk_bin="$1"
-
-    "$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
-}
+# shellcheck source=../../libraries/signal_traps.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
 validate_existing_file() {
     local label="$1"
@@ -208,9 +146,9 @@ reference_dict="$reference_dir/${reference_stem}.dict"
 # Resolve tool paths once and print the selected values in both dry-run and
 # execute logs. Version checks are deferred until execute so dry-runs stay
 # side-effect-free and do not invoke Java/GATK.
-gatk_bin="$(resolve_gatk)"
-samtools_bin="$(resolve_samtools)"
-java_bin="$(resolve_java)"
+gatk_bin="$(resolve_overridable_executable "GATK" "${gatk_bin_arg:-}" "GATK_BIN_OVERRIDE" "gatk")"
+samtools_bin="$(resolve_overridable_executable "samtools" "${samtools_bin_arg:-}" "SAMTOOLS_BIN_OVERRIDE" "samtools")"
+java_bin="$(resolve_overridable_executable "Java" "${java_bin_arg:-}" "JAVA_BIN_OVERRIDE" "java" "/bin/java")"
 
 run_token="${SLURM_JOB_ID:-$$}"
 
@@ -333,37 +271,6 @@ confirm_final_pair_state() {
         previous_pair_present=false
     else
         die "Step 05 final outputs are inconsistent; expected both BAM and BAI or neither: $output_bam $output_bai"
-    fi
-}
-
-acquire_lock() {
-    local owner="run_token=$run_token"
-
-    # mkdir is atomic for this local/cluster filesystem pattern; never remove a
-    # lock owned by a different invocation.
-    if mkdir "$lock_path" 2>/dev/null; then
-        printf '%s\n' "$owner" > "$lock_owner_file"
-        lock_acquired=true
-        return
-    fi
-
-    if [[ -f "$lock_owner_file" ]]; then
-        die "Step 05 lock already exists at $lock_path; owner: $(cat "$lock_owner_file")"
-    fi
-
-    die "Step 05 lock already exists at $lock_path; owner: unknown"
-}
-
-remove_owned_lock() {
-    if [[ "$lock_acquired" != true ]]; then
-        return
-    fi
-
-    # Only the invocation that wrote the owner file may remove the lock.
-    if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
-        rm -f "$lock_owner_file"
-        rmdir "$lock_path" 2>/dev/null || true
-        lock_acquired=false
     fi
 }
 
@@ -507,27 +414,23 @@ mkdir -p "$output_dir"
 [[ ! -e "$backup_bam" ]] || die "Backup BAM path already exists: $backup_bam"
 [[ ! -e "$backup_bai" ]] || die "Backup BAI path already exists: $backup_bai"
 
-on_exit() {
-    local status=$?
+set_exit_trap cleanup
 
-    # Prevent recursive cleanup if a signal trap exits and then EXIT fires too.
-    trap - EXIT HUP INT TERM
-
-    cleanup "$status"
-    exit "$status"
-}
-
-trap on_exit EXIT HUP INT TERM
-
-acquire_lock
+acquire_lock "Step 05"
 confirm_final_pair_state
 mkdir -p "$gatk_tmp_dir"
 
-printf 'Java version:\n'
-validate_java_version "$java_bin"
+validate_and_print_java \
+    "GATK SplitNCigarReads" \
+    JAVA_BIN \
+    JAVA_VERSION_OUTPUT \
+    "Java version:" \
+    17 \
+    "Set JAVA_BIN_OVERRIDE to a Java 17 executable." \
+    "$java_bin"
 
 printf 'GATK version:\n'
-validate_gatk_version "$gatk_bin"
+"$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
 
 env TMPDIR="$gatk_tmp_dir" "${gatk_command[@]}"
 "${index_command[@]}"

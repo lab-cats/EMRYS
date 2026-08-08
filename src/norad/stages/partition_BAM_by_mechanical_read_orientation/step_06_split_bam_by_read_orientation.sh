@@ -54,6 +54,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+# shellcheck source=../../libraries/signal_traps.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
 resolve_samtools() {
     local value="${samtools_bin_arg:-}"
@@ -341,37 +343,6 @@ confirm_final_set_state() {
         previous_final_set_present=false
     else
         die "Step 06 final outputs are inconsistent; expected all five outputs or none."
-    fi
-}
-
-acquire_lock() {
-    local owner="run_token=$run_token"
-
-    # mkdir is atomic for this lock pattern; never remove a lock owned by
-    # another invocation because that may be an active cluster job.
-    if mkdir "$lock_path" 2>/dev/null; then
-        printf '%s\n' "$owner" > "$lock_owner_file"
-        lock_acquired=true
-        return
-    fi
-
-    if [[ -f "$lock_owner_file" ]]; then
-        die "Step 06 lock already exists at $lock_path; owner: $(cat "$lock_owner_file")"
-    fi
-
-    die "Step 06 lock already exists at $lock_path; owner: unknown"
-}
-
-remove_owned_lock() {
-    if [[ "$lock_acquired" != true ]]; then
-        return
-    fi
-
-    # Only the invocation that wrote the owner file may remove this lock.
-    if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
-        rm -f "$lock_owner_file"
-        rmdir "$lock_path" 2>/dev/null || true
-        lock_acquired=false
     fi
 }
 
@@ -669,7 +640,7 @@ on_exit() {
 
 trap on_exit EXIT HUP INT TERM
 
-acquire_lock
+acquire_lock "Step 06"
 
 printf 'samtools version:\n'
 "$samtools_bin" --version

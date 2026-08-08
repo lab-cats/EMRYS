@@ -42,11 +42,6 @@ Options:
 USAGE
 }
 
-die2() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 2
-}
-
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
 if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then

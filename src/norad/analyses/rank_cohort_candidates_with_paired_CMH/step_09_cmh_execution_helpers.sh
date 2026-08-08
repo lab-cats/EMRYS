@@ -73,12 +73,6 @@ cleanup() {
     exit "$status"
 }
 
-arm_signal_traps() {
-    trap 'exit 129' HUP
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
-}
-
 defer_signal_traps() {
     trap 'pending_signal=129' HUP
     trap 'pending_signal=130' INT

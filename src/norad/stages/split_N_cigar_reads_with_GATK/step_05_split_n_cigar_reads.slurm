@@ -68,47 +68,12 @@ module list 2>&1 || true
 # been inconsistent; loading samtools is only for log context when available.
 module load samtools/1.19.2 || true
 
-JAVA_BIN="${JAVA_BIN_OVERRIDE:-}"
-
 # Do not trust JAVA_HOME or module names alone. Resolve an actual executable and
 # validate its runtime version before the GATK wrapper can start Java.
-if [[ -z "$JAVA_BIN" && -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
-    JAVA_BIN="$JAVA_HOME/bin/java"
-fi
-
-if [[ -z "$JAVA_BIN" ]]; then
-    JAVA_BIN="$(command -v java || true)"
-fi
-
-if [[ -z "$JAVA_BIN" || ! -x "$JAVA_BIN" ]]; then
-    echo "ERROR: No usable Java executable was found." >&2
-    echo "Set JAVA_BIN_OVERRIDE to a Java 17 executable." >&2
-    exit 2
-fi
+validate_and_print_java "GATK SplitNCigarReads" JAVA_BIN JAVA_VERSION_OUTPUT
 
 echo "Loaded modules after Step 05 setup:"
 module list 2>&1 || true
-
-echo "JAVA_HOME: ${JAVA_HOME:-<unset>}"
-echo "Java: $JAVA_BIN"
-java_version_output="$("$JAVA_BIN" -version 2>&1)"
-java_version_line="$(printf '%s\n' "$java_version_output" | head -n 1)"
-printf '%s\n' "$java_version_output"
-
-if [[ "$java_version_line" =~ version\ \"1\.([0-9]+) ]]; then
-    java_major="${BASH_REMATCH[1]}"
-elif [[ "$java_version_line" =~ version\ \"([0-9]+) ]]; then
-    java_major="${BASH_REMATCH[1]}"
-else
-    echo "ERROR: Could not determine Java version from: $java_version_line" >&2
-    exit 2
-fi
-
-if (( java_major < 17 )); then
-    echo "ERROR: GATK SplitNCigarReads requires Java 17 or newer; found Java $java_major at $JAVA_BIN" >&2
-    echo "Set JAVA_BIN_OVERRIDE to a Java 17 executable available on compute nodes." >&2
-    exit 2
-fi
 
 if [[ -x "$SAMTOOLS_BIN" ]]; then
     echo "samtools version:"

@@ -45,38 +45,8 @@ USAGE
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
-
-die2() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 2
-}
-
-resolve_samtools() {
-    local value="${samtools_bin_arg:-}"
-    if [[ -z "$value" && -n "${SAMTOOLS_BIN_OVERRIDE:-}" ]]; then
-        value="$SAMTOOLS_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "samtools" "$value" "samtools"
-}
-
-resolve_gatk() {
-    local value="${gatk_bin_arg:-}"
-    if [[ -z "$value" && -n "${GATK_BIN_OVERRIDE:-}" ]]; then
-        value="$GATK_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "GATK" "$value" "gatk"
-}
-
-resolve_java() {
-    local value="${java_bin_arg:-}"
-    if [[ -z "$value" && -n "${JAVA_BIN_OVERRIDE:-}" ]]; then
-        value="$JAVA_BIN_OVERRIDE"
-    fi
-    if [[ -z "$value" && -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
-        value="${JAVA_HOME}/bin/java"
-    fi
-    resolve_executable_value "Java" "$value" "java"
-}
+# shellcheck source=../../libraries/signal_traps.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
 read_fai_pairs() {
     local fai="$1"
@@ -173,38 +143,6 @@ validate_sidecar_agreement() {
     fi
 }
 
-validate_java_version() {
-    local java_bin="$1"
-    local version_output
-    local version_line
-    local java_major
-
-    version_output="$("$java_bin" -version 2>&1)" || die2 "Java version check failed: $java_bin"
-    version_line="$(printf '%s\n' "$version_output" | head -n 1)"
-
-    if [[ "$version_line" =~ version\ \"1\.([0-9]+) ]]; then
-        java_major="${BASH_REMATCH[1]}"
-    elif [[ "$version_line" =~ version\ \"([0-9]+) ]]; then
-        java_major="${BASH_REMATCH[1]}"
-    else
-        printf '%s\n' "$version_output" >&2
-        die2 "Could not determine Java version from: $version_line"
-    fi
-
-    if (( java_major < 17 )); then
-        printf '%s\n' "$version_output" >&2
-        die2 "GATK reference prep requires Java 17 or newer; found Java $java_major at $java_bin"
-    fi
-
-    printf '%s\n' "$version_output"
-}
-
-validate_gatk_version() {
-    local gatk_bin="$1"
-
-    "$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
-}
-
 reference_fasta=""
 samtools_bin_arg=""
 gatk_bin_arg=""
@@ -250,9 +188,9 @@ done
 [[ -n "$reference_fasta" ]] || die "Missing required argument: --reference-fasta."
 [[ -s "$reference_fasta" ]] || die "Reference FASTA does not exist or is empty: $reference_fasta"
 
-samtools_bin="$(resolve_samtools)"
-gatk_bin="$(resolve_gatk)"
-java_bin="$(resolve_java)"
+samtools_bin="$(resolve_overridable_executable "samtools" "${samtools_bin_arg:-}" "SAMTOOLS_BIN_OVERRIDE" "samtools")"
+gatk_bin="$(resolve_overridable_executable "GATK" "${gatk_bin_arg:-}" "GATK_BIN_OVERRIDE" "gatk")"
+java_bin="$(resolve_overridable_executable "Java" "${java_bin_arg:-}" "JAVA_BIN_OVERRIDE" "java" "/bin/java")"
 
 reference_dir="$(dirname "$reference_fasta")"
 reference_base="$(basename "$reference_fasta")"
@@ -288,34 +226,6 @@ gatk_dict_command=(
     -R "$reference_fasta"
     -O "$tmp_dict"
 )
-
-acquire_lock() {
-    local owner="run_token=$run_token"
-
-    if mkdir "$lock_path" 2>/dev/null; then
-        printf '%s\n' "$owner" > "$lock_owner_file"
-        lock_acquired=true
-        return
-    fi
-
-    if [[ -f "$lock_owner_file" ]]; then
-        die "Step 00c lock already exists at $lock_path; owner: $(cat "$lock_owner_file")"
-    fi
-
-    die "Step 00c lock already exists at $lock_path; owner: unknown"
-}
-
-remove_owned_lock() {
-    if [[ "$lock_acquired" != true ]]; then
-        return
-    fi
-
-    if [[ -f "$lock_owner_file" ]] && [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
-        rm -f "$lock_owner_file"
-        rmdir "$lock_path" 2>/dev/null || true
-        lock_acquired=false
-    fi
-}
 
 cleanup() {
     rm -f "$tmp_fai" "$tmp_dict" "$tmp_fasta" "$tmp_fasta_fai"
@@ -403,13 +313,19 @@ fi
 [[ ! -e "$tmp_fasta_fai" ]] || die "Temporary samtools FASTA index path already exists: $tmp_fasta_fai"
 
 trap cleanup EXIT
-acquire_lock
+acquire_lock "Step 00c"
 
-printf 'Java version:\n'
-validate_java_version "$java_bin"
+validate_and_print_java \
+    "GATK reference prep" \
+    JAVA_BIN \
+    JAVA_VERSION_OUTPUT \
+    "Java version:" \
+    17 \
+    "Set JAVA_BIN_OVERRIDE to a Java 17 executable." \
+    "$java_bin"
 
 printf 'GATK version:\n'
-validate_gatk_version "$gatk_bin"
+"$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
 
 need_fai=false
 need_dict=false
