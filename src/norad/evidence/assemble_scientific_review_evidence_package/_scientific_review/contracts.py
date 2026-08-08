@@ -12,6 +12,10 @@ if step09.ContractError is not step08.ContractError or step09.Table is not step0
 
 ContractError = step08.ContractError
 NA_VALUE = step08.NA_VALUE
+Table = step08.Table
+values_close = step08.values_close
+sha256_file = step08.sha256_file
+read_tsv = step08.read_tsv
 COMPUTATIONAL_SCOPE_ROLES = {
     "local_fixture_tests": "local_test",
     "local_test": "local_test",
@@ -76,8 +80,4 @@ COMPUTATIONAL_VALIDATION_STATUSES = (
 )
 
 
-Table = step08.Table
-values_close = step08.values_close
-sha256_file = step08.sha256_file
-read_tsv = step08.read_tsv
 resolve_recorded_path = step09.resolve_recorded_path

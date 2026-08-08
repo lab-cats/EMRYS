@@ -285,16 +285,12 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
     }
     for role, record in input_index.items():
         suffix = Path(record["path"]).suffix.lower()
-        if role in pdf_input_roles:
-            if suffix != ".pdf" or record["row_count"] is not None:
-                raise ContractValidationError(
-                    f"scientific review PDF input role {role!r} must use a "
-                    ".pdf path and null row_count"
-                )
-        elif suffix != ".tsv" or record["row_count"] is None:
+        expected = ".pdf" if role in pdf_input_roles else ".tsv"
+        expected_is_na = role in pdf_input_roles
+        if suffix != expected or (record["row_count"] is None) != expected_is_na:
             raise ContractValidationError(
                 f"scientific review tabular input role {role!r} must use a "
-                ".tsv path and a non-null row_count"
+                f"{expected} path and {'NA' if expected_is_na else 'non-null'} row_count"
             )
         role_contract = SCIENCE_UPSTREAM_ROLE_CONTRACTS.get(role)
         if role_contract is not None and not Path(record["path"]).name.endswith(

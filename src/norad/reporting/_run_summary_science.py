@@ -56,8 +56,6 @@ COMPUTATIONAL_VALIDATION_HEADER = (
     "evidence_date",
     "notes",
 )
-
-
 @dataclass(frozen=True)
 class ReviewInput:
     """One source descriptor committed into the public review summary."""

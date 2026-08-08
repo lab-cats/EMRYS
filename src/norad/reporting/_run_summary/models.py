@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from norad.reporting import build_artifact_index as adapter
-
 contracts = adapter.contracts
+RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "1.1.0"
@@ -17,8 +17,6 @@ RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 RUN_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 QC_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 RUN_SUMMARY_RECEIPT_SCHEMA_VERSION = "1.0.0"
-RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
-
 REPORT_TABLE_APPROVALS_HEADER = (
     "run_id",
     "run_contract_sha256",

@@ -9,16 +9,22 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 import gtf_to_bed12
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import bed as bed_report
+
+
+CHECK_IDS = {
+    "bed12_structure",
+    "coordinate_sorting",
+    "block_structure",
+    "unique_transcript_names",
+    "gtf_transcript_agreement",
+}
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -100,46 +106,21 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
         ),
     )
     data = report.render(output_rows)
-    report.validate_report(
-        data,
-        args.scope_id,
-        step_id="00b",
-        check_ids={
-            "bed12_structure",
-            "coordinate_sorting",
-            "block_structure",
-            "unique_transcript_names",
-            "gtf_transcript_agreement",
-        },
-    )
+    report.validate_report(data, args.scope_id, step_id="00b", check_ids=CHECK_IDS)
     return data, {bed: bed_snapshot, gtf: gtf_snapshot}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    try:
-        data, snapshots = build_report(args)
-        return report.finish(
-            report.Runtime(
-                step_id="00b",
-                scope_id=args.scope_id,
-                check_ids={
-                    "bed12_structure",
-                    "coordinate_sorting",
-                    "block_structure",
-                    "unique_transcript_names",
-                    "gtf_transcript_agreement",
-                },
-                output=args.output,
-                execute=args.execute,
-                published_label="Step 00b",
-            ),
-            data,
-            snapshots,
-        )
-    except report.ValidationError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    return report.run(
+        lambda: build_report(args),
+        step_id="00b",
+        scope_id=args.scope_id,
+        check_ids=CHECK_IDS,
+        output=args.output,
+        execute=args.execute,
+        published_label="Step 00b",
+    )
 
 
 if __name__ == "__main__":

@@ -28,19 +28,18 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
 
-_SRC_ROOT = Path(__file__).resolve().parents[2]
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+_MODULE_PATH = Path(__file__).resolve()
+if (src_root := str(_MODULE_PATH.parents[2])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.reporting import render_run_report as html_report
-
 contracts = html_report.contracts
 
 
 PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.1.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "1.1.0"
-PDF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "run_report_pdf.qmd"
+PDF_TEMPLATE = _MODULE_PATH.parent / "templates" / "run_report_pdf.qmd"
 PDF_BODY_MARKER = "{{NORAD_REPORT_PDF_BODY}}"
 RECEIPT_HEADER = (
     "schema_name",

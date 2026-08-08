@@ -8,11 +8,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import star as star_report
@@ -176,30 +173,22 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    try:
-        data, snapshots = build_report(args)
-        return report.finish(
-            report.Runtime(
-                step_id="00a",
-                scope_id=args.scope_id,
-                check_ids=CHECK_IDS,
-                output=args.output,
-                execute=args.execute,
-                published_label="Step 00a",
-            ),
-            data,
-            snapshots,
-            before_report=lambda: (
-                print("Step: 00a"),
-                print(f"Scope: {args.scope_id}"),
-                print(f"STAR index: {args.index_dir}"),
-                print(f"Parameter path base: {args.parameter_path_base}"),
-                print(f"Output: {args.output}"),
-            ),
-        )
-    except report.ValidationError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    return report.run(
+        lambda: build_report(args),
+        step_id="00a",
+        scope_id=args.scope_id,
+        check_ids=CHECK_IDS,
+        output=args.output,
+        execute=args.execute,
+        published_label="Step 00a",
+        before_report=lambda: (
+            print("Step: 00a"),
+            print(f"Scope: {args.scope_id}"),
+            print(f"STAR index: {args.index_dir}"),
+            print(f"Parameter path base: {args.parameter_path_base}"),
+            print(f"Output: {args.output}"),
+        ),
+    )
 
 
 if __name__ == "__main__":

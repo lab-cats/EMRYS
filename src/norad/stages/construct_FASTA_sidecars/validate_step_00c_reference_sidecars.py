@@ -8,11 +8,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.libraries import validation as report
 from norad.libraries.references import contigs as reference_contigs
@@ -93,23 +90,16 @@ def build(args: argparse.Namespace):
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    try:
-        data, snapshots = build(args)
-        return report.finish(
-            report.Runtime(
-                step_id="00c",
-                scope_id=args.scope_id,
-                check_ids=CHECK_IDS,
-                output=args.output,
-                execute=args.execute,
-                published_label="Step 00c",
-            ),
-            data,
-            snapshots,
-        )
-    except (report.ValidationError, reference_contigs.ReferenceContigError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    return report.run(
+        lambda: build(args),
+        step_id="00c",
+        scope_id=args.scope_id,
+        check_ids=CHECK_IDS,
+        output=args.output,
+        execute=args.execute,
+        published_label="Step 00c",
+        caught_errors=(report.ValidationError, reference_contigs.ReferenceContigError),
+    )
 
 
 if __name__ == "__main__":

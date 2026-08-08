@@ -14,6 +14,7 @@ from norad.libraries.validation.inputs import (
     stable_text,
 )
 from norad.libraries.validation.publication import publish
+from norad.libraries.validation.runtime import Runtime, finish, run
 from norad.libraries.validation.report import (
     HEADER,
     clean,
@@ -21,7 +22,6 @@ from norad.libraries.validation.report import (
     row,
     validate_report,
 )
-from norad.libraries.validation.runtime import Runtime, finish
 from norad.libraries.validation.tsv import attempt, read_header, read_tsv, sha256_file
 
 __all__ = (

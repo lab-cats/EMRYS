@@ -17,9 +17,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-_SRC_ROOT = Path(__file__).resolve().parents[2]
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[2])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.reporting import _run_summary_science as science
 from norad.reporting import build_artifact_index as adapter
@@ -37,19 +36,16 @@ from norad.reporting._run_summary.inputs import (
 from norad.reporting._run_summary.models import (
     PRODUCER,
     PRODUCER_VERSION,
+    LEGACY_PRODUCER_VERSION,
     QC_SUMMARY_HEADER,
+    REPORT_TABLE_APPROVALS_HEADER,
     RUN_SUMMARY_HEADER,
     RUN_SUMMARY_RECEIPT_HEADER,
     RUN_SUMMARY_SCHEMA_VERSION,
     BuildContext,
     FileSnapshot,
     RunSummaryError,
-)
-from norad.reporting._run_summary.models import (
     adapter as _owner_adapter,
-)
-from norad.reporting._run_summary.models import (
-    contracts as _owner_contracts,
 )
 from norad.reporting._run_summary.projection import (
     _build_attempts,
@@ -78,11 +74,12 @@ from norad.reporting._run_summary.validation import (
     _validate_existing_summary,
 )
 
-if adapter is not _owner_adapter or adapter.contracts is not _owner_contracts:
+contracts = adapter.contracts
+
+if adapter is not _owner_adapter or adapter.contracts is not contracts:
     raise ImportError("run-summary modules did not resolve one adapter owner")
 if science.contracts is not adapter.contracts:
     raise ImportError("artifact-contract consumers did not resolve one owner")
-contracts = adapter.contracts
 
 
 def _build_document(

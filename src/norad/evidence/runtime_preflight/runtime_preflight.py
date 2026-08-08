@@ -23,11 +23,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 from norad.libraries import validation as report
 
 PROFILE_HEADER = (

@@ -19,16 +19,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-_SRC_ROOT = Path(__file__).resolve().parents[2]
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[2])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.reporting._artifact_index import contracts as _contract_owners
-
-step08 = _contract_owners.step08
-step09 = _contract_owners.step09
-review_package = _contract_owners.review_package
-
+from norad.reporting._artifact_index.binary_readers import BGZF_EOF_BLOCK
 
 # The exact script path remains the public CLI and compatibility facade.  The
 # implementation modules are private to the reporting owner.
@@ -37,48 +32,51 @@ from norad.reporting._artifact_index.context import (
     print_context,
     recheck_inputs,
 )
-from norad.reporting._artifact_index.core import (
-    ADAPTER_REGISTRY as _adapter_registry,
-)
-from norad.reporting._artifact_index.core import (
-    parse_args,
-)
+from norad.reporting._artifact_index import core as _core_owner
+from norad.reporting._artifact_index import models as _models_owner
+from norad.reporting._artifact_index import records as _records_owner
+from norad.reporting._artifact_index import registry as _registry_owner
 from norad.reporting._artifact_index.models import (
     ArtifactIndexError,
     BuildContext,
     LockOwnership,
 )
-from norad.reporting._artifact_index.records import (
-    ARTIFACT_INDEX_HEADER as _artifact_index_header,
-)
-from norad.reporting._artifact_index.records import (
-    ARTIFACT_RECEIPT_HEADER as _artifact_receipt_header,
-)
-from norad.reporting._artifact_index.records import (
-    inventory_rows_from_published_index,
-    load_existing_receipt,
-    validate_existing_identity,
-)
-from norad.reporting._artifact_index.records import (
-    read_exact_tsv as read_exact_tsv,
-)
-from norad.reporting._artifact_index.registry import (
-    STEP06_COUNTS_HEADER as _step06_counts_header,
-)
-from norad.reporting._artifact_index.registry import (
-    STEP07_RECEIPT_HEADER as _step07_receipt_header,
-)
 from norad.reporting._artifact_index.validation import (
     validate_published_transaction,
 )
 
-# Public compatibility exports retained for reporting fixtures and downstream callers.
-ADAPTER_REGISTRY = _adapter_registry
 contracts = _contract_owners.contracts
-ARTIFACT_INDEX_HEADER = _artifact_index_header
-ARTIFACT_RECEIPT_HEADER = _artifact_receipt_header
-STEP06_COUNTS_HEADER = _step06_counts_header
-STEP07_RECEIPT_HEADER = _step07_receipt_header
+step08 = _contract_owners.step08
+step09 = _contract_owners.step09
+review_package = _contract_owners.review_package
+
+ADAPTER_REGISTRY = _core_owner.ADAPTER_REGISTRY
+parse_args = _core_owner.parse_args
+get_git_commit = _core_owner.get_git_commit
+canonical_json_bytes = _core_owner.canonical_json_bytes
+safe_tsv = _core_owner.safe_tsv
+utc_now = _core_owner.utc_now
+load_run_contract = _core_owner.load_run_contract
+sha256_bytes = _core_owner.sha256_bytes
+
+RUN_CONTRACT_FIELDS = _models_owner.RUN_CONTRACT_FIELDS
+SHA256_RE = _models_owner.SHA256_RE
+VALIDATION_REPORT_HEADER = _models_owner.VALIDATION_REPORT_HEADER
+
+ARTIFACT_INDEX_HEADER = _records_owner.ARTIFACT_INDEX_HEADER
+ARTIFACT_RECEIPT_HEADER = _records_owner.ARTIFACT_RECEIPT_HEADER
+build_index_rows = _records_owner.build_index_rows
+build_receipt_row = _records_owner.build_receipt_row
+producer_evidence = _records_owner.producer_evidence
+STEP_PRODUCERS = _records_owner.STEP_PRODUCERS
+read_exact_tsv = _records_owner.read_exact_tsv
+tsv_bytes = _records_owner.tsv_bytes
+inventory_rows_from_published_index = _records_owner.inventory_rows_from_published_index
+load_existing_receipt = _records_owner.load_existing_receipt
+validate_existing_identity = _records_owner.validate_existing_identity
+
+STEP06_COUNTS_HEADER = _registry_owner.STEP06_COUNTS_HEADER
+STEP07_RECEIPT_HEADER = _registry_owner.STEP07_RECEIPT_HEADER
 
 
 def validate_existing_transaction(

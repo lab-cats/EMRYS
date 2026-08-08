@@ -15,11 +15,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 from norad.libraries import validation as report
 
 PROFILE_HEADER = (
@@ -72,6 +69,12 @@ SUMMARY_HEADER = (
     "star_agreement",
     "overall_status",
 )
+OUTPUT_SPECS = (
+    ("artifacts", "reference_artifacts.tsv", ARTIFACT_HEADER, None),
+    ("contigs", "reference_contigs.tsv", CONTIG_HEADER, None),
+    ("summary", "reference_summary.tsv", SUMMARY_HEADER, 1),
+)
+CONTIG_ROLES = ("fasta", "fai", "dict", "gtf", "bed12", "star")
 ROLES = {
     "fasta",
     "fai",
@@ -377,7 +380,7 @@ def render(raw_profile: bytes, observations: Sequence[Observation]) -> dict[str,
     ]
     contig_rows = []
     fasta_map = dict(parsed.get("fasta", []))
-    for role in ("fasta", "fai", "dict", "gtf", "bed12", "star"):
+    for role in CONTIG_ROLES:
         for ordinal, (name, length) in enumerate(parsed.get(role, []), 1):
             status = (
                 "reference"
@@ -406,7 +409,7 @@ def render(raw_profile: bytes, observations: Sequence[Observation]) -> dict[str,
             )
     agreements = {
         role: agreement(parsed, role)
-        for role in ("fai", "dict", "gtf", "bed12", "star")
+        for role in CONTIG_ROLES[1:]
     }
     counts = {
         "required_missing": sum(o.status == "missing_required" for o in observations),
@@ -458,12 +461,10 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
     destination.mkdir(mode=0o755, exist_ok=True)
     if destination.is_symlink() or not destination.is_dir():
         fail(f"Reference output directory is unsafe: {destination}")
-    names = {
-        "artifacts": f"{reference_id}.reference_artifacts.tsv",
-        "contigs": f"{reference_id}.reference_contigs.tsv",
-        "summary": f"{reference_id}.reference_summary.tsv",
+    finals = {
+        key: destination / f"{reference_id}.{filename}"
+        for key, filename, _header, _rows in OUTPUT_SPECS
     }
-    finals = {key: destination / name for key, name in names.items()}
     present = [path.exists() for path in finals.values()]
     if any(present) and not all(present):
         fail("Existing reference provenance outputs are incomplete")
@@ -473,44 +474,41 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
     except FileExistsError:
         fail(f"Reference provenance lock already exists: {lock}")
     token = uuid.uuid4().hex
-    staged = {key: destination / f".{name}.{token}.tmp" for key, name in names.items()}
+    staged = {
+        key: destination / f".{reference_id}.{filename}.{token}.tmp"
+        for key, filename, _header, _rows in OUTPUT_SPECS
+    }
     backups = {
-        key: destination / f".{name}.{token}.previous" for key, name in names.items()
+        key: destination / f".{reference_id}.{filename}.{token}.previous"
+        for key, filename, _header, _rows in OUTPUT_SPECS
     }
     try:
         os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
         os.fsync(descriptor)
         if all(present):
-            validate_output(
-                report.read_bytes(finals["artifacts"], "prior artifacts"),
-                ARTIFACT_HEADER,
-            )
-            validate_output(
-                report.read_bytes(finals["contigs"], "prior contigs"), CONTIG_HEADER
-            )
-            validate_output(
-                report.read_bytes(finals["summary"], "prior summary"), SUMMARY_HEADER, 1
-            )
-        for key in ("artifacts", "contigs", "summary"):
+            for key, _filename, header, expected_rows in OUTPUT_SPECS:
+                validate_output(
+                    report.read_bytes(finals[key], f"prior {key}"),
+                    header,
+                    expected_rows,
+                )
+        for key, _filename, *_rest in OUTPUT_SPECS:
             with staged[key].open("xb") as handle:
                 handle.write(outputs[key])
                 handle.flush()
                 os.fsync(handle.fileno())
-        validate_output(
-            report.read_bytes(staged["artifacts"], "staged artifacts"), ARTIFACT_HEADER
-        )
-        validate_output(
-            report.read_bytes(staged["contigs"], "staged contigs"), CONTIG_HEADER
-        )
-        validate_output(
-            report.read_bytes(staged["summary"], "staged summary"), SUMMARY_HEADER, 1
-        )
+        for key, _filename, header, expected_rows in OUTPUT_SPECS:
+            validate_output(
+                report.read_bytes(staged[key], f"staged {key}"),
+                header,
+                expected_rows,
+            )
         if all(present):
-            for key in finals:
+            for key, _filename, *_rest in OUTPUT_SPECS:
                 os.replace(finals[key], backups[key])
         published: list[str] = []
         try:
-            for key in ("artifacts", "contigs", "summary"):
+            for key, _filename, *_rest in OUTPUT_SPECS:
                 os.replace(staged[key], finals[key])
                 published.append(key)
         except BaseException:
@@ -539,9 +537,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         raw, items = load_inventory(args.inventory, args.base_dir)
         observations = observe(items)
         outputs = render(raw, observations)
-        validate_output(outputs["artifacts"], ARTIFACT_HEADER, len(items))
-        validate_output(outputs["contigs"], CONTIG_HEADER)
-        validate_output(outputs["summary"], SUMMARY_HEADER, 1)
+        for key, _filename, header, rows in OUTPUT_SPECS:
+            validate_output(outputs[key], header, rows)
         reference_id = items[0].reference_id
         print(f"Reference inventory: {args.inventory}")
         print(f"Reference base directory: {args.base_dir}")

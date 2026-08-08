@@ -8,10 +8,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from norad.contracts.scientific_evidence import step08
-from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.alignments.orientation import (
+    LEGACY_PROVISIONAL_ORIENTATION_POLICY,
+    validate_legacy_orientation_policy as IS_LEGACY_ORIENTATION_POLICY,
+)
 
 ContractError = step08.ContractError
-IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
 Table = step08.Table
 NA_VALUE = step08.NA_VALUE
 values_close = step08.values_close
@@ -399,10 +401,10 @@ def validate_step09_summary(
         or not IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
         or row["orientation_policy"] != step08_orientation_policy
     ):
-        step08.fail(
-            "Step 09 summary and Step 08 must use "
-            f"orientation_policy={alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
-        )
+            step08.fail(
+                "Step 09 summary and Step 08 must use "
+                f"orientation_policy={LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
+            )
     if any(
         result["orientation_policy"] != row["orientation_policy"] for result in all_rows
     ):

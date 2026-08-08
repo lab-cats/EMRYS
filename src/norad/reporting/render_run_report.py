@@ -35,9 +35,9 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
-_SRC_ROOT = Path(__file__).resolve().parents[2]
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+_MODULE_PATH = Path(__file__).resolve()
+if (src_root := str(_MODULE_PATH.parents[2])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 
@@ -45,8 +45,8 @@ PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 QUARTO_VERSION = "1.9.38"
-QMD_TEMPLATE = Path(__file__).resolve().parent / "templates" / "run_report.qmd"
-CSS_TEMPLATE = Path(__file__).resolve().parent / "styles" / "run_report.css"
+QMD_TEMPLATE = _MODULE_PATH.parent / "templates" / "run_report.qmd"
+CSS_TEMPLATE = _MODULE_PATH.parent / "styles" / "run_report.css"
 BODY_MARKER = "{{NORAD_REPORT_BODY}}"
 CSS_MARKER = "{{NORAD_REPORT_CSS}}"
 CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"

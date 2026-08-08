@@ -9,11 +9,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
@@ -179,23 +176,15 @@ def build(args: argparse.Namespace):
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    try:
-        data, snapshots = build(args)
-        return report.finish(
-            report.Runtime(
-                step_id="07",
-                scope_id=f"{args.cohort_id}__{args.partition_id}",
-                check_ids=CHECK_IDS,
-                output=args.output,
-                execute=args.execute,
-                published_label="Step 07",
-            ),
-            data,
-            snapshots,
-        )
-    except (OSError, UnicodeError, csv.Error, report.ValidationError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    return report.run(
+        lambda: build(args),
+        step_id="07",
+        scope_id=f"{args.cohort_id}__{args.partition_id}",
+        check_ids=CHECK_IDS,
+        output=args.output,
+        execute=args.execute,
+        published_label="Step 07",
+    )
 
 
 if __name__ == "__main__":

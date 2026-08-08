@@ -17,9 +17,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-_SRC_ROOT = Path(__file__).resolve().parents[3]
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts._artifact_contracts import artifact as _artifact_owner
 from norad.contracts.artifacts._artifact_contracts import core as _core_owner
@@ -61,11 +60,8 @@ require_evidence_roles = _core_owner.require_evidence_roles
 validate_evidence_references = _core_owner.validate_evidence_references
 validate_computational_statuses = _core_owner.validate_computational_statuses
 resolve_contract_path = _core_owner.resolve_contract_path
-
 validate_artifact_semantics = _artifact_owner.validate_artifact_semantics
-validate_scientific_review_semantics = (
-    _scientific_review_owner.validate_scientific_review_semantics
-)
+validate_scientific_review_semantics = _scientific_review_owner.validate_scientific_review_semantics
 artifact_rollup_state = _run_summary_owner.artifact_rollup_state
 aggregate_equal_or_mixed = _run_summary_owner.aggregate_equal_or_mixed
 aggregate_artifact_state = _run_summary_owner.aggregate_artifact_state
@@ -207,14 +203,14 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
 
 
 def validate_document_semantics(name: str, document: dict[str, Any]) -> None:
-    if name == "artifact-record":
-        validate_artifact_semantics(document)
-    elif name == "scientific-review-record":
-        validate_scientific_review_semantics(document)
-    elif name == "run-summary":
-        validate_run_summary_semantics(document)
-    elif name == "report-receipt":
-        validate_report_receipt_semantics(document)
+    validators = {
+        "artifact-record": validate_artifact_semantics,
+        "scientific-review-record": validate_scientific_review_semantics,
+        "run-summary": validate_run_summary_semantics,
+        "report-receipt": validate_report_receipt_semantics,
+    }
+    if (validator := validators.get(name)) is not None:
+        validator(document)
 
 
 def validate_safe_id(label: str, value: str, row_number: int) -> None:

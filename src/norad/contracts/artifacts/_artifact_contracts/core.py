@@ -17,15 +17,14 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+_MODULE_PATH = Path(__file__).resolve()
+
+if (src_root := str(_MODULE_PATH.parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 from norad.libraries import validation as report
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-SCHEMA_ROOT = Path(__file__).resolve().parents[2] / "schemas" / "artifacts" / "v1"
+REPO_ROOT = _MODULE_PATH.parents[5]
+SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts" / "v1"
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "artifact_record.schema.json",
@@ -526,11 +525,7 @@ def validate_computational_statuses(
         require_evidence_roles(
             label=f"{label} cluster proof",
             evidence=cluster_validation["evidence"],
-            required_roles={
-                "cluster_scheduler",
-                "cluster_log",
-                "cluster_output",
-            },
+            required_roles={"cluster_scheduler", "cluster_log", "cluster_output"},
         )
     elif cluster_validation["proof_status"] == "failed":
         require_evidence_roles(

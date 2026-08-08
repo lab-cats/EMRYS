@@ -16,11 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-_SRC_ROOT = next(
-    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
-)
-if str(_SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(_SRC_ROOT))
+if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+    sys.path.insert(0, src_root)
 
 from norad.libraries import validation as report
 
@@ -76,7 +73,6 @@ SUMMARY_HEADER = (
 )
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 ACTIONS = {"retain", "archive", "review_then_delete"}
-APPROVALS = {"approved", "pending", "rejected"}
 
 
 class StorageError(report.ValidationError):
@@ -209,18 +205,21 @@ def load_policy(path: Path, storage_ids: set[str]) -> tuple[bytes, list[Policy]]
         days = row["retention_days"]
         if days != "indefinite" and (not days.isdigit() or int(days) < 0):
             fail(f"Retention policy row {number} has invalid retention_days")
-        approval = row["approval_status"]
-        if approval not in APPROVALS:
-            fail(f"Retention policy row {number} has invalid approval_status")
-        if approval == "approved":
+        approval_status = row["approval_status"]
+        if approval_status == "approved":
             if row["approved_by"] == "NA" or not parse_utc(row["approved_at"]):
                 fail(
-                    f"Retention policy row {number} approved record needs approver and past UTC time"
+                    f"Retention policy row {number} approved record needs approver "
+                    "and past UTC time"
                 )
-        elif row["approved_by"] != "NA" or row["approved_at"] != "NA":
-            fail(
-                f"Retention policy row {number} non-approved record must use NA approval fields"
-            )
+        elif approval_status in {"pending", "rejected"}:
+            if row["approved_by"] != "NA" or row["approved_at"] != "NA":
+                fail(
+                    f"Retention policy row {number} non-approved record must use NA "
+                    "approval fields"
+                )
+        else:
+            fail(f"Retention policy row {number} has invalid approval_status")
         if not row["notes"]:
             fail(f"Retention policy row {number} notes must be nonempty")
         key = (row["storage_id"], row["artifact_class"], row["action"])
