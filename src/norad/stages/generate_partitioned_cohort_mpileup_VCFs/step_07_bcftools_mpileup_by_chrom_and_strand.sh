@@ -262,105 +262,40 @@ validate_regions_file_selector() {
     fi
 }
 
-read_sample_ids() {
-    local manifest="$1"
-    awk -F '\t' '
-        NR == 1 {
-            for (i = 1; i <= NF; i++) {
-                gsub(/\r$/, "", $i)
-                if ($i == "sample_id") {
-                    sample_column = i
-                }
-            }
-            if (!sample_column) {
-                print "sample manifest is missing required sample_id column" > "/dev/stderr"
-                exit 2
-            }
-            next
-        }
-        {
-            value = $sample_column
-            gsub(/\r$/, "", value)
-            if (value == "") {
-                empty = 1
-                next
-            }
-            if (seen[value]++) {
-                printf "duplicate sample_id in sample manifest: %s\n", value > "/dev/stderr"
-                exit 3
-            }
-            print value
-            count++
-        }
-        END {
-            if (!count && !empty) {
-                print "sample manifest contains no sample rows" > "/dev/stderr"
-                exit 4
-            }
-            if (empty) {
-                print "sample manifest contains an empty sample_id" > "/dev/stderr"
-                exit 5
-            }
-        }
-    ' "$manifest"
-}
-
 read_partition_selector() {
     local manifest="$1"
     local requested_id="$2"
-    awk -F '\t' -v requested="$requested_id" '
-        NR == 1 {
-            for (i = 1; i <= NF; i++) {
-                gsub(/\r$/, "", $i)
-                if ($i == "partition_id") id_column = i
-                if ($i == "selector_type") type_column = i
-                if ($i == "selector_value") value_column = i
-            }
-            if (!id_column || !type_column || !value_column) {
-                print "partition manifest requires partition_id, selector_type, selector_value" > "/dev/stderr"
-                exit 2
-            }
-            next
-        }
-        {
-            id = $id_column
-            type = $type_column
-            value = $value_column
-            gsub(/\r$/, "", id)
-            gsub(/\r$/, "", type)
-            gsub(/\r$/, "", value)
+    local selected_count=0
+    local selected_type=""
+    local selected_value=""
+    local status=0
+    read_partition_record() {
+        local partition_record_id="$1"
+        local partition_record_type="$2"
+        local partition_record_value="$3"
 
-            if (id == "" && type == "" && value == "") next
-            if (id == "" || type == "" || value == "") {
-                printf "partition manifest row %d has an empty required value\n", NR > "/dev/stderr"
-                exit 3
-            }
-            if (id !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) {
-                printf "partition manifest row %d has unsafe partition_id: %s\n", NR, id > "/dev/stderr"
-                exit 4
-            }
-            if (seen[id]++) {
-                printf "duplicate partition_id in partition manifest: %s\n", id > "/dev/stderr"
-                exit 5
-            }
-            if (type != "region" && type != "regions_file") {
-                printf "invalid selector_type for partition %s: %s\n", id, type > "/dev/stderr"
-                exit 6
-            }
-            if (id == requested) {
-                selected_count++
-                selected_type = type
-                selected_value = value
-            }
-        }
-        END {
-            if (selected_count != 1) {
-                printf "partition_id %s was not found exactly once\n", requested > "/dev/stderr"
-                exit 7
-            }
-            print selected_type "\t" selected_value
-        }
-    ' "$manifest"
+        if [[ "$partition_record_id" == "$requested_id" ]]; then
+            selected_count=$((selected_count + 1))
+            selected_type="$partition_record_type"
+            selected_value="$partition_record_value"
+        fi
+    }
+
+    if ! read_manifest_partitions "$manifest" read_partition_record; then
+        status=$?
+    fi
+    unset -f read_partition_record
+
+    if [[ "$status" -ne 0 ]]; then
+        return "$status"
+    fi
+
+    if [[ "$selected_count" -ne 1 ]]; then
+        printf "partition_id %s was not found exactly once\n" "$requested_id" >&2
+        return 7
+    fi
+
+    printf '%s\t%s\n' "$selected_type" "$selected_value"
 }
 
 validate_vcf() {
@@ -491,9 +426,7 @@ done
 
 validate_safe_id "--cohort-id" "$cohort_id"
 validate_safe_id "--partition-id" "$partition_id"
-if ! [[ "$max_depth" =~ ^[1-9][0-9]*$ ]]; then
-    die "--max-depth must be a positive integer; got: $max_depth"
-fi
+validate_positive_integer "--max-depth" "$max_depth"
 [[ -n "$filter_expression" ]] || die "--filter-expression must be non-empty."
 
 validate_nonempty_file "Sample manifest" "$sample_manifest"
@@ -506,13 +439,18 @@ bcftools_bin="$(resolve_bcftools)"
 sample_manifest_sha256="$(sha256_file "$sample_manifest")"
 partition_manifest_sha256="$(sha256_file "$partition_manifest")"
 
-if ! sample_output="$(read_sample_ids "$sample_manifest")"; then
+append_sample_id() {
+    local sample_id="$1"
+
+    validate_safe_id "sample_id" "$sample_id"
+    sample_ids+=("$sample_id")
+}
+
+sample_ids=()
+if ! read_manifest_sample_ids "$sample_manifest" append_sample_id; then
     die "Sample manifest validation failed: $sample_manifest"
 fi
-sample_ids=()
-while IFS= read -r sample_id; do
-    [[ -n "$sample_id" ]] && sample_ids+=("$sample_id")
-done <<< "$sample_output"
+unset -f append_sample_id
 [[ "${#sample_ids[@]}" -gt 0 ]] || die "Sample manifest contains no sample IDs: $sample_manifest"
 expected_samples="$(printf '%s\n' "${sample_ids[@]}")"
 
@@ -546,7 +484,6 @@ esac
 fwd_bams=()
 rev_bams=()
 for sample_id in "${sample_ids[@]}"; do
-    validate_safe_id "sample_id" "$sample_id"
     fwd_bam="$orientation_root/$sample_id/$sample_id.${ORIENTATIONS[0]}.bam"
     rev_bam="$orientation_root/$sample_id/$sample_id.${ORIENTATIONS[1]}.bam"
     validate_nonempty_file "${ORIENTATIONS[0]} BAM for $sample_id" "$fwd_bam"

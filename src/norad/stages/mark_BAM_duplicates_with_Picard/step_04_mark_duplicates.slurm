@@ -73,7 +73,7 @@ module list 2>&1 || true
 
 # Resolve Java explicitly. The CSU Java module may set JAVA_HOME to a path that
 # is unavailable on compute nodes, so allow a caller-provided override.
-validate_and_print_java "Picard" JAVA_BIN JAVA_VERSION_OUTPUT
+validate_and_print_java "Picard" JAVA_BIN JAVA_VERSION_OUTPUT "" 17 "Set JAVA_BIN_OVERRIDE to a Java 17 executable." "" true
 
 echo "PICARD: $PICARD"
 echo "samtools: $(command -v samtools || true)"

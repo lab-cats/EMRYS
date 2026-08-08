@@ -70,7 +70,7 @@ module load samtools/1.19.2 || true
 
 # Do not trust JAVA_HOME or module names alone. Resolve an actual executable and
 # validate its runtime version before the GATK wrapper can start Java.
-validate_and_print_java "GATK SplitNCigarReads" JAVA_BIN JAVA_VERSION_OUTPUT
+validate_and_print_java "GATK SplitNCigarReads" JAVA_BIN JAVA_VERSION_OUTPUT "" 17 "Set JAVA_BIN_OVERRIDE to a Java 17 executable." "" true
 
 echo "Loaded modules after Step 05 setup:"
 module list 2>&1 || true

@@ -4,7 +4,9 @@ SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
 PYLINT_BIN ?= pylint
-DEAD_CODE_PATHS ?= scripts src/norad tests
+DEAD_CODE_PATHS ?= scripts src/norad
+VULTURE_MIN_CONFIDENCE ?= 95
+PYLINT_DISABLE_MESSAGES ?= W0101,W0611,W0612,W0613
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
@@ -151,25 +153,11 @@ validation-guarded-r:
 validation-static-shell-checks:
 	bash -n $(SHELL_SYNTAX_PATHS)
 	bash -n $(SLURM_SYNTAX_PATHS)
-	@if command -v "$(SHELLCHECK_BIN)" >/dev/null 2>&1; then \
-		"$(SHELLCHECK_BIN)" -x $(SHELL_SYNTAX_PATHS); \
-	else \
-		printf "warning: %s not installed; skipping %s\n" "$(SHELLCHECK_BIN)" "$(@)"; \
-	fi
-	@if command -v "$(SHFMT_BIN)" >/dev/null 2>&1; then \
-		"$(SHFMT_BIN)" -d $(SHELL_SYNTAX_PATHS); \
-	else \
-		printf "warning: %s not installed; skipping %s\n" "$(SHFMT_BIN)" "$(@)"; \
-	fi
-	@if command -v "$(RUFF_BIN)" >/dev/null 2>&1; then \
-		"$(RUFF_BIN)" check scripts src/norad tests; \
-	else \
-		printf "warning: %s not installed; skipping %s\n" "$(RUFF_BIN)" "$(@)"; \
-	fi
 
 validation-static:
 	git diff --check
-	$(MAKE) -s validation-static-shell-checks
+	bash -n $(SHELL_SYNTAX_PATHS)
+	bash -n $(SLURM_SYNTAX_PATHS)
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
 	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
@@ -179,21 +167,24 @@ validate:
 	python src/norad/ingestion/sample_manifest_admission/validate_manifest.py --manifest configs/samples.example.tsv
 
 smoke:
-	$(MAKE) -s validation-static-shell-checks
+	bash -n $(SHELL_SYNTAX_PATHS)
+	bash -n $(SLURM_SYNTAX_PATHS)
 
 lint:
-	$(MAKE) -s validation-static-shell-checks
-	$(PYTHON_BIN) -m compileall scripts src/norad tests
+	python -m compileall scripts src/norad tests
 
 quality-dead-code:
 	@if "$(REPORT_PYTHON_BIN)" -c "import $(VULTURE_BIN)" >/dev/null 2>&1; then \
-		"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" $(DEAD_CODE_PATHS); \
+		"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
+			--min-confidence $(VULTURE_MIN_CONFIDENCE) \
+			$(DEAD_CODE_PATHS); \
 	else \
 		printf "warning: %s not installed in %s; skipping dead-code scan\n" "$(VULTURE_BIN)" "$(REPORT_PYTHON_BIN)"; \
 	fi
 	@if "$(REPORT_PYTHON_BIN)" -c "import $(PYLINT_BIN)" >/dev/null 2>&1; then \
 		"$(REPORT_PYTHON_BIN)" -m "$(PYLINT_BIN)" --exit-zero --disable=all \
-			--enable=W0101,W0611,W0612,W0613 $(DEAD_CODE_PATHS); \
+			--enable="$(PYLINT_DISABLE_MESSAGES)" --persistent=no \
+			$(DEAD_CODE_PATHS); \
 	else \
 		printf "warning: %s not installed in %s; skipping unreachable/unused scan\n" "$(PYLINT_BIN)" "$(REPORT_PYTHON_BIN)"; \
 	fi

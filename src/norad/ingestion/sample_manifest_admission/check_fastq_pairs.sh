@@ -111,9 +111,7 @@ done
 [[ -f "$r1_fastq" ]] || die "R1 FASTQ does not exist or is not a file: $r1_fastq"
 [[ -f "$r2_fastq" ]] || die "R2 FASTQ does not exist or is not a file: $r2_fastq"
 
-if ! [[ "$num_reads" =~ ^[1-9][0-9]*$ ]]; then
-    die "--num-reads must be a positive integer; got: $num_reads"
-fi
+validate_positive_integer "--num-reads" "$num_reads"
 
 if is_gzip_path "$r1_fastq" || is_gzip_path "$r2_fastq"; then
     command -v gunzip >/dev/null 2>&1 || die "gunzip was not found on PATH but at least one FASTQ file ends in .gz."

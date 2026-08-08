@@ -1,4 +1,5 @@
 # Step 09 summary and mutation spectrum validation helpers.
+step_09_cmh_awk_validation_lib="${BASH_SOURCE[0]%/*}/step_09_cmh_awk_validation_functions.awk"
 
 validate_step09_summary_rows() {
     local summary="$1"
@@ -21,6 +22,7 @@ validate_step09_summary_rows() {
     summary_rows="$(awk 'END { print NR - 1 }' "$summary")"
     [[ "$summary_rows" == "1" ]] || return 1
     awk -F '\t' \
+        -f "$step_09_cmh_awk_validation_lib" \
         -v fields="$summary_field_count" \
         -v orientation_policy="$ORIENTATION_POLICY" \
         -v analysis="$analysis_id" \
@@ -58,13 +60,9 @@ validate_step09_summary_rows() {
         -v fdr="$fdr_threshold" \
         -v common_or="$common_or_threshold" \
         -v difference="$absolute_difference_threshold" \
-        -v background_fraction="$background_max_fraction" '
-        function is_nonnegative_integer(value) {
-            return value ~ /^(0|[1-9][0-9]*)$/
-        }
-        function is_number(value) {
-            return value ~ /^-?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$/
-        }
+        -v background_fraction="$background_max_fraction" \
+        -f /dev/stdin \
+        "$summary" <<'AWK'
         NR == 2 {
             for (field = 7; field <= 21; field++) {
                 if (!is_nonnegative_integer($field)) exit 1
@@ -98,7 +96,7 @@ validate_step09_summary_rows() {
                 $36 != "BH" || $37 != "two.sided" ||
                 $38 != "TRUE" || $39 != orientation_policy) exit 1
         }
-    ' "$summary"
+AWK
 }
 
 validate_step09_mutation_spectrum() {
@@ -110,18 +108,14 @@ validate_step09_mutation_spectrum() {
     local expected_down_total="$6"
 
     awk -F '\t' \
+        -f "$step_09_cmh_awk_validation_lib" \
         -v expected_total="$expected_total" \
         -v expected_tested_total="$expected_tested_total" \
         -v expected_up_total="$expected_up_total" \
         -v expected_down_total="$expected_down_total" \
-        -v analysis="$analysis_id" '
-        function absolute(value) { if (value < 0) return -value; return value }
-        function is_number(value) {
-            return value ~ /^-?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$/
-        }
-        function is_nonnegative_integer(value) {
-            return value ~ /^(0|[1-9][0-9]*)$/
-        }
+        -v analysis="$analysis_id" \
+        -f /dev/stdin \
+        "$all" "$mutation" <<'AWK'
         BEGIN {
             split("A>C,A>G,A>T,C>A,C>G,C>T,G>A,G>C,G>T,T>A,T>C,T>G", expected, ",")
         }
@@ -173,5 +167,5 @@ validate_step09_mutation_spectrum() {
                 up_total != expected_up_total ||
                 down_total != expected_down_total) exit 1
         }
-    ' "$all" "$mutation"
+AWK
 }

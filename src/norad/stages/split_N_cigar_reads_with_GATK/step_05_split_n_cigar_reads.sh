@@ -146,9 +146,16 @@ reference_dict="$reference_dir/${reference_stem}.dict"
 # Resolve tool paths once and print the selected values in both dry-run and
 # execute logs. Version checks are deferred until execute so dry-runs stay
 # side-effect-free and do not invoke Java/GATK.
-gatk_bin="$(resolve_overridable_executable "GATK" "${gatk_bin_arg:-}" "GATK_BIN_OVERRIDE" "gatk")"
-samtools_bin="$(resolve_overridable_executable "samtools" "${samtools_bin_arg:-}" "SAMTOOLS_BIN_OVERRIDE" "samtools")"
-java_bin="$(resolve_overridable_executable "Java" "${java_bin_arg:-}" "JAVA_BIN_OVERRIDE" "java" "/bin/java")"
+gatk_value="${gatk_bin_arg:-${GATK_BIN_OVERRIDE:-}}"
+samtools_value="${samtools_bin_arg:-${SAMTOOLS_BIN_OVERRIDE:-}}"
+java_value="${java_bin_arg:-${JAVA_BIN_OVERRIDE:-}}"
+if [[ -z "$java_value" && -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+    java_value="${JAVA_HOME}/bin/java"
+fi
+
+gatk_bin="$(resolve_executable_value "GATK" "$gatk_value" "gatk")"
+samtools_bin="$(resolve_executable_value "samtools" "$samtools_value" "samtools")"
+java_bin="$(resolve_executable_value "Java" "$java_value" "java")"
 
 run_token="${SLURM_JOB_ID:-$$}"
 

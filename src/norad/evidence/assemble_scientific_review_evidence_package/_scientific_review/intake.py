@@ -321,23 +321,12 @@ def validate_evidence_manifest(
                 f"category {category}."
             )
     primary_analysis_id = plan["primary_analysis_id"]
-    superseded_analyses = set(
-        split_ids(
-            "superseded_analysis_ids",
-            plan["superseded_analysis_ids"],
-        )
-    )
     sensitivity_analyses = set(
         split_ids(
             "sensitivity_analysis_ids",
             plan["sensitivity_analysis_ids"],
         )
     )
-    allowed_analyses = {
-        primary_analysis_id,
-        *superseded_analyses,
-        *sensitivity_analyses,
-    }
     source_paths: set[Path] = set()
     payload_by_category = {
         category: [] for category in review_package.ALLOWED_EVIDENCE_CATEGORIES

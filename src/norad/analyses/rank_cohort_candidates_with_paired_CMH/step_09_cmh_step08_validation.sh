@@ -1,4 +1,5 @@
 # Step 09 Step 08 input/output contract helpers.
+step_09_cmh_awk_validation_lib="${BASH_SOURCE[0]%/*}/step_09_cmh_awk_validation_functions.awk"
 
 validate_step08_inputs() {
     local path="$1"
@@ -62,14 +63,16 @@ validate_step08_sites() {
     local row_count
     validate_exact_header "Step 08 sites table" "$path" "$step08_sites_header"
     row_count="$(awk -F '\t' \
+        -f "$step_09_cmh_awk_validation_lib" \
         -v expected_fields="$step08_site_field_count" \
         -v sample_total="$sample_count" \
         -v fwd_orientation="${ORIENTATIONS[0]}" \
         -v rev_orientation="${ORIENTATIONS[1]}" \
         -v orientation_policy="$ORIENTATION_POLICY" \
-        -v partition_csv="$partition_ids_csv" '
-        function absolute(value) { if (value < 0) return -value; return value }
-        BEGIN {
+        -v partition_csv="$partition_ids_csv" \
+        -f /dev/stdin \
+        "$inputs_path" "$path" <<'AWK'
+BEGIN {
             count = split(partition_csv, ids, ",")
             for (i = 1; i <= count; i++) declared[ids[i]] = 1
         }
@@ -111,7 +114,8 @@ validate_step08_sites() {
             }
             print rows + 0
         }
-    ' "$inputs_path" "$path")" ||
+AWK
+    )" ||
         die "Step 08 sites table rows or partition/orientation counts are invalid: $path"
     [[ "$row_count" == "$step08_published_count" ]] ||
         die "Step 08 sites row count does not match the complete input receipt; sites $row_count, receipt $step08_published_count"

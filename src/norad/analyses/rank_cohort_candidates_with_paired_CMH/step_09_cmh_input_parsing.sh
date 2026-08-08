@@ -37,6 +37,8 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$script_dir/../../libraries/signal_traps.sh"
 
@@ -52,13 +54,6 @@ validate_base() {
     local label="$1"
     local value="$2"
     [[ "$value" =~ ^[ACGT]$ ]] || die "$label must be one of A, C, G, T; got: $value"
-}
-
-validate_positive_integer() {
-    local label="$1"
-    local value="$2"
-    [[ "$value" =~ ^[1-9][0-9]*$ ]] ||
-        die "$label must be a positive integer; got: $value"
 }
 
 validate_positive_number() {
@@ -232,49 +227,6 @@ read_samples_and_validate_pairs() {
                 print "P\t" replicate "\t" control_rep[replicate] "\t" treatment_rep[replicate]
             }
             print "M\t" sample_count "\t" strata "\t" background_count
-        }
-    ' "$manifest"
-}
-
-read_partitions() {
-    local manifest="$1"
-    awk -F '\t' '
-        NR == 1 {
-            if (NF != 3 || $1 != "partition_id" ||
-                $2 != "selector_type" || $3 != "selector_value") {
-                print "partition manifest header must be exactly partition_id, selector_type, selector_value" > "/dev/stderr"
-                exit 2
-            }
-            next
-        }
-        {
-            if (NF != 3) {
-                printf "partition manifest row %d has %d fields; expected 3\n",
-                    NR, NF > "/dev/stderr"
-                exit 3
-            }
-            id = $1; type = $2; value = $3
-            gsub(/\r$/, "", value)
-            if (id == "" || type == "" || value == "") {
-                printf "partition manifest row %d has an empty value\n", NR > "/dev/stderr"
-                exit 3
-            }
-            if (seen[id]++) {
-                printf "duplicate partition_id: %s\n", id > "/dev/stderr"
-                exit 4
-            }
-            if (type != "region" && type != "regions_file") {
-                printf "invalid selector_type for partition %s: %s\n", id, type > "/dev/stderr"
-                exit 5
-            }
-            print id "\t" type "\t" value
-            count++
-        }
-        END {
-            if (!count) {
-                print "partition manifest contains no partitions" > "/dev/stderr"
-                exit 6
-            }
         }
     ' "$manifest"
 }

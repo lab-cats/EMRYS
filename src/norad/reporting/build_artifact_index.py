@@ -25,7 +25,6 @@ if str(_SRC_ROOT) not in sys.path:
 
 from norad.reporting._artifact_index import contracts as _contract_owners
 
-contracts = _contract_owners.contracts
 step08 = _contract_owners.step08
 step09 = _contract_owners.step09
 review_package = _contract_owners.review_package
@@ -39,6 +38,9 @@ from norad.reporting._artifact_index.context import (
     recheck_inputs,
 )
 from norad.reporting._artifact_index.core import (
+    ADAPTER_REGISTRY as _adapter_registry,
+)
+from norad.reporting._artifact_index.core import (
     parse_args,
 )
 from norad.reporting._artifact_index.models import (
@@ -47,13 +49,36 @@ from norad.reporting._artifact_index.models import (
     LockOwnership,
 )
 from norad.reporting._artifact_index.records import (
+    ARTIFACT_INDEX_HEADER as _artifact_index_header,
+)
+from norad.reporting._artifact_index.records import (
+    ARTIFACT_RECEIPT_HEADER as _artifact_receipt_header,
+)
+from norad.reporting._artifact_index.records import (
     inventory_rows_from_published_index,
     load_existing_receipt,
     validate_existing_identity,
 )
+from norad.reporting._artifact_index.records import (
+    read_exact_tsv as read_exact_tsv,
+)
+from norad.reporting._artifact_index.registry import (
+    STEP06_COUNTS_HEADER as _step06_counts_header,
+)
+from norad.reporting._artifact_index.registry import (
+    STEP07_RECEIPT_HEADER as _step07_receipt_header,
+)
 from norad.reporting._artifact_index.validation import (
     validate_published_transaction,
 )
+
+# Public compatibility exports retained for reporting fixtures and downstream callers.
+ADAPTER_REGISTRY = _adapter_registry
+contracts = _contract_owners.contracts
+ARTIFACT_INDEX_HEADER = _artifact_index_header
+ARTIFACT_RECEIPT_HEADER = _artifact_receipt_header
+STEP06_COUNTS_HEADER = _step06_counts_header
+STEP07_RECEIPT_HEADER = _step07_receipt_header
 
 
 def validate_existing_transaction(

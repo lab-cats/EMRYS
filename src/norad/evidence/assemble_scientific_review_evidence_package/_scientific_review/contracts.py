@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from norad.contracts.scientific_evidence import step08, step09
+from norad.contracts.scientific_evidence import review_package, step08, step09
 
 if step09.step08 is not step08:
     raise ImportError("Step 09c and Step 09 resolved different Step 08 objects")

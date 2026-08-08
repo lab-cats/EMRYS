@@ -115,9 +115,7 @@ done
 [[ -d "$star_index" ]] || die "STAR index directory does not exist: $star_index"
 command -v STAR >/dev/null 2>&1 || die "STAR executable was not found on PATH. Load the STAR module or update PATH."
 
-if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
-    die "--threads must be a positive integer; got: $threads"
-fi
+validate_positive_integer "--threads" "$threads"
 
 # STAR needs --readFilesCommand only when both FASTQ inputs are gzip-compressed.
 r1_is_gz=false

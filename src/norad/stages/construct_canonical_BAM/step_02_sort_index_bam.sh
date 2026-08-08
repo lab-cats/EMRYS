@@ -101,9 +101,7 @@ done
 
 samtools_bin="$(resolve_executable_value "samtools" "" "samtools")"
 
-if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
-    die "--threads must be a positive integer; got: $threads"
-fi
+validate_positive_integer "--threads" "$threads"
 
 run_token="${SLURM_JOB_ID:-$$}"
 

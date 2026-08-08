@@ -15,15 +15,11 @@ VALIDATION_ARGS ?=
 REPORT_TEST_RESULT ?=
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
 DEMO_REPORT_FORMATS ?= all
-DEV_REQUIREMENTS ?= $(CURDIR)/requirements-dev.txt
 
-.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static-shell-checks validation-static install-dev-deps quality-dead-code validate smoke lint all-checks
+.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks
 
 test:
 	python -m pytest
-
-install-dev-deps:
-	"$(REPORT_PYTHON_BIN)" -m pip install -r "$(DEV_REQUIREMENTS)"
 
 NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk

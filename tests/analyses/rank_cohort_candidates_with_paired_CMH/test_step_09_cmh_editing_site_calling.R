@@ -131,23 +131,87 @@ parse_count_vector <- function(value) {
 }
 
 load_engine_run_cmh <- function() {
+    script_dir <- dirname(engine)
     expressions <- as.list(parse(engine))
     scope <- new.env(parent = baseenv())
-    evaluate_assignment <- function(name) {
-        matches <- vapply(expressions, function(expression) {
-            is.call(expression) &&
-                identical(expression[[1L]], as.name("<-")) &&
-                is.symbol(expression[[2L]]) &&
-                identical(as.character(expression[[2L]]), name)
-        }, logical(1))
-        assert_true(
-            sum(matches) == 1L,
-            paste("Expected one committed Step 09 assignment for", name)
-        )
-        eval(expressions[[which(matches)]], envir = scope)
+
+    source_paths <- list.files(
+        script_dir,
+        pattern = "^step_09_cmh_.*\\.R$",
+        full.names = TRUE
+    )
+    source_paths <- source_paths[
+        basename(source_paths) != "step_09_cmh_editing_site_calling.R"
+    ]
+
+    is_assignment <- function(item, name) {
+        is.call(item) &&
+            (identical(item[[1L]], as.name("<-")) ||
+             identical(item[[1L]], as.name("="))) &&
+            is.symbol(item[[2L]]) &&
+            identical(as.character(item[[2L]]), name)
     }
-    evaluate_assignment("CMH_ALTERNATIVE")
-    evaluate_assignment("run_cmh")
+
+    evaluate_symbol <- function(name, candidate_expressions, source_paths) {
+        assignment_indices <- which(
+            vapply(candidate_expressions, is_assignment, logical(1L), name = name)
+        )
+        if (length(assignment_indices) == 1L) {
+            eval(candidate_expressions[[assignment_indices[[1L]]]], envir = scope)
+            return(TRUE)
+        }
+        if (length(assignment_indices) > 1L) {
+            stop(
+                "Expected one committed Step 09 assignment for ", name,
+                "; observed ", length(assignment_indices),
+                call. = FALSE
+            )
+        }
+
+        for (source_path in source_paths) {
+            source_expressions <- as.list(parse(source_path))
+            source_indices <- which(
+                vapply(
+                    source_expressions,
+                    is_assignment,
+                    logical(1L),
+                    name = name
+                )
+            )
+            if (length(source_indices) == 1L) {
+                eval(
+                    source_expressions[[source_indices[[1L]]]], envir = scope
+                )
+                return(TRUE)
+            }
+            if (length(source_indices) > 1L) {
+                stop(
+                    "Expected one committed Step 09 assignment for ", name,
+                    "; observed ", length(source_indices),
+                    " in ", basename(source_path),
+                    call. = FALSE
+                )
+            }
+        }
+        FALSE
+    }
+
+    if (!evaluate_symbol(
+        "CMH_ALTERNATIVE",
+        expressions,
+        source_paths
+    )) {
+        stop(
+            "Expected one committed Step 09 assignment for CMH_ALTERNATIVE",
+            call. = FALSE
+        )
+    }
+    if (!evaluate_symbol("run_cmh", expressions, source_paths)) {
+        stop(
+            "Expected one committed Step 09 assignment for run_cmh",
+            call. = FALSE
+        )
+    }
     assert_true(
         is.function(scope$run_cmh),
         "Committed Step 09 run_cmh assignment did not define a function."

@@ -40,8 +40,15 @@ require_java() {
         exit 2
     fi
 
-    local java_version_output="$("$java_bin" -version 2>&1)"
-    local java_version_line="$(printf '%s\n' "$java_version_output" | head -n 1)"
+    local java_version_output=""
+    local java_version_status=0
+    if java_version_output="$("$java_bin" -version 2>&1)"; then
+        local java_version_line="$(printf '%s\n' "$java_version_output" | head -n 1)"
+    else
+        java_version_status=$?
+        echo "ERROR: Could not determine Java version from: $java_version_output" >&2
+        exit "$java_version_status"
+    fi
 
     local java_major=""
     if [[ "$java_version_line" =~ version\ \"1\.([0-9]+) ]]; then
@@ -71,6 +78,7 @@ validate_and_print_java() {
     local min_java_major=${5:-17}
     local override_hint=${6:-"Set JAVA_BIN_OVERRIDE to a Java ${min_java_major} executable."}
     local preferred_java_bin=${7:-}
+    local strict_java_home=${8:-false}
     local java_bin
     local java_version_output
 
@@ -88,7 +96,11 @@ validate_and_print_java() {
     if [[ -n "$heading" ]]; then
         printf '%s\n' "$heading"
     fi
-    printf 'JAVA_HOME: %s\n' "${JAVA_HOME:-<unset>}"
+    if [[ "$strict_java_home" == true ]]; then
+        printf 'JAVA_HOME: %s\n' "${JAVA_HOME}"
+    else
+        printf 'JAVA_HOME: %s\n' "${JAVA_HOME:-<unset>}"
+    fi
     printf 'Java: %s\n' "$java_bin"
     printf '%s\n' "$java_version_output"
 }

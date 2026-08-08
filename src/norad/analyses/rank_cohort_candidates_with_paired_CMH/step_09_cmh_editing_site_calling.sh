@@ -20,6 +20,10 @@ if [[ ! -f "$library_dir/orientation.sh" ]] &&
     [[ -f "$bootstrap_r_script" ]]; then
     library_dir="$(cd "$(dirname "$bootstrap_r_script")/../../libraries" && pwd)"
 fi
+if [[ ! -d "$library_dir" ]]; then
+    # shellcheck disable=SC2164
+    library_dir="$(cd "$script_dir/../../libraries" && pwd)"
+fi
 helper_dir="$script_dir"
 if [[ ! -f "$helper_dir/step_09_cmh_input_parsing.sh" ]] &&
    [[ -f "$bootstrap_r_script" ]]; then
@@ -27,11 +31,30 @@ if [[ ! -f "$helper_dir/step_09_cmh_input_parsing.sh" ]] &&
 fi
 
 # shellcheck source=../../libraries/orientation.sh
-source "$library_dir/orientation.sh"
+if [[ -f "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh" ]]; then
+    source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
+else
+    source "$library_dir/orientation.sh"
+fi
 # shellcheck source=../../libraries/file_checks.sh
-source "$library_dir/file_checks.sh"
+if [[ -f "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh" ]]; then
+    source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+else
+    source "$library_dir/file_checks.sh"
+fi
 # shellcheck source=../../libraries/executable_resolution.sh
-source "$library_dir/executable_resolution.sh"
+if [[ -f "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh" ]]; then
+    # shellcheck source=../../libraries/executable_resolution.sh
+    source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
+else
+    source "$library_dir/executable_resolution.sh"
+fi
+# shellcheck source=../../libraries/argument_parsing.sh
+if [[ -f "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh" ]]; then
+    source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
+else
+    source "$library_dir/argument_parsing.sh"
+fi
 
 for step_09_helper in \
     step_09_cmh_input_parsing.sh \
@@ -171,14 +194,17 @@ if [[ "$background_sample_count" -gt 0 ]]; then
     done
 fi
 
-partition_output="$(read_partitions "$partition_manifest")" ||
-    die "Partition manifest validation failed: $partition_manifest"
 partition_ids=()
 partition_types=()
 partition_values=()
 partition_rows_csv=""
 partition_ids_csv=""
-while IFS=$'\t' read -r partition_id selector_type selector_value; do
+
+append_partition_record() {
+    local partition_id="$1"
+    local selector_type="$2"
+    local selector_value="$3"
+
     validate_safe_id "partition_id" "$partition_id"
     partition_ids+=("$partition_id")
     partition_types+=("$selector_type")
@@ -187,7 +213,13 @@ while IFS=$'\t' read -r partition_id selector_type selector_value; do
     partition_rows_csv+="$partition_id"$'\035'"$selector_type"$'\035'"$selector_value"
     [[ -z "$partition_ids_csv" ]] || partition_ids_csv+=","
     partition_ids_csv+="$partition_id"
-done <<< "$partition_output"
+}
+
+if ! read_manifest_partitions "$partition_manifest" append_partition_record 1; then
+    die "Partition manifest validation failed: $partition_manifest"
+fi
+unset -f append_partition_record
+
 partition_count="${#partition_ids[@]}"
 
 step08_cohort_dir="$step08_root/$cohort_id"

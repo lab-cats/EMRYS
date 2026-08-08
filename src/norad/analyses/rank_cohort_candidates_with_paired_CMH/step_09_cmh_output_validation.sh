@@ -1,4 +1,5 @@
 # Step 09 output validation helpers.
+step_09_cmh_awk_validation_lib="${BASH_SOURCE[0]%/*}/step_09_cmh_awk_validation_functions.awk"
 
 collect_all_sites_and_significant_counts() {
     local all="$1"
@@ -12,6 +13,7 @@ collect_all_sites_and_significant_counts() {
     local significant_rows
 
     all_metrics="$(awk -F '\t' \
+        -f "$step_09_cmh_awk_validation_lib" \
         -v n="$result_field_count" \
         -v source_fields="$step08_site_field_count" \
         -v sample_total="$sample_count" \
@@ -30,29 +32,9 @@ collect_all_sites_and_significant_counts() {
         -v difference_threshold="$absolute_difference_threshold" \
         -v background_indices_csv="$background_indices_csv" \
         -v background_threshold="$background_max_fraction" \
-        -v orientation_policy="$ORIENTATION_POLICY" '
-        function absolute(value) { if (value < 0) return -value; return value }
-        function is_number(value) {
-            return value ~ /^-?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$/
-        }
-        function is_nonnegative_number(value) {
-            return is_number(value) && value + 0 >= 0
-        }
-        function is_nonnegative_integer(value) {
-            return value ~ /^(0|[1-9][0-9]*)$/
-        }
-        function is_fraction(value) {
-            return is_number(value) && value + 0 >= 0 && value + 0 <= 1
-        }
-        function is_odds_ratio(value) {
-            return value == "Inf" || is_nonnegative_number(value)
-        }
-        function odds_ratio_above(value, threshold) {
-            return value == "Inf" || value + 0 > threshold + 0
-        }
-        function odds_ratio_below(value, threshold) {
-            return value != "Inf" && value + 0 < 1 / (threshold + 0)
-        }
+        -v orientation_policy="$ORIENTATION_POLICY" \
+        -f /dev/stdin \
+        "$step08_sites" "$all" <<'AWK'
         BEGIN {
             if (source_fields < 1) exit 1
             if (n < 1) exit 1
@@ -266,7 +248,8 @@ collect_all_sites_and_significant_counts() {
                 effect_failed_count + 0, significant_up_count + 0,
                 significant_down_count + 0, not_tested_count + 0
         }
-    ' "$step08_sites" "$all")" || return 1
+AWK
+    )" || return 1
 
     read -r \
         all_rows significant_expected target_expected tested_expected \

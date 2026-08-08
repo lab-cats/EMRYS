@@ -65,13 +65,6 @@ resolve_samtools() {
     resolve_executable_value "samtools" "$value" "samtools"
 }
 
-validate_count() {
-    local label="$1"
-    local value="$2"
-
-    [[ "$value" =~ ^[0-9]+$ ]] || die "$label is not a non-negative integer: $value"
-}
-
 sample_id=""
 input_bam=""
 output_dir=""
@@ -132,9 +125,7 @@ done
 [[ -n "$qc_dir" ]] || die "Missing required argument: --qc-dir."
 [[ -n "$threads" ]] || die "Missing required argument: --threads."
 
-if ! [[ "$threads" =~ ^[1-9][0-9]*$ ]]; then
-    die "--threads must be a positive integer; got: $threads"
-fi
+validate_positive_integer "--threads" "$threads"
 
 # Step 05 publishes indexes as <bam>.bai. Keep Step 06 strict so stale or
 # incomplete upstream split-N-cigar outputs fail before any orientation work.
@@ -483,13 +474,13 @@ write_counts_tsv() {
     fwd_like_records="$("${fwd_count_command[@]}")"
     rev_like_records="$("${rev_count_command[@]}")"
 
-    validate_count "input_records" "$input_records"
-    validate_count "flag_99_records" "$flag_99_records"
-    validate_count "flag_147_records" "$flag_147_records"
-    validate_count "flag_83_records" "$flag_83_records"
-    validate_count "flag_163_records" "$flag_163_records"
-    validate_count "fwd_like_records" "$fwd_like_records"
-    validate_count "rev_like_records" "$rev_like_records"
+    validate_nonnegative_integer "input_records" "$input_records"
+    validate_nonnegative_integer "flag_99_records" "$flag_99_records"
+    validate_nonnegative_integer "flag_147_records" "$flag_147_records"
+    validate_nonnegative_integer "flag_83_records" "$flag_83_records"
+    validate_nonnegative_integer "flag_163_records" "$flag_163_records"
+    validate_nonnegative_integer "fwd_like_records" "$fwd_like_records"
+    validate_nonnegative_integer "rev_like_records" "$rev_like_records"
 
     [[ "$input_records" -gt 0 ]] || die "input_records is zero; refusing to publish empty Step 06 outputs"
     [[ "$fwd_like_records" -gt 0 ]] || die "fwd_like_records is zero; refusing to publish empty FWD_like output"

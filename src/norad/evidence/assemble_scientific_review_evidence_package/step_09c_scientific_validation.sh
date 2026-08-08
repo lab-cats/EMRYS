@@ -38,9 +38,9 @@ USAGE
 }
 
 # shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 
 
 review_id=""
@@ -145,8 +145,12 @@ python_value="${PYTHON_BIN_OVERRIDE:-python3}"
 if [[ "$python_value" == */* ]]; then
     [[ -e "$python_value" ]] || die "Python executable does not exist: $python_value"
     [[ -x "$python_value" ]] || die "Python path is not executable: $python_value"
+    python_bin="$python_value"
+else
+    python_bin="$(command -v "$python_value")" ||
+        die "Python executable was not found on PATH: $python_value"
+    [[ -n "$python_bin" ]] || die "Python executable was not found on PATH: $python_value"
 fi
-python_bin="$(resolve_executable_value "Python" "$python_value" "python3")"
 
 command_args=(
     "$python_bin"

@@ -188,9 +188,16 @@ done
 [[ -n "$reference_fasta" ]] || die "Missing required argument: --reference-fasta."
 [[ -s "$reference_fasta" ]] || die "Reference FASTA does not exist or is empty: $reference_fasta"
 
-samtools_bin="$(resolve_overridable_executable "samtools" "${samtools_bin_arg:-}" "SAMTOOLS_BIN_OVERRIDE" "samtools")"
-gatk_bin="$(resolve_overridable_executable "GATK" "${gatk_bin_arg:-}" "GATK_BIN_OVERRIDE" "gatk")"
-java_bin="$(resolve_overridable_executable "Java" "${java_bin_arg:-}" "JAVA_BIN_OVERRIDE" "java" "/bin/java")"
+samtools_value="${samtools_bin_arg:-${SAMTOOLS_BIN_OVERRIDE:-}}"
+gatk_value="${gatk_bin_arg:-${GATK_BIN_OVERRIDE:-}}"
+java_value="${java_bin_arg:-${JAVA_BIN_OVERRIDE:-}}"
+if [[ -z "$java_value" && -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+    java_value="${JAVA_HOME}/bin/java"
+fi
+
+samtools_bin="$(resolve_executable_value "samtools" "$samtools_value" "samtools")"
+gatk_bin="$(resolve_executable_value "GATK" "$gatk_value" "gatk")"
+java_bin="$(resolve_executable_value "Java" "$java_value" "java")"
 
 reference_dir="$(dirname "$reference_fasta")"
 reference_base="$(basename "$reference_fasta")"

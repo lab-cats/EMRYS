@@ -70,100 +70,6 @@ resolve_rscript() {
     resolve_executable_value "Rscript" "$value" "Rscript"
 }
 
-read_sample_ids() {
-    local manifest="$1"
-    awk -F '\t' '
-        NR == 1 {
-            for (i = 1; i <= NF; i++) {
-                gsub(/\r$/, "", $i)
-                if ($i == "sample_id") sample_column = i
-            }
-            if (!sample_column) {
-                print "sample manifest is missing required sample_id column" > "/dev/stderr"
-                exit 2
-            }
-            next
-        }
-        {
-            value = $sample_column
-            gsub(/\r$/, "", value)
-            if (value == "") {
-                empty = 1
-                next
-            }
-            if (seen[value]++) {
-                printf "duplicate sample_id in sample manifest: %s\n", value > "/dev/stderr"
-                exit 3
-            }
-            print value
-            count++
-        }
-        END {
-            if (!count && !empty) {
-                print "sample manifest contains no sample rows" > "/dev/stderr"
-                exit 4
-            }
-            if (empty) {
-                print "sample manifest contains an empty sample_id" > "/dev/stderr"
-                exit 5
-            }
-        }
-    ' "$manifest"
-}
-
-read_partitions() {
-    local manifest="$1"
-    awk -F '\t' '
-        NR == 1 {
-            for (i = 1; i <= NF; i++) {
-                gsub(/\r$/, "", $i)
-                if ($i == "partition_id") id_column = i
-                if ($i == "selector_type") type_column = i
-                if ($i == "selector_value") value_column = i
-            }
-            if (!id_column || !type_column || !value_column) {
-                print "partition manifest requires partition_id, selector_type, selector_value" > "/dev/stderr"
-                exit 2
-            }
-            next
-        }
-        {
-            id = $id_column
-            type = $type_column
-            value = $value_column
-            gsub(/\r$/, "", id)
-            gsub(/\r$/, "", type)
-            gsub(/\r$/, "", value)
-
-            if (id == "" && type == "" && value == "") next
-            if (id == "" || type == "" || value == "") {
-                printf "partition manifest row %d has an empty required value\n", NR > "/dev/stderr"
-                exit 3
-            }
-            if (id !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) {
-                printf "partition manifest row %d has unsafe partition_id: %s\n", NR, id > "/dev/stderr"
-                exit 4
-            }
-            if (seen[id]++) {
-                printf "duplicate partition_id in partition manifest: %s\n", id > "/dev/stderr"
-                exit 5
-            }
-            if (type != "region" && type != "regions_file") {
-                printf "invalid selector_type for partition %s: %s\n", id, type > "/dev/stderr"
-                exit 6
-            }
-            print id "\t" type "\t" value
-            count++
-        }
-        END {
-            if (!count) {
-                print "partition manifest contains no partition rows" > "/dev/stderr"
-                exit 7
-            }
-        }
-    ' "$manifest"
-}
-
 confirm_input_hashes() {
     local current_sample_hash
     local current_partition_hash
@@ -179,14 +85,6 @@ confirm_input_hashes() {
         die "Partition manifest changed during Step 08: $partition_manifest"
     [[ "$current_annotation_hash" == "$annotation_gtf_sha256" ]] ||
         die "Annotation GTF changed during Step 08: $annotation_gtf"
-}
-
-validate_nonnegative_integer_value() {
-    local label="$1"
-    local value="$2"
-
-    [[ "$value" =~ ^(0|[1-9][0-9]*)$ ]] ||
-        die "$label must be a non-negative integer; got: $value"
 }
 
 validate_step07_vcf_preflight() {
@@ -301,9 +199,9 @@ validate_step07_receipt_preflight() {
     [[ "$fwd_samples" == "$sample_count" &&
        "$rev_samples" == "$sample_count" ]] ||
         die "Step 07 receipt sample count mismatch: $path"
-    validate_nonnegative_integer_value \
+    validate_nonnegative_integer \
         "Step 07 FWD_like declared record count" "$fwd_records"
-    validate_nonnegative_integer_value \
+    validate_nonnegative_integer \
         "Step 07 REV_like declared record count" "$rev_records"
 
     validate_step07_vcf_preflight \
@@ -429,19 +327,19 @@ validate_output_tables() {
                "$i_sample_count" == "$sample_count" ]] ||
                 die "Step 08 input receipt row $row_number contains invalid manifest, annotation, sample-count, or policy metadata."
 
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 declared VCF record count" "$i_declared"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 observed VCF record count" "$i_observed"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 observed alternate-allele count" "$i_alt"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 supported SNV count" "$i_supported"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 skipped symbolic count" "$i_symbolic"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 skipped non-SNV count" "$i_non_snv"
-            validate_nonnegative_integer_value \
+            validate_nonnegative_integer \
                 "Step 08 published candidate count" "$i_published"
             [[ "$i_declared" == "${expected_declared_counts[$vcf_index]}" &&
                "$i_declared" == "$i_observed" ]] ||
@@ -503,7 +401,7 @@ validate_output_tables() {
         "$s_sample_count" "$s_observed" "$s_alt" "$s_supported" \
         "$s_symbolic" "$s_non_snv" "$s_published"
     do
-        validate_nonnegative_integer_value \
+        validate_nonnegative_integer \
             "Step 08 summary count" "$summary_count"
     done
     [[ "$s_cohort" == "$cohort_id" &&
@@ -620,32 +518,43 @@ sample_manifest_sha256="$(sha256_file "$sample_manifest")"
 partition_manifest_sha256="$(sha256_file "$partition_manifest")"
 annotation_gtf_sha256="$(sha256_file "$annotation_gtf")"
 
-if ! sample_output="$(read_sample_ids "$sample_manifest")"; then
+append_sample_id() {
+    local sample_id="$1"
+
+    sample_ids+=("$sample_id")
+    validate_safe_id "sample_id" "$sample_id"
+}
+
+sample_ids=()
+if ! read_manifest_sample_ids "$sample_manifest" append_sample_id; then
     die "Sample manifest validation failed: $sample_manifest"
 fi
-sample_ids=()
-while IFS= read -r sample_id; do
-    [[ -n "$sample_id" ]] || continue
-    validate_safe_id "sample_id" "$sample_id"
-    sample_ids+=("$sample_id")
-done <<< "$sample_output"
+unset -f append_sample_id
+
 [[ "${#sample_ids[@]}" -gt 0 ]] ||
     die "Sample manifest contains no sample IDs: $sample_manifest"
 sample_count="${#sample_ids[@]}"
 expected_samples_csv="$(IFS=,; printf '%s' "${sample_ids[*]}")"
 
-if ! partition_output="$(read_partitions "$partition_manifest")"; then
-    die "Partition manifest validation failed: $partition_manifest"
-fi
-partition_ids=()
-partition_types=()
-partition_values=()
-while IFS=$'\t' read -r partition_id selector_type selector_value; do
-    [[ -n "$partition_id" ]] || continue
+append_partition_record() {
+    local partition_id="$1"
+    local selector_type="$2"
+    local selector_value="$3"
+
     partition_ids+=("$partition_id")
     partition_types+=("$selector_type")
     partition_values+=("$selector_value")
-done <<< "$partition_output"
+}
+
+partition_ids=()
+partition_types=()
+partition_values=()
+
+if ! read_manifest_partitions "$partition_manifest" append_partition_record; then
+    die "Partition manifest validation failed: $partition_manifest"
+fi
+unset -f append_partition_record
+
 [[ "${#partition_ids[@]}" -gt 0 ]] ||
     die "Partition manifest contains no partitions: $partition_manifest"
 partition_count="${#partition_ids[@]}"

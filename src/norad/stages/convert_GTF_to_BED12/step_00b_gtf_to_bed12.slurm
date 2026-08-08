@@ -16,7 +16,7 @@ script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/../../libraries/argument_parsing.sh"
 
 # Run from the submitted repository checkout so relative paths are predictable.
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$SLURM_SUBMIT_DIR"
 
 # Resolve configurable paths and keep defaults suitable for the prepared reference.
 GTF="${GTF:-refs/novogene_ref/genome.gtf}"
