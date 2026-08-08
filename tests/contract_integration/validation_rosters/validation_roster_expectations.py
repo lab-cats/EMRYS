@@ -2,7 +2,6 @@
 
 from collections.abc import Mapping, Sequence
 
-
 EXPECTED_CHECK_ROSTERS: dict[str, tuple[str, ...]] = {
     "00a": (
         "index_members",

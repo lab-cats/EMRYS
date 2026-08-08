@@ -5,8 +5,9 @@ from __future__ import annotations
 import csv
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from .models import (
     ANCHOR_HASH_FIELDS,
@@ -15,6 +16,7 @@ from .models import (
     AdapterSpec,
     ArtifactIndexError,
 )
+
 
 def iter_text_lines(path: Path) -> Iterable[tuple[int, str]]:
     try:
@@ -28,11 +30,7 @@ def iter_text_lines(path: Path) -> Iterable[tuple[int, str]]:
                     raise ArtifactIndexError(
                         f"Text line {line_number} contains a carriage return"
                     )
-                line = (
-                    raw_line[:-1]
-                    if raw_line.endswith("\n")
-                    else raw_line
-                )
+                line = raw_line.removesuffix("\n")
                 yield line_number, line
     except ArtifactIndexError:
         raise
@@ -63,10 +61,10 @@ def inspect_tsv(
         or spec.adapter_id in set(STEP09C_CATEGORY_ADAPTERS.values())
         or spec.adapter_id
         in {
-        "step07_mpileup_receipt_v1",
-        "step08_inputs_v1",
-        "step09_mutation_spectrum_tsv_v1",
-        "step09c_evidence_index_v1",
+            "step07_mpileup_receipt_v1",
+            "step08_inputs_v1",
+            "step09_mutation_spectrum_tsv_v1",
+            "step09c_evidence_index_v1",
         }
     )
     mutation_pair_counts: dict[str, Counter[str]] = defaultdict(Counter)
@@ -94,9 +92,7 @@ def inspect_tsv(
             first_row: dict[str, str] | None = None
             for row_number, values in enumerate(reader, start=2):
                 if not values or all(value == "" for value in values):
-                    raise ArtifactIndexError(
-                        f"TSV row {row_number} is blank"
-                    )
+                    raise ArtifactIndexError(f"TSV row {row_number} is blank")
                 if len(values) != len(header):
                     raise ArtifactIndexError(
                         f"TSV row {row_number} has {len(values)} fields; "
@@ -133,9 +129,7 @@ def inspect_tsv(
                             "successfully_tested_count"
                         ] += 1
                     if row["call_status"] == "significant_up":
-                        mutation_pair_counts[mutation_type][
-                            "significant_up_count"
-                        ] += 1
+                        mutation_pair_counts[mutation_type]["significant_up_count"] += 1
                     if row["call_status"] == "significant_down":
                         mutation_pair_counts[mutation_type][
                             "significant_down_count"
@@ -162,16 +156,14 @@ def inspect_tsv(
     native: dict[str, Any] = {
         "header": list(header),
         "anchor_values": {
-            key: sorted(values)
-            for key, values in sorted(anchor_values.items())
+            key: sorted(values) for key, values in sorted(anchor_values.items())
         },
     }
     if spec.kind == "sample_blocks_tsv":
         remainder = header[len(spec.expected_header or ()) :]
         sample_count = len(remainder) // 3
         native["samples"] = [
-            value.removeprefix("DP__")
-            for value in remainder[:sample_count]
+            value.removeprefix("DP__") for value in remainder[:sample_count]
         ]
         native["sample_count"] = sample_count
     if capture_rows:
@@ -194,14 +186,10 @@ def validate_sample_block_header(
     fixed_prefix: Sequence[str],
 ) -> None:
     if tuple(header[: len(fixed_prefix)]) != tuple(fixed_prefix):
-        raise ArtifactIndexError(
-            "Sample-block TSV fixed metadata header is invalid"
-        )
+        raise ArtifactIndexError("Sample-block TSV fixed metadata header is invalid")
     remainder = tuple(header[len(fixed_prefix) :])
     if not remainder:
-        raise ArtifactIndexError(
-            "Sample-block TSV must declare at least one sample"
-        )
+        raise ArtifactIndexError("Sample-block TSV must declare at least one sample")
     if len(remainder) % 3 != 0:
         raise ArtifactIndexError(
             "Sample-block TSV must have equal DP__, AD__, and AF__ blocks"
@@ -270,9 +258,7 @@ def inspect_vcf(path: Path) -> tuple[int, dict[str, Any]]:
             continue
         if line.startswith("#CHROM\t"):
             if fields is not None:
-                raise ArtifactIndexError(
-                    "VCF must contain exactly one #CHROM header"
-                )
+                raise ArtifactIndexError("VCF must contain exactly one #CHROM header")
             fields = line.split("\t")
             if fields[:9] != [
                 "#CHROM",
@@ -297,9 +283,7 @@ def inspect_vcf(path: Path) -> tuple[int, dict[str, Any]]:
                 f"VCF line {line_number} has an unexpected header record"
             )
         if fields is None:
-            raise ArtifactIndexError(
-                f"VCF record line {line_number} precedes #CHROM"
-            )
+            raise ArtifactIndexError(f"VCF record line {line_number} precedes #CHROM")
         values = line.split("\t")
         if len(values) != len(fields):
             raise ArtifactIndexError(
@@ -315,9 +299,7 @@ def inspect_vcf(path: Path) -> tuple[int, dict[str, Any]]:
             ) from exc
         count += 1
     if observed_lines == 0 or fields is None:
-        raise ArtifactIndexError(
-            "VCF must contain exactly one #CHROM header"
-        )
+        raise ArtifactIndexError("VCF must contain exactly one #CHROM header")
     return count, {
         "sample_count": len(samples),
         "samples": samples,
@@ -335,9 +317,7 @@ def inspect_fasta(path: Path) -> tuple[int, dict[str, Any]]:
     for line_number, line in iter_text_lines(path):
         if line.startswith(">"):
             if current is not None and not sequence_has_bases:
-                raise ArtifactIndexError(
-                    f"FASTA sequence {current!r} has no bases"
-                )
+                raise ArtifactIndexError(f"FASTA sequence {current!r} has no bases")
             current = line[1:].split()[0] if line[1:].split() else ""
             if not current or current in sequence_ids:
                 raise ArtifactIndexError(
@@ -414,9 +394,7 @@ def inspect_dict(path: Path) -> tuple[int, dict[str, Any]]:
                 f"Dictionary line {line_number} has an invalid LN"
             ) from exc
         if not name or name in seen or length <= 0:
-            raise ArtifactIndexError(
-                f"Dictionary line {line_number} has invalid SN/LN"
-            )
+            raise ArtifactIndexError(f"Dictionary line {line_number} has invalid SN/LN")
         seen.add(name)
         contigs[name] = length
         total_bases += length
@@ -431,9 +409,7 @@ def inspect_bed12(path: Path) -> tuple[int, dict[str, Any]]:
     for line_number, line in iter_text_lines(path):
         values = line.split("\t")
         if len(values) != 12:
-            raise ArtifactIndexError(
-                f"BED line {line_number} does not have 12 fields"
-            )
+            raise ArtifactIndexError(f"BED line {line_number} does not have 12 fields")
         try:
             start = int(values[1])
             end = int(values[2])
@@ -504,12 +480,14 @@ def inspect_picard_metrics(path: Path) -> tuple[int, dict[str, Any]]:
             continue
         try:
             native[key.lower()] = (
-                float(value) if any(token in value for token in (".", "e", "E"))
+                float(value)
+                if any(token in value for token in (".", "e", "E"))
                 else int(value)
             )
         except ValueError:
             continue
     return 1, native
+
 
 def validate_native_run_anchors(
     row: Mapping[str, str] | None,
@@ -524,18 +502,12 @@ def validate_native_run_anchors(
             raise ArtifactIndexError(
                 f"Native field {field_name} is not a lowercase SHA-256"
             )
-    if (
-        "analysis_id" in row
-        and inventory_row.get("scope_type") == "analysis"
-    ):
+    if "analysis_id" in row and inventory_row.get("scope_type") == "analysis":
         if row["analysis_id"] != inventory_row["scope_id"]:
             raise ArtifactIndexError(
                 "Native analysis_id does not match the explicit inventory scope"
             )
-    if (
-        "review_id" in row
-        and inventory_row.get("scope_type") == "scientific_review"
-    ):
+    if "review_id" in row and inventory_row.get("scope_type") == "scientific_review":
         if row["review_id"] != inventory_row["scope_id"]:
             raise ArtifactIndexError(
                 "Native review_id does not match the explicit inventory scope"

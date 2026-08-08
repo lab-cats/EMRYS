@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -47,17 +46,14 @@ from .records import (
 from .registry import ADAPTER_REGISTRY
 from .validation import validate_existing_transaction
 
+
 def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
-        raise ArtifactIndexError(
-            "run_id must match [A-Za-z0-9][A-Za-z0-9._-]*"
-        )
+        raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
     run_contract_path = arguments.run_contract.expanduser().resolve()
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
-    run_contract, run_contract_file_sha256 = load_run_contract(
-        run_contract_path
-    )
+    run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
     inventory_rows = contracts.validate_inventory(inventory_path)
     validate_inventory_registry(inventory_rows)
     inventory_sha256 = contracts.sha256_file(inventory_path)
@@ -110,8 +106,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     git_commit = get_git_commit()
     evidence = producer_evidence(git_commit)
     inspections = [
-        inspect_source(row, ADAPTER_REGISTRY[row["adapter"]])
-        for row in inventory_rows
+        inspect_source(row, ADAPTER_REGISTRY[row["adapter"]]) for row in inventory_rows
     ]
     apply_run_contract_checks(inspections, run_contract)
     reconcile_native_transactions(inspections)
@@ -126,9 +121,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     )
     records: list[dict[str, Any]] = []
     record_bytes: list[bytes] = []
-    for inspection, inventory_row in zip(
-        inspections, inventory_rows, strict=True
-    ):
+    for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
         scope = (
             inventory_row["step_id"],
             inventory_row["scope_type"],
@@ -260,9 +253,7 @@ def recheck_inputs(context: BuildContext) -> None:
     if contracts.sha256_file(context.run_contract_path) != (
         context.run_contract_file_sha256
     ):
-        raise ArtifactIndexError(
-            "Run-contract file changed after initial validation"
-        )
+        raise ArtifactIndexError("Run-contract file changed after initial validation")
     if contracts.sha256_file(context.inventory_path) != context.inventory_sha256:
         raise ArtifactIndexError("Inventory changed after initial validation")
     for inspection in context.inspections:
@@ -292,10 +283,7 @@ def print_context(context: BuildContext, execute: bool) -> None:
     print("NORAD artifact-index context")
     print(f"  Mode: {'execute' if execute else 'dry-run'}")
     print(f"  Run ID: {context.run_id}")
-    print(
-        "  Run contract SHA-256: "
-        f"{context.run_contract['run_contract_sha256']}"
-    )
+    print(f"  Run contract SHA-256: {context.run_contract['run_contract_sha256']}")
     print(f"  Run contract: {context.run_contract_path}")
     print(f"  Inventory: {context.inventory_path}")
     print(f"  Inventory artifacts: {len(context.inventory_rows)}")
@@ -338,7 +326,4 @@ def print_context(context: BuildContext, execute: bool) -> None:
             f"source={inspection.row['source_path']}"
         )
     if not execute:
-        print(
-            "Dry-run only. Add --execute to publish the artifact-index "
-            "transaction."
-        )
+        print("Dry-run only. Add --execute to publish the artifact-index transaction.")

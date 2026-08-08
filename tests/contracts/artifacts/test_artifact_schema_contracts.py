@@ -6,10 +6,8 @@ import copy
 import csv
 import importlib.util
 import json
-import os
 import subprocess
 import sys
-import textwrap
 from collections import Counter
 from pathlib import Path
 from types import ModuleType
@@ -17,7 +15,6 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = (
@@ -28,15 +25,7 @@ SCRIPT = (
     / "artifacts"
     / "validate_artifact_contracts.py"
 )
-SCHEMA_ROOT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "schemas"
-    / "artifacts"
-    / "v1"
-)
+SCHEMA_ROOT = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
 FIXTURE_ROOT = (
     REPO_ROOT
     / "tests"
@@ -49,9 +38,7 @@ FIXTURE_ROOT = (
 INVENTORY = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
-    "scientific-review-record": (
-        FIXTURE_ROOT / "scientific_review_record.json"
-    ),
+    "scientific-review-record": (FIXTURE_ROOT / "scientific_review_record.json"),
     "run-summary": FIXTURE_ROOT / "run_summary.json",
     "report-receipt": FIXTURE_ROOT / "report_receipt.json",
 }
@@ -74,10 +61,21 @@ CONTRACT = load_contract_module()
 
 
 def test_contract_facade_uses_the_packaged_owners() -> None:
-    assert CONTRACT.ContractValidationError is CONTRACT._core_owner.ContractValidationError
-    assert CONTRACT.validate_artifact_semantics is CONTRACT._artifact_owner.validate_artifact_semantics
-    assert CONTRACT.validate_scientific_review_semantics is CONTRACT._scientific_review_owner.validate_scientific_review_semantics
-    assert CONTRACT.validate_run_summary_semantics is CONTRACT._run_summary_owner.validate_run_summary_semantics
+    assert (
+        CONTRACT.ContractValidationError is CONTRACT._core_owner.ContractValidationError
+    )
+    assert (
+        CONTRACT.validate_artifact_semantics
+        is CONTRACT._artifact_owner.validate_artifact_semantics
+    )
+    assert (
+        CONTRACT.validate_scientific_review_semantics
+        is CONTRACT._scientific_review_owner.validate_scientific_review_semantics
+    )
+    assert (
+        CONTRACT.validate_run_summary_semantics
+        is CONTRACT._run_summary_owner.validate_run_summary_semantics
+    )
 
 
 def test_validate_document_and_dispatcher_use_live_facade_hooks(
@@ -561,6 +559,7 @@ def test_attempt_states_are_temporally_and_graph_consistent() -> None:
         "connected retry chain",
     )
 
+
 def test_run_contract_digest_is_canonical_and_recomputed() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
     assert (
@@ -581,9 +580,7 @@ def test_scientific_review_schema_rejects_reserved_ready_state() -> None:
     review = read_json(FIXTURES["scientific-review-record"])
 
     ready = copy.deepcopy(review)
-    ready["scientific_state"]["overall_status"] = (
-        "biological_interpretation_ready"
-    )
+    ready["scientific_state"]["overall_status"] = "biological_interpretation_ready"
     assert_schema_invalid(
         "scientific-review-record",
         ready,
@@ -659,15 +656,11 @@ def test_scientific_review_source_free_evidence_allows_null_date() -> None:
         {
             "status": "not_applicable",
             "evidence_ids": ["qc_not_applicable"],
-            "not_applicable_reason": (
-                "Synthetic evidence is not applicable."
-            ),
+            "not_applicable_reason": ("Synthetic evidence is not applicable."),
         }
     )
     assert_schema_valid("scientific-review-record", not_applicable)
-    CONTRACT.validate_document_semantics(
-        "scientific-review-record", not_applicable
-    )
+    CONTRACT.validate_document_semantics("scientific-review-record", not_applicable)
 
     complete_without_date = copy.deepcopy(review)
     complete_without_date["evidence_records"][0]["evidence_date"] = None
@@ -835,9 +828,7 @@ def test_scientific_review_inputs_and_analysis_graph_are_identity_bound() -> Non
     )
 
     swapped_roles = copy.deepcopy(review)
-    by_role = {
-        record["role"]: record for record in swapped_roles["input_artifacts"]
-    }
+    by_role = {record["role"]: record for record in swapped_roles["input_artifacts"]}
     by_role["step08_sites"]["role"] = "step08_inputs"
     by_role["step08_inputs"]["role"] = "step08_sites"
     assert_schema_valid("scientific-review-record", swapped_roles)
@@ -978,9 +969,7 @@ def test_scientific_review_category_analysis_and_na_aggregation() -> None:
 
 def test_exploratory_science_requires_selection_adjudication_and_decisions() -> None:
     review = read_json(FIXTURES["scientific-review-record"])
-    review["scientific_state"]["overall_status"] = (
-        "science_review_complete_exploratory"
-    )
+    review["scientific_state"]["overall_status"] = "science_review_complete_exploratory"
     review["review_metadata"]["review_completed_date"] = "2000-01-02"
     for category in review["evidence_categories"].values():
         category.update(
@@ -1175,9 +1164,7 @@ def test_run_summary_rejects_computational_overclaims() -> None:
     )
 
     rollup_overclaim = copy.deepcopy(summary)
-    rollup_overclaim["computational_rollup"]["runtime_validation_status"] = (
-        "passed"
-    )
+    rollup_overclaim["computational_rollup"]["runtime_validation_status"] = "passed"
     assert_schema_valid("run-summary", rollup_overclaim)
     assert_contract_failure(
         "run-summary",
@@ -1322,11 +1309,11 @@ def test_report_receipt_rejects_cross_run_paths() -> None:
             "/run_fixture/",
             "/different_directory/",
         )
-    wrong_directory["input_run_summary"]["path"] = (
-        wrong_directory["input_run_summary"]["path"].replace(
-            "/run_fixture/",
-            "/different_directory/",
-        )
+    wrong_directory["input_run_summary"]["path"] = wrong_directory["input_run_summary"][
+        "path"
+    ].replace(
+        "/run_fixture/",
+        "/different_directory/",
     )
     assert_schema_valid("report-receipt", wrong_directory)
     assert_contract_failure("report-receipt", wrong_directory, "directory name")
@@ -1355,7 +1342,9 @@ def inventory_rows() -> tuple[list[str], list[dict[str, str]]]:
         return list(reader.fieldnames), list(reader)
 
 
-def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> None:
+def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> (
+    None
+):
     rows = CONTRACT.validate_inventory(INVENTORY)
 
     assert Counter(row["step_id"] for row in rows) == {
@@ -1446,7 +1435,11 @@ def test_inventory_rejects_canonical_aliases_and_interleaved_scopes(
     ):
         CONTRACT.validate_inventory(alias_inventory)
 
-    interleaved = [copy.deepcopy(rows[0]), copy.deepcopy(rows[22]), copy.deepcopy(rows[1])]
+    interleaved = [
+        copy.deepcopy(rows[0]),
+        copy.deepcopy(rows[22]),
+        copy.deepcopy(rows[1]),
+    ]
     interleaved_inventory = tmp_path / "interleaved.tsv"
     write_inventory(interleaved_inventory, header, interleaved)
     with pytest.raises(CONTRACT.ContractValidationError, match="contiguous"):
@@ -1572,8 +1565,7 @@ def test_duplicate_json_keys_are_rejected_before_schema_validation(
 ) -> None:
     duplicate = tmp_path / "duplicate.json"
     duplicate.write_text(
-        '{"schema_name":"norad.artifact_record",'
-        '"schema_name":"duplicate"}\n',
+        '{"schema_name":"norad.artifact_record","schema_name":"duplicate"}\n',
         encoding="utf-8",
     )
 

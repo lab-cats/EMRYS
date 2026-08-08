@@ -6,12 +6,10 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from validation_roster_expectations import (
     EXPECTED_CHECK_ROSTERS,
     assert_exact_check_roster,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
@@ -21,24 +19,21 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from norad.libraries import validation as SHARED_REPORT_VALIDATOR
+
 VALIDATOR_PATHS = {
     "00a": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     ),
-    "00b": Path(
-        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
-    ),
+    "00b": Path("src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"),
     "00c": Path(
         "src/norad/stages/construct_FASTA_sidecars/"
         "validate_step_00c_reference_sidecars.py"
     ),
     "01": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/"
-        "validate_step_01_star_alignment.py"
+        "src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py"
     ),
     "02": Path(
-        "src/norad/stages/construct_canonical_BAM/"
-        "validate_step_02_canonical_bam.py"
+        "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
     ),
     "02b": Path(
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
@@ -117,8 +112,7 @@ def mutate_roster(expected: tuple[str, ...], mutation: str) -> tuple[str, ...]:
 
 def test_expectations_cover_exactly_the_live_validator_inventory() -> None:
     live_flat = {
-        Path("scripts") / path.name
-        for path in SCRIPTS_ROOT.glob("validate_step_*.py")
+        Path("scripts") / path.name for path in SCRIPTS_ROOT.glob("validate_step_*.py")
     }
     expected_flat = {
         path for path in VALIDATOR_PATHS.values() if path.parent == Path("scripts")

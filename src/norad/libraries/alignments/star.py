@@ -8,7 +8,6 @@ from pathlib import Path
 from norad.libraries import validation as report
 from norad.libraries.references import contigs as reference_contigs
 
-
 PERCENT_KEYS = {
     "Uniquely mapped reads %",
     "% of reads mapped to multiple loci",
@@ -59,7 +58,12 @@ def valid_splice_junction_table(text: str) -> tuple[bool, str]:
             numeric = [int(value) for value in fields[3:]]
         except ValueError:
             return False, f"line {line_number} contains noninteger fields"
-        if not fields[0] or start < 1 or end < start or any(value < 0 for value in numeric):
+        if (
+            not fields[0]
+            or start < 1
+            or end < start
+            or any(value < 0 for value in numeric)
+        ):
             return False, f"line {line_number} contains invalid coordinates/counts"
         count += 1
     return True, f"{count} splice-junction rows"
@@ -101,9 +105,13 @@ def parse_star_index_contigs(
     names = names_text.splitlines()
     lengths = lengths_text.splitlines()
     if not names or len(names) != len(lengths) or len(names) != len(set(names)):
-        raise ValueError("STAR chrName/chrLength rows are empty, duplicate, or misaligned")
+        raise ValueError(
+            "STAR chrName/chrLength rows are empty, duplicate, or misaligned"
+        )
     try:
-        parsed = [(name, int(length)) for name, length in zip(names, lengths, strict=True)]
+        parsed = [
+            (name, int(length)) for name, length in zip(names, lengths, strict=True)
+        ]
     except ValueError as exc:
         raise ValueError(f"STAR chrLength contains a non-integer: {exc}") from exc
     if any(not name or length <= 0 for name, length in parsed):

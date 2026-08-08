@@ -5,7 +5,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "construct_star_index_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -23,10 +29,21 @@ SCRIPT = (
     / "validate_step_00a_star_index.py"
 )
 MEMBERS = (
-    "genomeParameters.txt", "Genome", "SA", "SAindex", "chrLength.txt",
-    "chrName.txt", "chrNameLength.txt", "chrStart.txt", "exonGeTrInfo.tab",
-    "exonInfo.tab", "geneInfo.tab", "sjdbInfo.txt",
-    "sjdbList.fromGTF.out.tab", "sjdbList.out.tab", "transcriptInfo.tab",
+    "genomeParameters.txt",
+    "Genome",
+    "SA",
+    "SAindex",
+    "chrLength.txt",
+    "chrName.txt",
+    "chrNameLength.txt",
+    "chrStart.txt",
+    "exonGeTrInfo.tab",
+    "exonInfo.tab",
+    "geneInfo.tab",
+    "sjdbInfo.txt",
+    "sjdbList.fromGTF.out.tab",
+    "sjdbList.out.tab",
+    "transcriptInfo.tab",
 )
 
 
@@ -44,9 +61,7 @@ def fixture(tmp_path: Path):
     (index / "chrName.txt").write_text("1\nMT\n")
     (index / "chrLength.txt").write_text("4\n2\n")
     (index / "genomeParameters.txt").write_text(
-        f"genomeFastaFiles {fasta}\n"
-        f"sjdbGTFfile {gtf}\n"
-        "sjdbOverhang 149\n"
+        f"genomeFastaFiles {fasta}\nsjdbGTFfile {gtf}\nsjdbOverhang 149\n"
     )
     output_dir = tmp_path / "results"
     output_dir.mkdir()
@@ -64,14 +79,22 @@ def run(
 ):
     return subprocess.run(
         [
-            sys.executable, str(SCRIPT),
-            "--scope-id", "novogene_ref",
-            "--index-dir", str(index),
-            "--reference-fasta", str(fasta),
-            "--reference-gtf", str(gtf),
-            "--parameter-path-base", str(index.parent),
-            "--expected-sjdb-overhang", "149",
-            "--output", str(output),
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "novogene_ref",
+            "--index-dir",
+            str(index),
+            "--reference-fasta",
+            str(fasta),
+            "--reference-gtf",
+            str(gtf),
+            "--parameter-path-base",
+            str(index.parent),
+            "--expected-sjdb-overhang",
+            "149",
+            "--output",
+            str(output),
             *extra,
         ],
         cwd=cwd,
@@ -164,7 +187,9 @@ def test_invalid_contract_and_missing_member_fail_closed(tmp_path):
     (index / "Genome").unlink()
     result = run(index, fasta, gtf, output, "--execute")
     assert result.returncode == 0, result.stderr
-    member = next(row for row in report_rows(output) if row["check_id"] == "index_members")
+    member = next(
+        row for row in report_rows(output) if row["check_id"] == "index_members"
+    )
     assert member["status"] == "fail"
     bad_output = output.parent / "wrong.tsv"
     result = run(index, fasta, gtf, bad_output, "--execute")

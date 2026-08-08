@@ -6,7 +6,13 @@ from pathlib import Path
 from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "collect_canonical_bam_qc_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -16,8 +22,7 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 SCRIPT = (
-    ROOT
-    / "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
+    ROOT / "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
     "validate_step_02b_bam_qc.py"
 )
 TEST_MODULE_NAME = "_norad_test_validate_step_02b_bam_qc"
@@ -32,17 +37,22 @@ def fixture(root: Path):
         "10 + 0 in total (QC-passed reads + QC-failed reads)\n"
         "8 + 0 mapped (80.00% : N/A)\n"
     )
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return quick, flag, out / "S.validation.tsv"
 
 
 def arguments(values, *extra):
     quick, flag, output = values
     return [
-        "--scope-id", "S",
-        "--quickcheck", str(quick),
-        "--flagstat", str(flag),
-        "--output", str(output),
+        "--scope-id",
+        "S",
+        "--quickcheck",
+        str(quick),
+        "--flagstat",
+        str(flag),
+        "--output",
+        str(output),
         *extra,
     ]
 
@@ -50,7 +60,9 @@ def arguments(values, *extra):
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -111,9 +123,9 @@ def test_nonempty_producer_success_output_is_failed_quickcheck_evidence(tmp_path
     assert result.returncode == 0, result.stderr
     status = {row["check_id"]: row["status"] for row in rows(values[-1])}
     assert status["quickcheck_structure"] == "fail"
-    assert {value for key, value in status.items() if key != "quickcheck_structure"} == {
-        "pass"
-    }
+    assert {
+        value for key, value in status.items() if key != "quickcheck_structure"
+    } == {"pass"}
 
 
 def test_missing_input_and_wrong_output_fail_closed(tmp_path):
@@ -138,9 +150,7 @@ def test_arbitrary_cwd_dry_execute_repeat_is_exact_and_residue_free(tmp_path):
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     inputs = values[:2]
-    input_before = {
-        path: (path.read_bytes(), path.stat().st_mode) for path in inputs
-    }
+    input_before = {path: (path.read_bytes(), path.stat().st_mode) for path in inputs}
 
     dry = run(values, cwd=invocation_cwd)
     assert dry.returncode == 0, dry.stderr

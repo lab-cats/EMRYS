@@ -9,7 +9,6 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-
 CARD_SECTIONS = (
     "Objective",
     "Why this exists",
@@ -132,7 +131,9 @@ def repository_root(value: Path) -> Path:
     try:
         root = value.resolve(strict=True)
     except OSError as exc:
-        raise DocumentationError(f"repository path is unavailable: {value}: {exc}") from exc
+        raise DocumentationError(
+            f"repository path is unavailable: {value}: {exc}"
+        ) from exc
     result = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
         text=True,
@@ -223,7 +224,11 @@ def validate_proposal(root: Path, path: Path, problems: list[str]) -> str | None
     if len(state_lines) != 1 or not UNREFINED_STATE_PATTERN.fullmatch(state_lines[0]):
         problems.append(f"invalid proposal state declaration: {relative}")
     headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-    indices = [headings.index(value) for value in UNREFINED_SECTIONS if headings.count(value) == 1]
+    indices = [
+        headings.index(value)
+        for value in UNREFINED_SECTIONS
+        if headings.count(value) == 1
+    ]
     if len(indices) != len(UNREFINED_SECTIONS) or indices != sorted(indices):
         problems.append(f"proposal heading order/count: {relative}")
     if any(heading in CARD_SECTIONS for heading in headings):
@@ -247,9 +252,7 @@ def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
 
     cards: dict[str, TaskCard] = {}
     identifiers: set[str] = set()
-    required_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$"
-    )
+    required_pattern = re.compile(r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$")
     unblock_pattern = re.compile(
         r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — (Fully|Partially): .+$"
     )
@@ -265,7 +268,10 @@ def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
                     problems.append(f"duplicate proposal ID: {proposal_id}")
                 identifiers.add(proposal_id)
             continue
-        if path.parent.parent != task_root or path.parent.name not in CARD_STATE_BY_DIRECTORY:
+        if (
+            path.parent.parent != task_root
+            or path.parent.name not in CARD_STATE_BY_DIRECTORY
+        ):
             problems.append(f"invalid card location: {relative}")
             continue
 
@@ -296,7 +302,9 @@ def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
             blockers = frozenset(re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text))
 
             unblocks_text = card_section(text, "Completion unblocks")
-            unblock_lines = [line for line in unblocks_text.splitlines() if line.strip()]
+            unblock_lines = [
+                line for line in unblocks_text.splitlines() if line.strip()
+            ]
             if unblock_lines != ["- None."] and not all(
                 unblock_pattern.fullmatch(line) for line in unblock_lines
             ):
@@ -327,10 +335,14 @@ def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> 
             for line in diagram.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
-        if not meaningful or not re.fullmatch(r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]):
+        if not meaningful or not re.fullmatch(
+            r"flowchart (LR|RL|TB|BT|TD)", meaningful[0]
+        ):
             problems.append(f"invalid Mermaid declaration: {diagram.relative_to(root)}")
         if "```" in diagram.read_text(encoding="utf-8"):
-            problems.append(f"Markdown fence in Mermaid source: {diagram.relative_to(root)}")
+            problems.append(
+                f"Markdown fence in Mermaid source: {diagram.relative_to(root)}"
+            )
     return len(diagrams)
 
 

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 OWNER = ROOT / "src/norad/libraries/executable_resolution.sh"
 BASH = Path("/bin/bash")
@@ -17,26 +16,19 @@ SOURCE_LINE = (
     '../../libraries/executable_resolution.sh"'
 )
 CONSUMERS = {
-    ROOT
-    / "src/norad/stages/construct_FASTA_sidecars/"
+    ROOT / "src/norad/stages/construct_FASTA_sidecars/"
     "step_00c_prepare_gatk_reference.sh": (0o755, 3),
-    ROOT
-    / "src/norad/stages/split_N_cigar_reads_with_GATK/"
+    ROOT / "src/norad/stages/split_N_cigar_reads_with_GATK/"
     "step_05_split_n_cigar_reads.sh": (0o644, 3),
-    ROOT
-    / "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+    ROOT / "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
     "step_06_split_bam_by_read_orientation.sh": (0o755, 1),
-    ROOT
-    / "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+    ROOT / "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": (0o755, 1),
-    ROOT
-    / "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+    ROOT / "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
     "step_08_vcf_preprocessing.sh": (0o755, 1),
-    ROOT
-    / "src/norad/evidence/assemble_scientific_review_evidence_package/"
+    ROOT / "src/norad/evidence/assemble_scientific_review_evidence_package/"
     "step_09c_scientific_validation.sh": (0o755, 0),
-    ROOT
-    / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+    ROOT / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
     "step_09_cmh_editing_site_calling.sh": (0o755, 1),
 }
 
@@ -252,9 +244,7 @@ def test_one_owner_and_exact_five_consumer_roster() -> None:
             die_end = source.index("\n}\n", die_start)
             assert die_end < source_index
         else:
-            arg_source = (
-                'source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"'
-            )
+            arg_source = 'source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"'
             arg_index = source.index(arg_source)
             assert arg_index > source_index
         calls = source.count('resolve_executable_value "')

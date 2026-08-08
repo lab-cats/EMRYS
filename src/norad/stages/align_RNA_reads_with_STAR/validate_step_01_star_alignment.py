@@ -5,19 +5,18 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import bam as bam_report
 from norad.libraries.alignments import star as star_report
-
-
 
 CHECK_IDS = {
     "output_files",
@@ -26,6 +25,8 @@ CHECK_IDS = {
     "mapping_summary",
     "splice_junction_structure",
 }
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scope-id", required=True)
@@ -37,6 +38,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
+
 
 def build(args: argparse.Namespace):
     paths = {
@@ -66,28 +68,48 @@ def build(args: argparse.Namespace):
 
     rows = [
         report.row(
-            "01", args.scope_id, "output_files", nonempty,
-            len(paths), "5 nonempty explicit outputs",
+            "01",
+            args.scope_id,
+            "output_files",
+            nonempty,
+            len(paths),
+            "5 nonempty explicit outputs",
             "BAM, final/general/progress logs, and SJ table",
         ),
         report.row(
-            "01", args.scope_id, "bam_structure", bam_valid,
-            bam_prefix.hex(), "BAM or BGZF magic",
+            "01",
+            args.scope_id,
+            "bam_structure",
+            bam_valid,
+            bam_prefix.hex(),
+            "BAM or BGZF magic",
             "alignment output container",
         ),
         report.row(
-            "01", args.scope_id, "final_log_structure", bool(final_values),
+            "01",
+            args.scope_id,
+            "final_log_structure",
+            bool(final_values),
             len(final_values) if final_values else final_error,
-            "nonempty unique key/value rows", "STAR Log.final.out structure",
+            "nonempty unique key/value rows",
+            "STAR Log.final.out structure",
         ),
         report.row(
-            "01", args.scope_id, "mapping_summary", mapping_ok,
-            mapping_observed, "three required percentages in 0..100",
+            "01",
+            args.scope_id,
+            "mapping_summary",
+            mapping_ok,
+            mapping_observed,
+            "three required percentages in 0..100",
             "STAR mapping summary",
         ),
         report.row(
-            "01", args.scope_id, "splice_junction_structure", sj_ok,
-            sj_observed, "zero or more valid 9-column rows",
+            "01",
+            args.scope_id,
+            "splice_junction_structure",
+            sj_ok,
+            sj_observed,
+            "zero or more valid 9-column rows",
             "STAR SJ.out.tab structure",
         ),
     ]
@@ -102,12 +124,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='01',
+                step_id="01",
                 scope_id=args.scope_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 01',
+                published_label="Step 01",
             ),
             data,
             snapshots,

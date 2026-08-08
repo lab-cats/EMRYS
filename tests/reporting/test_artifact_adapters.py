@@ -10,17 +10,23 @@ import json
 import os
 import subprocess
 import sys
-import textwrap
+from collections.abc import Mapping
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from typing import Any, Mapping, Sequence
+from types import ModuleType
+from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
-ROSTER_ORACLE = REPO_ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    REPO_ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "reporting_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -72,7 +78,9 @@ def load_fixture_module() -> ModuleType:
 FIXTURE = load_fixture_module()
 ADAPTER = FIXTURE.ADAPTER
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
-ARTIFACT_VALIDATION = importlib.import_module("norad.reporting._artifact_index.validation")
+ARTIFACT_VALIDATION = importlib.import_module(
+    "norad.reporting._artifact_index.validation"
+)
 
 
 @pytest.fixture
@@ -170,9 +178,7 @@ def schema_validator() -> Draft202012Validator:
 
 def assert_published_records_are_valid(fixture: Any) -> None:
     validator = schema_validator()
-    rows_by_id = {
-        row["artifact_id"]: row for row in fixture.inventory_rows
-    }
+    rows_by_id = {row["artifact_id"]: row for row in fixture.inventory_rows}
     for path in sorted(fixture.records_dir.glob("*.json")):
         record = read_json(path)
         errors = list(validator.iter_errors(record))
@@ -200,8 +206,7 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert not artifact_fixture.output_root.exists()
 
 
-def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
-) -> None:
+def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() -> None:
     git_commit = "a" * 40
 
     evidence = ADAPTER.producer_evidence(git_commit)
@@ -219,8 +224,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_00a_build_novogene_star_index.slurm"
                 ),
                 "sha256": (
-                    "f27924e80fee3b8f207a41fd7af472897"
-                    "ad51f06aa2e4c670973eb51f25b5fcc"
+                    "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc"
                 ),
             }
         ],
@@ -232,13 +236,9 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
             {
                 "evidence_id": "implementation_00b",
                 "role": "implementation",
-                "path": (
-                    "src/norad/stages/convert_GTF_to_BED12/"
-                    "gtf_to_bed12.py"
-                ),
+                "path": ("src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"),
                 "sha256": (
-                    "5c69dabba9139598a9c67331b3200b8d"
-                    "b8a29793334ff80f19850eb37ad57a04"
+                    "5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04"
                 ),
             }
         ],
@@ -255,8 +255,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_00c_prepare_gatk_reference.sh"
                 ),
                 "sha256": (
-                    "cc1c467136670ddde2923f1b8f106e814"
-                    "fbdb22dc21e0225c2158b20714d1636"
+                    "cc1c467136670ddde2923f1b8f106e814fbdb22dc21e0225c2158b20714d1636"
                 ),
             }
         ],
@@ -269,12 +268,10 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                 "evidence_id": "implementation_01",
                 "role": "implementation",
                 "path": (
-                    "src/norad/stages/align_RNA_reads_with_STAR/"
-                    "step_01_star_align.sh"
+                    "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
                 ),
                 "sha256": (
-                    "f7f0eedb27c328b2e06668a57376007f"
-                    "25b61e32a2229a0d6992442b48e535ab"
+                    "f7f0eedb27c328b2e06668a57376007f25b61e32a2229a0d6992442b48e535ab"
                 ),
             }
         ],
@@ -287,12 +284,10 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                 "evidence_id": "implementation_02",
                 "role": "implementation",
                 "path": (
-                    "src/norad/stages/construct_canonical_BAM/"
-                    "step_02_sort_index_bam.sh"
+                    "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
                 ),
                 "sha256": (
-                    "77a1367474b8ec161a2e1a65c4d973711"
-                    "46329b4563acb72244c1a8bcfe61cef"
+                    "77a1367474b8ec161a2e1a65c4d97371146329b4563acb72244c1a8bcfe61cef"
                 ),
             }
         ],
@@ -309,8 +304,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_02b_bam_qc.sh"
                 ),
                 "sha256": (
-                    "5469efa8f8c6598ce5031224c32cef6bd"
-                    "d84872a9c9a3d53de6824bc39cbdd8c"
+                    "5469efa8f8c6598ce5031224c32cef6bdd84872a9c9a3d53de6824bc39cbdd8c"
                 ),
             }
         ],
@@ -328,8 +322,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_03_infer_strandedness_and_orientation.sh"
                 ),
                 "sha256": (
-                    "fbac2e0e184dd259b2cf0acbcecf3592"
-                    "d470b211e4b2fe33ea110d624d556854"
+                    "fbac2e0e184dd259b2cf0acbcecf3592d470b211e4b2fe33ea110d624d556854"
                 ),
             }
         ],
@@ -346,8 +339,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_04_mark_duplicates.sh"
                 ),
                 "sha256": (
-                    "5d520d1e72a0e117f5252eb821db855"
-                    "683699edfc5fd572cebe53822b35c9ce1"
+                    "5d520d1e72a0e117f5252eb821db855683699edfc5fd572cebe53822b35c9ce1"
                 ),
             }
         ],
@@ -364,8 +356,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_05_split_n_cigar_reads.sh"
                 ),
                 "sha256": (
-                    "8ec751d5254c79e4fbfb40a6355071b0"
-                    "95a3421a63b9fa07a0b0d66dd28f30f0"
+                    "8ec751d5254c79e4fbfb40a6355071b095a3421a63b9fa07a0b0d66dd28f30f0"
                 ),
             }
         ],
@@ -378,13 +369,12 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                 "evidence_id": "implementation_06",
                 "role": "implementation",
                 "path": (
-                "src/norad/stages/"
-                "partition_BAM_by_mechanical_read_orientation/"
-                "step_06_split_bam_by_read_orientation.sh"
+                    "src/norad/stages/"
+                    "partition_BAM_by_mechanical_read_orientation/"
+                    "step_06_split_bam_by_read_orientation.sh"
                 ),
                 "sha256": (
-                    "4a6146cb5937c7499447eec8d55120ae"
-                    "d0359577fcf7535bad671b9d294333c5"
+                    "4a6146cb5937c7499447eec8d55120aed0359577fcf7535bad671b9d294333c5"
                 ),
             }
         ],
@@ -393,38 +383,36 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
         "status": "implemented",
         "git_commit": git_commit,
         "evidence": [
-                {
-                    "evidence_id": "implementation_07",
-                    "role": "implementation",
-                    "path": (
-                        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+            {
+                "evidence_id": "implementation_07",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
                     "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-                    ),
-                    "sha256": (
-                        "45e53576306c8391c26e779f148ec7d54220a1ec0"
-                        "0aecd4b95c64ce37d2730e3"
-                    ),
-                }
-            ],
-        }
+                ),
+                "sha256": (
+                    "45e53576306c8391c26e779f148ec7d54220a1ec00aecd4b95c64ce37d2730e3"
+                ),
+            }
+        ],
+    }
     assert evidence["08"] == {
         "status": "implemented",
         "git_commit": git_commit,
         "evidence": [
-                {
-                    "evidence_id": "implementation_08",
-                    "role": "implementation",
-                    "path": (
-                        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-                        "step_08_vcf_preprocessing.sh"
-                    ),
-                    "sha256": (
-                        "1961df5b655fa9e68d445df1f70e6e832"
-                        "3c0dd87d78bd48ea7509b3717c4cd55"
-                    ),
-                }
-            ],
-        }
+            {
+                "evidence_id": "implementation_08",
+                "role": "implementation",
+                "path": (
+                    "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+                    "step_08_vcf_preprocessing.sh"
+                ),
+                "sha256": (
+                    "1961df5b655fa9e68d445df1f70e6e8323c0dd87d78bd48ea7509b3717c4cd55"
+                ),
+            }
+        ],
+    }
     assert evidence["09"] == {
         "status": "implemented",
         "git_commit": git_commit,
@@ -438,8 +426,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_09_cmh_editing_site_calling.sh"
                 ),
                 "sha256": (
-                    "1d3c8096b1450cde4f4851e193826b58"
-                    "a38b75e561bda5a898f0ca63c553bb60"
+                    "1d3c8096b1450cde4f4851e193826b58a38b75e561bda5a898f0ca63c553bb60"
                 ),
             }
         ],
@@ -457,8 +444,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes(
                     "step_09c_scientific_validation.py"
                 ),
                 "sha256": (
-                    "61decff89a4d0a2d9851650de20e0c22"
-                    "5e10cb5b6d2881ad2f2538f4c4e26b60"
+                    "61decff89a4d0a2d9851650de20e0c225e10cb5b6d2881ad2f2538f4c4e26b60"
                 ),
             }
         ],
@@ -593,11 +579,10 @@ def test_fixed_time_retry_keeps_records_and_index_deterministic(
 
     assert second_record_bytes == first_record_bytes
     assert artifact_fixture.artifacts_path.read_bytes() == first_index
-    assert second_receipt["adapter_attempt_id"] != (
-        first_receipt["adapter_attempt_id"]
-    )
-    assert second_receipt["supersedes_adapter_attempt_id"] == (
-        first_receipt["adapter_attempt_id"]
+    assert second_receipt["adapter_attempt_id"] != (first_receipt["adapter_attempt_id"])
+    assert (
+        second_receipt["supersedes_adapter_attempt_id"]
+        == (first_receipt["adapter_attempt_id"])
     )
     assert second_receipt["adapter_attempt_history"].split(",") == [
         first_receipt["adapter_attempt_id"],
@@ -700,9 +685,7 @@ def test_validation_adapter_preserves_failed_check_status(
     assert record["availability_status"] == "present"
     assert record["completion_status"] == "failed"
     assert record["state_reason"] == "Validation report contains failed checks."
-    assert [entry["code"] for entry in record["errors"]] == [
-        "validation_checks_failed"
-    ]
+    assert [entry["code"] for entry in record["errors"]] == ["validation_checks_failed"]
 
 
 def test_validation_adapter_fixture_uses_exact_independent_rosters(
@@ -777,12 +760,8 @@ def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
         for field, value in contract.items()
         if field != "run_contract_sha256"
     }
-    contract["run_contract_sha256"] = (
-        FIXTURE.canonical_run_contract_sha256(components)
-    )
-    ordered_contract = {
-        field: contract[field] for field in ADAPTER.RUN_CONTRACT_FIELDS
-    }
+    contract["run_contract_sha256"] = FIXTURE.canonical_run_contract_sha256(components)
+    ordered_contract = {field: contract[field] for field in ADAPTER.RUN_CONTRACT_FIELDS}
     artifact_fixture.run_contract.write_text(
         json.dumps(ordered_contract, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -814,8 +793,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     )
     artifact_fixture.output_dir.mkdir(parents=True)
     unrelated = (
-        artifact_fixture.output_dir
-        / f"{artifact_fixture.run_id}.run_summary.json"
+        artifact_fixture.output_dir / f"{artifact_fixture.run_id}.run_summary.json"
     )
     unrelated_payload = b'{"owned_by":"future-run-summary"}\n'
     unrelated.write_bytes(unrelated_payload)
@@ -828,9 +806,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     assert unrelated.read_bytes() == unrelated_payload
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     assert len(index_rows) == 81
-    assert str(undeclared) not in {
-        row["source_path"] for row in index_rows
-    }
+    assert str(undeclared) not in {row["source_path"] for row in index_rows}
     assert not any(
         path.name.startswith("undeclared")
         for path in artifact_fixture.records_dir.iterdir()
@@ -1004,11 +980,8 @@ def test_run_contract_is_order_independent_but_strict_json(
         + ",\n".join(
             [
                 f'  "run_contract_sha256": '
-                f'{json.dumps(contract["run_contract_sha256"])}',
-                *[
-                    f"  {json.dumps(key)}: {json.dumps(value)}"
-                    for key, value in fields
-                ],
+                f"{json.dumps(contract['run_contract_sha256'])}",
+                *[f"  {json.dumps(key)}: {json.dumps(value)}" for key, value in fields],
             ]
         )
         + "\n}\n"
@@ -1069,8 +1042,9 @@ def test_semantically_identical_moved_run_contract_can_retry(
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
     assert receipt["run_contract_path"] == str(moved_contract)
     assert receipt["run_contract_file_sha256"] == sha256_file(moved_contract)
-    assert receipt["supersedes_adapter_attempt_id"] == (
-        first_receipt["adapter_attempt_id"]
+    assert (
+        receipt["supersedes_adapter_attempt_id"]
+        == (first_receipt["adapter_attempt_id"])
     )
 
 
@@ -1151,9 +1125,7 @@ def test_declared_source_symlink_retarget_is_detected(
 def test_native_receipt_mismatch_is_published_as_explicit_failure(
     artifact_fixture: Any,
 ) -> None:
-    receipt_path = artifact_fixture.source_for(
-        "cohort.synthetic.p1.receipt"
-    )
+    receipt_path = artifact_fixture.source_for("cohort.synthetic.p1.receipt")
     rows = read_tsv(receipt_path)
     rows[0]["vcf_record_count"] = "2"
     FIXTURE.write_tsv(receipt_path, ADAPTER.STEP07_RECEIPT_HEADER, rows)
@@ -1208,9 +1180,7 @@ def test_reserved_biological_ready_state_is_rejected(
             else ADAPTER.review_package.REVIEW_SUMMARY_HEADER
         )
         FIXTURE.write_tsv(path, header, rows)
-    review_summary_path = artifact_fixture.source_for(
-        "review.synthetic.review_summary"
-    )
+    review_summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
     review_summary_rows = read_tsv(review_summary_path)
     review_summary_rows[0]["review_plan_sha256"] = sha256_file(
         artifact_fixture.source_for("review.synthetic.review_plan")
@@ -1227,14 +1197,9 @@ def test_reserved_biological_ready_state_is_rejected(
     summary = record_for(artifact_fixture, "review.synthetic.review_summary")
     assert summary["completion_status"] == "failed"
     assert summary["scientific_state"] is None
-    assert [entry["code"] for entry in summary["errors"]] == [
-        "science_status_invalid"
-    ]
+    assert [entry["code"] for entry in summary["errors"]] == ["science_status_invalid"]
     assert all(
-        record_for(artifact_fixture, row["artifact_id"])[
-            "scientific_state"
-        ]
-        is None
+        record_for(artifact_fixture, row["artifact_id"])["scientific_state"] is None
         for row in artifact_fixture.inventory_rows
         if row["step_id"] == "09c"
     )
@@ -1410,8 +1375,9 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
     assert injected
     current_receipt = read_tsv(artifact_fixture.receipt_path)[0]
     assert current_receipt["adapter_attempt_id"] == replacement.attempt_id
-    assert current_receipt["supersedes_adapter_attempt_id"] == (
-        prior_receipt["adapter_attempt_id"]
+    assert (
+        current_receipt["supersedes_adapter_attempt_id"]
+        == (prior_receipt["adapter_attempt_id"])
     )
     assert artifact_fixture.records_dir.is_dir()
     assert artifact_fixture.artifacts_path.is_file()
@@ -1431,13 +1397,11 @@ def test_native_metrics_and_science_state_are_conservative(
 
     quickcheck = record_for(artifact_fixture, "sample.SYNTH_A.quickcheck")
     assert {
-        (metric["metric_id"], metric["status"])
-        for metric in quickcheck["metrics"]
+        (metric["metric_id"], metric["status"]) for metric in quickcheck["metrics"]
     } >= {("quickcheck_pass", "pass")}
     flagstat = record_for(artifact_fixture, "sample.SYNTH_A.flagstat")
     flagstat_metrics = {
-        metric["metric_id"]: metric["value"]
-        for metric in flagstat["metrics"]
+        metric["metric_id"]: metric["value"] for metric in flagstat["metrics"]
     }
     assert flagstat_metrics["total_reads"] == 10
     assert flagstat_metrics["mapped_reads"] == 8
@@ -1447,8 +1411,7 @@ def test_native_metrics_and_science_state_are_conservative(
     )
     assert genome_parameters["source"]["media_type"] == "text/plain"
     assert any(
-        metric["metric_id"] == "sjdbOverhang"
-        and metric["value"] == 99
+        metric["metric_id"] == "sjdbOverhang" and metric["value"] == 99
         for metric in genome_parameters["metrics"]
     )
     genome = record_for(artifact_fixture, "ref.star_index.genome")
@@ -1457,9 +1420,7 @@ def test_native_metrics_and_science_state_are_conservative(
         artifact_fixture,
         "review.synthetic.review_summary",
     )
-    assert review["scientific_state"]["overall_status"] == (
-        "evidence_incomplete"
-    )
+    assert review["scientific_state"]["overall_status"] == ("evidence_incomplete")
     assert review["runtime_validation"]["status"] == "not_run"
     assert review["cluster_validation"]["proof_status"] == "not_run"
     assert review["attempts"] == []
@@ -1639,16 +1600,12 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             encoding="utf-8",
         )
     elif step_id == "06":
-        path = artifact_fixture.source_for(
-            "sample.SYNTH_A.orientation_counts"
-        )
+        path = artifact_fixture.source_for("sample.SYNTH_A.orientation_counts")
         rows = read_tsv(path)
         rows[0]["fwd_like_records"] = "6"
         FIXTURE.write_tsv(path, ADAPTER.STEP06_COUNTS_HEADER, rows)
     elif step_id == "08":
-        path = artifact_fixture.source_for(
-            "cohort.synthetic.step08_summary"
-        )
+        path = artifact_fixture.source_for("cohort.synthetic.step08_summary")
         rows = read_tsv(path)
         rows[0]["published_candidate_count"] = "5"
         FIXTURE.write_tsv(
@@ -1657,9 +1614,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             rows,
         )
     elif step_id == "09":
-        path = artifact_fixture.source_for(
-            "analysis.synthetic.mutation_spectrum_tsv"
-        )
+        path = artifact_fixture.source_for("analysis.synthetic.mutation_spectrum_tsv")
         rows = read_tsv(path)
         rows[0]["candidate_count"] = "5"
         FIXTURE.write_tsv(
@@ -1668,9 +1623,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             rows,
         )
     else:
-        path = artifact_fixture.source_for(
-            "review.synthetic.review_summary"
-        )
+        path = artifact_fixture.source_for("review.synthetic.review_summary")
         rows = read_tsv(path)
         rows[0]["step09_summary_sha256"] = "9" * 64
         FIXTURE.write_tsv(
@@ -1766,18 +1719,17 @@ def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
     assert second.returncode == 0, second.stderr
     second_receipt = read_tsv(artifact_fixture.receipt_path)[0]
     assert second_receipt["run_id"] == first_receipt["run_id"]
-    assert second_receipt["run_contract_sha256"] == (
-        first_receipt["run_contract_sha256"]
+    assert (
+        second_receipt["run_contract_sha256"] == (first_receipt["run_contract_sha256"])
     )
-    assert second_receipt["inventory_sha256"] != (
-        first_receipt["inventory_sha256"]
+    assert second_receipt["inventory_sha256"] != (first_receipt["inventory_sha256"])
+    assert (
+        second_receipt["supersedes_adapter_attempt_id"]
+        == (first_receipt["adapter_attempt_id"])
     )
-    assert second_receipt["supersedes_adapter_attempt_id"] == (
-        first_receipt["adapter_attempt_id"]
-    )
-    assert [row["artifact_id"] for row in read_tsv(
-        artifact_fixture.artifacts_path
-    )] == [row["artifact_id"] for row in revised]
+    assert [
+        row["artifact_id"] for row in read_tsv(artifact_fixture.artifacts_path)
+    ] == [row["artifact_id"] for row in revised]
 
 
 def test_native_dependency_order_is_independent_of_inventory_scope_order(
@@ -1787,23 +1739,17 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
     step08_rows = [row for row in rows if row["step_id"] == "08"]
     without_step08 = [row for row in rows if row["step_id"] != "08"]
     first_step07 = next(
-        index
-        for index, row in enumerate(without_step08)
-        if row["step_id"] == "07"
+        index for index, row in enumerate(without_step08) if row["step_id"] == "07"
     )
     reordered = (
-        without_step08[:first_step07]
-        + step08_rows
-        + without_step08[first_step07:]
+        without_step08[:first_step07] + step08_rows + without_step08[first_step07:]
     )
     FIXTURE.write_tsv(
         artifact_fixture.inventory,
         ADAPTER.contracts.INVENTORY_HEADER,
         reordered,
     )
-    receipt_path = artifact_fixture.source_for(
-        "cohort.synthetic.p1.receipt"
-    )
+    receipt_path = artifact_fixture.source_for("cohort.synthetic.p1.receipt")
     receipt_rows = read_tsv(receipt_path)
     receipt_rows[0]["sample_count"] = "2"
     FIXTURE.write_tsv(
@@ -1830,16 +1776,10 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
 def test_step07_requires_all_declared_mpileup_annotation_definitions(
     artifact_fixture: Any,
 ) -> None:
-    vcf = artifact_fixture.source_for(
-        "cohort.synthetic.p1.fwd_vcf"
-    )
+    vcf = artifact_fixture.source_for("cohort.synthetic.p1.fwd_vcf")
     lines = vcf.read_text(encoding="utf-8").splitlines()
     vcf.write_text(
-        "\n".join(
-            line
-            for line in lines
-            if not line.startswith("##FORMAT=<ID=SP,")
-        )
+        "\n".join(line for line in lines if not line.startswith("##FORMAT=<ID=SP,"))
         + "\n",
         encoding="utf-8",
     )
@@ -1889,9 +1829,7 @@ def test_binary_adapters_reject_signature_only_or_truncated_sources(
 def test_step06_accepts_producer_six_decimal_fraction(
     artifact_fixture: Any,
 ) -> None:
-    counts = artifact_fixture.source_for(
-        "sample.SYNTH_A.orientation_counts"
-    )
+    counts = artifact_fixture.source_for("sample.SYNTH_A.orientation_counts")
     rows = read_tsv(counts)
     rows[0].update(
         {
@@ -1943,9 +1881,7 @@ def test_step09_significant_rows_must_be_full_exact_subset(
 def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
     artifact_fixture: Any,
 ) -> None:
-    all_sites = artifact_fixture.source_for(
-        "analysis.synthetic.cmh_all_sites"
-    )
+    all_sites = artifact_fixture.source_for("analysis.synthetic.cmh_all_sites")
     all_rows = read_tsv(all_sites)
     all_rows[0]["test_status"] = "unknown_status"
     FIXTURE.write_tsv(all_sites, tuple(all_rows[0]), all_rows)
@@ -1953,17 +1889,18 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
     first = run_cli(artifact_fixture, execute=True)
 
     assert first.returncode == 0, first.stderr
-    assert record_for(
-        artifact_fixture,
-        "analysis.synthetic.cmh_summary",
-    )["completion_status"] == "failed"
+    assert (
+        record_for(
+            artifact_fixture,
+            "analysis.synthetic.cmh_summary",
+        )["completion_status"]
+        == "failed"
+    )
 
     second_fixture = FIXTURE.build_fixture(
         artifact_fixture.root.parent / "pairwise_fixture"
     )
-    spectrum = second_fixture.source_for(
-        "analysis.synthetic.mutation_spectrum_tsv"
-    )
+    spectrum = second_fixture.source_for("analysis.synthetic.mutation_spectrum_tsv")
     spectrum_rows = read_tsv(spectrum)
     by_type = {row["mutation_type"]: row for row in spectrum_rows}
     for field_name in (
@@ -1984,10 +1921,13 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
     second = run_cli(second_fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
-    assert record_for(
-        second_fixture,
-        "analysis.synthetic.cmh_summary",
-    )["completion_status"] == "failed"
+    assert (
+        record_for(
+            second_fixture,
+            "analysis.synthetic.cmh_summary",
+        )["completion_status"]
+        == "failed"
+    )
 
 
 def test_step09c_cannot_self_declare_exploratory_completion(
@@ -1995,22 +1935,16 @@ def test_step09c_cannot_self_declare_exploratory_completion(
 ) -> None:
     plan_path = artifact_fixture.source_for("review.synthetic.review_plan")
     plan_rows = read_tsv(plan_path)
-    plan_rows[0]["overall_science_status"] = (
-        "science_review_complete_exploratory"
-    )
+    plan_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
     plan_rows[0]["review_completed_date"] = "2026-01-01"
     FIXTURE.write_tsv(
         plan_path,
         ADAPTER.review_package.REVIEW_PLAN_HEADER,
         plan_rows,
     )
-    summary_path = artifact_fixture.source_for(
-        "review.synthetic.review_summary"
-    )
+    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
     summary_rows = read_tsv(summary_path)
-    summary_rows[0]["overall_science_status"] = (
-        "science_review_complete_exploratory"
-    )
+    summary_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
     summary_rows[0]["review_completed_date"] = "2026-01-01"
     summary_rows[0]["review_plan_sha256"] = sha256_file(plan_path)
     FIXTURE.write_tsv(
@@ -2033,18 +1967,14 @@ def test_step09c_cannot_self_declare_exploratory_completion(
 def test_step09c_requires_every_explicit_evidence_category(
     artifact_fixture: Any,
 ) -> None:
-    evidence_index = artifact_fixture.source_for(
-        "review.synthetic.evidence_index"
-    )
+    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
     evidence_rows = read_tsv(evidence_index)[:1]
     FIXTURE.write_tsv(
         evidence_index,
         ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
-    summary_path = artifact_fixture.source_for(
-        "review.synthetic.review_summary"
-    )
+    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
     summary_rows = read_tsv(summary_path)
     summary_rows[0]["evidence_record_count"] = "1"
     summary_rows[0]["evidence_manifest_row_count"] = "1"
@@ -2068,9 +1998,7 @@ def test_step09c_requires_every_explicit_evidence_category(
 def test_step09c_complete_evidence_cannot_point_to_empty_payload(
     artifact_fixture: Any,
 ) -> None:
-    evidence_index = artifact_fixture.source_for(
-        "review.synthetic.evidence_index"
-    )
+    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
     evidence_rows = read_tsv(evidence_index)
     orientation = evidence_rows[0]
     assert orientation["evidence_category"] == "orientation_locus_audit"
@@ -2090,9 +2018,7 @@ def test_step09c_complete_evidence_cannot_point_to_empty_payload(
         ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
-    summary_path = artifact_fixture.source_for(
-        "review.synthetic.review_summary"
-    )
+    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
     summary_rows = read_tsv(summary_path)
     summary_rows[0]["orientation_locus_audit_status"] = "complete"
     summary_rows[0]["evidence_source_count"] = "1"
@@ -2165,9 +2091,7 @@ def test_publication_rechecks_sources_by_metadata_without_rehashing(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    source_paths = {
-        path.resolve() for path in artifact_fixture.source_paths.values()
-    }
+    source_paths = {path.resolve() for path in artifact_fixture.source_paths.values()}
     real_sha256_file = ADAPTER.contracts.sha256_file
     rehashed_sources: list[Path] = []
 

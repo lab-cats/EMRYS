@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 JOB_PATH = (
     REPO_ROOT
@@ -234,8 +233,7 @@ def test_isolated_scheduler_scenarios(
         assert result.stderr == ""
         assert module_calls == ("list", "load bedtools/2.31.1", "list")
         producer_call = (
-            f"python-step00b\t{PRODUCER_ARGUMENT}\t--gtf\t{gtf}"
-            f"\t--bed\t{unsorted_bed}"
+            f"python-step00b\t{PRODUCER_ARGUMENT}\t--gtf\t{gtf}\t--bed\t{unsorted_bed}"
         )
         if scenario == "converter_failure":
             assert tool_calls == (producer_call,)

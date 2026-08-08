@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import csv
 from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator
 
@@ -25,6 +26,7 @@ from .models import (
     Inspection,
 )
 from .rosters import STEP_PRODUCERS
+
 
 def producer_evidence(git_commit: str) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
@@ -122,13 +124,11 @@ def validate_record_in_memory(
     )
     if errors:
         detail = "\n".join(
-            f"- {contracts.format_json_path(error.absolute_path)}: "
-            f"{error.message}"
+            f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
             for error in errors
         )
         raise ArtifactIndexError(
-            f"Generated artifact {record['artifact_id']!r} failed schema:\n"
-            f"{detail}"
+            f"Generated artifact {record['artifact_id']!r} failed schema:\n{detail}"
         )
     try:
         contracts.validate_artifact_semantics(record)
@@ -153,9 +153,7 @@ def build_index_rows(
         rows.append(
             {
                 "run_id": record["run_id"],
-                "run_contract_sha256": record["run_contract"][
-                    "run_contract_sha256"
-                ],
+                "run_contract_sha256": record["run_contract"]["run_contract_sha256"],
                 "artifact_id": record["artifact_id"],
                 "step_id": record["scope"]["step_id"],
                 "scope_type": record["scope"]["scope_type"],
@@ -165,28 +163,18 @@ def build_index_rows(
                 "required": str(record["expectation"]["required"]).lower(),
                 "availability_status": record["availability_status"],
                 "completion_status": record["completion_status"],
-                "attempt_provenance_status": record[
-                    "attempt_provenance_status"
-                ],
+                "attempt_provenance_status": record["attempt_provenance_status"],
                 "selected_attempt_id": safe_tsv(record["selected_attempt_id"]),
                 "implementation_status": record["implementation"]["status"],
                 "local_test_status": record["local_testing"]["status"],
-                "runtime_validation_status": record["runtime_validation"][
-                    "status"
-                ],
+                "runtime_validation_status": record["runtime_validation"]["status"],
                 "cluster_dry_run_status": record["cluster_validation"][
                     "dry_run_status"
                 ],
-                "cluster_proof_status": record["cluster_validation"][
-                    "proof_status"
-                ],
+                "cluster_proof_status": record["cluster_validation"]["proof_status"],
                 "science_status": safe_tsv(science.get("overall_status")),
-                "orientation_status": safe_tsv(
-                    science.get("orientation_status")
-                ),
-                "orientation_policy": safe_tsv(
-                    science.get("orientation_policy")
-                ),
+                "orientation_status": safe_tsv(science.get("orientation_status")),
+                "orientation_policy": safe_tsv(science.get("orientation_policy")),
                 "review_id": safe_tsv(science.get("review_id")),
                 "source_sha256": safe_tsv(source.get("sha256")),
                 "source_size_bytes": safe_tsv(source.get("size_bytes")),
@@ -194,9 +182,7 @@ def build_index_rows(
                 "source_media_type": safe_tsv(source.get("media_type")),
                 "warning_count": str(len(record["warnings"])),
                 "error_count": str(len(record["errors"])),
-                "record_path": str(
-                    records_dir / f"{record['artifact_id']}.json"
-                ),
+                "record_path": str(records_dir / f"{record['artifact_id']}.json"),
                 "record_sha256": sha256_bytes(payload),
                 "record_schema_version": record["schema_version"],
             }
@@ -208,7 +194,6 @@ def tsv_bytes(
     header: Sequence[str],
     rows: Iterable[Mapping[str, str]],
 ) -> bytes:
-    from io import StringIO
 
     stream = StringIO(newline="")
     writer = csv.DictWriter(
@@ -298,9 +283,7 @@ def validate_existing_identity(
     if existing["transaction_state"] != "complete":
         raise ArtifactIndexError("Existing artifact receipt is not complete")
     history = [
-        value
-        for value in existing["adapter_attempt_history"].split(",")
-        if value
+        value for value in existing["adapter_attempt_history"].split(",") if value
     ]
     if not history or history[-1] != existing["adapter_attempt_id"]:
         raise ArtifactIndexError(
@@ -318,12 +301,10 @@ def inventory_rows_from_published_index(
 ) -> list[dict[str, str]]:
     index_rows = read_exact_tsv(artifacts_path, ARTIFACT_INDEX_HEADER)
     return [
-        {
-            field_name: row[field_name]
-            for field_name in contracts.INVENTORY_HEADER
-        }
+        {field_name: row[field_name] for field_name in contracts.INVENTORY_HEADER}
         for row in index_rows
     ]
+
 
 def build_receipt_row(
     *,
@@ -356,8 +337,7 @@ def build_receipt_row(
     ]
     required_count = sum(row["required"] == "true" for row in index_rows)
     required_missing = sum(
-        row["required"] == "true"
-        and row["availability_status"] != "present"
+        row["required"] == "true" and row["availability_status"] != "present"
         for row in index_rows
     )
     return {
@@ -366,12 +346,8 @@ def build_receipt_row(
         "run_contract_path": str(run_contract_path),
         "run_contract_file_sha256": run_contract_file_sha256,
         "sample_manifest_sha256": str(run_contract["sample_manifest_sha256"]),
-        "reference_contract_sha256": str(
-            run_contract["reference_contract_sha256"]
-        ),
-        "partition_manifest_sha256": str(
-            run_contract["partition_manifest_sha256"]
-        ),
+        "reference_contract_sha256": str(run_contract["reference_contract_sha256"]),
+        "partition_manifest_sha256": str(run_contract["partition_manifest_sha256"]),
         "primary_analysis_id": str(run_contract["primary_analysis_id"]),
         "primary_analysis_policy_sha256": str(
             run_contract["primary_analysis_policy_sha256"]
@@ -399,9 +375,7 @@ def build_receipt_row(
         "in_progress_artifact_count": str(completion["in_progress"]),
         "incomplete_artifact_count": str(completion["incomplete"]),
         "failed_artifact_count": str(completion["failed"]),
-        "warning_count": str(
-            sum(int(row["warning_count"]) for row in index_rows)
-        ),
+        "warning_count": str(sum(int(row["warning_count"]) for row in index_rows)),
         "error_count": str(sum(int(row["error_count"]) for row in index_rows)),
         "published_output_count": str(len(index_rows) + 2),
         "adapter_attempt_id": attempt_id,

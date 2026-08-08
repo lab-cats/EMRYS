@@ -10,13 +10,11 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOBS_ROOT = REPO_ROOT / "jobs"
 JOB_PATHS = {
     "step_00a_build_novogene_star_index.slurm": Path(
-        "src/norad/stages/construct_STAR_index/"
-        "step_00a_build_novogene_star_index.slurm"
+        "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
     ),
     "step_00b_gtf_to_bed12.slurm": Path(
         "src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
@@ -32,16 +30,14 @@ JOB_PATHS = {
         "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm"
     ),
     "step_02b_bam_qc.slurm": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "step_02b_bam_qc.slurm"
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm"
     ),
     "step_03_infer_strandedness_and_orientation.slurm": Path(
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.slurm"
     ),
     "step_04_mark_duplicates.slurm": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "step_04_mark_duplicates.slurm"
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm"
     ),
     "step_05_split_n_cigar_reads.slurm": Path(
         "src/norad/stages/split_N_cigar_reads_with_GATK/"
@@ -63,9 +59,7 @@ JOB_PATHS = {
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
         "step_09_cmh_editing_site_calling.slurm"
     ),
-    "tool_check.slurm": Path(
-        "src/norad/evidence/runtime_preflight/tool_check.slurm"
-    ),
+    "tool_check.slurm": Path("src/norad/evidence/runtime_preflight/tool_check.slurm"),
     "validate_manifest.slurm": Path(
         "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"
     ),
@@ -133,9 +127,7 @@ CONTRACTS = {
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),
         submit_cwd="caller",
-        delegation=(
-            "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
-        ),
+        delegation=("src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"),
         output_validation="delegate_only",
         exit_propagation="strict",
     ),
@@ -147,8 +139,7 @@ CONTRACTS = {
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="caller",
         delegation=(
-            "src/norad/stages/construct_canonical_BAM/"
-            "step_02_sort_index_bam.sh"
+            "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
         ),
         output_validation="wrapper_files",
         exit_propagation="strict",
@@ -161,8 +152,7 @@ CONTRACTS = {
         module_calls=("load samtools/1.19.2", "list"),
         submit_cwd="required",
         delegation=(
-            "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-            "step_02b_bam_qc.sh"
+            "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"
         ),
         output_validation="wrapper_files",
         exit_propagation="strict",
@@ -1152,9 +1142,7 @@ def read_lines(path: Path) -> tuple[str, ...]:
 
 
 def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
-    live_flat_jobs = {
-        Path("jobs") / path.name for path in JOBS_ROOT.glob("*.slurm")
-    }
+    live_flat_jobs = {Path("jobs") / path.name for path in JOBS_ROOT.glob("*.slurm")}
     expected_flat_jobs = {
         path for path in JOB_PATHS.values() if path.parent == Path("jobs")
     }
@@ -1174,7 +1162,9 @@ def test_sbatch_shebang_strict_mode_and_file_mode_are_exact(name: str) -> None:
     directives = tuple(line for line in lines if line.startswith("#SBATCH "))
 
     assert directives == SBATCH_DIRECTIVES[name]
-    assert lines[0] == ("#!/usr/bin/env bash" if name in ENV_BASH_JOBS else "#!/bin/bash")
+    assert lines[0] == (
+        "#!/usr/bin/env bash" if name in ENV_BASH_JOBS else "#!/bin/bash"
+    )
     assert "set -euo pipefail" in lines
     mode = job.stat().st_mode
     is_executable = bool(mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
@@ -1245,8 +1235,12 @@ def test_delegated_execute_forwards_exact_args_and_checks_applicable_outputs(
     result = run_prepared(prepared, execute="1")
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
-    assert all(output.is_file() and output.stat().st_size > 0 for output in prepared.outputs)
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert all(
+        output.is_file() and output.stat().st_size > 0 for output in prepared.outputs
+    )
 
 
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
@@ -1318,7 +1312,9 @@ def test_step_02b_bam_qc_stale_named_outputs_mask_missing_child_outputs(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
     assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
     assert "Validated Step 02b QC outputs:" in result.stdout
 
@@ -1335,7 +1331,7 @@ def test_step_03_prefers_repository_venv_and_sources_activation(
     write_executable(venv_bin / "infer_experiment.py", "#!/bin/bash\nexit 0\n")
     activation_log = tmp_path / "activation.log"
     (venv_bin / "activate").write_text(
-        'printf \'activated\\n\' > "${FAKE_ACTIVATION_LOG:?}"\n',
+        "printf 'activated\\n' > \"${FAKE_ACTIVATION_LOG:?}\"\n",
         encoding="utf-8",
     )
     prepared.environment["FAKE_ACTIVATION_LOG"] = str(activation_log)
@@ -1345,10 +1341,11 @@ def test_step_03_prefers_repository_venv_and_sources_activation(
     assert result.returncode == 0, result.stdout + result.stderr
     assert activation_log.read_text(encoding="utf-8") == "activated\n"
     assert read_nul_args(prepared.delegate_log) == (
-        prepared.expected_args[:-1]
-        + (".venv/bin/infer_experiment.py", "--execute")
+        prepared.expected_args[:-1] + (".venv/bin/infer_experiment.py", "--execute")
     )
-    assert all(output.is_file() and output.stat().st_size > 0 for output in prepared.outputs)
+    assert all(
+        output.is_file() and output.stat().st_size > 0 for output in prepared.outputs
+    )
 
 
 def test_step_03_without_repository_venv_delegates_path_command(
@@ -1409,7 +1406,9 @@ def test_step_03_stale_named_report_masks_missing_child_output(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + ("--execute",)
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
     assert prepared.outputs[0].read_bytes() == stale_bytes
     assert "Validated Step 03 strandedness output:" in result.stdout
 
@@ -1733,15 +1732,11 @@ def test_step_05_split_n_cigar_reads_warns_and_delegates_unusable_tool(
     assert result.returncode == 0, result.stdout + result.stderr
     label = "GATK" if tool == "gatk" else "samtools"
     assert (
-        f"WARNING: {label} path is not executable before script validation: "
-        f"{tool_path}"
+        f"WARNING: {label} path is not executable before script validation: {tool_path}"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
@@ -1853,12 +1848,9 @@ def test_step_06_split_bam_by_read_orientation_warns_and_delegates_unusable_samt
         "WARNING: samtools path is not executable before script validation: "
         f"{samtools_path}"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
@@ -1879,12 +1871,9 @@ def test_step_06_split_bam_by_read_orientation_forwards_path_basename(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (
-        "WARNING: samtools path is not executable before script validation: "
-        "samtools"
+        "WARNING: samtools path is not executable before script validation: samtools"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert "samtools\t--version" not in read_lines(tmp_path / "tool.log")
 
 
@@ -1954,9 +1943,7 @@ def test_step_06_split_bam_by_read_orientation_threads_are_independent_of_one_cp
         encoding="utf-8"
     )
     assert "Threads: 9" in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
 
 
 def test_step_06_split_bam_by_read_orientation_stale_five_mask_missing_child_outputs(
@@ -2033,12 +2020,9 @@ def test_step_07_bcftools_mpileup_warns_and_delegates_unusable_bcftools(
         "WARNING: bcftools path is not executable before script validation: "
         f"{bcftools_path}"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
@@ -2061,9 +2045,7 @@ def test_step_07_bcftools_mpileup_forwards_path_basename(
     assert (
         "WARNING: bcftools path is not executable before script validation: bcftools"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert "bcftools\t--version" not in read_lines(tmp_path / "tool.log")
 
 
@@ -2153,7 +2135,9 @@ def test_step_08_vcf_preprocessing_tolerates_rscript_version_failure(
     assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
         "--execute",
     )
-    assert all(output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs)
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
+    )
 
 
 @pytest.mark.parametrize("rscript_state", ("missing", "nonexecutable"))
@@ -2179,11 +2163,11 @@ def test_step_08_vcf_preprocessing_warns_and_delegates_unusable_rscript(
         "WARNING: Rscript path is not executable before script validation: "
         f"{rscript_path}"
     ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert read_lines(tmp_path / "tool.log") == ()
-    assert all(output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs)
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
+    )
 
 
 def test_step_08_vcf_preprocessing_forwards_path_rscript_basename(
@@ -2203,9 +2187,7 @@ def test_step_08_vcf_preprocessing_forwards_path_rscript_basename(
     assert "Rscript version:" in result.stdout
     assert "Rscript 4.6.1" in result.stdout
     assert read_lines(tmp_path / "tool.log") == ("Rscript\t--version",)
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
 
 
 def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
@@ -2224,10 +2206,10 @@ def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not missing_r_program.exists()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
-    assert all(output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs)
 
 
 def test_step_08_vcf_preprocessing_uses_dynamic_cwd_without_submit_directory(
@@ -2257,18 +2239,12 @@ def test_step_08_vcf_preprocessing_dry_run_creates_logs_only(
     tmp_path: Path,
 ) -> None:
     prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    before = {
-        path.relative_to(prepared.submit)
-        for path in prepared.submit.rglob("*")
-    }
+    before = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
 
     result = run_prepared(prepared)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    after = {
-        path.relative_to(prepared.submit)
-        for path in prepared.submit.rglob("*")
-    }
+    after = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
     assert after - before == {Path("logs")}
     assert all(not output.exists() for output in prepared.outputs)
     assert all(not directory.exists() for directory in prepared.output_directories)
@@ -2307,9 +2283,7 @@ def test_step_09_cmh_editing_site_calling_forwards_unusable_rscript_to_child(
     tmp_path: Path,
     rscript_state: str,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
     rscript_path = tmp_path / f"{rscript_state}-Rscript"
     if rscript_state == "nonexecutable":
         touch(rscript_path, "not executable\n")
@@ -2325,21 +2299,16 @@ def test_step_09_cmh_editing_site_calling_forwards_unusable_rscript_to_child(
     assert result.returncode == 0, result.stdout + result.stderr
     assert "WARNING:" not in result.stdout
     assert read_lines(tmp_path / "tool.log") == ()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
 def test_step_09_cmh_editing_site_calling_forwards_path_rscript_basename(
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
     expected_args = list(prepared.expected_args)
     expected_args[expected_args.index("--rscript-bin") + 1] = "Rscript"
 
@@ -2351,21 +2320,16 @@ def test_step_09_cmh_editing_site_calling_forwards_path_rscript_basename(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert read_lines(tmp_path / "tool.log") == ()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
 def test_step_09_cmh_editing_site_calling_forwards_missing_r_program_to_child(
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
     missing_r_program = prepared.submit / "implementation" / "missing-step09.R"
     expected_args = list(prepared.expected_args)
     expected_args[expected_args.index("--r-script") + 1] = str(missing_r_program)
@@ -2379,21 +2343,16 @@ def test_step_09_cmh_editing_site_calling_forwards_missing_r_program_to_child(
     assert result.returncode == 0, result.stdout + result.stderr
     assert not missing_r_program.exists()
     assert read_lines(tmp_path / "tool.log") == ()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + (
-        "--execute",
-    )
+    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
-        output.read_bytes() == b"mock wrapper output\n"
-        for output in prepared.outputs
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
 def test_step_09_cmh_editing_site_calling_uses_launch_cwd_without_submit_dir(
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
     install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
 
     result = run_prepared(
@@ -2416,35 +2375,23 @@ def test_step_09_cmh_editing_site_calling_uses_launch_cwd_without_submit_dir(
 def test_step_09_cmh_editing_site_calling_dry_run_creates_logs_only(
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
-    before = {
-        path.relative_to(prepared.submit)
-        for path in prepared.submit.rglob("*")
-    }
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
+    before = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
 
     result = run_prepared(prepared)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    after = {
-        path.relative_to(prepared.submit)
-        for path in prepared.submit.rglob("*")
-    }
+    after = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
     assert after - before == {Path("logs")}
     assert all(not output.exists() for output in prepared.outputs)
-    assert all(
-        not directory.exists() for directory in prepared.output_directories
-    )
+    assert all(not directory.exists() for directory in prepared.output_directories)
     assert read_nul_args(prepared.delegate_log) == prepared.expected_args
 
 
 def test_step_09_cmh_editing_site_calling_stale_six_mask_missing_child_outputs(
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_09_cmh_editing_site_calling.slurm", tmp_path
-    )
+    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
     stale_bytes = tuple(
         f"stale Step 09 output {index}\n".encode()
         for index in range(len(prepared.outputs))
@@ -2584,7 +2531,9 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == CONTRACTS[name].module_calls
+    assert (
+        read_lines(Path(environment["FAKE_MODULE_LOG"])) == CONTRACTS[name].module_calls
+    )
     expected_calls = tuple(
         call.format(picard=picard) for call in UTILITY_TOOL_CALLS[name]
     )

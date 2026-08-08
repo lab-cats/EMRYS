@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
-import math
 import csv
+import math
 from pathlib import Path
 
 from norad.libraries import validation as report
 
 COUNTS_HEADER = (
-    "sample_id", "input_records", "flag_99_records", "flag_147_records",
-    "flag_83_records", "flag_163_records", "fwd_like_records",
-    "rev_like_records", "assigned_records", "unassigned_records",
+    "sample_id",
+    "input_records",
+    "flag_99_records",
+    "flag_147_records",
+    "flag_83_records",
+    "flag_163_records",
+    "fwd_like_records",
+    "rev_like_records",
+    "assigned_records",
+    "unassigned_records",
     "assigned_fraction",
 )
 
@@ -38,7 +45,10 @@ def infer_orientation_from_path(path: Path | str) -> str | None:
 def validate_legacy_orientation_policy(value: str) -> tuple[bool, str]:
     if value == LEGACY_PROVISIONAL_ORIENTATION_POLICY:
         return True, "orientation_policy=legacy_provisional_v1"
-    return False, f"unsupported orientation_policy={value!r}; expected legacy_provisional_v1"
+    return (
+        False,
+        f"unsupported orientation_policy={value!r}; expected legacy_provisional_v1",
+    )
 
 
 def mechanical_like_count_detail(
@@ -47,17 +57,15 @@ def mechanical_like_count_detail(
     if orientation not in ORIENTATIONS:
         return False, f"unsupported orientation={orientation!r}"
     like_field = f"{orientation.lower()}_records"
-    left_field = (
-        f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][0]}_records"
-    )
-    right_field = (
-        f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][1]}_records"
-    )
+    left_field = f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][0]}_records"
+    right_field = f"flag_{MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation][1]}_records"
     left_value = values.get(left_field)
     right_value = values.get(right_field)
     like_value = values.get(like_field)
     return (
-        left_value is not None and right_value is not None and like_value is not None
+        left_value is not None
+        and right_value is not None
+        and like_value is not None
         and left_value + right_value == like_value,
         f"{left_value}+{right_value}={like_value}",
     )

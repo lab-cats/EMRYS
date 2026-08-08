@@ -16,7 +16,6 @@ from typing import Any
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[3]
 OWNER = ROOT / "src/norad/contracts/scientific_evidence/review_package.py"
 SCHEMA_ROOT = ROOT / "configs/step_09c_evidence_schemas"
@@ -92,10 +91,7 @@ REVIEW_PACKAGE = load_contract()
 
 def public_fingerprint(module: ModuleType) -> bytes:
     document = {
-        "constants": {
-            name: getattr(module, name)
-            for name in CONSTANT_NAMES
-        },
+        "constants": {name: getattr(module, name) for name in CONSTANT_NAMES},
         "functions": {
             "aggregate_evidence_status": str(
                 inspect.signature(module.aggregate_evidence_status)
@@ -258,10 +254,7 @@ def test_closed_status_vocabularies_match_literal_oracle() -> None:
         ),
     }
 
-    assert {
-        name: getattr(REVIEW_PACKAGE, name)
-        for name in expected
-    } == expected
+    assert {name: getattr(REVIEW_PACKAGE, name) for name in expected} == expected
 
 
 def test_public_thirteen_file_roster_matches_literal_oracle() -> None:
@@ -301,16 +294,12 @@ def test_category_roster_and_header_identities_are_exact() -> None:
         ("limitations", "LIMITATIONS_HEADER"),
     )
 
-    assert REVIEW_PACKAGE.CATEGORY_ORDER == tuple(
-        category for category, _ in expected
-    )
+    assert REVIEW_PACKAGE.CATEGORY_ORDER == tuple(category for category, _ in expected)
     assert REVIEW_PACKAGE.ALLOWED_EVIDENCE_CATEGORIES == (
         *REVIEW_PACKAGE.CATEGORY_ORDER,
         "computational_validation",
     )
-    assert tuple(REVIEW_PACKAGE.CATEGORY_HEADERS) == (
-        REVIEW_PACKAGE.CATEGORY_ORDER
-    )
+    assert tuple(REVIEW_PACKAGE.CATEGORY_HEADERS) == (REVIEW_PACKAGE.CATEGORY_ORDER)
     for category, header_name in expected:
         assert REVIEW_PACKAGE.CATEGORY_HEADERS[category] is getattr(
             REVIEW_PACKAGE, header_name
@@ -340,8 +329,7 @@ def test_public_headers_match_independent_tracked_tsv_contracts() -> None:
 
 def test_review_summary_header_composition_is_exact() -> None:
     assert REVIEW_PACKAGE.REVIEW_SUMMARY_EVIDENCE_HEADER == tuple(
-        f"{category}_status"
-        for category in REVIEW_PACKAGE.CATEGORY_ORDER
+        f"{category}_status" for category in REVIEW_PACKAGE.CATEGORY_ORDER
     )
     assert REVIEW_PACKAGE.REVIEW_SUMMARY_ARTIFACT_HEADER == tuple(
         field
@@ -413,9 +401,7 @@ def test_evidence_status_reduction_matches_frozen_transition_cases(
 ) -> None:
     before = deepcopy(rows)
 
-    actual = REVIEW_PACKAGE.aggregate_evidence_status(
-        rows, "candidate_selection"
-    )
+    actual = REVIEW_PACKAGE.aggregate_evidence_status(rows, "candidate_selection")
 
     assert actual == expected
     assert rows == before
@@ -432,8 +418,6 @@ def test_evidence_status_reduction_preserves_missing_key_failures(
     rows: list[dict[str, str]], missing_key: str
 ) -> None:
     with pytest.raises(KeyError) as caught:
-        REVIEW_PACKAGE.aggregate_evidence_status(
-            rows, "candidate_selection"
-        )
+        REVIEW_PACKAGE.aggregate_evidence_status(rows, "candidate_selection")
 
     assert caught.value.args == (missing_key,)

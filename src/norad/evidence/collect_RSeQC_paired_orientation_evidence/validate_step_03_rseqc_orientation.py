@@ -6,17 +6,17 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 from norad.libraries.evidence import qc as qc_report
-
 
 LABELS = (
     "Fraction of reads failed to determine",
@@ -113,12 +113,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='03',
+                step_id="03",
                 scope_id=args.scope_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 03',
+                published_label="Step 03",
             ),
             data,
             snapshots,

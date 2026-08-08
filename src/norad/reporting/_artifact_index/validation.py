@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -30,6 +31,7 @@ from .records import (
     read_exact_tsv,
     validate_record_in_memory,
 )
+
 
 def parse_nonnegative_receipt_int(value: str, field_name: str) -> int:
     if not re.fullmatch(r"0|[1-9][0-9]*", value):
@@ -85,22 +87,16 @@ def validate_published_transaction(
                 f"Published receipt {field_name} must be an absolute path"
             )
     if not SHA256_RE.fullmatch(receipt["run_contract_file_sha256"]):
-        raise ArtifactIndexError(
-            "Published receipt run-contract file hash is invalid"
-        )
+        raise ArtifactIndexError("Published receipt run-contract file hash is invalid")
     if require_current_source_locations:
         if receipt["run_contract_path"] != str(run_contract_path):
-            raise ArtifactIndexError(
-                "Published receipt run-contract path is invalid"
-            )
+            raise ArtifactIndexError("Published receipt run-contract path is invalid")
         if receipt["run_contract_file_sha256"] != run_contract_file_sha256:
             raise ArtifactIndexError(
                 "Published receipt run-contract file hash is invalid"
             )
         if receipt["inventory_path"] != str(inventory_path):
-            raise ArtifactIndexError(
-                "Published receipt inventory path is invalid"
-            )
+            raise ArtifactIndexError("Published receipt inventory path is invalid")
     if receipt["inventory_sha256"] != inventory_sha256:
         raise ArtifactIndexError("Published receipt inventory hash is invalid")
     for field_name, expected in (
@@ -117,29 +113,18 @@ def validate_published_transaction(
     if receipt["transaction_state"] != "complete":
         raise ArtifactIndexError("Published receipt transaction is not complete")
     if not contracts.SAFE_ID_RE.fullmatch(receipt["adapter_attempt_id"]):
-        raise ArtifactIndexError(
-            "Published receipt adapter attempt ID is invalid"
-        )
+        raise ArtifactIndexError("Published receipt adapter attempt ID is invalid")
     attempt_history = [
-        value
-        for value in receipt["adapter_attempt_history"].split(",")
-        if value
+        value for value in receipt["adapter_attempt_history"].split(",") if value
     ]
     if (
         not attempt_history
         or len(attempt_history) != len(set(attempt_history))
         or attempt_history[-1] != receipt["adapter_attempt_id"]
-        or any(
-            not contracts.SAFE_ID_RE.fullmatch(value)
-            for value in attempt_history
-        )
+        or any(not contracts.SAFE_ID_RE.fullmatch(value) for value in attempt_history)
     ):
-        raise ArtifactIndexError(
-            "Published receipt adapter attempt history is invalid"
-        )
-    expected_superseded = (
-        attempt_history[-2] if len(attempt_history) > 1 else ""
-    )
+        raise ArtifactIndexError("Published receipt adapter attempt history is invalid")
+    expected_superseded = attempt_history[-2] if len(attempt_history) > 1 else ""
     if receipt["supersedes_adapter_attempt_id"] != expected_superseded:
         raise ArtifactIndexError(
             "Published receipt superseded adapter attempt is invalid"
@@ -154,22 +139,16 @@ def validate_published_transaction(
             receipt["finished_at"].replace("Z", "+00:00")
         )
     except ValueError as exc:
-        raise ArtifactIndexError(
-            "Published receipt timestamps are invalid"
-        ) from exc
+        raise ArtifactIndexError("Published receipt timestamps are invalid") from exc
     if (
         started_at.tzinfo is None
         or finished_at.tzinfo is None
         or finished_at < started_at
     ):
-        raise ArtifactIndexError(
-            "Published receipt timestamp ordering is invalid"
-        )
+        raise ArtifactIndexError("Published receipt timestamp ordering is invalid")
     if receipt["artifacts_index_path"] != str(artifacts_path):
         raise ArtifactIndexError("Published receipt index path is invalid")
-    if receipt["artifacts_index_sha256"] != contracts.sha256_file(
-        artifacts_path
-    ):
+    if receipt["artifacts_index_sha256"] != contracts.sha256_file(artifacts_path):
         raise ArtifactIndexError("Published artifact-index hash is invalid")
 
     index_rows = read_exact_tsv(artifacts_path, ARTIFACT_INDEX_HEADER)
@@ -180,8 +159,7 @@ def validate_published_transaction(
             "Published artifact index does not match inventory order"
         )
     expected_names = {
-        f"{inventory_row['artifact_id']}.json"
-        for inventory_row in inventory_rows
+        f"{inventory_row['artifact_id']}.json" for inventory_row in inventory_rows
     }
     try:
         observed_entries = list(records_dir.iterdir())
@@ -195,9 +173,7 @@ def validate_published_transaction(
             "Published records directory has missing or unexpected files"
         )
     unsafe_entries = [
-        path
-        for path in observed_entries
-        if path.is_symlink() or not path.is_file()
+        path for path in observed_entries if path.is_symlink() or not path.is_file()
     ]
     if unsafe_entries:
         raise ArtifactIndexError(
@@ -213,9 +189,7 @@ def validate_published_transaction(
     )
     record_manifest: list[dict[str, str]] = []
     validated_index_rows: list[dict[str, str]] = []
-    for index_row, inventory_row in zip(
-        index_rows, inventory_rows, strict=True
-    ):
+    for index_row, inventory_row in zip(index_rows, inventory_rows, strict=True):
         expected_path = records_dir / f"{inventory_row['artifact_id']}.json"
         if index_row["record_path"] != str(expected_path):
             raise ArtifactIndexError(
@@ -262,18 +236,11 @@ def validate_published_transaction(
     if receipt["record_set_sha256"] != canonical_digest(record_manifest):
         raise ArtifactIndexError("Published record-set hash is invalid")
 
-    availability = Counter(
-        row["availability_status"] for row in validated_index_rows
-    )
-    completion = Counter(
-        row["completion_status"] for row in validated_index_rows
-    )
-    required_count = sum(
-        row["required"] == "true" for row in validated_index_rows
-    )
+    availability = Counter(row["availability_status"] for row in validated_index_rows)
+    completion = Counter(row["completion_status"] for row in validated_index_rows)
+    required_count = sum(row["required"] == "true" for row in validated_index_rows)
     required_missing = sum(
-        row["required"] == "true"
-        and row["availability_status"] != "present"
+        row["required"] == "true" and row["availability_status"] != "present"
         for row in validated_index_rows
     )
     expected_counts = {
@@ -283,21 +250,15 @@ def validate_published_transaction(
         "required_missing_artifact_count": required_missing,
         "present_artifact_count": availability["present"],
         "missing_artifact_count": availability["missing"],
-        "externally_unavailable_artifact_count": availability[
-            "externally_unavailable"
-        ],
+        "externally_unavailable_artifact_count": availability["externally_unavailable"],
         "unknown_artifact_count": availability["unknown"],
         "complete_artifact_count": completion["complete"],
         "not_attempted_artifact_count": completion["not_attempted"],
         "in_progress_artifact_count": completion["in_progress"],
         "incomplete_artifact_count": completion["incomplete"],
         "failed_artifact_count": completion["failed"],
-        "warning_count": sum(
-            int(row["warning_count"]) for row in validated_index_rows
-        ),
-        "error_count": sum(
-            int(row["error_count"]) for row in validated_index_rows
-        ),
+        "warning_count": sum(int(row["warning_count"]) for row in validated_index_rows),
+        "error_count": sum(int(row["error_count"]) for row in validated_index_rows),
         "published_output_count": len(validated_index_rows) + 2,
     }
     for field_name, expected in expected_counts.items():
@@ -310,6 +271,7 @@ def validate_published_transaction(
                 f"Published receipt rollup is invalid: {field_name}"
             )
 
+
 def validate_existing_transaction(
     *,
     existing: Mapping[str, str],
@@ -319,9 +281,7 @@ def validate_existing_transaction(
     artifacts_path: Path,
     receipt_path: Path,
 ) -> None:
-    previous_inventory_rows = inventory_rows_from_published_index(
-        artifacts_path
-    )
+    previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
     validate_published_transaction(
         run_id=run_id,
         run_contract=run_contract,

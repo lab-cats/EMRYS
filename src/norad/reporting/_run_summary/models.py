@@ -8,7 +8,6 @@ from typing import Any
 
 from norad.reporting import build_artifact_index as adapter
 
-
 contracts = adapter.contracts
 
 PRODUCER = "build_run_summary"

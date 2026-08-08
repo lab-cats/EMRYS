@@ -10,9 +10,7 @@ from typing import Any
 
 from .models import ArtifactIndexError
 
-BGZF_EOF_BLOCK = bytes.fromhex(
-    "1f8b08040000000000ff0600424302001b00030000000000000000"
-)
+BGZF_EOF_BLOCK = bytes.fromhex("1f8b08040000000000ff0600424302001b00030000000000000000")
 MAX_BAM_HEADER_BYTES = 64 * 1024 * 1024
 
 
@@ -46,10 +44,13 @@ def read_bgzf_block(stream: Any) -> bytes:
         if subfield_id == b"BC":
             if subfield_length != 2 or block_size is not None:
                 raise ArtifactIndexError("BGZF BC subfield is invalid")
-            block_size = struct.unpack(
-                "<H",
-                extra[cursor : cursor + subfield_length],
-            )[0] + 1
+            block_size = (
+                struct.unpack(
+                    "<H",
+                    extra[cursor : cursor + subfield_length],
+                )[0]
+                + 1
+            )
         cursor += subfield_length
     if block_size is None:
         raise ArtifactIndexError("BGZF block lacks the required BC subfield")
@@ -153,10 +154,7 @@ def inspect_bai_structure(path: Path) -> dict[str, Any]:
             if read_exact_binary(stream, 4, "BAI magic") != b"BAI\x01":
                 raise ArtifactIndexError("BAI signature is invalid")
             reference_count = read_bai_uint32(stream, "BAI reference count")
-            if (
-                reference_count > 1_000_000
-                or reference_count > max(0, (size - 8) // 8)
-            ):
+            if reference_count > 1_000_000 or reference_count > max(0, (size - 8) // 8):
                 raise ArtifactIndexError("BAI reference count is invalid")
             bin_count = 0
             chunk_count = 0
@@ -179,9 +177,7 @@ def inspect_bai_structure(path: Path) -> dict[str, Any]:
                         "BAI chunk count",
                     )
                     if reference_chunk_count > (size - stream.tell()) // 16:
-                        raise ArtifactIndexError(
-                            "BAI chunk count exceeds file size"
-                        )
+                        raise ArtifactIndexError("BAI chunk count exceeds file size")
                     for _chunk_index in range(reference_chunk_count):
                         chunk_start, chunk_end = struct.unpack(
                             "<QQ",
@@ -198,9 +194,7 @@ def inspect_bai_structure(path: Path) -> dict[str, Any]:
                     "BAI interval count",
                 )
                 if reference_interval_count > (size - stream.tell()) // 8:
-                    raise ArtifactIndexError(
-                        "BAI interval count exceeds file size"
-                    )
+                    raise ArtifactIndexError("BAI interval count exceeds file size")
                 read_exact_binary(
                     stream,
                     reference_interval_count * 8,
@@ -238,9 +232,7 @@ def inspect_pdf_structure(path: Path) -> dict[str, Any]:
                 tail,
             )
             if match is None:
-                raise ArtifactIndexError(
-                    "PDF lacks a terminal startxref/EOF structure"
-                )
+                raise ArtifactIndexError("PDF lacks a terminal startxref/EOF structure")
             startxref = int(match.group(1))
             if not 0 < startxref < size:
                 raise ArtifactIndexError("PDF startxref offset is invalid")

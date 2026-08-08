@@ -76,17 +76,14 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
     members = document["members"]
     require_unique_key(members, "member_id", "artifact members")
     member_paths = [member["path"] for member in members]
-    canonical_member_paths = [
-        resolve_contract_path(path) for path in member_paths
-    ]
+    canonical_member_paths = [resolve_contract_path(path) for path in member_paths]
     if len(canonical_member_paths) != len(set(canonical_member_paths)):
         raise ContractValidationError("artifact members contain duplicate paths")
     if document["source"] is not None and (
         document["source"]["path"] != document["expectation"]["source_path"]
     ):
         raise ContractValidationError(
-            "artifact source path does not match its explicit inventory "
-            "expectation"
+            "artifact source path does not match its explicit inventory expectation"
         )
     if (
         document["source"] is None
@@ -108,8 +105,7 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
             for field in ("sha256", "size_bytes", "row_count", "media_type"):
                 if document["source"].get(field) != member.get(field):
                     raise ContractValidationError(
-                        "artifact source and same-path member disagree on "
-                        f"{field}"
+                        f"artifact source and same-path member disagree on {field}"
                     )
 
     completion = document["completion_status"]
@@ -118,12 +114,8 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
             "non-complete artifact state_reason must contain non-whitespace text"
         )
     if completion == "failed" and not document["errors"]:
-        raise ContractValidationError(
-            "failed artifact must record at least one error"
-        )
-    if completion == "incomplete" and not (
-        document["warnings"] or document["errors"]
-    ):
+        raise ContractValidationError("failed artifact must record at least one error")
+    if completion == "incomplete" and not (document["warnings"] or document["errors"]):
         raise ContractValidationError(
             "incomplete artifact must record at least one warning or error"
         )

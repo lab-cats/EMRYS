@@ -1,2 +1,1 @@
 """Shared alignment-format helpers."""
-

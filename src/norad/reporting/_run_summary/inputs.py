@@ -9,10 +9,12 @@ import io
 import json
 import os
 import stat
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .models import FileSnapshot, RunSummaryError, adapter, contracts
+
 
 def parse_arguments(
     argv: Sequence[str] | None = None,
@@ -186,10 +188,7 @@ def _read_exact_tsv_bytes(
     except (UnicodeError, csv.Error) as exc:
         _fail(f"Could not parse {label} {path}: {exc}")
     if exact_rows is not None and len(rows) != exact_rows:
-        _fail(
-            f"{label} must contain {exact_rows} rows; observed {len(rows)}: "
-            f"{path}"
-        )
+        _fail(f"{label} must contain {exact_rows} rows; observed {len(rows)}: {path}")
     return rows
 
 
@@ -251,9 +250,7 @@ def _require_contract_regular_file(label: str, value: str) -> Path:
         _fail(str(exc))
     declared = Path(value)
     lexical = (
-        declared
-        if declared.is_absolute()
-        else contracts.REPO_ROOT / declared
+        declared if declared.is_absolute() else contracts.REPO_ROOT / declared
     ).absolute()
     _reject_symlink_components(lexical, label)
     resolved = _require_regular_file(label, lexical)

@@ -11,4 +11,3 @@ def fail(message: str) -> None:
     """Raise a validation failure with a stable public diagnostic."""
 
     raise ValidationError(message)
-

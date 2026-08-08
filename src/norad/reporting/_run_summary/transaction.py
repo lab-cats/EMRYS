@@ -6,8 +6,9 @@ import json
 import re
 import stat
 import uuid
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from .inputs import (
     _capture_file_snapshot,
@@ -19,6 +20,7 @@ from .inputs import (
     _verify_file_snapshot,
 )
 from .models import FileSnapshot, OutputPaths, adapter, contracts
+
 
 def _assert_output_directory_identity(paths: OutputPaths) -> None:
     try:
@@ -177,11 +179,9 @@ def _load_input_transaction(
         output_dir = raw_output_dir.resolve(strict=True)
         output_dir_metadata = output_dir.lstat()
     except OSError as exc:
-        _fail(f"Artifact output directory cannot be resolved: {raw_output_dir}: "
-              f"{exc}")
-    if (
-        output_dir.parent != output_root
-        or not stat.S_ISDIR(output_dir_metadata.st_mode)
+        _fail(f"Artifact output directory cannot be resolved: {raw_output_dir}: {exc}")
+    if output_dir.parent != output_root or not stat.S_ISDIR(
+        output_dir_metadata.st_mode
     ):
         _fail(
             "Artifact output directory must resolve directly beneath the "
@@ -215,9 +215,7 @@ def _load_input_transaction(
     ):
         _fail("Artifact index path is outside the exact run output directory")
     records_dir = output_dir / "records"
-    index_rows = adapter.read_exact_tsv(
-        artifacts_path, adapter.ARTIFACT_INDEX_HEADER
-    )
+    index_rows = adapter.read_exact_tsv(artifacts_path, adapter.ARTIFACT_INDEX_HEADER)
 
     record_paths: list[Path] = []
     record_hashes: list[str] = []
@@ -238,13 +236,16 @@ def _load_input_transaction(
     receipt_payload, receipt_snapshot = _capture_file_snapshot(
         "Artifact receipt", artifact_receipt_path
     )
-    if _read_exact_tsv_bytes(
-        label="Artifact receipt",
-        path=artifact_receipt_path,
-        payload=receipt_payload,
-        header=adapter.ARTIFACT_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0] != receipt:
+    if (
+        _read_exact_tsv_bytes(
+            label="Artifact receipt",
+            path=artifact_receipt_path,
+            payload=receipt_payload,
+            header=adapter.ARTIFACT_RECEIPT_HEADER,
+            exact_rows=1,
+        )[0]
+        != receipt
+    ):
         _fail("Artifact receipt changed between parsing and snapshot capture")
     snapshots.append(receipt_snapshot)
 

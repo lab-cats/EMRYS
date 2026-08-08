@@ -10,7 +10,6 @@ from typing import TypeVar
 
 from norad.libraries.validation.report import clean
 
-
 T = TypeVar("T")
 
 

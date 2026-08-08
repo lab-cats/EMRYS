@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TextIO
 
-
 VALID_STRANDS = {"+", "-", "."}
 
 
@@ -133,7 +132,9 @@ def parse_gtf_attributes(attribute_text: str) -> dict[str, str]:
         if not segment:
             continue
 
-        if "=" in segment and (segment.find("=") < segment.find(" ") or " " not in segment):
+        if "=" in segment and (
+            segment.find("=") < segment.find(" ") or " " not in segment
+        ):
             key, value = segment.split("=", 1)
         else:
             parts = segment.split(None, 1)
@@ -228,22 +229,40 @@ def parse_gtf(
 
             columns = line.split("\t")
             if len(columns) != 9:
-                warn(f"row {row_number}: expected 9 tab-separated columns; skipping row", stderr)
+                warn(
+                    f"row {row_number}: expected 9 tab-separated columns; skipping row",
+                    stderr,
+                )
                 continue
 
-            chrom, _source, row_feature, start_text, end_text, _score, strand, _frame, attrs = columns
+            (
+                chrom,
+                _source,
+                row_feature,
+                start_text,
+                end_text,
+                _score,
+                strand,
+                _frame,
+                attrs,
+            ) = columns
             if row_feature != feature:
                 continue
 
             if strand not in VALID_STRANDS:
-                warn(f"row {row_number}: invalid strand '{strand}'; skipping row", stderr)
+                warn(
+                    f"row {row_number}: invalid strand '{strand}'; skipping row", stderr
+                )
                 continue
 
             try:
                 gtf_start = int(start_text)
                 gtf_end = int(end_text)
             except ValueError:
-                warn(f"row {row_number}: start and end must be integers; skipping row", stderr)
+                warn(
+                    f"row {row_number}: start and end must be integers; skipping row",
+                    stderr,
+                )
                 continue
 
             if gtf_start < 1 or gtf_end < gtf_start:
@@ -266,12 +285,23 @@ def parse_gtf(
 
             gene_id = attributes.get(gene_attribute, "").strip() or None
             exon = Exon(start=gtf_start - 1, end=gtf_end)
-            add_exon(transcripts, transcript_id, gene_id, chrom, strand, exon, row_number, stderr)
+            add_exon(
+                transcripts,
+                transcript_id,
+                gene_id,
+                chrom,
+                strand,
+                exon,
+                row_number,
+                stderr,
+            )
 
     return transcripts
 
 
-def build_bed_records(transcripts: dict[str, Transcript], stderr: TextIO) -> list[BedRecord]:
+def build_bed_records(
+    transcripts: dict[str, Transcript], stderr: TextIO
+) -> list[BedRecord]:
     records: list[BedRecord] = []
 
     # Convert each valid transcript into BED12 block sizes and starts.

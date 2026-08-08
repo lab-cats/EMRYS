@@ -8,25 +8,17 @@ import importlib
 import importlib.util
 import json
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any, Callable, Mapping
+from typing import Any
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
 GOLDENS = Path(__file__).resolve().parent
-SCHEMAS = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "schemas"
-    / "artifacts"
-    / "v1"
-)
+SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
 
 if str(REPORTING) not in sys.path:
     sys.path.insert(0, str(REPORTING))
@@ -192,13 +184,9 @@ def assert_status_constants() -> None:
         if isinstance(value, list):
             actual = list(actual)
         assert actual == value, (
-            f"review_package.{constant_name} differs from the "
-            "independent status oracle"
+            f"review_package.{constant_name} differs from the independent status oracle"
         )
-    assert (
-        REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS
-        not in REVIEW_PACKAGE.SCIENCE_STATUSES
-    )
+    assert REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS not in REVIEW_PACKAGE.SCIENCE_STATUSES
 
 
 def assert_canonical_json(
@@ -220,9 +208,7 @@ def assert_report_receipt(
 
 
 def assert_shared_science_policy() -> None:
-    policy = load_json(GOLDENS / "scientific_state_contracts.json")[
-        "shared_policy"
-    ]
+    policy = load_json(GOLDENS / "scientific_state_contracts.json")["shared_policy"]
     context = SimpleNamespace(
         category_rows={
             "decisions": copy.deepcopy(policy["decision_rows"]),
@@ -315,9 +301,7 @@ def test_step09c_tsv_writer_matches_exact_independent_utf8_golden(
 def test_report_receipt_projection_matches_exact_independent_golden() -> None:
     assert_report_receipt()
     document = load_json(GOLDENS / "report_receipt_input.json")
-    with (GOLDENS / "report_receipt.tsv").open(
-        encoding="utf-8", newline=""
-    ) as stream:
+    with (GOLDENS / "report_receipt.tsv").open(encoding="utf-8", newline="") as stream:
         row = next(csv.DictReader(stream, delimiter="\t"))
     assert json.loads(row["report_receipt_json"]) == document
 

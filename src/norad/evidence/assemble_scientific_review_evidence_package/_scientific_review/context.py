@@ -19,7 +19,10 @@ from .intake import (
     validate_review_plan,
 )
 
-def build_context(arguments: argparse.Namespace) -> tuple[
+
+def build_context(
+    arguments: argparse.Namespace,
+) -> tuple[
     ReviewContext,
     dict[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ]:
@@ -45,9 +48,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         "sample_manifest",
         artifact_from_table("Sample manifest", sample_table),
     )
-    partition_table = step08.validate_partition_manifest(
-        arguments.partition_manifest
-    )
+    partition_table = step08.validate_partition_manifest(arguments.partition_manifest)
     register_artifact(
         artifacts,
         input_hashes,
@@ -104,8 +105,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     analysis_id = plan["primary_analysis_id"]
     if analysis_dir.name != analysis_id:
         step08.fail(
-            "Step 09 analysis directory basename must equal "
-            "primary_analysis_id."
+            "Step 09 analysis directory basename must equal primary_analysis_id."
         )
     paths = step09_paths(analysis_dir, analysis_id)
     all_sites = step09.validate_step09_results(
@@ -118,9 +118,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     if [row["candidate_id"] for row in all_sites.rows] != [
         row["candidate_id"] for row in step08_sites.rows
     ]:
-        step08.fail(
-            "Step 09 all-sites candidate order/universe differs from Step 08."
-        )
+        step08.fail("Step 09 all-sites candidate order/universe differs from Step 08.")
     register_artifact(
         artifacts,
         input_hashes,
@@ -188,9 +186,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
             key,
             artifact_from_binary(label, pdf_path),
         )
-    if plan["orientation_policy"] != step09_summary_table.rows[0][
-        "orientation_policy"
-    ]:
+    if plan["orientation_policy"] != step09_summary_table.rows[0]["orientation_policy"]:
         step08.fail("Scientific review plan orientation policy differs from Step 09.")
 
     evidence_manifest, evidence_rows, category_rows, evidence_index = (
@@ -205,12 +201,12 @@ def build_context(arguments: argparse.Namespace) -> tuple[
         artifacts,
         input_hashes,
         "evidence_manifest",
-        artifact_from_table(
-            "Scientific evidence manifest", evidence_manifest
-        ),
+        artifact_from_table("Scientific evidence manifest", evidence_manifest),
     )
 
-    output_dir = Path(arguments.output_root).expanduser().resolve() / arguments.review_id
+    output_dir = (
+        Path(arguments.output_root).expanduser().resolve() / arguments.review_id
+    )
     output_paths = {
         key: output_dir / f"{arguments.review_id}.{suffix}"
         for key, suffix in review_package.OUTPUT_SUFFIXES
@@ -250,9 +246,7 @@ def build_context(arguments: argparse.Namespace) -> tuple[
     summary_row = make_review_summary(
         context, decisions, selected, adjudicated, analysis_dir
     )
-    output_tables: dict[
-        str, tuple[tuple[str, ...], list[dict[str, str]]]
-    ] = {
+    output_tables: dict[str, tuple[tuple[str, ...], list[dict[str, str]]]] = {
         "review_plan": (review_package.REVIEW_PLAN_HEADER, [dict(plan)]),
         "evidence_index": (review_package.EVIDENCE_INDEX_HEADER, evidence_index),
     }

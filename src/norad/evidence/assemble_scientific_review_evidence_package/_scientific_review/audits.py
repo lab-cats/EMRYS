@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from norad.libraries.alignments import orientation as alignment_orientation
+
 from .contracts import NA_VALUE, review_package, step08, step09, values_close
 from .intake import complement_base, validate_candidate_reference, validate_iso_date
+
 
 def validate_orientation_evidence(
     rows: Sequence[Mapping[str, str]],
@@ -103,16 +105,12 @@ def validate_orientation_evidence(
             "inverted_expected_rna_alt",
         ):
             if row[allele_column] not in ("A", "C", "G", "T"):
-                step08.fail(
-                    f"Orientation audit {allele_column} must be a DNA base."
-                )
+                step08.fail(f"Orientation audit {allele_column} must be a DNA base.")
         if (
             row["current_expected_rna_ref"] != result["rna_ref"]
             or row["current_expected_rna_alt"] != result["rna_alt"]
-            or row["inverted_expected_rna_ref"]
-            != complement_base(result["rna_ref"])
-            or row["inverted_expected_rna_alt"]
-            != complement_base(result["rna_alt"])
+            or row["inverted_expected_rna_ref"] != complement_base(result["rna_ref"])
+            or row["inverted_expected_rna_alt"] != complement_base(result["rna_alt"])
         ):
             step08.fail(
                 "Orientation audit expected alleles do not match the current "
@@ -130,8 +128,7 @@ def validate_orientation_evidence(
         "Scientific review plan locus_target_count", plan["locus_target_count"]
     ):
         step08.fail(
-            "Complete orientation audit row count differs from "
-            "locus_target_count."
+            "Complete orientation audit row count differs from locus_target_count."
         )
     if (
         complete
@@ -159,7 +156,9 @@ def validate_annotation_evidence(
             candidates,
         )
         step08.validate_enum(
-            "Annotation audit orientation", row["orientation"], alignment_orientation.ORIENTATIONS
+            "Annotation audit orientation",
+            row["orientation"],
+            alignment_orientation.ORIENTATIONS,
         )
         if row["annotation_strand"] not in ("+", "-"):
             step08.fail("Annotation audit annotation_strand must be + or -.")
@@ -198,7 +197,9 @@ def validate_annotation_evidence(
             if row[column] not in ("TRUE", "FALSE"):
                 step08.fail(f"Annotation audit {column} must be TRUE or FALSE.")
         for column in ("expected_gene_ids", "expected_transcript_ids"):
-            step08.require_text(f"Annotation audit {column}", row[column], allow_na=True)
+            step08.require_text(
+                f"Annotation audit {column}", row[column], allow_na=True
+            )
         step08.validate_enum(
             "Annotation audit assignment_status",
             row["assignment_status"],
@@ -219,8 +220,7 @@ def validate_annotation_evidence(
             "expected_is_intron": row["observed_is_intron"],
         }
         expected_matches = all(
-            row[column] == expected
-            for column, expected in expected_mapping.items()
+            row[column] == expected for column, expected in expected_mapping.items()
         )
         if row["assignment_status"] == "match" and not expected_matches:
             step08.fail(
@@ -278,30 +278,20 @@ def expected_qc_rows(
                 "scope_type": "partition_orientation",
                 "partition_id": input_row["partition_id"],
                 "orientation": input_row["orientation"],
-                "step07_declared_vcf_records": input_row[
-                    "declared_vcf_record_count"
-                ],
-                "step08_observed_vcf_records": input_row[
-                    "observed_vcf_record_count"
-                ],
-                "step08_observed_alt_alleles": input_row[
-                    "observed_alt_allele_count"
-                ],
+                "step07_declared_vcf_records": input_row["declared_vcf_record_count"],
+                "step08_observed_vcf_records": input_row["observed_vcf_record_count"],
+                "step08_observed_alt_alleles": input_row["observed_alt_allele_count"],
                 "step08_supported_snvs": input_row["supported_snv_count"],
                 "step08_skipped_symbolic": input_row["skipped_symbolic_count"],
                 "step08_skipped_non_snv": input_row["skipped_non_snv_count"],
-                "step08_published_candidates": input_row[
-                    "published_candidate_count"
-                ],
+                "step08_published_candidates": input_row["published_candidate_count"],
                 "step09_candidates": str(len(selected)),
                 "step09_target_candidates": str(len(target)),
                 "step09_tested": str(
                     step09.count_status(selected, "test_status", "tested")
                 ),
                 "step09_not_target": str(
-                    step09.count_status(
-                        selected, "test_status", "not_target_change"
-                    )
+                    step09.count_status(selected, "test_status", "not_target_change")
                 ),
                 "step09_missing_counts": str(
                     step09.count_status(selected, "test_status", "missing_counts")
@@ -310,9 +300,7 @@ def expected_qc_rows(
                     step09.count_status(selected, "test_status", "low_coverage")
                 ),
                 "step09_degenerate": str(
-                    step09.count_status(
-                        selected, "test_status", "degenerate_table"
-                    )
+                    step09.count_status(selected, "test_status", "degenerate_table")
                 ),
                 "step09_below_mean_dp": str(
                     step09.count_status(selected, "call_status", "below_mean_dp")
@@ -384,8 +372,7 @@ def validate_qc_funnel(
         for column in compared_columns:
             if row[column] != expected[column]:
                 step08.fail(
-                    f"QC funnel {scope[0]}/{scope[1]} {column} "
-                    "does not reconcile."
+                    f"QC funnel {scope[0]}/{scope[1]} {column} does not reconcile."
                 )
     if complete and seen != set(expected_by_scope):
         step08.fail("Complete QC funnel does not cover every partition/orientation.")
@@ -429,8 +416,7 @@ def validate_replicate_effects(
         ):
             step08.fail("Replicate-effects sample pairing differs from the manifest.")
         if any(
-            row[column] != result[column]
-            for column in ("partition_id", "orientation")
+            row[column] != result[column] for column in ("partition_id", "orientation")
         ):
             step08.fail("Replicate-effects candidate scope differs from Step 09.")
         for prefix, sample in (
@@ -438,14 +424,14 @@ def validate_replicate_effects(
             ("treatment", treatment_sample),
         ):
             for metric in ("dp", "ad", "af"):
-                if row[f"{prefix}_{metric}"] != result[
-                    f"{metric.upper()}__{sample}"
-                ]:
+                if row[f"{prefix}_{metric}"] != result[f"{metric.upper()}__{sample}"]:
                     step08.fail(
                         "Replicate-effects counts differ from Step 09 "
                         f"for candidate {row['candidate_id']}."
                     )
-        control_af = step08.parse_number("Replicate-effects control_af", row["control_af"])
+        control_af = step08.parse_number(
+            "Replicate-effects control_af", row["control_af"]
+        )
         treatment_af = step08.parse_number(
             "Replicate-effects treatment_af", row["treatment_af"]
         )

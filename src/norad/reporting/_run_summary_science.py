@@ -7,16 +7,15 @@ import csv
 import io
 import os
 import stat
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import review_package
-
 
 NA_VALUE = "NA"
 COMPUTATIONAL_SCOPE_ROLES = {
@@ -112,6 +111,8 @@ INPUT_ROLE_BY_STEP09C_KEY = {
     "review_plan": "review_plan",
     "evidence_manifest": "evidence_manifest",
 }
+
+
 class RunSummaryScienceError(RuntimeError):
     """Raised when Step 09c cannot be faithfully normalized."""
 
@@ -332,9 +333,7 @@ def _validate_published_artifacts(
     summary_row: Mapping[str, str],
     artifacts: Sequence[Mapping[str, Any]],
     summary_artifact: Mapping[str, Any],
-    output_tables: Mapping[
-        str, tuple[tuple[str, ...], list[dict[str, str]]]
-    ],
+    output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ) -> dict[str, Mapping[str, Any]]:
     review_id = summary_row["review_id"]
     expected_scope = ("09c", "scientific_review", review_id)
@@ -405,9 +404,7 @@ def _validate_published_artifacts(
                 "match its indexed source path."
             )
         header, rows = output_tables[key]
-        observed_table = _read_tsv(
-            f"Published Step 09c {key}", actual_path, header
-        )
+        observed_table = _read_tsv(f"Published Step 09c {key}", actual_path, header)
         if observed_table.rows != rows:
             _fail(f"Published Step 09c {key} rows differ from reconstruction.")
         expected_bytes = _tsv_bytes(header, rows)
@@ -416,14 +413,10 @@ def _validate_published_artifacts(
         except OSError as exc:
             _fail(f"Could not read published Step 09c {key}: {exc}")
         if observed_bytes != expected_bytes:
-            _fail(
-                f"Published Step 09c {key} bytes differ from reconstruction."
-            )
+            _fail(f"Published Step 09c {key} bytes differ from reconstruction.")
         observed_hash = contracts.sha256_file(actual_path)
         if source.get("sha256") != observed_hash:
-            _fail(
-                f"Published Step 09c {key} rows differ from reconstruction."
-            )
+            _fail(f"Published Step 09c {key} rows differ from reconstruction.")
         if source.get("size_bytes") != len(observed_bytes):
             _fail(f"Indexed Step 09c artifact {adapter} byte size differs.")
         if source.get("row_count") != len(rows):
@@ -453,9 +446,7 @@ def _read_committed_review_package(
             "review-summary path."
         )
 
-    output_tables: dict[
-        str, tuple[tuple[str, ...], list[dict[str, str]]]
-    ] = {}
+    output_tables: dict[str, tuple[tuple[str, ...], list[dict[str, str]]]] = {}
     input_hashes: dict[Path, str] = {}
 
     def remember_input(path: Path, observed_hash: str) -> None:
@@ -574,9 +565,9 @@ def _match_upstream_artifact(
     step09c_artifact: ReviewInput,
     artifacts: Sequence[Mapping[str, Any]],
 ) -> Mapping[str, Any]:
-    step_id, scope_type, adapter, suffix = (
-        contracts.SCIENCE_UPSTREAM_ROLE_CONTRACTS[role]
-    )
+    step_id, scope_type, adapter, suffix = contracts.SCIENCE_UPSTREAM_ROLE_CONTRACTS[
+        role
+    ]
     expected_row_count = _parse_row_count(
         f"Step 09c {role} row count", step09c_artifact.row_count
     )
@@ -638,9 +629,7 @@ def _normalize_input_artifacts(
             artifact_id = indexed.get("artifact_id")
             if not isinstance(artifact_id, str):
                 _fail(f"Indexed scientific input {role} has no artifact_id.")
-            source = _artifact_source(
-                indexed, label=f"Indexed scientific input {role}"
-            )
+            source = _artifact_source(indexed, label=f"Indexed scientific input {role}")
             normalized_path = source.get("path")
             if not isinstance(normalized_path, str):
                 _fail(f"Indexed scientific input {role} has no source path.")
@@ -657,14 +646,12 @@ def _normalize_input_artifacts(
             }
         )
     input_index = {record["role"]: record for record in result}
-    if (
-        input_index["sample_manifest"]["sha256"]
-        != run_contract.get("sample_manifest_sha256")
+    if input_index["sample_manifest"]["sha256"] != run_contract.get(
+        "sample_manifest_sha256"
     ):
         _fail("Step 09c sample-manifest hash differs from the run contract.")
-    if (
-        input_index["partition_manifest"]["sha256"]
-        != run_contract.get("partition_manifest_sha256")
+    if input_index["partition_manifest"]["sha256"] != run_contract.get(
+        "partition_manifest_sha256"
     ):
         _fail("Step 09c partition-manifest hash differs from the run contract.")
     return result
@@ -678,10 +665,7 @@ def _normalize_evidence(
     for row in context.evidence_index_rows:
         status = row["evidence_status"]
         evidence_date = _nullable(row["evidence_date"])
-        if (
-            evidence_date is None
-            and status in ("complete", "incomplete")
-        ):
+        if evidence_date is None and status in ("complete", "incomplete"):
             _fail(
                 f"Evidence {row['evidence_id']} has no evidence_date and "
                 f"cannot represent {status} evidence."
@@ -696,10 +680,7 @@ def _normalize_evidence(
                 row["observed_row_count"],
             )
             if row_count is None:
-                _fail(
-                    f"Scientific evidence {row['evidence_id']} lacks a row "
-                    "count."
-                )
+                _fail(f"Scientific evidence {row['evidence_id']} lacks a row count.")
             source = _source_path_hash(
                 path=path,
                 sha256=row["observed_sha256"],
@@ -720,9 +701,7 @@ def _normalize_evidence(
                 "evidence_date": evidence_date,
                 "policy_version": row["policy_version"],
                 "not_applicable_reason": (
-                    row["not_applicable_reason"]
-                    if status == "not_applicable"
-                    else None
+                    row["not_applicable_reason"] if status == "not_applicable" else None
                 ),
             }
         )
@@ -781,9 +760,7 @@ def _normalize_computational_evidence(
     context: ReviewPackageContext,
     evidence_records: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, str]]:
-    record_index = {
-        record["evidence_id"]: record for record in evidence_records
-    }
+    record_index = {record["evidence_id"]: record for record in evidence_records}
     rows_by_evidence: dict[str, list[dict[str, str]]] = {}
     for row in context.category_rows["computational_validation"]:
         rows_by_evidence.setdefault(row["evidence_id"], []).append(row)
@@ -807,10 +784,7 @@ def _normalize_computational_evidence(
         record = record_index[evidence_id]
         wrapper_source = record["source"]
         if not isinstance(wrapper_source, Mapping):
-            _fail(
-                f"Computational evidence {evidence_id} has no source "
-                "descriptor."
-            )
+            _fail(f"Computational evidence {evidence_id} has no source descriptor.")
         for payload in payload_rows:
             validation_scope = payload["validation_scope"]
             role = COMPUTATIONAL_SCOPE_ROLES[validation_scope]
@@ -825,15 +799,12 @@ def _normalize_computational_evidence(
                 evidence_sha256 = wrapper_source["sha256"]
             else:
                 evidence_path_object = _require_regular_file(
-                    f"Computational payload {evidence_id} "
-                    f"{validation_scope}",
+                    f"Computational payload {evidence_id} {validation_scope}",
                     _resolve_recorded_path(payload["evidence_path"]),
                 )
                 evidence_path = str(evidence_path_object)
                 evidence_sha256 = payload["evidence_sha256"]
-                if (
-                    contracts.sha256_file(evidence_path_object) != evidence_sha256
-                ):
+                if contracts.sha256_file(evidence_path_object) != evidence_sha256:
                     _fail(
                         f"Computational payload {evidence_id} "
                         f"{validation_scope} hash changed during "
@@ -854,17 +825,13 @@ def _normalize_decisions(
     context: ReviewPackageContext,
 ) -> dict[str, dict[str, Any]]:
     by_dimension = {
-        row["decision_dimension"]: row
-        for row in context.category_rows["decisions"]
+        row["decision_dimension"]: row for row in context.category_rows["decisions"]
     }
     decisions: dict[str, dict[str, Any]] = {}
     for dimension in review_package.DECISION_DIMENSIONS:
         row = by_dimension.get(dimension)
         if row is None or row["decision_status"] == "pending":
-            if (
-                row is not None
-                and row["supporting_evidence_ids"] != NA_VALUE
-            ):
+            if row is not None and row["supporting_evidence_ids"] != NA_VALUE:
                 _fail(
                     f"Pending decision {dimension} cannot carry supporting "
                     "evidence IDs in scientific-review-record v1."
@@ -873,28 +840,16 @@ def _normalize_decisions(
                 "status": "pending",
                 "value": None,
                 "detail": None if row is None else row["rationale"],
-                "reviewer": (
-                    None if row is None else row["decision_owner"]
-                ),
+                "reviewer": (None if row is None else row["decision_owner"]),
                 "decision_date": None,
                 "evidence_ids": [],
                 "rerun_scope": "none" if row is None else row["rerun_scope"],
-                "decision_id": (
-                    None if row is None else row["decision_id"]
-                ),
-                "source_evidence_id": (
-                    None if row is None else row["evidence_id"]
-                ),
-                "evidence_status": (
-                    None if row is None else row["evidence_status"]
-                ),
-                "policy_version": (
-                    None if row is None else row["policy_version"]
-                ),
+                "decision_id": (None if row is None else row["decision_id"]),
+                "source_evidence_id": (None if row is None else row["evidence_id"]),
+                "evidence_status": (None if row is None else row["evidence_status"]),
+                "policy_version": (None if row is None else row["policy_version"]),
                 "rerun_required": (
-                    None
-                    if row is None
-                    else row["rerun_required"] == "TRUE"
+                    None if row is None else row["rerun_required"] == "TRUE"
                 ),
             }
             continue
@@ -959,14 +914,11 @@ def _validate_normalized_record(document: dict[str, Any]) -> None:
         )
         errors = sorted(
             validator.iter_errors(document),
-            key=lambda error: tuple(
-                str(part) for part in error.absolute_path
-            ),
+            key=lambda error: tuple(str(part) for part in error.absolute_path),
         )
         if errors:
             details = "\n".join(
-                f"- {contracts.format_json_path(error.absolute_path)}: "
-                f"{error.message}"
+                f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
                 for error in errors
             )
             _fail(
@@ -976,8 +928,7 @@ def _validate_normalized_record(document: dict[str, Any]) -> None:
         contracts.validate_scientific_review_semantics(document)
     except contracts.ContractValidationError as exc:
         _fail(
-            "Normalized Step 09c scientific review failed semantic "
-            f"validation: {exc}"
+            f"Normalized Step 09c scientific review failed semantic validation: {exc}"
         )
 
 
@@ -1010,10 +961,7 @@ def normalize_scientific_review(
             len(review_package.OUTPUT_SUFFIXES)
         ):
             _fail("The Step 09c review summary does not declare 13 outputs.")
-        if (
-            summary_row["overall_science_status"]
-            == "biological_interpretation_ready"
-        ):
+        if summary_row["overall_science_status"] == "biological_interpretation_ready":
             _fail(
                 "biological_interpretation_ready is reserved and cannot be "
                 "normalized by scientific-review-record v1."
@@ -1030,8 +978,7 @@ def normalize_scientific_review(
             "primary_analysis_id"
         ):
             _fail(
-                "The Step 09c primary analysis differs from the immutable "
-                "run contract."
+                "The Step 09c primary analysis differs from the immutable run contract."
             )
         summary_sha256 = contracts.sha256_file(normalized_summary_path)
         summary_artifact = _validate_summary_artifact(
@@ -1091,59 +1038,35 @@ def normalize_scientific_review(
                 ),
             },
             "computational_status": {
-                "implementation_status": summary_row[
-                    "implementation_status"
-                ],
+                "implementation_status": summary_row["implementation_status"],
                 "local_test_status": summary_row["local_test_status"],
-                "runtime_validation_status": summary_row[
-                    "runtime_validation_status"
-                ],
-                "cluster_dry_run_status": summary_row[
-                    "cluster_dry_run_status"
-                ],
-                "cluster_proof_status": summary_row[
-                    "cluster_proof_status"
-                ],
+                "runtime_validation_status": summary_row["runtime_validation_status"],
+                "cluster_dry_run_status": summary_row["cluster_dry_run_status"],
+                "cluster_proof_status": summary_row["cluster_proof_status"],
                 "evidence": computational_evidence,
             },
             "scientific_state": {
                 "overall_status": summary_row["overall_science_status"],
                 "orientation_status": summary_row["orientation_status"],
                 "orientation_policy": summary_row["orientation_policy"],
-                "orientation_policy_version": summary_row[
-                    "orientation_policy_version"
-                ],
+                "orientation_policy_version": summary_row["orientation_policy_version"],
             },
             "readiness_authorization": None,
             "policy_versions": {
-                "locus_selection": summary_row[
-                    "locus_selection_policy_version"
-                ],
+                "locus_selection": summary_row["locus_selection_policy_version"],
                 "candidate_selection": summary_row[
                     "candidate_selection_policy_version"
                 ],
-                "sensitivity": summary_row[
-                    "sensitivity_policy_version"
-                ],
-                "background": summary_row[
-                    "background_policy_version"
-                ],
-                "annotation": summary_row[
-                    "annotation_policy_version"
-                ],
-                "adjudication": summary_row[
-                    "adjudication_policy_version"
-                ],
+                "sensitivity": summary_row["sensitivity_policy_version"],
+                "background": summary_row["background_policy_version"],
+                "annotation": summary_row["annotation_policy_version"],
+                "adjudication": summary_row["adjudication_policy_version"],
             },
             "selection_rules": {
                 "locus_selection": summary_row["locus_selection_rule"],
-                "candidate_selection": summary_row[
-                    "candidate_selection_rule"
-                ],
+                "candidate_selection": summary_row["candidate_selection_rule"],
                 "sensitivity": summary_row["sensitivity_rule"],
-                "leave_one_pair_out": summary_row[
-                    "leave_one_pair_out_rule"
-                ],
+                "leave_one_pair_out": summary_row["leave_one_pair_out_rule"],
             },
             "evidence_categories": evidence_categories,
             "evidence_records": evidence_records,

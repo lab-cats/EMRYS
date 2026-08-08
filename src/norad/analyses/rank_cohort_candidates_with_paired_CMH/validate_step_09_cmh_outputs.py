@@ -6,21 +6,23 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
+from norad.contracts.scientific_evidence import step08, step09
 from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from norad.contracts.scientific_evidence import step08, step09
-
 if step09.step08 is not step08:
-    raise ImportError("Step 09 contract and validator resolved different Step 08 objects")
+    raise ImportError(
+        "Step 09 contract and validator resolved different Step 08 objects"
+    )
 
 IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
 
@@ -34,6 +36,8 @@ CHECK_IDS = {
     "mutation_spectrum_reconciliation",
     "pdf_structure",
 }
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--analysis-id", required=True)
@@ -83,9 +87,8 @@ def build(args: argparse.Namespace):
             for key, suffix in suffixes.items()
         )
         and len({path.parent for path in native_paths}) == 1
-        and len(
-            {(snapshot.device, snapshot.inode) for snapshot in native_snapshots}
-        ) == len(native_paths)
+        and len({(snapshot.device, snapshot.inode) for snapshot in native_snapshots})
+        == len(native_paths)
     )
 
     _, id_detail = report.attempt(
@@ -116,18 +119,13 @@ def build(args: argparse.Namespace):
             ),
             catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
-    cohort_policy_ok = (
-        step08_inputs is not None
-        and all(
-            row["cohort_id"] == args.cohort_id
-            and IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
-            for row in step08_inputs.rows
-        )
+    cohort_policy_ok = step08_inputs is not None and all(
+        row["cohort_id"] == args.cohort_id
+        and IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
+        for row in step08_inputs.rows
     )
     if step08_inputs is not None and not cohort_policy_ok:
-        step08_input_detail = (
-            f"explicit cohort identity or {alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY} policy mismatch"
-        )
+        step08_input_detail = f"explicit cohort identity or {alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY} policy mismatch"
     step08_sites = None
     step08_sites_detail = "Step 08 input prerequisite failed"
     if (
@@ -206,9 +204,7 @@ def build(args: argparse.Namespace):
         == [row["candidate_id"] for row in step08_sites.rows]
     )
     if all_sites is not None and not candidate_order_ok:
-        result_detail = (
-            "all-sites candidate order/universe differs from Step 08"
-        )
+        result_detail = "all-sites candidate order/universe differs from Step 08"
 
     summary = None
     summary_detail = "result or upstream prerequisite failed"
@@ -369,12 +365,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='09',
+                step_id="09",
                 scope_id=args.analysis_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 09',
+                published_label="Step 09",
             ),
             data,
             snapshots,

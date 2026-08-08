@@ -54,14 +54,11 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             "scientific review primary analysis cannot also be superseded "
             "or sensitivity analysis"
         )
-    overlapping_alternates = (
-        superseded_analysis_ids & sensitivity_analysis_ids
-    )
+    overlapping_alternates = superseded_analysis_ids & sensitivity_analysis_ids
     if overlapping_alternates:
         raise ContractValidationError(
             "scientific review superseded and sensitivity analysis IDs "
-            "overlap: "
-            + ", ".join(sorted(overlapping_alternates))
+            "overlap: " + ", ".join(sorted(overlapping_alternates))
         )
     allowed_analysis_ids = {
         primary_analysis_id,
@@ -83,12 +80,9 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             )
 
     computational_evidence_ids = {
-        reference["evidence_id"]
-        for reference in computational_status["evidence"]
+        reference["evidence_id"] for reference in computational_status["evidence"]
     }
-    unknown_computational = sorted(
-        computational_evidence_ids - evidence_ids
-    )
+    unknown_computational = sorted(computational_evidence_ids - evidence_ids)
     if unknown_computational:
         raise ContractValidationError(
             "scientific computational status references unknown evidence IDs: "
@@ -131,8 +125,7 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
         if unknown:
             raise ContractValidationError(
                 f"scientific evidence category {category_name!r} references "
-                "unknown evidence IDs: "
-                + ", ".join(unknown)
+                "unknown evidence IDs: " + ", ".join(unknown)
             )
         records = [evidence_index[evidence_id] for evidence_id in referenced_ids]
         mismatched_categories = [
@@ -209,8 +202,7 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
         if unknown:
             raise ContractValidationError(
                 f"scientific decision {decision_name!r} references unknown "
-                "evidence IDs: "
-                + ", ".join(unknown)
+                "evidence IDs: " + ", ".join(unknown)
             )
         referenced_evidence_ids.update(decision["evidence_ids"])
         if decision["status"] == "recorded" and not decision["evidence_ids"]:
@@ -219,8 +211,7 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
                 "supporting evidence"
             )
         if decision["status"] == "recorded" and any(
-            evidence_index[evidence_id]["status"]
-            not in {"complete", "not_applicable"}
+            evidence_index[evidence_id]["status"] not in {"complete", "not_applicable"}
             for evidence_id in decision["evidence_ids"]
         ):
             raise ContractValidationError(
@@ -254,8 +245,7 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             details.append("unknown roles: " + ", ".join(extra))
         raise ContractValidationError(
             "scientific review input artifact roles must match the complete "
-            "Step 09c provenance set; "
-            + "; ".join(details)
+            "Step 09c provenance set; " + "; ".join(details)
         )
     require_unique_key(
         document["input_artifacts"],
@@ -276,9 +266,10 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             "status, a category, a decision, or a limitation: "
             + ", ".join(orphan_evidence)
         )
-    if document["primary_analysis_id"] != document["run_contract"][
-        "primary_analysis_id"
-    ]:
+    if (
+        document["primary_analysis_id"]
+        != document["run_contract"]["primary_analysis_id"]
+    ):
         raise ContractValidationError(
             "scientific review primary_analysis_id does not match its "
             "immutable run contract"
@@ -306,9 +297,8 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
                 ".tsv path and a non-null row_count"
             )
         role_contract = SCIENCE_UPSTREAM_ROLE_CONTRACTS.get(role)
-        if (
-            role_contract is not None
-            and not Path(record["path"]).name.endswith(role_contract[3])
+        if role_contract is not None and not Path(record["path"]).name.endswith(
+            role_contract[3]
         ):
             raise ContractValidationError(
                 f"scientific review input role {role!r} path must end with "

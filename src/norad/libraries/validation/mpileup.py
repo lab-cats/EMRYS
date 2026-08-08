@@ -13,7 +13,11 @@ def read_sample_ids(path: Path) -> list[str]:
     if "sample_id" not in header:
         raise report.ValidationError("Sample manifest lacks sample_id")
     values = [row["sample_id"] for row in rows]
-    if not values or any(not value for value in values) or len(values) != len(set(values)):
+    if (
+        not values
+        or any(not value for value in values)
+        or len(values) != len(set(values))
+    ):
         raise report.ValidationError("Sample manifest IDs must be nonempty and unique")
     return values
 
@@ -67,7 +71,9 @@ def selector_ok(
     try:
         rows = [
             line.split("\t")
-            for line in report.stable_text(selector_path, "Partition selector file")[0].splitlines()
+            for line in report.stable_text(selector_path, "Partition selector file")[
+                0
+            ].splitlines()
             if line.strip() and not line.startswith("#")
         ]
     except (OSError, UnicodeError, report.ValidationError):
@@ -84,8 +90,15 @@ def read_vcf(path: Path) -> tuple[list[str], int]:
         if line.startswith("#CHROM\t"):
             fields = line.split("\t")
             if fields[:9] != [
-                "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
-                "INFO", "FORMAT",
+                "#CHROM",
+                "POS",
+                "ID",
+                "REF",
+                "ALT",
+                "QUAL",
+                "FILTER",
+                "INFO",
+                "FORMAT",
             ]:
                 raise report.ValidationError(f"Invalid VCF header: {path}")
             samples = fields[9:]

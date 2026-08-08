@@ -10,19 +10,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import glob
-import hashlib
-import json
-import re
 import sys
 from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
-from jsonschema.exceptions import SchemaError
-from referencing import Registry, Resource
 
 _SRC_ROOT = Path(__file__).resolve().parents[3]
 if str(_SRC_ROOT) not in sys.path:
@@ -37,7 +30,6 @@ from norad.contracts.artifacts._artifact_contracts import (
     scientific_review as _scientific_review_owner,
 )
 
-
 REPO_ROOT = _core_owner.REPO_ROOT
 SCHEMA_ROOT = _core_owner.SCHEMA_ROOT
 COMMON_SCHEMA_PATH = _core_owner.COMMON_SCHEMA_PATH
@@ -47,15 +39,11 @@ SAFE_ID_RE = _core_owner.SAFE_ID_RE
 BOOLEAN_VALUES = _core_owner.BOOLEAN_VALUES
 SCOPE_TYPES = _core_owner.SCOPE_TYPES
 SCIENCE_INPUT_ROLES = _core_owner.SCIENCE_INPUT_ROLES
-SCIENCE_UPSTREAM_ROLE_CONTRACTS = (
-    _core_owner.SCIENCE_UPSTREAM_ROLE_CONTRACTS
-)
+SCIENCE_UPSTREAM_ROLE_CONTRACTS = _core_owner.SCIENCE_UPSTREAM_ROLE_CONTRACTS
 RUN_CONTRACT_COMPONENT_FIELDS = _core_owner.RUN_CONTRACT_COMPONENT_FIELDS
 ContractValidationError = _core_owner.ContractValidationError
 reject_duplicate_json_keys = _core_owner.reject_duplicate_json_keys
-reject_nonstandard_json_constant = (
-    _core_owner.reject_nonstandard_json_constant
-)
+reject_nonstandard_json_constant = _core_owner.reject_nonstandard_json_constant
 load_json_object = _core_owner.load_json_object
 load_schema = _core_owner.load_schema
 load_schema_registry = _core_owner.load_schema_registry
@@ -82,17 +70,13 @@ artifact_rollup_state = _run_summary_owner.artifact_rollup_state
 aggregate_equal_or_mixed = _run_summary_owner.aggregate_equal_or_mixed
 aggregate_artifact_state = _run_summary_owner.aggregate_artifact_state
 artifact_status_dimensions = _run_summary_owner.artifact_status_dimensions
-validate_run_summary_semantics = (
-    _run_summary_owner.validate_run_summary_semantics
-)
+validate_run_summary_semantics = _run_summary_owner.validate_run_summary_semantics
 
 
 if not (
     _artifact_owner.ContractValidationError is ContractValidationError
-    and _scientific_review_owner.ContractValidationError
-    is ContractValidationError
-    and _run_summary_owner.ContractValidationError
-    is ContractValidationError
+    and _scientific_review_owner.ContractValidationError is ContractValidationError
+    and _run_summary_owner.ContractValidationError is ContractValidationError
 ):
     raise ImportError(
         "artifact-contract private modules did not resolve one error owner"
@@ -270,7 +254,9 @@ def validate_inventory(path: Path) -> list[dict[str, str]]:
     except ContractValidationError:
         raise
     except (OSError, UnicodeError, csv.Error) as exc:
-        raise ContractValidationError(f"Could not parse inventory {path}: {exc}") from exc
+        raise ContractValidationError(
+            f"Could not parse inventory {path}: {exc}"
+        ) from exc
 
     if not rows:
         raise ContractValidationError(
@@ -425,8 +411,7 @@ def reconcile_document_inventory(
         )
     if inventory_record["row_count"] != len(rows):
         raise ContractValidationError(
-            "run summary inventory row_count does not match the supplied "
-            "inventory"
+            "run summary inventory row_count does not match the supplied inventory"
         )
 
     artifacts = document["artifacts"]
@@ -485,9 +470,7 @@ def main() -> int:
                 inventory_rows,
                 args.inventory,
             )
-            print(
-                f"Document/inventory reconciliation passed: {args.document}"
-            )
+            print(f"Document/inventory reconciliation passed: {args.document}")
     except ContractValidationError as exc:
         print(exc, file=sys.stderr)
         return 1

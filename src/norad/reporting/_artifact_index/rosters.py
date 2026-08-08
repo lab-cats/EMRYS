@@ -13,15 +13,15 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
             "step00a_validation_report_v1": 1,
         }
     ),
-    "00b": Counter(
-        {"step00b_bed12_v1": 1, "step00b_validation_report_v1": 1}
+    "00b": Counter({"step00b_bed12_v1": 1, "step00b_validation_report_v1": 1}),
+    "00c": Counter(
+        {
+            "step00c_reference_fasta_v1": 1,
+            "step00c_reference_fai_v1": 1,
+            "step00c_reference_dict_v1": 1,
+            "step00c_validation_report_v1": 1,
+        }
     ),
-    "00c": Counter({
-        "step00c_reference_fasta_v1": 1,
-        "step00c_reference_fai_v1": 1,
-        "step00c_reference_dict_v1": 1,
-        "step00c_validation_report_v1": 1,
-    }),
     "01": Counter(
         {
             "step01_star_bam_v1": 1,
@@ -32,20 +32,26 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
             "step01_validation_report_v1": 1,
         }
     ),
-    "02": Counter({
-        "step02_canonical_bam_v1": 1,
-        "step02_canonical_bai_v1": 1,
-        "step02_validation_report_v1": 1,
-    }),
-    "02b": Counter({
-        "step02b_quickcheck_v1": 1,
-        "step02b_flagstat_v1": 1,
-        "step02b_validation_report_v1": 1,
-    }),
-    "03": Counter({
-        "step03_rseqc_infer_v1": 1,
-        "step03_validation_report_v1": 1,
-    }),
+    "02": Counter(
+        {
+            "step02_canonical_bam_v1": 1,
+            "step02_canonical_bai_v1": 1,
+            "step02_validation_report_v1": 1,
+        }
+    ),
+    "02b": Counter(
+        {
+            "step02b_quickcheck_v1": 1,
+            "step02b_flagstat_v1": 1,
+            "step02b_validation_report_v1": 1,
+        }
+    ),
+    "03": Counter(
+        {
+            "step03_rseqc_infer_v1": 1,
+            "step03_validation_report_v1": 1,
+        }
+    ),
     "04": Counter(
         {
             "step04_markdup_bam_v1": 1,
@@ -122,36 +128,24 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
 
 STEP_PRODUCERS = {
     "00a": (
-        "src/norad/stages/construct_STAR_index/"
-        "step_00a_build_novogene_star_index.slurm"
+        "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
     ),
     "00b": "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
     "00c": (
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "step_00c_prepare_gatk_reference.sh"
+        "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
-    "01": (
-        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
-    ),
-    "02": (
-        "src/norad/stages/construct_canonical_BAM/"
-        "step_02_sort_index_bam.sh"
-    ),
-    "02b": (
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "step_02b_bam_qc.sh"
-    ),
+    "01": ("src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"),
+    "02": ("src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"),
+    "02b": ("src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"),
     "03": (
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "04": (
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "step_04_mark_duplicates.sh"
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh"
     ),
     "05": (
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "step_05_split_n_cigar_reads.sh"
+        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
     ),
     "06": (
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"

@@ -5,17 +5,17 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 from norad.libraries.evidence import qc as qc_report
-
 
 CHECK_IDS = {
     "quickcheck_structure",
@@ -45,7 +45,9 @@ def build(args: argparse.Namespace):
     )
     quick_text = report.stable_text(quickcheck, "Quickcheck output")[0].strip()
     quick_ok = quick_text == "PASS: samtools quickcheck completed with no errors."
-    values, errors = qc_report.parse_flagstat(report.stable_text(flagstat, "Flagstat output")[0])
+    values, errors = qc_report.parse_flagstat(
+        report.stable_text(flagstat, "Flagstat output")[0]
+    )
     total = sum(values.get("total", (-1, -1)))
     mapped = sum(values.get("mapped", (-1, -1)))
     flagstat_ok = not errors and {"total", "mapped"} <= values.keys()
@@ -111,12 +113,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='02b',
+                step_id="02b",
                 scope_id=args.scope_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 02b',
+                published_label="Step 02b",
             ),
             data,
             snapshots,

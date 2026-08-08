@@ -10,28 +10,14 @@ rollback-protected transaction.
 
 from __future__ import annotations
 
-import argparse
-import csv
-import errno
-import hashlib
-import json
 import os
-import re
 import shutil
 import signal
-import struct
-import subprocess
 import sys
 import uuid
-import zlib
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
-
-from jsonschema import Draft202012Validator, FormatChecker
-
+from typing import Any
 
 _SRC_ROOT = Path(__file__).resolve().parents[2]
 if str(_SRC_ROOT) not in sys.path:
@@ -47,131 +33,25 @@ review_package = _contract_owners.review_package
 
 # The exact script path remains the public CLI and compatibility facade.  The
 # implementation modules are private to the reporting owner.
-from norad.reporting._artifact_index.binary_readers import (
-    BGZF_EOF_BLOCK,
-    MAX_BAM_HEADER_BYTES,
-    inspect_bai_structure,
-    inspect_bgzf_bam,
-    inspect_pdf_structure,
-    parse_bam_header_buffer,
-    read_bai_uint32,
-    read_bgzf_block,
-    read_exact_binary,
-)
 from norad.reporting._artifact_index.context import (
     prepare_context,
     print_context,
     recheck_inputs,
-    source_snapshot_matches,
-    validate_context_in_memory,
 )
 from norad.reporting._artifact_index.core import (
-    canonical_digest,
-    canonical_json_bytes,
-    declared_contract_path,
-    get_git_commit,
-    issue,
-    load_run_contract,
-    new_attempt_id,
     parse_args,
-    safe_tsv,
-    sha256_bytes,
-    stat_source,
-    utc_now,
-    validate_inventory_registry,
-)
-from norad.reporting._artifact_index.inspection import (
-    apply_run_contract_checks,
-    build_metrics,
-    inspect_present,
-    inspect_source,
 )
 from norad.reporting._artifact_index.models import (
-    ANCHOR_HASH_FIELDS,
-    ARTIFACT_INDEX_HEADER,
-    ARTIFACT_INDEX_SCHEMA_VERSION,
-    ARTIFACT_RECEIPT_HEADER,
-    ARTIFACT_RECEIPT_SCHEMA_VERSION,
-    ARTIFACT_SCHEMA_VERSION,
-    PRODUCER,
-    PRODUCER_VERSION,
-    RUN_CONTRACT_FIELDS,
-    SHA256_RE,
-    STEP00A_BASENAMES,
-    STEP06_COUNTS_HEADER,
-    STEP07_RECEIPT_HEADER,
-    STEP09C_CATEGORY_ADAPTERS,
-    VALIDATION_REPORT_HEADER,
-    AdapterSpec,
     ArtifactIndexError,
     BuildContext,
-    Inspection,
     LockOwnership,
-    SourceSnapshot,
-)
-from norad.reporting._artifact_index.reconcile_native import (
-    mark_native_transaction_failed,
-    native_int,
-    reconcile_step00c,
-    reconcile_step06,
-    reconcile_step07,
-    reconcile_step08,
-    require_referenced_source,
-)
-from norad.reporting._artifact_index.reconcile_review import (
-    reconcile_step09c,
-    split_native_safe_ids,
-    step09c_candidate_keys,
-    validate_step09c_decisions,
-    validate_step09c_evidence_index,
-    validate_step09c_payloads,
-)
-from norad.reporting._artifact_index.reconcile_step09 import (
-    reconcile_step09,
-    validate_significant_exact_subset,
-    validate_step09_mutation_spectrum,
-    validate_step09_statuses,
-)
-from norad.reporting._artifact_index.reconciliation import (
-    reconcile_native_transactions,
-    reconcile_scope_transactions,
-    resolve_scientific_states,
 )
 from norad.reporting._artifact_index.records import (
-    build_artifact_record,
-    build_index_rows,
-    build_receipt_row,
     inventory_rows_from_published_index,
     load_existing_receipt,
-    producer_evidence,
-    read_exact_tsv,
-    tsv_bytes,
     validate_existing_identity,
-    validate_record_in_memory,
-)
-from norad.reporting._artifact_index.registry import (
-    ADAPTER_REGISTRY,
-    add_spec,
-    build_adapter_registry,
-)
-from norad.reporting._artifact_index.rosters import SCOPE_ADAPTER_ROSTERS, STEP_PRODUCERS
-from norad.reporting._artifact_index.text_readers import (
-    extract_parameters,
-    inspect_bed12,
-    inspect_dict,
-    inspect_fai,
-    inspect_fasta,
-    inspect_nonempty_text,
-    inspect_picard_metrics,
-    inspect_star_sj,
-    inspect_tsv,
-    inspect_vcf,
-    iter_text_lines,
-    validate_native_run_anchors,
-    validate_sample_block_header,
 )
 from norad.reporting._artifact_index.validation import (
-    parse_nonnegative_receipt_int,
     validate_published_transaction,
 )
 
@@ -186,9 +66,7 @@ def validate_existing_transaction(
     receipt_path: Path,
 ) -> None:
     """Validate a predecessor through this facade's patchable validator."""
-    previous_inventory_rows = inventory_rows_from_published_index(
-        artifacts_path
-    )
+    previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
     validate_published_transaction(
         run_id=run_id,
         run_contract=run_contract,
@@ -239,10 +117,8 @@ def acquire_lock(
     run_token: str,
 ) -> LockOwnership:
     payload = (
-        f"run_id\t{run_id}\n"
-        f"pid\t{os.getpid()}\n"
-        f"run_token\t{run_token}\n"
-    ).encode("utf-8")
+        f"run_id\t{run_id}\npid\t{os.getpid()}\nrun_token\t{run_token}\n"
+    ).encode()
     try:
         descriptor = os.open(
             lock_path,
@@ -377,15 +253,9 @@ def publish_context(context: BuildContext) -> None:
     backup_records = (
         context.output_dir / f".artifact-index.{run_token}.previous.records"
     )
-    backup_index = (
-        context.output_dir / f".artifact-index.{run_token}.previous.tsv"
-    )
-    backup_receipt = (
-        context.output_dir / f".artifact-receipt.{run_token}.previous.tsv"
-    )
-    recovery_path = (
-        context.output_dir / f".artifact-index.{run_token}.RECOVERY.txt"
-    )
+    backup_index = context.output_dir / f".artifact-index.{run_token}.previous.tsv"
+    backup_receipt = context.output_dir / f".artifact-receipt.{run_token}.previous.tsv"
+    recovery_path = context.output_dir / f".artifact-index.{run_token}.RECOVERY.txt"
     owned_scratch = (
         temp_records,
         temp_index,
@@ -432,16 +302,13 @@ def publish_context(context: BuildContext) -> None:
             context.records_dir,
         )
         had_previous = existing is not None
-        locked_previous_attempt_id, locked_attempt_history = (
-            validate_existing_identity(
-                existing,
-                context.run_contract,
-            )
+        locked_previous_attempt_id, locked_attempt_history = validate_existing_identity(
+            existing,
+            context.run_contract,
         )
         if (
             existing != context.previous_receipt
-            or
-            locked_previous_attempt_id != context.previous_attempt_id
+            or locked_previous_attempt_id != context.previous_attempt_id
             or locked_attempt_history != context.attempt_history
         ):
             raise ArtifactIndexError(
@@ -459,9 +326,7 @@ def publish_context(context: BuildContext) -> None:
             )
 
         temp_records.mkdir()
-        for record, payload in zip(
-            context.records, context.record_bytes, strict=True
-        ):
+        for record, payload in zip(context.records, context.record_bytes, strict=True):
             write_bytes_exclusive(
                 temp_records / f"{record['artifact_id']}.json",
                 payload,
@@ -561,12 +426,8 @@ def publish_context(context: BuildContext) -> None:
                         receipt_path=context.receipt_path,
                     ),
                 )
-                if (
-                    len(rollback_errors) > validation_error_count
-                    and (
-                        context.receipt_path.exists()
-                        or context.receipt_path.is_symlink()
-                    )
+                if len(rollback_errors) > validation_error_count and (
+                    context.receipt_path.exists() or context.receipt_path.is_symlink()
                 ):
                     # A receipt is a complete-transaction marker. Quarantine
                     # it again if the restored records/index do not validate.
@@ -618,9 +479,7 @@ def publish_context(context: BuildContext) -> None:
         if not rollback_failed:
             cleanup_paths = [temp_records, temp_index, temp_receipt]
             if publication_committed:
-                cleanup_paths.extend(
-                    [backup_records, backup_index, backup_receipt]
-                )
+                cleanup_paths.extend([backup_records, backup_index, backup_receipt])
             for path in cleanup_paths:
                 try:
                     remove_owned(path)
@@ -630,9 +489,7 @@ def publish_context(context: BuildContext) -> None:
                 try:
                     release_owned_lock(context.lock_path, lock_ownership)
                 except ArtifactIndexError as cleanup_exc:
-                    cleanup_errors.append(
-                        str(cleanup_exc)
-                    )
+                    cleanup_errors.append(str(cleanup_exc))
         active_error = sys.exc_info()[1]
         try:
             restore_signal_handlers(previous_signal_handlers)
@@ -657,11 +514,11 @@ def publish_context(context: BuildContext) -> None:
                 pass
             prefix = f"{active_error}\n" if active_error is not None else ""
             raise ArtifactIndexError(
-                prefix
-                + "Artifact-index cleanup failed; preserve the lock and "
+                prefix + "Artifact-index cleanup failed; preserve the lock and "
                 f"recovery paths under {context.output_dir}: "
                 + "; ".join(cleanup_errors)
             ) from active_error
+
 
 def main() -> int:
     arguments = parse_args()

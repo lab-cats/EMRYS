@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "construct_canonical_bam_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -16,40 +22,54 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 SCRIPT = (
-    ROOT
-    / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
+    ROOT / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
 )
 
 
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    bam = root / "S.sorted.bam"; bam.write_bytes(b"BAM\x01synthetic")
-    bai = root / "S.sorted.bam.bai"; bai.write_bytes(b"BAI\x01synthetic")
+    bam = root / "S.sorted.bam"
+    bam.write_bytes(b"BAM\x01synthetic")
+    bai = root / "S.sorted.bam.bai"
+    bai.write_bytes(b"BAI\x01synthetic")
     tool = root / "samtools"
     tool.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
-        "case \"$1 $2\" in\n"
+        'case "$1 $2" in\n'
         "  'quickcheck -v') exit \"${QUICKCHECK_EXIT:-0}\" ;;\n"
         "  'view -H') printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
-        "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\" ;;\n"
+        '"${SORT_ORDER:-coordinate}" "${RG_ID:-S}" "${RG_SM:-S}" ;;\n'
         "  'view -c')\n"
-        "    if [[ \"${3:-}\" == -d ]]; then printf '%s\\n' \"${TAGGED:-10}\"; "
+        '    if [[ "${3:-}" == -d ]]; then printf \'%s\\n\' "${TAGGED:-10}"; '
         "else printf '%s\\n' \"${TOTAL:-10}\"; fi ;;\n"
         "  *) exit 9 ;;\n"
         "esac\n"
     )
     tool.chmod(0o755)
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return bam, bai, tool, out / "S.validation.tsv"
 
 
 def run(values, *extra, env=None, cwd: Path | None = None):
     bam, bai, tool, output = values
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
-         "--bai", str(bai), "--samtools-bin", str(tool),
-         "--output", str(output), *extra],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "S",
+            "--bam",
+            str(bam),
+            "--bai",
+            str(bai),
+            "--samtools-bin",
+            str(tool),
+            "--output",
+            str(output),
+            *extra,
+        ],
         cwd=ROOT if cwd is None else cwd,
         text=True,
         capture_output=True,
@@ -78,8 +98,13 @@ def test_execute_publishes_five_passes(tmp_path):
 
 def test_sort_rg_and_tag_failures_are_evidence(tmp_path, monkeypatch):
     values = fixture(tmp_path)
-    env = dict(**__import__("os").environ, SORT_ORDER="queryname", RG_ID="wrong",
-               TAGGED="9", QUICKCHECK_EXIT="1")
+    env = dict(
+        **__import__("os").environ,
+        SORT_ORDER="queryname",
+        RG_ID="wrong",
+        TAGGED="9",
+        QUICKCHECK_EXIT="1",
+    )
     assert run(values, "--execute", env=env).returncode == 0
     status = {row["check_id"]: row["status"] for row in rows(values[-1])}
     assert status["samtools_quickcheck"] == "fail"
@@ -110,9 +135,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_exact(tmp_path):
     invocation = tmp_path / "invoke"
     invocation.mkdir()
     inputs = values[:3]
-    before = {
-        path: (path.read_bytes(), path.stat().st_mode) for path in inputs
-    }
+    before = {path: (path.read_bytes(), path.stat().st_mode) for path in inputs}
 
     dry = run(values, cwd=invocation)
     assert dry.returncode == 0
@@ -136,7 +159,5 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_exact(tmp_path):
     assert second.returncode == 0
     assert second.stderr == ""
     assert values[-1].read_bytes() == first_bytes
-    assert {
-        path: (path.read_bytes(), path.stat().st_mode) for path in inputs
-    } == before
+    assert {path: (path.read_bytes(), path.stat().st_mode) for path in inputs} == before
     assert list(invocation.iterdir()) == []

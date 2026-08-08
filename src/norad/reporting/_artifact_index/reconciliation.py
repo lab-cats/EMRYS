@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from .contracts import contracts
 from .core import issue
@@ -18,18 +19,15 @@ from .reconcile_native import (
 from .reconcile_review import reconcile_step09c
 from .reconcile_step09 import reconcile_step09
 
+
 def reconcile_native_transactions(
     inspections: Sequence[Inspection],
 ) -> None:
-    source_lookup = {
-        inspection.resolved_path: inspection for inspection in inspections
-    }
+    source_lookup = {inspection.resolved_path: inspection for inspection in inspections}
     grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
     for inspection in inspections:
         row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
     marker_adapters = {
         "00c": "step00c_reference_dict_v1",
         "06": "step06_orientation_counts_v1",
@@ -66,8 +64,7 @@ def reconcile_native_transactions(
         step_id = scope[0]
         validator = validators.get(step_id)
         if validator is None or any(
-            member.row["required"] == "true"
-            and member.completion_status != "complete"
+            member.row["required"] == "true" and member.completion_status != "complete"
             for member in members
         ):
             continue
@@ -88,9 +85,7 @@ def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
     grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
     for inspection in inspections:
         row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
     for scope, members in grouped.items():
         blocking = [
             member
@@ -105,9 +100,7 @@ def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
             if member.completion_status != "complete":
                 continue
             member.completion_status = "incomplete"
-            member.state_reason = (
-                "Logical scope transaction is incomplete or invalid."
-            )
+            member.state_reason = "Logical scope transaction is incomplete or invalid."
             member.warnings.append(
                 issue(
                     "scope_transaction_incomplete",
@@ -124,9 +117,7 @@ def resolve_scientific_states(
     grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
     for inspection in inspections:
         row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
     resolved: dict[tuple[str, str, str], dict[str, Any]] = {}
     for scope, members in grouped.items():
         if scope[0] != "09c" or any(

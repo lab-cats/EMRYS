@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOL_PATH = REPO_ROOT / "tests" / "tools" / "python_coverage_baseline.py"
 SPEC = importlib.util.spec_from_file_location("python_coverage_baseline", TOOL_PATH)
@@ -32,9 +31,7 @@ def raw_document() -> dict[str, object]:
         "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py": {
             "summary": summary((80, 100), (30, 40))
         },
-        "scripts/example.py": {
-            "summary": summary((30, 50), (10, 20))
-        },
+        "scripts/example.py": {"summary": summary((30, 50), (10, 20))},
     }
     totals = {
         field: sum(item["summary"][field] for item in files.values())
@@ -101,9 +98,7 @@ def test_check_rejects_global_regression(
     current = copy.deepcopy(baseline)
     current["files"][0][covered_field] -= amount
     path = current["files"][0]["path"]
-    counts = {
-        field: current["files"][0][field] for field in TOOL.COUNT_FIELDS
-    }
+    counts = {field: current["files"][0][field] for field in TOOL.COUNT_FIELDS}
     current["files"][0] = TOOL.measured_file(path, counts)
     aggregate = {
         field: sum(item[field] for item in current["files"])
@@ -127,9 +122,7 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
     baseline = TOOL.build_snapshot(raw_document())
     current = copy.deepcopy(baseline)
     shared_path = "src/norad/libraries/validation/report.py"
-    new_module = TOOL.measured_file(
-        shared_path, summary((95, 100), (18, 20))
-    )
+    new_module = TOOL.measured_file(shared_path, summary((95, 100), (18, 20)))
     current["files"].append(new_module)
     current["files"].sort(key=lambda item: item["path"])
     aggregate = {
@@ -146,9 +139,7 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
         ),
     }
 
-    assert "passed" in TOOL.compare_snapshots(
-        baseline, current, [shared_path]
-    )
+    assert "passed" in TOOL.compare_snapshots(baseline, current, [shared_path])
     # The threshold remains enforceable after the reviewed snapshot promotes
     # the new owner into the tracked baseline.
     assert "passed" in TOOL.compare_snapshots(
@@ -214,9 +205,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     ]
     assert config.get("run", "patch").split() == ["subprocess"]
 
-    makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
-        encoding="utf-8"
-    )
+    makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(encoding="utf-8")
     assert "python-coverage-measure:" in makefile
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile
@@ -233,9 +222,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
         "--new-shared-module "
         "src/norad/contracts/scientific_evidence/review_package.py" in makefile
     )
-    assert (
-        "--new-shared-module src/norad/libraries/validation/report.py" in makefile
-    )
+    assert "--new-shared-module src/norad/libraries/validation/report.py" in makefile
     for shared_module in (
         "errors.py",
         "inputs.py",

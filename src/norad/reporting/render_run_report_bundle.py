@@ -16,15 +16,14 @@ import hashlib
 import json
 import os
 import shlex
-import shutil
-import signal
 import stat
 import subprocess
 import sys
 import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
@@ -35,16 +34,13 @@ if str(_SRC_ROOT) not in sys.path:
 
 from norad.reporting import render_run_report as html_report
 
-
 contracts = html_report.contracts
 
 
 PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.1.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "1.1.0"
-PDF_TEMPLATE = (
-    Path(__file__).resolve().parent / "templates" / "run_report_pdf.qmd"
-)
+PDF_TEMPLATE = Path(__file__).resolve().parent / "templates" / "run_report_pdf.qmd"
 PDF_BODY_MARKER = "{{NORAD_REPORT_PDF_BODY}}"
 RECEIPT_HEADER = (
     "schema_name",
@@ -226,12 +222,19 @@ def _validate_existing_bundle(
         path = Path(output["path"])
         if path.parent != output_dir:
             _fail("Existing report receipt output is outside its run directory")
-        snapshot = html_report._snapshot_regular(path, f"existing {output['kind']} output")
-        if snapshot.sha256 != output["sha256"] or snapshot.size_bytes != output["size_bytes"]:
+        snapshot = html_report._snapshot_regular(
+            path, f"existing {output['kind']} output"
+        )
+        if (
+            snapshot.sha256 != output["sha256"]
+            or snapshot.size_bytes != output["size_bytes"]
+        ):
             _fail(f"Existing report output does not match its receipt: {path}")
         declared.append(path)
         snapshots[path] = snapshot
-    receipt_snapshot = html_report._snapshot_regular(receipt_path, "existing report receipt")
+    receipt_snapshot = html_report._snapshot_regular(
+        receipt_path, "existing report receipt"
+    )
     snapshots[receipt_path] = receipt_snapshot
     unexpected = set(present) - set(declared) - {receipt_path}
     if unexpected:
@@ -243,11 +246,7 @@ def _validate_existing_bundle(
 
 
 def prepare_context(arguments: argparse.Namespace) -> BundleContext:
-    requested = (
-        ("html", "pdf")
-        if arguments.formats == "all"
-        else (arguments.formats,)
-    )
+    requested = ("html", "pdf") if arguments.formats == "all" else (arguments.formats,)
     base_arguments = argparse.Namespace(
         run_summary=arguments.run_summary,
         output_root=arguments.output_root,
@@ -288,11 +287,15 @@ def prepare_context(arguments: argparse.Namespace) -> BundleContext:
         html_context.output_dir,
         stable_paths,
     )
-    pandoc_version = _tool_first_line(
-        html_context.quarto_path,
-        ("pandoc", "--version"),
-        "bundled Pandoc",
-    ).removeprefix("pandoc ").strip()
+    pandoc_version = (
+        _tool_first_line(
+            html_context.quarto_path,
+            ("pandoc", "--version"),
+            "bundled Pandoc",
+        )
+        .removeprefix("pandoc ")
+        .strip()
+    )
     return BundleContext(
         html=html_context,
         formats=arguments.formats,
@@ -345,10 +348,7 @@ def _pdf_candidate_summary(table: html_report.ApprovedTable) -> list[str]:
                 f"#### Candidate {index}",
                 "",
                 f"- Candidate ID: {_pdf_code(row['candidate_id'])}",
-                (
-                    "- Selection set: "
-                    f"`{_markdown_escape(row['selection_set'])}`"
-                ),
+                (f"- Selection set: `{_markdown_escape(row['selection_set'])}`"),
             ]
         )
         if table.role == "candidate_selection":
@@ -435,7 +435,8 @@ def _pdf_body(context: BundleContext) -> bytes:
         value = summary[key] if key == "summary_state" else rollup[key]
         lines.append(f"| {label} | `{_markdown_escape(value)}` |")
     failed_scopes = [
-        item for item in summary["expected_scopes"]
+        item
+        for item in summary["expected_scopes"]
         if item["aggregate_state"] == "failed"
     ]
     lines.extend(["", "### Failed expected scopes", ""])
@@ -462,7 +463,8 @@ def _pdf_body(context: BundleContext) -> bytes:
         lines.append("- No limitations were declared in the canonical summary.")
     lines.extend(["", f"## {PDF_SECTION_MARKERS[4]}", ""])
     candidate_tables = [
-        table for table in context.html.tables
+        table
+        for table in context.html.tables
         if table.role in {"candidate_selection", "candidate_adjudication"}
     ]
     if not candidate_tables:
@@ -533,7 +535,9 @@ def _run_quarto(
         "--no-execute",
     ]
     environment = html_report._sanitized_tool_environment()
-    environment["SOURCE_DATE_EPOCH"] = html_report._source_date_epoch(context.html.summary)
+    environment["SOURCE_DATE_EPOCH"] = html_report._source_date_epoch(
+        context.html.summary
+    )
     environment["DENO_DIR"] = str(stage / ".deno")
     environment["TMPDIR"] = str(stage / ".runtime-tmp")
     Path(environment["TMPDIR"]).mkdir(mode=0o700, exist_ok=True)
@@ -601,7 +605,8 @@ def _validate_pdf(path: Path, banner: str) -> int:
     positions = [combined.find(marker) for marker in PDF_SECTION_MARKERS]
     if any(position < 0 for position in positions):
         missing = [
-            marker for marker, position in zip(PDF_SECTION_MARKERS, positions)
+            marker
+            for marker, position in zip(PDF_SECTION_MARKERS, positions)
             if position < 0
         ]
         _fail(f"Rendered PDF lacks required extractable text: {missing}")
@@ -802,9 +807,13 @@ def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
                 output["sha256"],
                 output["size_bytes"],
                 output["media_type"],
-                "NA" if output["self_contained"] is None else str(output["self_contained"]).lower(),
+                "NA"
+                if output["self_contained"] is None
+                else str(output["self_contained"]).lower(),
                 "NA" if output["page_count"] is None else output["page_count"],
-                "NA" if output["state_banner_every_page"] is None else str(output["state_banner_every_page"]).lower(),
+                "NA"
+                if output["state_banner_every_page"] is None
+                else str(output["state_banner_every_page"]).lower(),
                 canonical,
             )
         )
@@ -823,7 +832,9 @@ def _assert_predecessors(context: BundleContext) -> None:
             if os.path.lexists(path):
                 _fail(f"Report output appeared after preflight: {path}")
         else:
-            html_report._assert_snapshot(previous, f"existing report output {path.name}")
+            html_report._assert_snapshot(
+                previous, f"existing report output {path.name}"
+            )
 
 
 def publish_bundle(context: BundleContext) -> None:
@@ -832,7 +843,10 @@ def publish_bundle(context: BundleContext) -> None:
     directory_identity = (directory_meta.st_dev, directory_meta.st_ino)
     token = f"{os.getpid()}-{uuid.uuid4().hex}"
     stage = context.html.output_dir / f".run-report-bundle.{token}.tmp"
-    recovery = context.html.output_dir / f".{context.html.summary['run_id']}.report-bundle.{token}.RECOVERY.txt"
+    recovery = (
+        context.html.output_dir
+        / f".{context.html.summary['run_id']}.report-bundle.{token}.RECOVERY.txt"
+    )
     ownership: html_report.LockOwnership | None = None
     handlers: dict[int, Any] | None = None
     stage_identity: tuple[int, int] | None = None
@@ -862,7 +876,15 @@ def publish_bundle(context: BundleContext) -> None:
         staged_outputs: list[tuple[str, str, Path, Path, int | None]] = []
         if "html" in context.requested_formats:
             rendered_html = html_report._render_with_quarto(context.html, stage)
-            staged_outputs.append(("run-report-html", "html", rendered_html, context.html.output_html, None))
+            staged_outputs.append(
+                (
+                    "run-report-html",
+                    "html",
+                    rendered_html,
+                    context.html.output_html,
+                    None,
+                )
+            )
         if "pdf" in context.requested_formats:
             source = stage / f"{context.html.summary['run_id']}.run_report_pdf.qmd"
             html_report._write_owned_file(source, _pdf_body(context))
@@ -877,14 +899,26 @@ def publish_bundle(context: BundleContext) -> None:
                 rendered_pdf,
                 html_report.SCIENCE_BANNERS[context.html.summary["science_status"]],
             )
-            staged_outputs.append(("run-report-pdf", "pdf", rendered_pdf, context.output_pdf, page_count))
+            staged_outputs.append(
+                ("run-report-pdf", "pdf", rendered_pdf, context.output_pdf, page_count)
+            )
         staged_summary = stage / context.output_summary_tsv.name
         html_report._write_owned_file(staged_summary, _summary_tsv_bytes(context))
         _validate_summary_tsv(staged_summary, context)
-        staged_outputs.append(("run-summary-tsv", "run_summary_tsv", staged_summary, context.output_summary_tsv, None))
+        staged_outputs.append(
+            (
+                "run-summary-tsv",
+                "run_summary_tsv",
+                staged_summary,
+                context.output_summary_tsv,
+                None,
+            )
+        )
         receipt_document = _receipt_document(context, staged_outputs)
         staged_receipt = stage / context.output_receipt.name
-        html_report._write_owned_file(staged_receipt, _receipt_tsv_bytes(receipt_document))
+        html_report._write_owned_file(
+            staged_receipt, _receipt_tsv_bytes(receipt_document)
+        )
         read_back = _read_receipt_tsv(staged_receipt)
         if read_back != receipt_document:
             _fail("Staged report receipt did not round-trip deterministically")
@@ -929,7 +963,9 @@ def publish_bundle(context: BundleContext) -> None:
         html_report._fsync_directory(context.html.output_dir)
 
         publication_order = [item for item in staged_outputs]
-        publication_order.append(("report-receipt", "receipt", staged_receipt, context.output_receipt, None))
+        publication_order.append(
+            ("report-receipt", "receipt", staged_receipt, context.output_receipt, None)
+        )
         for _, kind, staged, final, _ in publication_order:
             if os.path.lexists(final):
                 _fail(f"Final report path appeared during publication: {final}")
@@ -944,7 +980,9 @@ def publish_bundle(context: BundleContext) -> None:
         if "html" in context.requested_formats:
             html_report.validate_rendered_html(
                 context.html.output_html,
-                expected_banner=html_report.SCIENCE_BANNERS[context.html.summary["science_status"]],
+                expected_banner=html_report.SCIENCE_BANNERS[
+                    context.html.summary["science_status"]
+                ],
                 expected_identity=html_report._expected_html_identity(context.html),
             )
         if "pdf" in context.requested_formats:
@@ -961,7 +999,9 @@ def publish_bundle(context: BundleContext) -> None:
             assert_directory()
             for final, snapshot in reversed(tuple(published.items())):
                 if os.path.lexists(final):
-                    html_report._assert_snapshot(snapshot, f"owned published {final.name}")
+                    html_report._assert_snapshot(
+                        snapshot, f"owned published {final.name}"
+                    )
                     final.unlink()
             for final, (backup, backup_snapshot) in backups.items():
                 if os.path.lexists(final):
@@ -972,9 +1012,13 @@ def publish_bundle(context: BundleContext) -> None:
                     )
                     backup.unlink()
                     continue
-                html_report._assert_snapshot(backup_snapshot, f"prior backup {backup.name}")
+                html_report._assert_snapshot(
+                    backup_snapshot, f"prior backup {backup.name}"
+                )
                 os.link(backup, final, follow_symlinks=False)
-                html_report._capture_moved_snapshot(final, backup_snapshot, f"restored {final.name}")
+                html_report._capture_moved_snapshot(
+                    final, backup_snapshot, f"restored {final.name}"
+                )
                 backup.unlink()
             html_report._fsync_directory(context.html.output_dir)
         except BaseException as rollback_exc:
@@ -1007,7 +1051,9 @@ def publish_bundle(context: BundleContext) -> None:
                     if os.path.lexists(backup):
                         if not committed:
                             _fail(f"Unexpected backup remains after rollback: {backup}")
-                        html_report._assert_snapshot(backup_snapshot, f"committed backup {backup.name}")
+                        html_report._assert_snapshot(
+                            backup_snapshot, f"committed backup {backup.name}"
+                        )
                         backup.unlink()
                 html_report._fsync_directory(context.html.output_dir)
             except BaseException as exc:
@@ -1042,7 +1088,9 @@ def print_plan(context: BundleContext) -> None:
     print(f"  Run-summary SHA-256: {context.html.run_summary_snapshot.sha256}")
     print(f"  Requested formats: {','.join(context.requested_formats)}")
     print(f"  Science status: {context.html.summary['science_status']}")
-    print(f"  State banner: {html_report.SCIENCE_BANNERS[context.html.summary['science_status']]}")
+    print(
+        f"  State banner: {html_report.SCIENCE_BANNERS[context.html.summary['science_status']]}"
+    )
     print(f"  Quarto: {context.html.quarto_path}")
     print(f"  Pandoc: {context.pandoc_version}")
     if "html" in context.requested_formats:

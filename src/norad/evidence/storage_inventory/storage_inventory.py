@@ -11,36 +11,68 @@ import re
 import stat
 import sys
 import uuid
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Sequence
 
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 
-
 ROOT_HEADER = (
-    "storage_id", "path", "required", "purpose", "quota_bytes_expected", "notes",
+    "storage_id",
+    "path",
+    "required",
+    "purpose",
+    "quota_bytes_expected",
+    "notes",
 )
 POLICY_HEADER = (
-    "policy_id", "storage_id", "artifact_class", "action", "retention_days",
-    "approval_status", "approved_by", "approved_at", "notes",
+    "policy_id",
+    "storage_id",
+    "artifact_class",
+    "action",
+    "retention_days",
+    "approval_status",
+    "approved_by",
+    "approved_at",
+    "notes",
 )
 INVENTORY_HEADER = (
-    "storage_id", "declared_path", "resolved_path", "required", "purpose",
-    "status", "tree_bytes", "file_count", "directory_count", "symlink_count",
-    "filesystem_total_bytes", "filesystem_free_bytes",
-    "filesystem_available_bytes", "quota_bytes_expected", "detail",
+    "storage_id",
+    "declared_path",
+    "resolved_path",
+    "required",
+    "purpose",
+    "status",
+    "tree_bytes",
+    "file_count",
+    "directory_count",
+    "symlink_count",
+    "filesystem_total_bytes",
+    "filesystem_free_bytes",
+    "filesystem_available_bytes",
+    "quota_bytes_expected",
+    "detail",
 )
 SUMMARY_HEADER = (
-    "roots_sha256", "policy_sha256", "storage_root_count", "available_root_count",
-    "missing_required_count", "measurement_error_count", "policy_row_count",
-    "approved_policy_count", "pending_policy_count", "rejected_policy_count",
-    "unapproved_storage_count", "overall_status",
+    "roots_sha256",
+    "policy_sha256",
+    "storage_root_count",
+    "available_root_count",
+    "missing_required_count",
+    "measurement_error_count",
+    "policy_row_count",
+    "approved_policy_count",
+    "pending_policy_count",
+    "rejected_policy_count",
+    "unapproved_storage_count",
+    "overall_status",
 )
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 ACTIONS = {"retain", "archive", "review_then_delete"}
@@ -88,7 +120,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def table(path: Path, header: tuple[str, ...], label: str) -> tuple[bytes, list[dict[str, str]]]:
+def table(
+    path: Path, header: tuple[str, ...], label: str
+) -> tuple[bytes, list[dict[str, str]]]:
     data = report.read_bytes(path, label)
     try:
         text = data.decode("utf-8")
@@ -103,7 +137,9 @@ def table(path: Path, header: tuple[str, ...], label: str) -> tuple[bytes, list[
     for number, row in enumerate(rows, 2):
         if None in row or any(value is None for value in row.values()):
             fail(f"{label} row {number} has invalid shape")
-        if any("\x00" in value or "\r" in value or "\n" in value for value in row.values()):
+        if any(
+            "\x00" in value or "\r" in value or "\n" in value for value in row.values()
+        ):
             fail(f"{label} row {number} contains unsafe characters")
     return data, rows
 
@@ -133,10 +169,17 @@ def load_roots(path: Path) -> tuple[bytes, list[Root]]:
             fail(f"Storage roots row {number} quota must be NA or a positive integer")
         if not row["purpose"] or not row["notes"]:
             fail(f"Storage roots row {number} purpose and notes must be nonempty")
-        roots.append(Root(
-            storage_id, declared, resolved, row["required"] == "true",
-            row["purpose"], quota, row["notes"],
-        ))
+        roots.append(
+            Root(
+                storage_id,
+                declared,
+                resolved,
+                row["required"] == "true",
+                row["purpose"],
+                quota,
+                row["notes"],
+            )
+        )
     return data, roots
 
 
@@ -171,9 +214,13 @@ def load_policy(path: Path, storage_ids: set[str]) -> tuple[bytes, list[Policy]]
             fail(f"Retention policy row {number} has invalid approval_status")
         if approval == "approved":
             if row["approved_by"] == "NA" or not parse_utc(row["approved_at"]):
-                fail(f"Retention policy row {number} approved record needs approver and past UTC time")
+                fail(
+                    f"Retention policy row {number} approved record needs approver and past UTC time"
+                )
         elif row["approved_by"] != "NA" or row["approved_at"] != "NA":
-            fail(f"Retention policy row {number} non-approved record must use NA approval fields")
+            fail(
+                f"Retention policy row {number} non-approved record must use NA approval fields"
+            )
         if not row["notes"]:
             fail(f"Retention policy row {number} notes must be nonempty")
         key = (row["storage_id"], row["artifact_class"], row["action"])
@@ -192,15 +239,38 @@ def measure(root: Root) -> tuple[object, ...]:
     except OSError as exc:
         status = "missing_required" if root.required else "missing_optional"
         return (
-            root.storage_id, root.declared_path, str(root.path),
-            str(root.required).lower(), root.purpose, status,
-            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, report.clean(exc),
+            root.storage_id,
+            root.declared_path,
+            str(root.path),
+            str(root.required).lower(),
+            root.purpose,
+            status,
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            root.quota,
+            report.clean(exc),
         )
     if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
         return (
-            root.storage_id, root.declared_path, str(root.path),
-            str(root.required).lower(), root.purpose, "invalid",
-            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota,
+            root.storage_id,
+            root.declared_path,
+            str(root.path),
+            str(root.required).lower(),
+            root.purpose,
+            "invalid",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            root.quota,
             "root is not a real directory",
         )
     tree_bytes = 0
@@ -229,16 +299,38 @@ def measure(root: Root) -> tuple[object, ...]:
         fs = os.statvfs(root.path)
     except OSError as exc:
         return (
-            root.storage_id, root.declared_path, str(root.path),
-            str(root.required).lower(), root.purpose, "measurement_error",
-            "NA", "NA", "NA", "NA", "NA", "NA", "NA", root.quota, report.clean(exc),
+            root.storage_id,
+            root.declared_path,
+            str(root.path),
+            str(root.required).lower(),
+            root.purpose,
+            "measurement_error",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            "NA",
+            root.quota,
+            report.clean(exc),
         )
     return (
-        root.storage_id, root.declared_path, str(root.path),
-        str(root.required).lower(), root.purpose, "available",
-        tree_bytes, file_count, directory_count, symlink_count,
-        fs.f_blocks * fs.f_frsize, fs.f_bfree * fs.f_frsize,
-        fs.f_bavail * fs.f_frsize, root.quota, root.notes,
+        root.storage_id,
+        root.declared_path,
+        str(root.path),
+        str(root.required).lower(),
+        root.purpose,
+        "available",
+        tree_bytes,
+        file_count,
+        directory_count,
+        symlink_count,
+        fs.f_blocks * fs.f_frsize,
+        fs.f_bfree * fs.f_frsize,
+        fs.f_bavail * fs.f_frsize,
+        root.quota,
+        root.notes,
     )
 
 
@@ -263,7 +355,10 @@ def outputs(
     unapproved = sum(root.storage_id not in approved_storage for root in roots)
     overall = "pass"
     if (
-        any(status in {"missing_required", "invalid", "measurement_error"} for status in statuses)
+        any(
+            status in {"missing_required", "invalid", "measurement_error"}
+            for status in statuses
+        )
         or unapproved
         or any(approval == "rejected" for approval in approvals)
     ):
@@ -271,10 +366,16 @@ def outputs(
     summary = (
         hashlib.sha256(roots_data).hexdigest(),
         hashlib.sha256(policy_data).hexdigest(),
-        len(roots), statuses.count("available"), statuses.count("missing_required"),
+        len(roots),
+        statuses.count("available"),
+        statuses.count("missing_required"),
         statuses.count("measurement_error") + statuses.count("invalid"),
-        len(policies), approvals.count("approved"), approvals.count("pending"),
-        approvals.count("rejected"), unapproved, overall,
+        len(policies),
+        approvals.count("approved"),
+        approvals.count("pending"),
+        approvals.count("rejected"),
+        unapproved,
+        overall,
     )
     return {
         "inventory": render_tsv(INVENTORY_HEADER, inventory_rows),
@@ -313,12 +414,16 @@ def publish(output_root: Path, generated: dict[str, bytes]) -> None:
         fail(f"Storage inventory lock already exists: {lock}")
     token = uuid.uuid4().hex
     staged = {key: output_root / f".{name}.{token}.tmp" for key, name in names.items()}
-    backups = {key: output_root / f".{name}.{token}.previous" for key, name in names.items()}
+    backups = {
+        key: output_root / f".{name}.{token}.previous" for key, name in names.items()
+    }
     try:
         os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
         for key in names:
             with staged[key].open("xb") as handle:
-                handle.write(generated[key]); handle.flush(); os.fsync(handle.fileno())
+                handle.write(generated[key])
+                handle.flush()
+                os.fsync(handle.fileno())
         if all(present):
             expected = {
                 "inventory": (INVENTORY_HEADER, None),
@@ -337,20 +442,26 @@ def publish(output_root: Path, generated: dict[str, bytes]) -> None:
         published = []
         try:
             for key in ("inventory", "policy", "summary"):
-                os.replace(staged[key], finals[key]); published.append(key)
+                os.replace(staged[key], finals[key])
+                published.append(key)
         except BaseException:
             for key in published:
-                if finals[key].exists(): finals[key].unlink()
+                if finals[key].exists():
+                    finals[key].unlink()
             for key in names:
-                if backups[key].exists(): os.replace(backups[key], finals[key])
+                if backups[key].exists():
+                    os.replace(backups[key], finals[key])
             raise
         for path in backups.values():
-            if path.exists(): path.unlink()
+            if path.exists():
+                path.unlink()
     finally:
         for path in staged.values():
-            if path.exists() and not path.is_symlink(): path.unlink()
+            if path.exists() and not path.is_symlink():
+                path.unlink()
         os.close(descriptor)
-        if lock.exists() and not lock.is_symlink(): lock.unlink()
+        if lock.exists() and not lock.is_symlink():
+            lock.unlink()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -367,7 +478,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Storage roots: {args.roots}")
         print(f"Retention policy: {args.retention_policy}")
         print(f"Output root: {args.output_root}")
-        print("Evidence boundary: read-only measurement and policy recording; no storage is altered.")
+        print(
+            "Evidence boundary: read-only measurement and policy recording; no storage is altered."
+        )
         if not args.execute:
             print("Dry-run complete; no output was written.")
             return 0

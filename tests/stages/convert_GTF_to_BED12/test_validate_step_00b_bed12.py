@@ -5,7 +5,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "convert_gtf_to_bed12_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -51,11 +57,16 @@ def run(
 ):
     return subprocess.run(
         [
-            sys.executable, str(SCRIPT),
-            "--scope-id", "novogene_ref",
-            "--bed12", str(bed),
-            "--source-gtf", str(gtf),
-            "--output", str(output),
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "novogene_ref",
+            "--bed12",
+            str(bed),
+            "--source-gtf",
+            str(gtf),
+            "--output",
+            str(output),
             *extra,
         ],
         cwd=cwd,

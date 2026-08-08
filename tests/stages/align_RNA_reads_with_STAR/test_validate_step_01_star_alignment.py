@@ -5,7 +5,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "align_rna_reads_with_star_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -32,21 +38,42 @@ def fixture(root: Path):
         "% of reads mapped to multiple loci | 8.00%\n"
         "% of reads mapped to too many loci | 1.00%\n"
     )
-    log = root / "S.Log.out"; log.write_text("ALL DONE!\n")
-    progress = root / "S.Log.progress.out"; progress.write_text("ALL DONE!\n")
-    sj = root / "S.SJ.out.tab"; sj.write_text("1\t10\t20\t1\t1\t0\t1\t0\t1\n")
-    out = root / "out"; out.mkdir()
+    log = root / "S.Log.out"
+    log.write_text("ALL DONE!\n")
+    progress = root / "S.Log.progress.out"
+    progress.write_text("ALL DONE!\n")
+    sj = root / "S.SJ.out.tab"
+    sj.write_text("1\t10\t20\t1\t1\t0\t1\t0\t1\n")
+    out = root / "out"
+    out.mkdir()
     return bam, final, log, progress, sj, out / "S.validation.tsv"
 
 
 def run(values, *extra, cwd=ROOT):
     bam, final, log, progress, sj, output = values
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
-         "--log-final", str(final), "--log-out", str(log),
-         "--log-progress", str(progress), "--sj-out", str(sj),
-         "--output", str(output), *extra],
-        cwd=cwd, text=True, capture_output=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "S",
+            "--bam",
+            str(bam),
+            "--log-final",
+            str(final),
+            "--log-out",
+            str(log),
+            "--log-progress",
+            str(progress),
+            "--sj-out",
+            str(sj),
+            "--output",
+            str(output),
+            *extra,
+        ],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -120,4 +147,6 @@ def test_non_repo_cwd_dry_run_execute_repeat_is_deterministic(tmp_path):
     assert_exact_check_roster(rows(values[-1]), "01")
     assert {row["status"] for row in rows(values[-1])} == {"pass"}
     assert list(invocation.iterdir()) == []
-    assert not [path for path in values[-1].parent.iterdir() if path.name.startswith(".")]
+    assert not [
+        path for path in values[-1].parent.iterdir() if path.name.startswith(".")
+    ]

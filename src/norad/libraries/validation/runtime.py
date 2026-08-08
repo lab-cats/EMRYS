@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from norad.libraries.validation.inputs import Snapshot, require_unchanged
 from norad.libraries.validation.publication import publish
@@ -45,4 +45,3 @@ def finish(
     )
     print(f"Published {runtime.published_label} validation report: {runtime.output}")
     return 0
-

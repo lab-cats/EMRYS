@@ -5,23 +5,34 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import star as star_report
 
-
 REQUIRED_MEMBERS = (
-    "genomeParameters.txt", "Genome", "SA", "SAindex", "chrLength.txt",
-    "chrName.txt", "chrNameLength.txt", "chrStart.txt", "exonGeTrInfo.tab",
-    "exonInfo.tab", "geneInfo.tab", "sjdbInfo.txt",
-    "sjdbList.fromGTF.out.tab", "sjdbList.out.tab", "transcriptInfo.tab",
+    "genomeParameters.txt",
+    "Genome",
+    "SA",
+    "SAindex",
+    "chrLength.txt",
+    "chrName.txt",
+    "chrNameLength.txt",
+    "chrStart.txt",
+    "exonGeTrInfo.tab",
+    "exonInfo.tab",
+    "geneInfo.tab",
+    "sjdbInfo.txt",
+    "sjdbList.fromGTF.out.tab",
+    "sjdbList.out.tab",
+    "transcriptInfo.tab",
 )
 CHECK_IDS = {
     "index_members",
@@ -72,9 +83,7 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     for name in REQUIRED_MEMBERS:
         path = index_dir / name
         try:
-            snapshots[path] = report.regular_snapshot(
-                path, f"STAR index member {name}"
-            )
+            snapshots[path] = report.regular_snapshot(path, f"STAR index member {name}")
         except report.ValidationError:
             missing.append(name)
     members_pass = not missing
@@ -95,47 +104,73 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     fasta_values = parameters.get("genomeFastaFiles", [])
     gtf_values = parameters.get("sjdbGTFfile", [])
     overhang_values = parameters.get("sjdbOverhang", [])
-    fasta_match = len(fasta_values) == 1 and report.resolve_from_base(
-        path_base, fasta_values[0]
-    ) == fasta
-    gtf_match = len(gtf_values) == 1 and report.resolve_from_base(
-        path_base, gtf_values[0]
-    ) == gtf
+    fasta_match = (
+        len(fasta_values) == 1
+        and report.resolve_from_base(path_base, fasta_values[0]) == fasta
+    )
+    gtf_match = (
+        len(gtf_values) == 1
+        and report.resolve_from_base(path_base, gtf_values[0]) == gtf
+    )
     try:
-        observed_overhang = int(overhang_values[0]) if len(overhang_values) == 1 else None
+        observed_overhang = (
+            int(overhang_values[0]) if len(overhang_values) == 1 else None
+        )
     except ValueError:
         observed_overhang = None
     rows = (
         report.row(
-            "00a", args.scope_id, "index_members", members_pass,
-            len(REQUIRED_MEMBERS) - len(missing), len(REQUIRED_MEMBERS),
-            "all required members present" if members_pass else "missing: " + ",".join(missing),
+            "00a",
+            args.scope_id,
+            "index_members",
+            members_pass,
+            len(REQUIRED_MEMBERS) - len(missing),
+            len(REQUIRED_MEMBERS),
+            "all required members present"
+            if members_pass
+            else "missing: " + ",".join(missing),
         ),
         report.row(
-            "00a", args.scope_id, "fasta_identity", fasta_match,
-            fasta_values[0] if len(fasta_values) == 1 else "invalid", str(fasta),
+            "00a",
+            args.scope_id,
+            "fasta_identity",
+            fasta_match,
+            fasta_values[0] if len(fasta_values) == 1 else "invalid",
+            str(fasta),
             "genomeFastaFiles resolves to the explicit FASTA",
         ),
         report.row(
-            "00a", args.scope_id, "gtf_identity", gtf_match,
-            gtf_values[0] if len(gtf_values) == 1 else "invalid", str(gtf),
+            "00a",
+            args.scope_id,
+            "gtf_identity",
+            gtf_match,
+            gtf_values[0] if len(gtf_values) == 1 else "invalid",
+            str(gtf),
             "sjdbGTFfile resolves to the explicit GTF",
         ),
         report.row(
-            "00a", args.scope_id, "contig_names_lengths", star_records == fasta_records,
-            f"{len(star_records)} STAR contigs", f"{len(fasta_records)} FASTA contigs",
-            "ordered contig names and lengths agree" if star_records == fasta_records else "ordered contig names or lengths differ",
+            "00a",
+            args.scope_id,
+            "contig_names_lengths",
+            star_records == fasta_records,
+            f"{len(star_records)} STAR contigs",
+            f"{len(fasta_records)} FASTA contigs",
+            "ordered contig names and lengths agree"
+            if star_records == fasta_records
+            else "ordered contig names or lengths differ",
         ),
         report.row(
-            "00a", args.scope_id, "sjdb_overhang", observed_overhang == args.expected_sjdb_overhang,
+            "00a",
+            args.scope_id,
+            "sjdb_overhang",
+            observed_overhang == args.expected_sjdb_overhang,
             observed_overhang if observed_overhang is not None else "invalid",
-            args.expected_sjdb_overhang, "configured STAR splice-junction overhang",
+            args.expected_sjdb_overhang,
+            "configured STAR splice-junction overhang",
         ),
     )
     data = report.render(rows)
-    report.validate_report(
-        data, args.scope_id, step_id="00a", check_ids=CHECK_IDS
-    )
+    report.validate_report(data, args.scope_id, step_id="00a", check_ids=CHECK_IDS)
     return data, snapshots
 
 
@@ -155,7 +190,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             data,
             snapshots,
             before_report=lambda: (
-                print(f"Step: 00a"),
+                print("Step: 00a"),
                 print(f"Scope: {args.scope_id}"),
                 print(f"STAR index: {args.index_dir}"),
                 print(f"Parameter path base: {args.parameter_path_base}"),

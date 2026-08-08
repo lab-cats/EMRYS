@@ -5,18 +5,18 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import bam as bam_report
 from norad.libraries.references import contigs as reference_contigs
-
 
 CHECK_IDS = {
     "bam_bai_structure",
@@ -78,27 +78,48 @@ def build(args: argparse.Namespace):
 
     rows = [
         report.row(
-            "05", args.scope_id, "bam_bai_structure", structure,
+            "05",
+            args.scope_id,
+            "bam_bai_structure",
+            structure,
             f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
-            "BAM/BGZF and BAI/CSI magic", "split-N-cigar pair containers",
+            "BAM/BGZF and BAI/CSI magic",
+            "split-N-cigar pair containers",
         ),
         report.row(
-            "05", args.scope_id, "samtools_quickcheck", quickcheck_ok,
+            "05",
+            args.scope_id,
+            "samtools_quickcheck",
+            quickcheck_ok,
             quickcheck_detail,
-            "exit=0 with empty diagnostics", "samtools quickcheck -v",
+            "exit=0 with empty diagnostics",
+            "samtools quickcheck -v",
         ),
         report.row(
-            "05", args.scope_id, "coordinate_sorting", coordinate,
-            header_detail, "one @HD with SO:coordinate", "split BAM sort order",
+            "05",
+            args.scope_id,
+            "coordinate_sorting",
+            coordinate,
+            header_detail,
+            "one @HD with SO:coordinate",
+            "split BAM sort order",
         ),
         report.row(
-            "05", args.scope_id, "read_group_preservation", matching_rg,
-            header_detail, f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
+            "05",
+            args.scope_id,
+            "read_group_preservation",
+            matching_rg,
+            header_detail,
+            f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
             "canonical sample read group is preserved",
         ),
         report.row(
-            "05", args.scope_id, "reference_sidecars", sidecars_ok,
-            sidecar_observed, "ordered FASTA/FAI/DICT contigs and lengths agree",
+            "05",
+            args.scope_id,
+            "reference_sidecars",
+            sidecars_ok,
+            sidecar_observed,
+            "ordered FASTA/FAI/DICT contigs and lengths agree",
             "explicit GATK reference prerequisites",
         ),
     ]
@@ -113,12 +134,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='05',
+                step_id="05",
                 scope_id=args.scope_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 05',
+                published_label="Step 05",
             ),
             data,
             snapshots,

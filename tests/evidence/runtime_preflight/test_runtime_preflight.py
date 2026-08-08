@@ -2,13 +2,11 @@ import csv
 import hashlib
 import importlib.util
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = (
@@ -89,10 +87,15 @@ def publication_values(
     profile_data, checks = PREFLIGHT.load_profile(profile)
     digest = hashlib.sha256(profile_data).hexdigest()
     results = PREFLIGHT.run_checks(checks, "local")
-    return profile, digest, checks, PREFLIGHT.result_bytes(
+    return (
+        profile,
         digest,
-        "local",
-        results,
+        checks,
+        PREFLIGHT.result_bytes(
+            digest,
+            "local",
+            results,
+        ),
     )
 
 
@@ -167,9 +170,7 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     assert first.stderr == repeated.stderr == ""
     assert output.read_bytes() == report
     assert not any(invocation.iterdir())
-    assert sorted(path.name for path in output_parent.iterdir()) == [
-        "preflight.tsv"
-    ]
+    assert sorted(path.name for path in output_parent.iterdir()) == ["preflight.tsv"]
 
 
 def test_tracked_example_profile_is_valid_and_locally_honest() -> None:
@@ -332,7 +333,7 @@ def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
     fake.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
-        "if [[ \"${*: -1}\" == \"GoodPackage\" ]]; then printf '1.2.3'; exit 0; fi\n"
+        'if [[ "${*: -1}" == "GoodPackage" ]]; then printf \'1.2.3\'; exit 0; fi\n'
         "exit 42\n",
         encoding="utf-8",
     )
@@ -428,17 +429,20 @@ def test_profile_symlink_and_changed_profile_fail_closed(
         return results
 
     monkeypatch.setattr(PREFLIGHT, "run_checks", mutate)
-    assert PREFLIGHT.main(
-        [
-            "--profile",
-            str(profile),
-            "--output",
-            str(output),
-            "--runtime-context",
-            "local",
-            "--execute",
-        ]
-    ) == 2
+    assert (
+        PREFLIGHT.main(
+            [
+                "--profile",
+                str(profile),
+                "--output",
+                str(output),
+                "--runtime-context",
+                "local",
+                "--execute",
+            ]
+        )
+        == 2
+    )
     assert not output.exists()
 
 
@@ -465,7 +469,9 @@ def test_prior_report_rows_must_reconcile_to_profile(tmp_path: Path) -> None:
     output = tmp_path / "preflight.tsv"
     assert run_cli(profile, output, "--execute").returncode == 0
     original = output.read_text(encoding="utf-8")
-    output.write_text(original.replace("\tpython\ttool_version\t", "\ttampered\ttool_version\t"))
+    output.write_text(
+        original.replace("\tpython\ttool_version\t", "\ttampered\ttool_version\t")
+    )
 
     result = run_cli(profile, output, "--execute")
     assert result.returncode == 2

@@ -1,2 +1,1 @@
 """Shared scientific-evidence contracts."""
-

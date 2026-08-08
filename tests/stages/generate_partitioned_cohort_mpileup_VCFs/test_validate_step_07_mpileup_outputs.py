@@ -10,7 +10,13 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -66,8 +72,11 @@ def fixture(root: Path):
     samples = root / "samples.tsv"
     samples.write_text("sample_id\tcondition\nA\tx\nB\ty\n")
     partitions = root / "partitions.tsv"
-    partitions.write_text("partition_id\tselector_type\tselector_value\np1\tregion\t1:1-10\n")
-    fai = root / "ref.fa.fai"; fai.write_text("1\t100\t0\t80\t81\n")
+    partitions.write_text(
+        "partition_id\tselector_type\tselector_value\np1\tregion\t1:1-10\n"
+    )
+    fai = root / "ref.fa.fai"
+    fai.write_text("1\t100\t0\t80\t81\n")
     header = (
         "##fileformat=VCFv4.2\n"
         "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tA\tB\n"
@@ -78,25 +87,50 @@ def fixture(root: Path):
     rev.write_text(header)
     receipt = root / "cohort.p1.step07_outputs.tsv"
     write_receipt(samples, partitions, fwd, rev, receipt)
-    out = root / "out"; out.mkdir()
-    return samples, partitions, fai, fwd, rev, receipt, out / "cohort__p1.validation.tsv"
+    out = root / "out"
+    out.mkdir()
+    return (
+        samples,
+        partitions,
+        fai,
+        fwd,
+        rev,
+        receipt,
+        out / "cohort__p1.validation.tsv",
+    )
 
 
 def arguments(values, *extra):
     samples, partitions, fai, fwd, rev, receipt, output = values
     return [
-        "--cohort-id", "cohort", "--partition-id", "p1",
-        "--sample-manifest", str(samples), "--partition-manifest", str(partitions),
-        "--reference-fai", str(fai), "--fwd-vcf", str(fwd),
-        "--rev-vcf", str(rev), "--receipt", str(receipt),
-        "--output", str(output), *extra,
+        "--cohort-id",
+        "cohort",
+        "--partition-id",
+        "p1",
+        "--sample-manifest",
+        str(samples),
+        "--partition-manifest",
+        str(partitions),
+        "--reference-fai",
+        str(fai),
+        "--fwd-vcf",
+        str(fwd),
+        "--rev-vcf",
+        str(rev),
+        "--receipt",
+        str(receipt),
+        "--output",
+        str(output),
+        *extra,
     ]
 
 
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -140,9 +174,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(tmp_path):
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     input_paths = values[:-1]
-    before = {
-        path: (path.read_bytes(), path.stat().st_mode) for path in input_paths
-    }
+    before = {path: (path.read_bytes(), path.stat().st_mode) for path in input_paths}
 
     dry = run(values, cwd=invocation_cwd)
     assert dry.returncode == 0, dry.stderr
@@ -180,9 +212,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(tmp_path):
         ("record_count", "vcf_record_counts"),
     ],
 )
-def test_each_semantic_check_can_publish_failed_evidence(
-    tmp_path, case, failed_check
-):
+def test_each_semantic_check_can_publish_failed_evidence(tmp_path, case, failed_check):
     values = fixture(tmp_path)
     if case == "receipt_scope":
         values[5].write_text(values[5].read_text().replace("cohort\tp1", "other\tp1"))
@@ -193,13 +223,9 @@ def test_each_semantic_check_can_publish_failed_evidence(
     elif case == "selector_disagreement":
         values[5].write_text(values[5].read_text().replace("1:1-10", "1:1-11"))
     elif case == "manifest_hash":
-        values[5].write_text(
-            values[5].read_text().replace(sha256(values[0]), "0" * 64)
-        )
+        values[5].write_text(values[5].read_text().replace(sha256(values[0]), "0" * 64))
     elif case == "record_count":
-        values[5].write_text(
-            values[5].read_text().replace("\t2\t1\n", "\t2\t9\n")
-        )
+        values[5].write_text(values[5].read_text().replace("\t2\t1\n", "\t2\t9\n"))
     else:
         raise AssertionError(f"Unhandled semantic-failure case: {case}")
 
@@ -253,9 +279,7 @@ def test_post_build_input_mutation_preserves_valid_predecessor(
     assert f"Input changed after validation: {target}" in captured.err
     assert values[-1].read_bytes() == predecessor
     assert target.read_bytes() == before[target] + b"post-build mutation\n"
-    assert {
-        path: path.read_bytes() for path in input_paths if path != target
-    } == {
+    assert {path: path.read_bytes() for path in input_paths if path != target} == {
         path: data for path, data in before.items() if path != target
     }
     assert set(values[-1].parent.iterdir()) == {values[-1]}
@@ -271,8 +295,13 @@ def test_compressed_regions_file_is_exit_zero_failed_selector_evidence(tmp_path)
         "p1\tregions_file\tregions.bed.gz\n"
     )
     write_receipt(
-        values[0], values[1], values[3], values[4], values[5],
-        selector_type="regions_file", selector_value="regions.bed.gz",
+        values[0],
+        values[1],
+        values[3],
+        values[4],
+        values[5],
+        selector_type="regions_file",
+        selector_value="regions.bed.gz",
     )
 
     result = run(values, "--execute")
@@ -287,12 +316,16 @@ def test_out_of_bounds_bed_coordinates_are_a_current_false_pass(tmp_path):
     regions = tmp_path / "regions.bed"
     regions.write_text("1\t0\t1000\n")
     values[1].write_text(
-        "partition_id\tselector_type\tselector_value\n"
-        "p1\tregions_file\tregions.bed\n"
+        "partition_id\tselector_type\tselector_value\np1\tregions_file\tregions.bed\n"
     )
     write_receipt(
-        values[0], values[1], values[3], values[4], values[5],
-        selector_type="regions_file", selector_value="regions.bed",
+        values[0],
+        values[1],
+        values[3],
+        values[4],
+        values[5],
+        selector_type="regions_file",
+        selector_value="regions.bed",
     )
 
     result = run(values, "--execute")
@@ -320,8 +353,13 @@ def test_vcf_selector_ref_alt_and_format_semantics_are_current_false_passes(
 def test_relative_receipt_vcf_paths_are_exit_zero_count_failure(tmp_path):
     values = fixture(tmp_path)
     write_receipt(
-        values[0], values[1], values[3], values[4], values[5],
-        fwd_path=values[3].name, rev_path=values[4].name,
+        values[0],
+        values[1],
+        values[3],
+        values[4],
+        values[5],
+        fwd_path=values[3].name,
+        rev_path=values[4].name,
     )
 
     result = run(values, "--execute")

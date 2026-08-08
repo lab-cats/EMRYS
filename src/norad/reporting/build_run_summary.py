@@ -10,22 +10,12 @@ TSV views, and a receipt last as one rollback-protected transaction.
 from __future__ import annotations
 
 import argparse
-import csv
-import hashlib
-import io
-import json
 import os
-import re
-import stat
 import sys
 import uuid
-from collections import Counter, OrderedDict
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
-
-from jsonschema import Draft202012Validator, FormatChecker
+from typing import Any
 
 _SRC_ROOT = Path(__file__).resolve().parents[2]
 if str(_SRC_ROOT) not in sys.path:
@@ -34,48 +24,34 @@ if str(_SRC_ROOT) not in sys.path:
 from norad.reporting import _run_summary_science as science
 from norad.reporting import build_artifact_index as adapter
 from norad.reporting._run_summary.approvals import (
-    _canonical_nonnegative_integer,
     _normalize_report_table_approvals,
-    _parse_approval_timestamp,
 )
 from norad.reporting._run_summary.inputs import (
     _capture_file_snapshot,
-    _capture_report_table_snapshot,
     _fail,
-    _load_json_bytes,
-    _read_exact_tsv_bytes,
-    _reject_symlink_components,
-    _require_contract_regular_file,
-    _require_explicit_regular_file,
     _require_regular_file,
-    _resolved_path,
     _verify_file_snapshot,
     _verify_report_table_snapshot,
     parse_arguments,
 )
 from norad.reporting._run_summary.models import (
-    LEGACY_PRODUCER_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     QC_SUMMARY_HEADER,
-    QC_SUMMARY_TSV_SCHEMA_VERSION,
-    REPORT_ROLE_ADAPTERS,
-    REPORT_TABLE_APPROVALS_HEADER,
-    RUN_CONTRACT_FIELDS,
     RUN_SUMMARY_HEADER,
     RUN_SUMMARY_RECEIPT_HEADER,
-    RUN_SUMMARY_RECEIPT_SCHEMA_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
-    RUN_SUMMARY_TSV_SCHEMA_VERSION,
     BuildContext,
     FileSnapshot,
-    OutputPaths,
     RunSummaryError,
+)
+from norad.reporting._run_summary.models import (
     adapter as _owner_adapter,
+)
+from norad.reporting._run_summary.models import (
     contracts as _owner_contracts,
 )
 from norad.reporting._run_summary.projection import (
-    _artifact_statuses,
     _build_attempts,
     _build_expected_scopes,
     _build_limitations,
@@ -86,16 +62,13 @@ from norad.reporting._run_summary.projection import (
     _build_tools,
     _default_scientific_review,
     _issue_for_duplicate_metrics,
-    _metric_value_type,
 )
 from norad.reporting._run_summary.transaction import (
     _assert_output_directory_identity,
-    _canonical_key,
     _load_input_transaction,
     _new_attempt_id,
     _parse_history,
     _path_hash,
-    _receipt_int,
     _stable_unique,
 )
 from norad.reporting._run_summary.validation import (
@@ -104,7 +77,6 @@ from norad.reporting._run_summary.validation import (
     _validate_document,
     _validate_existing_summary,
 )
-
 
 if adapter is not _owner_adapter or adapter.contracts is not _owner_contracts:
     raise ImportError("run-summary modules did not resolve one adapter owner")
@@ -138,9 +110,7 @@ def _build_document(
     warnings = _stable_unique(
         issue for artifact in artifacts for issue in artifact["warnings"]
     )
-    duplicate_warning = _issue_for_duplicate_metrics(
-        duplicate_metric_ids, artifacts
-    )
+    duplicate_warning = _issue_for_duplicate_metrics(duplicate_metric_ids, artifacts)
     if duplicate_warning is not None:
         warnings.append(duplicate_warning)
     if scientific_review["record_state"] != "present":
@@ -174,9 +144,7 @@ def _build_document(
             ),
             "adapter_attempt_history": [
                 value
-                for value in artifact_receipt[
-                    "adapter_attempt_history"
-                ].split(",")
+                for value in artifact_receipt["adapter_attempt_history"].split(",")
                 if value
             ],
         },
@@ -257,9 +225,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         artifact_receipt_value=arguments.artifact_receipt,
         output_root_value=arguments.output_root,
     )
-    snapshot_by_path = {
-        snapshot.path: snapshot for snapshot in input_snapshots
-    }
+    snapshot_by_path = {snapshot.path: snapshot for snapshot in input_snapshots}
     artifact_receipt_snapshot = snapshot_by_path[artifact_receipt_path]
     inventory_snapshot = snapshot_by_path[inventory_path]
     _parse_history(
@@ -359,9 +325,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     qc_rows = _build_qc_rows(document)
     qc_summary_bytes = adapter.tsv_bytes(QC_SUMMARY_HEADER, qc_rows)
 
-    previous_receipt, previous_receipt_sha256 = (
-        _load_existing_summary_receipt(paths)
-    )
+    previous_receipt, previous_receipt_sha256 = _load_existing_summary_receipt(paths)
     previous_attempt_id: str | None = None
     previous_attempt_history: list[str] = []
     if previous_receipt is not None:
@@ -408,9 +372,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         started_at=started_at,
         finished_at=finished_at,
     )
-    receipt_bytes = adapter.tsv_bytes(
-        RUN_SUMMARY_RECEIPT_HEADER, [receipt_row]
-    )
+    receipt_bytes = adapter.tsv_bytes(RUN_SUMMARY_RECEIPT_HEADER, [receipt_row])
     context = BuildContext(
         run_id=arguments.run_id,
         execute=arguments.execute,
@@ -496,21 +458,14 @@ def _recheck_inputs(context: BuildContext) -> None:
         )
         if normalized != context.document["scientific_review"]["record"]:
             _fail("The explicit scientific-review package changed")
-    approval_source = context.document["parameters"][
-        "report_table_approvals"
-    ]
+    approval_source = context.document["parameters"]["report_table_approvals"]
     if context.report_table_approvals_path is None:
-        if approval_source is not None or context.document[
-            "approved_report_tables"
-        ]:
+        if approval_source is not None or context.document["approved_report_tables"]:
             _fail("Run-summary approval state changed after preparation")
     elif (
         approval_source is None
-        or approval_source["path"] != str(
-            context.report_table_approvals_path
-        )
-        or approval_source["sha256"]
-        != context.report_table_approvals_sha256
+        or approval_source["path"] != str(context.report_table_approvals_path)
+        or approval_source["sha256"] != context.report_table_approvals_sha256
         or approval_source["row_count"]
         != len(context.document["approved_report_tables"])
     ):
@@ -588,15 +543,11 @@ def publish_context(context: BuildContext) -> None:
             _fail(f"Run-token scratch path already exists: {path}")
 
     try:
-        ownership = adapter.acquire_lock(
-            context.paths.lock, context.run_id, run_token
-        )
+        ownership = adapter.acquire_lock(context.paths.lock, context.run_id, run_token)
     except adapter.ArtifactIndexError as exc:
         _fail(str(exc))
     try:
-        previous_signal_handlers = (
-            adapter.install_publication_signal_handlers()
-        )
+        previous_signal_handlers = adapter.install_publication_signal_handlers()
     except BaseException as exc:
         try:
             adapter.release_owned_lock(context.paths.lock, ownership)
@@ -608,8 +559,7 @@ def publish_context(context: BuildContext) -> None:
         if isinstance(exc, adapter.ArtifactIndexError):
             raise RunSummaryError(str(exc)) from exc
         raise RunSummaryError(
-            "Could not install run-summary publication signal handlers: "
-            f"{exc}"
+            f"Could not install run-summary publication signal handlers: {exc}"
         ) from exc
 
     had_previous = context.previous_receipt is not None
@@ -620,8 +570,8 @@ def publish_context(context: BuildContext) -> None:
     output_identity_lost = False
     try:
         _assert_output_directory_identity(context.paths)
-        current_previous, current_previous_hash = (
-            _load_existing_summary_receipt(context.paths)
+        current_previous, current_previous_hash = _load_existing_summary_receipt(
+            context.paths
         )
         if current_previous != context.previous_receipt or (
             current_previous_hash != context.previous_receipt_sha256
@@ -732,8 +682,7 @@ def publish_context(context: BuildContext) -> None:
             if final_exists:
                 return
             raise RunSummaryError(
-                "Neither the prior final output nor its backup remains: "
-                f"{final_path}"
+                f"Neither the prior final output nor its backup remains: {final_path}"
             )
 
         # Remove a new receipt first, then the data views.
@@ -750,10 +699,7 @@ def publish_context(context: BuildContext) -> None:
             for index in (0, 1, 2):
                 if backed_up[index]:
                     rollback(
-                        (
-                            "restore prior "
-                            f"{context.paths.ordered_outputs[index].name}"
-                        ),
+                        (f"restore prior {context.paths.ordered_outputs[index].name}"),
                         lambda index=index: restore_prior_output(index),
                     )
             if not rollback_errors and backed_up[3]:
@@ -765,15 +711,14 @@ def publish_context(context: BuildContext) -> None:
                 validation_error_count = len(rollback_errors)
 
                 def validate_restored_prior() -> None:
-                    restored, restored_sha256 = (
-                        _load_existing_summary_receipt(context.paths)
+                    restored, restored_sha256 = _load_existing_summary_receipt(
+                        context.paths
                     )
                     if restored is None:
                         _fail("Restored prior run-summary receipt is absent")
                     if (
                         restored != context.previous_receipt
-                        or restored_sha256
-                        != context.previous_receipt_sha256
+                        or restored_sha256 != context.previous_receipt_sha256
                     ):
                         _fail(
                             "Restored prior run-summary receipt differs from "
@@ -790,12 +735,8 @@ def publish_context(context: BuildContext) -> None:
                     "validate restored prior run-summary transaction",
                     validate_restored_prior,
                 )
-                if (
-                    len(rollback_errors) > validation_error_count
-                    and (
-                        context.paths.receipt.exists()
-                        or context.paths.receipt.is_symlink()
-                    )
+                if len(rollback_errors) > validation_error_count and (
+                    context.paths.receipt.exists() or context.paths.receipt.is_symlink()
                 ):
                     rollback(
                         "quarantine invalid restored run-summary receipt",
@@ -856,9 +797,7 @@ def publish_context(context: BuildContext) -> None:
                 if not cleanup_errors:
                     try:
                         _assert_output_directory_identity(context.paths)
-                        adapter.release_owned_lock(
-                            context.paths.lock, ownership
-                        )
+                        adapter.release_owned_lock(context.paths.lock, ownership)
                         _assert_output_directory_identity(context.paths)
                     except RunSummaryError as exc:
                         directory_identity_safe = False
@@ -866,9 +805,7 @@ def publish_context(context: BuildContext) -> None:
                     except adapter.ArtifactIndexError as exc:
                         cleanup_errors.append(str(exc))
         except Exception as exc:
-            cleanup_errors.append(
-                f"publication cleanup was interrupted: {exc}"
-            )
+            cleanup_errors.append(f"publication cleanup was interrupted: {exc}")
         finally:
             try:
                 adapter.restore_signal_handlers(previous_signal_handlers)
@@ -914,13 +851,9 @@ def print_context(context: BuildContext) -> None:
     if context.report_table_approvals_path is None:
         print("  Report-table approvals: not supplied")
     else:
-        print(
-            "  Report-table approvals: "
-            f"{context.report_table_approvals_path}"
-        )
+        print(f"  Report-table approvals: {context.report_table_approvals_path}")
     print(
-        "  Approved report tables: "
-        f"{len(context.document['approved_report_tables'])}"
+        f"  Approved report tables: {len(context.document['approved_report_tables'])}"
     )
     print(f"  Output JSON: {context.paths.summary_json}")
     print(f"  Output TSV: {context.paths.summary_tsv}")

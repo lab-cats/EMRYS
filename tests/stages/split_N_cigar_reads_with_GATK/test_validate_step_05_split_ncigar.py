@@ -8,9 +8,14 @@ from types import ModuleType
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "split_n_cigar_reads_with_gatk_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -32,42 +37,67 @@ TEST_MODULE_NAME = "_norad_test_validate_step_05_split_ncigar"
 
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    bam = root / "S.split_ncigar.bam"; bam.write_bytes(b"BAM\x01synthetic")
-    bai = root / "S.split_ncigar.bam.bai"; bai.write_bytes(b"BAI\x01synthetic")
-    fasta = root / "genome.fa"; fasta.write_text(">1\nACGT\n")
-    fai = root / "genome.fa.fai"; fai.write_text("1\t4\t3\t4\t5\n")
+    bam = root / "S.split_ncigar.bam"
+    bam.write_bytes(b"BAM\x01synthetic")
+    bai = root / "S.split_ncigar.bam.bai"
+    bai.write_bytes(b"BAI\x01synthetic")
+    fasta = root / "genome.fa"
+    fasta.write_text(">1\nACGT\n")
+    fai = root / "genome.fa.fai"
+    fai.write_text("1\t4\t3\t4\t5\n")
     dictionary = root / "genome.dict"
     dictionary.write_text("@HD\tVN:1.6\n@SQ\tSN:1\tLN:4\n")
     tool = root / "samtools"
     tool.write_text(
         "#!/usr/bin/env bash\nset -euo pipefail\n"
-        "case \"$1 $2\" in\n"
+        'case "$1 $2" in\n'
         " 'quickcheck -v') exit \"${QUICKCHECK_EXIT:-0}\" ;;\n"
         " 'view -H')\n"
-        "   if [[ \"${HEADER_EXIT:-0}\" != 0 ]]; then\n"
+        '   if [[ "${HEADER_EXIT:-0}" != 0 ]]; then\n'
         "     printf 'forced header failure\\n' >&2\n"
-        "     exit \"$HEADER_EXIT\"\n"
+        '     exit "$HEADER_EXIT"\n'
         "   fi\n"
-        "   if [[ -n \"${MUTATE_PATH:-}\" ]]; then\n"
+        '   if [[ -n "${MUTATE_PATH:-}" ]]; then\n'
         "     printf 'post-build mutation\\n' >> \"$MUTATE_PATH\"\n"
         "   fi\n"
         "   printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
-        "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\" ;;\n"
+        '"${SORT_ORDER:-coordinate}" "${RG_ID:-S}" "${RG_SM:-S}" ;;\n'
         " *) exit 9 ;;\nesac\n"
     )
     tool.chmod(0o755)
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return bam, bai, fasta, fai, dictionary, tool, out / "S.validation.tsv"
 
 
 def run(values, *extra, cwd=ROOT, environment=None):
     bam, bai, fasta, fai, dictionary, tool, output = values
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
-         "--bai", str(bai), "--reference-fasta", str(fasta),
-         "--reference-fai", str(fai), "--reference-dict", str(dictionary),
-         "--samtools-bin", str(tool), "--output", str(output), *extra],
-        cwd=cwd, env=environment, text=True, capture_output=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "S",
+            "--bam",
+            str(bam),
+            "--bai",
+            str(bai),
+            "--reference-fasta",
+            str(fasta),
+            "--reference-fai",
+            str(fai),
+            "--reference-dict",
+            str(dictionary),
+            "--samtools-bin",
+            str(tool),
+            "--output",
+            str(output),
+            *extra,
+        ],
+        cwd=cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
     )
 
 

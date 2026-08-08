@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import csv
 import copy
+import csv
 import hashlib
 import importlib.util
 import json
@@ -11,15 +11,14 @@ import os
 import signal
 import subprocess
 import sys
-import textwrap
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from typing import Any, Mapping, Sequence
+from types import ModuleType
+from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
@@ -152,9 +151,7 @@ def canonical_json_bytes(value: Any) -> bytes:
 
 def summary_snapshot(fixture: Any) -> dict[str, bytes]:
     return {
-        path.name: path.read_bytes()
-        for path in fixture.summary_paths
-        if path.is_file()
+        path.name: path.read_bytes() for path in fixture.summary_paths if path.is_file()
     }
 
 
@@ -249,9 +246,7 @@ def test_live_run_summary_header_owner_controls_serialized_bytes(
 
     context = context_for(run_summary_fixture)
 
-    assert context.summary_tsv_bytes.splitlines()[0] == (
-        "\t".join(mutated).encode()
-    )
+    assert context.summary_tsv_bytes.splitlines()[0] == ("\t".join(mutated).encode())
     assert context.summary_tsv_bytes != RUN_SUMMARY.adapter.tsv_bytes(
         original,
         context.summary_rows,
@@ -329,18 +324,15 @@ def test_explicit_report_table_approvals_are_normalized_and_provenanced(
     ]
     assert all(row["approval"]["status"] == "approved" for row in approvals)
     assert all(
-        row["approval"]["policy_version"]
-        == "synthetic_report_policy_v1"
+        row["approval"]["policy_version"] == "synthetic_report_policy_v1"
         for row in approvals
     )
     assert all(
-        row["approval"]["approved_by"]
-        == "synthetic_scientific_owner"
+        row["approval"]["approved_by"] == "synthetic_scientific_owner"
         for row in approvals
     )
     artifact_index = {
-        artifact["artifact_id"]: artifact
-        for artifact in document["artifacts"]
+        artifact["artifact_id"]: artifact for artifact in document["artifacts"]
     }
     for approval in approvals:
         source = artifact_index[approval["artifact_id"]]["source"]
@@ -357,9 +349,7 @@ def test_explicit_report_table_approvals_are_normalized_and_provenanced(
     }
     receipt = read_tsv(fixture.summary_receipt_path)[0]
     assert receipt["producer_version"] == RUN_SUMMARY.PRODUCER_VERSION
-    assert receipt["run_summary_json_sha256"] == sha256_file(
-        fixture.summary_json_path
-    )
+    assert receipt["run_summary_json_sha256"] == sha256_file(fixture.summary_json_path)
     assert document["science_status"] == "evidence_incomplete"
     assert_no_summary_residue_after_success(fixture)
 
@@ -378,9 +368,7 @@ def test_header_only_report_table_is_a_valid_explicit_approval(
     result = run_cli(fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
-    approval = validate_summary_document(fixture)[
-        "approved_report_tables"
-    ][0]
+    approval = validate_summary_document(fixture)["approved_report_tables"][0]
     assert approval["row_count"] == 0
     assert approval["display_row_limit"] is None
 
@@ -538,9 +526,7 @@ def test_report_table_approvals_require_exact_science_and_non_symlink_manifest(
     link = symlinked.root / "approval-link.tsv"
     link.symlink_to(symlinked.report_table_approvals)
     arguments = symlinked.command_args()
-    arguments[
-        arguments.index("--report-table-approvals") + 1
-    ] = str(link)
+    arguments[arguments.index("--report-table-approvals") + 1] = str(link)
     result = run_cli(symlinked, arguments=arguments)
     assert result.returncode != 0
     assert "symbolic link" in result.stderr
@@ -556,22 +542,19 @@ def test_fixed_approval_retry_is_deterministic_and_supersedes(
     )
     first = run_cli(fixture, execute=True)
     assert first.returncode == 0, first.stderr
-    before = {
-        path.name: path.read_bytes()
-        for path in fixture.summary_paths[:3]
-    }
+    before = {path.name: path.read_bytes() for path in fixture.summary_paths[:3]}
     first_receipt = read_tsv(fixture.summary_receipt_path)[0]
 
     second = run_cli(fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
     assert {
-        path.name: path.read_bytes()
-        for path in fixture.summary_paths[:3]
+        path.name: path.read_bytes() for path in fixture.summary_paths[:3]
     } == before
     second_receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert second_receipt["supersedes_run_summary_attempt_id"] == (
-        first_receipt["run_summary_attempt_id"]
+    assert (
+        second_receipt["supersedes_run_summary_attempt_id"]
+        == (first_receipt["run_summary_attempt_id"])
     )
     assert second_receipt["run_summary_attempt_history"].split(",") == [
         first_receipt["run_summary_attempt_id"],
@@ -607,12 +590,11 @@ def test_changed_approval_policy_creates_a_new_summary_attempt(
     document = validate_summary_document(fixture)
     approval = document["approved_report_tables"][0]
     assert approval["display_row_limit"] == 1
-    assert approval["approval"]["policy_version"] == (
-        "synthetic_report_policy_v2"
-    )
+    assert approval["approval"]["policy_version"] == ("synthetic_report_policy_v2")
     second_receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert second_receipt["supersedes_run_summary_attempt_id"] == (
-        first_receipt["run_summary_attempt_id"]
+    assert (
+        second_receipt["supersedes_run_summary_attempt_id"]
+        == (first_receipt["run_summary_attempt_id"])
     )
 
 
@@ -622,17 +604,13 @@ def test_legacy_empty_approval_summary_can_be_safely_superseded(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     document = read_json(run_summary_fixture.summary_json_path)
-    document["provenance"]["producer_version"] = (
-        RUN_SUMMARY.LEGACY_PRODUCER_VERSION
-    )
+    document["provenance"]["producer_version"] = RUN_SUMMARY.LEGACY_PRODUCER_VERSION
     document["parameters"].pop("report_table_approvals")
     legacy_json = canonical_json_bytes(document)
     run_summary_fixture.summary_json_path.write_bytes(legacy_json)
     receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
     receipt["producer_version"] = RUN_SUMMARY.LEGACY_PRODUCER_VERSION
-    receipt["run_summary_json_sha256"] = hashlib.sha256(
-        legacy_json
-    ).hexdigest()
+    receipt["run_summary_json_sha256"] = hashlib.sha256(legacy_json).hexdigest()
     receipt["run_summary_json_size_bytes"] = str(len(legacy_json))
     write_tsv(
         run_summary_fixture.summary_receipt_path,
@@ -644,18 +622,13 @@ def test_legacy_empty_approval_summary_can_be_safely_superseded(
 
     assert replacement.returncode == 0, replacement.stderr
     current = validate_summary_document(run_summary_fixture)
-    assert current["provenance"]["producer_version"] == (
-        RUN_SUMMARY.PRODUCER_VERSION
-    )
+    assert current["provenance"]["producer_version"] == (RUN_SUMMARY.PRODUCER_VERSION)
     assert current["parameters"]["report_table_approvals"] is None
-    current_receipt = read_tsv(
-        run_summary_fixture.summary_receipt_path
-    )[0]
-    assert current_receipt["producer_version"] == (
-        RUN_SUMMARY.PRODUCER_VERSION
-    )
-    assert current_receipt["supersedes_run_summary_attempt_id"] == (
-        receipt["run_summary_attempt_id"]
+    current_receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
+    assert current_receipt["producer_version"] == (RUN_SUMMARY.PRODUCER_VERSION)
+    assert (
+        current_receipt["supersedes_run_summary_attempt_id"]
+        == (receipt["run_summary_attempt_id"])
     )
 
 
@@ -682,9 +655,7 @@ def test_report_table_approval_manifest_and_table_mutation_fail_closed(
         roles=("candidate_selection",),
     )
     table_context = context_for(table_fixture)
-    table_path = Path(
-        table_context.document["approved_report_tables"][0]["path"]
-    )
+    table_path = Path(table_context.document["approved_report_tables"][0]["path"])
     table_path.write_bytes(table_path.read_bytes() + b"\n")
     with pytest.raises(
         RUN_SUMMARY.RunSummaryError,
@@ -699,10 +670,7 @@ def assert_no_summary_residue_after_success(fixture: Any) -> None:
     owned_names = {path.name for path in fixture.summary_paths}
     assert not any(
         path.name not in owned_names
-        and (
-            "run-summary" in path.name
-            or "run_summary" in path.name
-        )
+        and ("run-summary" in path.name or "run_summary" in path.name)
         and path.name.startswith(".")
         for path in fixture.output_dir.iterdir()
     )
@@ -714,16 +682,14 @@ def test_fixed_epoch_rerender_keeps_json_and_views_byte_identical(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = {
-        path.name: path.read_bytes()
-        for path in run_summary_fixture.summary_paths[:3]
+        path.name: path.read_bytes() for path in run_summary_fixture.summary_paths[:3]
     }
 
     second = run_cli(run_summary_fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
     assert {
-        path.name: path.read_bytes()
-        for path in run_summary_fixture.summary_paths[:3]
+        path.name: path.read_bytes() for path in run_summary_fixture.summary_paths[:3]
     } == before
     validate_summary_document(run_summary_fixture)
 
@@ -734,10 +700,7 @@ def test_unrelated_files_and_decoy_science_are_ignored_and_preserved(
     unrelated = run_summary_fixture.output_dir / "unrelated.run_summary.json"
     unrelated_payload = b'{"unrelated":true}\n'
     unrelated.write_bytes(unrelated_payload)
-    decoy = (
-        run_summary_fixture.output_dir
-        / "decoy.step09c_review_summary.tsv"
-    )
+    decoy = run_summary_fixture.output_dir / "decoy.step09c_review_summary.tsv"
     decoy.write_text(
         "overall_science_status\nscience_review_complete_exploratory\n",
         encoding="utf-8",
@@ -800,14 +763,10 @@ def test_explicit_science_summary_is_normalized_and_identity_bound(
     assert review["overall_status"] == science_status
     assert review["record_state"] == "present"
     assert review["source"]["path"] == str(fixture.science_review_summary)
-    assert review["source"]["sha256"] == sha256_file(
-        fixture.science_review_summary
-    )
+    assert review["source"]["sha256"] == sha256_file(fixture.science_review_summary)
     assert review["record"]["run_id"] == fixture.run_id
     assert review["record"]["run_contract"] == document["run_contract"]
-    assert review["record"]["scientific_state"]["overall_status"] == (
-        science_status
-    )
+    assert review["record"]["scientific_state"]["overall_status"] == (science_status)
     assert review["record"]["review_id"] == fixture.step09c_fixture.review_id
     limitation = review["record"]["limitations"][0]
     assert limitation["category"]
@@ -831,18 +790,11 @@ def test_explicit_science_preserves_human_reviewer_names(
     assert result.returncode == 0, result.stderr
     record = validate_summary_document(fixture)["scientific_review"]["record"]
     assert record["review_metadata"]["reviewer"] == "Jane Doe"
-    assert (
-        record["review_metadata"]["decision_owner"]
-        == "Scientific Review Team"
-    )
+    assert record["review_metadata"]["decision_owner"] == "Scientific Review Team"
     assert record["review_metadata"]["git_commit"] == "local_build"
+    assert all(row["reviewer"] == "Jane Doe" for row in record["evidence_records"])
     assert all(
-        row["reviewer"] == "Jane Doe"
-        for row in record["evidence_records"]
-    )
-    assert all(
-        row["owner"] == "Scientific Review Team"
-        for row in record["evidence_records"]
+        row["owner"] == "Scientific Review Team" for row in record["evidence_records"]
     )
     assert all(
         decision["reviewer"] == "Jane Doe"
@@ -1037,8 +989,7 @@ def test_committed_public_review_package_mutation_fails_closed(
 
     assert result.returncode != 0
     assert (
-        "Published Step 09c decisions rows differ from reconstruction."
-        in result.stderr
+        "Published Step 09c decisions rows differ from reconstruction." in result.stderr
     )
     assert_no_summary_outputs(fixture)
 
@@ -1112,9 +1063,7 @@ def test_referenced_computational_evidence_mutation_fails_closed(
         target = wrapper_path
     else:
         payload = next(
-            row
-            for row in read_tsv(wrapper_path)
-            if row["evidence_path"] != "NA"
+            row for row in read_tsv(wrapper_path) if row["evidence_path"] != "NA"
         )
         target = Path(payload["evidence_path"])
     target.write_bytes(target.read_bytes() + b"mutated\n")
@@ -1210,10 +1159,7 @@ def test_mixed_science_category_retains_source_free_evidence_provenance(
         "e_computational_not_applicable",
     }
     assert computational["e_computational_missing"]["evidence_date"] is None
-    assert (
-        computational["e_computational_not_applicable"]["evidence_date"]
-        is None
-    )
+    assert computational["e_computational_not_applicable"]["evidence_date"] is None
     assert [
         reference["evidence_id"]
         for reference in record["computational_status"]["evidence"]
@@ -1226,31 +1172,25 @@ def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
     result = run_cli(run_summary_fixture, execute=True)
     assert result.returncode == 0, result.stderr
     document = validate_summary_document(run_summary_fixture)
-    index_rows = read_tsv(
-        run_summary_fixture.adapter_fixture.artifacts_path
-    )
+    index_rows = read_tsv(run_summary_fixture.adapter_fixture.artifacts_path)
     artifact_metrics = []
     for index_row in index_rows:
         artifact = read_json(Path(index_row["record_path"]))
         artifact_metrics.extend(artifact["metrics"])
 
     qc_rows = read_tsv(run_summary_fixture.qc_summary_path)
-    json_metric_ids = [
-        metric["metric_id"] for metric in document["qc_metrics"]
-    ]
-    source_counts = Counter(
-        metric["metric_id"] for metric in artifact_metrics
-    )
+    json_metric_ids = [metric["metric_id"] for metric in document["qc_metrics"]]
+    source_counts = Counter(metric["metric_id"] for metric in artifact_metrics)
 
     assert len(qc_rows) == len(artifact_metrics)
     assert len(json_metric_ids) == len(set(json_metric_ids))
     assert source_counts["source_row_count"] > 1
-    assert sum(
-        row["metric_id"] == "source_row_count" for row in qc_rows
-    ) == source_counts["source_row_count"]
+    assert (
+        sum(row["metric_id"] == "source_row_count" for row in qc_rows)
+        == source_counts["source_row_count"]
+    )
     assert all(
-        row.get("source_artifact_id") or row.get("artifact_id")
-        for row in qc_rows
+        row.get("source_artifact_id") or row.get("artifact_id") for row in qc_rows
     )
 
 
@@ -1407,9 +1347,7 @@ def test_partial_signal_handler_install_restores_original_handlers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
-    original_handlers = {
-        signum: signal.getsignal(signum) for signum in watched
-    }
+    original_handlers = {signum: signal.getsignal(signum) for signum in watched}
     real_signal = RUN_SUMMARY.adapter.signal.signal
     call_count = 0
 
@@ -1434,9 +1372,7 @@ def test_partial_signal_handler_install_restores_original_handlers(
     ):
         RUN_SUMMARY.adapter.install_publication_signal_handlers()
 
-    assert {
-        signum: signal.getsignal(signum) for signum in watched
-    } == original_handlers
+    assert {signum: signal.getsignal(signum) for signum in watched} == original_handlers
 
 
 def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
@@ -1602,8 +1538,7 @@ def test_corrupted_restored_receipt_is_quarantined_and_retains_recovery(
         for path in run_summary_fixture.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".previous")
-        and "run_summary_receipt.tsv" in path.name
+        path.name.endswith(".previous") and "run_summary_receipt.tsv" in path.name
         for path in run_summary_fixture.output_dir.iterdir()
     )
 
@@ -1696,13 +1631,11 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery_paths(
         for path in run_summary_fixture.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".previous")
-        and "run_summary_receipt.tsv" in path.name
+        path.name.endswith(".previous") and "run_summary_receipt.tsv" in path.name
         for path in run_summary_fixture.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".previous")
-        and "run_summary.json" in path.name
+        path.name.endswith(".previous") and "run_summary.json" in path.name
         for path in run_summary_fixture.output_dir.iterdir()
     )
 
@@ -1862,8 +1795,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
         real_validate(**kwargs)
         if not mutated:
             run_summary_fixture.adapter_fixture.artifacts_path.write_bytes(
-                run_summary_fixture.adapter_fixture.artifacts_path.read_bytes()
-                + b"\n"
+                run_summary_fixture.adapter_fixture.artifacts_path.read_bytes() + b"\n"
             )
             mutated = True
 
@@ -2004,14 +1936,9 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
         summary_row=summary_row,
     )
     index_rows = read_tsv(fixture.adapter_fixture.artifacts_path)
-    artifacts = [
-        read_json(Path(row["record_path"]))
-        for row in index_rows
-    ]
+    artifacts = [read_json(Path(row["record_path"])) for row in index_rows]
     target = next(
-        artifact
-        for artifact in artifacts
-        if artifact["adapter"] == "step08_sites_v1"
+        artifact for artifact in artifacts if artifact["adapter"] == "step08_sites_v1"
     )
     absolute_source = CONTRACTS.resolve_contract_path(target["source"]["path"])
     source_text = str(absolute_source)
@@ -2085,19 +2012,14 @@ def test_alternate_science_summary_spelling_publishes_consistent_receipt(
     assert context.document["scientific_review"]["source"]["path"] == (
         alternate_summary
     )
-    assert context.receipt_row["science_review_summary_path"] == (
-        alternate_summary
-    )
+    assert context.receipt_row["science_review_summary_path"] == (alternate_summary)
     RUN_SUMMARY.publish_context(context)
 
     RUN_SUMMARY.validate_published_run_summary(context)
     receipt = read_tsv(fixture.summary_receipt_path)[0]
     document = read_json(fixture.summary_json_path)
     assert receipt["science_review_summary_path"] == alternate_summary
-    assert (
-        document["scientific_review"]["source"]["path"]
-        == alternate_summary
-    )
+    assert document["scientific_review"]["source"]["path"] == alternate_summary
     assert_no_summary_residue_after_success(fixture)
 
 
@@ -2163,8 +2085,7 @@ def test_pending_science_decision_preserves_rationale_owner_and_policy(
 def test_generated_limitation_id_is_collision_safe(tmp_path: Path) -> None:
     fixture = FIXTURE.build_missing_fixture(tmp_path / "collision")
     record = read_json(
-        fixture.adapter_fixture.records_dir
-        / "sample.SYNTH_A.canonical_bai.json"
+        fixture.adapter_fixture.records_dir / "sample.SYNTH_A.canonical_bai.json"
     )
     existing = {
         "limitation_id": "required_artifacts_not_complete",
@@ -2187,8 +2108,9 @@ def test_generated_limitation_id_is_collision_safe(tmp_path: Path) -> None:
     ]
 
 
-def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
-) -> None:
+def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts() -> (
+    None
+):
     first = {
         "attempt_id": "attempt-a1",
         "state": "succeeded",
@@ -2228,9 +2150,7 @@ def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
     assert superseded == ["attempt-a1"]
 
     conflicting = copy.deepcopy(artifacts)
-    conflicting[1]["attempts"][1]["finished_at"] = (
-        "2000-01-01T00:00:06Z"
-    )
+    conflicting[1]["attempts"][1]["finished_at"] = "2000-01-01T00:00:06Z"
     with pytest.raises(
         RUN_SUMMARY.RunSummaryError,
         match="conflicting definitions",

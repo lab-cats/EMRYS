@@ -7,14 +7,11 @@ from pathlib import Path
 
 from norad.libraries.validation import ValidationError, clean, read_bytes
 
-
 BAM_MAGIC_PREFIXES = {b"BAM\x01", b"\x1f\x8b\x08\x04"}
 BAI_MAGIC_PREFIXES = {b"BAI\x01", b"CSI\x01"}
 
 
-def validate_bam_bai_pair(
-    bam: Path, bai: Path
-) -> tuple[bool, bytes, bytes]:
+def validate_bam_bai_pair(bam: Path, bai: Path) -> tuple[bool, bytes, bytes]:
     """Validate BAM/BAI magic signatures and return both observed signatures."""
     bam_magic = read_bam_prefix(bam)
     bai_magic = read_bai_prefix(bai)

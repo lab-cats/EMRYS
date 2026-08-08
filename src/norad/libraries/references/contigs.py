@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from collections.abc import Iterable
+from pathlib import Path
 
 
 class ReferenceContigError(RuntimeError):
@@ -61,9 +61,7 @@ def parse_dict(path: Path) -> list[tuple[str, int]]:
         if not line.startswith("@SQ\t"):
             continue
         values = dict(
-            field.split(":", 1)
-            for field in line.split("\t")[1:]
-            if ":" in field
+            field.split(":", 1) for field in line.split("\t")[1:] if ":" in field
         )
         if "SN" not in values or not values.get("LN", "").isdigit():
             _fail("DICT has malformed @SQ row")
@@ -71,9 +69,7 @@ def parse_dict(path: Path) -> list[tuple[str, int]]:
     return _unique_contigs(result, "DICT")
 
 
-def _unique_contigs(
-    rows: list[tuple[str, int]], label: str
-) -> list[tuple[str, int]]:
+def _unique_contigs(rows: list[tuple[str, int]], label: str) -> list[tuple[str, int]]:
     if not rows or len({name for name, _ in rows}) != len(rows):
         _fail(f"{label} contigs are empty or duplicated")
     return rows

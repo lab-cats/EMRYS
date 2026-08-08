@@ -5,4 +5,3 @@ Public workflow entry points remain the owner-local scripts under ``stages``,
 exists so those entry points can share narrow implementation modules without
 copying shared import machinery.
 """
-

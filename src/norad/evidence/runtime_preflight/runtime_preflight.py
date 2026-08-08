@@ -19,16 +19,16 @@ import stat
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 from norad.libraries import validation as report
-
 
 PROFILE_HEADER = (
     "check_id",
@@ -143,9 +143,7 @@ def _parse_probe_args(raw: str, row_number: int) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(
         isinstance(item, str) and "\x00" not in item for item in value
     ):
-        _fail(
-            f"Profile row {row_number} probe_args must be a JSON array of strings"
-        )
+        _fail(f"Profile row {row_number} probe_args must be a JSON array of strings")
     return tuple(value)
 
 
@@ -159,26 +157,31 @@ def load_profile(path: Path) -> tuple[bytes, list[Check]]:
     if reader.fieldnames is None:
         _fail("Runtime profile is empty")
     if tuple(reader.fieldnames) != PROFILE_HEADER:
-        _fail(
-            "Runtime profile header must be exactly: " + "\t".join(PROFILE_HEADER)
-        )
+        _fail("Runtime profile header must be exactly: " + "\t".join(PROFILE_HEADER))
     checks: list[Check] = []
     seen: set[str] = set()
     for row_number, row in enumerate(reader, start=2):
         if None in row:
             _fail(f"Runtime profile row {row_number} has extra columns")
         values = {key: value if value is not None else "" for key, value in row.items()}
-        if any("\x00" in value or "\n" in value or "\r" in value for value in values.values()):
+        if any(
+            "\x00" in value or "\n" in value or "\r" in value
+            for value in values.values()
+        ):
             _fail(f"Runtime profile row {row_number} contains an unsafe character")
         check_id = values["check_id"]
         if not SAFE_ID.fullmatch(check_id):
-            _fail(f"Runtime profile row {row_number} has invalid check_id: {check_id!r}")
+            _fail(
+                f"Runtime profile row {row_number} has invalid check_id: {check_id!r}"
+            )
         if check_id in seen:
             _fail(f"Runtime profile has duplicate check_id: {check_id}")
         seen.add(check_id)
         check_type = values["check_type"]
         if check_type not in CHECK_TYPES:
-            _fail(f"Runtime profile row {row_number} has invalid check_type: {check_type}")
+            _fail(
+                f"Runtime profile row {row_number} has invalid check_type: {check_type}"
+            )
         runtime_context = values["runtime_context"]
         if runtime_context not in RUNTIME_CONTEXTS:
             _fail(
@@ -302,7 +305,9 @@ def _probe_tool(check: Check) -> Result:
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
-        return Result(check, "fail", output, "Version output did not match expected regex")
+        return Result(
+            check, "fail", output, "Version output did not match expected regex"
+        )
     return Result(check, "pass", output, f"Resolved executable: {executable}")
 
 
@@ -317,7 +322,9 @@ def _probe_r_namespace(check: Check) -> Result:
     )
     code, output = _run_command([rscript, "-e", expression, "--args", check.target])
     if code != 0:
-        detail = "R namespace is unavailable" if code == 42 else "R namespace probe failed"
+        detail = (
+            "R namespace is unavailable" if code == 42 else "R namespace probe failed"
+        )
         return Result(check, "fail", output or f"exit {code}", detail)
     if re.fullmatch(check.expected, output) is None:
         return Result(
@@ -513,9 +520,7 @@ def publish(
             _fail(f"Output must not be a symbolic link: {output}")
         if had_previous:
             previous = _read_regular_file(output, "Existing runtime preflight output")
-            validate_result_bytes(
-                previous, profile_sha256, runtime_context, checks
-            )
+            validate_result_bytes(previous, profile_sha256, runtime_context, checks)
         with staged.open("xb") as handle:
             handle.write(data)
             handle.flush()
@@ -568,10 +573,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Runtime context: {args.runtime_context}")
         print(f"Output: {args.output}")
         for result in results:
-            print(
-                f"{result.check.check_id}: {result.status} "
-                f"({result.observed})"
-            )
+            print(f"{result.check.check_id}: {result.status} ({result.observed})")
         print(
             "Evidence boundary: availability checks only; this is not runtime "
             "validation or cluster proof."

@@ -6,17 +6,14 @@ import csv
 import hashlib
 import importlib.util
 import multiprocessing
-import os
 import signal
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 from typing import Any
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 OWNER_ROOT = (
@@ -29,20 +26,10 @@ OWNER_ROOT = (
 SCRIPT = OWNER_ROOT / "step_09c_scientific_validation.py"
 FIXTURE_BUILDER = Path(__file__).with_name("build_fixture.py")
 STEP08_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "step08.py"
+    REPO_ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step08.py"
 )
 STEP09_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "step09.py"
+    REPO_ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step09.py"
 )
 REVIEW_PACKAGE_PATH = (
     REPO_ROOT
@@ -59,7 +46,9 @@ def load_fixture_builder() -> ModuleType:
         "norad_step09c_fixture_builder", FIXTURE_BUILDER
     )
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load Step 09c fixture builder: {FIXTURE_BUILDER}")
+        raise RuntimeError(
+            f"Could not load Step 09c fixture builder: {FIXTURE_BUILDER}"
+        )
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -209,8 +198,7 @@ def refresh_evidence_source(
 
 def expected_output_names(review_id: str) -> set[str]:
     return {
-        f"{review_id}.{suffix}"
-        for _, suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
+        f"{review_id}.{suffix}" for _, suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
     }
 
 
@@ -240,10 +228,7 @@ def expected_fixture_input_paths(fixture: Any) -> set[Path]:
         "evidence/decisions.tsv",
         "evidence/limitations.tsv",
         "evidence/computational_validation.tsv",
-        (
-            "step09/analysis_sensitivity_dp/"
-            "analysis_sensitivity_dp.cmh_summary.tsv"
-        ),
+        ("step09/analysis_sensitivity_dp/analysis_sensitivity_dp.cmh_summary.tsv"),
         (
             "step09/analysis_sensitivity_effect/"
             "analysis_sensitivity_effect.cmh_summary.tsv"
@@ -298,9 +283,7 @@ def test_build_context_uses_live_private_evidence_owner(
     def reject_payload_validation(*_args: Any, **_kwargs: Any) -> None:
         nonlocal reached_owner
         reached_owner = True
-        raise FIXTURES.CONTRACT.ContractError(
-            "synthetic live evidence-owner failure"
-        )
+        raise FIXTURES.CONTRACT.ContractError("synthetic live evidence-owner failure")
 
     monkeypatch.setattr(
         FIXTURES.CONTRACT._context_owner,
@@ -413,16 +396,14 @@ def test_unrelated_files_do_not_change_explicit_input_outputs(
     assert second.returncode == 0, second.stderr
     first_dir = output_directory(first_output, fixture.review_id)
     second_dir = output_directory(second_output, fixture.review_id)
-    assert {
-        path.name: path.read_bytes() for path in first_dir.iterdir()
-    } == {path.name: path.read_bytes() for path in second_dir.iterdir()}
+    assert {path.name: path.read_bytes() for path in first_dir.iterdir()} == {
+        path.name: path.read_bytes() for path in second_dir.iterdir()
+    }
 
 
 def test_declared_input_hash_mutation_is_rejected(tmp_path: Path) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    fixture.sample_manifest.write_text(
-        fixture.sample_manifest.read_text() + "\n"
-    )
+    fixture.sample_manifest.write_text(fixture.sample_manifest.read_text() + "\n")
 
     result = run_validator(fixture, execute=True)
 
@@ -433,9 +414,7 @@ def test_declared_input_hash_mutation_is_rejected(tmp_path: Path) -> None:
 def test_declared_evidence_hash_mutation_is_rejected(tmp_path: Path) -> None:
     fixture = build_fixture(tmp_path / "fixture")
     orientation_evidence = (
-        fixture.evidence_manifest.parent
-        / "evidence"
-        / "orientation_locus_audit.tsv"
+        fixture.evidence_manifest.parent / "evidence" / "orientation_locus_audit.tsv"
     )
     orientation_evidence.write_text(orientation_evidence.read_text() + "\n")
 
@@ -855,10 +834,7 @@ def test_exploratory_completion_requires_and_preserves_complete_evidence(
 
     assert result.returncode == 0, result.stderr
     summary = read_single_row(summary_path(fixture.output_root, fixture.review_id))
-    assert (
-        summary["overall_science_status"]
-        == "science_review_complete_exploratory"
-    )
+    assert summary["overall_science_status"] == "science_review_complete_exploratory"
     assert summary["review_completed_date"] == "2026-01-10"
     assert summary["selected_candidate_count"] == "4"
     assert summary["adjudicated_candidate_count"] == "4"
@@ -885,8 +861,7 @@ def test_context_binds_exact_32_file_fixture_roster(tmp_path: Path) -> None:
         ),
         ("evidence/orientation_locus_audit.tsv", "mutate", "changed"),
         (
-            "step09/analysis_sensitivity_dp/"
-            "analysis_sensitivity_dp.cmh_summary.tsv",
+            "step09/analysis_sensitivity_dp/analysis_sensitivity_dp.cmh_summary.tsv",
             "mutate",
             "changed",
         ),
@@ -989,9 +964,7 @@ def test_first_publication_moves_twelve_payloads_then_summary(
         publication_order.append(key)
         if key == "review_summary":
             output_dir = destination_path.parent
-            temp_dirs = list(
-                output_dir.glob(f".{fixture.review_id}.step09c.*.tmp")
-            )
+            temp_dirs = list(output_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
             barrier.update(
                 finals={
                     output_key
@@ -1006,11 +979,7 @@ def test_first_publication_moves_twelve_payloads_then_summary(
                     list(temp_dirs[0].iterdir()) if len(temp_dirs) == 1 else []
                 ),
                 backup_dir_count=len(
-                    list(
-                        output_dir.glob(
-                            f".{fixture.review_id}.step09c.*.previous"
-                        )
-                    )
+                    list(output_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
                 ),
                 published_read_count=len(published_reads),
                 confirm_count=confirm_count,
@@ -1050,9 +1019,7 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Replacement publication order.")
@@ -1094,9 +1061,7 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
             backup_dirs = list(
                 final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
             )
-            temp_dirs = list(
-                final_dir.glob(f".{fixture.review_id}.step09c.*.tmp")
-            )
+            temp_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
             barrier.update(
                 finals={
                     output_key
@@ -1104,10 +1069,7 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
                     if path.is_file()
                 },
                 backup_bytes=(
-                    {
-                        path.name: path.read_bytes()
-                        for path in backup_dirs[0].iterdir()
-                    }
+                    {path.name: path.read_bytes() for path in backup_dirs[0].iterdir()}
                     if len(backup_dirs) == 1
                     else {}
                 ),
@@ -1160,9 +1122,7 @@ def test_late_input_mutation_after_summary_restores_predecessor(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Late mutation replacement.")
@@ -1185,12 +1145,11 @@ def test_late_input_mutation_after_summary_restores_predecessor(
         ):
             barrier_observed = True
             assert all(path.is_file() for path in context.output_paths.values())
-            assert len(
-                list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
-            ) == 1
             assert (
-                final_dir / f".{fixture.review_id}.step09c.lock"
-            ).is_file()
+                len(list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous")))
+                == 1
+            )
+            assert (final_dir / f".{fixture.review_id}.step09c.lock").is_file()
             changed_input.write_bytes(changed_input.read_bytes() + b"changed\n")
 
     monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", mutate_after_summary)
@@ -1254,9 +1213,7 @@ def test_post_summary_replacement_failure_restores_all_predecessors_summary_last
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Post-summary rollback.")
@@ -1319,9 +1276,7 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Incomplete restore.")
@@ -1373,9 +1328,7 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
             assert path.read_bytes() == predecessor_bytes[path.name]
     lock = final_dir / f".{fixture.review_id}.step09c.lock"
     temp_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
-    backup_dirs = list(
-        final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
-    )
+    backup_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
     recovery_notices = list(
         final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
     )
@@ -1383,12 +1336,10 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
     assert len(temp_dirs) == 1
     assert list(temp_dirs[0].iterdir()) == []
     assert len(backup_dirs) == 1
-    assert {path.name for path in backup_dirs[0].iterdir()} == {
+    assert {path.name for path in backup_dirs[0].iterdir()} == {failed_final.name}
+    assert (backup_dirs[0] / failed_final.name).read_bytes() == predecessor_bytes[
         failed_final.name
-    }
-    assert (
-        backup_dirs[0] / failed_final.name
-    ).read_bytes() == predecessor_bytes[failed_final.name]
+    ]
     assert len(recovery_notices) == 1
     assert "synthetic predecessor restore failure" in recovery_notices[0].read_text()
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
@@ -1401,9 +1352,7 @@ def test_term_after_summary_retains_unvalidated_replacement_and_backups(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "TERM after summary.")
@@ -1422,9 +1371,7 @@ def test_term_after_summary_retains_unvalidated_replacement_and_backups(
         process.join(10)
         pytest.fail(f"TERM summary barrier was not reached; exit={process.exitcode}")
 
-    backup_dirs = list(
-        final_dir.glob(f".{fixture.review_id}.step09c.*.previous")
-    )
+    backup_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
     temp_dirs = list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))
     lock = final_dir / f".{fixture.review_id}.step09c.lock"
     assert all(path.is_file() for path in context.output_paths.values())
@@ -1435,23 +1382,17 @@ def test_term_after_summary_retains_unvalidated_replacement_and_backups(
     assert lock.is_file()
     assert len(temp_dirs) == 1
     assert list(temp_dirs[0].iterdir()) == []
-    assert not list(
-        final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
-    )
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt"))
 
     process.terminate()
     process.join(10)
     assert not process.is_alive()
     assert process.exitcode == -signal.SIGTERM
     assert all(path.is_file() for path in context.output_paths.values())
-    assert len(
-        list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))
-    ) == 1
+    assert len(list(final_dir.glob(f".{fixture.review_id}.step09c.*.previous"))) == 1
     assert lock.is_file()
     assert len(list(final_dir.glob(f".{fixture.review_id}.step09c.*.tmp"))) == 1
-    assert not list(
-        final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt")
-    )
+    assert not list(final_dir.glob(f".{fixture.review_id}.step09c.*.RECOVERY.txt"))
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
 
 
@@ -1463,9 +1404,7 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    predecessor_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    predecessor_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     replacement_notes = "KeyboardInterrupt after summary."
@@ -1486,9 +1425,7 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
             and destination_path == summary
         ):
             barrier.update(
-                finals=sum(
-                    path.is_file() for path in context.output_paths.values()
-                ),
+                finals=sum(path.is_file() for path in context.output_paths.values()),
                 backups=sum(
                     1
                     for backup_dir in final_dir.glob(
@@ -1496,9 +1433,7 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
                     )
                     for _ in backup_dir.iterdir()
                 ),
-                lock=(
-                    final_dir / f".{fixture.review_id}.step09c.lock"
-                ).is_file(),
+                lock=(final_dir / f".{fixture.review_id}.step09c.lock").is_file(),
             )
             raise KeyboardInterrupt("synthetic post-summary interrupt")
 
@@ -1515,9 +1450,10 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
     assert read_single_row(context.output_paths["review_plan"])["notes"] == (
         replacement_notes
     )
-    assert context.output_paths["review_plan"].read_bytes() != predecessor_bytes[
-        context.output_paths["review_plan"].name
-    ]
+    assert (
+        context.output_paths["review_plan"].read_bytes()
+        != predecessor_bytes[context.output_paths["review_plan"].name]
+    )
     assert not list(final_dir.glob(f".{fixture.review_id}.step09c*"))
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
 
@@ -1549,9 +1485,7 @@ def test_same_review_contender_waits_for_admitted_winner_to_release_lock(
 
     with pytest.raises(FIXTURES.CONTRACT.ContractError, match="locked"):
         FIXTURES.CONTRACT.publish_outputs(context, tables)
-    assert (
-        final_dir / f".{fixture.review_id}.step09c.lock"
-    ).is_file()
+    assert (final_dir / f".{fixture.review_id}.step09c.lock").is_file()
 
     release.set()
     winner.join(10)
@@ -1609,9 +1543,7 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
     first = run_validator(fixture, execute=True)
     assert first.returncode == 0, first.stderr
     final_dir = output_directory(fixture.output_root, fixture.review_id)
-    original_bytes = {
-        path.name: path.read_bytes() for path in final_dir.iterdir()
-    }
+    original_bytes = {path.name: path.read_bytes() for path in final_dir.iterdir()}
 
     rewrite_field(
         fixture.review_plan,
@@ -1653,9 +1585,7 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     contract = FIXTURES.CONTRACT
     review_package = FIXTURES.REVIEW_PACKAGE
     plan_path = REPO_ROOT / "configs" / "step_09c_review_plan.example.tsv"
-    manifest_path = (
-        REPO_ROOT / "configs" / "step_09c_evidence_manifest.example.tsv"
-    )
+    manifest_path = REPO_ROOT / "configs" / "step_09c_evidence_manifest.example.tsv"
     plan_table, plan, analyses = contract.validate_review_plan(
         plan_path, "example_scientific_review"
     )
@@ -1892,9 +1822,7 @@ def test_step09_target_status_inconsistency_is_rejected_mechanically(
     non_target["test_status"] = "not_target_change"
     non_target["call_status"] = "not_tested"
     target = next(
-        row
-        for row in rows
-        if row["test_status"] == "tested" and row["rna_ref"] == "A"
+        row for row in rows if row["test_status"] == "tested" and row["rna_ref"] == "A"
     )
     target["test_status"] = "missing_counts"
     target["call_status"] = "not_tested"
@@ -1927,9 +1855,7 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
         )
 
     false_cmh = [dict(row) for row in context.step09_all_rows]
-    untested = next(
-        row for row in false_cmh if row["test_status"] == "low_coverage"
-    )
+    untested = next(row for row in false_cmh if row["test_status"] == "low_coverage")
     untested.update(
         {
             "cmh_statistic": "1",
@@ -1988,26 +1914,17 @@ def test_step09_enabled_background_reconciles_from_immutable_counts(
                 "AD__BACKGROUND_1": ad,
             }
         )
-        if (
-            row["test_status"] == "tested"
-            and background_status != "pass"
-        ):
+        if row["test_status"] == "tested" and background_status != "pass":
             row["call_status"] = "background_not_passed"
 
-    FIXTURES.STEP09.validate_step09_result_semantics(
-        rows, summary, sample_rows
-    )
+    FIXTURES.STEP09.validate_step09_result_semantics(rows, summary, sample_rows)
 
-    rows[0]["max_background_af"] = (
-        "0.5" if maximum != "NA" else "0"
-    )
+    rows[0]["max_background_af"] = "0.5" if maximum != "NA" else "0"
     with pytest.raises(
         FIXTURES.CONTRACT.ContractError,
         match="enabled-background",
     ):
-        FIXTURES.STEP09.validate_step09_result_semantics(
-            rows, summary, sample_rows
-        )
+        FIXTURES.STEP09.validate_step09_result_semantics(rows, summary, sample_rows)
 
 
 @pytest.mark.parametrize(

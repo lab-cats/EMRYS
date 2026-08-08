@@ -8,7 +8,13 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "partition_bam_by_mechanical_read_orientation_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -30,10 +36,14 @@ TEST_MODULE_NAME = "_norad_test_validate_step_06_orientation_outputs"
 
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    fwd_bam = root / "S.FWD_like.bam"; fwd_bam.write_bytes(b"BAM\x01synthetic")
-    fwd_bai = root / "S.FWD_like.bam.bai"; fwd_bai.write_bytes(b"BAI\x01synthetic")
-    rev_bam = root / "S.REV_like.bam"; rev_bam.write_bytes(b"BAM\x01synthetic")
-    rev_bai = root / "S.REV_like.bam.bai"; rev_bai.write_bytes(b"BAI\x01synthetic")
+    fwd_bam = root / "S.FWD_like.bam"
+    fwd_bam.write_bytes(b"BAM\x01synthetic")
+    fwd_bai = root / "S.FWD_like.bam.bai"
+    fwd_bai.write_bytes(b"BAI\x01synthetic")
+    rev_bam = root / "S.REV_like.bam"
+    rev_bam.write_bytes(b"BAM\x01synthetic")
+    rev_bai = root / "S.REV_like.bam.bai"
+    rev_bai.write_bytes(b"BAI\x01synthetic")
     counts = root / "S.orientation_counts.tsv"
     counts.write_text(
         "sample_id\tinput_records\tflag_99_records\tflag_147_records\t"
@@ -41,20 +51,28 @@ def fixture(root: Path):
         "assigned_records\tunassigned_records\tassigned_fraction\n"
         "S\t10\t3\t2\t2\t1\t5\t3\t8\t2\t0.800000\n"
     )
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return fwd_bam, fwd_bai, rev_bam, rev_bai, counts, out / "S.validation.tsv"
 
 
 def arguments(values, *extra):
     fwd_bam, fwd_bai, rev_bam, rev_bai, counts, output = values
     return [
-        "--scope-id", "S",
-        "--fwd-bam", str(fwd_bam),
-        "--fwd-bai", str(fwd_bai),
-        "--rev-bam", str(rev_bam),
-        "--rev-bai", str(rev_bai),
-        "--counts", str(counts),
-        "--output", str(output),
+        "--scope-id",
+        "S",
+        "--fwd-bam",
+        str(fwd_bam),
+        "--fwd-bai",
+        str(fwd_bai),
+        "--rev-bam",
+        str(rev_bam),
+        "--rev-bai",
+        str(rev_bai),
+        "--counts",
+        str(counts),
+        "--output",
+        str(output),
         *extra,
     ]
 
@@ -62,7 +80,9 @@ def arguments(values, *extra):
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -137,9 +157,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(tmp_path):
     invocation_cwd = tmp_path / "invocation"
     invocation_cwd.mkdir()
     input_paths = values[:-1]
-    before = {
-        path: (path.read_bytes(), path.stat().st_mode) for path in input_paths
-    }
+    before = {path: (path.read_bytes(), path.stat().st_mode) for path in input_paths}
 
     dry = run(values, cwd=invocation_cwd)
     assert dry.returncode == 0, dry.stderr
@@ -172,9 +190,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(tmp_path):
     [0, 1, 2, 3],
     ids=["fwd_bam", "fwd_bai", "rev_bam", "rev_bai"],
 )
-def test_invalid_container_magic_is_published_as_failed_evidence(
-    tmp_path, input_index
-):
+def test_invalid_container_magic_is_published_as_failed_evidence(tmp_path, input_index):
     values = fixture(tmp_path)
     values[input_index].write_bytes(b"INVALID-container-magic")
 
@@ -222,9 +238,7 @@ def test_post_build_input_mutation_preserves_valid_predecessor(
     assert f"Input changed after validation: {target}" in captured.err
     assert values[-1].read_bytes() == predecessor
     assert target.read_bytes() == before[target] + b"post-build mutation\n"
-    assert {
-        path: path.read_bytes() for path in input_paths if path != target
-    } == {
+    assert {path: path.read_bytes() for path in input_paths if path != target} == {
         path: data for path, data in before.items() if path != target
     }
     assert set(values[-1].parent.iterdir()) == {values[-1]}

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -135,7 +134,10 @@ def test_fai_preserves_empty_name_zero_length_and_raw_conversion_error(
         ("@SQ\tLN:1\n", "DICT has malformed @SQ row"),
         ("@SQ\tSN:chr1\tLN:nope\n", "DICT has malformed @SQ row"),
         ("@HD\tVN:1.6\n@SQ SN:chr1 LN:1\n", "DICT contigs are empty or duplicated"),
-        ("@SQ\tSN:chr1\tLN:1\n@SQ\tSN:chr1\tLN:2\n", "DICT contigs are empty or duplicated"),
+        (
+            "@SQ\tSN:chr1\tLN:1\n@SQ\tSN:chr1\tLN:2\n",
+            "DICT contigs are empty or duplicated",
+        ),
     ],
 )
 def test_dict_failures_preserve_exact_messages(
@@ -160,9 +162,7 @@ def test_dict_preserves_empty_name_zero_length_and_raw_conversion_error(
 
 
 @pytest.mark.parametrize("parser_name", ["parse_fasta", "parse_fai", "parse_dict"])
-def test_raw_missing_file_error_is_preserved(
-    tmp_path: Path, parser_name: str
-) -> None:
+def test_raw_missing_file_error_is_preserved(tmp_path: Path, parser_name: str) -> None:
     parser = getattr(REFERENCE_CONTIGS, parser_name)
     with pytest.raises(FileNotFoundError):
         parser(tmp_path / "missing")

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from norad.contracts.scientific_evidence import step08
 from norad.libraries.alignments import orientation as alignment_orientation
-
 
 ContractError = step08.ContractError
 IS_LEGACY_ORIENTATION_POLICY = alignment_orientation.validate_legacy_orientation_policy
@@ -170,6 +169,7 @@ STEP09_STATUS_COUNT_FIELDS = (
     ("significant_down_count", "call_status", "significant_down"),
 )
 
+
 def parse_nonnegative_or_infinite(label: str, value: str) -> float:
     try:
         parsed = float(value)
@@ -178,6 +178,7 @@ def parse_nonnegative_or_infinite(label: str, value: str) -> float:
     if math.isnan(parsed) or parsed < 0:
         step08.fail(f"{label} must be non-negative and not NaN; got: {value}")
     return parsed
+
 
 def resolve_recorded_path(value: str) -> Path:
     path = Path(value).expanduser()
@@ -198,10 +199,9 @@ def validate_pdf(label: str, path: Path) -> None:
         step08.fail(f"{label} lacks a trailing %%EOF marker: {path}")
 
 
-def count_status(
-    rows: Sequence[Mapping[str, str]], column: str, value: str
-) -> int:
+def count_status(rows: Sequence[Mapping[str, str]], column: str, value: str) -> int:
     return sum(row[column] == value for row in rows)
+
 
 def paired_samples(
     sample_rows: Sequence[Mapping[str, str]],
@@ -248,6 +248,7 @@ def paired_samples(
         )
     return replicates, pairs
 
+
 def validate_step09_results(
     label: str,
     value: str | Path,
@@ -266,9 +267,7 @@ def validate_step09_results(
     sites_by_id = {row["candidate_id"]: row for row in step08_sites}
     metadata_columns = step08.STEP08_METADATA_HEADER
     sample_columns = tuple(
-        f"{prefix}__{sample}"
-        for prefix in ("DP", "AD", "AF")
-        for sample in sample_ids
+        f"{prefix}__{sample}" for prefix in ("DP", "AD", "AF") for sample in sample_ids
     )
     for row_number, row in enumerate(table.rows, start=2):
         if row["analysis_id"] != analysis_id:
@@ -371,16 +370,22 @@ def validate_step09_summary(
         result["rna_ref"] == target_ref and result["rna_alt"] == target_alt
         for result in all_rows
     )
-    if step08.parse_nonnegative_int(
-        "Step 09 summary target_candidate_count",
-        row["target_candidate_count"],
-    ) != expected_target_count:
+    if (
+        step08.parse_nonnegative_int(
+            "Step 09 summary target_candidate_count",
+            row["target_candidate_count"],
+        )
+        != expected_target_count
+    ):
         step08.fail("Step 09 summary target candidate count does not reconcile.")
     for summary_column, result_column, status in STEP09_STATUS_COUNT_FIELDS:
         expected = count_status(all_rows, result_column, status)
-        if step08.parse_nonnegative_int(
-            f"Step 09 summary {summary_column}", row[summary_column]
-        ) != expected:
+        if (
+            step08.parse_nonnegative_int(
+                f"Step 09 summary {summary_column}", row[summary_column]
+            )
+            != expected
+        ):
             step08.fail(f"Step 09 summary {summary_column} does not reconcile.")
     replicates, _ = paired_samples(
         sample_rows, row["control_condition"], row["treatment_condition"]
@@ -399,8 +404,7 @@ def validate_step09_summary(
             f"orientation_policy={alignment_orientation.LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
         )
     if any(
-        result["orientation_policy"] != row["orientation_policy"]
-        for result in all_rows
+        result["orientation_policy"] != row["orientation_policy"] for result in all_rows
     ):
         step08.fail("Step 09 results contain an inconsistent orientation policy.")
     background = row["background_condition"]
@@ -425,6 +429,7 @@ def validate_step09_summary(
                     f"for candidate {result['candidate_id']}."
                 )
     return table
+
 
 def validate_step09_result_semantics(
     rows: Sequence[Mapping[str, str]],
@@ -476,9 +481,7 @@ def validate_step09_result_semantics(
         summary["control_condition"],
         summary["treatment_condition"],
     )
-    analysis_samples = [
-        sample_id for pair in pairs.values() for sample_id in pair
-    ]
+    analysis_samples = [sample_id for pair in pairs.values() for sample_id in pair]
     control_samples = [pair[0] for pair in pairs.values()]
     treatment_samples = [pair[1] for pair in pairs.values()]
     background_samples = [
@@ -488,9 +491,7 @@ def validate_step09_result_semantics(
     ]
     tested_statistics: list[tuple[str, float, float]] = []
     for row in rows:
-        is_target = (
-            row["rna_ref"] == target_ref and row["rna_alt"] == target_alt
-        )
+        is_target = row["rna_ref"] == target_ref and row["rna_alt"] == target_alt
         if is_target == (row["test_status"] == "not_target_change"):
             step08.fail(
                 "Step 09 test_status does not match the declared target "
@@ -507,33 +508,24 @@ def validate_step09_result_semantics(
                 or row["max_background_af"] != NA_VALUE
             ):
                 step08.fail(
-                    "Step 09 background-disabled result contains a "
-                    "background claim."
+                    "Step 09 background-disabled result contains a background claim."
                 )
         else:
-            background_dp = [
-                row[f"DP__{sample}"] for sample in background_samples
-            ]
-            background_ad = [
-                row[f"AD__{sample}"] for sample in background_samples
-            ]
+            background_dp = [row[f"DP__{sample}"] for sample in background_samples]
+            background_ad = [row[f"AD__{sample}"] for sample in background_samples]
             background_missing = any(
                 value == NA_VALUE for value in background_dp + background_ad
             )
-            background_low = (
-                not background_missing
-                and any(int(value) < min_sample_dp for value in background_dp)
+            background_low = not background_missing and any(
+                int(value) < min_sample_dp for value in background_dp
             )
-            background_positive = (
-                not background_missing
-                and all(int(value) > 0 for value in background_dp)
+            background_positive = not background_missing and all(
+                int(value) > 0 for value in background_dp
             )
             background_af = (
                 [
                     int(ad) / int(dp)
-                    for dp, ad in zip(
-                        background_dp, background_ad, strict=True
-                    )
+                    for dp, ad in zip(background_dp, background_ad, strict=True)
                 ]
                 if background_positive
                 else []
@@ -543,9 +535,7 @@ def validate_step09_result_semantics(
                 expected_background_max = None
             elif background_low:
                 expected_background_status = "low_coverage"
-                expected_background_max = (
-                    max(background_af) if background_af else None
-                )
+                expected_background_max = max(background_af) if background_af else None
             elif not background_af:
                 step08.fail(
                     "Step 09 enabled background has zero depth at or above "
@@ -564,11 +554,10 @@ def validate_step09_result_semantics(
                 allow_na=True,
                 nonnegative=True,
             )
-            if (
-                row["background_status"] != expected_background_status
-                or not values_close(
-                    observed_background_max, expected_background_max
-                )
+            if row[
+                "background_status"
+            ] != expected_background_status or not values_close(
+                observed_background_max, expected_background_max
             ):
                 step08.fail(
                     "Step 09 enabled-background status or maximum AF does "
@@ -576,12 +565,9 @@ def validate_step09_result_semantics(
                 )
         sample_dp = [row[f"DP__{sample}"] for sample in analysis_samples]
         sample_ad = [row[f"AD__{sample}"] for sample in analysis_samples]
-        missing_counts = any(
-            value == NA_VALUE for value in sample_dp + sample_ad
-        )
-        low_coverage = (
-            not missing_counts
-            and any(int(value) < min_sample_dp for value in sample_dp)
+        missing_counts = any(value == NA_VALUE for value in sample_dp + sample_ad)
+        low_coverage = not missing_counts and any(
+            int(value) < min_sample_dp for value in sample_dp
         )
         if missing_counts:
             for column in (
@@ -608,12 +594,11 @@ def validate_step09_result_semantics(
                 row["mean_analysis_dp"],
                 nonnegative=True,
             )
-            if (
-                not values_close(observed_min_dp, float(min(dp_values)))
-                or not values_close(
-                    observed_mean_dp,
-                    sum(dp_values) / len(dp_values),
-                )
+            if not values_close(
+                observed_min_dp, float(min(dp_values))
+            ) or not values_close(
+                observed_mean_dp,
+                sum(dp_values) / len(dp_values),
             ):
                 step08.fail(
                     "Step 09 depth metrics do not reconcile with immutable "
@@ -628,9 +613,7 @@ def validate_step09_result_semantics(
                     int(row[f"AD__{sample}"]) / int(row[f"DP__{sample}"])
                     for sample in treatment_samples
                 ]
-                expected_control_af = sum(control_af_values) / len(
-                    control_af_values
-                )
+                expected_control_af = sum(control_af_values) / len(control_af_values)
                 expected_treatment_af = sum(treatment_af_values) / len(
                     treatment_af_values
                 )
@@ -651,9 +634,7 @@ def validate_step09_result_semantics(
                 )
                 if (
                     not values_close(observed_control_af, expected_control_af)
-                    or not values_close(
-                        observed_treatment_af, expected_treatment_af
-                    )
+                    or not values_close(observed_treatment_af, expected_treatment_af)
                     or not values_close(observed_delta, expected_delta)
                 ):
                     step08.fail(
@@ -687,8 +668,7 @@ def validate_step09_result_semantics(
         if row["test_status"] != "tested":
             if row["call_status"] != "not_tested":
                 step08.fail(
-                    "An untested Step 09 candidate must use "
-                    "call_status=not_tested."
+                    "An untested Step 09 candidate must use call_status=not_tested."
                 )
             for column in (
                 "cmh_statistic",
@@ -783,9 +763,7 @@ def validate_step09_result_semantics(
         )
         adjusted = [0.0] * count
         running = 1.0
-        for rank, index in zip(
-            range(count, 0, -1), descending, strict=True
-        ):
+        for rank, index in zip(range(count, 0, -1), descending, strict=True):
             running = min(running, count * p_values[index] / rank)
             adjusted[index] = min(1.0, running)
         for (candidate_id, p_value, observed), expected in zip(
@@ -796,6 +774,7 @@ def validate_step09_result_semantics(
                     "Step 09 cmh_fdr_bh does not match global BH adjustment "
                     f"for candidate {candidate_id}."
                 )
+
 
 def validate_significant_subset(
     all_rows: Sequence[Mapping[str, str]],
@@ -818,9 +797,7 @@ def validate_mutation_spectrum(
     analysis_id: str,
     all_rows: Sequence[Mapping[str, str]],
 ) -> Table:
-    table = read_tsv(
-        "Step 09 mutation spectrum", value, STEP09_MUTATION_HEADER
-    )
+    table = read_tsv("Step 09 mutation spectrum", value, STEP09_MUTATION_HEADER)
     if [row["mutation_type"] for row in table.rows] != list(CANONICAL_MUTATIONS):
         step08.fail("Step 09 mutation spectrum must contain the canonical 12 SNVs.")
     total = len(all_rows)
@@ -851,9 +828,12 @@ def validate_mutation_spectrum(
             ),
         }
         for column, expected in expected_counts.items():
-            if step08.parse_nonnegative_int(
-                f"Step 09 mutation spectrum {column}", row[column]
-            ) != expected:
+            if (
+                step08.parse_nonnegative_int(
+                    f"Step 09 mutation spectrum {column}", row[column]
+                )
+                != expected
+            ):
                 step08.fail(f"Step 09 mutation spectrum {column} does not reconcile.")
         fraction = step08.parse_number(
             "Step 09 mutation spectrum candidate_fraction",
@@ -861,8 +841,10 @@ def validate_mutation_spectrum(
             nonnegative=True,
         )
         expected_fraction = 0.0 if total == 0 else len(selected) / total
-        if fraction is None or fraction > 1 or not values_close(
-            fraction, expected_fraction
+        if (
+            fraction is None
+            or fraction > 1
+            or not values_close(fraction, expected_fraction)
         ):
             step08.fail("Step 09 mutation spectrum candidate_fraction is invalid.")
     return table

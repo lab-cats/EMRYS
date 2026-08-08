@@ -13,28 +13,36 @@ from __future__ import annotations
 import argparse
 import csv
 import os
-import re
 import shutil
 import sys
 import uuid
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
-
 
 _SRC_ROOT = Path(__file__).resolve().parents[3]
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 
-
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import audits as _audit_owner
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import context as _context_owner
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import contracts as _contract_owner
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import evidence as _evidence_owner
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import intake as _intake_owner
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import review_analysis as _review_analysis_owner
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    audits as _audit_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    context as _context_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    contracts as _contract_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    evidence as _evidence_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    intake as _intake_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    review_analysis as _review_analysis_owner,
+)
 
 step08 = _contract_owner.step08
 step09 = _contract_owner.step09
@@ -45,9 +53,7 @@ COMPUTATIONAL_SCOPE_ROLES = _contract_owner.COMPUTATIONAL_SCOPE_ROLES
 COMPUTATIONAL_SCOPE_PLAN_FIELDS = _contract_owner.COMPUTATIONAL_SCOPE_PLAN_FIELDS
 EVIDENCE_MANIFEST_HEADER = _contract_owner.EVIDENCE_MANIFEST_HEADER
 COMPUTATIONAL_VALIDATION_HEADER = _contract_owner.COMPUTATIONAL_VALIDATION_HEADER
-COMPUTATIONAL_VALIDATION_STATUSES = (
-    _contract_owner.COMPUTATIONAL_VALIDATION_STATUSES
-)
+COMPUTATIONAL_VALIDATION_STATUSES = _contract_owner.COMPUTATIONAL_VALIDATION_STATUSES
 Table = _contract_owner.Table
 values_close = _contract_owner.values_close
 sha256_file = _contract_owner.sha256_file
@@ -84,9 +90,7 @@ validate_analysis_file_reference = (
 validate_sensitivity_matrix = _review_analysis_owner.validate_sensitivity_matrix
 validate_leave_one_pair_out = _review_analysis_owner.validate_leave_one_pair_out
 validate_candidate_selection = _review_analysis_owner.validate_candidate_selection
-validate_candidate_adjudication = (
-    _review_analysis_owner.validate_candidate_adjudication
-)
+validate_candidate_adjudication = _review_analysis_owner.validate_candidate_adjudication
 validate_decisions = _review_analysis_owner.validate_decisions
 validate_limitations = _review_analysis_owner.validate_limitations
 
@@ -94,6 +98,7 @@ validate_computational_evidence = _evidence_owner.validate_computational_evidenc
 validate_evidence_payloads = _evidence_owner.validate_evidence_payloads
 make_review_summary = _evidence_owner.make_review_summary
 build_context = _context_owner.build_context
+
 
 def confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
     for path, expected_hash in input_hashes.items():
@@ -146,9 +151,7 @@ def remove_owned_path(path: Path) -> None:
 
 def validate_staged_outputs(
     directory: Path,
-    output_tables: Mapping[
-        str, tuple[tuple[str, ...], list[dict[str, str]]]
-    ],
+    output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
     output_paths: Mapping[str, Path],
 ) -> dict[str, str]:
     hashes: dict[str, str] = {}
@@ -216,9 +219,7 @@ def rollback_publication(
 
 def publish_outputs(
     context: ReviewContext,
-    output_tables: Mapping[
-        str, tuple[tuple[str, ...], list[dict[str, str]]]
-    ],
+    output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ) -> None:
     output_dir = next(iter(context.output_paths.values())).parent
     try:
@@ -238,9 +239,7 @@ def publish_outputs(
     previous_hashes: dict[str, str] = {}
     publication_started = False
     try:
-        existing = {
-            key: path.exists() for key, path in context.output_paths.items()
-        }
+        existing = {key: path.exists() for key, path in context.output_paths.items()}
         existing_count = sum(existing.values())
         if existing_count not in (0, len(context.output_paths)):
             step08.fail(
@@ -251,8 +250,7 @@ def publish_outputs(
         had_previous = existing_count == len(context.output_paths)
         if had_previous:
             previous_hashes = {
-                key: sha256_file(path)
-                for key, path in context.output_paths.items()
+                key: sha256_file(path) for key, path in context.output_paths.items()
             }
         try:
             temp_dir.mkdir()
@@ -359,15 +357,13 @@ def publish_outputs(
                     + "; ".join(cleanup_failures)
                 )
 
+
 def print_resolved_context(context: ReviewContext, execute: bool) -> None:
     print("Step 09c scientific-validation evidence package")
     print(f"Mode: {'execute' if execute else 'dry-run'}")
     print(f"Review ID: {context.review_id}")
     print(f"Primary analysis ID: {context.plan['primary_analysis_id']}")
-    print(
-        "Overall science status: "
-        f"{context.plan['overall_science_status']}"
-    )
+    print(f"Overall science status: {context.plan['overall_science_status']}")
     print(
         "Computational status: "
         f"implementation={context.plan['implementation_status']}; "

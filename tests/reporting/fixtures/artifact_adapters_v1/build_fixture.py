@@ -17,11 +17,10 @@ import json
 import struct
 import sys
 import zlib
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Iterable, Mapping, Sequence
-
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
@@ -201,9 +200,7 @@ def row_value(column: str) -> str:
         "partition_manifest_row_count": "2",
         "evidence_manifest_path": "/synthetic/evidence_manifest.tsv",
         "evidence_manifest_sha256": "6" * 64,
-        "evidence_manifest_row_count": str(
-            len(ADAPTER.review_package.CATEGORY_ORDER)
-        ),
+        "evidence_manifest_row_count": str(len(ADAPTER.review_package.CATEGORY_ORDER)),
         "evidence_source_count": "0",
         "superseded_analysis_ids": "NA",
         "sensitivity_analysis_ids": "NA",
@@ -279,19 +276,14 @@ def minimal_pdf_bytes() -> bytes:
     objects = (
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        (
-            b"<< /Type /Page /Parent 2 0 R "
-            b"/MediaBox [0 0 72 72] >>"
-        ),
+        (b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 72 72] >>"),
     )
     payload = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets = [0]
     for object_number, value in enumerate(objects, start=1):
         offsets.append(len(payload))
         payload.extend(
-            f"{object_number} 0 obj\n".encode("ascii")
-            + value
-            + b"\nendobj\n"
+            f"{object_number} 0 obj\n".encode("ascii") + value + b"\nendobj\n"
         )
     xref_offset = len(payload)
     payload.extend(f"xref\n0 {len(offsets)}\n".encode("ascii"))
@@ -380,9 +372,7 @@ def tsv_rows_for(
         "step09_cmh_all_sites_v1": 4,
         "step09_cmh_significant_sites_v1": 1,
         "step09_mutation_spectrum_tsv_v1": 12,
-        "step09c_evidence_index_v1": len(
-            ADAPTER.review_package.CATEGORY_ORDER
-        ),
+        "step09c_evidence_index_v1": len(ADAPTER.review_package.CATEGORY_ORDER),
         "step09c_orientation_locus_audit_v1": 0,
         "step09c_annotation_audit_v1": 0,
         "step09c_qc_funnel_v1": 0,
@@ -398,10 +388,7 @@ def tsv_rows_for(
         adapter,
         exact_rows if exact_rows is not None else 1,
     )
-    rows = [
-        {column: row_value(column) for column in header}
-        for _ in range(count)
-    ]
+    rows = [{column: row_value(column) for column in header} for _ in range(count)]
     if adapter == "step06_orientation_counts_v1":
         rows[0].update(
             {
@@ -562,9 +549,7 @@ def tsv_rows_for(
         ]
         for output_row, vcf in zip(rows, vcfs, strict=True):
             orientation = (
-                "FWD_like"
-                if ".FWD_like." in vcf["source_path"]
-                else "REV_like"
+                "FWD_like" if ".FWD_like." in vcf["source_path"] else "REV_like"
             )
             output_row.update(
                 {
@@ -597,9 +582,7 @@ def tsv_rows_for(
                 scope_id=vcf["scope_id"],
             )
             orientation = (
-                "FWD_like"
-                if ".FWD_like." in vcf["source_path"]
-                else "REV_like"
+                "FWD_like" if ".FWD_like." in vcf["source_path"] else "REV_like"
             )
             output_row.update(
                 {
@@ -609,9 +592,7 @@ def tsv_rows_for(
                     "selector_value": f"{partition[-1]}:1-100",
                     "orientation": orientation,
                     "step07_receipt_path": receipt["source_path"],
-                    "step07_receipt_sha256": sha256_file(
-                        receipt["source_path"]
-                    ),
+                    "step07_receipt_sha256": sha256_file(receipt["source_path"]),
                     "vcf_path": vcf["source_path"],
                     "vcf_sha256": sha256_file(vcf["source_path"]),
                     "sample_manifest_sha256": SAMPLE_MANIFEST_SHA256,
@@ -662,8 +643,7 @@ def tsv_rows_for(
                     "test_status": "tested",
                     "call_status": (
                         "significant_up"
-                        if adapter == "step09_cmh_significant_sites_v1"
-                        or index == 1
+                        if adapter == "step09_cmh_significant_sites_v1" or index == 1
                         else "effect_not_met"
                     ),
                     "orientation_policy": "legacy_provisional_v1",
@@ -672,11 +652,7 @@ def tsv_rows_for(
     elif adapter == "step09_cmh_summary_v1":
         sites = inventory_row(inventory_rows, "step08_sites_v1")
         inputs = inventory_row(inventory_rows, "step08_inputs_v1")
-        numeric = {
-            column: "0"
-            for column in header
-            if column.endswith("_count")
-        }
+        numeric = {column: "0" for column in header if column.endswith("_count")}
         rows[0].update(numeric)
         rows[0].update(
             {
@@ -772,16 +748,10 @@ def tsv_rows_for(
             "step08_inputs": "step08_inputs_v1",
             "step08_summary": "step08_summary_v1",
             "step09_all_sites": "step09_cmh_all_sites_v1",
-            "step09_significant_sites": (
-                "step09_cmh_significant_sites_v1"
-            ),
+            "step09_significant_sites": ("step09_cmh_significant_sites_v1"),
             "step09_summary": "step09_cmh_summary_v1",
-            "step09_mutation_spectrum": (
-                "step09_mutation_spectrum_tsv_v1"
-            ),
-            "step09_mutation_spectrum_pdf": (
-                "step09_mutation_spectrum_pdf_v1"
-            ),
+            "step09_mutation_spectrum": ("step09_mutation_spectrum_tsv_v1"),
+            "step09_mutation_spectrum_pdf": ("step09_mutation_spectrum_pdf_v1"),
             "step09_depth_delta_pdf": "step09_depth_delta_pdf_v1",
         }
         row_counts = {
@@ -798,9 +768,7 @@ def tsv_rows_for(
         for prefix, adapter_id in upstream.items():
             upstream_row = inventory_row(inventory_rows, adapter_id)
             rows[0][f"{prefix}_path"] = upstream_row["source_path"]
-            rows[0][f"{prefix}_sha256"] = sha256_file(
-                upstream_row["source_path"]
-            )
+            rows[0][f"{prefix}_sha256"] = sha256_file(upstream_row["source_path"])
             rows[0][f"{prefix}_row_count"] = row_counts[prefix]
     return rows
 
@@ -906,9 +874,7 @@ def write_adapter_source(
     elif spec.kind == "pdf":
         path.write_bytes(minimal_pdf_bytes())
     else:
-        raise RuntimeError(
-            f"No fixture source writer for adapter kind {spec.kind!r}"
-        )
+        raise RuntimeError(f"No fixture source writer for adapter kind {spec.kind!r}")
 
 
 def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
@@ -926,9 +892,7 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     for template_row in template_rows:
         relative = template_row["source_path"]
         if not relative.startswith(source_marker):
-            raise RuntimeError(
-                f"Unexpected tracked fixture source path: {relative}"
-            )
+            raise RuntimeError(f"Unexpected tracked fixture source path: {relative}")
         source_path = source_root / relative.removeprefix(source_marker)
         rewritten = {**template_row, "source_path": str(source_path)}
         rewritten_rows.append(rewritten)

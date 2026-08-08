@@ -13,10 +13,9 @@ import argparse
 import csv
 import hashlib
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
@@ -27,6 +26,7 @@ from norad.contracts.scientific_evidence import review_package, step08, step09
 from norad.evidence.assemble_scientific_review_evidence_package import (
     step_09c_scientific_validation as contract,
 )
+
 REVIEW_ID = "review_fixture"
 COHORT_ID = "cohort"
 PRIMARY_ANALYSIS_ID = "analysis_primary"
@@ -406,19 +406,18 @@ def step08_site_rows(header: Sequence[str]) -> list[dict[str, str]]:
             values[f"DP__{sample_id}"] = str(dp)
         for sample_id, ad in zip(SAMPLE_IDS, spec["ad"], strict=True):
             values[f"AD__{sample_id}"] = str(ad)
-        for sample_id, dp, ad in zip(
-            SAMPLE_IDS, spec["dp"], spec["ad"], strict=True
-        ):
+        for sample_id, dp, ad in zip(SAMPLE_IDS, spec["dp"], spec["ad"], strict=True):
             values[f"AF__{sample_id}"] = "NA" if dp == 0 else f"{ad / dp:.12g}"
         rows.append(table_row(header, **values))
     return rows
 
 
 def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
-    step08_header = tuple(STEP08.STEP08_METADATA_HEADER) + tuple(
-        f"DP__{sample}" for sample in SAMPLE_IDS
-    ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
-        f"AF__{sample}" for sample in SAMPLE_IDS
+    step08_header = (
+        tuple(STEP08.STEP08_METADATA_HEADER)
+        + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
     )
     source_rows = step08_site_rows(step08_header)
     rows: list[dict[str, str]] = []
@@ -443,9 +442,7 @@ def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
             "treatment_control_difference": str(spec["delta"]),
             "max_background_af": "NA",
             "cmh_statistic": str(spec["cmh_statistic"]),
-            "cmh_degrees_freedom": (
-                "1" if spec["test_status"] == "tested" else "NA"
-            ),
+            "cmh_degrees_freedom": ("1" if spec["test_status"] == "tested" else "NA"),
             "cmh_p_value": str(spec["cmh_p_value"]),
             "cmh_fdr_bh": str(spec["cmh_fdr_bh"]),
             "common_odds_ratio": str(spec["common_odds_ratio"]),
@@ -674,23 +671,15 @@ def write_evidence_tables(
                 observed_gene_ids=str(candidate["gene_ids"]),
                 observed_transcript_ids=str(candidate["transcript_ids"]),
                 observed_is_cds=str(candidate["is_cds"]),
-                observed_is_five_prime_utr=str(
-                    candidate["is_five_prime_utr"]
-                ),
-                observed_is_three_prime_utr=str(
-                    candidate["is_three_prime_utr"]
-                ),
+                observed_is_five_prime_utr=str(candidate["is_five_prime_utr"]),
+                observed_is_three_prime_utr=str(candidate["is_three_prime_utr"]),
                 observed_is_exon=str(candidate["is_exon"]),
                 observed_is_intron=str(candidate["is_intron"]),
                 expected_gene_ids=str(candidate["gene_ids"]),
                 expected_transcript_ids=str(candidate["transcript_ids"]),
                 expected_is_cds=str(candidate["is_cds"]),
-                expected_is_five_prime_utr=str(
-                    candidate["is_five_prime_utr"]
-                ),
-                expected_is_three_prime_utr=str(
-                    candidate["is_three_prime_utr"]
-                ),
+                expected_is_five_prime_utr=str(candidate["is_five_prime_utr"]),
+                expected_is_three_prime_utr=str(candidate["is_three_prime_utr"]),
                 expected_is_exon=str(candidate["is_exon"]),
                 expected_is_intron=str(candidate["is_intron"]),
                 assignment_status="match",
@@ -850,9 +839,15 @@ def write_evidence_tables(
                 "1",
             )
         )
-    for analysis_id, is_primary, summary_path, parameter_id, tested, up, down in (
-        sensitivity_specs
-    ):
+    for (
+        analysis_id,
+        is_primary,
+        summary_path,
+        parameter_id,
+        tested,
+        up,
+        down,
+    ) in sensitivity_specs:
         sensitivity_rows.append(
             table_row(
                 REVIEW_PACKAGE.SENSITIVITY_HEADER,
@@ -877,9 +872,7 @@ def write_evidence_tables(
                 successfully_tested_count=tested,
                 significant_up_count=up,
                 significant_down_count=down,
-                comparison_status=(
-                    "primary" if is_primary == "TRUE" else "reviewed"
-                ),
+                comparison_status=("primary" if is_primary == "TRUE" else "reviewed"),
                 reviewer="reviewer_one",
                 review_date=review_date,
                 detail=f"Synthetic sensitivity set {parameter_id}.",
@@ -972,9 +965,14 @@ def write_evidence_tables(
         ),
     ]
     selection_rows = []
-    for selection_set, candidate_id, call_status, fdr, common_or, delta in (
-        selection_specs
-    ):
+    for (
+        selection_set,
+        candidate_id,
+        call_status,
+        fdr,
+        common_or,
+        delta,
+    ) in selection_specs:
         selection_rows.append(
             table_row(
                 REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
@@ -1014,9 +1012,7 @@ def write_evidence_tables(
                 candidate_id=candidate_id,
                 selection_set=selection_set,
                 adjudication_status=(
-                    "pass"
-                    if selection_set in {"top_up", "top_down"}
-                    else "flag"
+                    "pass" if selection_set in {"top_up", "top_down"} else "flag"
                 ),
                 coverage_status="pass",
                 base_quality_status="pass",
@@ -1194,10 +1190,11 @@ def build_fixture(
     step08_sites = step08_dir / "cohort.step08_sites.tsv"
     step08_inputs = step08_dir / "cohort.step08_inputs.tsv"
     step08_summary = step08_dir / "cohort.step08_summary.tsv"
-    sites_header = tuple(STEP08.STEP08_METADATA_HEADER) + tuple(
-        f"DP__{sample}" for sample in SAMPLE_IDS
-    ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
-        f"AF__{sample}" for sample in SAMPLE_IDS
+    sites_header = (
+        tuple(STEP08.STEP08_METADATA_HEADER)
+        + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
     )
     write_tsv(step08_sites, sites_header, step08_site_rows(sites_header))
 
@@ -1273,22 +1270,18 @@ def build_fixture(
 
     step09_root = root / "step09"
     step09_analysis_dir = step09_root / PRIMARY_ANALYSIS_ID
-    result_header = tuple(STEP09.STEP09_RESULT_HEADER) + tuple(
-        f"DP__{sample}" for sample in SAMPLE_IDS
-    ) + tuple(f"AD__{sample}" for sample in SAMPLE_IDS) + tuple(
-        f"AF__{sample}" for sample in SAMPLE_IDS
+    result_header = (
+        tuple(STEP09.STEP09_RESULT_HEADER)
+        + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
+        + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
     )
-    all_sites = (
-        step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.cmh_all_sites.tsv"
-    )
+    all_sites = step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.cmh_all_sites.tsv"
     significant_sites = (
-        step09_analysis_dir
-        / f"{PRIMARY_ANALYSIS_ID}.cmh_significant_sites.tsv"
+        step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.cmh_significant_sites.tsv"
     )
     summary = step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.cmh_summary.tsv"
-    mutation = (
-        step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.tsv"
-    )
+    mutation = step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.tsv"
     result_rows = step09_result_rows(result_header)
     write_tsv(all_sites, result_header, result_rows)
     write_tsv(
@@ -1310,8 +1303,8 @@ def build_fixture(
     )
     mutation_rows = []
     for mutation_type in STEP09.CANONICAL_MUTATIONS:
-        count = "5" if mutation_type == "A>G" else (
-            "1" if mutation_type == "C>T" else "0"
+        count = (
+            "5" if mutation_type == "A>G" else ("1" if mutation_type == "C>T" else "0")
         )
         fraction = (
             "0.833333333333"
@@ -1327,21 +1320,13 @@ def build_fixture(
                 mutation_type=mutation_type,
                 candidate_count=count,
                 candidate_fraction=fraction,
-                successfully_tested_count=(
-                    "3" if mutation_type == "A>G" else "0"
-                ),
-                significant_up_count=(
-                    "1" if mutation_type == "A>G" else "0"
-                ),
-                significant_down_count=(
-                    "1" if mutation_type == "A>G" else "0"
-                ),
+                successfully_tested_count=("3" if mutation_type == "A>G" else "0"),
+                significant_up_count=("1" if mutation_type == "A>G" else "0"),
+                significant_down_count=("1" if mutation_type == "A>G" else "0"),
             )
         )
     write_tsv(mutation, STEP09.STEP09_MUTATION_HEADER, mutation_rows)
-    write_pdf(
-        step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.pdf"
-    )
+    write_pdf(step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.pdf")
     write_pdf(step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.depth_delta.pdf")
 
     sensitivity_summaries: dict[str, Path] = {}
@@ -1363,9 +1348,7 @@ def build_fixture(
             significant_down=down,
             min_sample_dp=("0" if analysis_id == "analysis_sensitivity_dp" else "1"),
             absolute_difference_threshold=(
-                "0.05"
-                if analysis_id == "analysis_sensitivity_effect"
-                else "0.005"
+                "0.05" if analysis_id == "analysis_sensitivity_effect" else "0.005"
             ),
         )
         sensitivity_summaries[analysis_id] = sensitivity_path
@@ -1429,9 +1412,7 @@ def build_fixture(
             "overlapping_gene,multi_transcript"
         ),
         candidate_selection_policy_version="candidate_selection_v1",
-        candidate_selection_rule=(
-            "one_each_top_up_top_down_discordant_near_threshold"
-        ),
+        candidate_selection_rule=("one_each_top_up_top_down_discordant_near_threshold"),
         top_up_count="1",
         top_down_count="1",
         discordant_count="1",
@@ -1494,9 +1475,7 @@ def build_fixture(
                 policy_version=f"{category}_v1",
             )
         )
-    write_tsv(
-        evidence_manifest, CONTRACT.EVIDENCE_MANIFEST_HEADER, evidence_rows
-    )
+    write_tsv(evidence_manifest, CONTRACT.EVIDENCE_MANIFEST_HEADER, evidence_rows)
 
     return FixturePaths(
         root=root,

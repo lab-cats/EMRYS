@@ -11,22 +11,25 @@ import re
 import subprocess
 import uuid
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad.libraries.alignments import orientation as alignment_orientation
+
 from .contracts import contracts
 from .models import (
-    ArtifactIndexError,
     RUN_CONTRACT_FIELDS,
     STEP00A_BASENAMES,
+    ArtifactIndexError,
     SourceSnapshot,
 )
 from .registry import ADAPTER_REGISTRY
 from .rosters import SCOPE_ADAPTER_ROSTERS
-from norad.libraries.alignments import orientation as alignment_orientation
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -42,8 +45,7 @@ def parse_args() -> argparse.Namespace:
         required=True,
         type=Path,
         help=(
-            "Strict JSON file containing exactly the six-field canonical "
-            "run contract."
+            "Strict JSON file containing exactly the six-field canonical run contract."
         ),
     )
     parser.add_argument(
@@ -166,8 +168,7 @@ def load_run_contract(path: Path) -> tuple[dict[str, Any], str]:
     )
     if errors:
         detail = "\n".join(
-            f"- {contracts.format_json_path(error.absolute_path)}: "
-            f"{error.message}"
+            f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
             for error in errors
         )
         raise ArtifactIndexError(f"Run contract failed validation:\n{detail}")
@@ -185,8 +186,7 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
         spec = ADAPTER_REGISTRY.get(adapter_id)
         if spec is None:
             raise ArtifactIndexError(
-                f"Inventory row {row_number}: unsupported adapter "
-                f"{adapter_id!r}"
+                f"Inventory row {row_number}: unsupported adapter {adapter_id!r}"
             )
         if row["step_id"] != spec.step_id:
             raise ArtifactIndexError(

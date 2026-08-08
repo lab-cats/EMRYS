@@ -11,42 +11,85 @@ import re
 import stat
 import sys
 import uuid
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 from norad.libraries import validation as report
 
-
 PROFILE_HEADER = (
-    "reference_id", "artifact_id", "role", "path", "required",
-    "expected_sha256", "provenance_source", "provenance_release", "notes",
+    "reference_id",
+    "artifact_id",
+    "role",
+    "path",
+    "required",
+    "expected_sha256",
+    "provenance_source",
+    "provenance_release",
+    "notes",
 )
 ARTIFACT_HEADER = (
-    "reference_id", "artifact_id", "role", "declared_path", "resolved_path",
-    "required", "status", "observed_sha256", "expected_sha256", "size_bytes",
-    "provenance_source", "provenance_release", "detail",
+    "reference_id",
+    "artifact_id",
+    "role",
+    "declared_path",
+    "resolved_path",
+    "required",
+    "status",
+    "observed_sha256",
+    "expected_sha256",
+    "size_bytes",
+    "provenance_source",
+    "provenance_release",
+    "detail",
 )
 CONTIG_HEADER = (
-    "reference_id", "source_role", "ordinal", "contig", "length",
-    "status", "detail",
+    "reference_id",
+    "source_role",
+    "ordinal",
+    "contig",
+    "length",
+    "status",
+    "detail",
 )
 SUMMARY_HEADER = (
-    "reference_id", "profile_sha256", "artifact_count", "required_missing_count",
-    "hash_mismatch_count", "invalid_artifact_count", "fasta_contig_count",
-    "fai_agreement", "dict_agreement", "gtf_contigs_within_fasta",
-    "bed12_contigs_within_fasta", "star_agreement", "overall_status",
+    "reference_id",
+    "profile_sha256",
+    "artifact_count",
+    "required_missing_count",
+    "hash_mismatch_count",
+    "invalid_artifact_count",
+    "fasta_contig_count",
+    "fai_agreement",
+    "dict_agreement",
+    "gtf_contigs_within_fasta",
+    "bed12_contigs_within_fasta",
+    "star_agreement",
+    "overall_status",
 )
 ROLES = {
-    "fasta", "fai", "dict", "gtf", "bed12", "star_chr_name",
-    "star_chr_length", "star_index_file",
+    "fasta",
+    "fai",
+    "dict",
+    "gtf",
+    "bed12",
+    "star_chr_name",
+    "star_chr_length",
+    "star_index_file",
 }
 SINGLETON_ROLES = {
-    "fasta", "fai", "dict", "gtf", "bed12", "star_chr_name", "star_chr_length",
+    "fasta",
+    "fai",
+    "dict",
+    "gtf",
+    "bed12",
+    "star_chr_name",
+    "star_chr_length",
 }
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -123,7 +166,9 @@ def load_inventory(path: Path, base_dir: Path) -> tuple[bytes, list[Item]]:
     for number, row in enumerate(rows, 2):
         if None in row or any(value is None for value in row.values()):
             fail(f"Inventory row {number} has an invalid shape")
-        if any("\x00" in value or "\r" in value or "\n" in value for value in row.values()):
+        if any(
+            "\x00" in value or "\r" in value or "\n" in value for value in row.values()
+        ):
             fail(f"Inventory row {number} contains unsafe characters")
         current_id = row["reference_id"]
         if not SAFE_ID.fullmatch(current_id):
@@ -148,22 +193,35 @@ def load_inventory(path: Path, base_dir: Path) -> tuple[bytes, list[Item]]:
         declared_path = Path(declared)
         if ".." in declared_path.parts or "." in declared_path.parts:
             fail(f"Inventory row {number} path must not contain traversal components")
-        resolved = declared_path if declared_path.is_absolute() else (base / declared_path)
+        resolved = (
+            declared_path if declared_path.is_absolute() else (base / declared_path)
+        )
         resolved = resolved.resolve()
         if resolved in paths:
             fail(f"Inventory row {number} resolves to a duplicate path")
         paths.add(resolved)
         expected = row["expected_sha256"]
         if expected != "NA" and not SHA256.fullmatch(expected):
-            fail(f"Inventory row {number} expected_sha256 must be NA or lowercase SHA-256")
+            fail(
+                f"Inventory row {number} expected_sha256 must be NA or lowercase SHA-256"
+            )
         for field in ("provenance_source", "provenance_release", "notes"):
             if not row[field]:
                 fail(f"Inventory row {number} {field} must be nonempty")
-        items.append(Item(
-            reference_id, artifact_id, role, declared, resolved,
-            required == "true", expected, row["provenance_source"],
-            row["provenance_release"], row["notes"],
-        ))
+        items.append(
+            Item(
+                reference_id,
+                artifact_id,
+                role,
+                declared,
+                resolved,
+                required == "true",
+                expected,
+                row["provenance_source"],
+                row["provenance_release"],
+                row["notes"],
+            )
+        )
     for role in SINGLETON_ROLES:
         if role_counts.get(role) != 1:
             fail(f"Reference inventory requires exactly one {role} row")
@@ -182,7 +240,9 @@ def observe(items: Sequence[Item]) -> list[Observation]:
             observations.append(Observation(item, status, detail=report.clean(exc)))
             continue
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-            observations.append(Observation(item, "invalid", detail="not a regular non-symlink file"))
+            observations.append(
+                Observation(item, "invalid", detail="not a regular non-symlink file")
+            )
             continue
         try:
             data = report.read_bytes(item.path, item.artifact_id)
@@ -190,14 +250,23 @@ def observe(items: Sequence[Item]) -> list[Observation]:
             observations.append(Observation(item, "invalid", detail=report.clean(exc)))
             continue
         digest = hashlib.sha256(data).hexdigest()
-        status = "hash_mismatch" if item.expected_sha256 != "NA" and digest != item.expected_sha256 else "present"
-        observations.append(Observation(item, status, digest, str(len(data)), item.notes))
+        status = (
+            "hash_mismatch"
+            if item.expected_sha256 != "NA" and digest != item.expected_sha256
+            else "present"
+        )
+        observations.append(
+            Observation(item, status, digest, str(len(data)), item.notes)
+        )
     return observations
 
 
 def role_path(observations: Sequence[Observation], role: str) -> Path | None:
     for observation in observations:
-        if observation.item.role == role and observation.status in {"present", "hash_mismatch"}:
+        if observation.item.role == role and observation.status in {
+            "present",
+            "hash_mismatch",
+        }:
             return observation.item.path
     return None
 
@@ -222,8 +291,12 @@ def parse_star(observations: Sequence[Observation]) -> list[tuple[str, int]]:
     lengths_path = role_path(observations, "star_chr_length")
     if names_path is None or lengths_path is None:
         fail("STAR chrName/chrLength inputs are unavailable")
-    names = [line.strip() for line in names_path.read_text().splitlines() if line.strip()]
-    lengths_text = [line.strip() for line in lengths_path.read_text().splitlines() if line.strip()]
+    names = [
+        line.strip() for line in names_path.read_text().splitlines() if line.strip()
+    ]
+    lengths_text = [
+        line.strip() for line in lengths_path.read_text().splitlines() if line.strip()
+    ]
     if len(names) != len(lengths_text) or not names or len(set(names)) != len(names):
         fail("STAR chrName/chrLength rows do not reconcile")
     if any(not value.isdigit() for value in lengths_text):
@@ -231,7 +304,9 @@ def parse_star(observations: Sequence[Observation]) -> list[tuple[str, int]]:
     return list(zip(names, (int(value) for value in lengths_text), strict=True))
 
 
-def collect_contigs(observations: Sequence[Observation]) -> tuple[dict[str, list[tuple[str, int | None]]], dict[str, str]]:
+def collect_contigs(
+    observations: Sequence[Observation],
+) -> tuple[dict[str, list[tuple[str, int | None]]], dict[str, str]]:
     parsed: dict[str, list[tuple[str, int | None]]] = {}
     errors: dict[str, str] = {}
     parsers = {
@@ -282,22 +357,57 @@ def tsv(header: Iterable[str], rows: Iterable[Iterable[object]]) -> bytes:
 def render(raw_profile: bytes, observations: Sequence[Observation]) -> dict[str, bytes]:
     parsed, errors = collect_contigs(observations)
     reference_id = observations[0].item.reference_id
-    artifact_rows = [(
-        reference_id, o.item.artifact_id, o.item.role, o.item.declared_path,
-        str(o.item.path), str(o.item.required).lower(), o.status, o.digest, o.item.expected_sha256,
-        o.size, o.item.provenance_source, o.item.provenance_release, o.detail,
-    ) for o in observations]
+    artifact_rows = [
+        (
+            reference_id,
+            o.item.artifact_id,
+            o.item.role,
+            o.item.declared_path,
+            str(o.item.path),
+            str(o.item.required).lower(),
+            o.status,
+            o.digest,
+            o.item.expected_sha256,
+            o.size,
+            o.item.provenance_source,
+            o.item.provenance_release,
+            o.detail,
+        )
+        for o in observations
+    ]
     contig_rows = []
     fasta_map = dict(parsed.get("fasta", []))
     for role in ("fasta", "fai", "dict", "gtf", "bed12", "star"):
         for ordinal, (name, length) in enumerate(parsed.get(role, []), 1):
-            status = "reference" if role == "fasta" else (
-                "match" if name in fasta_map and (length is None or fasta_map[name] == length) else "mismatch"
+            status = (
+                "reference"
+                if role == "fasta"
+                else (
+                    "match"
+                    if name in fasta_map
+                    and (length is None or fasta_map[name] == length)
+                    else "mismatch"
+                )
             )
-            contig_rows.append((reference_id, role, ordinal, name, "NA" if length is None else length, status, ""))
+            contig_rows.append(
+                (
+                    reference_id,
+                    role,
+                    ordinal,
+                    name,
+                    "NA" if length is None else length,
+                    status,
+                    "",
+                )
+            )
         if role in errors:
-            contig_rows.append((reference_id, role, 0, "NA", "NA", "not_checked", errors[role]))
-    agreements = {role: agreement(parsed, role) for role in ("fai", "dict", "gtf", "bed12", "star")}
+            contig_rows.append(
+                (reference_id, role, 0, "NA", "NA", "not_checked", errors[role])
+            )
+    agreements = {
+        role: agreement(parsed, role)
+        for role in ("fai", "dict", "gtf", "bed12", "star")
+    }
     counts = {
         "required_missing": sum(o.status == "missing_required" for o in observations),
         "hash_mismatch": sum(o.status == "hash_mismatch" for o in observations),
@@ -307,10 +417,19 @@ def render(raw_profile: bytes, observations: Sequence[Observation]) -> dict[str,
     if any(counts.values()) or any(value != "pass" for value in agreements.values()):
         overall = "fail"
     summary_row = (
-        reference_id, hashlib.sha256(raw_profile).hexdigest(), len(observations),
-        counts["required_missing"], counts["hash_mismatch"], counts["invalid"],
-        len(parsed.get("fasta", [])), agreements["fai"], agreements["dict"],
-        agreements["gtf"], agreements["bed12"], agreements["star"], overall,
+        reference_id,
+        hashlib.sha256(raw_profile).hexdigest(),
+        len(observations),
+        counts["required_missing"],
+        counts["hash_mismatch"],
+        counts["invalid"],
+        len(parsed.get("fasta", [])),
+        agreements["fai"],
+        agreements["dict"],
+        agreements["gtf"],
+        agreements["bed12"],
+        agreements["star"],
+        overall,
     )
     return {
         "artifacts": tsv(ARTIFACT_HEADER, artifact_rows),
@@ -319,7 +438,9 @@ def render(raw_profile: bytes, observations: Sequence[Observation]) -> dict[str,
     }
 
 
-def validate_output(data: bytes, header: tuple[str, ...], rows: int | None = None) -> None:
+def validate_output(
+    data: bytes, header: tuple[str, ...], rows: int | None = None
+) -> None:
     reader = csv.DictReader(data.decode().splitlines(), delimiter="\t")
     if tuple(reader.fieldnames or ()) != header:
         fail("Generated reference output has invalid header")
@@ -353,13 +474,16 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
         fail(f"Reference provenance lock already exists: {lock}")
     token = uuid.uuid4().hex
     staged = {key: destination / f".{name}.{token}.tmp" for key, name in names.items()}
-    backups = {key: destination / f".{name}.{token}.previous" for key, name in names.items()}
+    backups = {
+        key: destination / f".{name}.{token}.previous" for key, name in names.items()
+    }
     try:
         os.write(descriptor, f"pid={os.getpid()}\nrun_token={token}\n".encode())
         os.fsync(descriptor)
         if all(present):
             validate_output(
-                report.read_bytes(finals["artifacts"], "prior artifacts"), ARTIFACT_HEADER
+                report.read_bytes(finals["artifacts"], "prior artifacts"),
+                ARTIFACT_HEADER,
             )
             validate_output(
                 report.read_bytes(finals["contigs"], "prior contigs"), CONTIG_HEADER
@@ -369,7 +493,9 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
             )
         for key in ("artifacts", "contigs", "summary"):
             with staged[key].open("xb") as handle:
-                handle.write(outputs[key]); handle.flush(); os.fsync(handle.fileno())
+                handle.write(outputs[key])
+                handle.flush()
+                os.fsync(handle.fileno())
         validate_output(
             report.read_bytes(staged["artifacts"], "staged artifacts"), ARTIFACT_HEADER
         )
@@ -385,20 +511,26 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
         published: list[str] = []
         try:
             for key in ("artifacts", "contigs", "summary"):
-                os.replace(staged[key], finals[key]); published.append(key)
+                os.replace(staged[key], finals[key])
+                published.append(key)
         except BaseException:
             for key in published:
-                if finals[key].exists(): finals[key].unlink()
+                if finals[key].exists():
+                    finals[key].unlink()
             for key in finals:
-                if backups[key].exists(): os.replace(backups[key], finals[key])
+                if backups[key].exists():
+                    os.replace(backups[key], finals[key])
             raise
         for path in backups.values():
-            if path.exists(): path.unlink()
+            if path.exists():
+                path.unlink()
     finally:
         for path in staged.values():
-            if path.exists() and not path.is_symlink(): path.unlink()
+            if path.exists() and not path.is_symlink():
+                path.unlink()
         os.close(descriptor)
-        if lock.exists() and not lock.is_symlink(): lock.unlink()
+        if lock.exists() and not lock.is_symlink():
+            lock.unlink()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -417,18 +549,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Output root: {args.output_root}")
         for observation in observations:
             print(f"{observation.item.artifact_id}: {observation.status}")
-        print("Evidence boundary: read-only provenance reconciliation; no files are repaired.")
+        print(
+            "Evidence boundary: read-only provenance reconciliation; no files are repaired."
+        )
         if not args.execute:
             print("Dry-run complete; no output was written.")
             return 0
-        if hashlib.sha256(
-            report.read_bytes(args.inventory, "Reference inventory")
-        ).digest() != hashlib.sha256(raw).digest():
+        if (
+            hashlib.sha256(
+                report.read_bytes(args.inventory, "Reference inventory")
+            ).digest()
+            != hashlib.sha256(raw).digest()
+        ):
             fail("Reference inventory changed after inspection")
         refreshed = observe(items)
-        snapshots = [
-            (item.status, item.digest, item.size) for item in observations
-        ]
+        snapshots = [(item.status, item.digest, item.size) for item in observations]
         refreshed_snapshots = [
             (item.status, item.digest, item.size) for item in refreshed
         ]

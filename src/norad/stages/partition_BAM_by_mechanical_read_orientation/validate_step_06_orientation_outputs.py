@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
@@ -37,6 +38,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
+
+
 def build(args: argparse.Namespace):
     paths = {
         "fwd_bam": report.lexical_path(args.fwd_bam),
@@ -61,15 +64,22 @@ def build(args: argparse.Namespace):
     structure_ok = bool(values)
     rows = [
         report.row(
-            "06", args.scope_id, "output_containers", containers_ok,
+            "06",
+            args.scope_id,
+            "output_containers",
+            containers_ok,
             " ".join(f"{key}={value.hex()}" for key, value in magic.items()),
             "two BAM/BGZF and two BAI/CSI signatures",
             "orientation output containers",
         ),
         report.row(
-            "06", args.scope_id, "counts_structure", structure_ok,
+            "06",
+            args.scope_id,
+            "counts_structure",
+            structure_ok,
             structure_detail,
-            "one exact typed sample row", "orientation counts table",
+            "one exact typed sample row",
+            "orientation counts table",
         ),
     ]
     for check_id, orientation_key in zip(
@@ -80,7 +90,8 @@ def build(args: argparse.Namespace):
         )
         rows.append(
             report.row(
-                "06", args.scope_id,
+                "06",
+                args.scope_id,
                 check_id,
                 structure_ok and count_ok,
                 count_detail,
@@ -97,12 +108,16 @@ def build(args: argparse.Namespace):
         and abs(
             values["assigned_fraction"]
             - values["assigned_records"] / values["input_records"]
-        ) <= 0.0000005
+        )
+        <= 0.0000005
     )
     rows.extend(
         [
             report.row(
-                "06", args.scope_id, "assigned_count_arithmetic", assigned_ok,
+                "06",
+                args.scope_id,
+                "assigned_count_arithmetic",
+                assigned_ok,
                 f"input={values.get('input_records')} "
                 f"assigned={values.get('assigned_records')} "
                 f"unassigned={values.get('unassigned_records')} "
@@ -123,12 +138,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='06',
+                step_id="06",
                 scope_id=args.scope_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 06',
+                published_label="Step 06",
             ),
             data,
             snapshots,

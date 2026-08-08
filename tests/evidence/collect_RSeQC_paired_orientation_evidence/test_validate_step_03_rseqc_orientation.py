@@ -6,7 +6,13 @@ from pathlib import Path
 from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "collect_rseqc_orientation_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -16,8 +22,7 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 SCRIPT = (
-    ROOT
-    / "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+    ROOT / "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
     "validate_step_03_rseqc_orientation.py"
 )
 TEST_MODULE_NAME = "_norad_test_validate_step_03_rseqc_orientation"
@@ -31,16 +36,20 @@ def fixture(root: Path):
         'Fraction of reads explained by "1++,1--,2+-,2-+": 0.97\n'
         'Fraction of reads explained by "1+-,1-+,2++,2--": 0.02\n'
     )
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return source, out / "S.validation.tsv"
 
 
 def arguments(values, *extra):
     source, output = values
     return [
-        "--scope-id", "S",
-        "--infer-report", str(source),
-        "--output", str(output),
+        "--scope-id",
+        "S",
+        "--infer-report",
+        str(source),
+        "--output",
+        str(output),
         *extra,
     ]
 
@@ -48,7 +57,9 @@ def arguments(values, *extra):
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -103,8 +114,7 @@ def test_invalid_fraction_and_sum_are_failed_evidence(tmp_path):
 def test_nonempty_malformed_producer_output_is_published_failed_evidence(tmp_path):
     values = fixture(tmp_path)
     values[0].write_text(
-        "This is PairEnd Data\n"
-        "nonempty malformed orientation evidence\n"
+        "This is PairEnd Data\nnonempty malformed orientation evidence\n"
     )
 
     result = run(values, "--execute")

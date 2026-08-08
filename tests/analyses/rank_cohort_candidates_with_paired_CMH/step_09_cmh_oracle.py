@@ -9,10 +9,9 @@ producer-shaped result fields.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Sequence
-
 
 MISSING_COUNTS = "missing_counts"
 LOW_COVERAGE = "low_coverage"
@@ -91,9 +90,7 @@ def _validated_counts(
                     f"{condition} stratum {index} has partial DP/AD missingness"
                 )
             if dp is not None and ad is not None and ad > dp:
-                raise OracleError(
-                    f"{condition} stratum {index} has AD greater than DP"
-                )
+                raise OracleError(f"{condition} stratum {index} has AD greater than DP")
     return vectors
 
 
@@ -130,10 +127,7 @@ def _complete_cmh(
             total,
         )
         variance += Fraction(
-            treatment_total
-            * control_total
-            * edited_total
-            * unedited_total,
+            treatment_total * control_total * edited_total * unedited_total,
             total * total * (total - 1),
         )
         diagonal += Fraction(a * d, total)
@@ -189,8 +183,7 @@ def characterize_candidate(
     if any(value is None for vector in validated for value in vector):
         return CandidateResult(MISSING_COUNTS, None)
     complete = tuple(
-        tuple(value for value in vector if value is not None)
-        for vector in validated
+        tuple(value for value in vector if value is not None) for vector in validated
     )
     (
         complete_control_dp,
@@ -199,8 +192,7 @@ def characterize_candidate(
         complete_treatment_ad,
     ) = complete
     if any(
-        depth < min_sample_dp
-        for depth in complete_control_dp + complete_treatment_dp
+        depth < min_sample_dp for depth in complete_control_dp + complete_treatment_dp
     ):
         return CandidateResult(LOW_COVERAGE, None)
     cmh = _complete_cmh(
@@ -223,14 +215,10 @@ def benjamini_hochberg(p_values: Sequence[float]) -> tuple[float, ...]:
     count = len(values)
     if count == 0:
         return ()
-    descending = sorted(
-        range(count), key=lambda index: values[index], reverse=True
-    )
+    descending = sorted(range(count), key=lambda index: values[index], reverse=True)
     adjusted = [0.0] * count
     running = 1.0
-    for rank, index in zip(
-        range(count, 0, -1), descending, strict=True
-    ):
+    for rank, index in zip(range(count, 0, -1), descending, strict=True):
         running = min(running, count * values[index] / rank)
         adjusted[index] = min(1.0, running)
     return tuple(adjusted)
@@ -265,9 +253,7 @@ def require_reported_match(
     observed_values = (statistic, p_value, common_odds_ratio)
     if expected.cmh is None:
         if any(value is not None for value in observed_values):
-            raise OracleMismatch(
-                f"{test_status} result must not report CMH values"
-            )
+            raise OracleMismatch(f"{test_status} result must not report CMH values")
         return
     expected_values = (
         expected.cmh.statistic,
@@ -278,9 +264,7 @@ def require_reported_match(
     for label, expected_value, observed_value in zip(
         labels, expected_values, observed_values, strict=True
     ):
-        if observed_value is None or not _numbers_match(
-            expected_value, observed_value
-        ):
+        if observed_value is None or not _numbers_match(expected_value, observed_value):
             raise OracleMismatch(
                 f"{label} mismatch: expected {expected_value}, "
                 f"observed {observed_value}"

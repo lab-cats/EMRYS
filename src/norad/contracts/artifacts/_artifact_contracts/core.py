@@ -8,30 +8,28 @@ import json
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 from norad.libraries import validation as report
 
-
 REPO_ROOT = Path(__file__).resolve().parents[5]
-SCHEMA_ROOT = (
-    Path(__file__).resolve().parents[2] / "schemas" / "artifacts" / "v1"
-)
+SCHEMA_ROOT = Path(__file__).resolve().parents[2] / "schemas" / "artifacts" / "v1"
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "artifact_record.schema.json",
-    "scientific-review-record": (
-        SCHEMA_ROOT / "scientific_review_record.schema.json"
-    ),
+    "scientific-review-record": (SCHEMA_ROOT / "scientific_review_record.schema.json"),
     "run-summary": SCHEMA_ROOT / "run_summary.schema.json",
     "report-receipt": SCHEMA_ROOT / "report_receipt.schema.json",
 }
@@ -185,9 +183,7 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
             ) from exc
         schema_id = schema.get("$id")
         if not isinstance(schema_id, str) or not schema_id:
-            raise ContractValidationError(
-                f"{name} schema must define a non-empty $id"
-            )
+            raise ContractValidationError(f"{name} schema must define a non-empty $id")
         try:
             registry = registry.with_resource(
                 schema_id,
@@ -225,9 +221,7 @@ def sha256_file(path: Path) -> str:
 
 
 def canonical_run_contract_sha256(run_contract: dict[str, Any]) -> str:
-    components = {
-        field: run_contract[field] for field in RUN_CONTRACT_COMPONENT_FIELDS
-    }
+    components = {field: run_contract[field] for field in RUN_CONTRACT_COMPONENT_FIELDS}
     payload = json.dumps(
         components,
         ensure_ascii=False,
@@ -253,9 +247,7 @@ def validate_resolved_path(value: str, label: str) -> None:
             f"{label} must be non-empty and have no surrounding whitespace"
         )
     if "\x00" in value or "\n" in value or "\r" in value:
-        raise ContractValidationError(
-            f"{label} contains an invalid control character"
-        )
+        raise ContractValidationError(f"{label} contains an invalid control character")
     if glob.has_magic(value):
         raise ContractValidationError(
             f"{label} must be explicit and must not contain glob syntax: {value}"
@@ -271,8 +263,7 @@ def validate_resolved_path(value: str, label: str) -> None:
     path = Path(value)
     if any(part in {".", ".."} for part in path.parts):
         raise ContractValidationError(
-            f"{label} must be normalized without '.' or '..' components: "
-            f"{value}"
+            f"{label} must be normalized without '.' or '..' components: {value}"
         )
 
 
@@ -280,10 +271,7 @@ def validate_document_paths(value: Any, location: str = "$") -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             child_location = f"{location}.{key}"
-            if (
-                isinstance(child, str)
-                and (key == "path" or key.endswith("_path"))
-            ):
+            if isinstance(child, str) and (key == "path" or key.endswith("_path")):
                 validate_resolved_path(child, child_location)
             validate_document_paths(child, child_location)
     elif isinstance(value, list):
@@ -301,8 +289,7 @@ def require_unique_key(
         value = record[key]
         if value in indexed:
             raise ContractValidationError(
-                f"{label} contains duplicate {key} {value!r} "
-                f"at array index {index}"
+                f"{label} contains duplicate {key} {value!r} at array index {index}"
             )
         indexed[value] = record
     return indexed
@@ -332,8 +319,7 @@ def validate_attempt_graph(
             )
         if parent not in indexed:
             raise ContractValidationError(
-                f"{label} attempt {attempt_id!r} supersedes unknown attempt "
-                f"{parent!r}"
+                f"{label} attempt {attempt_id!r} supersedes unknown attempt {parent!r}"
             )
 
     roots = [
@@ -367,8 +353,7 @@ def validate_attempt_graph(
         while current is not None:
             if current in visited:
                 raise ContractValidationError(
-                    f"{label} attempt supersession contains a cycle at "
-                    f"{current!r}"
+                    f"{label} attempt supersession contains a cycle at {current!r}"
                 )
             visited.add(current)
             current = indexed[current]["supersedes_attempt_id"]
@@ -387,9 +372,7 @@ def validate_attempt_graph(
         if parent_id is not None:
             parent_finished_at = indexed[parent_id]["finished_at"]
             if started_at is not None and parent_finished_at is not None:
-                started = datetime.fromisoformat(
-                    started_at.replace("Z", "+00:00")
-                )
+                started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
                 parent_finished = datetime.fromisoformat(
                     parent_finished_at.replace("Z", "+00:00")
                 )
@@ -521,8 +504,9 @@ def validate_computational_statuses(
         cluster_validation["dry_run_status"],
         cluster_validation["proof_status"],
     }
-    if cluster_statuses & {"passed", "failed", "proven"} and not (
-        cluster_validation["evidence"]
+    if (
+        cluster_statuses & {"passed", "failed", "proven"}
+        and not (cluster_validation["evidence"])
     ):
         raise ContractValidationError(
             f"{label} passed, failed, or proven cluster validation requires "
@@ -554,6 +538,7 @@ def validate_computational_statuses(
             evidence=cluster_validation["evidence"],
             required_roles={"cluster_log"},
         )
+
 
 def resolve_contract_path(value: str) -> Path:
     path = Path(value)

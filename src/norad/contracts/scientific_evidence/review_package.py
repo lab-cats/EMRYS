@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
-
+from collections.abc import Mapping, Sequence
 
 SCIENCE_STATUSES = (
     "evidence_incomplete",
@@ -491,12 +490,8 @@ AUDIT_COMPONENT_STATUSES = (
 )
 
 
-def aggregate_evidence_status(
-    rows: Sequence[Mapping[str, str]], category: str
-) -> str:
-    category_rows = [
-        row for row in rows if row["evidence_category"] == category
-    ]
+def aggregate_evidence_status(rows: Sequence[Mapping[str, str]], category: str) -> str:
+    category_rows = [row for row in rows if row["evidence_category"] == category]
     if not category_rows:
         return "missing"
     statuses = [row["evidence_status"] for row in category_rows]

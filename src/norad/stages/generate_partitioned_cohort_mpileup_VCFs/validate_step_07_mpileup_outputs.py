@@ -6,22 +6,30 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.libraries import validation as report
-from norad.libraries.validation import mpileup as mpileup_report
 from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.validation import mpileup as mpileup_report
 
 RECEIPT_HEADER = (
-    "cohort_id", "partition_id", "selector_type", "selector_value",
-    "orientation", "vcf_path", "sample_manifest_sha256",
-    "partition_manifest_sha256", "sample_count", "vcf_record_count",
+    "cohort_id",
+    "partition_id",
+    "selector_type",
+    "selector_value",
+    "orientation",
+    "vcf_path",
+    "sample_manifest_sha256",
+    "partition_manifest_sha256",
+    "sample_count",
+    "vcf_record_count",
 )
 CHECK_IDS = {
     "receipt_structure",
@@ -94,12 +102,9 @@ def build(args: argparse.Namespace):
         )
     )
     manifest_identity = receipt_structure and all(
-        row["sample_manifest_sha256"] == report.sha256_file(
-            paths["sample_manifest"]
-        )
-        and row["partition_manifest_sha256"] == report.sha256_file(
-            paths["partition_manifest"]
-        )
+        row["sample_manifest_sha256"] == report.sha256_file(paths["sample_manifest"])
+        and row["partition_manifest_sha256"]
+        == report.sha256_file(paths["partition_manifest"])
         and row["sample_count"].isdigit()
         and int(row["sample_count"]) == len(sample_ids)
         for row in receipt_rows
@@ -116,34 +121,55 @@ def build(args: argparse.Namespace):
 
     rows = [
         report.row(
-            "07", scope_id, "receipt_structure", receipt_structure,
-             f"rows={len(receipt_rows)}",
-             f"exact header; {', '.join(alignment_orientation.ORIENTATIONS)} rows",
-             "receipt transaction"),
+            "07",
+            scope_id,
+            "receipt_structure",
+            receipt_structure,
+            f"rows={len(receipt_rows)}",
+            f"exact header; {', '.join(alignment_orientation.ORIENTATIONS)} rows",
+            "receipt transaction",
+        ),
         report.row(
-            "07", scope_id, "vcf_structure", vcf_structure,
+            "07",
+            scope_id,
+            "vcf_structure",
+            vcf_structure,
             " ".join(
-                f"{orientation}={len(samples)}" for orientation, _, samples, _ in vcf_readings
-            ) + " samples",
-            "valid VCFs with manifest sample order", "explicit VCF structure",
+                f"{orientation}={len(samples)}"
+                for orientation, _, samples, _ in vcf_readings
+            )
+            + " samples",
+            "valid VCFs with manifest sample order",
+            "explicit VCF structure",
         ),
         report.row(
-            "07", scope_id, "selector_reconciliation", selector_reconciliation,
+            "07",
+            scope_id,
+            "selector_reconciliation",
+            selector_reconciliation,
             f"{selector_type}={selector_value}",
-            "declared valid selector in both rows", "partition selector and FAI universe",
+            "declared valid selector in both rows",
+            "partition selector and FAI universe",
         ),
         report.row(
-            "07", scope_id, "manifest_identity_and_sample_order",
+            "07",
+            scope_id,
+            "manifest_identity_and_sample_order",
             manifest_identity and vcf_structure,
-            f"samples={len(sample_ids)}", "manifest hashes, count, and VCF order reconcile",
+            f"samples={len(sample_ids)}",
+            "manifest hashes, count, and VCF order reconcile",
             "immutable manifest identity",
         ),
         report.row(
-            "07", scope_id, "vcf_record_counts", counts_ok,
+            "07",
+            scope_id,
+            "vcf_record_counts",
+            counts_ok,
             " ".join(
                 f"{orientation}={count}" for orientation, _, _, count in vcf_readings
             ),
-            "receipt paths and counts match exact VCFs", "transaction record counts",
+            "receipt paths and counts match exact VCFs",
+            "transaction record counts",
         ),
     ]
     data = report.render(rows)
@@ -157,12 +183,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='07',
+                step_id="07",
                 scope_id=f"{args.cohort_id}__{args.partition_id}",
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 07',
+                published_label="Step 07",
             ),
             data,
             snapshots,

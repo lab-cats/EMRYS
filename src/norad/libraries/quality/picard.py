@@ -37,4 +37,3 @@ def parse_duplication_metrics(text: str) -> tuple[bool, str]:
         f"library={values['LIBRARY']} pairs={examined} "
         f"duplicates={duplicates} fraction={fraction:.12g}"
     )
-

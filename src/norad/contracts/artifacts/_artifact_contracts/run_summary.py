@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .artifact import validate_artifact_semantics
 from .core import (
@@ -41,9 +42,7 @@ def aggregate_equal_or_mixed(values: Iterable[str]) -> str:
 
 def aggregate_artifact_state(artifacts: list[dict[str, Any]]) -> str:
     required_artifacts = [
-        artifact
-        for artifact in artifacts
-        if artifact["expectation"]["required"]
+        artifact for artifact in artifacts if artifact["expectation"]["required"]
     ]
     considered = required_artifacts or artifacts
     states = [artifact_rollup_state(artifact) for artifact in considered]
@@ -63,9 +62,7 @@ def artifact_status_dimensions(artifact: dict[str, Any]) -> dict[str, str]:
         "implementation_status": artifact["implementation"]["status"],
         "local_test_status": artifact["local_testing"]["status"],
         "runtime_validation_status": artifact["runtime_validation"]["status"],
-        "cluster_dry_run_status": artifact["cluster_validation"][
-            "dry_run_status"
-        ],
+        "cluster_dry_run_status": artifact["cluster_validation"]["dry_run_status"],
         "cluster_proof_status": artifact["cluster_validation"]["proof_status"],
     }
 
@@ -131,12 +128,9 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 )
         if artifact["selected_attempt_id"] in superseded:
             raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} selects a superseded "
-                "run attempt"
+                f"artifact {artifact['artifact_id']!r} selects a superseded run attempt"
             )
-        expected_path = resolve_contract_path(
-            artifact["expectation"]["source_path"]
-        )
+        expected_path = resolve_contract_path(artifact["expectation"]["source_path"])
         if expected_path in expected_source_artifacts:
             raise ContractValidationError(
                 f"run artifacts contain duplicate expected source path "
@@ -144,9 +138,8 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             )
         expected_source_artifacts[expected_path] = artifact
         physical_records = (
-            ([artifact["source"]] if artifact["source"] is not None else [])
-            + artifact["members"]
-        )
+            [artifact["source"]] if artifact["source"] is not None else []
+        ) + artifact["members"]
         for record in physical_records:
             fingerprint = (
                 record["sha256"],
@@ -158,8 +151,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             prior = physical_path_records.get(physical_path)
             if prior is not None and prior != fingerprint:
                 raise ContractValidationError(
-                    f"run artifacts disagree on physical path "
-                    f"{str(physical_path)!r}"
+                    f"run artifacts disagree on physical path {str(physical_path)!r}"
                 )
             physical_path_records[physical_path] = fingerprint
 
@@ -243,9 +235,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 )
         ordered_expected_artifact_ids.extend(scope_record["artifact_ids"])
 
-    if len(ordered_expected_artifact_ids) != len(
-        set(ordered_expected_artifact_ids)
-    ):
+    if len(ordered_expected_artifact_ids) != len(set(ordered_expected_artifact_ids)):
         raise ContractValidationError(
             "an artifact_id appears in more than one expected scope"
         )
@@ -254,10 +244,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             "artifacts must appear exactly once in expected-scope/inventory order"
         )
     inventory_row_count = document["inventory"]["row_count"]
-    if (
-        inventory_row_count is not None
-        and inventory_row_count != len(artifacts)
-    ):
+    if inventory_row_count is not None and inventory_row_count != len(artifacts):
         raise ContractValidationError(
             "inventory row_count does not match the expected artifact count"
         )
@@ -281,8 +268,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
     for field, observed in observed_counts.items():
         if rollup[field] != observed:
             raise ContractValidationError(
-                f"computational_rollup {field} is {rollup[field]}, "
-                f"expected {observed}"
+                f"computational_rollup {field} is {rollup[field]}, expected {observed}"
             )
     for status_field in (
         "implementation_status",
@@ -292,8 +278,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
         "cluster_proof_status",
     ):
         expected_status = aggregate_equal_or_mixed(
-            artifact_status_dimensions(artifact)[status_field]
-            for artifact in artifacts
+            artifact_status_dimensions(artifact)[status_field] for artifact in artifacts
         )
         if rollup[status_field] != expected_status:
             raise ContractValidationError(
@@ -335,12 +320,11 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             if artifact["scope"]["step_id"] == "09c"
             if artifact["scope"]["scope_type"] == "scientific_review"
             and artifact["scope"]["scope_id"] == record["review_id"]
-                and artifact["completion_status"] == "complete"
-                and artifact["source"] is not None
-                and resolve_contract_path(artifact["source"]["path"])
-                == resolve_contract_path(record["review_summary"]["path"])
-                and artifact["source"]["sha256"]
-                == record["review_summary"]["sha256"]
+            and artifact["completion_status"] == "complete"
+            and artifact["source"] is not None
+            and resolve_contract_path(artifact["source"]["path"])
+            == resolve_contract_path(record["review_summary"]["path"])
+            and artifact["source"]["sha256"] == record["review_summary"]["sha256"]
         ]
         if len(matching_review_artifacts) != 1:
             raise ContractValidationError(
@@ -348,9 +332,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 "scientific-review artifact source"
             )
         for input_artifact in record["input_artifacts"]:
-            role_contract = SCIENCE_UPSTREAM_ROLE_CONTRACTS.get(
-                input_artifact["role"]
-            )
+            role_contract = SCIENCE_UPSTREAM_ROLE_CONTRACTS.get(input_artifact["role"])
             if role_contract is None:
                 continue
             artifact_id = input_artifact["artifact_id"]
@@ -362,9 +344,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 )
             upstream = artifact_index[artifact_id]
             source = upstream["source"]
-            expected_step, expected_scope_type, expected_adapter, _ = (
-                role_contract
-            )
+            expected_step, expected_scope_type, expected_adapter, _ = role_contract
             if (
                 upstream["completion_status"] != "complete"
                 or source is None
@@ -396,8 +376,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
         artifact = artifact_index[artifact_id]
         if artifact["completion_status"] != "complete":
             raise ContractValidationError(
-                f"report table {table['table_id']!r} references a non-complete "
-                "artifact"
+                f"report table {table['table_id']!r} references a non-complete artifact"
             )
         report_sources = {
             (
@@ -424,8 +403,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             )
         if source_record.get("media_type") != "text/tab-separated-values":
             raise ContractValidationError(
-                f"report table {table['table_id']!r} must reference a TSV "
-                "artifact"
+                f"report table {table['table_id']!r} must reference a TSV artifact"
             )
 
     if "report_table_approvals" in document["parameters"]:
@@ -459,12 +437,9 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 approval_source["path"],
                 "report-table approval provenance path",
             )
-            if (
-                not isinstance(approval_source["sha256"], str)
-                or not re.fullmatch(
-                    r"[0-9a-f]{64}",
-                    approval_source["sha256"],
-                )
+            if not isinstance(approval_source["sha256"], str) or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                approval_source["sha256"],
             ):
                 raise ContractValidationError(
                     "report-table approval provenance SHA-256 is invalid"
@@ -477,8 +452,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 or isinstance(approval_source["row_count"], bool)
                 or approval_source["row_count"] < 1
                 or approval_source["row_count"] != len(report_tables)
-                or approval_source["media_type"]
-                != "text/tab-separated-values"
+                or approval_source["media_type"] != "text/tab-separated-values"
             ):
                 raise ContractValidationError(
                     "report-table approval provenance does not reconcile with "

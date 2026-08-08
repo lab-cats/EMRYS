@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 GIT_ORCHESTRATION_ROOT = SCRIPTS_ROOT / "git_orchestration"
@@ -25,13 +24,9 @@ MAKE_EXPANSION_GOLDEN = (
 )
 
 PYTHON_ENTRYPOINT_PATHS = {
-    "build_artifact_index.py": Path(
-        "src/norad/reporting/build_artifact_index.py"
-    ),
+    "build_artifact_index.py": Path("src/norad/reporting/build_artifact_index.py"),
     "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
-    "gtf_to_bed12.py": Path(
-        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
-    ),
+    "gtf_to_bed12.py": Path("src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"),
     "reference_provenance.py": Path(
         "src/norad/evidence/reference_provenance/reference_provenance.py"
     ),
@@ -67,12 +62,10 @@ PYTHON_ENTRYPOINT_PATHS = {
         "validate_step_00c_reference_sidecars.py"
     ),
     "validate_step_01_star_alignment.py": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/"
-        "validate_step_01_star_alignment.py"
+        "src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py"
     ),
     "validate_step_02_canonical_bam.py": Path(
-        "src/norad/stages/construct_canonical_BAM/"
-        "validate_step_02_canonical_bam.py"
+        "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
     ),
     "validate_step_02b_bam_qc.py": Path(
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
@@ -129,8 +122,7 @@ SHELL_ENTRYPOINT_PATHS = {
     ),
     "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "step_00c_prepare_gatk_reference.sh"
+        "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
     "step_01_star_align.sh": Path(
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
@@ -139,20 +131,17 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
     ),
     "step_02b_bam_qc.sh": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "step_02b_bam_qc.sh"
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"
     ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "step_04_mark_duplicates.sh"
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "step_05_split_n_cigar_reads.sh"
+        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
@@ -198,9 +187,7 @@ R_ENTRYPOINT_PATHS = {
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
-DIRECT_R_ENTRYPOINTS = frozenset(
-    {"check_r_environment.R", "restore_r_environment.R"}
-)
+DIRECT_R_ENTRYPOINTS = frozenset({"check_r_environment.R", "restore_r_environment.R"})
 RSCRIPT_ONLY_ENTRYPOINTS = R_ENTRYPOINTS - DIRECT_R_ENTRYPOINTS
 
 GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS = frozenset(
@@ -314,10 +301,7 @@ def expected_make_expansions() -> dict[str, tuple[str, ...]]:
     """Load the independently reviewed literal Make expansion oracle."""
 
     document = json.loads(MAKE_EXPANSION_GOLDEN.read_text(encoding="utf-8"))
-    return {
-        target: tuple(lines)
-        for target, lines in document.items()
-    }
+    return {target: tuple(lines) for target, lines in document.items()}
 
 
 def canonical_make_environment() -> dict[str, str]:
@@ -386,8 +370,8 @@ def test_make_expansion_ignores_ambient_make_state(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert normalized_make_expansion(result.stdout) == (
-        expected_make_expansions()["test"]
+    assert (
+        normalized_make_expansion(result.stdout) == (expected_make_expansions()["test"])
     )
 
 
@@ -510,7 +494,7 @@ def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
     shim_dir.mkdir()
     python_shim = shim_dir / "python3"
     python_shim.write_text(
-        f"#!/bin/sh\nexec {str(Path(sys.executable))!r} \"$@\"\n",
+        f'#!/bin/sh\nexec {str(Path(sys.executable))!r} "$@"\n',
         encoding="utf-8",
     )
     python_shim.chmod(0o755)
@@ -585,23 +569,15 @@ def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
 
 
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:
-    makefile_lines = (REPO_ROOT / "Makefile").read_text(
-        encoding="utf-8"
-    ).splitlines()
-    phony_line = next(
-        line
-        for line in makefile_lines
-        if line.startswith(".PHONY:")
-    )
+    makefile_lines = (REPO_ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
+    phony_line = next(line for line in makefile_lines if line.startswith(".PHONY:"))
     live_targets = set(phony_line.partition(":")[2].split())
     configurable_variables = {
         match.group(1)
         for line in makefile_lines
         if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
     }
-    include_lines = [
-        line for line in makefile_lines if line.startswith("include ")
-    ]
+    include_lines = [line for line in makefile_lines if line.startswith("include ")]
 
     assert live_targets == set(MAKE_TARGET_DECISIONS)
     assert configurable_variables == MAKE_CONTEXT_VARIABLES
@@ -637,8 +613,8 @@ def test_make_targets_have_side_effect_free_command_expansion(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert normalized_make_expansion(result.stdout) == (
-        expected_make_expansions()[target]
+    assert (
+        normalized_make_expansion(result.stdout) == (expected_make_expansions()[target])
     )
     assert relative_snapshot(tmp_path) == before
 
@@ -673,6 +649,6 @@ def test_make_expansion_oracle_rejects_recipe_mutation(
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert normalized_make_expansion(result.stdout) != (
-        expected_make_expansions()["test"]
+    assert (
+        normalized_make_expansion(result.stdout) != (expected_make_expansions()["test"])
     )

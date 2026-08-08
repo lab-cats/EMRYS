@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from .contracts import step08, step09
 from .models import ArtifactIndexError, Inspection
 from .reconcile_native import native_int, require_referenced_source
+
 
 def validate_significant_exact_subset(
     all_sites_path: Path,
@@ -122,13 +123,10 @@ def validate_step09_mutation_spectrum(
                 "Step 09 mutation spectrum candidate_fraction is not numeric"
             ) from exc
         expected_fraction = (
-            0.0
-            if total == 0
-            else expected_counts.get("candidate_count", 0) / total
+            0.0 if total == 0 else expected_counts.get("candidate_count", 0) / total
         )
-        if (
-            not 0.0 <= observed_fraction <= 1.0
-            or not step08.values_close(observed_fraction, expected_fraction)
+        if not 0.0 <= observed_fraction <= 1.0 or not step08.values_close(
+            observed_fraction, expected_fraction
         ):
             raise ArtifactIndexError(
                 "Step 09 mutation spectrum candidate_fraction does not "
@@ -151,9 +149,7 @@ def reconcile_step09(
         if member.row["adapter"] == "step09_cmh_significant_sites_v1"
     )
     summary = next(
-        member
-        for member in members
-        if member.row["adapter"] == "step09_cmh_summary_v1"
+        member for member in members if member.row["adapter"] == "step09_cmh_summary_v1"
     )
     mutation = next(
         member
@@ -163,9 +159,7 @@ def reconcile_step09(
     summary_row = summary.first_row or {}
     all_samples = all_sites.native.get("samples", [])
     if not all_samples or all_samples != significant.native.get("samples", []):
-        raise ArtifactIndexError(
-            "Step 09 result sample blocks disagree"
-        )
+        raise ArtifactIndexError("Step 09 result sample blocks disagree")
     if native_int(summary_row, "sample_count") != len(all_samples):
         raise ArtifactIndexError(
             "Step 09 summary sample_count disagrees with result columns"
@@ -176,9 +170,7 @@ def reconcile_step09(
         raise ArtifactIndexError(
             "Step 09 summary candidate_count disagrees with all-sites rows"
         )
-    significant_count = (
-        significant.source["row_count"] if significant.source else None
-    )
+    significant_count = significant.source["row_count"] if significant.source else None
     if significant_count != (
         native_int(summary_row, "significant_up_count")
         + native_int(summary_row, "significant_down_count")

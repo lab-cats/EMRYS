@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[3]
 OWNER = ROOT / "tests/analyses/rank_cohort_candidates_with_paired_CMH"
 ORACLE_PATH = OWNER / "step_09_cmh_oracle.py"
@@ -81,9 +80,7 @@ def load_cases() -> tuple[Case, ...]:
             expected_status=row["expected_status"],
             expected_statistic=parse_number(row["expected_statistic"]),
             expected_p_value=parse_number(row["expected_p_value"]),
-            expected_common_odds_ratio=parse_number(
-                row["expected_common_odds_ratio"]
-            ),
+            expected_common_odds_ratio=parse_number(row["expected_common_odds_ratio"]),
             expected_bh=parse_number(row["expected_bh"]),
         )
         for row in rows
@@ -119,8 +116,7 @@ def test_oracle_is_structurally_independent_of_production_modules() -> None:
         elif isinstance(node, ast.ImportFrom):
             imports.append(node.module or "")
     assert all(
-        not name.startswith(("scripts", "step_09", "step09"))
-        for name in imports
+        not name.startswith(("scripts", "step_09", "step09")) for name in imports
     )
 
 
@@ -198,9 +194,7 @@ def test_coordinated_false_cmh_family_is_rejected() -> None:
             p_value=0.0005,
             common_odds_ratio=3.5,
         )
-    all_zero = next(
-        case for case in CASES if case.case_id == "all_zero_edited"
-    )
+    all_zero = next(case for case in CASES if case.case_id == "all_zero_edited")
     with pytest.raises(ORACLE.OracleMismatch, match="test_status mismatch"):
         ORACLE.require_reported_match(
             calculate(all_zero),
@@ -212,9 +206,7 @@ def test_coordinated_false_cmh_family_is_rejected() -> None:
     family = [case for case in CASES if case.bh_family == "primary"]
     family_results = [calculate(case) for case in family]
     assert all(result.cmh is not None for result in family_results)
-    p_values = [
-        result.cmh.p_value for result in family_results if result.cmh
-    ]
+    p_values = [result.cmh.p_value for result in family_results if result.cmh]
     golden_adjusted = tuple(
         case.expected_bh for case in family if case.expected_bh is not None
     )

@@ -6,17 +6,18 @@ from __future__ import annotations
 import argparse
 import io
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
-from norad.libraries import validation as report
-
 import gtf_to_bed12
+
+from norad.libraries import validation as report
 from norad.libraries.alignments import bed as bed_report
 
 
@@ -53,25 +54,47 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     agreement = observed_lines == expected_lines
     output_rows = (
         report.row(
-            "00b", args.scope_id, "bed12_structure", structural, len(rows),
-            "valid BED12 rows", "12 columns and legal coordinates/fields",
+            "00b",
+            args.scope_id,
+            "bed12_structure",
+            structural,
+            len(rows),
+            "valid BED12 rows",
+            "12 columns and legal coordinates/fields",
         ),
         report.row(
-            "00b", args.scope_id, "coordinate_sorting", sorted_rows,
-            "sorted" if sorted_rows else "unsorted", "chrom,start,end,name",
+            "00b",
+            args.scope_id,
+            "coordinate_sorting",
+            sorted_rows,
+            "sorted" if sorted_rows else "unsorted",
+            "chrom,start,end,name",
             "deterministic BED order",
         ),
         report.row(
-            "00b", args.scope_id, "block_structure", blocks_valid,
-            "valid" if blocks_valid else "invalid", "blockCount/sizes/starts reconcile",
+            "00b",
+            args.scope_id,
+            "block_structure",
+            blocks_valid,
+            "valid" if blocks_valid else "invalid",
+            "blockCount/sizes/starts reconcile",
             "BED blocks remain within transcript span",
         ),
         report.row(
-            "00b", args.scope_id, "unique_transcript_names", unique_names,
-            len({item[3] for item in rows}), len(rows), "one row per transcript name",
+            "00b",
+            args.scope_id,
+            "unique_transcript_names",
+            unique_names,
+            len({item[3] for item in rows}),
+            len(rows),
+            "one row per transcript name",
         ),
         report.row(
-            "00b", args.scope_id, "gtf_transcript_agreement", agreement, len(rows),
+            "00b",
+            args.scope_id,
+            "gtf_transcript_agreement",
+            agreement,
+            len(rows),
             len(expected_lines),
             "BED12 bytes equal deterministic normalization of explicit GTF",
         ),
@@ -98,7 +121,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build_report(args)
         return report.finish(
             report.Runtime(
-                step_id='00b',
+                step_id="00b",
                 scope_id=args.scope_id,
                 check_ids={
                     "bed12_structure",
@@ -109,7 +132,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 },
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 00b',
+                published_label="Step 00b",
             ),
             data,
             snapshots,

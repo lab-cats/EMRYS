@@ -6,19 +6,18 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
+from norad.contracts.scientific_evidence import step08
 from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
-
-from norad.contracts.scientific_evidence import step08
-
 
 CHECK_IDS = {
     "output_transaction",
@@ -165,35 +164,56 @@ def build(args: argparse.Namespace):
                 or not IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
             ):
                 summary_table = None
-                summary_detail = "summary cohort, annotation identity, or policy mismatch"
+                summary_detail = (
+                    "summary cohort, annotation identity, or policy mismatch"
+                )
 
     scope_id = args.cohort_id
 
     rows = [
         report.row(
-            "08", scope_id, "output_transaction", transaction_ok,
-            header_detail, "three exact Step 08 TSV headers",
+            "08",
+            scope_id,
+            "output_transaction",
+            transaction_ok,
+            header_detail,
+            "three exact Step 08 TSV headers",
             "sites, inputs, and summary",
         ),
         report.row(
-            "08", scope_id, "manifest_annotation_identity", identity_ok,
+            "08",
+            scope_id,
+            "manifest_annotation_identity",
+            identity_ok,
             f"sample={sample_detail}; partition={partition_detail}",
             "cohort, manifest hashes, annotation path/hash, provisional policy",
             inputs_detail,
         ),
         report.row(
-            "08", scope_id, "input_receipt_reconciliation", inputs_table is not None,
-            inputs_detail, "complete partition x orientation receipt",
+            "08",
+            scope_id,
+            "input_receipt_reconciliation",
+            inputs_table is not None,
+            inputs_detail,
+            "complete partition x orientation receipt",
             "ordered inputs, types, hashes, and per-row arithmetic",
         ),
         report.row(
-            "08", scope_id, "sites_order_uniqueness", sites_table is not None,
-            sites_detail, "typed unique candidates and per-scope counts",
+            "08",
+            scope_id,
+            "sites_order_uniqueness",
+            sites_table is not None,
+            sites_detail,
+            "typed unique candidates and per-scope counts",
             "sites schema, sample columns, order, uniqueness, and AF arithmetic",
         ),
         report.row(
-            "08", scope_id, "summary_count_reconciliation", summary_table is not None,
-            summary_detail, "one exact aggregate row matching inputs and sites",
+            "08",
+            scope_id,
+            "summary_count_reconciliation",
+            summary_table is not None,
+            summary_detail,
+            "one exact aggregate row matching inputs and sites",
             "three-output transaction count reconciliation",
         ),
     ]
@@ -208,12 +228,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         data, snapshots = build(args)
         return report.finish(
             report.Runtime(
-                step_id='08',
+                step_id="08",
                 scope_id=args.cohort_id,
                 check_ids=CHECK_IDS,
                 output=args.output,
                 execute=args.execute,
-                published_label='Step 08',
+                published_label="Step 08",
             ),
             data,
             snapshots,

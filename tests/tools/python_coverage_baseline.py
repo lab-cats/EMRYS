@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
-from decimal import Decimal, ROUND_HALF_UP
 import json
-from pathlib import Path
 import sys
-from typing import Any, Sequence
-
+from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
+from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
 COVERAGE_VERSION = "7.15.2"
@@ -82,9 +82,13 @@ def normalized_source_path(value: Any) -> str:
     if path.startswith("/") or path != str(Path(path).as_posix()):
         raise SnapshotError(f"Coverage source path is not normalized: {value}")
     if ".." in Path(path).parts or not path.endswith(".py"):
-        raise SnapshotError(f"Coverage source path is outside the Python policy: {value}")
+        raise SnapshotError(
+            f"Coverage source path is outside the Python policy: {value}"
+        )
     if not any(path.startswith(f"{root}/") for root in SOURCE_ROOTS):
-        raise SnapshotError(f"Coverage source path is outside configured roots: {value}")
+        raise SnapshotError(
+            f"Coverage source path is outside configured roots: {value}"
+        )
     return path
 
 
@@ -105,12 +109,8 @@ def measured_file(path: str, summary: Any) -> dict[str, Any]:
     return {
         "path": path,
         **counts,
-        "line_rate": rate_text(
-            counts["covered_lines"], counts["num_statements"]
-        ),
-        "branch_rate": rate_text(
-            counts["covered_branches"], counts["num_branches"]
-        ),
+        "line_rate": rate_text(counts["covered_lines"], counts["num_statements"]),
+        "branch_rate": rate_text(counts["covered_branches"], counts["num_branches"]),
     }
 
 
@@ -153,7 +153,7 @@ def build_snapshot(document: Any) -> dict[str, Any]:
     for required in REQUIRED_SUBPROCESS_FILES:
         if required not in file_map or file_map[required]["covered_lines"] == 0:
             raise SnapshotError(
-                "Subprocess coverage is missing for required file: " f"{required}"
+                f"Subprocess coverage is missing for required file: {required}"
             )
 
     return {
@@ -227,9 +227,7 @@ def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
             raise SnapshotError(f"{label} repeats coverage file {path}")
         seen.add(path)
         counts = {
-            field: require_count(
-                entry.get(field), f"{label}.files[{index}].{field}"
-            )
+            field: require_count(entry.get(field), f"{label}.files[{index}].{field}")
             for field in COUNT_FIELDS
         }
         expected = measured_file(path, counts)
@@ -242,9 +240,7 @@ def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
     aggregate = {field: sum(item[field] for item in files) for field in COUNT_FIELDS}
     expected_totals = {
         **aggregate,
-        "line_rate": rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
+        "line_rate": rate_text(aggregate["covered_lines"], aggregate["num_statements"]),
         "branch_rate": rate_text(
             aggregate["covered_branches"], aggregate["num_branches"]
         ),
@@ -307,9 +303,7 @@ def compare_snapshots(
             entry["num_statements"],
             *NEW_SHARED_LINE_MINIMUM,
         ):
-            raise SnapshotError(
-                f"New shared module line coverage is below 90%: {path}"
-            )
+            raise SnapshotError(f"New shared module line coverage is below 90%: {path}")
         if not ratio_is_at_least(
             entry["covered_branches"],
             entry["num_branches"],

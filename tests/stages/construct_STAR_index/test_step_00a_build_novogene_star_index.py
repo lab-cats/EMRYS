@@ -7,7 +7,6 @@ import os
 import subprocess
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 JOB = (
     REPO_ROOT
@@ -98,7 +97,7 @@ def write_compressed_inputs(submit: Path) -> None:
     with gzip.open(reference_dir / "genome.fa.gz", "wt", encoding="utf-8") as handle:
         handle.write(">chr1\nACGT\n")
     with gzip.open(reference_dir / "genome.gtf.gz", "wt", encoding="utf-8") as handle:
-        handle.write("chr1\ttest\texon\t1\t4\t.\t+\t.\tgene_id \"g1\";\n")
+        handle.write('chr1\ttest\texon\t1\t4\t.\t+\t.\tgene_id "g1";\n')
 
 
 def run_job(
@@ -151,7 +150,7 @@ def test_existing_references_are_reused_byte_for_byte_with_default_threads(
     prepared = submit / "refs/novogene_ref"
     prepared.mkdir(parents=True)
     fasta_bytes = b">prepared\nAAAA\n"
-    gtf_bytes = b"prepared\tfixture\tgene\t1\t4\t.\t+\t.\tgene_id \"p\";\n"
+    gtf_bytes = b'prepared\tfixture\tgene\t1\t4\t.\t+\t.\tgene_id "p";\n'
     (prepared / "genome.fa").write_bytes(fasta_bytes)
     (prepared / "genome.gtf").write_bytes(gtf_bytes)
     environment.pop("SLURM_CPUS_PER_TASK")
@@ -176,9 +175,7 @@ def test_module_failure_precedes_reference_and_output_directory_creation(
     result = run_job(submit, environment)
 
     assert result.returncode == 23
-    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == (
-        "load star/2.7.11b",
-    )
+    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == ("load star/2.7.11b",)
     assert read_lines(Path(environment["FAKE_TOOL_LOG"])) == ()
     assert not (submit / "refs").exists()
 

@@ -6,7 +6,6 @@ import hashlib
 import importlib.util
 import io
 import json
-import os
 import stat
 import sys
 import tarfile
@@ -14,7 +13,6 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "restore_quarto.py"
@@ -64,7 +62,7 @@ def build_archive(
         "  exit 0\n"
         "fi\n"
         "exit 2\n"
-    ).encode("utf-8")
+    ).encode()
     with tarfile.open(path, "w:gz") as bundle:
         add_bytes(bundle, "./bin/quarto", executable, mode=0o755)
         add_bytes(
@@ -77,9 +75,7 @@ def build_archive(
             "./share/extension-subtrees/julia-engine/AGENTS.md",
             b"synthetic-agent-instructions\n",
         )
-        link = tarfile.TarInfo(
-            "./share/extension-subtrees/julia-engine/CLAUDE.md"
-        )
+        link = tarfile.TarInfo("./share/extension-subtrees/julia-engine/CLAUDE.md")
         link.type = tarfile.SYMTYPE
         link.linkname = "AGENTS.md"
         bundle.addfile(link)
@@ -111,14 +107,11 @@ def assert_no_restore_residue(install_root: Path) -> None:
 
 
 def test_pinned_public_contract_matches_makefile_and_official_digest() -> None:
-    makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
-        encoding="utf-8"
-    )
+    makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(encoding="utf-8")
     source = SCRIPT.read_text(encoding="utf-8")
     assert RESTORE.QUARTO_VERSION == "1.9.38"
     assert RESTORE.QUARTO_SHA256 == (
-        "47089a5020cfb41981ba0d4b46e110ed"
-        "fa608722aea45ef248e14efba6d6b18a"
+        "47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a"
     )
     assert RESTORE.QUARTO_URL.startswith("https://github.com/")
     assert f"QUARTO_VERSION := {RESTORE.QUARTO_VERSION}" in makefile
@@ -167,13 +160,7 @@ def test_restore_accepts_official_shape_spaces_and_contained_symlink(
         / "fonts"
         / "Font Awesome 6 Free-Solid-900.otf"
     ).is_file()
-    link = (
-        target
-        / "share"
-        / "extension-subtrees"
-        / "julia-engine"
-        / "CLAUDE.md"
-    )
+    link = target / "share" / "extension-subtrees" / "julia-engine" / "CLAUDE.md"
     assert link.is_symlink()
     assert link.readlink() == Path("AGENTS.md")
     assert_no_restore_residue(install_root)
@@ -191,10 +178,7 @@ def test_same_version_tree_without_verified_receipt_is_rejected(
     install_root = tmp_path / "quarto"
     target = install_root / RESTORE.QUARTO_VERSION
     (target / "bin").mkdir(parents=True)
-    fake = (
-        "#!/usr/bin/env bash\n"
-        f"printf '%s\\n' '{RESTORE.QUARTO_VERSION}'\n"
-    )
+    fake = f"#!/usr/bin/env bash\nprintf '%s\\n' '{RESTORE.QUARTO_VERSION}'\n"
     executable = target / "bin" / "quarto"
     executable.write_text(fake, encoding="utf-8")
     executable.chmod(0o755)

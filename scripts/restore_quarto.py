@@ -19,10 +19,10 @@ import subprocess
 import sys
 import tarfile
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import BinaryIO, Iterable
-
+from typing import BinaryIO
 
 QUARTO_VERSION = "1.9.38"
 QUARTO_ARCHIVE_NAME = f"quarto-{QUARTO_VERSION}-macos.tar.gz"
@@ -30,10 +30,7 @@ QUARTO_URL = (
     "https://github.com/quarto-dev/quarto-cli/releases/download/"
     f"v{QUARTO_VERSION}/{QUARTO_ARCHIVE_NAME}"
 )
-QUARTO_SHA256 = (
-    "47089a5020cfb41981ba0d4b46e110ed"
-    "fa608722aea45ef248e14efba6d6b18a"
-)
+QUARTO_SHA256 = "47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a"
 INSTALL_RECEIPT_NAME = ".norad-quarto-install.json"
 INSTALL_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SAFE_TOOL_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
@@ -177,8 +174,7 @@ def _tree_sha256(root: Path) -> str:
                     traversable.append(name)
                 else:
                     _fail(
-                        "Quarto tree contains an unsupported directory entry: "
-                        f"{path}"
+                        f"Quarto tree contains an unsupported directory entry: {path}"
                     )
             directory_names[:] = traversable
             for name in file_names:
@@ -210,8 +206,7 @@ def _tree_sha256(root: Path) -> str:
                     )
                 else:
                     _fail(
-                        "Quarto tree contains an unsupported filesystem entry: "
-                        f"{path}"
+                        f"Quarto tree contains an unsupported filesystem entry: {path}"
                     )
     except QuartoRestoreError:
         raise
@@ -319,8 +314,7 @@ def _validate_link_target(
 ) -> None:
     target = PurePosixPath(link_name)
     if target.is_absolute() or any(
-        ord(character) < 32 or ord(character) == 127
-        for character in link_name
+        ord(character) < 32 or ord(character) == 127 for character in link_name
     ):
         _fail(
             f"Quarto archive link {str(member_path)!r} has an unsafe target: "
@@ -631,9 +625,7 @@ def restore_from_archive(
     published_identity: tuple[int, int] | None = None
     stage_identity: tuple[int, int] | None = None
     recovery_required = False
-    recovery_path = (
-        install_root / f".restore-{QUARTO_VERSION}.{token}.RECOVERY.txt"
-    )
+    recovery_path = install_root / f".restore-{QUARTO_VERSION}.{token}.RECOVERY.txt"
     try:
         if os.path.lexists(target):
             executable = validate_installation(
@@ -677,20 +669,14 @@ def restore_from_archive(
         print(f"Installed pinned Quarto {QUARTO_VERSION}: {executable}")
         return executable
     except Exception as original_exc:
-        if (
-            published
-            and published_identity is not None
-            and os.path.lexists(target)
-        ):
+        if published and published_identity is not None and os.path.lexists(target):
             try:
                 metadata = target.lstat()
                 if (
                     metadata.st_dev,
                     metadata.st_ino,
                 ) != published_identity or not stat.S_ISDIR(metadata.st_mode):
-                    raise QuartoRestoreError(
-                        "published Quarto target changed identity"
-                    )
+                    raise QuartoRestoreError("published Quarto target changed identity")
                 recovery = stage / "published-install"
                 os.replace(target, recovery)
                 recovery_metadata = recovery.lstat()

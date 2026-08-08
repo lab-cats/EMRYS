@@ -8,7 +8,13 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "construct_fasta_sidecars_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -30,21 +36,38 @@ TEST_MODULE_NAME = "_norad_test_validate_step_00c_reference_sidecars"
 
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    fasta = root / "genome.fa"; fasta.write_text(">1\nACGT\n>MT\nAA\n")
-    fai = root / "genome.fa.fai"; fai.write_text("1\t4\t3\t4\t5\nMT\t2\t12\t2\t3\n")
+    fasta = root / "genome.fa"
+    fasta.write_text(">1\nACGT\n>MT\nAA\n")
+    fai = root / "genome.fa.fai"
+    fai.write_text("1\t4\t3\t4\t5\nMT\t2\t12\t2\t3\n")
     dictionary = root / "genome.dict"
     dictionary.write_text("@HD\tVN:1.6\n@SQ\tSN:1\tLN:4\n@SQ\tSN:MT\tLN:2\n")
-    outdir = root / "out"; outdir.mkdir()
+    outdir = root / "out"
+    outdir.mkdir()
     return fasta, fai, dictionary, outdir / "novogene_ref.validation.tsv"
 
 
 def run(values, *extra, cwd=ROOT):
     fasta, fai, dictionary, output = values
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--scope-id", "novogene_ref",
-         "--reference-fasta", str(fasta), "--reference-fai", str(fai),
-         "--reference-dict", str(dictionary), "--output", str(output), *extra],
-        cwd=cwd, text=True, capture_output=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "novogene_ref",
+            "--reference-fasta",
+            str(fasta),
+            "--reference-fai",
+            str(fai),
+            "--reference-dict",
+            str(dictionary),
+            "--output",
+            str(output),
+            *extra,
+        ],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 

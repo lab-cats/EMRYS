@@ -2,14 +2,13 @@ import configparser
 import importlib.util
 import json
 import os
-from pathlib import Path
 import signal
 import sys
 import threading
 import time
+from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOL_PATH = REPO_ROOT / "tests" / "tools" / "run_validation.py"
@@ -75,12 +74,12 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert config.getboolean("run", "parallel")
 
     root_makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    quality_makefile = (
-        REPO_ROOT / "scripts" / "make_quality.mk"
-    ).read_text(encoding="utf-8")
-    reporting_makefile = (
-        REPO_ROOT / "scripts" / "make_reporting.mk"
-    ).read_text(encoding="utf-8")
+    quality_makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
+        encoding="utf-8"
+    )
+    reporting_makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
+        encoding="utf-8"
+    )
     for target in (
         "validation-python-coverage:",
         "validation-shell-contracts:",
@@ -98,13 +97,9 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
 def test_selected_environment_has_exact_parallel_dependencies() -> None:
     TOOL.require_parallel_dependencies(Path(sys.executable))
     assert (
-        TOOL.package_version(Path(sys.executable), "pytest-xdist")
-        == TOOL.XDIST_VERSION
+        TOOL.package_version(Path(sys.executable), "pytest-xdist") == TOOL.XDIST_VERSION
     )
-    assert (
-        TOOL.package_version(Path(sys.executable), "execnet")
-        == TOOL.EXECNET_VERSION
-    )
+    assert TOOL.package_version(Path(sys.executable), "execnet") == TOOL.EXECNET_VERSION
 
 
 def test_executable_validation_preserves_virtualenv_symlink(
@@ -169,14 +164,13 @@ def test_first_failure_propagates_and_kills_child_process_group(
     slow_source = (
         "from pathlib import Path; import subprocess, sys, time; "
         "subprocess.Popen([sys.executable, '-c', "
-        f"\"from pathlib import Path; import time; time.sleep(1.0); "
+        f'"from pathlib import Path; import time; time.sleep(1.0); '
         f"Path({str(survived)!r}).write_text('survived')\"]); "
         f"Path({str(ready)!r}).write_text('ready'); "
         "time.sleep(10)"
     )
     failure_source = (
-        "import sys, time; time.sleep(0.5); "
-        "print('controlled failure'); sys.exit(7)"
+        "import sys, time; time.sleep(0.5); print('controlled failure'); sys.exit(7)"
     )
     outcome = TOOL.run_lanes(
         [
@@ -217,7 +211,7 @@ def test_sigint_cleans_process_tree_and_restores_handler(
     lane_source = (
         "from pathlib import Path; import subprocess, sys, time; "
         "subprocess.Popen([sys.executable, '-c', "
-        f"\"from pathlib import Path; import time; time.sleep(1.0); "
+        f'"from pathlib import Path; import time; time.sleep(1.0); '
         f"Path({str(survived)!r}).write_text('survived')\"]); "
         f"Path({str(ready)!r}).write_text('ready'); "
         "time.sleep(10)"

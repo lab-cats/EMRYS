@@ -1,17 +1,10 @@
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Union
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "stages"
-    / "convert_GTF_to_BED12"
-    / "gtf_to_bed12.py"
+    REPO_ROOT / "src" / "norad" / "stages" / "convert_GTF_to_BED12" / "gtf_to_bed12.py"
 )
 
 
@@ -28,7 +21,7 @@ def run_converter(
     )
 
 
-def write_gtf(path: Path, lines: List[str]) -> Path:
+def write_gtf(path: Path, lines: list[str]) -> Path:
     path.write_text("\n".join(lines) + "\n")
     return path
 
@@ -36,8 +29,8 @@ def write_gtf(path: Path, lines: List[str]) -> Path:
 def gtf_row(
     chrom: str,
     feature: str,
-    start: Union[int, str],
-    end: Union[int, str],
+    start: int | str,
+    end: int | str,
     strand: str,
     attributes: str,
 ) -> str:
@@ -56,7 +49,7 @@ def gtf_row(
     )
 
 
-def read_bed(path: Path) -> List[str]:
+def read_bed(path: Path) -> list[str]:
     return path.read_text().splitlines()
 
 
@@ -76,8 +69,12 @@ def test_multi_exon_transcript_conversion_and_exon_sorting(tmp_path: Path) -> No
         tmp_path / "input.gtf",
         [
             "# comment rows are ignored",
-            gtf_row("chr1", "exon", 201, 250, "+", 'gene_id "geneA"; transcript_id "txA";'),
-            gtf_row("chr1", "exon", 101, 150, "+", 'gene_id "geneA"; transcript_id "txA";'),
+            gtf_row(
+                "chr1", "exon", 201, 250, "+", 'gene_id "geneA"; transcript_id "txA";'
+            ),
+            gtf_row(
+                "chr1", "exon", 101, 150, "+", 'gene_id "geneA"; transcript_id "txA";'
+            ),
         ],
     )
     bed = tmp_path / "out" / "models.bed"
@@ -94,7 +91,9 @@ def test_single_exon_transcript_conversion(tmp_path: Path) -> None:
     gtf = write_gtf(
         tmp_path / "single.gtf",
         [
-            gtf_row("chr2", "exon", 10, 20, "-", 'gene_id "geneB"; transcript_id "txB";'),
+            gtf_row(
+                "chr2", "exon", 10, 20, "-", 'gene_id "geneB"; transcript_id "txB";'
+            ),
         ],
     )
     bed = tmp_path / "single.bed"
@@ -102,9 +101,7 @@ def test_single_exon_transcript_conversion(tmp_path: Path) -> None:
     result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
-    assert read_bed(bed) == [
-        "chr2\t9\t20\ttxB|geneB\t0\t-\t9\t20\t0\t1\t11,\t0,"
-    ]
+    assert read_bed(bed) == ["chr2\t9\t20\ttxB|geneB\t0\t-\t9\t20\t0\t1\t11,\t0,"]
 
 
 def test_missing_gene_id_uses_transcript_only_name(tmp_path: Path) -> None:
@@ -127,7 +124,9 @@ def test_multiple_gene_ids_warns_and_keeps_first(tmp_path: Path) -> None:
         tmp_path / "gene_conflict.gtf",
         [
             gtf_row("chr1", "exon", 1, 5, "+", 'gene_id "gene1"; transcript_id "tx1";'),
-            gtf_row("chr1", "exon", 10, 15, "+", 'gene_id "gene2"; transcript_id "tx1";'),
+            gtf_row(
+                "chr1", "exon", 10, 15, "+", 'gene_id "gene2"; transcript_id "tx1";'
+            ),
         ],
     )
     bed = tmp_path / "gene_conflict.bed"
@@ -143,7 +142,9 @@ def test_custom_feature_and_attribute_names(tmp_path: Path) -> None:
     gtf = write_gtf(
         tmp_path / "custom.gtf",
         [
-            gtf_row("chr3", "exon", 1, 5, "+", 'gene_name "ignored"; tx_name "ignored";'),
+            gtf_row(
+                "chr3", "exon", 1, 5, "+", 'gene_name "ignored"; tx_name "ignored";'
+            ),
             gtf_row("chr3", "CDS", 11, 20, ".", 'gene_name "gene C"; tx_name "tx C";'),
         ],
     )
@@ -163,19 +164,28 @@ def test_custom_feature_and_attribute_names(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert read_bed(bed) == [
-        "chr3\t10\t20\ttx_C|gene_C\t0\t.\t10\t20\t0\t1\t10,\t0,"
-    ]
+    assert read_bed(bed) == ["chr3\t10\t20\ttx_C|gene_C\t0\t.\t10\t20\t0\t1\t10,\t0,"]
 
 
-def test_malformed_missing_transcript_and_invalid_strand_rows_warn_and_skip(tmp_path: Path) -> None:
+def test_malformed_missing_transcript_and_invalid_strand_rows_warn_and_skip(
+    tmp_path: Path,
+) -> None:
     gtf = write_gtf(
         tmp_path / "malformed.gtf",
         [
             "not\tenough\tcolumns",
-            gtf_row("chr1", "exon", 1, 5, "*", 'gene_id "geneBad"; transcript_id "txBad";'),
+            gtf_row(
+                "chr1", "exon", 1, 5, "*", 'gene_id "geneBad"; transcript_id "txBad";'
+            ),
             gtf_row("chr1", "exon", 10, 15, "+", 'gene_id "geneMissingTranscript";'),
-            gtf_row("chr1", "exon", 20, 25, "+", 'gene_id "geneGood"; transcript_id "txGood";'),
+            gtf_row(
+                "chr1",
+                "exon",
+                20,
+                25,
+                "+",
+                'gene_id "geneGood"; transcript_id "txGood";',
+            ),
         ],
     )
     bed = tmp_path / "malformed.bed"
@@ -189,15 +199,42 @@ def test_malformed_missing_transcript_and_invalid_strand_rows_warn_and_skip(tmp_
     assert read_bed(bed)[0].split("\t")[3] == "txGood|geneGood"
 
 
-def test_conflicting_chromosome_or_strand_skips_entire_transcript(tmp_path: Path) -> None:
+def test_conflicting_chromosome_or_strand_skips_entire_transcript(
+    tmp_path: Path,
+) -> None:
     gtf = write_gtf(
         tmp_path / "conflicts.gtf",
         [
-            gtf_row("chr1", "exon", 1, 5, "+", 'gene_id "geneBad"; transcript_id "txBad";'),
-            gtf_row("chr2", "exon", 10, 15, "+", 'gene_id "geneBad"; transcript_id "txBad";'),
-            gtf_row("chr3", "exon", 20, 25, "-", 'gene_id "geneBad2"; transcript_id "txBad2";'),
-            gtf_row("chr3", "exon", 30, 35, "+", 'gene_id "geneBad2"; transcript_id "txBad2";'),
-            gtf_row("chr4", "exon", 40, 45, "+", 'gene_id "geneGood"; transcript_id "txGood";'),
+            gtf_row(
+                "chr1", "exon", 1, 5, "+", 'gene_id "geneBad"; transcript_id "txBad";'
+            ),
+            gtf_row(
+                "chr2", "exon", 10, 15, "+", 'gene_id "geneBad"; transcript_id "txBad";'
+            ),
+            gtf_row(
+                "chr3",
+                "exon",
+                20,
+                25,
+                "-",
+                'gene_id "geneBad2"; transcript_id "txBad2";',
+            ),
+            gtf_row(
+                "chr3",
+                "exon",
+                30,
+                35,
+                "+",
+                'gene_id "geneBad2"; transcript_id "txBad2";',
+            ),
+            gtf_row(
+                "chr4",
+                "exon",
+                40,
+                45,
+                "+",
+                'gene_id "geneGood"; transcript_id "txGood";',
+            ),
         ],
     )
     bed = tmp_path / "conflicts.bed"
@@ -234,9 +271,15 @@ def test_output_is_sorted_by_chrom_start_end_and_name(tmp_path: Path) -> None:
         tmp_path / "unsorted.gtf",
         [
             gtf_row("chr2", "exon", 1, 5, "+", 'gene_id "gene2"; transcript_id "tx2";'),
-            gtf_row("chr1", "exon", 50, 60, "+", 'gene_id "geneB"; transcript_id "txB";'),
-            gtf_row("chr1", "exon", 10, 20, "+", 'gene_id "geneC"; transcript_id "txC";'),
-            gtf_row("chr1", "exon", 10, 20, "+", 'gene_id "geneA"; transcript_id "txA";'),
+            gtf_row(
+                "chr1", "exon", 50, 60, "+", 'gene_id "geneB"; transcript_id "txB";'
+            ),
+            gtf_row(
+                "chr1", "exon", 10, 20, "+", 'gene_id "geneC"; transcript_id "txC";'
+            ),
+            gtf_row(
+                "chr1", "exon", 10, 20, "+", 'gene_id "geneA"; transcript_id "txA";'
+            ),
         ],
     )
     bed = tmp_path / "sorted.bed"

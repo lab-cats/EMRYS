@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "mark_duplicates_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -16,16 +22,17 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 SCRIPT = (
-    ROOT
-    / "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+    ROOT / "src/norad/stages/mark_BAM_duplicates_with_Picard/"
     "validate_step_04_mark_duplicates.py"
 )
 
 
 def fixture(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    bam = root / "S.markdup.bam"; bam.write_bytes(b"BAM\x01synthetic")
-    bai = root / "S.markdup.bam.bai"; bai.write_bytes(b"BAI\x01synthetic")
+    bam = root / "S.markdup.bam"
+    bam.write_bytes(b"BAM\x01synthetic")
+    bai = root / "S.markdup.bam.bai"
+    bai.write_bytes(b"BAI\x01synthetic")
     metrics = root / "S.markdup.metrics.txt"
     metrics.write_text(
         "## METRICS CLASS picard.sam.DuplicationMetrics\n"
@@ -35,32 +42,50 @@ def fixture(root: Path):
     tool = root / "samtools"
     tool.write_text(
         "#!/usr/bin/env bash\nset -euo pipefail\n"
-        "case \"$1 $2\" in\n"
+        'case "$1 $2" in\n'
         " 'quickcheck -v') exit \"${QUICKCHECK_EXIT:-0}\" ;;\n"
         " 'view -H')\n"
-        "   if [[ \"${VIEW_EXIT:-0}\" != 0 ]]; then\n"
+        '   if [[ "${VIEW_EXIT:-0}" != 0 ]]; then\n'
         "     printf 'fake samtools header failure\\n' >&2\n"
-        "     exit \"$VIEW_EXIT\"\n"
+        '     exit "$VIEW_EXIT"\n'
         "   fi\n"
         "   printf '@HD\\tVN:1.6\\tSO:%s\\n@RG\\tID:%s\\tSM:%s\\n' "
-        "\"${SORT_ORDER:-coordinate}\" \"${RG_ID:-S}\" \"${RG_SM:-S}\"\n"
-        "   if [[ -n \"${MUTATE_PATH:-}\" ]]; then\n"
+        '"${SORT_ORDER:-coordinate}" "${RG_ID:-S}" "${RG_SM:-S}"\n'
+        '   if [[ -n "${MUTATE_PATH:-}" ]]; then\n'
         "     printf 'mutated-after-build\\n' >> \"$MUTATE_PATH\"\n"
         "   fi ;;\n"
         " *) exit 9 ;;\nesac\n"
     )
     tool.chmod(0o755)
-    out = root / "out"; out.mkdir()
+    out = root / "out"
+    out.mkdir()
     return bam, bai, metrics, tool, out / "S.validation.tsv"
 
 
 def run(values, *extra, env=None, cwd=ROOT):
     bam, bai, metrics, tool, output = values
     return subprocess.run(
-        [sys.executable, str(SCRIPT), "--scope-id", "S", "--bam", str(bam),
-         "--bai", str(bai), "--metrics", str(metrics),
-         "--samtools-bin", str(tool), "--output", str(output), *extra],
-        cwd=cwd, text=True, capture_output=True, env=env,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--scope-id",
+            "S",
+            "--bam",
+            str(bam),
+            "--bai",
+            str(bai),
+            "--metrics",
+            str(metrics),
+            "--samtools-bin",
+            str(tool),
+            "--output",
+            str(output),
+            *extra,
+        ],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        env=env,
     )
 
 

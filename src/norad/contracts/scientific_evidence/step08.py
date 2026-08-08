@@ -6,12 +6,13 @@ import csv
 import math
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence
 
-
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
@@ -125,9 +126,7 @@ def fail(message: str) -> None:
 
 def validate_safe_id(label: str, value: str) -> None:
     if not SAFE_ID_RE.fullmatch(value):
-        fail(
-            f"{label} must match [A-Za-z0-9][A-Za-z0-9._-]*; got: {value}"
-        )
+        fail(f"{label} must match [A-Za-z0-9][A-Za-z0-9._-]*; got: {value}")
 
 
 def validate_enum(label: str, value: str, allowed: Sequence[str]) -> None:
@@ -252,9 +251,7 @@ def validate_sample_manifest(
     ensure_unique(table.rows, "sample_id", "Sample manifest")
     for row_number, row in enumerate(table.rows, start=2):
         for column in SAMPLE_MANIFEST_REQUIRED:
-            require_text(
-                f"Sample manifest row {row_number} {column}", row[column]
-            )
+            require_text(f"Sample manifest row {row_number} {column}", row[column])
         validate_safe_id("sample_id", row["sample_id"])
         validate_safe_id("replicate", row["replicate"])
         if row["strandedness"] not in (
@@ -271,17 +268,13 @@ def validate_sample_manifest(
 
 
 def validate_partition_manifest(value: str | Path) -> Table:
-    table = read_tsv(
-        "Partition manifest", value, PARTITION_MANIFEST_HEADER
-    )
+    table = read_tsv("Partition manifest", value, PARTITION_MANIFEST_HEADER)
     if not table.rows:
         fail("Partition manifest contains no partition rows.")
     ensure_unique(table.rows, "partition_id", "Partition manifest")
     for row_number, row in enumerate(table.rows, start=2):
         for column in PARTITION_MANIFEST_HEADER:
-            require_text(
-                f"Partition manifest row {row_number} {column}", row[column]
-            )
+            require_text(f"Partition manifest row {row_number} {column}", row[column])
         validate_safe_id("partition_id", row["partition_id"])
         validate_enum(
             f"Partition manifest row {row_number} selector_type",
@@ -420,9 +413,7 @@ def validate_step08_sites(
             row["candidate_id"],
         )
         if row["partition_id"] not in partition_ids:
-            fail(
-                f"Step 08 sites row {row_number} references an unknown partition."
-            )
+            fail(f"Step 08 sites row {row_number} references an unknown partition.")
         validate_enum(
             f"Step 08 sites row {row_number} orientation",
             row["orientation"],
@@ -492,13 +483,10 @@ def validate_step08_sites(
                 continue
             if af is None or not values_close(af, ad / dp):
                 fail(
-                    f"Step 08 sites row {row_number} AF__{sample} does not "
-                    "equal AD/DP."
+                    f"Step 08 sites row {row_number} AF__{sample} does not equal AD/DP."
                 )
     if observed_by_scope != published_by_scope:
-        fail(
-            "Step 08 sites counts do not reconcile by partition and orientation."
-        )
+        fail("Step 08 sites counts do not reconcile by partition and orientation.")
     return table
 
 
@@ -535,9 +523,7 @@ def validate_step08_summary(
     )
     for column in aggregate_columns:
         expected_counts[column] = sum(
-            parse_nonnegative_int(
-                f"Step 08 input receipt {column}", input_row[column]
-            )
+            parse_nonnegative_int(f"Step 08 input receipt {column}", input_row[column])
             for input_row in step08_inputs
         )
     for column, expected in expected_counts.items():

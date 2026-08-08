@@ -1,16 +1,16 @@
 import csv
 import importlib.util
-import os
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests/contract_integration/validation_rosters/validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests/contract_integration/validation_rosters/validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "rank_cohort_candidates_with_paired_cmh_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -26,20 +26,14 @@ SCRIPT = (
     / "validate_step_09_cmh_outputs.py"
 )
 STEP09_PATH = ROOT / "src/norad/contracts/scientific_evidence/step09.py"
-STEP08_PATH = (
-    ROOT
-    / "src/norad/contracts/scientific_evidence"
-    / "step08.py"
-)
+STEP08_PATH = ROOT / "src/norad/contracts/scientific_evidence" / "step08.py"
 FIXTURE_PATH = (
     ROOT
     / "tests/evidence/assemble_scientific_review_evidence_package"
     / "build_fixture.py"
 )
 FIXTURE_MODULE_NAME = "_norad_test_step09c_fixture_for_step09_validator"
-FIXTURE_SPEC = importlib.util.spec_from_file_location(
-    FIXTURE_MODULE_NAME, FIXTURE_PATH
-)
+FIXTURE_SPEC = importlib.util.spec_from_file_location(FIXTURE_MODULE_NAME, FIXTURE_PATH)
 assert FIXTURE_SPEC is not None and FIXTURE_SPEC.loader is not None
 FIXTURE = importlib.util.module_from_spec(FIXTURE_SPEC)
 sys.modules[FIXTURE_MODULE_NAME] = FIXTURE
@@ -74,23 +68,45 @@ def fixture(root: Path):
 
 def arguments(values, *extra):
     (
-        samples, partitions, sites, inputs, all_sites, significant, summary,
-        mutation, mutation_pdf, depth_pdf, output,
+        samples,
+        partitions,
+        sites,
+        inputs,
+        all_sites,
+        significant,
+        summary,
+        mutation,
+        mutation_pdf,
+        depth_pdf,
+        output,
     ) = values
     return [
-        "--analysis-id", FIXTURE.PRIMARY_ANALYSIS_ID,
-        "--cohort-id", FIXTURE.COHORT_ID,
-        "--sample-manifest", str(samples),
-        "--partition-manifest", str(partitions),
-        "--step08-sites", str(sites),
-        "--step08-inputs", str(inputs),
-        "--all-sites", str(all_sites),
-        "--significant-sites", str(significant),
-        "--summary", str(summary),
-        "--mutation-spectrum", str(mutation),
-        "--mutation-spectrum-pdf", str(mutation_pdf),
-        "--depth-delta-pdf", str(depth_pdf),
-        "--output", str(output),
+        "--analysis-id",
+        FIXTURE.PRIMARY_ANALYSIS_ID,
+        "--cohort-id",
+        FIXTURE.COHORT_ID,
+        "--sample-manifest",
+        str(samples),
+        "--partition-manifest",
+        str(partitions),
+        "--step08-sites",
+        str(sites),
+        "--step08-inputs",
+        str(inputs),
+        "--all-sites",
+        str(all_sites),
+        "--significant-sites",
+        str(significant),
+        "--summary",
+        str(summary),
+        "--mutation-spectrum",
+        str(mutation),
+        "--mutation-spectrum-pdf",
+        str(mutation_pdf),
+        "--depth-delta-pdf",
+        str(depth_pdf),
+        "--output",
+        str(output),
         *extra,
     ]
 
@@ -98,7 +114,9 @@ def arguments(values, *extra):
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -121,9 +139,7 @@ def test_arbitrary_cwd_dry_execute_repeat_byte_parity_has_no_residue(tmp_path):
     invocation_cwd = tmp_path / "arbitrary-cwd"
     invocation_cwd.mkdir()
     input_paths = values[:-1]
-    before = {
-        path: (path.read_bytes(), path.stat().st_mode) for path in input_paths
-    }
+    before = {path: (path.read_bytes(), path.stat().st_mode) for path in input_paths}
 
     dry = run(values, cwd=invocation_cwd)
     assert dry.returncode == 0, dry.stderr
@@ -192,10 +208,7 @@ def test_candidate_reordering_is_failed_upstream_evidence(tmp_path):
 def test_wrong_cohort_is_failed_identity_evidence(tmp_path):
     values = fixture(tmp_path)
 
-    assert (
-        run(values, "--cohort-id", "wrong_cohort", "--execute").returncode
-        == 0
-    )
+    assert run(values, "--cohort-id", "wrong_cohort", "--execute").returncode == 0
     status = {row["check_id"]: row["status"] for row in rows(values[-1])}
     assert status["upstream_identity_and_candidate_order"] == "fail"
 
@@ -304,7 +317,10 @@ def test_fabricated_cmh_statistics_pvalues_bh_and_odds_ratios_all_pass(
     ),
 )
 def test_post_build_mutation_of_each_input_preserves_predecessor_report(
-    tmp_path, monkeypatch, capsys, input_index,
+    tmp_path,
+    monkeypatch,
+    capsys,
+    input_index,
 ):
     values = fixture(tmp_path)
     baseline = run(values, "--execute")
@@ -329,9 +345,7 @@ def test_post_build_mutation_of_each_input_preserves_predecessor_report(
     assert f"Input changed after validation: {target}" in captured.err
     assert values[-1].read_bytes() == predecessor
     assert target.read_bytes() == before[target] + b"post-build mutation\n"
-    assert {
-        path: path.read_bytes() for path in input_paths if path != target
-    } == {
+    assert {path: path.read_bytes() for path in input_paths if path != target} == {
         path: data for path, data in before.items() if path != target
     }
     assert set(values[-1].parent.iterdir()) == {values[-1]}

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import csv
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
 
 from norad.libraries.alignments import orientation as alignment_orientation
+
 from .contracts import (
     COMPUTATIONAL_VALIDATION_HEADER,
     EVIDENCE_MANIFEST_HEADER,
@@ -19,6 +20,7 @@ from .contracts import (
     sha256_file,
     step08,
 )
+
 
 @dataclass
 class Artifact:
@@ -59,7 +61,6 @@ def validate_iso_date(label: str, value: str, *, allow_na: bool = False) -> None
         step08.fail(f"{label} must be an ISO date (YYYY-MM-DD); got: {value}")
 
 
-
 def complement_base(value: str) -> str:
     complements = {"A": "T", "C": "G", "G": "C", "T": "A"}
     if value not in complements:
@@ -87,7 +88,9 @@ def require_directory(label: str, value: str | Path) -> Path:
     return path.resolve()
 
 
-def write_tsv(path: Path, header: Sequence[str], rows: Iterable[Mapping[str, str]]) -> None:
+def write_tsv(
+    path: Path, header: Sequence[str], rows: Iterable[Mapping[str, str]]
+) -> None:
     with path.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(
             stream,
@@ -126,7 +129,6 @@ def resolve_declared_path(value: str, source_file: Path) -> Path:
     return path.resolve()
 
 
-
 def register_artifact(
     artifacts: dict[str, Artifact],
     input_hashes: dict[Path, str],
@@ -137,7 +139,6 @@ def register_artifact(
         step08.fail(f"Internal artifact key was registered twice: {key}")
     artifacts[key] = artifact
     input_hashes[artifact.path] = artifact.sha256
-
 
 
 def step09_paths(analysis_dir: Path, analysis_id: str) -> dict[str, Path]:
@@ -153,19 +154,14 @@ def step09_paths(analysis_dir: Path, analysis_id: str) -> dict[str, Path]:
         "step09_mutation_spectrum_pdf": (
             analysis_dir / f"{analysis_id}.mutation_spectrum.pdf"
         ),
-        "step09_depth_delta_pdf": (
-            analysis_dir / f"{analysis_id}.depth_delta.pdf"
-        ),
+        "step09_depth_delta_pdf": (analysis_dir / f"{analysis_id}.depth_delta.pdf"),
     }
-
 
 
 def validate_review_plan(
     value: str | Path, review_id: str
 ) -> tuple[Table, dict[str, str], set[str]]:
-    table = read_tsv(
-        "Scientific review plan", value, review_package.REVIEW_PLAN_HEADER
-    )
+    table = read_tsv("Scientific review plan", value, review_package.REVIEW_PLAN_HEADER)
     if len(table.rows) != 1:
         step08.fail("Scientific review plan must contain exactly one data row.")
     plan = table.rows[0]
@@ -264,17 +260,15 @@ def validate_review_plan(
     required_strands = plan["required_annotation_strands"].split(",")
     if required_strands != ["+", "-"]:
         step08.fail("required_annotation_strands must be exactly +,-.")
-    step08.require_text(
-        "required_annotation_cases", plan["required_annotation_cases"]
-    )
-    superseded = split_ids(
-        "superseded_analysis_ids", plan["superseded_analysis_ids"]
-    )
+    step08.require_text("required_annotation_cases", plan["required_annotation_cases"])
+    superseded = split_ids("superseded_analysis_ids", plan["superseded_analysis_ids"])
     sensitivity = split_ids(
         "sensitivity_analysis_ids", plan["sensitivity_analysis_ids"]
     )
     if plan["primary_analysis_id"] in superseded + sensitivity:
-        step08.fail("The primary analysis cannot also be superseded or a sensitivity run.")
+        step08.fail(
+            "The primary analysis cannot also be superseded or a sensitivity run."
+        )
     overlap = sorted(set(superseded) & set(sensitivity))
     if overlap:
         step08.fail(
@@ -297,8 +291,7 @@ def validate_review_plan(
     if requested_status == "science_review_complete_exploratory":
         if plan["review_completed_date"] == NA_VALUE:
             step08.fail(
-                "An exploratory-complete science review requires "
-                "review_completed_date."
+                "An exploratory-complete science review requires review_completed_date."
             )
     elif plan["review_completed_date"] != NA_VALUE:
         step08.fail(
@@ -319,14 +312,10 @@ def validate_evidence_manifest(
     dict[str, list[dict[str, str]]],
     list[dict[str, str]],
 ]:
-    manifest = read_tsv(
-        "Scientific evidence manifest", value, EVIDENCE_MANIFEST_HEADER
-    )
+    manifest = read_tsv("Scientific evidence manifest", value, EVIDENCE_MANIFEST_HEADER)
     step08.ensure_unique(manifest.rows, "evidence_id", "Scientific evidence manifest")
     for category in review_package.CATEGORY_ORDER:
-        if not any(
-            row["evidence_category"] == category for row in manifest.rows
-        ):
+        if not any(row["evidence_category"] == category for row in manifest.rows):
             step08.fail(
                 "Scientific evidence manifest must explicitly represent "
                 f"category {category}."
@@ -354,9 +343,10 @@ def validate_evidence_manifest(
         category: [] for category in review_package.ALLOWED_EVIDENCE_CATEGORIES
     }
     evidence_index_rows: list[dict[str, str]] = []
-    evidence_order = {category: index for index, category in enumerate(
-        review_package.ALLOWED_EVIDENCE_CATEGORIES
-    )}
+    evidence_order = {
+        category: index
+        for index, category in enumerate(review_package.ALLOWED_EVIDENCE_CATEGORIES)
+    }
     normalized_manifest_rows: list[dict[str, str]] = []
     for row_number, original in enumerate(manifest.rows, start=2):
         row = dict(original)
@@ -373,8 +363,7 @@ def validate_evidence_manifest(
         )
         category_allowed_analyses = (
             {primary_analysis_id, *sensitivity_analyses}
-            if row["evidence_category"]
-            in ("sensitivity_matrix", "leave_one_pair_out")
+            if row["evidence_category"] in ("sensitivity_matrix", "leave_one_pair_out")
             else {primary_analysis_id}
         )
         if row["analysis_id"] not in category_allowed_analyses:
@@ -416,9 +405,7 @@ def validate_evidence_manifest(
                     row["not_applicable_reason"],
                 )
             elif row["not_applicable_reason"] != NA_VALUE:
-                step08.fail(
-                    "Missing evidence must use not_applicable_reason=NA."
-                )
+                step08.fail("Missing evidence must use not_applicable_reason=NA.")
             observed_path = NA_VALUE
             observed_hash = NA_VALUE
             observed_count = NA_VALUE
@@ -430,12 +417,9 @@ def validate_evidence_manifest(
                 )
             if row["not_applicable_reason"] != NA_VALUE:
                 step08.fail(
-                    "Complete or incomplete evidence must use "
-                    "not_applicable_reason=NA."
+                    "Complete or incomplete evidence must use not_applicable_reason=NA."
                 )
-            source_path = resolve_declared_path(
-                row["source_path"], manifest.path
-            )
+            source_path = resolve_declared_path(row["source_path"], manifest.path)
             source_path = step08.require_file(
                 f"Evidence source {row['evidence_id']}", source_path
             )
@@ -451,9 +435,7 @@ def validate_evidence_manifest(
             )
             observed_hash = sha256_file(source_path)
             if observed_hash != row["source_sha256"]:
-                step08.fail(
-                    f"Evidence source hash differs for {row['evidence_id']}."
-                )
+                step08.fail(f"Evidence source hash differs for {row['evidence_id']}.")
             expected_header = (
                 COMPUTATIONAL_VALIDATION_HEADER
                 if row["evidence_category"] == "computational_validation"
@@ -470,12 +452,9 @@ def validate_evidence_manifest(
             )
             if declared_count != len(source_table.rows):
                 step08.fail(
-                    f"Evidence source row count differs for "
-                    f"{row['evidence_id']}."
+                    f"Evidence source row count differs for {row['evidence_id']}."
                 )
-            for source_row_number, payload in enumerate(
-                source_table.rows, start=2
-            ):
+            for source_row_number, payload in enumerate(source_table.rows, start=2):
                 if payload["review_id"] != review_id:
                     step08.fail(
                         f"Evidence {row['evidence_id']} payload row "
@@ -505,9 +484,7 @@ def validate_evidence_manifest(
                         "an analysis_id different from its manifest row."
                     )
             if row["evidence_category"] in payload_by_category:
-                payload_by_category[row["evidence_category"]].extend(
-                    source_table.rows
-                )
+                payload_by_category[row["evidence_category"]].extend(source_table.rows)
             input_hashes[source_path] = observed_hash
             observed_path = str(source_path)
             observed_count = str(len(source_table.rows))
@@ -545,9 +522,7 @@ def validate_evidence_manifest(
     )
 
 
-def validate_supporting_ids(
-    label: str, value: str, evidence_ids: set[str]
-) -> None:
+def validate_supporting_ids(label: str, value: str, evidence_ids: set[str]) -> None:
     for evidence_id in split_ids(label, value):
         if evidence_id not in evidence_ids:
             step08.fail(f"{label} references unknown evidence_id {evidence_id}.")
@@ -557,8 +532,7 @@ def category_is_complete(
     evidence_rows: Sequence[Mapping[str, str]], category: str
 ) -> bool:
     return (
-        review_package.aggregate_evidence_status(evidence_rows, category)
-        == "complete"
+        review_package.aggregate_evidence_status(evidence_rows, category) == "complete"
     )
 
 

@@ -1,18 +1,18 @@
 import csv
 import hashlib
 import importlib.util
-import os
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-
-import pytest
-
 
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = ROOT / "tests" / "contract_integration" / "validation_rosters" / "validation_roster_expectations.py"
+ROSTER_ORACLE = (
+    ROOT
+    / "tests"
+    / "contract_integration"
+    / "validation_rosters"
+    / "validation_roster_expectations.py"
+)
 ROSTER_SPEC = importlib.util.spec_from_file_location(
     "preprocess_and_annotate_cohort_candidates_validation_roster_oracle",
     ROSTER_ORACLE,
@@ -22,14 +22,7 @@ ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
 
-STEP08_PATH = (
-    ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "step08.py"
-)
+STEP08_PATH = ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step08.py"
 STEP08_TEST_MODULE_NAME = "_norad_step08_scientific_evidence_contract"
 STEP08_SPEC = importlib.util.spec_from_file_location(
     STEP08_TEST_MODULE_NAME,
@@ -42,7 +35,7 @@ if STEP08_MODULE is None:
     sys.modules[STEP08_TEST_MODULE_NAME] = STEP08_MODULE
     try:
         STEP08_SPEC.loader.exec_module(STEP08_MODULE)
-        setattr(STEP08_MODULE, "_NORAD_STEP08_CONTRACT_READY", True)
+        STEP08_MODULE._NORAD_STEP08_CONTRACT_READY = True
     except BaseException:
         if sys.modules.get(STEP08_TEST_MODULE_NAME) is STEP08_MODULE:
             sys.modules.pop(STEP08_TEST_MODULE_NAME, None)
@@ -110,58 +103,165 @@ def fixture(root: Path):
         STEP08_METADATA_HEADER + ("DP__S", "AD__S", "AF__S"),
         (
             (
-                "p1", "c1", "FWD_like", "1", "2", "1", "A", "G", "A", "G",
-                "+", "g", "t", "TRUE", "FALSE", "FALSE", "TRUE", "FALSE", "60",
-                "PASS", "4", "legacy_provisional_v1", "10", "2", "0.2",
+                "p1",
+                "c1",
+                "FWD_like",
+                "1",
+                "2",
+                "1",
+                "A",
+                "G",
+                "A",
+                "G",
+                "+",
+                "g",
+                "t",
+                "TRUE",
+                "FALSE",
+                "FALSE",
+                "TRUE",
+                "FALSE",
+                "60",
+                "PASS",
+                "4",
+                "legacy_provisional_v1",
+                "10",
+                "2",
+                "0.2",
             ),
             (
-                "p1", "c2", "REV_like", "1", "3", "1", "C", "T", "G", "A",
-                "-", "g", "t", "TRUE", "FALSE", "FALSE", "TRUE", "FALSE", "50",
-                "PASS", "3", "legacy_provisional_v1", "8", "1", "0.125",
+                "p1",
+                "c2",
+                "REV_like",
+                "1",
+                "3",
+                "1",
+                "C",
+                "T",
+                "G",
+                "A",
+                "-",
+                "g",
+                "t",
+                "TRUE",
+                "FALSE",
+                "FALSE",
+                "TRUE",
+                "FALSE",
+                "50",
+                "PASS",
+                "3",
+                "legacy_provisional_v1",
+                "8",
+                "1",
+                "0.125",
             ),
         ),
     )
     inputs = root / "cohort.step08_inputs.tsv"
     common = (
-        "cohort", "p1", "region", "1", None, "/step07/receipt.tsv", "1" * 64,
-        None, "2" * 64, digest(samples), digest(partitions), str(annotation.resolve()),
-        digest(annotation), "1", "1", "1", "1", "1", "0", "0",
+        "cohort",
+        "p1",
+        "region",
+        "1",
+        None,
+        "/step07/receipt.tsv",
+        "1" * 64,
+        None,
+        "2" * 64,
+        digest(samples),
+        digest(partitions),
+        str(annotation.resolve()),
+        digest(annotation),
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "0",
+        "0",
     )
     write_tsv(
         inputs,
         STEP08_INPUTS_HEADER,
         (
-            (*common[:4], "FWD_like", *common[5:7], "/step07/fwd.vcf",
-             *common[8:], "1", "legacy_provisional_v1"),
-            (*common[:4], "REV_like", *common[5:7], "/step07/rev.vcf",
-             *common[8:], "1", "legacy_provisional_v1"),
+            (
+                *common[:4],
+                "FWD_like",
+                *common[5:7],
+                "/step07/fwd.vcf",
+                *common[8:],
+                "1",
+                "legacy_provisional_v1",
+            ),
+            (
+                *common[:4],
+                "REV_like",
+                *common[5:7],
+                "/step07/rev.vcf",
+                *common[8:],
+                "1",
+                "legacy_provisional_v1",
+            ),
         ),
     )
     summary = root / "cohort.step08_summary.tsv"
     write_tsv(
         summary,
         STEP08_SUMMARY_HEADER,
-        ((
-            "cohort", "1", "1", "2", "1", "2", "2", "2", "0", "0", "2",
-            digest(samples), digest(partitions), str(annotation.resolve()),
-            digest(annotation), "legacy_provisional_v1",
-        ),),
+        (
+            (
+                "cohort",
+                "1",
+                "1",
+                "2",
+                "1",
+                "2",
+                "2",
+                "2",
+                "0",
+                "0",
+                "2",
+                digest(samples),
+                digest(partitions),
+                str(annotation.resolve()),
+                digest(annotation),
+                "legacy_provisional_v1",
+            ),
+        ),
     )
-    out = root / "out"; out.mkdir()
-    return samples, partitions, annotation, sites, inputs, summary, out / "cohort.validation.tsv"
+    out = root / "out"
+    out.mkdir()
+    return (
+        samples,
+        partitions,
+        annotation,
+        sites,
+        inputs,
+        summary,
+        out / "cohort.validation.tsv",
+    )
 
 
 def arguments(values, *extra):
     samples, partitions, annotation, sites, inputs, summary, output = values
     return [
-        "--cohort-id", "cohort",
-        "--sample-manifest", str(samples),
-        "--partition-manifest", str(partitions),
-        "--annotation-gtf", str(annotation),
-        "--sites", str(sites),
-        "--inputs", str(inputs),
-        "--summary", str(summary),
-        "--output", str(output),
+        "--cohort-id",
+        "cohort",
+        "--sample-manifest",
+        str(samples),
+        "--partition-manifest",
+        str(partitions),
+        "--annotation-gtf",
+        str(annotation),
+        "--sites",
+        str(sites),
+        "--inputs",
+        str(inputs),
+        "--summary",
+        str(summary),
+        "--output",
+        str(output),
         *extra,
     ]
 
@@ -169,7 +269,9 @@ def arguments(values, *extra):
 def run(values, *extra, cwd=ROOT):
     return subprocess.run(
         [sys.executable, str(SCRIPT), *arguments(values, *extra)],
-        cwd=cwd, text=True, capture_output=True,
+        cwd=cwd,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -282,9 +384,7 @@ def test_post_build_mutation_of_each_input_preserves_predecessor(tmp_path, capsy
         assert status == 2, (role_index, captured.err)
         assert "Input changed after validation" in captured.err
         assert values[-1].read_bytes() == predecessor
-        assert {path.name for path in values[-1].parent.iterdir()} == {
-            values[-1].name
-        }
+        assert {path.name for path in values[-1].parent.iterdir()} == {values[-1].name}
 
 
 def test_equivalent_annotation_spelling_is_failed_identity_evidence(tmp_path):

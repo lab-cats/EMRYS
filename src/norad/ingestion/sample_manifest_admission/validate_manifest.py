@@ -13,7 +13,9 @@ import csv
 import sys
 from pathlib import Path
 
-_SRC_ROOT = next(parent for parent in Path(__file__).resolve().parents if parent.name == "src")
+_SRC_ROOT = next(
+    parent for parent in Path(__file__).resolve().parents if parent.name == "src"
+)
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
@@ -59,7 +61,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict[str, set[str] | int]:
+def validate_manifest(
+    manifest: Path, base_dir: Path, check_files: bool
+) -> dict[str, set[str] | int]:
     # Validate the manifest path before opening it so path failures are clear.
     if not manifest.exists():
         raise report.ValidationError(f"Manifest does not exist: {manifest}")
@@ -76,7 +80,9 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
     with manifest.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         if reader.fieldnames is None:
-            raise report.ValidationError(f"Manifest is empty or missing a header: {manifest}")
+            raise report.ValidationError(
+                f"Manifest is empty or missing a header: {manifest}"
+            )
 
         fieldnames = [field.strip() for field in reader.fieldnames]
         reader.fieldnames = fieldnames
@@ -90,11 +96,15 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
         if "" in fieldnames:
             errors.append("Header contains an empty column name")
 
-        missing_columns = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
+        missing_columns = [
+            column for column in REQUIRED_COLUMNS if column not in fieldnames
+        ]
         if missing_columns:
             errors.append(f"Missing required column(s): {', '.join(missing_columns)}")
 
-        unexpected_columns = sorted(column for column in fieldnames if column not in ALLOWED_COLUMNS)
+        unexpected_columns = sorted(
+            column for column in fieldnames if column not in ALLOWED_COLUMNS
+        )
         if unexpected_columns:
             errors.append(f"Unexpected column(s): {', '.join(unexpected_columns)}")
 
@@ -114,8 +124,7 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
                     errors.append(f"Row {row_number}: too many tab-separated fields")
 
             values = {
-                column: (row.get(column) or "").strip()
-                for column in ALLOWED_COLUMNS
+                column: (row.get(column) or "").strip() for column in ALLOWED_COLUMNS
             }
 
             if not any(values.values()):
@@ -155,7 +164,10 @@ def validate_manifest(manifest: Path, base_dir: Path, check_files: bool) -> dict
                 conditions.add(condition)
 
             if check_files:
-                for column, fastq_path in (("r1_fastq", r1_fastq), ("r2_fastq", r2_fastq)):
+                for column, fastq_path in (
+                    ("r1_fastq", r1_fastq),
+                    ("r2_fastq", r2_fastq),
+                ):
                     if not fastq_path:
                         continue
                     resolved_path = report.resolve_from_base(base_dir, fastq_path)

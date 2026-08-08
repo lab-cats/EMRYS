@@ -68,4 +68,3 @@ def publish(
         os.close(descriptor)
         if lock.exists() and not lock.is_symlink():
             lock.unlink()
-

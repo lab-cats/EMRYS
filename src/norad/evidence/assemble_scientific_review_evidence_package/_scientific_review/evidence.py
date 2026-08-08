@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from .audits import (
     validate_annotation_evidence,
@@ -31,6 +31,7 @@ from .review_analysis import (
     validate_limitations,
     validate_sensitivity_matrix,
 )
+
 
 def validate_computational_evidence(
     rows: Sequence[Mapping[str, str]],
@@ -83,7 +84,9 @@ def validate_computational_evidence(
         )
         if row["exit_code"] != NA_VALUE:
             if not re.fullmatch(r"-?[0-9]+", row["exit_code"]):
-                step08.fail("Computational validation exit_code must be an integer or NA.")
+                step08.fail(
+                    "Computational validation exit_code must be an integer or NA."
+                )
         if row["scheduler_state"] not in (
             NA_VALUE,
             "COMPLETED",
@@ -125,9 +128,7 @@ def validate_computational_evidence(
             input_hashes[path] = observed
         if row["evidence_id"] in complete_evidence_ids:
             payload_counts[row["evidence_id"]] += 1
-            plan_field = COMPUTATIONAL_SCOPE_PLAN_FIELDS[
-                row["validation_scope"]
-            ]
+            plan_field = COMPUTATIONAL_SCOPE_PLAN_FIELDS[row["validation_scope"]]
             expected_status = plan[plan_field]
             if row["validation_status"] != expected_status:
                 step08.fail(
@@ -137,15 +138,12 @@ def validate_computational_evidence(
                     f"review-plan {plan_field}={expected_status}."
                 )
     empty_complete = sorted(
-        evidence_id
-        for evidence_id, count in payload_counts.items()
-        if count == 0
+        evidence_id for evidence_id, count in payload_counts.items() if count == 0
     )
     if empty_complete:
         step08.fail(
             "Complete computational-validation evidence must contain at "
-            "least one validation scope row: "
-            + ",".join(empty_complete)
+            "least one validation scope row: " + ",".join(empty_complete)
         )
     claim_specs = {
         ("local_test_status", "passed"): {"local_test"},
@@ -171,8 +169,7 @@ def validate_computational_evidence(
             row
             for row in rows
             if row["evidence_id"] in complete_evidence_ids
-            and COMPUTATIONAL_SCOPE_PLAN_FIELDS[row["validation_scope"]]
-            == plan_field
+            and COMPUTATIONAL_SCOPE_PLAN_FIELDS[row["validation_scope"]] == plan_field
             and row["validation_status"] == expected_status
         ]
         if not matching:
@@ -181,15 +178,13 @@ def validate_computational_evidence(
                 "computational-validation evidence."
             )
         matching_by_role = {
-            COMPUTATIONAL_SCOPE_ROLES[row["validation_scope"]]: row
-            for row in matching
+            COMPUTATIONAL_SCOPE_ROLES[row["validation_scope"]]: row for row in matching
         }
         missing_roles = sorted(required_roles - set(matching_by_role))
         if missing_roles:
             step08.fail(
                 f"{plan_field}={expected_status} requires computational "
-                "evidence roles: "
-                + ",".join(missing_roles)
+                "evidence roles: " + ",".join(missing_roles)
             )
         roles_requiring_payload_paths = (
             required_roles
@@ -210,23 +205,28 @@ def validate_computational_evidence(
         if missing_paths:
             step08.fail(
                 f"{plan_field}={expected_status} requires explicit paths "
-                "and hashes for evidence roles: "
-                + ",".join(missing_paths)
+                "and hashes for evidence roles: " + ",".join(missing_paths)
             )
-        if plan_field in (
-            "cluster_dry_run_status",
-            "cluster_proof_status",
-        ) and expected_status in ("passed", "proven") and matching_by_role[
-            (
-                "cluster_dry_run"
-                if plan_field == "cluster_dry_run_status"
-                else (
-                    "cluster_scheduler"
-                    if expected_status == "proven"
-                    else "cluster_log"
+        if (
+            plan_field
+            in (
+                "cluster_dry_run_status",
+                "cluster_proof_status",
+            )
+            and expected_status in ("passed", "proven")
+            and matching_by_role[
+                (
+                    "cluster_dry_run"
+                    if plan_field == "cluster_dry_run_status"
+                    else (
+                        "cluster_scheduler"
+                        if expected_status == "proven"
+                        else "cluster_log"
+                    )
                 )
-            )
-        ]["scheduler_state"] != "COMPLETED":
+            ]["scheduler_state"]
+            != "COMPLETED"
+        ):
             step08.fail(f"{plan_field} claims require scheduler_state=COMPLETED.")
     if (
         review_package.aggregate_evidence_status(
@@ -264,8 +264,7 @@ def validate_evidence_payloads(
                 row["analysis_id"] != primary_analysis_id
             ):
                 step08.fail(
-                    f"{category} row {row_number} must reference the "
-                    "primary analysis."
+                    f"{category} row {row_number} must reference the primary analysis."
                 )
     validate_orientation_evidence(
         category_rows["orientation_locus_audit"],
@@ -405,9 +404,7 @@ def make_review_summary(
         "orientation_policy": plan["orientation_policy"],
         "orientation_policy_version": plan["orientation_policy_version"],
         "orientation_status": plan["orientation_status"],
-        "locus_selection_policy_version": plan[
-            "locus_selection_policy_version"
-        ],
+        "locus_selection_policy_version": plan["locus_selection_policy_version"],
         "locus_selection_rule": plan["locus_selection_rule"],
         "locus_target_count": plan["locus_target_count"],
         "required_orientations": plan["required_orientations"],
@@ -430,9 +427,7 @@ def make_review_summary(
         "adjudication_policy_version": plan["adjudication_policy_version"],
         "background_decision": decisions.get("background", "pending"),
         "matched_dna_decision": decisions.get("matched_dna", "pending"),
-        "orthogonal_evidence_decision": decisions.get(
-            "orthogonal_evidence", "pending"
-        ),
+        "orthogonal_evidence_decision": decisions.get("orthogonal_evidence", "pending"),
         "annotation_decision": decisions.get("annotation", "pending"),
         "thresholds_decision": decisions.get("thresholds", "pending"),
         "adjudication_decision": decisions.get("adjudication", "pending"),

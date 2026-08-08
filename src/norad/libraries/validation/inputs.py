@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import subprocess
 import stat
-from dataclasses import dataclass
+import subprocess
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 
 from norad.libraries.validation.errors import fail
@@ -84,9 +84,7 @@ def resolve_from_base(base_dir: Path, path: str | Path) -> Path:
     return candidate.expanduser().absolute()
 
 
-def snapshots(
-    paths: Mapping[str, Path], *, label: str
-) -> dict[Path, Snapshot]:
+def snapshots(paths: Mapping[str, Path], *, label: str) -> dict[Path, Snapshot]:
     """Build regular snapshots for a role->path map with a shared label prefix."""
     return {
         path: regular_snapshot(path, f"{label} {role}") for role, path in paths.items()

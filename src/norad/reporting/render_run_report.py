@@ -25,24 +25,21 @@ import subprocess
 import sys
 import uuid
 from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
 import yaml
-
+from jsonschema import Draft202012Validator, FormatChecker
 
 _SRC_ROOT = Path(__file__).resolve().parents[2]
 if str(_SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(_SRC_ROOT))
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
-
-
-
 
 PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.0.0"
@@ -396,14 +393,11 @@ def _load_run_summary(path: Path) -> dict[str, Any]:
         )
         errors = sorted(
             validator.iter_errors(document),
-            key=lambda error: tuple(
-                str(part) for part in error.absolute_path
-            ),
+            key=lambda error: tuple(str(part) for part in error.absolute_path),
         )
         if errors:
             detail = "\n".join(
-                f"- {contracts.format_json_path(error.absolute_path)}: "
-                f"{error.message}"
+                f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
                 for error in errors
             )
             _fail(f"run-summary document failed validation: {path}\n{detail}")
@@ -411,10 +405,7 @@ def _load_run_summary(path: Path) -> dict[str, Any]:
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
     if document["schema_version"] != RUN_SUMMARY_SCHEMA_VERSION:
-        _fail(
-            "Unsupported run-summary schema version: "
-            f"{document['schema_version']!r}"
-        )
+        _fail(f"Unsupported run-summary schema version: {document['schema_version']!r}")
     if document["candidate_terminology"] != CANDIDATE_TERMINOLOGY:
         _fail(
             "Run summary does not use the required candidate terminology: "
@@ -435,9 +426,7 @@ def _resolve_contract_file(value: str, label: str) -> Path:
         _fail(str(exc))
     declared = Path(value)
     lexical = (
-        declared
-        if declared.is_absolute()
-        else contracts.REPO_ROOT / declared
+        declared if declared.is_absolute() else contracts.REPO_ROOT / declared
     ).absolute()
     _reject_symlink_components(lexical, label)
     resolved = contracts.resolve_contract_path(value)
@@ -474,14 +463,10 @@ def _read_approved_table(record: Mapping[str, Any]) -> ApprovedTable:
             except StopIteration:
                 _fail(f"Approved report table {table_id!r} is empty: {path}")
             if not raw_header or any(not column for column in raw_header):
-                _fail(
-                    f"Approved report table {table_id!r} has a blank header "
-                    "column"
-                )
+                _fail(f"Approved report table {table_id!r} has a blank header column")
             if len(raw_header) != len(set(raw_header)):
                 _fail(
-                    f"Approved report table {table_id!r} has duplicate header "
-                    "columns"
+                    f"Approved report table {table_id!r} has duplicate header columns"
                 )
             header = tuple(raw_header)
             for row_number, row in enumerate(reader, start=2):
@@ -620,17 +605,13 @@ def _table(
 ) -> str:
     escaped_id = _escape(table_id)
     escaped_caption = _escape(caption)
-    wide_class = (
-        " norad-table-wrap-wide" if len(header) > 6 else ""
-    )
+    wide_class = " norad-table-wrap-wide" if len(header) > 6 else ""
     wide_attributes = (
         f' tabindex="0" role="region" aria-label="{escaped_caption}"'
         if wide_class
         else ""
     )
-    head = "".join(
-        f'<th scope="col">{_escape(column)}</th>' for column in header
-    )
+    head = "".join(f'<th scope="col">{_escape(column)}</th>' for column in header)
     rendered_rows = []
     for row in rows:
         cells = []
@@ -639,11 +620,7 @@ def _table(
                 cells.append(f'<th scope="row">{_escape(value)}</th>')
             else:
                 cells.append(f"<td>{_escape(value)}</td>")
-        rendered_rows.append(
-            "<tr>"
-            + "".join(cells)
-            + "</tr>"
-        )
+        rendered_rows.append("<tr>" + "".join(cells) + "</tr>")
     if not rendered_rows:
         rendered_rows.append(
             f'<tr><td colspan="{len(header)}">No rows are available.</td></tr>'
@@ -741,8 +718,7 @@ def _failed_scope_summary(summary: Mapping[str, Any]) -> str:
     if not failed:
         return '<p class="provenance-note">Failed expected scopes: none.</p>'
     items = "".join(
-        f"<li>{_escape(step_id)} {_escape(scope_type)} "
-        f"{_escape(scope_id)} failed</li>"
+        f"<li>{_escape(step_id)} {_escape(scope_type)} {_escape(scope_id)} failed</li>"
         for step_id, scope_type, scope_id in failed
     )
     return (
@@ -753,9 +729,7 @@ def _failed_scope_summary(summary: Mapping[str, Any]) -> str:
 
 def _render_approved_table(table: ApprovedTable) -> str:
     controlled_candidate_titles = {
-        "candidate_selection": (
-            "CMH-ranked candidates: approved selection summary"
-        ),
+        "candidate_selection": ("CMH-ranked candidates: approved selection summary"),
         "candidate_adjudication": (
             "CMH-ranked candidates: approved adjudication summary"
         ),
@@ -789,11 +763,7 @@ def _tables_for_roles(
     roles: Sequence[str],
     empty_message: str,
 ) -> str:
-    selected = [
-        table
-        for role in roles
-        for table in tables_by_role.get(role, ())
-    ]
+    selected = [table for role in roles for table in tables_by_role.get(role, ())]
     if not selected:
         return _empty(empty_message)
     return "\n".join(_render_approved_table(table) for table in selected)
@@ -900,9 +870,7 @@ def _render_status_panels(summary: Mapping[str, Any]) -> str:
         f"{computational}</div>\n"
         '<div class="status-panel"><h3>Scientific status</h3>'
         f"{scientific}</div>\n"
-        "</div>\n"
-        + _artifact_overview(summary)
-        + _failed_scope_summary(summary)
+        "</div>\n" + _artifact_overview(summary) + _failed_scope_summary(summary)
     )
 
 
@@ -947,9 +915,7 @@ def _render_scope_matrix(summary: Mapping[str, Any]) -> str:
 
 
 def _render_qc_metrics(summary: Mapping[str, Any]) -> str:
-    promoted_ids = {
-        metric["metric_id"] for metric in summary["qc_metrics"]
-    }
+    promoted_ids = {metric["metric_id"] for metric in summary["qc_metrics"]}
     rows = []
     for artifact in summary["artifacts"]:
         for metric in artifact["metrics"]:
@@ -966,8 +932,7 @@ def _render_qc_metrics(summary: Mapping[str, Any]) -> str:
             )
     if not rows:
         return _empty(
-            "No artifact-level QC metrics are present in the canonical run "
-            "summary."
+            "No artifact-level QC metrics are present in the canonical run summary."
         )
     return _table(
         table_id="qc-metrics",
@@ -1022,9 +987,7 @@ def _render_evidence_categories(summary: Mapping[str, Any]) -> str:
 def _render_limitations(summary: Mapping[str, Any]) -> str:
     limitations = summary["limitations"]
     if not limitations:
-        return _empty(
-            "No limitations are recorded in the canonical run summary."
-        )
+        return _empty("No limitations are recorded in the canonical run summary.")
     return _table(
         table_id="limitations",
         caption="Recorded limitations and their interpretation impact",
@@ -1137,8 +1100,7 @@ def _render_evidence_index(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None or not record["evidence_records"]:
         return _empty(
-            "No scientific evidence index is present in the canonical run "
-            "summary."
+            "No scientific evidence index is present in the canonical run summary."
         )
     return _table(
         table_id="science-evidence-index",
@@ -1184,9 +1146,7 @@ def _render_evidence_index(summary: Mapping[str, Any]) -> str:
 def _render_input_artifacts(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
-        return _empty(
-            "No scientific-review input-artifact list is present."
-        )
+        return _empty("No scientific-review input-artifact list is present.")
     return _table(
         table_id="science-input-artifacts",
         caption="Scientific-review input artifacts",
@@ -1262,9 +1222,7 @@ def _render_science_methods(summary: Mapping[str, Any]) -> str:
             "references."
         )
     )
-    return "\n".join(
-        (metadata, policies, rules, status_table, evidence_table)
-    )
+    return "\n".join((metadata, policies, rules, status_table, evidence_table))
 
 
 def _render_attempt_lineage(summary: Mapping[str, Any]) -> str:
@@ -1318,17 +1276,13 @@ def _render_attempt_lineage(summary: Mapping[str, Any]) -> str:
                 artifact["artifact_id"],
                 artifact["selected_attempt_id"],
                 artifact["attempt_provenance_status"],
-                ", ".join(
-                    attempt["attempt_id"] for attempt in artifact["attempts"]
-                )
+                ", ".join(attempt["attempt_id"] for attempt in artifact["attempts"])
                 or "None",
             )
             for artifact in summary["artifacts"]
         ),
     )
-    superseded = (
-        ", ".join(summary["superseded_attempt_ids"]) or "None"
-    )
+    superseded = ", ".join(summary["superseded_attempt_ids"]) or "None"
     return (
         attempt_table
         + "\n"
@@ -1421,11 +1375,9 @@ def _render_issues(summary: Mapping[str, Any]) -> str:
                     level[:-1],
                     issue["code"],
                     issue["message"],
-                    ", ".join(issue["related_artifact_ids"])
-                    or "None declared",
+                    ", ".join(issue["related_artifact_ids"]) or "None declared",
                     ", ".join(
-                        reference["evidence_id"]
-                        for reference in issue["evidence"]
+                        reference["evidence_id"] for reference in issue["evidence"]
                     )
                     or "None declared",
                 )
@@ -1587,10 +1539,7 @@ def build_report_body(
         (
             _section(
                 "decisions-section",
-                (
-                    "Background, matched-DNA, orthogonal-evidence, and review "
-                    "decisions"
-                ),
+                ("Background, matched-DNA, orthogonal-evidence, and review decisions"),
                 _render_decisions(summary)
                 + "\n"
                 + _tables_for_roles(
@@ -1643,28 +1592,20 @@ def build_report_body(
                 + "\n"
                 + _render_issues(summary)
                 + "\n"
-                + _render_json_block(
-                    "Run-summary parameters", summary["parameters"]
-                )
+                + _render_json_block("Run-summary parameters", summary["parameters"])
                 + "\n"
-                + _render_json_block(
-                    "Run-summary provenance", summary["provenance"]
-                )
+                + _render_json_block("Run-summary provenance", summary["provenance"])
                 + "\n"
                 + _render_report_provenance(metadata),
             ),
         )
     )
-    unknown_tables = [
-        table for table in tables if table.role not in KNOWN_REPORT_ROLES
-    ]
+    unknown_tables = [table for table in tables if table.role not in KNOWN_REPORT_ROLES]
     if unknown_tables:
         evidence_and_provenance += "\n" + _section(
             "other-approved-tables-section",
             "Other explicitly approved report tables",
-            "\n".join(
-                _render_approved_table(table) for table in unknown_tables
-            ),
+            "\n".join(_render_approved_table(table) for table in unknown_tables),
         )
 
     parts = [
@@ -1760,15 +1701,12 @@ def build_qmd_bytes(
     if re.search(r"</?style\b|<script\b", css, re.IGNORECASE):
         _fail("Report CSS template contains an unsafe raw HTML boundary")
     validate_qmd_template(template)
-    qmd = (
-        template.replace(
-            CSS_MARKER,
-            '<style id="norad-report-styles">\n' + css + "\n</style>",
-        )
-        .replace(
-            BODY_MARKER,
-            build_report_body(summary, tables, render_metadata),
-        )
+    qmd = template.replace(
+        CSS_MARKER,
+        '<style id="norad-report-styles">\n' + css + "\n</style>",
+    ).replace(
+        BODY_MARKER,
+        build_report_body(summary, tables, render_metadata),
     )
     if EXECUTABLE_QMD_RE.search(qmd):
         _fail("Generated QMD contains an executable fenced cell")
@@ -1777,13 +1715,9 @@ def build_qmd_bytes(
 
 def validate_qmd_template(template: str) -> None:
     if template.count(BODY_MARKER) != 1:
-        _fail(
-            f"Report QMD template must contain exactly one {BODY_MARKER!r} marker"
-        )
+        _fail(f"Report QMD template must contain exactly one {BODY_MARKER!r} marker")
     if template.count(CSS_MARKER) != 1:
-        _fail(
-            f"Report QMD template must contain exactly one {CSS_MARKER!r} marker"
-        )
+        _fail(f"Report QMD template must contain exactly one {CSS_MARKER!r} marker")
     if EXECUTABLE_QMD_RE.search(template):
         _fail("Report QMD template contains an executable fenced cell")
     match = re.fullmatch(r"---\n(.*?)\n---(\n.*)", template, re.DOTALL)
@@ -1815,10 +1749,7 @@ def validate_qmd_template(template: str) -> None:
     except (TypeError, yaml.YAMLError) as exc:
         _fail(f"Report QMD frontmatter is invalid: {exc}")
     if frontmatter != EXPECTED_QMD_FRONTMATTER:
-        _fail(
-            "Report QMD frontmatter differs from the closed static HTML "
-            "allowlist"
-        )
+        _fail("Report QMD frontmatter differs from the closed static HTML allowlist")
     if match.group(2) != EXPECTED_QMD_BODY:
         _fail(
             "Report QMD body must contain only the tracked static-contract "
@@ -1915,14 +1846,11 @@ class ReportHTMLInspector(HTMLParser):
         if tag == "img" and not (
             attributes.get("alt")
             or (
-                attributes.get("role") == "presentation"
-                and attributes.get("alt") == ""
+                attributes.get("role") == "presentation" and attributes.get("alt") == ""
             )
         ):
             self.image_errors.append("<img> lacks non-empty alternative text")
-        if tag == "meta" and (
-            attributes.get("http-equiv") or ""
-        ).lower() == "refresh":
+        if tag == "meta" and (attributes.get("http-equiv") or "").lower() == "refresh":
             self.meta_refreshes.append(attributes.get("content") or "")
         element_id = attributes.get("id")
         if element_id:
@@ -1951,12 +1879,8 @@ class ReportHTMLInspector(HTMLParser):
 
         if tag == "svg":
             self.svg_depth += 1
-            if (
-                attributes.get("role") == "img"
-                and (
-                    attributes.get("aria-label")
-                    or attributes.get("aria-labelledby")
-                )
+            if attributes.get("role") == "img" and (
+                attributes.get("aria-label") or attributes.get("aria-labelledby")
             ):
                 self.accessible_svgs += 1
         elif self.svg_depth:
@@ -2081,10 +2005,7 @@ def validate_rendered_html(
         inspector.heading_levels[1:],
     ):
         if current > previous + 1:
-            _fail(
-                f"Rendered report heading order jumps from h{previous} to "
-                f"h{current}"
-            )
+            _fail(f"Rendered report heading order jumps from h{previous} to h{current}")
     if inspector.duplicate_ids:
         _fail(
             "Rendered report contains duplicate element IDs: "
@@ -2113,9 +2034,7 @@ def validate_rendered_html(
         _fail("Rendered report lacks an accessible embedded figure")
     observed_banner = " ".join("".join(inspector.banner_text).split())
     if inspector.banner_count != 1:
-        _fail(
-            "Rendered report must contain exactly one scientific-state banner"
-        )
+        _fail("Rendered report must contain exactly one scientific-state banner")
     if expected_banner is None:
         allowed_banners = {
             " ".join(value.split()) for value in SCIENCE_BANNERS.values()
@@ -2178,18 +2097,14 @@ def prepare_context(arguments: argparse.Namespace) -> RenderContext:
     _assert_snapshot(run_summary_snapshot, "run-summary document")
     run_id = summary["run_id"]
     expected_name = f"{run_id}.run_summary.json"
-    if (
-        run_summary_path.name != expected_name
-        or run_summary_path.parent.name != run_id
-    ):
+    if run_summary_path.name != expected_name or run_summary_path.parent.name != run_id:
         _fail(
             "Canonical run-summary input must use "
             f"<run-id>/{expected_name}; observed {run_summary_path}"
         )
 
     tables = tuple(
-        _read_approved_table(record)
-        for record in summary["approved_report_tables"]
+        _read_approved_table(record) for record in summary["approved_report_tables"]
     )
     template_snapshot = _snapshot_regular(
         QMD_TEMPLATE,
@@ -2322,10 +2237,7 @@ def _create_directories(path: Path) -> list[Path]:
     if os.path.lexists(current):
         metadata = current.lstat()
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
-            _fail(
-                f"Report output ancestor is not a non-symlink directory: "
-                f"{current}"
-            )
+            _fail(f"Report output ancestor is not a non-symlink directory: {current}")
     created: list[Path] = []
     try:
         for directory in reversed(missing):
@@ -2387,14 +2299,9 @@ def _acquire_lock(context: RenderContext, token: str) -> LockOwnership:
         os.close(descriptor)
         try:
             if metadata is None:
-                raise ReportRenderError(
-                    "Could not capture owned report-lock identity"
-                )
+                raise ReportRenderError("Could not capture owned report-lock identity")
             current = context.lock_path.lstat()
-            if (
-                current.st_dev != metadata.st_dev
-                or current.st_ino != metadata.st_ino
-            ):
+            if current.st_dev != metadata.st_dev or current.st_ino != metadata.st_ino:
                 raise ReportRenderError(
                     "Report lock changed identity during interrupted "
                     f"acquisition: {context.lock_path}"
@@ -2442,9 +2349,7 @@ def _install_publication_signal_handlers() -> dict[int, Any]:
             name = signal.Signals(signum).name
         except ValueError:
             name = str(signum)
-        raise ReportRenderError(
-            f"Report publication interrupted by signal {name}"
-        )
+        raise ReportRenderError(f"Report publication interrupted by signal {name}")
 
     try:
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
@@ -2581,10 +2486,7 @@ def _recheck_inputs(context: RenderContext) -> None:
         "report QMD template",
         "report CSS template",
         "Quarto executable",
-        *(
-            f"approved report table {table.table_id!r}"
-            for table in context.tables
-        ),
+        *(f"approved report table {table.table_id!r}" for table in context.tables),
     )
     for snapshot, label in zip(context.input_snapshots, labels):
         _assert_snapshot(snapshot, label)
@@ -2633,11 +2535,8 @@ def _render_with_quarto(
     project_path = stage / "_quarto.yml"
     _write_owned_file(qmd_path, context.qmd_bytes)
     project_bytes = (
-        "project:\n"
-        "  type: default\n"
-        "  render:\n"
-        f"    - {qmd_path.name}\n"
-    ).encode("utf-8")
+        f"project:\n  type: default\n  render:\n    - {qmd_path.name}\n"
+    ).encode()
     _write_owned_file(project_path, project_bytes)
     command = [
         str(context.quarto_path),
@@ -2712,10 +2611,7 @@ def publish_report(context: RenderContext) -> None:
     )
     token = f"{os.getpid()}-{uuid.uuid4().hex}"
     stage = context.output_dir / f".run-report.{token}.tmp"
-    backup = (
-        context.output_dir
-        / f".{context.output_html.name}.{token}.previous"
-    )
+    backup = context.output_dir / f".{context.output_html.name}.{token}.previous"
     recovery = (
         context.output_dir
         / f".{context.summary['run_id']}.report-html.{token}.RECOVERY.txt"
@@ -2804,9 +2700,7 @@ def publish_report(context: RenderContext) -> None:
         _fsync_directory(context.output_dir)
         validate_rendered_html(
             context.output_html,
-            expected_banner=SCIENCE_BANNERS[
-                context.summary["science_status"]
-            ],
+            expected_banner=SCIENCE_BANNERS[context.summary["science_status"]],
             expected_identity=_expected_html_identity(context),
         )
         _recheck_inputs(context)
@@ -2952,8 +2846,7 @@ def publish_report(context: RenderContext) -> None:
             raise ReportRenderError(
                 "Report publication failed and rollback was incomplete. "
                 "Preserve the owned lock and recovery state under "
-                f"{context.output_dir}. Rollback errors: "
-                + "; ".join(rollback_errors)
+                f"{context.output_dir}. Rollback errors: " + "; ".join(rollback_errors)
             ) from original_exc
         backed_up = False
         published = False
@@ -2974,9 +2867,7 @@ def publish_report(context: RenderContext) -> None:
             if not cleanup_errors and os.path.lexists(backup):
                 try:
                     if not committed or backup_snapshot is None:
-                        _fail(
-                            "Unexpected report backup remains after rollback"
-                        )
+                        _fail("Unexpected report backup remains after rollback")
                     _assert_snapshot(
                         backup_snapshot,
                         "owned committed report backup",
@@ -2984,9 +2875,7 @@ def publish_report(context: RenderContext) -> None:
                     backup.unlink()
                     _fsync_directory(context.output_dir)
                 except Exception as exc:
-                    cleanup_errors.append(
-                        f"owned backup cleanup failed: {exc}"
-                    )
+                    cleanup_errors.append(f"owned backup cleanup failed: {exc}")
         if (
             ownership is not None
             and not recovery_required
@@ -3001,9 +2890,7 @@ def publish_report(context: RenderContext) -> None:
             try:
                 _restore_signal_handlers(previous_signal_handlers)
             except BaseException as exc:
-                cleanup_errors.append(
-                    f"signal-handler restoration failed: {exc}"
-                )
+                cleanup_errors.append(f"signal-handler restoration failed: {exc}")
         if cleanup_errors:
             recovery_required = True
             if not output_identity_lost:
@@ -3035,14 +2922,9 @@ def print_plan(context: RenderContext) -> None:
     print(f"  Mode: {mode}")
     print(f"  Run ID: {context.summary['run_id']}")
     print(f"  Run summary: {context.run_summary_path}")
-    print(
-        f"  Run-summary SHA-256: {context.run_summary_snapshot.sha256}"
-    )
+    print(f"  Run-summary SHA-256: {context.run_summary_snapshot.sha256}")
     print(f"  Science status: {context.summary['science_status']}")
-    print(
-        "  State banner: "
-        f"{SCIENCE_BANNERS[context.summary['science_status']]}"
-    )
+    print(f"  State banner: {SCIENCE_BANNERS[context.summary['science_status']]}")
     print(f"  Approved report tables: {len(context.tables)}")
     for table in context.tables:
         print(
@@ -3089,9 +2971,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from norad.reporting import render_run_report_bundle
 
-    return render_run_report_bundle.main(
-        list(sys.argv[1:] if argv is None else argv)
-    )
+    return render_run_report_bundle.main(list(sys.argv[1:] if argv is None else argv))
 
 
 if __name__ == "__main__":

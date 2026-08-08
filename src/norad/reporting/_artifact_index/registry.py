@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from norad.libraries.alignments import orientation as alignment_orientation
+
 from .contracts import review_package, step08, step09
 from .models import (
-    AdapterSpec,
     STEP00A_BASENAMES,
     STEP06_COUNTS_HEADER,
     STEP07_RECEIPT_HEADER,
     VALIDATION_REPORT_HEADER,
+    AdapterSpec,
 )
+
 
 def add_spec(
     registry: dict[str, AdapterSpec],

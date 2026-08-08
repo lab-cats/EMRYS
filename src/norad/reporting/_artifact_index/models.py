@@ -28,8 +28,7 @@ ANCHOR_HASH_FIELDS = (
     "partition_manifest_sha256",
 )
 STEP09C_CATEGORY_ADAPTERS = {
-    category: f"step09c_{category}_v1"
-    for category in review_package.CATEGORY_ORDER
+    category: f"step09c_{category}_v1" for category in review_package.CATEGORY_ORDER
 }
 
 ARTIFACT_INDEX_HEADER = (

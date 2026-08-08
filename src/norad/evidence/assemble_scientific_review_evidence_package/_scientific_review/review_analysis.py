@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from .contracts import (
     NA_VALUE,
@@ -13,7 +13,6 @@ from .contracts import (
     sha256_file,
     step08,
     step09,
-    values_close,
 )
 from .intake import (
     split_ids,
@@ -21,6 +20,7 @@ from .intake import (
     validate_iso_date,
     validate_supporting_ids,
 )
+
 
 def validate_analysis_file_reference(
     label: str,
@@ -50,9 +50,7 @@ def validate_sensitivity_matrix(
     step08.ensure_unique(rows, "parameter_set_id", "Sensitivity matrix")
     expected_ids = {
         plan["primary_analysis_id"],
-        *split_ids(
-            "sensitivity_analysis_ids", plan["sensitivity_analysis_ids"]
-        ),
+        *split_ids("sensitivity_analysis_ids", plan["sensitivity_analysis_ids"]),
     }
     observed_ids: set[str] = set()
     primary_count = 0
@@ -97,7 +95,9 @@ def validate_sensitivity_matrix(
             if analysis_id != plan["primary_analysis_id"]:
                 step08.fail("Only the primary analysis may use is_primary=TRUE.")
             if summary_table.path != primary_summary_path:
-                step08.fail("Primary sensitivity row must reference the Step 09 summary.")
+                step08.fail(
+                    "Primary sensitivity row must reference the Step 09 summary."
+                )
             if summary != primary_summary:
                 step08.fail("Primary sensitivity summary differs from Step 09.")
         elif analysis_id == plan["primary_analysis_id"]:
@@ -109,9 +109,7 @@ def validate_sensitivity_matrix(
                     "differs from its analysis summary."
                 )
         validate_iso_date("Sensitivity matrix review_date", row["review_date"])
-    if complete and (
-        observed_ids != expected_ids or primary_count != 1
-    ):
+    if complete and (observed_ids != expected_ids or primary_count != 1):
         step08.fail("Complete sensitivity matrix does not cover all declared analyses.")
 
 
@@ -257,9 +255,10 @@ def validate_candidate_selection(
         if rank < 1:
             step08.fail("Candidate selection rank must be at least 1.")
         ranks[selection_set].append(rank)
-        if row["selection_policy_version"] != plan[
-            "candidate_selection_policy_version"
-        ]:
+        if (
+            row["selection_policy_version"]
+            != plan["candidate_selection_policy_version"]
+        ):
             step08.fail("Candidate selection policy version differs from the plan.")
         expected_values = {
             "source_call_status": result["call_status"],
@@ -306,16 +305,16 @@ def validate_candidate_adjudication(
         if key not in selected:
             step08.fail("Candidate adjudication is not part of candidate selection.")
         if key in seen:
-            step08.fail("Candidate adjudication contains a duplicate candidate/set pair.")
+            step08.fail(
+                "Candidate adjudication contains a duplicate candidate/set pair."
+            )
         seen.add(key)
         validate_supporting_ids(
             "Candidate adjudication supporting_evidence_ids",
             row["supporting_evidence_ids"],
             evidence_ids,
         )
-        validate_iso_date(
-            "Candidate adjudication review_date", row["review_date"]
-        )
+        validate_iso_date("Candidate adjudication review_date", row["review_date"])
         step08.validate_enum(
             "Candidate adjudication adjudication_status",
             row["adjudication_status"],
@@ -382,8 +381,7 @@ def validate_decisions(
 ) -> dict[str, str]:
     step08.ensure_unique(rows, "decision_id", "Scientific decisions")
     evidence_status_by_id = {
-        row["evidence_id"]: row["evidence_status"]
-        for row in evidence_rows
+        row["evidence_id"]: row["evidence_status"] for row in evidence_rows
     }
     evidence_ids = set(evidence_status_by_id)
     seen: set[str] = set()
@@ -462,13 +460,10 @@ def validate_decisions(
             if unsupported:
                 step08.fail(
                     "Recorded scientific decisions cannot cite missing or "
-                    "incomplete evidence: "
-                    + ",".join(unsupported)
+                    "incomplete evidence: " + ",".join(unsupported)
                 )
             step08.require_text("Scientific decision value", row["decision_value"])
-            validate_iso_date(
-                "Scientific decision decision_date", row["decision_date"]
-            )
+            validate_iso_date("Scientific decision decision_date", row["decision_date"])
             decisions[dimension] = row["decision_value"]
         else:
             if supporting_ids:
@@ -481,9 +476,7 @@ def validate_decisions(
                     "Pending scientific decisions must use NA for value and date."
                 )
             decisions[dimension] = "pending"
-        if (row["rerun_required"] == "FALSE") != (
-            row["rerun_scope"] == "none"
-        ):
+        if (row["rerun_required"] == "FALSE") != (row["rerun_scope"] == "none"):
             step08.fail(
                 "Scientific decision rerun_required must be FALSE exactly "
                 "when rerun_scope=none."
@@ -499,8 +492,7 @@ def validate_decisions(
         and decisions["orientation"] != plan["orientation_status"]
     ):
         step08.fail(
-            "The recorded orientation decision must equal plan "
-            "orientation_status."
+            "The recorded orientation decision must equal plan orientation_status."
         )
     return decisions
 
