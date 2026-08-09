@@ -26,12 +26,12 @@ import subprocess
 import sys
 import uuid
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import yaml
 _MODULE_PATH = Path(__file__).resolve()
@@ -2485,7 +2485,6 @@ def _source_date_epoch(summary: Mapping[str, Any]) -> str:
 
 def _terminate_process_group(process: subprocess.Popen[str]) -> None:
     """Stop the complete Quarto process group and reap its direct process."""
-
     with contextlib.suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGTERM)
     try:
@@ -2500,6 +2499,45 @@ def _terminate_process_group(process: subprocess.Popen[str]) -> None:
             process.stdout.close()
         if process.stderr is not None:
             process.stderr.close()
+
+
+def _run_quarto_process(
+    command: Sequence[str],
+    stage: Path,
+    environment: Mapping[str, str],
+    fail: Callable[[str], NoReturn],
+) -> tuple[int, str, str]:
+    """Own the shared timeout and process-group lifecycle for Quarto renders."""
+    print("Quarto render command:")
+    print(f"  {shlex.join(command)}")
+    process: subprocess.Popen[str] | None = None
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=stage,
+            env=environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = process.communicate(timeout=300)
+        except subprocess.TimeoutExpired as exc:
+            _terminate_process_group(process)
+            fail(f"Quarto render exceeded the 300-second timeout: {exc}")
+    except OSError as exc:
+        if process is not None:
+            _terminate_process_group(process)
+        fail(f"Could not execute Quarto render: {exc}")
+    except BaseException:
+        if process is not None:
+            _terminate_process_group(process)
+        raise
+    assert process is not None and process.returncode is not None
+    if stdout.strip():
+        print(stdout.rstrip())
+    return process.returncode, stdout, stderr
 
 
 def _render_with_quarto(
@@ -2532,38 +2570,12 @@ def _render_with_quarto(
     runtime_tmp = stage / ".runtime-tmp"
     runtime_tmp.mkdir(mode=0o700)
     environment["TMPDIR"] = str(runtime_tmp)
-    print("Quarto render command:")
-    print(f"  {shlex.join(command)}")
-    process: subprocess.Popen[str] | None = None
-    try:
-        process = subprocess.Popen(
-            command,
-            cwd=stage,
-            env=environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
-        try:
-            standard_output, standard_error = process.communicate(timeout=300)
-        except subprocess.TimeoutExpired as exc:
-            _terminate_process_group(process)
-            _fail(f"Quarto render exceeded the 300-second timeout: {exc}")
-    except OSError as exc:
-        if process is not None:
-            _terminate_process_group(process)
-        _fail(f"Could not execute Quarto render: {exc}")
-    except BaseException:
-        if process is not None:
-            _terminate_process_group(process)
-        raise
-    assert process is not None
-    if standard_output.strip():
-        print(standard_output.rstrip())
-    if process.returncode != 0:
+    returncode, standard_output, standard_error = _run_quarto_process(
+        command, stage, environment, _fail
+    )
+    if returncode != 0:
         detail = standard_error.strip() or standard_output.strip()
-        _fail(f"Quarto render failed with exit {process.returncode}: {detail}")
+        _fail(f"Quarto render failed with exit {returncode}: {detail}")
     if standard_error.strip():
         print(standard_error.rstrip(), file=sys.stderr)
     for child in stage.iterdir():

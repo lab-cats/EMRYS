@@ -15,7 +15,6 @@ import csv
 import hashlib
 import json
 import os
-import shlex
 import stat
 import subprocess
 import sys
@@ -536,40 +535,14 @@ def _run_quarto(
     environment["DENO_DIR"] = str(stage / ".deno")
     environment["TMPDIR"] = str(stage / ".runtime-tmp")
     Path(environment["TMPDIR"]).mkdir(mode=0o700, exist_ok=True)
-    print("Quarto render command:")
-    print(f"  {shlex.join(command)}")
-    process: subprocess.Popen[str] | None = None
-    try:
-        process = subprocess.Popen(
-            command,
-            cwd=stage,
-            env=environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
-        try:
-            stdout, stderr = process.communicate(timeout=300)
-        except subprocess.TimeoutExpired as exc:
-            html_report._terminate_process_group(process)
-            _fail(f"Quarto render exceeded the 300-second timeout: {exc}")
-    except OSError as exc:
-        if process is not None:
-            html_report._terminate_process_group(process)
-        _fail(f"Could not execute Quarto render: {exc}")
-    except BaseException:
-        if process is not None:
-            html_report._terminate_process_group(process)
-        raise
-    assert process is not None
-    if stdout.strip():
-        print(stdout.rstrip())
+    returncode, stdout, stderr = html_report._run_quarto_process(
+        command, stage, environment, _fail
+    )
     if stderr.strip():
         print(stderr.rstrip(), file=sys.stderr)
-    if process.returncode != 0:
+    if returncode != 0:
         _fail(
-            f"Quarto {target} render failed with exit {process.returncode}: "
+            f"Quarto {target} render failed with exit {returncode}: "
             f"{stderr.strip() or stdout.strip()}"
         )
     output = stage / output_name
