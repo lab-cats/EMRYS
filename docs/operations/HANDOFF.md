@@ -67,6 +67,12 @@ is 251 lines and no private module exceeds 167 lines. Known characterized
 publication gaps remain unchanged; this is maintainability and local test
 evidence, not CSU batch runtime or cluster proof.
 
+Step `09c` intake keeps its sibling-import surface over distinct data-model,
+support, review-plan, and evidence-manifest owners. The compatibility facade is
+42 lines and the largest extracted owner is 228 lines. Review policy, manifest
+normalization/order, hashes, evidence states, and public Step `09c` publication
+remain unchanged; this adds no completed review or production evidence.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:
