@@ -9,7 +9,12 @@ and may change without creating another supported command surface.
 | Module | Owned responsibility |
 | --- | --- |
 | [`dispatch.py`](dispatch.py) | Selects the public bundle coordinator without creating a renderer import cycle. |
-| [`html.py`](html.py) | Current HTML model, projection, validation, Quarto execution, and HTML publication owner. |
+| [`models.py`](models.py) | Shared immutable report constants, value objects, and renderer error type. |
+| [`html_components.py`](html_components.py) | Escaped HTML primitives and approved-table rendering. |
+| [`html_computational.py`](html_computational.py) | Computational status, provenance, attempt, artifact, tool, and issue sections. |
+| [`html_science.py`](html_science.py) | Scientific-review, evidence, limitation, decision, and methods sections. |
+| [`html_projection.py`](html_projection.py) | Final deterministic composition of the HTML report body. |
+| [`html.py`](html.py) | Current input validation, Quarto execution, HTML validation, and publication owner; it retains compatibility bindings for moved projection helpers. |
 | [`bundle.py`](bundle.py) | Current PDF/summary/receipt projection and multi-output publication owner. |
 
 The bundle imports the private HTML owner directly. The HTML owner never
