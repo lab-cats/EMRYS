@@ -15,6 +15,9 @@ remain beside their stage or evidence owner.
 - `references/contigs.py` owns `ReferenceContigError` and the ordered
   `parse_fasta`, `parse_fai`, and `parse_dict` APIs used by reference provenance
   and the Step `00c` and `05` validators.
+- `input_contract.R` owns neutral named-argument, file, hash, and TSV mechanics
+  shared by the Step `08` and Step `09` R programs; owner rosters and policies
+  remain local.
 - `executable_resolution.sh` owns the three-argument
   `resolve_executable_value(label, value, default_name)` Bash function used by
   selected producers. It remains shell infrastructure rather than Python

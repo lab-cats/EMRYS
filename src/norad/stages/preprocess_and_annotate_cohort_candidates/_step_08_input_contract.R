@@ -26,46 +26,8 @@ usage <- function() {
     ))
 }
 
-abort <- function(...) {
-    stop(paste0(...), call. = FALSE)
-}
-
 parse_arguments <- function(values) {
-    if (length(values) == 1L && values[[1L]] %in% c("-h", "--help")) {
-        usage()
-        quit(status = 0L)
-    }
-    if (length(values) %% 2L != 0L) {
-        abort("Arguments must be supplied as --name value pairs.")
-    }
-
-    parsed <- setNames(vector("list", length(ARGUMENT_NAMES)), ARGUMENT_NAMES)
-    index <- 1L
-    while (index <= length(values)) {
-        option <- values[[index]]
-        if (!startsWith(option, "--")) {
-            abort("Expected an option beginning with --; got: ", option)
-        }
-        name <- substring(option, 3L)
-        if (!(name %in% ARGUMENT_NAMES)) {
-            abort("Unknown argument: ", option)
-        }
-        if (!is.null(parsed[[name]])) {
-            abort("Argument supplied more than once: ", option)
-        }
-        value <- values[[index + 1L]]
-        if (!nzchar(value) || startsWith(value, "--")) {
-            abort(option, " requires a non-empty value.")
-        }
-        parsed[[name]] <- value
-        index <- index + 2L
-    }
-
-    missing <- names(parsed)[vapply(parsed, is.null, logical(1))]
-    if (length(missing) > 0L) {
-        abort("Missing required argument(s): --", paste(missing, collapse = ", --"))
-    }
-    parsed
+    parse_named_arguments(values, ARGUMENT_NAMES, usage_function = usage)
 }
 
 require_packages <- function() {
@@ -99,91 +61,22 @@ validate_hash <- function(label, value) {
     tolower(value)
 }
 
-validate_nonempty_file <- function(label, path) {
-    if (!file.exists(path) || isTRUE(file.info(path)$isdir) ||
-        is.na(file.info(path)$size) || file.info(path)$size <= 0L) {
-        abort(label, " does not exist or is empty: ", path)
-    }
-}
-
-normalize_existing_path <- function(path) {
-    normalizePath(path, winslash = "/", mustWork = TRUE)
-}
-
 same_path <- function(left, right) {
     identical(normalize_existing_path(left), normalize_existing_path(right))
 }
 
 sha256_file <- function(path) {
-    normalized <- normalize_existing_path(path)
-    executable <- ""
-    command_args <- character()
-    if (nzchar(Sys.which("sha256sum"))) {
-        executable <- Sys.which("sha256sum")
-        command_args <- shQuote(normalized)
-    } else if (nzchar(Sys.which("shasum"))) {
-        executable <- Sys.which("shasum")
-        command_args <- c("-a", "256", shQuote(normalized))
-    } else {
-        abort(
+    sha256_file_with_fallback(
+        path,
+        paste0(
             "No SHA-256 implementation is available. Step 08 requires ",
             "sha256sum or shasum."
         )
-    }
-
-    output <- suppressWarnings(system2(
-        executable, args = command_args, stdout = TRUE, stderr = TRUE
-    ))
-    status <- attr(output, "status")
-    if (!is.null(status) && status != 0L) {
-        abort("SHA-256 command failed for: ", path)
-    }
-    match <- regexpr("[[:xdigit:]]{64}", paste(output, collapse = "\n"))
-    if (match[[1L]] < 0L) {
-        abort("Could not parse SHA-256 output for: ", path)
-    }
-    tolower(regmatches(paste(output, collapse = "\n"), match))
+    )
 }
 
 read_tsv <- function(label, path, expected_columns = NULL) {
-    validate_nonempty_file(label, path)
-    lines <- readLines(path, warn = FALSE)
-    if (length(lines) == 0L) {
-        abort(label, " is empty: ", path)
-    }
-    lines[[1L]] <- sub("\r$", "", lines[[1L]])
-    if (any(!nzchar(sub("\r$", "", lines[-1L])))) {
-        abort(label, " contains a blank data row: ", path)
-    }
-
-    table <- tryCatch(
-        read.delim(
-            path,
-            header = TRUE,
-            sep = "\t",
-            quote = "",
-            comment.char = "",
-            check.names = FALSE,
-            stringsAsFactors = FALSE,
-            colClasses = "character",
-            na.strings = character(),
-            fill = FALSE
-        ),
-        error = function(error) {
-            abort(label, " could not be parsed as strict TSV: ", error$message)
-        }
-    )
-    if (anyDuplicated(names(table))) {
-        abort(label, " contains duplicate column names: ", path)
-    }
-    if (!is.null(expected_columns) &&
-        !identical(names(table), expected_columns)) {
-        abort(
-            label, " header does not match the required schema. Expected: ",
-            paste(expected_columns, collapse = "\t")
-        )
-    }
-    table
+    read_contract_tsv(label, path, expected_columns)
 }
 
 parse_nonnegative_integer <- function(label, value) {

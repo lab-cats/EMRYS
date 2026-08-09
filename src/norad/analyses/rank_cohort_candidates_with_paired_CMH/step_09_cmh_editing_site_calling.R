@@ -7,6 +7,7 @@ script_dir <- normalizePath(
     dirname(sub("^--file=", "", invocation[[1L]])),
     winslash = "/", mustWork = TRUE
 )
+source(file.path(script_dir, "../../libraries/input_contract.R"))
 for (name in c("common", "validation", "evaluation", "output")) {
     source(file.path(script_dir, paste0("step_09_cmh_", name, ".R")))
 }

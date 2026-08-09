@@ -1435,6 +1435,9 @@ load_step08_input_contract <- local({
             winslash = "/",
             mustWork = TRUE
         )
+        shared_path <- file.path(
+            dirname(entry_path), "../../libraries/input_contract.R"
+        )
         owner_path <- file.path(dirname(entry_path), owner_filename)
         owner_info <- file.info(owner_path)
         if (!file.exists(owner_path) || isTRUE(owner_info$isdir) ||
@@ -1442,6 +1445,7 @@ load_step08_input_contract <- local({
             stop("Step 08 input-contract owner is unavailable: ", owner_path,
                  call. = FALSE)
         }
+        sys.source(shared_path, envir = globalenv(), keep.source = FALSE)
         sys.source(owner_path, envir = globalenv(), keep.source = FALSE)
         invisible(owner_path)
     }
