@@ -12,6 +12,8 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after Step 05 has
 # produced split-N-cigar BAMs and indexes.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export STEP06_HELPER_DIR="$script_dir"
 
 export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh

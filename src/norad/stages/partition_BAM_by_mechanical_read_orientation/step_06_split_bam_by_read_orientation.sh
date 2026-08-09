@@ -7,6 +7,8 @@
 # Passing --execute runs samtools, validates temporary outputs, and publishes
 # final BAM/BAI/TSV outputs only after validation succeeds.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+helper_dir="${STEP06_HELPER_DIR:-$script_dir}"
 
 usage() {
     cat <<'USAGE'
@@ -56,6 +58,14 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
+
+for step_06_helper in \
+    step_06_transaction_helpers.sh \
+    step_06_output_contract.sh
+do
+    # shellcheck source=/dev/null
+    source "$helper_dir/$step_06_helper"
+done
 
 resolve_samtools() {
     local value="${samtools_bin_arg:-}"
@@ -273,206 +283,6 @@ quickcheck_rev_command=(
     quickcheck
     "$tmp_rev_bam"
 )
-
-count_existing_final_outputs() {
-    local count=0
-
-    [[ -e "$output_fwd_bam" ]] && count=$((count + 1))
-    [[ -e "$output_fwd_bai" ]] && count=$((count + 1))
-    [[ -e "$output_rev_bam" ]] && count=$((count + 1))
-    [[ -e "$output_rev_bai" ]] && count=$((count + 1))
-    [[ -e "$output_counts_tsv" ]] && count=$((count + 1))
-    printf '%s\n' "$count"
-}
-
-confirm_final_set_state() {
-    local final_count
-
-    final_count="$(count_existing_final_outputs)"
-    if [[ "$final_count" == "5" ]]; then
-        previous_final_set_present=true
-    elif [[ "$final_count" == "0" ]]; then
-        previous_final_set_present=false
-    else
-        die "Step 06 final outputs are inconsistent; expected all five outputs or none."
-    fi
-}
-
-rollback_publish() {
-    if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
-        return
-    fi
-
-    printf 'Rolling back Step 06 read-orientation outputs...\n' >&2
-
-    if [[ "$previous_final_set_present" == true ]]; then
-        # Restore only files this invocation actually moved to backup; this
-        # protects against compounding a partial publish failure.
-        if [[ "$fwd_bam_backed_up" == true && -e "$backup_fwd_bam" ]]; then
-            rm -f "$output_fwd_bam"
-            mv "$backup_fwd_bam" "$output_fwd_bam" || true
-            fwd_bam_backed_up=false
-        fi
-
-        if [[ "$fwd_bai_backed_up" == true && -e "$backup_fwd_bai" ]]; then
-            rm -f "$output_fwd_bai"
-            mv "$backup_fwd_bai" "$output_fwd_bai" || true
-            fwd_bai_backed_up=false
-        fi
-
-        if [[ "$rev_bam_backed_up" == true && -e "$backup_rev_bam" ]]; then
-            rm -f "$output_rev_bam"
-            mv "$backup_rev_bam" "$output_rev_bam" || true
-            rev_bam_backed_up=false
-        fi
-
-        if [[ "$rev_bai_backed_up" == true && -e "$backup_rev_bai" ]]; then
-            rm -f "$output_rev_bai"
-            mv "$backup_rev_bai" "$output_rev_bai" || true
-            rev_bai_backed_up=false
-        fi
-
-        if [[ "$counts_tsv_backed_up" == true && -e "$backup_counts_tsv" ]]; then
-            rm -f "$output_counts_tsv"
-            mv "$backup_counts_tsv" "$output_counts_tsv" || true
-            counts_tsv_backed_up=false
-        fi
-    else
-        rm -f "$output_fwd_bam" "$output_fwd_bai"
-        rm -f "$output_rev_bam" "$output_rev_bai"
-        rm -f "$output_counts_tsv"
-    fi
-}
-
-cleanup() {
-    local status="$1"
-
-    set +e
-
-    # Rollback must run before temp cleanup so backup files remain available.
-    if [[ "$status" -ne 0 ]]; then
-        rollback_publish
-    fi
-
-    rm -f "$tmp_99_bam" "$tmp_147_bam" "$tmp_83_bam" "$tmp_163_bam"
-    rm -f "$tmp_fwd_bam" "$tmp_fwd_bai" "$tmp_rev_bam" "$tmp_rev_bai"
-    rm -f "$tmp_counts_tsv"
-
-    if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
-        rm -f "$backup_fwd_bam" "$backup_fwd_bai"
-        rm -f "$backup_rev_bam" "$backup_rev_bai"
-        rm -f "$backup_counts_tsv"
-    fi
-
-    remove_owned_lock
-}
-
-refuse_stale_paths() {
-    local path
-
-    for path in \
-        "$tmp_99_bam" \
-        "$tmp_147_bam" \
-        "$tmp_83_bam" \
-        "$tmp_163_bam" \
-        "$tmp_fwd_bam" \
-        "$tmp_fwd_bai" \
-        "$tmp_rev_bam" \
-        "$tmp_rev_bai" \
-        "$tmp_counts_tsv" \
-        "$backup_fwd_bam" \
-        "$backup_fwd_bai" \
-        "$backup_rev_bam" \
-        "$backup_rev_bai" \
-        "$backup_counts_tsv"
-    do
-        # A matching run-token temp/backup path means a prior attempt may need
-        # human inspection; do not adopt or delete it as if it were ours.
-        [[ ! -e "$path" ]] || die "Refusing to reuse stale Step 06 path: $path"
-    done
-}
-
-validate_orientation_outputs() {
-    local fwd_bam="$1"
-    local fwd_bai="$2"
-    local rev_bam="$3"
-    local rev_bai="$4"
-    local counts_tsv="$5"
-    local label="$6"
-
-    # quickcheck catches corrupt BAMs before downstream mpileup consumes the
-    # orientation split. BAIs and TSVs are checked for nonempty publication.
-    [[ -s "$fwd_bam" ]] || die "$label FWD_like BAM is missing or empty: $fwd_bam"
-    "$samtools_bin" quickcheck "$fwd_bam" || die "$label FWD_like BAM failed samtools quickcheck: $fwd_bam"
-    [[ -s "$fwd_bai" ]] || die "$label FWD_like BAI is missing or empty: $fwd_bai"
-
-    [[ -s "$rev_bam" ]] || die "$label REV_like BAM is missing or empty: $rev_bam"
-    "$samtools_bin" quickcheck "$rev_bam" || die "$label REV_like BAM failed samtools quickcheck: $rev_bam"
-    [[ -s "$rev_bai" ]] || die "$label REV_like BAI is missing or empty: $rev_bai"
-
-    [[ -s "$counts_tsv" ]] || die "$label orientation counts TSV is missing or empty: $counts_tsv"
-}
-
-write_counts_tsv() {
-    local input_records
-    local flag_99_records
-    local flag_147_records
-    local flag_83_records
-    local flag_163_records
-    local fwd_like_records
-    local rev_like_records
-    local assigned_records
-    local unassigned_records
-    local assigned_fraction
-
-    # Counts come from samtools view -c rather than the filter temp files alone,
-    # so the QC row reflects the BAM records that downstream tools will see.
-    input_records="$("${input_count_command[@]}")"
-    flag_99_records="$("${flag_99_count_command[@]}")"
-    flag_147_records="$("${flag_147_count_command[@]}")"
-    flag_83_records="$("${flag_83_count_command[@]}")"
-    flag_163_records="$("${flag_163_count_command[@]}")"
-    fwd_like_records="$("${fwd_count_command[@]}")"
-    rev_like_records="$("${rev_count_command[@]}")"
-
-    validate_nonnegative_integer "input_records" "$input_records"
-    validate_nonnegative_integer "flag_99_records" "$flag_99_records"
-    validate_nonnegative_integer "flag_147_records" "$flag_147_records"
-    validate_nonnegative_integer "flag_83_records" "$flag_83_records"
-    validate_nonnegative_integer "flag_163_records" "$flag_163_records"
-    validate_nonnegative_integer "fwd_like_records" "$fwd_like_records"
-    validate_nonnegative_integer "rev_like_records" "$rev_like_records"
-
-    [[ "$input_records" -gt 0 ]] || die "input_records is zero; refusing to publish empty Step 06 outputs"
-    [[ "$fwd_like_records" -gt 0 ]] || die "fwd_like_records is zero; refusing to publish empty FWD_like output"
-    [[ "$rev_like_records" -gt 0 ]] || die "rev_like_records is zero; refusing to publish empty REV_like output"
-
-    assigned_records=$((fwd_like_records + rev_like_records))
-    if (( assigned_records > input_records )); then
-        die "assigned_records exceeds input_records: $assigned_records > $input_records"
-    fi
-
-    unassigned_records=$((input_records - assigned_records))
-    # Use awk for portable floating point formatting; POSIX shell arithmetic is
-    # integer-only and would silently truncate this QC fraction.
-    assigned_fraction="$(awk -v assigned="$assigned_records" -v input="$input_records" 'BEGIN { printf "%.6f", assigned / input }')"
-
-    {
-        printf 'sample_id\tinput_records\tflag_99_records\tflag_147_records\tflag_83_records\tflag_163_records\tfwd_like_records\trev_like_records\tassigned_records\tunassigned_records\tassigned_fraction\n'
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-            "$sample_id" \
-            "$input_records" \
-            "$flag_99_records" \
-            "$flag_147_records" \
-            "$flag_83_records" \
-            "$flag_163_records" \
-            "$fwd_like_records" \
-            "$rev_like_records" \
-            "$assigned_records" \
-            "$unassigned_records" \
-            "$assigned_fraction"
-    } > "$tmp_counts_tsv"
-}
 
 validate_nonempty_file "Input BAM" "$input_bam"
 validate_nonempty_file "Input BAI" "$input_bai"
