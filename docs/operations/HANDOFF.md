@@ -46,6 +46,13 @@ separate reporting-local owners; the public facade is 279 lines. This does not
 change schemas, discovery policy, evidence states, serialized bytes, or the
 receipt-last transaction boundary.
 
+Artifact-index text inspection now keeps its import surface over a 51-line
+compatibility facade and private UTF-8 admission, TSV/native-anchor, and
+genomic/Picard readers no larger than 258 lines. All 13 extracted function
+bodies are AST-identical. The independent frozen producer-byte evidence still
+passes; no producer, adapter registry, schema, discovery rule, or artifact
+state changed.
+
 Artifact-contract Python mechanics are separated behind the unchanged neutral
 facade: definitions/error identity, closed-registry schema I/O,
 path/run/attempt identity, computational evidence, run-summary reduction, and
