@@ -17,10 +17,7 @@ ARTIFACT_SCHEMA_VERSION = "1.0.0"
 ARTIFACT_INDEX_SCHEMA_VERSION = "1.0.0"
 ARTIFACT_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-RUN_CONTRACT_FIELDS = (
-    "run_contract_sha256",
-    *contracts.RUN_CONTRACT_COMPONENT_FIELDS,
-)
+RUN_CONTRACT_FIELDS = ("run_contract_sha256", *contracts.RUN_CONTRACT_COMPONENT_FIELDS)
 ANCHOR_HASH_FIELDS = (
     "sample_manifest_sha256",
     "partition_manifest_sha256",
