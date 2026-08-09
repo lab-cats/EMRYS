@@ -39,6 +39,13 @@ normalization. The public coordinator is 381 lines, the science compatibility
 owner is 405 lines, and no new private module exceeds 442 lines. This is also
 maintainability and local test evidence only.
 
+Artifact indexing keeps its public command and fault-injection bindings over a
+private 302-line publication coordinator. Registry, inspection,
+reconciliation, record/context assembly, validation, and publication remain
+separate reporting-local owners; the public facade is 279 lines. This does not
+change schemas, discovery policy, evidence states, serialized bytes, or the
+receipt-last transaction boundary.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:

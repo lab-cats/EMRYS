@@ -57,11 +57,11 @@ claims.
 | Finding | Current disposition |
 | --- | --- |
 | `RA-006` | Resolved for the live reporting owner. The public renderer files are compatibility facades over one private `_run_report` package; dispatch points from HTML selection to the bundle coordinator without the former HTML-to-bundle-to-HTML cycle. Direct-import, direct-script, format, deterministic-output, signal, lock, rollback, recovery, and arbitrary-CWD contracts remain protected by `make report-test`. |
-| `RA-008` | The reporting-renderer and canonical run-summary slices are resolved; the repository-wide finding remains open for its other named owners. Rendering is decomposed by models, input/context validation, HTML/PDF/receipt projection, runtime, transaction, publication, and dispatch seams. Run-summary assembly is decomposed by models, transaction input, projection, validation, document assembly, receipt-last publication, and scientific-review models, I/O, package reconstruction, and evidence normalization. The largest private module in either slice is 445 lines; renderer facades are 33 and 30 lines, the run-summary public coordinator is 381 lines, and its science compatibility owner is 405 lines. No generic reporting framework or shared-library promotion was introduced. |
+| `RA-008` | The artifact-index, canonical run-summary, and reporting-renderer slices are resolved; the repository-wide finding remains open for its other named owners. Artifact indexing separates registry, inspection, reconciliation, records/context, validation, and receipt-last publication while retaining live fault-injection bindings. Run-summary and rendering separate their model, validation, projection, transaction, publication, and scientific-review responsibilities. The largest private module across these slices is 506 lines in the existing format-specific artifact text reader; public artifact-index and renderer facades are 279, 33, and 30 lines, while the run-summary coordinator and science compatibility owner are 381 and 405 lines. No generic reporting framework or shared-library promotion was introduced. |
 
 The reporting package passed 157 focused report tests plus its shell contract.
 The repository coverage non-regression gate passed 1,250 tests with 18 skips at
-line `0.855098` and branch `0.746824`, above the tracked `0.838935` and
+line `0.855261` and branch `0.746824`, above the tracked `0.838935` and
 `0.736276` baselines. These are local engineering results only; they do not
 establish runtime, cluster, scientific-review, or biological evidence.
 
