@@ -13,6 +13,23 @@ PERCENT_KEYS = {
     "% of reads mapped to multiple loci",
     "% of reads mapped to too many loci",
 }
+REQUIRED_INDEX_MEMBERS = (
+    "genomeParameters.txt",
+    "Genome",
+    "SA",
+    "SAindex",
+    "chrLength.txt",
+    "chrName.txt",
+    "chrNameLength.txt",
+    "chrStart.txt",
+    "exonGeTrInfo.tab",
+    "exonInfo.tab",
+    "geneInfo.tab",
+    "sjdbInfo.txt",
+    "sjdbList.fromGTF.out.tab",
+    "sjdbList.out.tab",
+    "transcriptInfo.tab",
+)
 
 
 def parse_final_log(text: str) -> dict[str, str]:

@@ -17,23 +17,7 @@ if sys.path[:1] != [src_root]:
 from norad.libraries import validation as report
 from norad.libraries.alignments import star as star_report
 
-REQUIRED_MEMBERS = (
-    "genomeParameters.txt",
-    "Genome",
-    "SA",
-    "SAindex",
-    "chrLength.txt",
-    "chrName.txt",
-    "chrNameLength.txt",
-    "chrStart.txt",
-    "exonGeTrInfo.tab",
-    "exonInfo.tab",
-    "geneInfo.tab",
-    "sjdbInfo.txt",
-    "sjdbList.fromGTF.out.tab",
-    "sjdbList.out.tab",
-    "transcriptInfo.tab",
-)
+REQUIRED_MEMBERS = star_report.REQUIRED_INDEX_MEMBERS
 CHECK_IDS = {
     "index_members",
     "fasta_identity",

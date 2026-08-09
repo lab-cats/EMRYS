@@ -18,6 +18,18 @@ VCF_FIXED_COLUMNS = (
     "INFO",
     "FORMAT",
 )
+RECEIPT_HEADER = (
+    "cohort_id",
+    "partition_id",
+    "selector_type",
+    "selector_value",
+    "orientation",
+    "vcf_path",
+    "sample_manifest_sha256",
+    "partition_manifest_sha256",
+    "sample_count",
+    "vcf_record_count",
+)
 
 
 def read_sample_ids(path: Path) -> list[str]:

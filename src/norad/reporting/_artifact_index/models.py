@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.alignments import star as star_alignment
+from norad.libraries.validation import mpileup as mpileup_report
+from norad.libraries.validation import report as validation_report
 
 from .contracts import contracts, review_package
 
@@ -95,47 +98,10 @@ ARTIFACT_RECEIPT_HEADER = (
     "transaction_state",
 )
 
-STEP07_RECEIPT_HEADER = (
-    "cohort_id",
-    "partition_id",
-    "selector_type",
-    "selector_value",
-    "orientation",
-    "vcf_path",
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-    "sample_count",
-    "vcf_record_count",
-)
-
+STEP07_RECEIPT_HEADER = mpileup_report.RECEIPT_HEADER
 STEP06_COUNTS_HEADER = alignment_orientation.COUNTS_HEADER
-
-STEP00A_BASENAMES = (
-    "genomeParameters.txt",
-    "Genome",
-    "SA",
-    "SAindex",
-    "chrLength.txt",
-    "chrName.txt",
-    "chrNameLength.txt",
-    "chrStart.txt",
-    "exonGeTrInfo.tab",
-    "exonInfo.tab",
-    "geneInfo.tab",
-    "sjdbInfo.txt",
-    "sjdbList.fromGTF.out.tab",
-    "sjdbList.out.tab",
-    "transcriptInfo.tab",
-)
-VALIDATION_REPORT_HEADER = (
-    "step_id",
-    "scope_id",
-    "check_id",
-    "status",
-    "observed",
-    "expected",
-    "detail",
-)
+STEP00A_BASENAMES = star_alignment.REQUIRED_INDEX_MEMBERS
+VALIDATION_REPORT_HEADER = validation_report.HEADER
 
 
 class ArtifactIndexError(RuntimeError):

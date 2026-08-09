@@ -18,18 +18,7 @@ from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
 from norad.libraries.validation import mpileup as mpileup_report
 
-RECEIPT_HEADER = (
-    "cohort_id",
-    "partition_id",
-    "selector_type",
-    "selector_value",
-    "orientation",
-    "vcf_path",
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-    "sample_count",
-    "vcf_record_count",
-)
+RECEIPT_HEADER = mpileup_report.RECEIPT_HEADER
 CHECK_IDS = {
     "receipt_structure",
     "vcf_structure",
