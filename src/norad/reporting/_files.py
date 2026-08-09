@@ -32,6 +32,36 @@ def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
     )
 
 
+def stable_snapshot(
+    path: Path,
+    sha256: str,
+    states: tuple[os.stat_result, os.stat_result, os.stat_result],
+    fail: Callable[[str], NoReturn],
+    changed_message: str,
+    observed_size: int | None = None,
+) -> FileSnapshot:
+    """Build a snapshot only when identity and optional read size stayed stable."""
+    before, after, current = states
+    changed = (
+        stat_identity(before) != stat_identity(after)
+        or stat_identity(before) != stat_identity(current)
+        or (observed_size is not None and observed_size != before.st_size)
+        or stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISREG(current.st_mode)
+    )
+    if changed:
+        fail(changed_message)
+    return FileSnapshot(
+        path=path,
+        sha256=sha256,
+        device=before.st_dev,
+        inode=before.st_ino,
+        size_bytes=before.st_size,
+        mtime_ns=before.st_mtime_ns,
+        ctime_ns=before.st_ctime_ns,
+    )
+
+
 def reject_symlink_components(
     path: Path,
     label: str,

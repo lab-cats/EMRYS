@@ -72,9 +72,6 @@ def _resolved_path(value: str | Path) -> Path:
     return Path(os.path.abspath(os.fspath(Path(value).expanduser())))
 
 
-_stat_identity = _files.stat_identity
-
-
 def _require_regular_file(label: str, value: str | Path) -> Path:
     path = _resolved_path(value)
     try:
@@ -119,25 +116,11 @@ def _capture_file_snapshot(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = _stat_identity(before)
-    after_identity = _stat_identity(after)
-    current_identity = _stat_identity(current)
-    if (
-        before_identity != after_identity
-        or before_identity != current_identity
-        or len(payload) != before.st_size
-        or stat.S_ISLNK(current.st_mode)
-        or not stat.S_ISREG(current.st_mode)
-    ):
-        _fail(f"{label} changed while its immutable snapshot was captured: {path}")
-    snapshot = FileSnapshot(
-        path=path,
-        sha256=adapter.sha256_bytes(payload),
-        device=before.st_dev,
-        inode=before.st_ino,
-        size_bytes=before.st_size,
-        mtime_ns=before.st_mtime_ns,
-        ctime_ns=before.st_ctime_ns,
+    sha256 = adapter.sha256_bytes(payload)
+    states = before, after, current
+    message = f"{label} changed while its immutable snapshot was captured: {path}"
+    snapshot = _files.stable_snapshot(
+        path, sha256, states, _fail, message, len(payload)
     )
     return payload, snapshot
 
@@ -288,26 +271,12 @@ def _capture_report_table_snapshot(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = _stat_identity(before)
-    after_identity = _stat_identity(after)
-    current_identity = _stat_identity(current)
-    if (
-        before_identity != after_identity
-        or before_identity != current_identity
-        or stat.S_ISLNK(current.st_mode)
-        or not stat.S_ISREG(current.st_mode)
-    ):
-        _fail(f"{label} changed while it was inspected: {path}")
+    sha256 = digest.hexdigest()
+    states = before, after, current
+    message = f"{label} changed while it was inspected: {path}"
+    snapshot = _files.stable_snapshot(path, sha256, states, _fail, message)
     return (
-        FileSnapshot(
-            path=path,
-            sha256=digest.hexdigest(),
-            device=before.st_dev,
-            inode=before.st_ino,
-            size_bytes=before.st_size,
-            mtime_ns=before.st_mtime_ns,
-            ctime_ns=before.st_ctime_ns,
-        ),
+        snapshot,
         row_count,
     )
 

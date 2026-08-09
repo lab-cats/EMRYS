@@ -314,25 +314,10 @@ def _snapshot_regular(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = _files.stat_identity(before)
-    after_identity = _files.stat_identity(after)
-    current_identity = _files.stat_identity(current)
-    if (
-        before_identity != after_identity
-        or before_identity != current_identity
-        or stat.S_ISLNK(current.st_mode)
-        or not stat.S_ISREG(current.st_mode)
-    ):
-        _fail(f"{label} changed while its snapshot was captured: {path}")
-    return FileSnapshot(
-        path=path,
-        sha256=digest.hexdigest(),
-        device=before.st_dev,
-        inode=before.st_ino,
-        size_bytes=before.st_size,
-        mtime_ns=before.st_mtime_ns,
-        ctime_ns=before.st_ctime_ns,
-    )
+    sha256 = digest.hexdigest()
+    states = before, after, current
+    message = f"{label} changed while its snapshot was captured: {path}"
+    return _files.stable_snapshot(path, sha256, states, _fail, message)
 
 
 def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
