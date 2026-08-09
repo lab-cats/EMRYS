@@ -21,7 +21,10 @@ and may change without creating another supported command surface.
 | [`transaction.py`](transaction.py) | Lock ownership, stable snapshots, atomic-file primitives, fsync, cleanup, and recovery-marker mechanics. |
 | [`html_publication.py`](html_publication.py) | Quarto staging plus validated, rollback-safe publication of one HTML report. |
 | [`html.py`](html.py) | Thin HTML command coordinator and compatibility owner for moved helpers. |
-| [`bundle.py`](bundle.py) | Current PDF/summary/receipt projection and multi-output publication owner. |
+| [`bundle_models.py`](bundle_models.py) | Shared bundle constants and immutable multi-format render context. |
+| [`pdf_projection.py`](pdf_projection.py) | Deterministic PDF view, pinned Quarto invocation, and PDF validation. |
+| [`receipt_projection.py`](receipt_projection.py) | Deterministic summary TSV, receipt document/TSV, truncation disclosure, and validation. |
+| [`bundle.py`](bundle.py) | Current bundle intake and receipt-last multi-output publication owner; it retains compatibility bindings for moved helpers. |
 
 The bundle imports the private HTML owner directly. The HTML owner never
 imports the bundle. Public facades retain direct-import compatibility while

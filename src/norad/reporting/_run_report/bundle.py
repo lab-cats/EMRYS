@@ -11,19 +11,16 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import os
 import stat
 import subprocess
 import sys
 import uuid
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
-
-from pypdf import PdfReader
 
 _MODULE_PATH = Path(__file__).resolve()
 src_root = str(_MODULE_PATH.parents[3])
@@ -32,72 +29,35 @@ sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
 from norad.reporting._run_report import html as html_report
 
+from . import bundle_models as _models
+from . import pdf_projection as _pdf
+from . import receipt_projection as _receipt
+
 contracts = html_report.contracts
 
 
-PRODUCER = "render_run_report"
-PRODUCER_VERSION = "1.1.0"
-REPORT_RECEIPT_SCHEMA_VERSION = "1.1.0"
-PDF_TEMPLATE = _MODULE_PATH.parent.parent / "templates" / "run_report_pdf.qmd"
-PDF_BODY_MARKER = "{{NORAD_REPORT_PDF_BODY}}"
-RECEIPT_HEADER = (
-    "schema_name",
-    "schema_version",
-    "run_id",
-    "attempt_id",
-    "generated_at",
-    "science_status",
-    "requested_formats",
-    "output_id",
-    "kind",
-    "path",
-    "sha256",
-    "size_bytes",
-    "media_type",
-    "self_contained",
-    "page_count",
-    "state_banner_every_page",
-    "report_receipt_json",
-)
-SUMMARY_HEADER = (
-    "run_id",
-    "science_status",
-    "step_id",
-    "scope_type",
-    "scope_id",
-    "aggregate_state",
-    *contracts.RUN_SUMMARY_STATUS_FIELDS,
-    "warning_count",
-    "error_count",
-)
-PDF_SECTION_MARKERS = (
-    "NORAD consolidated run report",
-    "Run identity",
-    "Evidence status",
-    "Limitations",
-    "CMH-ranked candidates",
-    "Evidence and methods",
-)
-
-
-@dataclass(frozen=True)
-class BundleContext:
-    html: html_report.RenderContext
-    formats: str
-    requested_formats: tuple[str, ...]
-    pdf_template_snapshot: html_report.FileSnapshot
-    output_pdf: Path
-    output_summary_tsv: Path
-    output_receipt: Path
-    stable_paths: tuple[Path, ...]
-    previous_snapshots: Mapping[Path, html_report.FileSnapshot]
-    pandoc_version: str
-    execute: bool
-
-    @property
-    def input_snapshots(self) -> tuple[html_report.FileSnapshot, ...]:
-        return (*self.html.input_snapshots, self.pdf_template_snapshot)
-
+BundleContext = _models.BundleContext
+PDF_BODY_MARKER = _models.PDF_BODY_MARKER
+PDF_SECTION_MARKERS = _models.PDF_SECTION_MARKERS
+PDF_TEMPLATE = _models.PDF_TEMPLATE
+PRODUCER = _models.PRODUCER
+PRODUCER_VERSION = _models.PRODUCER_VERSION
+RECEIPT_HEADER = _models.RECEIPT_HEADER
+REPORT_RECEIPT_SCHEMA_VERSION = _models.REPORT_RECEIPT_SCHEMA_VERSION
+SUMMARY_HEADER = _models.SUMMARY_HEADER
+_markdown_escape = _pdf._markdown_escape
+_pdf_body = _pdf._pdf_body
+_pdf_candidate_summary = _pdf._pdf_candidate_summary
+_pdf_code = _pdf._pdf_code
+_pdf_hash = _pdf._pdf_hash
+_run_quarto = _pdf._run_quarto
+_validate_pdf = _pdf._validate_pdf
+_receipt_document = _receipt._receipt_document
+_receipt_tsv_bytes = _receipt._receipt_tsv_bytes
+_summary_tsv_bytes = _receipt._summary_tsv_bytes
+_truncations = _receipt._truncations
+_validate_receipt = _receipt._validate_receipt
+_validate_summary_tsv = _receipt._validate_summary_tsv
 
 def _fail(message: str) -> None:
     raise html_report.ReportRenderError(message)
@@ -172,17 +132,6 @@ def _read_receipt_tsv(path: Path) -> dict[str, Any]:
     return document
 
 
-def _validate_receipt(document: Mapping[str, Any]) -> None:
-    validator = contracts.schema_validator("report-receipt")
-    errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
-    if errors:
-        first = errors[0]
-        location = "$" + "".join(f"[{part!r}]" for part in first.path)
-        _fail(f"Report receipt schema validation failed at {location}: {first.message}")
-    try:
-        contracts.validate_document_semantics("report-receipt", dict(document))
-    except contracts.ContractValidationError as exc:
-        _fail(f"Report receipt semantic validation failed: {exc}")
 
 
 def _validate_existing_bundle(
@@ -300,486 +249,28 @@ def prepare_context(arguments: argparse.Namespace) -> BundleContext:
     )
 
 
-def _markdown_escape(value: Any) -> str:
-    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
 
 
-def _pdf_hash(value: str) -> str:
-    """Keep long fixed-width hashes readable within a portrait PDF."""
-
-    midpoint = len(value) // 2
-    return f"`{value[:midpoint]}` `{value[midpoint:]}`"
 
 
-def _pdf_code(value: Any) -> str:
-    text = str(value).replace("`", "'").replace("\n", " ")
-    return f"`{text}`"
 
 
-def _pdf_candidate_summary(table: html_report.ApprovedTable) -> list[str]:
-    """Render approved candidate rows as compact records, not wide tables."""
-
-    lines = [
-        f"Table ID: `{_markdown_escape(table.table_id)}`  ",
-        f"Artifact ID: `{_markdown_escape(table.artifact_id)}`  ",
-        f"Source file: `{_markdown_escape(table.path.name)}`  ",
-        f"SHA-256: {_pdf_hash(table.sha256)}  ",
-        f"Rows: {table.row_count}; displayed: {table.displayed_row_count}",
-        "",
-    ]
-    if not table.header or not table.display_rows:
-        return lines
-
-    for index, values in enumerate(table.display_rows, start=1):
-        row = dict(zip(table.header, values))
-        lines.extend(
-            [
-                f"#### Candidate {index}",
-                "",
-                f"- Candidate ID: {_pdf_code(row['candidate_id'])}",
-                (f"- Selection set: `{_markdown_escape(row['selection_set'])}`"),
-            ]
-        )
-        if table.role == "candidate_selection":
-            lines.extend(
-                [
-                    (
-                        "- Rank and call: "
-                        f"`{_markdown_escape(row['rank'])}`; "
-                        f"`{_markdown_escape(row['source_call_status'])}`"
-                    ),
-                    (
-                        "- CMH FDR, common OR, and delta: "
-                        f"`{_markdown_escape(row['source_fdr'])}`; "
-                        f"`{_markdown_escape(row['source_common_or'])}`; "
-                        f"`{_markdown_escape(row['source_delta'])}`"
-                    ),
-                    (
-                        "- Selection reason: "
-                        f"{_markdown_escape(row['selection_reason'])}"
-                    ),
-                ]
-            )
-        else:
-            lines.extend(
-                [
-                    (
-                        "- Adjudication: "
-                        f"`{_markdown_escape(row['adjudication_status'])}`"
-                    ),
-                    (
-                        "- Annotation, matched DNA, orthogonal evidence: "
-                        f"`{_markdown_escape(row['annotation_status'])}`; "
-                        f"`{_markdown_escape(row['matched_dna_status'])}`; "
-                        f"`{_markdown_escape(row['orthogonal_evidence_status'])}`"
-                    ),
-                    f"- Reason: {_markdown_escape(row['reason'])}",
-                ]
-            )
-        lines.append("")
-    return lines
 
 
-def _pdf_body(context: BundleContext) -> bytes:
-    summary = context.html.summary
-    banner = html_report.SCIENCE_BANNERS[summary["science_status"]]
-    escaped_banner = banner.replace("\\", "\\\\").replace('"', '\\"')
-    lines = [
-        "```{=typst}",
-        f'#set page(header: context [#align(center)[#text(size: 7pt, weight: "bold")[{escaped_banner}]]])',
-        "```",
-        "",
-        f"# {PDF_SECTION_MARKERS[0]}",
-        "",
-        f"**{banner}**",
-        "",
-        "Report generation does not establish computational or scientific validation.",
-        "",
-        f"## {PDF_SECTION_MARKERS[1]}",
-        "",
-        "| Field | Value |",
-        "|---|---|",
-        f"| Run ID | `{_markdown_escape(summary['run_id'])}` |",
-        f"| Run-summary schema | `{_markdown_escape(summary['schema_version'])}` |",
-        (
-            "| Run-summary SHA-256 | "
-            f"{_pdf_hash(context.html.run_summary_snapshot.sha256)} |"
-        ),
-        f"| Primary analysis | `{_markdown_escape(summary['run_contract']['primary_analysis_id'])}` |",
-        "",
-        f"## {PDF_SECTION_MARKERS[2]}",
-        "",
-        "| Field | Status |",
-        "|---|---|",
-    ]
-    rollup = summary["computational_rollup"]
-    status_labels = (
-        "Summary state",
-        "Implementation",
-        "Local testing",
-        "Runtime validation",
-        "Cluster dry-run",
-        "Cluster proof",
-    )
-    status_values = (summary["summary_state"], *(
-        rollup[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS
-    ))
-    for label, value in zip(status_labels, status_values):
-        lines.append(f"| {label} | `{_markdown_escape(value)}` |")
-    failed_scopes = [
-        item
-        for item in summary["expected_scopes"]
-        if item["aggregate_state"] == "failed"
-    ]
-    lines.extend(["", "### Failed expected scopes", ""])
-    if failed_scopes:
-        for item in failed_scopes:
-            scope = item["scope"]
-            lines.append(
-                f"- {_markdown_escape(scope['step_id'])} "
-                f"{_markdown_escape(scope['scope_type'])} "
-                f"{_markdown_escape(scope['scope_id'])} failed"
-            )
-    else:
-        lines.append("- None.")
-    lines.extend(["", f"## {PDF_SECTION_MARKERS[3]}", ""])
-    if summary["limitations"]:
-        for limitation in summary["limitations"]:
-            lines.append(
-                f"- **{_markdown_escape(limitation['limitation_id'])} "
-                f"({_markdown_escape(limitation['status'])})**: "
-                f"{_markdown_escape(limitation['description'])} "
-                f"Impact: {_markdown_escape(limitation['impact'])}"
-            )
-    else:
-        lines.append("- No limitations were declared in the canonical summary.")
-    lines.extend(["", f"## {PDF_SECTION_MARKERS[4]}", ""])
-    candidate_tables = [
-        table
-        for table in context.html.tables
-        if table.role in {"candidate_selection", "candidate_adjudication"}
-    ]
-    if not candidate_tables:
-        lines.append(
-            "No candidate table was explicitly authorized by the canonical run summary."
-        )
-    for table in candidate_tables:
-        lines.extend(
-            [
-                f"### {_markdown_escape(table.title)}",
-                "",
-                *_pdf_candidate_summary(table),
-            ]
-        )
-    lines.extend(
-        [
-            f"## {PDF_SECTION_MARKERS[5]}",
-            "",
-            "This static report consumes one explicit validated canonical run summary.",
-            "Supplemental tables are included only when authorized by exact path, hash, row count, and role.",
-            "No analysis engine was executed and no validation state was promoted.",
-            "",
-            "### Expected-scope matrix",
-            "",
-            (
-                "Each expected scope is listed with its aggregate, runtime, "
-                "and cluster-proof status."
-            ),
-            "",
-        ]
-    )
-    for item in summary["expected_scopes"]:
-        scope = item["scope"]
-        lines.append(
-            "- Step "
-            f"{_markdown_escape(scope['step_id'])} - "
-            f"{_markdown_escape(scope['scope_type'])} / "
-            f"{_markdown_escape(scope['scope_id'])}: aggregate "
-            f"{_markdown_escape(item['aggregate_state'])}; runtime "
-            f"{_markdown_escape(item['runtime_validation_status'])}; "
-            "cluster proof "
-            f"{_markdown_escape(item['cluster_proof_status'])}."
-        )
-    template = context.pdf_template_snapshot.path.read_text(encoding="utf-8")
-    if template.count(PDF_BODY_MARKER) != 1:
-        _fail("PDF report template must contain exactly one body marker")
-    if "```{" in template:
-        _fail("Tracked PDF template must contain no executable code cells")
-    return template.replace(PDF_BODY_MARKER, "\n".join(lines)).encode("utf-8")
 
 
-def _run_quarto(
-    context: BundleContext,
-    stage: Path,
-    *,
-    source: Path,
-    target: str,
-    output_name: str,
-) -> Path:
-    command = [
-        str(context.html.quarto_path),
-        "render",
-        source.name,
-        "--to",
-        target,
-        "--output",
-        output_name,
-        "--no-execute",
-    ]
-    environment = html_report._sanitized_tool_environment()
-    environment["SOURCE_DATE_EPOCH"] = html_report._source_date_epoch(
-        context.html.summary
-    )
-    environment["DENO_DIR"] = str(stage / ".deno")
-    environment["TMPDIR"] = str(stage / ".runtime-tmp")
-    Path(environment["TMPDIR"]).mkdir(mode=0o700, exist_ok=True)
-    returncode, stdout, stderr = html_report._run_quarto_process(
-        command, stage, environment, _fail
-    )
-    if stderr.strip():
-        print(stderr.rstrip(), file=sys.stderr)
-    if returncode != 0:
-        _fail(
-            f"Quarto {target} render failed with exit {returncode}: "
-            f"{stderr.strip() or stdout.strip()}"
-        )
-    output = stage / output_name
-    if not output.is_file():
-        _fail(f"Quarto did not publish the expected staged output: {output}")
-    return output
 
 
-def _validate_pdf(path: Path, banner: str) -> int:
-    snapshot = html_report._snapshot_regular(path, "rendered PDF report")
-    payload = path.read_bytes()
-    if not payload.startswith(b"%PDF-"):
-        _fail("Rendered PDF lacks the %PDF- signature")
-    if not payload.rstrip().endswith(b"%%EOF"):
-        _fail("Rendered PDF lacks the %%EOF marker")
-    try:
-        reader = PdfReader(path, strict=True)
-        page_texts = [(page.extract_text() or "") for page in reader.pages]
-    except Exception as exc:
-        _fail(f"Rendered PDF could not be parsed by pinned pypdf: {exc}")
-    if not page_texts:
-        _fail("Rendered PDF has no pages")
-    normalized_banner = " ".join(banner.split())
-    for index, text in enumerate(page_texts, start=1):
-        if normalized_banner not in " ".join(text.split()):
-            _fail(f"Rendered PDF page {index} lacks the required state banner")
-    combined = "\n".join(page_texts)
-    positions = [combined.find(marker) for marker in PDF_SECTION_MARKERS]
-    if any(position < 0 for position in positions):
-        missing = [
-            marker
-            for marker, position in zip(PDF_SECTION_MARKERS, positions)
-            if position < 0
-        ]
-        _fail(f"Rendered PDF lacks required extractable text: {missing}")
-    if positions != sorted(positions):
-        _fail("Rendered PDF section text is not in the required order")
-    html_report._assert_snapshot(snapshot, "rendered PDF report")
-    return len(page_texts)
 
 
-def _summary_tsv_bytes(context: BundleContext) -> bytes:
-    rows = []
-    summary = context.html.summary
-    for item in summary["expected_scopes"]:
-        scope = item["scope"]
-        rows.append(
-            (
-                summary["run_id"],
-                summary["science_status"],
-                scope["step_id"],
-                scope["scope_type"],
-                scope["scope_id"],
-                item["aggregate_state"],
-                *(item[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS),
-                str(len(item["warnings"])),
-                str(len(item["errors"])),
-            )
-        )
-    from io import StringIO
-
-    stream = StringIO(newline="")
-    writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-    writer.writerow(SUMMARY_HEADER)
-    writer.writerows(rows)
-    return stream.getvalue().encode("utf-8")
 
 
-def _validate_summary_tsv(path: Path, context: BundleContext) -> None:
-    snapshot = html_report._snapshot_regular(path, "exported run-summary TSV")
-    with path.open("r", encoding="utf-8", newline="") as stream:
-        reader = csv.reader(stream, delimiter="\t")
-        rows = list(reader)
-    if not rows or tuple(rows[0]) != SUMMARY_HEADER:
-        _fail("Exported run-summary TSV has an unexpected header")
-    if len(rows) - 1 != len(context.html.summary["expected_scopes"]):
-        _fail("Exported run-summary TSV row count does not match expected scopes")
-    if any(len(row) != len(SUMMARY_HEADER) for row in rows[1:]):
-        _fail("Exported run-summary TSV contains a malformed row")
-    html_report._assert_snapshot(snapshot, "exported run-summary TSV")
 
 
-def _truncations(context: BundleContext) -> list[dict[str, Any]]:
-    return [
-        {
-            "table_id": table.table_id,
-            "report_section": (
-                "cmh-ranked-candidates"
-                if table.role in {"candidate_selection", "candidate_adjudication"}
-                else table.role.replace("_", "-")
-            ),
-            "full_table_path": str(table.path),
-            "full_table_sha256": table.sha256,
-            "full_row_count": table.row_count,
-            "displayed_row_count": table.displayed_row_count,
-        }
-        for table in context.html.tables
-        if table.truncated
-    ]
 
 
-def _receipt_document(
-    context: BundleContext,
-    staged_outputs: Sequence[tuple[str, str, Path, Path, int | None]],
-) -> dict[str, Any]:
-    summary = context.html.summary
-    descriptors = []
-    for output_id, kind, staged, final, page_count in staged_outputs:
-        snapshot = html_report._snapshot_regular(staged, f"staged {kind} output")
-        descriptors.append(
-            {
-                "output_id": output_id,
-                "kind": kind,
-                "path": str(final),
-                "sha256": snapshot.sha256,
-                "size_bytes": snapshot.size_bytes,
-                "media_type": {
-                    "html": "text/html",
-                    "pdf": "application/pdf",
-                    "run_summary_tsv": "text/tab-separated-values",
-                }[kind],
-                "self_contained": True if kind == "html" else None,
-                "page_count": page_count if kind == "pdf" else None,
-                "state_banner_every_page": True if kind == "pdf" else None,
-            }
-        )
-    identity = hashlib.sha256(
-        (
-            context.html.run_summary_snapshot.sha256
-            + "\0"
-            + ",".join(context.requested_formats)
-            + "\0"
-            + context.html.template_snapshot.sha256
-            + "\0"
-            + context.pdf_template_snapshot.sha256
-        ).encode("utf-8")
-    ).hexdigest()[:20]
-    document = {
-        "schema_name": "norad.report_receipt",
-        "schema_version": REPORT_RECEIPT_SCHEMA_VERSION,
-        "record_type": "report_receipt",
-        "run_id": summary["run_id"],
-        "attempt_id": f"report-{identity}",
-        "generated_at": summary["generated_at"],
-        "publication_state": "complete",
-        "transaction_state": "complete",
-        "science_status": summary["science_status"],
-        "readiness_authorization": None,
-        "input_run_summary": {
-            "path": str(context.html.run_summary_path),
-            "sha256": context.html.run_summary_snapshot.sha256,
-            "schema_name": summary["schema_name"],
-            "schema_version": summary["schema_version"],
-        },
-        "requested_formats": list(context.requested_formats),
-        "renderer": {
-            "name": "quarto",
-            "version": html_report.QUARTO_VERSION,
-            "executable": str(context.html.quarto_path),
-            "pandoc_version": context.pandoc_version,
-            "pdf_engine": "typst" if "pdf" in context.requested_formats else None,
-        },
-        "template": {
-            "path": str(
-                context.pdf_template_snapshot.path
-                if "pdf" in context.requested_formats
-                else context.html.template_snapshot.path
-            ),
-            "sha256": (
-                context.pdf_template_snapshot.sha256
-                if "pdf" in context.requested_formats
-                else context.html.template_snapshot.sha256
-            ),
-        },
-        "outputs": descriptors,
-        "state_banner": html_report.SCIENCE_BANNERS[summary["science_status"]],
-        "truncations": _truncations(context),
-        "schema_versions": {
-            "artifact_record": "1.0.0",
-            "scientific_review_record": "1.1.0",
-            "run_summary": "1.1.0",
-            "report_receipt": "1.1.0",
-        },
-        "analysis_execution_performed": False,
-        "external_network_assets_used": False,
-        "validation_claimed": False,
-        "warnings": list(summary["warnings"]),
-        "errors": [],
-        "provenance": {
-            "producer": PRODUCER,
-            "producer_version": PRODUCER_VERSION,
-            "git_commit": summary["provenance"]["git_commit"],
-            "created_at": summary["generated_at"],
-        },
-    }
-    _validate_receipt(document)
-    return document
 
 
-def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
-    from io import StringIO
-
-    canonical = json.dumps(
-        document,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    stream = StringIO(newline="")
-    writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-    writer.writerow(RECEIPT_HEADER)
-    formats = ",".join(document["requested_formats"])
-    for output in document["outputs"]:
-        writer.writerow(
-            (
-                document["schema_name"],
-                document["schema_version"],
-                document["run_id"],
-                document["attempt_id"],
-                document["generated_at"],
-                document["science_status"],
-                formats,
-                output["output_id"],
-                output["kind"],
-                output["path"],
-                output["sha256"],
-                output["size_bytes"],
-                output["media_type"],
-                "NA"
-                if output["self_contained"] is None
-                else str(output["self_contained"]).lower(),
-                "NA" if output["page_count"] is None else output["page_count"],
-                "NA"
-                if output["state_banner_every_page"] is None
-                else str(output["state_banner_every_page"]).lower(),
-                canonical,
-            )
-        )
-    return stream.getvalue().encode("utf-8")
 
 
 def _recheck_inputs(context: BundleContext) -> None:
