@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from norad.libraries.validation.errors import fail
@@ -18,6 +18,8 @@ HEADER = (
     "expected",
     "detail",
 )
+
+RowBuilder = Callable[[str, bool, object, object, object], tuple[str, ...]]
 
 
 def add_output_arguments(parser: argparse.ArgumentParser) -> None:
@@ -49,6 +51,21 @@ def row(
         clean(expected),
         clean(detail),
     )
+
+
+def row_builder(step_id: str, scope_id: str) -> RowBuilder:
+    """Bind the repeated identity fields shared by one validator's rows."""
+
+    def build(
+        check_id: str,
+        passed: bool,
+        observed: object,
+        expected: object,
+        detail: object,
+    ) -> tuple[str, ...]:
+        return row(step_id, scope_id, check_id, passed, observed, expected, detail)
+
+    return build
 
 
 def render(rows: Sequence[Sequence[str]]) -> bytes:

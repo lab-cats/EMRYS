@@ -54,46 +54,38 @@ def build(args: argparse.Namespace):
     observed_sum = sum(value for value in fractions if value is not None)
     sum_ok = all(valid) and abs(observed_sum - 1.0) <= args.sum_tolerance
 
+    row = report.row_builder("03", args.scope_id)
+
     rows = [
-        report.row(
-            "03",
-            args.scope_id,
+        row(
             "report_structure",
             not errors,
             "; ".join(errors) if errors else "3 unique required labels",
             "exactly one value per required label",
             "RSeQC report structure",
         ),
-        report.row(
-            "03",
-            args.scope_id,
+        row(
             "failed_fraction",
             valid[0],
             fractions[0],
             "finite 0..1",
             "reads not assigned to an orientation",
         ),
-        report.row(
-            "03",
-            args.scope_id,
+        row(
             "paired_orientation_fraction_a",
             valid[1],
             fractions[1],
             "finite 0..1",
             LABELS[1],
         ),
-        report.row(
-            "03",
-            args.scope_id,
+        row(
             "paired_orientation_fraction_b",
             valid[2],
             fractions[2],
             "finite 0..1",
             LABELS[2],
         ),
-        report.row(
-            "03",
-            args.scope_id,
+        row(
             "fraction_sum",
             sum_ok,
             f"{observed_sum:.12g}",

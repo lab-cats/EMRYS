@@ -63,46 +63,38 @@ def build(args: argparse.Namespace):
         report.stable_text(paths["metrics"], "Picard metrics")[0]
     )
 
+    row = report.row_builder("04", args.scope_id)
+
     rows = [
-        report.row(
-            "04",
-            args.scope_id,
+        row(
             "bam_bai_structure",
             structure,
             f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
             "BAM/BGZF and BAI/CSI magic",
             "marked-duplicate pair containers",
         ),
-        report.row(
-            "04",
-            args.scope_id,
+        row(
             "samtools_quickcheck",
             quickcheck_ok,
             quickcheck_detail,
             "exit=0 with empty diagnostics",
             "samtools quickcheck -v",
         ),
-        report.row(
-            "04",
-            args.scope_id,
+        row(
             "coordinate_sorting",
             coordinate,
             header_detail,
             "one @HD with SO:coordinate",
             "marked BAM sort order",
         ),
-        report.row(
-            "04",
-            args.scope_id,
+        row(
             "read_group_preservation",
             matching_rg,
             header_detail,
             f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
             "canonical sample read group is preserved",
         ),
-        report.row(
-            "04",
-            args.scope_id,
+        row(
             "duplication_metrics",
             metrics_ok,
             metrics_detail,

@@ -54,46 +54,38 @@ def build(args: argparse.Namespace):
     mapped_ok = flagstat_ok and mapped >= 0
     consistent = total_ok and mapped_ok and mapped <= total
 
+    row = report.row_builder("02b", args.scope_id)
+
     rows = [
-        report.row(
-            "02b",
-            args.scope_id,
+        row(
             "quickcheck_structure",
             quick_ok,
             quick_text or "empty",
             "exact PASS marker",
             "captured samtools quickcheck result",
         ),
-        report.row(
-            "02b",
-            args.scope_id,
+        row(
             "flagstat_structure",
             flagstat_ok,
             "; ".join(errors) if errors else ",".join(sorted(values)),
             "unique total and mapped rows",
             "flagstat report structure",
         ),
-        report.row(
-            "02b",
-            args.scope_id,
+        row(
             "total_records",
             total_ok,
             total if total_ok else "invalid",
             "nonnegative integer",
             "QC-passed plus QC-failed total",
         ),
-        report.row(
-            "02b",
-            args.scope_id,
+        row(
             "mapped_records",
             mapped_ok,
             mapped if mapped_ok else "invalid",
             "nonnegative integer",
             "QC-passed plus QC-failed mapped",
         ),
-        report.row(
-            "02b",
-            args.scope_id,
+        row(
             "count_consistency",
             consistent,
             f"mapped={mapped} total={total}",

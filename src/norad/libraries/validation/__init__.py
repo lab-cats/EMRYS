@@ -20,6 +20,7 @@ from norad.libraries.validation.report import (
     clean,
     render,
     row,
+    row_builder,
     validate_report,
 )
 from norad.libraries.validation.runtime import Runtime, finish, run, run_from_args
@@ -47,6 +48,7 @@ __all__ = (
     "require_unchanged",
     "resolve_from_base",
     "row",
+    "row_builder",
     "run",
     "run_from_args",
     "sha256_file",

@@ -55,12 +55,11 @@ def build(args: argparse.Namespace):
             parsed[role] = parser(paths[role])
         except reference_contigs.ReferenceContigError as exc:
             errors[role] = report.clean(exc)
+    row = report.row_builder("00c", args.scope_id)
     rows = []
     for role in ("fasta", "fai", "dict"):
         rows.append(
-            report.row(
-                "00c",
-                args.scope_id,
+            row(
                 f"{role}_structure",
                 role in parsed,
                 len(parsed.get(role, []))
@@ -75,9 +74,7 @@ def build(args: argparse.Namespace):
             "fasta" in parsed and role in parsed and parsed[role] == parsed["fasta"]
         )
         rows.append(
-            report.row(
-                "00c",
-                args.scope_id,
+            row(
                 f"{role}_contig_agreement",
                 matches,
                 len(parsed.get(role, [])) if role in parsed else "invalid",

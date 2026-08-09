@@ -61,19 +61,16 @@ def build(args: argparse.Namespace):
         paths["counts"], args.scope_id
     )
     structure_ok = bool(values)
+    row = report.row_builder("06", args.scope_id)
     rows = [
-        report.row(
-            "06",
-            args.scope_id,
+        row(
             "output_containers",
             containers_ok,
             " ".join(f"{key}={value.hex()}" for key, value in magic.items()),
             "two BAM/BGZF and two BAI/CSI signatures",
             "orientation output containers",
         ),
-        report.row(
-            "06",
-            args.scope_id,
+        row(
             "counts_structure",
             structure_ok,
             structure_detail,
@@ -88,9 +85,7 @@ def build(args: argparse.Namespace):
             values, orientation_key
         )
         rows.append(
-            report.row(
-                "06",
-                args.scope_id,
+            row(
                 check_id,
                 structure_ok and count_ok,
                 count_detail,
@@ -112,9 +107,7 @@ def build(args: argparse.Namespace):
     )
     rows.extend(
         [
-            report.row(
-                "06",
-                args.scope_id,
+            row(
                 "assigned_count_arithmetic",
                 assigned_ok,
                 f"input={values.get('input_records')} "

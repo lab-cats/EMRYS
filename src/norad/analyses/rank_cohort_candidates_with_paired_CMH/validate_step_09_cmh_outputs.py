@@ -279,10 +279,10 @@ def build(args: argparse.Namespace):
     pdf_ok = mutation_pdf_detail == depth_pdf_detail == "validated"
     scope_id = args.analysis_id
 
+    row = report.row_builder("09", scope_id)
+
     rows = [
-        report.row(
-            "09",
-            scope_id,
+        row(
             "output_transaction",
             transaction_ok,
             f"headers={header_detail}; six regular snapshots",
@@ -290,9 +290,7 @@ def build(args: argparse.Namespace):
             "six distinct physical files",
             "native Step 09 output transaction",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "upstream_identity_and_candidate_order",
             (
                 id_detail == "validated"
@@ -307,45 +305,35 @@ def build(args: argparse.Namespace):
             f"partition={partition_detail}; inputs={step08_input_detail}; "
             f"sites={step08_sites_detail}",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "status_semantics",
             semantic_ok,
             semantic_detail,
             "recomputed target/test/call, depth, AF, background, CMH, and BH",
             "native Step 09 statistical-state contract",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "significant_subset",
             subset_ok,
             subset_detail,
             "exact ordered significant subset",
             "all-sites versus significant-sites",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "summary_count_reconciliation",
             summary is not None,
             summary_detail,
             "one analysis/cohort-bound summary with exact counts and provenance",
             "paths, hashes, pairings, context, policy, and thresholds",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "mutation_spectrum_reconciliation",
             mutation is not None,
             mutation_detail,
             "canonical 12-SNV spectrum matching all-sites",
             "mutation counts, fractions, and significant directions",
         ),
-        report.row(
-            "09",
-            scope_id,
+        row(
             "pdf_structure",
             pdf_ok,
             f"mutation={mutation_pdf_detail}; depth={depth_pdf_detail}",

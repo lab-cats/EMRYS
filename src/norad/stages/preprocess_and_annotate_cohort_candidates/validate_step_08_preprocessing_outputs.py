@@ -169,46 +169,38 @@ def build(args: argparse.Namespace):
 
     scope_id = args.cohort_id
 
+    row = report.row_builder("08", scope_id)
+
     rows = [
-        report.row(
-            "08",
-            scope_id,
+        row(
             "output_transaction",
             transaction_ok,
             header_detail,
             "three exact Step 08 TSV headers",
             "sites, inputs, and summary",
         ),
-        report.row(
-            "08",
-            scope_id,
+        row(
             "manifest_annotation_identity",
             identity_ok,
             f"sample={sample_detail}; partition={partition_detail}",
             "cohort, manifest hashes, annotation path/hash, provisional policy",
             inputs_detail,
         ),
-        report.row(
-            "08",
-            scope_id,
+        row(
             "input_receipt_reconciliation",
             inputs_table is not None,
             inputs_detail,
             "complete partition x orientation receipt",
             "ordered inputs, types, hashes, and per-row arithmetic",
         ),
-        report.row(
-            "08",
-            scope_id,
+        row(
             "sites_order_uniqueness",
             sites_table is not None,
             sites_detail,
             "typed unique candidates and per-scope counts",
             "sites schema, sample columns, order, uniqueness, and AF arithmetic",
         ),
-        report.row(
-            "08",
-            scope_id,
+        row(
             "summary_count_reconciliation",
             summary_table is not None,
             summary_detail,

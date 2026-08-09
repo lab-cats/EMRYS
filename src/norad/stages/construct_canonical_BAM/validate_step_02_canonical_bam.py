@@ -60,46 +60,38 @@ def build(args: argparse.Namespace):
         "read-group alignment count",
     )
 
+    row = report.row_builder("02", args.scope_id)
+
     rows = [
-        report.row(
-            "02",
-            args.scope_id,
+        row(
             "bam_bai_structure",
             structure,
             f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
             "BAM/BGZF and BAI/CSI magic",
             "canonical pair containers",
         ),
-        report.row(
-            "02",
-            args.scope_id,
+        row(
             "samtools_quickcheck",
             quickcheck_ok,
             quickcheck_detail,
             "exit=0 with empty diagnostics",
             "samtools quickcheck -v",
         ),
-        report.row(
-            "02",
-            args.scope_id,
+        row(
             "coordinate_sorting",
             coordinate,
             header_detail,
             "one @HD with SO:coordinate",
             "canonical BAM sort order",
         ),
-        report.row(
-            "02",
-            args.scope_id,
+        row(
             "read_group_header",
             matching_rg,
             header_detail,
             f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
             "sample read-group header",
         ),
-        report.row(
-            "02",
-            args.scope_id,
+        row(
             "alignment_rg_tags",
             tagged == total,
             f"tagged={tagged} total={total}",

@@ -101,10 +101,9 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
         )
     except ValueError:
         observed_overhang = None
+    row = report.row_builder("00a", args.scope_id)
     rows = (
-        report.row(
-            "00a",
-            args.scope_id,
+        row(
             "index_members",
             members_pass,
             len(REQUIRED_MEMBERS) - len(missing),
@@ -113,27 +112,21 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
             if members_pass
             else "missing: " + ",".join(missing),
         ),
-        report.row(
-            "00a",
-            args.scope_id,
+        row(
             "fasta_identity",
             fasta_match,
             fasta_values[0] if len(fasta_values) == 1 else "invalid",
             str(fasta),
             "genomeFastaFiles resolves to the explicit FASTA",
         ),
-        report.row(
-            "00a",
-            args.scope_id,
+        row(
             "gtf_identity",
             gtf_match,
             gtf_values[0] if len(gtf_values) == 1 else "invalid",
             str(gtf),
             "sjdbGTFfile resolves to the explicit GTF",
         ),
-        report.row(
-            "00a",
-            args.scope_id,
+        row(
             "contig_names_lengths",
             star_records == fasta_records,
             f"{len(star_records)} STAR contigs",
@@ -142,9 +135,7 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
             if star_records == fasta_records
             else "ordered contig names or lengths differ",
         ),
-        report.row(
-            "00a",
-            args.scope_id,
+        row(
             "sjdb_overhang",
             observed_overhang == args.expected_sjdb_overhang,
             observed_overhang if observed_overhang is not None else "invalid",

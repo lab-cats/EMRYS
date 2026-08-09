@@ -65,46 +65,38 @@ def build(args: argparse.Namespace):
         report.stable_text(paths["sj_out"], "STAR splice-junction table")[0]
     )
 
+    row = report.row_builder("01", args.scope_id)
+
     rows = [
-        report.row(
-            "01",
-            args.scope_id,
+        row(
             "output_files",
             nonempty,
             len(paths),
             "5 nonempty explicit outputs",
             "BAM, final/general/progress logs, and SJ table",
         ),
-        report.row(
-            "01",
-            args.scope_id,
+        row(
             "bam_structure",
             bam_valid,
             bam_prefix.hex(),
             "BAM or BGZF magic",
             "alignment output container",
         ),
-        report.row(
-            "01",
-            args.scope_id,
+        row(
             "final_log_structure",
             bool(final_values),
             len(final_values) if final_values else final_error,
             "nonempty unique key/value rows",
             "STAR Log.final.out structure",
         ),
-        report.row(
-            "01",
-            args.scope_id,
+        row(
             "mapping_summary",
             mapping_ok,
             mapping_observed,
             "three required percentages in 0..100",
             "STAR mapping summary",
         ),
-        report.row(
-            "01",
-            args.scope_id,
+        row(
             "splice_junction_structure",
             sj_ok,
             sj_observed,

@@ -60,46 +60,37 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     expected_lines = [record.to_line() for record in expected_records]
     observed_lines = ["\t".join(values) for values in rows]
     agreement = observed_lines == expected_lines
+    row = report.row_builder("00b", args.scope_id)
     output_rows = (
-        report.row(
-            "00b",
-            args.scope_id,
+        row(
             "bed12_structure",
             structural,
             len(rows),
             "valid BED12 rows",
             "12 columns and legal coordinates/fields",
         ),
-        report.row(
-            "00b",
-            args.scope_id,
+        row(
             "coordinate_sorting",
             sorted_rows,
             "sorted" if sorted_rows else "unsorted",
             "chrom,start,end,name",
             "deterministic BED order",
         ),
-        report.row(
-            "00b",
-            args.scope_id,
+        row(
             "block_structure",
             blocks_valid,
             "valid" if blocks_valid else "invalid",
             "blockCount/sizes/starts reconcile",
             "BED blocks remain within transcript span",
         ),
-        report.row(
-            "00b",
-            args.scope_id,
+        row(
             "unique_transcript_names",
             unique_names,
             len({item[3] for item in rows}),
             len(rows),
             "one row per transcript name",
         ),
-        report.row(
-            "00b",
-            args.scope_id,
+        row(
             "gtf_transcript_agreement",
             agreement,
             len(rows),
