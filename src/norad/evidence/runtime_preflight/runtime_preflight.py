@@ -10,89 +10,95 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import csv
 import hashlib
-import json
 import os
-import re
-import shutil
 import stat
-import subprocess
 import sys
 import uuid
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from pathlib import Path
 
-if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
-    sys.path.insert(0, src_root)
-from norad.libraries import validation as report
+src_root = str(Path(__file__).resolve().parents[3])
+sys.path[:] = list(dict.fromkeys((src_root, *sys.path)))
 
-PROFILE_HEADER = (
-    "check_id",
-    "check_type",
-    "runtime_context",
-    "required",
-    "target",
-    "probe_args",
-    "expected",
-    "description",
+from norad.evidence.runtime_preflight._probes import (
+    PROBES,
+    _probe_hash_utility,
+    _probe_path_visibility,
+    _probe_r_namespace,
+    _probe_tool,
+    _resolve_executable,
+    _run_command,
+    run_checks,
 )
-RESULT_HEADER = (
-    "profile_sha256",
-    "runtime_context",
-    "check_id",
-    "check_type",
-    "target",
-    "required",
-    "status",
-    "observed",
-    "expected",
-    "detail",
+from norad.evidence.runtime_preflight._profile_contract import (
+    _parse_probe_args,
+    _read_regular_file,
+    _validate_check_contract,
+    _validate_regex,
+    load_profile,
 )
-CHECK_TYPES = {
-    "tool_version",
-    "r_namespace",
-    "hash_utility",
-    "path_visibility",
-}
-RUNTIME_CONTEXTS = {"local", "cluster_batch", "any"}
-RESULT_STATUSES = {"pass", "fail", "blocked", "not_checked"}
-VISIBILITY_PROBES = {
-    "file_readable",
-    "directory_readable",
-    "executable",
-}
-HASH_PROBES = {"python_hashlib", "sha256sum", "shasum"}
-SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-VERSION_TEXT_LIMIT = 4096
-PROBE_TIMEOUT_SECONDS = 30
-HASH_PAYLOAD = b"norad-runtime-preflight\n"
-HASH_EXPECTED = hashlib.sha256(HASH_PAYLOAD).hexdigest()
+from norad.evidence.runtime_preflight._result_contract import (
+    result_bytes,
+    validate_result_bytes,
+)
+from norad.evidence.runtime_preflight._runtime_model import (
+    CHECK_TYPES,
+    HASH_EXPECTED,
+    HASH_PAYLOAD,
+    HASH_PROBES,
+    PROBE_TIMEOUT_SECONDS,
+    PROFILE_HEADER,
+    RESULT_HEADER,
+    RESULT_STATUSES,
+    RUNTIME_CONTEXTS,
+    SAFE_ID,
+    VERSION_TEXT_LIMIT,
+    VISIBILITY_PROBES,
+    Check,
+    PreflightError,
+    Result,
+    _fail,
+    _single_line,
+)
 
-
-class PreflightError(RuntimeError):
-    """Raised for invalid inputs or unsafe publication state."""
-
-
-@dataclass(frozen=True)
-class Check:
-    check_id: str
-    check_type: str
-    runtime_context: str
-    required: bool
-    target: str
-    probe_args: tuple[str, ...]
-    expected: str
-    description: str
-
-
-@dataclass(frozen=True)
-class Result:
-    check: Check
-    status: str
-    observed: str
-    detail: str
+__all__ = [
+    "CHECK_TYPES",
+    "HASH_EXPECTED",
+    "HASH_PAYLOAD",
+    "HASH_PROBES",
+    "PROBES",
+    "PROBE_TIMEOUT_SECONDS",
+    "PROFILE_HEADER",
+    "RESULT_HEADER",
+    "RESULT_STATUSES",
+    "RUNTIME_CONTEXTS",
+    "SAFE_ID",
+    "VERSION_TEXT_LIMIT",
+    "VISIBILITY_PROBES",
+    "Check",
+    "PreflightError",
+    "Result",
+    "_fail",
+    "_parse_probe_args",
+    "_probe_hash_utility",
+    "_probe_path_visibility",
+    "_probe_r_namespace",
+    "_probe_tool",
+    "_read_regular_file",
+    "_resolve_executable",
+    "_run_command",
+    "_single_line",
+    "_validate_check_contract",
+    "_validate_regex",
+    "load_profile",
+    "main",
+    "parse_args",
+    "publish",
+    "result_bytes",
+    "run_checks",
+    "validate_result_bytes",
+]
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -116,360 +122,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Atomically publish the validated TSV; dry-run is the default.",
     )
     return parser.parse_args(argv)
-
-
-def _fail(message: str) -> None:
-    raise PreflightError(message)
-
-
-def _single_line(value: str) -> str:
-    return " ".join(value.replace("\x00", "").split())
-
-
-def _read_regular_file(path: Path, label: str) -> bytes:
-    try:
-        return report.read_bytes(path, label)
-    except report.ValidationError as exc:
-        _fail(str(exc).replace("a regular non-symlink file", "a symbolic link"))
-
-
-def _parse_probe_args(raw: str, row_number: int) -> tuple[str, ...]:
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        _fail(f"Profile row {row_number} probe_args is not valid JSON: {exc}")
-    if not isinstance(value, list) or not all(
-        isinstance(item, str) and "\x00" not in item for item in value
-    ):
-        _fail(f"Profile row {row_number} probe_args must be a JSON array of strings")
-    return tuple(value)
-
-
-def load_profile(path: Path) -> tuple[bytes, list[Check]]:
-    data = _read_regular_file(path, "Runtime profile")
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        _fail(f"Runtime profile is not UTF-8: {path}: {exc}")
-    reader = csv.DictReader(text.splitlines(), delimiter="\t")
-    if reader.fieldnames is None:
-        _fail("Runtime profile is empty")
-    if tuple(reader.fieldnames) != PROFILE_HEADER:
-        _fail("Runtime profile header must be exactly: " + "\t".join(PROFILE_HEADER))
-    checks: list[Check] = []
-    seen: set[str] = set()
-    for row_number, row in enumerate(reader, start=2):
-        if None in row:
-            _fail(f"Runtime profile row {row_number} has extra columns")
-        values = {key: value if value is not None else "" for key, value in row.items()}
-        if any(
-            "\x00" in value or "\n" in value or "\r" in value
-            for value in values.values()
-        ):
-            _fail(f"Runtime profile row {row_number} contains an unsafe character")
-        check_id = values["check_id"]
-        if not SAFE_ID.fullmatch(check_id):
-            _fail(
-                f"Runtime profile row {row_number} has invalid check_id: {check_id!r}"
-            )
-        if check_id in seen:
-            _fail(f"Runtime profile has duplicate check_id: {check_id}")
-        seen.add(check_id)
-        check_type = values["check_type"]
-        if check_type not in CHECK_TYPES:
-            _fail(
-                f"Runtime profile row {row_number} has invalid check_type: {check_type}"
-            )
-        runtime_context = values["runtime_context"]
-        if runtime_context not in RUNTIME_CONTEXTS:
-            _fail(
-                f"Runtime profile row {row_number} has invalid runtime_context: "
-                f"{runtime_context}"
-            )
-        required_raw = values["required"]
-        if required_raw not in {"true", "false"}:
-            _fail(f"Runtime profile row {row_number} required must be true or false")
-        target = values["target"]
-        expected = values["expected"]
-        description = values["description"]
-        if not target or not expected or not description:
-            _fail(
-                f"Runtime profile row {row_number} target, expected, and "
-                "description must be nonempty"
-            )
-        probe_args = _parse_probe_args(values["probe_args"], row_number)
-        check = Check(
-            check_id=check_id,
-            check_type=check_type,
-            runtime_context=runtime_context,
-            required=required_raw == "true",
-            target=target,
-            probe_args=probe_args,
-            expected=expected,
-            description=description,
-        )
-        _validate_check_contract(check, row_number)
-        checks.append(check)
-    if not checks:
-        _fail("Runtime profile must contain at least one check")
-    return data, checks
-
-
-def _validate_regex(pattern: str, row_number: int) -> None:
-    try:
-        re.compile(pattern)
-    except re.error as exc:
-        _fail(f"Runtime profile row {row_number} expected regex is invalid: {exc}")
-
-
-def _validate_check_contract(check: Check, row_number: int) -> None:
-    if check.check_type == "tool_version":
-        if not check.probe_args:
-            _fail(f"Runtime profile row {row_number} tool_version needs probe_args")
-        _validate_regex(check.expected, row_number)
-    elif check.check_type == "r_namespace":
-        if re.fullmatch(r"[A-Za-z][A-Za-z0-9.]*", check.target) is None:
-            _fail(
-                f"Runtime profile row {row_number} r_namespace target "
-                "must be an R package name"
-            )
-        if len(check.probe_args) != 1 or not check.probe_args[0]:
-            _fail(
-                f"Runtime profile row {row_number} r_namespace probe_args must "
-                "contain exactly one Rscript executable"
-            )
-        _validate_regex(check.expected, row_number)
-    elif check.check_type == "hash_utility":
-        if len(check.probe_args) != 1 or check.probe_args[0] not in HASH_PROBES:
-            _fail(
-                f"Runtime profile row {row_number} hash_utility probe_args must "
-                f"contain one of: {', '.join(sorted(HASH_PROBES))}"
-            )
-        if check.expected != "sha256":
-            _fail(
-                f"Runtime profile row {row_number} hash_utility expected must be sha256"
-            )
-    elif check.check_type == "path_visibility":
-        if not Path(check.target).is_absolute():
-            _fail(
-                f"Runtime profile row {row_number} path_visibility target "
-                "must be absolute"
-            )
-        if len(check.probe_args) != 1 or check.probe_args[0] not in VISIBILITY_PROBES:
-            _fail(
-                f"Runtime profile row {row_number} path_visibility probe_args "
-                f"must contain one of: {', '.join(sorted(VISIBILITY_PROBES))}"
-            )
-        expected = (
-            "executable"
-            if check.probe_args and check.probe_args[0] == "executable"
-            else "readable"
-        )
-        if check.expected != expected:
-            _fail(
-                f"Runtime profile row {row_number} path_visibility expected "
-                f"must be {expected}"
-            )
-
-
-def _resolve_executable(target: str) -> str | None:
-    if "/" in target:
-        path = Path(target)
-        return str(path) if path.is_file() and os.access(path, os.X_OK) else None
-    return shutil.which(target)
-
-
-def _run_command(command: list[str], stdin: bytes | None = None) -> tuple[int, str]:
-    try:
-        completed = subprocess.run(
-            command,
-            input=stdin,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=PROBE_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return 127, _single_line(str(exc))
-    output = completed.stdout[:VERSION_TEXT_LIMIT].decode("utf-8", errors="replace")
-    return completed.returncode, _single_line(output)
-
-
-def _probe_tool(check: Check) -> Result:
-    executable = _resolve_executable(check.target)
-    if executable is None:
-        return Result(check, "fail", "unavailable", "Executable was not found")
-    code, output = _run_command([executable, *check.probe_args])
-    if code != 0:
-        return Result(check, "fail", output or f"exit {code}", "Version probe failed")
-    if re.search(check.expected, output) is None:
-        return Result(
-            check, "fail", output, "Version output did not match expected regex"
-        )
-    return Result(check, "pass", output, f"Resolved executable: {executable}")
-
-
-def _probe_r_namespace(check: Check) -> Result:
-    rscript = _resolve_executable(check.probe_args[0])
-    if rscript is None:
-        return Result(check, "fail", "unavailable", "Rscript executable was not found")
-    expression = (
-        "p <- commandArgs(TRUE)[1]; "
-        "if (!requireNamespace(p, quietly=TRUE)) quit(status=42); "
-        "cat(as.character(utils::packageVersion(p)))"
-    )
-    code, output = _run_command([rscript, "-e", expression, "--args", check.target])
-    if code != 0:
-        detail = (
-            "R namespace is unavailable" if code == 42 else "R namespace probe failed"
-        )
-        return Result(check, "fail", output or f"exit {code}", detail)
-    if re.fullmatch(check.expected, output) is None:
-        return Result(
-            check,
-            "fail",
-            output,
-            "Namespace version did not match expected regex",
-        )
-    return Result(check, "pass", output, f"Resolved Rscript: {rscript}")
-
-
-def _probe_hash_utility(check: Check) -> Result:
-    executable = _resolve_executable(check.target)
-    if executable is None:
-        return Result(check, "fail", "unavailable", "Hash executable was not found")
-    adapter = check.probe_args[0]
-    if adapter == "python_hashlib":
-        command = [
-            executable,
-            "-c",
-            "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
-        ]
-    elif adapter == "sha256sum":
-        command = [executable]
-    else:
-        command = [executable, "-a", "256"]
-    code, output = _run_command(command, HASH_PAYLOAD)
-    observed = output.split()[0].lower() if output else ""
-    if code != 0:
-        return Result(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
-    if observed != HASH_EXPECTED:
-        return Result(check, "fail", observed or "empty", "SHA-256 digest mismatch")
-    return Result(check, "pass", observed, f"Resolved executable: {executable}")
-
-
-def _probe_path_visibility(check: Check) -> Result:
-    path = Path(check.target)
-    mode = check.probe_args[0]
-    try:
-        metadata = path.stat()
-    except OSError as exc:
-        return Result(check, "fail", "unavailable", _single_line(str(exc)))
-    if mode == "file_readable":
-        passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.R_OK)
-    elif mode == "directory_readable":
-        passed = stat.S_ISDIR(metadata.st_mode) and os.access(path, os.R_OK | os.X_OK)
-    else:
-        passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.X_OK)
-    observed = f"{mode}:{'yes' if passed else 'no'}"
-    detail = f"Resolved path: {path.resolve(strict=False)}"
-    return Result(check, "pass" if passed else "fail", observed, detail)
-
-
-PROBES: dict[str, Callable[[Check], Result]] = {
-    "tool_version": _probe_tool,
-    "r_namespace": _probe_r_namespace,
-    "hash_utility": _probe_hash_utility,
-    "path_visibility": _probe_path_visibility,
-}
-
-
-def run_checks(checks: Sequence[Check], runtime_context: str) -> list[Result]:
-    results: list[Result] = []
-    for check in checks:
-        if check.runtime_context not in {"any", runtime_context}:
-            status = "blocked" if check.required else "not_checked"
-            results.append(
-                Result(
-                    check,
-                    status,
-                    f"current_context={runtime_context}",
-                    f"Check requires runtime_context={check.runtime_context}",
-                )
-            )
-            continue
-        result = PROBES[check.check_type](check)
-        if result.status not in RESULT_STATUSES:
-            _fail(f"Internal error: invalid result status {result.status}")
-        results.append(result)
-    return results
-
-
-def result_bytes(
-    profile_sha256: str,
-    runtime_context: str,
-    results: Sequence[Result],
-) -> bytes:
-    rows = ["\t".join(RESULT_HEADER)]
-    for result in results:
-        values = (
-            profile_sha256,
-            runtime_context,
-            result.check.check_id,
-            result.check.check_type,
-            result.check.target,
-            "true" if result.check.required else "false",
-            result.status,
-            result.observed,
-            result.check.expected,
-            result.detail,
-        )
-        rows.append("\t".join(_single_line(value) for value in values))
-    return ("\n".join(rows) + "\n").encode("utf-8")
-
-
-def validate_result_bytes(
-    data: bytes,
-    profile_sha256: str,
-    runtime_context: str,
-    checks: Sequence[Check],
-) -> None:
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        _fail(f"Runtime preflight output is not UTF-8: {exc}")
-    reader = csv.DictReader(text.splitlines(), delimiter="\t")
-    if tuple(reader.fieldnames or ()) != RESULT_HEADER:
-        _fail("Runtime preflight output has an invalid header")
-    rows = list(reader)
-    if len(rows) != len(checks):
-        _fail("Runtime preflight output row count does not match the profile")
-    seen: set[str] = set()
-    for row, check in zip(rows, checks, strict=True):
-        if None in row or any(value is None for value in row.values()):
-            _fail("Runtime preflight output has an invalid row shape")
-        if row["profile_sha256"] != profile_sha256:
-            _fail("Runtime preflight output profile hash does not match")
-        if row["runtime_context"] != runtime_context:
-            _fail("Runtime preflight output context does not match")
-        if row["status"] not in RESULT_STATUSES:
-            _fail("Runtime preflight output has an invalid status")
-        if row["check_id"] in seen:
-            _fail("Runtime preflight output has duplicate check IDs")
-        seen.add(row["check_id"])
-        expected_fields = {
-            "check_id": check.check_id,
-            "check_type": check.check_type,
-            "target": check.target,
-            "required": "true" if check.required else "false",
-            "expected": check.expected,
-        }
-        for field, expected_value in expected_fields.items():
-            if row[field] != expected_value:
-                _fail(
-                    f"Runtime preflight output {field} does not match the "
-                    f"profile for check {check.check_id}"
-                )
 
 
 def _ensure_output_parent(output: Path) -> None:
