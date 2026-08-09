@@ -25,7 +25,6 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
 
 _MODULE_PATH = Path(__file__).resolve()
@@ -177,12 +176,7 @@ def _read_receipt_tsv(path: Path) -> dict[str, Any]:
 
 
 def _validate_receipt(document: Mapping[str, Any]) -> None:
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["report-receipt"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
+    validator = contracts.schema_validator("report-receipt")
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
         first = errors[0]

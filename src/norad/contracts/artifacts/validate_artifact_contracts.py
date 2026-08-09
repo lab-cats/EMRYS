@@ -14,8 +14,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
-
 src_root = str(Path(__file__).resolve().parents[3])
 if sys.path[:1] != [src_root]:
     if src_root in sys.path:
@@ -48,6 +46,8 @@ reject_duplicate_json_keys = _core_owner.reject_duplicate_json_keys
 reject_nonstandard_json_constant = _core_owner.reject_nonstandard_json_constant
 load_json_object = _core_owner.load_json_object
 load_schema_registry = _core_owner.load_schema_registry
+schema_errors = _core_owner.schema_errors
+schema_validator = _core_owner.schema_validator
 validate_all_schemas = _core_owner.validate_all_schemas
 sha256_file = _core_owner.sha256_file
 format_json_path = _core_owner.format_json_path
@@ -123,18 +123,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_document(name: str, document_path: Path) -> dict[str, Any]:
-    schemas, registry = load_schema_registry()
-    schema = schemas[name]
     document = load_json_object(document_path, f"{name} document")
-    validator = Draft202012Validator(
-        schema,
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
-    errors = sorted(
-        validator.iter_errors(document),
-        key=lambda error: tuple(str(part) for part in error.absolute_path),
-    )
+    errors = schema_errors(name, document)
     if errors:
         details = "\n".join(
             f"- {format_json_path(error.absolute_path)}: {error.message}"

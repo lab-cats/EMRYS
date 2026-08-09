@@ -34,8 +34,6 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator, FormatChecker
-
 _MODULE_PATH = Path(__file__).resolve()
 src_root = str(_MODULE_PATH.parents[2])
 if sys.path[:1] != [src_root]:
@@ -396,16 +394,7 @@ def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
 def _load_run_summary(path: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")
-        schemas, registry = contracts.load_schema_registry()
-        validator = Draft202012Validator(
-            schemas["run-summary"],
-            registry=registry,
-            format_checker=FormatChecker(),
-        )
-        errors = sorted(
-            validator.iter_errors(document),
-            key=lambda error: tuple(str(part) for part in error.absolute_path),
-        )
+        errors = contracts.schema_errors("run-summary", document)
         if errors:
             detail = "\n".join(
                 f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"

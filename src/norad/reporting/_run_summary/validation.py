@@ -8,8 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
-
 from .inputs import _fail, _require_regular_file
 from .models import (
     LEGACY_PRODUCER_VERSION,
@@ -37,16 +35,7 @@ def _validate_document(
     inventory_rows: list[dict[str, str]],
     inventory_path: Path,
 ) -> None:
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["run-summary"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
-    errors = sorted(
-        validator.iter_errors(document),
-        key=lambda error: tuple(str(part) for part in error.absolute_path),
-    )
+    errors = contracts.schema_errors("run-summary", document)
     if errors:
         details = "\n".join(
             f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
@@ -163,13 +152,9 @@ def _validate_existing_summary(
     document = contracts.load_json_object(paths.summary_json, "existing run summary")
     if paths.summary_json.read_bytes() != adapter.canonical_json_bytes(document):
         _fail("Existing run-summary JSON is not canonical")
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["run-summary"],
-        registry=registry,
-        format_checker=FormatChecker(),
+    schema_errors = list(
+        contracts.schema_validator("run-summary").iter_errors(document)
     )
-    schema_errors = list(validator.iter_errors(document))
     if schema_errors:
         _fail("Existing run-summary JSON fails its schema")
     try:

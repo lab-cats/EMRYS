@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
@@ -210,6 +210,24 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
             ) from exc
         schemas[name] = schema
     return schemas, registry
+
+
+def schema_validator(name: str) -> Draft202012Validator:
+    """Build a validator from the closed local registry for one named schema."""
+    schemas, registry = load_schema_registry()
+    return Draft202012Validator(
+        schemas[name],
+        registry=registry,
+        format_checker=FormatChecker(),
+    )
+
+
+def schema_errors(name: str, document: Any) -> list[Any]:
+    """Order errors deterministically while callers retain message ownership."""
+    return sorted(
+        schema_validator(name).iter_errors(document),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
 
 
 def validate_all_schemas() -> None:

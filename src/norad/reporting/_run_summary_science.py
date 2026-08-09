@@ -11,8 +11,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
-
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import review_package
 from norad.reporting._run_summary.inputs import _resolved_path
@@ -883,16 +881,7 @@ def _normalize_limitations(
 
 def _validate_normalized_record(document: dict[str, Any]) -> None:
     try:
-        schemas, registry = contracts.load_schema_registry()
-        validator = Draft202012Validator(
-            schemas["scientific-review-record"],
-            registry=registry,
-            format_checker=FormatChecker(),
-        )
-        errors = sorted(
-            validator.iter_errors(document),
-            key=lambda error: tuple(str(part) for part in error.absolute_path),
-        )
+        errors = contracts.schema_errors("scientific-review-record", document)
         if errors:
             details = "\n".join(
                 f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"

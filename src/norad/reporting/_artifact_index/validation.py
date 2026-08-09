@@ -9,8 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
-
 from .contracts import contracts
 from .core import canonical_digest
 from .models import (
@@ -181,12 +179,7 @@ def validate_published_transaction(
             + ", ".join(str(path) for path in unsafe_entries)
         )
 
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["artifact-record"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
+    validator = contracts.schema_validator("artifact-record")
     record_manifest: list[dict[str, str]] = []
     validated_index_rows: list[dict[str, str]] = []
     for index_row, inventory_row in zip(index_rows, inventory_rows, strict=True):

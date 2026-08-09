@@ -6,8 +6,6 @@ import argparse
 from collections import Counter
 from typing import Any
 
-from jsonschema import Draft202012Validator, FormatChecker
-
 from .contracts import contracts
 from .core import (
     canonical_digest,
@@ -113,12 +111,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     reconcile_scope_transactions(inspections)
     scientific_states = resolve_scientific_states(inspections)
 
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["artifact-record"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
+    validator = contracts.schema_validator("artifact-record")
     records: list[dict[str, Any]] = []
     record_bytes: list[bytes] = []
     for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
