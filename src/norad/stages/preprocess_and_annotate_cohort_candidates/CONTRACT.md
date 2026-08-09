@@ -92,9 +92,9 @@ annotation, and deterministic TSV generation. The shell owns orchestration,
 validation, locking, and publication.
 
 The canonical R facade requires its adjacent owner-private input-contract,
-annotation, Step `07` receipt, and VCF/candidate modules. It resolves every
-sibling from Rscript's exact `--file=` entry path and sources them into the
-existing program environment. The shell's `--r-script` option and
+annotation, Step `07` receipt, VCF/count, and candidate-processing modules. It
+resolves every sibling from Rscript's exact `--file=` entry path and sources
+them into the existing program environment. The shell's `--r-script` option and
 `STEP08_R_SCRIPT` environment override replace the whole R program for
 diagnostics; they do not override private modules independently, so a
 replacement owns its complete implementation and dependency behavior.

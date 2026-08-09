@@ -80,12 +80,14 @@ module is 47 lines and no private owner exceeds 373 lines. The Step `09`
 shell/R CMH method and independent oracle were not changed; this adds no
 runtime, scientific-review, or biological evidence.
 
-Step `08` R now retains a 401-line public coordinator over input-contract,
-annotation, Step `07` receipt, and VCF/candidate modules no larger than 570
-lines. All 23 pre-existing top-level function bodies are parse-identical to the
-committed monolith. The complete owner remains about 1,900 lines; decomposition
-improves responsibility boundaries without disguising total complexity or
-promoting the 176-line external REMORA reference into a parity oracle.
+Step `08` R now retains a 402-line public coordinator over input-contract,
+annotation, Step `07` receipt, VCF/count, and candidate-processing modules no
+larger than 430 lines. All 23 pre-existing top-level function bodies are
+parse-identical to the committed monolith, including all ten functions in the
+VCF/count/candidate split. The complete owner remains about 1,900 lines;
+decomposition improves responsibility boundaries without disguising total
+complexity or promoting the 176-line external REMORA reference into a parity
+oracle.
 
 Step `09` R is already divided into a 179-line coordinator plus common,
 validation, evaluation, and output modules no larger than 279 lines. The five
