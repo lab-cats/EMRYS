@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -38,16 +39,21 @@ def inspect_source(
     snapshot = stat_source(resolved)
     required = row["required"] == "true"
     artifact_id = row["artifact_id"]
+    # All outcomes describe this same source identity; branches supply only state.
+    build_inspection = partial(
+        Inspection,
+        row=row,
+        spec=spec,
+        resolved_path=resolved,
+        attempt_provenance_status="unavailable",
+        snapshot=snapshot,
+    )
     if snapshot.status == "missing":
         if required:
-            return Inspection(
-                row=row,
-                spec=spec,
-                resolved_path=resolved,
+            return build_inspection(
                 availability_status="missing",
                 completion_status="incomplete",
                 state_reason="Required source is absent.",
-                attempt_provenance_status="unavailable",
                 source=None,
                 warnings=[
                     issue(
@@ -56,28 +62,19 @@ def inspect_source(
                         artifact_id,
                     )
                 ],
-                snapshot=snapshot,
             )
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="missing",
             completion_status="not_attempted",
             state_reason="Optional source is absent.",
             attempt_provenance_status="not_attempted",
             source=None,
-            snapshot=snapshot,
         )
     if snapshot.status == "externally_unavailable":
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="externally_unavailable",
             completion_status="incomplete",
             state_reason="Declared source cannot be accessed.",
-            attempt_provenance_status="unavailable",
             source=None,
             warnings=[
                 issue(
@@ -87,17 +84,12 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
     if snapshot.status == "unknown":
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="unknown",
             completion_status="failed",
             state_reason="Declared source is not a readable regular file.",
-            attempt_provenance_status="unavailable",
             source=None,
             errors=[
                 issue(
@@ -107,7 +99,6 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
 
     source = {
@@ -149,14 +140,10 @@ def inspect_source(
         if spec.kind == "validation_report" and native_metrics.get(
             "value_counts", {}
         ).get("status", {}).get("fail", 0):
-            return Inspection(
-                row=row,
-                spec=spec,
-                resolved_path=resolved,
+            return build_inspection(
                 availability_status="present",
                 completion_status="failed",
                 state_reason="Validation report contains failed checks.",
-                attempt_provenance_status="unavailable",
                 source=source,
                 parameters=parameters,
                 metrics=metrics,
@@ -169,32 +156,22 @@ def inspect_source(
                         artifact_id,
                     )
                 ],
-                snapshot=snapshot,
             )
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="present",
             completion_status="complete",
             state_reason=None,
-            attempt_provenance_status="unavailable",
             source=source,
             parameters=parameters,
             metrics=metrics,
             native=native_metrics,
             first_row=first_row,
-            snapshot=snapshot,
         )
     except ArtifactIndexError as exc:
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="present",
             completion_status="failed",
             state_reason="Present source failed its registered adapter.",
-            attempt_provenance_status="unavailable",
             source=source,
             errors=[
                 issue(
@@ -203,7 +180,6 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
 
 
