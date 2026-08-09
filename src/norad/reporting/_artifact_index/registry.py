@@ -46,6 +46,28 @@ def add_spec(
     )
 
 
+def add_validation_report(
+    registry: dict[str, AdapterSpec],
+    step_id: str,
+    scope_type: str,
+    *,
+    exact_data_rows: int = 5,
+) -> None:
+    """Register the uniform validation-report contract for one pipeline step."""
+    add_spec(
+        registry,
+        f"step{step_id}_validation_report_v1",
+        step_id,
+        scope_type,
+        "validation_report",
+        "text/tab-separated-values",
+        suffixes=(".validation.tsv",),
+        expected_header=VALIDATION_REPORT_HEADER,
+        exact_data_rows=exact_data_rows,
+        allow_header_only=False,
+    )
+
+
 def build_adapter_registry() -> dict[str, AdapterSpec]:
     registry: dict[str, AdapterSpec] = {}
     add_spec(
@@ -57,18 +79,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "application/octet-stream",
         basenames=STEP00A_BASENAMES,
     )
-    add_spec(
-        registry,
-        "step00a_validation_report_v1",
-        "00a",
-        "reference",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "00a", "reference")
     add_spec(
         registry,
         "step00b_bed12_v1",
@@ -78,18 +89,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/bed",
         suffixes=(".bed",),
     )
-    add_spec(
-        registry,
-        "step00b_validation_report_v1",
-        "00b",
-        "reference",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "00b", "reference")
     add_spec(
         registry,
         "step00c_reference_fasta_v1",
@@ -117,18 +117,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/vnd.sam",
         suffixes=(".dict",),
     )
-    add_spec(
-        registry,
-        "step00c_validation_report_v1",
-        "00c",
-        "reference",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "00c", "reference")
     add_spec(
         registry,
         "step01_star_bam_v1",
@@ -153,18 +142,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "text/plain",
             suffixes=(suffix,),
         )
-    add_spec(
-        registry,
-        "step01_validation_report_v1",
-        "01",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "01", "sample")
     for step_id, bam_adapter, bai_adapter, bam_suffix in (
         ("02", "step02_canonical_bam_v1", "step02_canonical_bai_v1", ".sorted.bam"),
         ("04", "step04_markdup_bam_v1", "step04_markdup_bai_v1", ".markdup.bam"),
@@ -188,18 +166,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/octet-stream",
             suffixes=(f"{bam_suffix}.bai",),
         )
-    add_spec(
-        registry,
-        "step02_validation_report_v1",
-        "02",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "02", "sample")
     add_spec(
         registry,
         "step02b_quickcheck_v1",
@@ -218,18 +185,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/plain",
         suffixes=(".flagstat.txt",),
     )
-    add_spec(
-        registry,
-        "step02b_validation_report_v1",
-        "02b",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "02b", "sample")
     add_spec(
         registry,
         "step03_rseqc_infer_v1",
@@ -239,18 +195,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/plain",
         suffixes=(".infer_experiment.txt",),
     )
-    add_spec(
-        registry,
-        "step03_validation_report_v1",
-        "03",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "03", "sample")
     add_spec(
         registry,
         "step04_markdup_metrics_v1",
@@ -260,42 +205,9 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/plain",
         suffixes=(".markdup.metrics.txt",),
     )
-    add_spec(
-        registry,
-        "step04_validation_report_v1",
-        "04",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
-    add_spec(
-        registry,
-        "step05_validation_report_v1",
-        "05",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
-    add_spec(
-        registry,
-        "step06_validation_report_v1",
-        "06",
-        "sample",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "04", "sample")
+    add_validation_report(registry, "05", "sample")
+    add_validation_report(registry, "06", "sample")
     for orientation, adapter_prefix in zip(
         alignment_orientation.ORIENTATIONS,
         alignment_orientation.ORIENTATION_PREFIXES,
@@ -351,18 +263,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=2,
         allow_header_only=False,
     )
-    add_spec(
-        registry,
-        "step07_validation_report_v1",
-        "07",
-        "cohort_partition",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "07", "cohort_partition")
     add_spec(
         registry,
         "step08_sites_v1",
@@ -396,18 +297,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=1,
         allow_header_only=False,
     )
-    add_spec(
-        registry,
-        "step08_validation_report_v1",
-        "08",
-        "cohort",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=5,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "08", "cohort")
     for adapter_id, suffix in (
         ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
         ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
@@ -457,18 +347,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/pdf",
             suffixes=(suffix,),
         )
-    add_spec(
-        registry,
-        "step09_validation_report_v1",
-        "09",
-        "analysis",
-        "validation_report",
-        "text/tab-separated-values",
-        suffixes=(".validation.tsv",),
-        expected_header=VALIDATION_REPORT_HEADER,
-        exact_data_rows=7,
-        allow_header_only=False,
-    )
+    add_validation_report(registry, "09", "analysis", exact_data_rows=7)
     step09c_specs = (
         (
             "step09c_review_plan_v1",
