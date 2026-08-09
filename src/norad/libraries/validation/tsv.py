@@ -7,7 +7,7 @@ import hashlib
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from io import StringIO
 from pathlib import Path
-from typing import TextIO, TypeVar
+from typing import NoReturn, TextIO, TypeVar
 
 from norad.libraries.validation.report import clean
 
@@ -52,6 +52,42 @@ def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with path.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         return list(reader.fieldnames or ()), list(reader)
+
+
+def read_strict_tsv(
+    label: str,
+    path: Path,
+    expected_header: Sequence[str] | None,
+    fail: Callable[[str], NoReturn],
+) -> tuple[tuple[str, ...], list[dict[str, str]]]:
+    """Parse a validated path with NORAD's strict tabular diagnostics."""
+    try:
+        with path.open("r", encoding="utf-8", newline="") as stream:
+            raw_rows = list(csv.reader(stream, delimiter="\t", strict=True))
+    except (OSError, UnicodeError, csv.Error) as exc:
+        fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
+    if not raw_rows:
+        fail(f"{label} is empty: {path}")
+    header = tuple(raw_rows[0])
+    if any(not column for column in header):
+        fail(f"{label} contains an empty header field: {path}")
+    if len(header) != len(set(header)):
+        fail(f"{label} contains duplicate header fields: {path}")
+    if expected_header is not None and header != tuple(expected_header):
+        fail(
+            f"{label} header is invalid: {path}\n"
+            f"Expected: {' | '.join(expected_header)}\n"
+            f"Observed: {' | '.join(header)}"
+        )
+    rows: list[dict[str, str]] = []
+    for index, values in enumerate(raw_rows[1:], start=2):
+        if len(values) != len(header):
+            fail(
+                f"{label} row {index} has {len(values)} fields; "
+                f"expected {len(header)}: {path}"
+            )
+        rows.append(dict(zip(header, values, strict=True)))
+    return header, rows
 
 
 def sha256_file(path: Path) -> str:

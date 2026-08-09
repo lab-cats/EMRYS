@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import math
 import re
 import sys
@@ -15,6 +14,7 @@ if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
 
 from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.validation.tsv import read_strict_tsv
 
 
 class ContractError(RuntimeError):
@@ -183,33 +183,7 @@ def read_tsv(
     expected_header: Sequence[str] | None = None,
 ) -> Table:
     path = require_file(label, value)
-    try:
-        with path.open("r", encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            raw_rows = list(reader)
-    except (OSError, UnicodeError, csv.Error) as exc:
-        fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
-    if not raw_rows:
-        fail(f"{label} is empty: {path}")
-    header = tuple(raw_rows[0])
-    if any(not column for column in header):
-        fail(f"{label} contains an empty header field: {path}")
-    if len(header) != len(set(header)):
-        fail(f"{label} contains duplicate header fields: {path}")
-    if expected_header is not None and header != tuple(expected_header):
-        fail(
-            f"{label} header is invalid: {path}\n"
-            f"Expected: {' | '.join(expected_header)}\n"
-            f"Observed: {' | '.join(header)}"
-        )
-    rows: list[dict[str, str]] = []
-    for index, values in enumerate(raw_rows[1:], start=2):
-        if len(values) != len(header):
-            fail(
-                f"{label} row {index} has {len(values)} fields; "
-                f"expected {len(header)}: {path}"
-            )
-        rows.append(dict(zip(header, values, strict=True)))
+    header, rows = read_strict_tsv(label, path, expected_header, fail)
     return Table(header=header, rows=rows, path=path)
 
 

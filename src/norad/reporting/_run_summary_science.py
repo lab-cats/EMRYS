@@ -3,15 +3,16 @@
 
 from __future__ import annotations
 
-import csv
 import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import norad.contracts.scientific_evidence.step08 as step08
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import computational_validation, review_package
+from norad.libraries.validation.tsv import read_strict_tsv as _read_strict_tsv
 from norad.libraries.validation.tsv import tsv_bytes as _tsv_bytes
 from norad.reporting._run_summary.inputs import _resolved_path
 from norad.reporting._run_summary.transaction import _path_hash
@@ -29,15 +30,6 @@ class ReviewInput:
     path: Path
     sha256: str
     row_count: str
-
-
-@dataclass(frozen=True)
-class TableData:
-    """One strict UTF-8 TSV read by the reporting-local package reader."""
-
-    header: tuple[str, ...]
-    rows: list[dict[str, str]]
-    path: Path
 
 
 @dataclass
@@ -97,36 +89,10 @@ def _read_tsv(
     label: str,
     value: str | Path,
     expected_header: Sequence[str],
-) -> TableData:
+) -> step08.Table:
     path = _require_regular_file(label, value)
-    try:
-        with path.open("r", encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            raw_rows = list(reader)
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
-    if not raw_rows:
-        _fail(f"{label} is empty: {path}")
-    header = tuple(raw_rows[0])
-    if any(not column for column in header):
-        _fail(f"{label} contains an empty header field: {path}")
-    if len(header) != len(set(header)):
-        _fail(f"{label} contains duplicate header fields: {path}")
-    if header != tuple(expected_header):
-        _fail(
-            f"{label} header is invalid: {path}\n"
-            f"Expected: {' | '.join(expected_header)}\n"
-            f"Observed: {' | '.join(header)}"
-        )
-    rows: list[dict[str, str]] = []
-    for index, values in enumerate(raw_rows[1:], start=2):
-        if len(values) != len(header):
-            _fail(
-                f"{label} row {index} has {len(values)} fields; "
-                f"expected {len(header)}: {path}"
-            )
-        rows.append(dict(zip(header, values, strict=True)))
-    return TableData(header=header, rows=rows, path=path)
+    header, rows = _read_strict_tsv(label, path, expected_header, _fail)
+    return step08.Table(header=header, rows=rows, path=path)
 
 
 def _resolve_recorded_path(value: str) -> Path:
