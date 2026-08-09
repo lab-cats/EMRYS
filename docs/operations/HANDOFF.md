@@ -53,6 +53,13 @@ record semantics have distinct private owners. The five schema resources are
 unchanged and remain one file per registered `$id`, using local `$defs`; this
 is maintainability evidence, not a schema version or evidence promotion.
 
+The neutral Step `09` scientific-evidence contract keeps its public module,
+headers, signatures, and shared Step `08` identities over private definition,
+support, table-reconciliation, and cross-table-semantic owners. The public
+module is 47 lines and no private owner exceeds 373 lines. The Step `09`
+shell/R CMH method and independent oracle were not changed; this adds no
+runtime, scientific-review, or biological evidence.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:

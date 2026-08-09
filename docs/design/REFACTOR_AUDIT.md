@@ -57,11 +57,11 @@ claims.
 | Finding | Current disposition |
 | --- | --- |
 | `RA-006` | Resolved for the live reporting owner. The public renderer files are compatibility facades over one private `_run_report` package; dispatch points from HTML selection to the bundle coordinator without the former HTML-to-bundle-to-HTML cycle. Direct-import, direct-script, format, deterministic-output, signal, lock, rollback, recovery, and arbitrary-CWD contracts remain protected by `make report-test`. |
-| `RA-008` | The artifact-contract Python, artifact-index, canonical run-summary, and reporting-renderer slices are resolved; the repository-wide finding remains open for its other named owners. Artifact contracts now separate definitions/error identity, schema I/O, identity/path/attempt rules, computational evidence, status reduction, and record semantics; `core.py` and `run_summary.py` are 47- and 18-line compatibility owners, and their largest extracted owner is 422 lines. The five-schema registry remains one file per public `$id`; local `$defs` were not externalized merely for line count. Reporting slices retain their established facade, fault-injection, and transaction boundaries. No generic framework or shared-library promotion was introduced. |
+| `RA-008` | The Step `09` scientific-evidence contract, artifact-contract Python, artifact-index, canonical run-summary, and reporting-renderer slices are resolved; the repository-wide finding remains open for its other named owners. Step `09` now has a 47-line public compatibility owner over definition, support, table, and semantic modules no larger than 373 lines, while preserving its public fingerprint and shared Step `08` identities. Artifact contracts retain 47- and 18-line compatibility owners with a largest extracted owner of 422 lines; the five-schema registry remains one file per public `$id`. Reporting slices retain their established facade, fault-injection, and transaction boundaries. No scientific algorithm, independent oracle, generic framework, or shared-library promotion was introduced. |
 
 The reporting package passed 157 focused report tests plus its shell contract.
 The repository coverage non-regression gate passed 1,250 tests with 18 skips at
-line `0.856047` and branch `0.746936`, above the tracked `0.838935` and
+line `0.856677` and branch `0.746936`, above the tracked `0.838935` and
 `0.736276` baselines. These are local engineering results only; they do not
 establish runtime, cluster, scientific-review, or biological evidence.
 
