@@ -11,6 +11,7 @@ promotes computational or scientific status.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import hashlib
 import html
@@ -918,20 +919,19 @@ def _render_scope_matrix(summary: Mapping[str, Any]) -> str:
 
 def _render_qc_metrics(summary: Mapping[str, Any]) -> str:
     promoted_ids = {metric["metric_id"] for metric in summary["qc_metrics"]}
-    rows = []
-    for artifact in summary["artifacts"]:
-        for metric in artifact["metrics"]:
-            rows.append(
-                (
-                    artifact["artifact_id"],
-                    metric["metric_id"],
-                    metric["name"],
-                    metric["value"],
-                    metric["unit"],
-                    metric["status"],
-                    metric["metric_id"] in promoted_ids,
-                )
-            )
+    rows = [
+        (
+            artifact["artifact_id"],
+            metric["metric_id"],
+            metric["name"],
+            metric["value"],
+            metric["unit"],
+            metric["status"],
+            metric["metric_id"] in promoted_ids,
+        )
+        for artifact in summary["artifacts"]
+        for metric in artifact["metrics"]
+    ]
     if not rows:
         return _empty(
             "No artifact-level QC metrics are present in the canonical run summary."
@@ -1366,21 +1366,20 @@ def _render_tools(summary: Mapping[str, Any]) -> str:
 
 
 def _render_issues(summary: Mapping[str, Any]) -> str:
-    rows = []
-    for level in ("warnings", "errors"):
-        for issue in summary[level]:
-            rows.append(
-                (
-                    level[:-1],
-                    issue["code"],
-                    issue["message"],
-                    ", ".join(issue["related_artifact_ids"]) or "None declared",
-                    ", ".join(
-                        reference["evidence_id"] for reference in issue["evidence"]
-                    )
-                    or "None declared",
-                )
+    rows = [
+        (
+            level[:-1],
+            issue["code"],
+            issue["message"],
+            ", ".join(issue["related_artifact_ids"]) or "None declared",
+            ", ".join(
+                reference["evidence_id"] for reference in issue["evidence"]
             )
+            or "None declared",
+        )
+        for level in ("warnings", "errors")
+        for issue in summary[level]
+    ]
     if not rows:
         return _empty("No aggregate run-summary warnings or errors are recorded.")
     return _table(
@@ -1759,7 +1758,7 @@ def validate_qmd_template(template: str) -> None:
 def _validate_css_resources(css: str, label: str) -> None:
     for match in CSS_RESOURCE_RE.finditer(css):
         resource = (match.group(2) or match.group(4) or "").strip()
-        if resource.startswith("data:") or resource.startswith("#"):
+        if resource.startswith(("data:", "#")):
             continue
         _fail(f"{label} contains a non-embedded CSS resource: {resource!r}")
 
@@ -1911,8 +1910,7 @@ class ReportHTMLInspector(HTMLParser):
                         f"<{tag}> {name} uses remote resource {resource!r}"
                     )
                 elif not (
-                    resource.startswith("data:")
-                    or resource.startswith("#")
+                    resource.startswith(("data:", "#"))
                     or resource == ""
                 ):
                     self.active_resource_errors.append(
@@ -2244,10 +2242,8 @@ def _create_directories(path: Path) -> list[Path]:
             created.append(directory)
     except OSError as exc:
         for directory in reversed(created):
-            try:
+            with contextlib.suppress(OSError):
                 directory.rmdir()
-            except OSError:
-                pass
         _fail(f"Could not create report output directory {path}: {exc}")
     _reject_symlink_components(path, "report output directory")
     return created
@@ -2426,10 +2422,8 @@ def _assert_predecessor(context: RenderContext) -> None:
 
 
 def _write_recovery_marker(path: Path, message: str) -> None:
-    try:
+    with contextlib.suppress(OSError, ReportRenderError):
         _write_owned_file(path, message.encode("utf-8"))
-    except (OSError, ReportRenderError):
-        pass
 
 
 def _write_owned_file(path: Path, payload: bytes) -> None:
@@ -2503,18 +2497,14 @@ def _source_date_epoch(summary: Mapping[str, Any]) -> str:
 def _terminate_process_group(process: subprocess.Popen[str]) -> None:
     """Stop the complete Quarto process group and reap its direct process."""
 
-    try:
+    with contextlib.suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
     try:
         if process.poll() is None:
             process.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
         process.wait(timeout=5)
     finally:
         if process.stdout is not None:
