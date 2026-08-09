@@ -9,7 +9,7 @@ from typing import Any
 
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from .contracts import review_package
+from .contracts import contracts, review_package
 
 PRODUCER = "build_artifact_index"
 PRODUCER_VERSION = "1.0.0"
@@ -19,11 +19,7 @@ ARTIFACT_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RUN_CONTRACT_FIELDS = (
     "run_contract_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
+    *contracts.RUN_CONTRACT_COMPONENT_FIELDS,
 )
 ANCHOR_HASH_FIELDS = (
     "sample_manifest_sha256",
@@ -36,13 +32,7 @@ STEP09C_CATEGORY_ADAPTERS = {
 ARTIFACT_INDEX_HEADER = (
     "run_id",
     "run_contract_sha256",
-    "artifact_id",
-    "step_id",
-    "scope_type",
-    "scope_id",
-    "adapter",
-    "source_path",
-    "required",
+    *contracts.INVENTORY_HEADER,
     "availability_status",
     "completion_status",
     "attempt_provenance_status",
@@ -72,11 +62,7 @@ ARTIFACT_RECEIPT_HEADER = (
     "run_contract_sha256",
     "run_contract_path",
     "run_contract_file_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
+    *contracts.RUN_CONTRACT_COMPONENT_FIELDS,
     "inventory_path",
     "inventory_sha256",
     "inventory_row_count",

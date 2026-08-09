@@ -85,12 +85,7 @@ QC_SUMMARY_HEADER = (
 
 RUN_SUMMARY_RECEIPT_HEADER = (
     "run_id",
-    "run_contract_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
+    *RUN_CONTRACT_FIELDS,
     "artifact_receipt_path",
     "artifact_receipt_sha256",
     "artifact_adapter_attempt_id",
