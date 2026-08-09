@@ -16,7 +16,9 @@ and may change without creating another supported command surface.
 | [`html_projection.py`](html_projection.py) | Final deterministic composition of the HTML report body. |
 | [`inputs.py`](inputs.py) | Explicit path resolution, stable file snapshots, run-summary loading, and approved-table intake. |
 | [`html_validation.py`](html_validation.py) | Static QMD construction plus generated-QMD, CSS, accessibility, identity, and self-containment validation. |
-| [`html.py`](html.py) | Current Quarto execution and HTML publication owner; it retains compatibility bindings for moved helpers. |
+| [`context.py`](context.py) | Validated, immutable render-context preparation for one explicit run summary. |
+| [`runtime.py`](runtime.py) | Closed Quarto environment, pinned-version check, deterministic epoch, timeout, and process-group lifecycle. |
+| [`html.py`](html.py) | Current HTML transaction and publication owner; it retains compatibility bindings for moved helpers. |
 | [`bundle.py`](bundle.py) | Current PDF/summary/receipt projection and multi-output publication owner. |
 
 The bundle imports the private HTML owner directly. The HTML owner never

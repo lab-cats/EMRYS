@@ -12,17 +12,13 @@ from __future__ import annotations
 import argparse
 import contextlib
 import os
-import shlex
 import shutil
-import signal
 import stat
-import subprocess
 import sys
 import uuid
-from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any
 
 _MODULE_PATH = Path(__file__).resolve()
 src_root = str(_MODULE_PATH.parents[3])
@@ -32,10 +28,12 @@ sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 from norad.contracts.artifacts import validate_artifact_contracts as _contracts
 from norad.reporting import _signals
 
+from . import context as _context
 from . import html_projection as _projection
 from . import html_validation as _validation
 from . import inputs as _inputs
 from . import models as _models
+from . import runtime as _runtime
 
 ACTIVE_RESOURCE_ATTRIBUTES = _models.ACTIVE_RESOURCE_ATTRIBUTES
 BODY_MARKER = _models.BODY_MARKER
@@ -108,6 +106,13 @@ _validate_css_resources = _validation._validate_css_resources
 build_qmd_bytes = _validation.build_qmd_bytes
 validate_qmd_template = _validation.validate_qmd_template
 validate_rendered_html = _validation.validate_rendered_html
+_expected_html_identity = _context._expected_html_identity
+prepare_context = _context.prepare_context
+_quarto_version = _runtime._quarto_version
+_run_quarto_process = _runtime._run_quarto_process
+_sanitized_tool_environment = _runtime._sanitized_tool_environment
+_source_date_epoch = _runtime._source_date_epoch
+_terminate_process_group = _runtime._terminate_process_group
 
 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -169,40 +174,6 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 
-def _sanitized_tool_environment() -> dict[str, str]:
-    """Return the small ambient environment allowed for pinned report tools."""
-
-    return {
-        "LANG": "en_US.UTF-8",
-        "LC_ALL": "en_US.UTF-8",
-        "PATH": SAFE_RENDER_PATH,
-        "TMPDIR": "/tmp",
-        "TZ": "UTC",
-    }
-
-
-def _quarto_version(path: Path) -> str:
-    try:
-        result = subprocess.run(
-            [str(path), "--version"],
-            env=_sanitized_tool_environment(),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        _fail(f"Could not execute {path} --version: {exc}")
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        _fail(f"Quarto version check failed: {detail}")
-    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    if lines != [QUARTO_VERSION]:
-        _fail(
-            f"Quarto reported {result.stdout.strip()!r}; expected exactly "
-            f"{QUARTO_VERSION!r}"
-        )
-    return lines[0]
 
 
 
@@ -215,158 +186,10 @@ def _quarto_version(path: Path) -> str:
 
 
 
-def _expected_html_identity(context: RenderContext) -> dict[str, str]:
-    metadata = context.render_metadata
-    return {
-        "data-css-sha256": metadata["css_template_sha256"],
-        "data-qmd-sha256": metadata["qmd_template_sha256"],
-        "data-quarto-version": metadata["quarto_version"],
-        "data-renderer-version": metadata["renderer_version"],
-        "data-run-id": context.summary["run_id"],
-        "data-run-summary-sha256": metadata["run_summary_sha256"],
-    }
 
 
-def prepare_context(arguments: argparse.Namespace) -> RenderContext:
-    run_summary_path = _explicit_path(
-        arguments.run_summary,
-        "run-summary path",
-    )
-    run_summary_snapshot = _snapshot_regular(
-        run_summary_path,
-        "run-summary document",
-    )
-    summary = _load_run_summary(run_summary_path)
-    _assert_snapshot(run_summary_snapshot, "run-summary document")
-    run_id = summary["run_id"]
-    expected_name = f"{run_id}.run_summary.json"
-    if run_summary_path.name != expected_name or run_summary_path.parent.name != run_id:
-        _fail(
-            "Canonical run-summary input must use "
-            f"<run-id>/{expected_name}; observed {run_summary_path}"
-        )
 
-    tables = tuple(
-        _read_approved_table(record) for record in summary["approved_report_tables"]
-    )
-    template_snapshot = _snapshot_regular(
-        QMD_TEMPLATE,
-        "report QMD template",
-    )
-    css_snapshot = _snapshot_regular(
-        CSS_TEMPLATE,
-        "report CSS template",
-    )
-    quarto_path = _explicit_path(arguments.quarto_bin, "Quarto executable")
-    quarto_snapshot = _snapshot_regular(
-        quarto_path,
-        "Quarto executable",
-        executable=True,
-    )
-    _quarto_version(quarto_path)
-    _assert_snapshot(quarto_snapshot, "Quarto executable")
 
-    output_root = _explicit_path(arguments.output_root, "report output root")
-    _reject_symlink_components(output_root, "report output root")
-    output_dir = output_root / run_id
-    output_html = output_dir / f"{run_id}.run_report.html"
-    lock_path = output_dir / f".{run_id}.report-html.lock"
-    for path, label in (
-        (output_dir, "report output directory"),
-        (output_html, "report HTML output"),
-        (lock_path, "report lock"),
-    ):
-        _reject_symlink_components(path, label)
-
-    if os.path.lexists(output_root):
-        metadata = output_root.lstat()
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
-            _fail(
-                "Report output root must be a non-symlink directory when it "
-                f"exists: {output_root}"
-            )
-    if os.path.lexists(output_dir):
-        metadata = output_dir.lstat()
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
-            _fail(
-                "Report output directory must be a non-symlink directory when "
-                f"it exists: {output_dir}"
-            )
-    previous_output_snapshot: FileSnapshot | None = None
-    if os.path.lexists(output_html):
-        metadata = output_html.lstat()
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-            _fail(
-                "Existing report output must be a regular non-symlink file: "
-                f"{output_html}"
-            )
-        previous_output_snapshot = _snapshot_regular(
-            output_html,
-            "existing report output",
-        )
-        validate_rendered_html(
-            output_html,
-            expected_banner=None,
-        )
-        _assert_snapshot(
-            previous_output_snapshot,
-            "existing report output",
-        )
-    if os.path.lexists(lock_path):
-        _fail(f"Report render lock already exists: {lock_path}")
-
-    template_bytes = template_snapshot.path.read_bytes()
-    css_bytes = css_snapshot.path.read_bytes()
-    try:
-        css_text = css_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report CSS template is not UTF-8: {exc}")
-    _validate_css_resources(css_text, "Report CSS template")
-    render_metadata = {
-        "css_template_path": str(css_snapshot.path),
-        "css_template_sha256": css_snapshot.sha256,
-        "qmd_template_path": str(template_snapshot.path),
-        "qmd_template_sha256": template_snapshot.sha256,
-        "quarto_path": str(quarto_snapshot.path),
-        "quarto_sha256": quarto_snapshot.sha256,
-        "quarto_version": QUARTO_VERSION,
-        "renderer": PRODUCER,
-        "renderer_version": PRODUCER_VERSION,
-        "run_summary_path": str(run_summary_snapshot.path),
-        "run_summary_sha256": run_summary_snapshot.sha256,
-    }
-    qmd_bytes = build_qmd_bytes(
-        summary,
-        tables,
-        template_bytes=template_bytes,
-        css_bytes=css_bytes,
-        render_metadata=render_metadata,
-    )
-    for snapshot, label in (
-        (run_summary_snapshot, "run-summary document"),
-        (template_snapshot, "report QMD template"),
-        (css_snapshot, "report CSS template"),
-        (quarto_snapshot, "Quarto executable"),
-    ):
-        _assert_snapshot(snapshot, label)
-    return RenderContext(
-        run_summary_path=run_summary_path,
-        run_summary_snapshot=run_summary_snapshot,
-        summary=summary,
-        tables=tables,
-        template_snapshot=template_snapshot,
-        css_snapshot=css_snapshot,
-        quarto_path=quarto_path,
-        quarto_snapshot=quarto_snapshot,
-        output_root=output_root,
-        output_dir=output_dir,
-        output_html=output_html,
-        lock_path=lock_path,
-        previous_output_snapshot=previous_output_snapshot,
-        render_metadata=render_metadata,
-        qmd_bytes=qmd_bytes,
-        execute=arguments.execute,
-    )
 
 
 def _create_directories(path: Path) -> list[Path]:
@@ -607,70 +430,10 @@ def _recheck_inputs(context: RenderContext) -> None:
         _assert_snapshot(snapshot, label)
 
 
-def _source_date_epoch(summary: Mapping[str, Any]) -> str:
-    value = summary["generated_at"]
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:  # schema validation should make this unreachable
-        _fail(f"Could not derive fixed report time from generated_at: {exc}")
-    return str(int(parsed.timestamp()))
 
 
-def _terminate_process_group(process: subprocess.Popen[str]) -> None:
-    """Stop the complete Quarto process group and reap its direct process."""
-    with contextlib.suppress(ProcessLookupError):
-        os.killpg(process.pid, signal.SIGTERM)
-    try:
-        if process.poll() is None:
-            process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
-        process.wait(timeout=5)
-    finally:
-        if process.stdout is not None:
-            process.stdout.close()
-        if process.stderr is not None:
-            process.stderr.close()
 
 
-def _run_quarto_process(
-    command: Sequence[str],
-    stage: Path,
-    environment: Mapping[str, str],
-    fail: Callable[[str], NoReturn],
-) -> tuple[int, str, str]:
-    """Own the shared timeout and process-group lifecycle for Quarto renders."""
-    print("Quarto render command:")
-    print(f"  {shlex.join(command)}")
-    process: subprocess.Popen[str] | None = None
-    try:
-        process = subprocess.Popen(
-            command,
-            cwd=stage,
-            env=environment,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
-        try:
-            stdout, stderr = process.communicate(timeout=300)
-        except subprocess.TimeoutExpired as exc:
-            _terminate_process_group(process)
-            fail(f"Quarto render exceeded the 300-second timeout: {exc}")
-    except OSError as exc:
-        if process is not None:
-            _terminate_process_group(process)
-        fail(f"Could not execute Quarto render: {exc}")
-    except BaseException:
-        if process is not None:
-            _terminate_process_group(process)
-        raise
-    assert process is not None and process.returncode is not None
-    if stdout.strip():
-        print(stdout.rstrip())
-    return process.returncode, stdout, stderr
 
 
 def _render_with_quarto(
