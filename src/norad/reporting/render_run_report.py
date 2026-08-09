@@ -43,7 +43,7 @@ if sys.path[:1] != [src_root]:
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting import _files
+from norad.reporting import _files, _signals
 
 PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.0.0"
@@ -2265,34 +2265,10 @@ def _release_lock(ownership: LockOwnership) -> None:
 
 
 def _install_publication_signal_handlers() -> dict[int, Any]:
-    previous: dict[int, Any] = {}
-
-    def interrupt(signum: int, _frame: Any) -> None:
-        try:
-            name = signal.Signals(signum).name
-        except ValueError:
-            name = str(signum)
-        raise ReportRenderError(f"Report publication interrupted by signal {name}")
-
-    try:
-        for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
-            previous[signum] = signal.getsignal(signum)
-            signal.signal(signum, interrupt)
-    except BaseException as exc:
-        try:
-            _restore_signal_handlers(previous)
-        except BaseException as restore_exc:
-            raise ReportRenderError(
-                "Could not restore partially installed report publication "
-                f"signal handlers: {restore_exc}"
-            ) from exc
-        raise
-    return previous
+    return _signals.install(ReportRenderError, "Report", "report publication")
 
 
-def _restore_signal_handlers(previous: Mapping[int, Any]) -> None:
-    for signum, handler in previous.items():
-        signal.signal(signum, handler)
+_restore_signal_handlers = _signals.restore
 
 
 def _snapshot_at(snapshot: FileSnapshot, path: Path) -> FileSnapshot:

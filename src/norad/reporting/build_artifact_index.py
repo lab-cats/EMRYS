@@ -48,6 +48,7 @@ from norad.reporting._artifact_index.models import (
 from norad.reporting._artifact_index.validation import (
     validate_published_transaction,
 )
+from norad.reporting import _signals
 
 contracts = _contract_owners.contracts
 step08 = _contract_owners.step08
@@ -226,36 +227,10 @@ def remove_owned(path: Path) -> None:
 
 
 def install_publication_signal_handlers() -> dict[int, Any]:
-    previous: dict[int, Any] = {}
-
-    def interrupt(signum: int, _frame: Any) -> None:
-        try:
-            signal_name = signal.Signals(signum).name
-        except ValueError:
-            signal_name = str(signum)
-        raise ArtifactIndexError(
-            f"Artifact-index publication interrupted by signal {signal_name}"
-        )
-
-    try:
-        for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
-            previous[signum] = signal.getsignal(signum)
-            signal.signal(signum, interrupt)
-    except BaseException as exc:
-        try:
-            restore_signal_handlers(previous)
-        except BaseException as restore_exc:
-            raise ArtifactIndexError(
-                "Could not restore partially installed publication signal "
-                f"handlers: {restore_exc}"
-            ) from exc
-        raise
-    return previous
+    return _signals.install(ArtifactIndexError, "Artifact-index", "publication")
 
 
-def restore_signal_handlers(previous: Mapping[int, Any]) -> None:
-    for signum, handler in previous.items():
-        signal.signal(signum, handler)
+restore_signal_handlers = _signals.restore
 
 
 def publish_context(context: BuildContext) -> None:
