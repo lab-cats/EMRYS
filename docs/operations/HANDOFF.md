@@ -60,6 +60,14 @@ module is 47 lines and no private owner exceeds 373 lines. The Step `09`
 shell/R CMH method and independent oracle were not changed; this adds no
 runtime, scientific-review, or biological evidence.
 
+Step `07` shell keeps its exact bcftools pipelines, input snapshots, locks,
+signals, rollback, and receipt-last publication in a 468-line public producer.
+Owner-local modules contain the byte-identical partition/FAI/selector and
+generated VCF/receipt validation functions and do not exceed 211 lines. The
+scheduler preserves copied-producer execution by exporting the packaged helper
+location before changing directories. This is maintainability and mock-
+bcftools evidence only, not real-bcftools or cluster proof.
+
 Step `08` R now retains a 401-line public coordinator over input-contract,
 annotation, Step `07` receipt, and VCF/candidate modules no larger than 570
 lines. All 23 pre-existing top-level function bodies are parse-identical to the

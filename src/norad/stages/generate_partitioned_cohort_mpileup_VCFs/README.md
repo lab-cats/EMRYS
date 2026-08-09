@@ -20,6 +20,15 @@ No installed command, supported external package API, compatibility wrapper,
 legacy path, symlink, or ambient `PYTHONPATH` contract is exposed. The Python
 validator promotes the checkout's `src` root ahead of ambient import paths.
 
+The 468-line public producer retains argument handling, exact bcftools command
+construction, input snapshots, locks, signals, rollback, and receipt-last
+publication. Sourced owner-local modules separately contain the byte-identical
+partition/FAI/selector admission functions (211 lines) and generated
+VCF/receipt validation functions (42 lines). They add no public command,
+scientific state, or generic shell-library surface. The scheduler exports the
+packaged helper location before changing to the submission directory so its
+copied-producer contract remains intact.
+
 ## Producer and scientific meaning
 
 The producer reads the canonical sample order, selects exactly one declared
