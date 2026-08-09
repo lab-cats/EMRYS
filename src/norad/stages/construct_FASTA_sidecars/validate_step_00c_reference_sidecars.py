@@ -93,14 +93,11 @@ def build(args: argparse.Namespace):
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    return report.run(
-        lambda: build(args),
-        step_id="00c",
-        scope_id=args.scope_id,
-        check_ids=CHECK_IDS,
-        output=args.output,
-        execute=args.execute,
-        published_label="Step 00c",
+    return report.run_from_args(
+        args,
+        build,
+        "00c",
+        CHECK_IDS,
         caught_errors=(report.ValidationError, reference_contigs.ReferenceContigError),
     )
 

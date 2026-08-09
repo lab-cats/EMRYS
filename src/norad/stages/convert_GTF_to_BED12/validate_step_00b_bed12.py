@@ -115,15 +115,7 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    return report.run(
-        lambda: build_report(args),
-        step_id="00b",
-        scope_id=args.scope_id,
-        check_ids=CHECK_IDS,
-        output=args.output,
-        execute=args.execute,
-        published_label="Step 00b",
-    )
+    return report.run_from_args(args, build_report, "00b", CHECK_IDS)
 
 
 if __name__ == "__main__":

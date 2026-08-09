@@ -176,14 +176,11 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    return report.run(
-        lambda: build_report(args),
-        step_id="00a",
-        scope_id=args.scope_id,
-        check_ids=CHECK_IDS,
-        output=args.output,
-        execute=args.execute,
-        published_label="Step 00a",
+    return report.run_from_args(
+        args,
+        build_report,
+        "00a",
+        CHECK_IDS,
         before_report=lambda: (
             print("Step: 00a"),
             print(f"Scope: {args.scope_id}"),

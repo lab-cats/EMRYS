@@ -224,15 +224,7 @@ def build(args: argparse.Namespace):
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    return report.run(
-        lambda: build(args),
-        step_id="08",
-        scope_id=args.cohort_id,
-        check_ids=CHECK_IDS,
-        output=args.output,
-        execute=args.execute,
-        published_label="Step 08",
-    )
+    return report.run_from_args(args, build, "08", CHECK_IDS, scope_id=args.cohort_id)
 
 
 if __name__ == "__main__":

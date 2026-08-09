@@ -179,14 +179,12 @@ def build(args: argparse.Namespace):
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    return report.run(
-        lambda: build(args),
-        step_id="07",
+    return report.run_from_args(
+        args,
+        build,
+        "07",
+        CHECK_IDS,
         scope_id=f"{args.cohort_id}__{args.partition_id}",
-        check_ids=CHECK_IDS,
-        output=args.output,
-        execute=args.execute,
-        published_label="Step 07",
     )
 
 
