@@ -127,6 +127,23 @@ assign_option_value() {
     printf -v "$target" '%s' "$value"
 }
 
+# One ordered roster owns both initialization and missing-argument diagnostics.
+declare_required_arguments() {
+    NORAD_REQUIRED_ARGUMENTS=("$@")
+    local argument
+    for argument in "$@"; do
+        printf -v "$argument" '%s' ""
+    done
+}
+
+require_arguments() {
+    local argument
+    for argument in "${NORAD_REQUIRED_ARGUMENTS[@]}"; do
+        [[ -n "${!argument}" ]] ||
+            die "Missing required argument: --${argument//_/-}."
+    done
+}
+
 # Owner parsers call this from their catch-all branch. It deliberately updates
 # their shared execute flag; help exits before the caller advances argv.
 handle_execute_or_help() {

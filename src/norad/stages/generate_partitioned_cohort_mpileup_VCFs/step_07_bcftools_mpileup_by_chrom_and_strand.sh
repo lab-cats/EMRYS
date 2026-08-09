@@ -338,13 +338,9 @@ validate_receipt() {
         die "Step 07 receipt must contain exactly two data rows; got $row_count: $path"
 }
 
-cohort_id=""
-sample_manifest=""
-partition_manifest=""
-partition_id=""
-orientation_root=""
-reference_fasta=""
-output_root=""
+declare_required_arguments \
+    cohort_id sample_manifest partition_manifest partition_id \
+    orientation_root reference_fasta output_root
 bcftools_bin_arg=""
 max_depth="10000000"
 filter_expression='INFO/AD[1-]>2 & MAX(FORMAT/DP)>20'
@@ -369,13 +365,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$cohort_id" ]] || die "Missing required argument: --cohort-id."
-[[ -n "$sample_manifest" ]] || die "Missing required argument: --sample-manifest."
-[[ -n "$partition_manifest" ]] || die "Missing required argument: --partition-manifest."
-[[ -n "$partition_id" ]] || die "Missing required argument: --partition-id."
-[[ -n "$orientation_root" ]] || die "Missing required argument: --orientation-root."
-[[ -n "$reference_fasta" ]] || die "Missing required argument: --reference-fasta."
-[[ -n "$output_root" ]] || die "Missing required argument: --output-root."
+require_arguments
 
 validate_safe_id "--cohort-id" "$cohort_id"
 validate_safe_id "--partition-id" "$partition_id"

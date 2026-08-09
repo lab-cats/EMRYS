@@ -44,9 +44,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/executable_resolution.sh"
 # shellcheck source=../libraries/argument_parsing.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/argument_parsing.sh"
 
-run_summary=""
-output_root=""
-quarto_bin=""
+declare_required_arguments run_summary output_root quarto_bin
 formats="all"
 formats_seen=false
 execute=false
@@ -98,9 +96,7 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-[[ -n "$run_summary" ]] || die "Missing required argument: --run-summary."
-[[ -n "$output_root" ]] || die "Missing required argument: --output-root."
-[[ -n "$quarto_bin" ]] || die "Missing required argument: --quarto-bin."
+require_arguments
 [[ "$formats" == "html" || "$formats" == "pdf" || "$formats" == "all" ]] ||
     die "--formats must be html, pdf, or all; observed: $formats"
 

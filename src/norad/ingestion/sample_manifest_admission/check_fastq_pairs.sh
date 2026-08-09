@@ -68,8 +68,7 @@ count_lines() {
     fastq_stream "$file" | wc -l | tr -d '[:space:]'
 }
 
-r1_fastq=""
-r2_fastq=""
+declare_required_arguments r1_fastq r2_fastq
 sample_id=""
 num_reads=20
 
@@ -89,8 +88,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$r1_fastq" ]] || die "Missing required argument: --r1-fastq."
-[[ -n "$r2_fastq" ]] || die "Missing required argument: --r2-fastq."
+require_arguments
 
 [[ -f "$r1_fastq" ]] || die "R1 FASTQ does not exist or is not a file: $r1_fastq"
 [[ -f "$r2_fastq" ]] || die "R2 FASTQ does not exist or is not a file: $r2_fastq"

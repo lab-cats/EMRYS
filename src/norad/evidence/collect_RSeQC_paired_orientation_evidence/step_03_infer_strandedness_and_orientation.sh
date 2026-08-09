@@ -65,10 +65,7 @@ default_infer_experiment_bin() {
     fi
 }
 
-sample_id=""
-input_bam=""
-bed12=""
-output_dir=""
+declare_required_arguments sample_id input_bam bed12 output_dir
 infer_experiment_bin="$(default_infer_experiment_bin)"
 execute=false
 
@@ -88,10 +85,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$input_bam" ]] || die "Missing required argument: --input-bam."
-[[ -n "$bed12" ]] || die "Missing required argument: --bed12."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
+require_arguments
 
 # Validate all run inputs before printing a successful dry-run. This catches
 # missing Step 02 outputs and missing RSeQC setup without launching compute.

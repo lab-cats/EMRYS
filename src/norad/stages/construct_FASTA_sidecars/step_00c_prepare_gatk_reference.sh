@@ -143,7 +143,7 @@ validate_sidecar_agreement() {
     fi
 }
 
-reference_fasta=""
+declare_required_arguments reference_fasta
 samtools_bin_arg=""
 gatk_bin_arg=""
 java_bin_arg=""
@@ -162,7 +162,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$reference_fasta" ]] || die "Missing required argument: --reference-fasta."
+require_arguments
 [[ -s "$reference_fasta" ]] || die "Reference FASTA does not exist or is empty: $reference_fasta"
 
 samtools_value="${samtools_bin_arg:-${SAMTOOLS_BIN_OVERRIDE:-}}"

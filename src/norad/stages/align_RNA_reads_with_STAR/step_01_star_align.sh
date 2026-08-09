@@ -47,12 +47,7 @@ source "$script_dir/../../libraries/argument_parsing.sh"
 source "$script_dir/../../libraries/file_checks.sh"
 
 # Defaults are empty so missing required arguments fail loudly below.
-sample_id=""
-r1_fastq=""
-r2_fastq=""
-star_index=""
-output_dir=""
-threads=""
+declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads
 execute=false
 
 # Parse explicit paths and execution mode from the command line.
@@ -72,12 +67,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments and external tool availability before any work starts.
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$r1_fastq" ]] || die "Missing required argument: --r1-fastq."
-[[ -n "$r2_fastq" ]] || die "Missing required argument: --r2-fastq."
-[[ -n "$star_index" ]] || die "Missing required argument: --star-index."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
-[[ -n "$threads" ]] || die "Missing required argument: --threads."
+require_arguments
 
 [[ -f "$r1_fastq" ]] || die "R1 FASTQ does not exist or is not a file: $r1_fastq"
 [[ -f "$r2_fastq" ]] || die "R2 FASTQ does not exist or is not a file: $r2_fastq"

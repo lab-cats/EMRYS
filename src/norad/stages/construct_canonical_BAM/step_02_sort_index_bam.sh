@@ -49,10 +49,7 @@ source "$script_dir/../../libraries/executable_resolution.sh"
 source "$script_dir/../../libraries/file_checks.sh"
 
 # Defaults are empty so missing required arguments fail loudly below.
-sample_id=""
-input_alignment=""
-output_dir=""
-threads=""
+declare_required_arguments sample_id input_alignment output_dir threads
 execute=false
 
 # Keep the CLI explicit so the same script works locally and under SLURM.
@@ -69,10 +66,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$input_alignment" ]] || die "Missing required argument: --input-alignment."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
-[[ -n "$threads" ]] || die "Missing required argument: --threads."
+require_arguments
 
 [[ -f "$input_alignment" ]] || die "Input alignment does not exist or is not a file: $input_alignment"
 

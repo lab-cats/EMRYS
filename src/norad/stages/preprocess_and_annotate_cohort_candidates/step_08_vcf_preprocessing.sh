@@ -427,13 +427,9 @@ validate_output_tables() {
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-cohort_id=""
-sample_manifest=""
-partition_manifest=""
-step07_root=""
-annotation_gtf=""
-output_root=""
-qc_root=""
+declare_required_arguments \
+    cohort_id sample_manifest partition_manifest step07_root \
+    annotation_gtf output_root qc_root
 rscript_bin_arg=""
 r_script="${STEP08_R_SCRIPT:-$script_dir/step_08_vcf_preprocessing.R}"
 execute=false
@@ -456,13 +452,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$cohort_id" ]] || die "Missing required argument: --cohort-id."
-[[ -n "$sample_manifest" ]] || die "Missing required argument: --sample-manifest."
-[[ -n "$partition_manifest" ]] || die "Missing required argument: --partition-manifest."
-[[ -n "$step07_root" ]] || die "Missing required argument: --step07-root."
-[[ -n "$annotation_gtf" ]] || die "Missing required argument: --annotation-gtf."
-[[ -n "$output_root" ]] || die "Missing required argument: --output-root."
-[[ -n "$qc_root" ]] || die "Missing required argument: --qc-root."
+require_arguments
 
 validate_safe_id "--cohort-id" "$cohort_id"
 validate_nonempty_file "Sample manifest" "$sample_manifest"

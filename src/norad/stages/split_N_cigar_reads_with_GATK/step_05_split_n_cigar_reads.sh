@@ -69,10 +69,7 @@ validate_reference_sidecar() {
     fi
 }
 
-sample_id=""
-input_bam=""
-reference_fasta=""
-output_dir=""
+declare_required_arguments sample_id input_bam reference_fasta output_dir
 gatk_bin_arg=""
 samtools_bin_arg=""
 java_bin_arg=""
@@ -94,10 +91,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$input_bam" ]] || die "Missing required argument: --input-bam."
-[[ -n "$reference_fasta" ]] || die "Missing required argument: --reference-fasta."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
+require_arguments
 
 # Step 04 publishes indexes as <bam>.bai, and Step 00c owns the reference
 # sidecars. Keep Step 05 strict so missing upstream work is caught before GATK.

@@ -53,11 +53,7 @@ source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-sample_id=""
-input_bam=""
-output_dir=""
-metrics_dir=""
-picard_jar=""
+declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar
 java_bin_arg=""
 samtools_bin_arg=""
 execute=false
@@ -78,11 +74,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$input_bam" ]] || die "Missing required argument: --input-bam."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
-[[ -n "$metrics_dir" ]] || die "Missing required argument: --metrics-dir."
-[[ -n "$picard_jar" ]] || die "Missing required argument: --picard-jar."
+require_arguments
 
 # Step 02 writes the canonical index as sample.sorted.bam.bai. Keep Step 04
 # strict here so a missing upstream index is caught before Picard starts.

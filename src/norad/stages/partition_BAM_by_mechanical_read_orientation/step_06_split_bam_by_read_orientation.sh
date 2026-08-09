@@ -65,11 +65,7 @@ resolve_samtools() {
     resolve_executable_value "samtools" "$value" "samtools"
 }
 
-sample_id=""
-input_bam=""
-output_dir=""
-qc_dir=""
-threads=""
+declare_required_arguments sample_id input_bam output_dir qc_dir threads
 samtools_bin_arg=""
 execute=false
 
@@ -88,11 +84,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$input_bam" ]] || die "Missing required argument: --input-bam."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
-[[ -n "$qc_dir" ]] || die "Missing required argument: --qc-dir."
-[[ -n "$threads" ]] || die "Missing required argument: --threads."
+require_arguments
 
 validate_positive_integer "--threads" "$threads"
 

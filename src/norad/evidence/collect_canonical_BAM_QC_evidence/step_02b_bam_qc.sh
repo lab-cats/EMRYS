@@ -41,9 +41,7 @@ source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-sample_id=""
-bam=""
-output_dir=""
+declare_required_arguments sample_id bam output_dir
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -58,9 +56,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$sample_id" ]] || die "Missing required argument: --sample-id."
-[[ -n "$bam" ]] || die "Missing required argument: --bam."
-[[ -n "$output_dir" ]] || die "Missing required argument: --output-dir."
+require_arguments
 
 [[ -f "$bam" ]] || die "BAM does not exist or is not a file: $bam"
 
