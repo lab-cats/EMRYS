@@ -20,14 +20,20 @@ from .reconcile_review import reconcile_step09c
 from .reconcile_step09 import reconcile_step09
 
 
+def _group_by_scope(
+    inspections: Sequence[Inspection],
+) -> dict[tuple[str, str, str], list[Inspection]]:
+    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
+    for inspection in inspections:
+        grouped[contracts.scope_key(inspection.row)].append(inspection)
+    return grouped
+
+
 def reconcile_native_transactions(
     inspections: Sequence[Inspection],
 ) -> None:
     source_lookup = {inspection.resolved_path: inspection for inspection in inspections}
-    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
-    for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
+    grouped = _group_by_scope(inspections)
     marker_adapters = {
         "00c": "step00c_reference_dict_v1",
         "06": "step06_orientation_counts_v1",
@@ -82,10 +88,7 @@ def reconcile_native_transactions(
 
 
 def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
-    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
-    for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
+    grouped = _group_by_scope(inspections)
     for scope, members in grouped.items():
         blocking = [
             member
@@ -114,10 +117,7 @@ def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
 def resolve_scientific_states(
     inspections: Sequence[Inspection],
 ) -> dict[tuple[str, str, str], dict[str, Any]]:
-    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
-    for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(inspection)
+    grouped = _group_by_scope(inspections)
     resolved: dict[tuple[str, str, str], dict[str, Any]] = {}
     for scope, members in grouped.items():
         if scope[0] != "09c" or any(

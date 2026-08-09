@@ -1,24 +1,16 @@
 # Workflow kernel
 
 This is the complete repository-development workflow. The root
-[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard; a task
-card supplies scope and acceptance but never mutation authority.
+[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard,
+[`TASK_START.md`](TASK_START.md) selects the smallest sufficient context, and a
+task card supplies scope and acceptance but never mutation authority.
 
 ## Start
 
-1. Inspect the live branch, `HEAD`, worktree, upstream relation, and relevant
-   predecessor. Do not infer current state from memory or agent identity.
-2. Read the selected card, or state an explicit bounded objective when no card
-   is needed. `UNREFINED` proposals are not selectable.
-3. Inspect only the affected owners, contracts, callers, tests, fixtures, and
-   applicable canonical sections. Expand for contradictions, ownership
-   changes, public contracts, science, safety, publication, recovery, shared
-   code, dependencies, or unbounded impact.
-4. State the outcome, touched owners, exclusions, validation, evidence ceiling,
+1. Follow [`TASK_START.md`](TASK_START.md) to assemble the smallest sufficient
+   current context for the bounded task.
+2. State the outcome, touched owners, exclusions, validation, evidence ceiling,
    and stopping condition. Obtain approval before mutation.
-
-Exact unchanged context may be reused when its revision is known and the live
-diff proves it sufficient. Summaries and old test totals are orientation only.
 
 ## Deliver
 

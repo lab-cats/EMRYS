@@ -119,6 +119,22 @@ RUN_CONTRACT_COMPONENT_FIELDS = (
     "primary_analysis_id",
     "primary_analysis_policy_sha256",
 )
+_COMPUTATIONAL_STATUS_ROLE_REQUIREMENTS = {
+    "local testing": {
+        "passed": {"local_test"},
+        "failed": {"local_test"},
+    },
+    "runtime validation": {
+        "passed": {"runtime_log", "runtime_output"},
+        "failed": {"runtime_log"},
+    },
+}
+_CLUSTER_VALIDATION_REQUIREMENTS = (
+    ("cluster dry-run validation", "dry_run_status", {"passed", "failed"}, {"cluster_dry_run"}),
+    ("cluster proof", "proof_status", {"proven"}, {"cluster_scheduler", "cluster_log", "cluster_output"}),
+    ("failed cluster proof", "proof_status", {"failed"}, {"cluster_log"}),
+)
+_CLUSTER_VALIDATION_TRIGGER_STATUSES = {"passed", "failed", "proven"}
 
 
 class ContractValidationError(RuntimeError):
@@ -301,6 +317,9 @@ def validate_attempt_graph(
     label: str,
     require_single_chain: bool = True,
 ) -> dict[str, dict[str, Any]]:
+    def parse_utc_timestamp(value: str) -> datetime:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
     indexed = require_unique_key(attempts, "attempt_id", label)
     if selected_attempt_id is not None and selected_attempt_id not in indexed:
         raise ContractValidationError(
@@ -361,8 +380,8 @@ def validate_attempt_graph(
         started_at = attempt["started_at"]
         finished_at = attempt["finished_at"]
         if started_at is not None and finished_at is not None:
-            started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
-            finished = datetime.fromisoformat(finished_at.replace("Z", "+00:00"))
+            started = parse_utc_timestamp(started_at)
+            finished = parse_utc_timestamp(finished_at)
             if finished < started:
                 raise ContractValidationError(
                     f"{label} attempt {attempt_id!r} finishes before it starts"
@@ -371,10 +390,8 @@ def validate_attempt_graph(
         if parent_id is not None:
             parent_finished_at = indexed[parent_id]["finished_at"]
             if started_at is not None and parent_finished_at is not None:
-                started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
-                parent_finished = datetime.fromisoformat(
-                    parent_finished_at.replace("Z", "+00:00")
-                )
+                started = parse_utc_timestamp(started_at)
+                parent_finished = parse_utc_timestamp(parent_finished_at)
                 if started < parent_finished:
                     raise ContractValidationError(
                         f"{label} attempt {attempt_id!r} starts before "
@@ -418,13 +435,12 @@ def validate_evidence_references(
 ) -> None:
     if not allow_shared_evidence_ids:
         for field in ("evidence_id", "role", "path"):
-            values = [record[field] for record in evidence]
-            if len(values) != len(set(values)):
+            if len({record[field] for record in evidence}) != len(evidence):
                 raise ContractValidationError(
                     f"{label} contains duplicate evidence {field}"
                 )
         return
-    keys = [
+    if len({
         (
             record["evidence_id"],
             record["role"],
@@ -432,8 +448,7 @@ def validate_evidence_references(
             record["sha256"],
         )
         for record in evidence
-    ]
-    if len(keys) != len(set(keys)):
+    }) != len(evidence):
         raise ContractValidationError(
             f"{label} contains a duplicate evidence reference"
         )
@@ -447,55 +462,34 @@ def validate_computational_statuses(
     cluster_validation: dict[str, Any],
     allow_shared_evidence_ids: bool = False,
 ) -> None:
-    validate_evidence_references(
-        local_testing["evidence"],
-        f"{label} local testing",
-        allow_shared_evidence_ids=allow_shared_evidence_ids,
+    status_scopes = (
+        ("local testing", local_testing),
+        ("runtime validation", runtime_validation),
+        ("cluster validation", cluster_validation),
     )
-    validate_evidence_references(
-        runtime_validation["evidence"],
-        f"{label} runtime validation",
-        allow_shared_evidence_ids=allow_shared_evidence_ids,
-    )
-    validate_evidence_references(
-        cluster_validation["evidence"],
-        f"{label} cluster validation",
-        allow_shared_evidence_ids=allow_shared_evidence_ids,
-    )
-    require_status_evidence(
-        label=f"{label} local testing",
-        status=local_testing["status"],
-        evidence=local_testing["evidence"],
-        evidence_statuses={"passed", "failed"},
-    )
-    if local_testing["status"] in {"passed", "failed"}:
-        require_evidence_roles(
-            label=f"{label} local testing",
-            evidence=local_testing["evidence"],
-            required_roles={"local_test"},
+    for scope_name, scope in status_scopes:
+        validate_evidence_references(
+            scope["evidence"],
+            f"{label} {scope_name}",
+            allow_shared_evidence_ids=allow_shared_evidence_ids,
         )
-    require_status_evidence(
-        label=f"{label} runtime validation",
-        status=runtime_validation["status"],
-        evidence=runtime_validation["evidence"],
-        evidence_statuses={"passed", "failed"},
-    )
-    if runtime_validation["status"] == "passed":
-        require_evidence_roles(
-            label=f"{label} passed runtime validation",
-            evidence=runtime_validation["evidence"],
-            required_roles={"runtime_log", "runtime_output"},
+    for scope_name, scope in status_scopes[:2]:
+        scope_status = scope["status"]
+        scope_evidence = scope["evidence"]
+        scope_label = f"{label} {scope_name}"
+        require_status_evidence(
+            label=scope_label,
+            status=scope_status,
+            evidence=scope_evidence,
+            evidence_statuses={"passed", "failed"},
         )
-    elif runtime_validation["status"] == "failed":
-        require_evidence_roles(
-            label=f"{label} failed runtime validation",
-            evidence=runtime_validation["evidence"],
-            required_roles={"runtime_log"},
-        )
-    if (
-        runtime_validation["status"] == "blocked"
-        and not runtime_validation["detail"].strip()
-    ):
+        if required_roles := _COMPUTATIONAL_STATUS_ROLE_REQUIREMENTS[scope_name].get(scope_status):
+            require_evidence_roles(
+                label=scope_label,
+                evidence=scope_evidence,
+                required_roles=required_roles,
+            )
+    if runtime_validation["status"] == "blocked" and not runtime_validation["detail"].strip():
         raise ContractValidationError(
             f"{label} blocked runtime validation requires a detail"
         )
@@ -503,35 +497,23 @@ def validate_computational_statuses(
         cluster_validation["dry_run_status"],
         cluster_validation["proof_status"],
     }
-    if (
-        cluster_statuses & {"passed", "failed", "proven"}
-        and not (cluster_validation["evidence"])
+    if _CLUSTER_VALIDATION_TRIGGER_STATUSES & cluster_statuses and not (
+        cluster_validation["evidence"]
     ):
         raise ContractValidationError(
             f"{label} passed, failed, or proven cluster validation requires "
             "at least one inspected evidence record"
         )
-    if cluster_validation["dry_run_status"] in {"passed", "failed"}:
-        require_evidence_roles(
-            label=f"{label} cluster dry-run validation",
-            evidence=cluster_validation["evidence"],
-            required_roles={"cluster_dry_run"},
-        )
-    if cluster_validation["proof_status"] == "proven":
-        if runtime_validation["status"] != "passed":
-            raise ContractValidationError(
-                f"{label} cluster proof requires passed runtime validation"
+    for scope_name, scope_field, triggering_statuses, required_roles in _CLUSTER_VALIDATION_REQUIREMENTS:
+        if cluster_validation[scope_field] in triggering_statuses:
+            require_evidence_roles(
+                label=f"{label} {scope_name}",
+                evidence=cluster_validation["evidence"],
+                required_roles=required_roles,
             )
-        require_evidence_roles(
-            label=f"{label} cluster proof",
-            evidence=cluster_validation["evidence"],
-            required_roles={"cluster_scheduler", "cluster_log", "cluster_output"},
-        )
-    elif cluster_validation["proof_status"] == "failed":
-        require_evidence_roles(
-            label=f"{label} failed cluster proof",
-            evidence=cluster_validation["evidence"],
-            required_roles={"cluster_log"},
+    if cluster_validation["proof_status"] == "proven" and runtime_validation["status"] != "passed":
+        raise ContractValidationError(
+            f"{label} cluster proof requires passed runtime validation"
         )
 
 

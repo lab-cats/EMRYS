@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -20,16 +21,27 @@ from .core import (
 )
 from .scientific_review import validate_scientific_review_semantics
 
+RUN_SUMMARY_STATUS_FIELDS = (
+    "implementation_status",
+    "local_test_status",
+    "runtime_validation_status",
+    "cluster_dry_run_status",
+    "cluster_proof_status",
+)
+AGGREGATE_ARTIFACT_STATES = (
+    "failed",
+    "incomplete",
+    "missing",
+    "externally_unavailable",
+)
+
 
 def artifact_rollup_state(artifact: dict[str, Any]) -> str:
-    if artifact["completion_status"] == "complete":
-        return "complete"
-    if artifact["completion_status"] == "failed":
-        return "failed"
-    if artifact["availability_status"] == "missing":
-        return "missing"
-    if artifact["availability_status"] == "externally_unavailable":
-        return "externally_unavailable"
+    if artifact["completion_status"] in {"complete", "failed"}:
+        return artifact["completion_status"]
+    availability_status = artifact["availability_status"]
+    if availability_status in {"missing", "externally_unavailable"}:
+        return availability_status
     return "incomplete"
 
 
@@ -46,15 +58,14 @@ def aggregate_artifact_state(artifacts: list[dict[str, Any]]) -> str:
     ]
     considered = required_artifacts or artifacts
     states = [artifact_rollup_state(artifact) for artifact in considered]
-    for state in (
-        "failed",
-        "incomplete",
-        "missing",
-        "externally_unavailable",
-    ):
-        if state in states:
-            return state
-    return "complete"
+    return next(
+        (
+            state
+            for state in AGGREGATE_ARTIFACT_STATES
+            if state in states
+        ),
+        "complete",
+    )
 
 
 def artifact_status_dimensions(artifact: dict[str, Any]) -> dict[str, str]:
@@ -67,6 +78,27 @@ def artifact_status_dimensions(artifact: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def scope_key(scope: dict[str, Any]) -> tuple[str, str, str]:
+    return scope["step_id"], scope["scope_type"], scope["scope_id"]
+
+
+def _validate_scope_statuses(
+    record: dict[str, Any],
+    artifacts: list[dict[str, Any]],
+    prefix: str,
+) -> None:
+    for status_field in RUN_SUMMARY_STATUS_FIELDS:
+        expected_status = aggregate_equal_or_mixed(
+            artifact_status_dimensions(artifact)[status_field]
+            for artifact in artifacts
+        )
+        if record[status_field] != expected_status:
+            raise ContractValidationError(
+                f"{prefix} {status_field} is "
+                f"{record[status_field]!r}, expected {expected_status!r}"
+            )
+
+
 def validate_run_summary_semantics(document: dict[str, Any]) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
@@ -77,8 +109,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
         require_single_chain=False,
     )
     superseded = document["superseded_attempt_ids"]
-    unknown_superseded = sorted(set(superseded) - set(attempts))
-    if unknown_superseded:
+    if unknown_superseded := sorted(set(superseded) - set(attempts)):
         raise ContractValidationError(
             "run summary superseded_attempt_ids contain unknown attempts: "
             + ", ".join(unknown_superseded)
@@ -180,59 +211,35 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
     ordered_expected_artifact_ids: list[str] = []
     for scope_record in document["expected_scopes"]:
         scope = scope_record["scope"]
-        scope_key = (
-            scope["step_id"],
-            scope["scope_type"],
-            scope["scope_id"],
-        )
-        if scope_key in scope_keys:
+        scope_key_ = scope_key(scope)
+        if scope_key_ in scope_keys:
             raise ContractValidationError(
-                f"run summary contains duplicate expected scope {scope_key}"
+                f"run summary contains duplicate expected scope {scope_key_}"
             )
-        scope_keys.add(scope_key)
+        scope_keys.add(scope_key_)
         scope_artifacts: list[dict[str, Any]] = []
         for artifact_id in scope_record["artifact_ids"]:
             if artifact_id not in artifact_index:
                 raise ContractValidationError(
-                    f"expected scope {scope_key} references unknown artifact "
+                    f"expected scope {scope_key_} references unknown artifact "
                     f"{artifact_id!r}"
                 )
             artifact = artifact_index[artifact_id]
             artifact_scope = artifact["scope"]
-            if (
-                artifact_scope["step_id"],
-                artifact_scope["scope_type"],
-                artifact_scope["scope_id"],
-            ) != scope_key:
+            if scope_key(artifact_scope) != scope_key_:
                 raise ContractValidationError(
-                    f"expected scope {scope_key} does not match artifact "
+                    f"expected scope {scope_key_} does not match artifact "
                     f"{artifact_id!r}"
                 )
             scope_artifacts.append(artifact)
         expected_aggregate = aggregate_artifact_state(scope_artifacts)
         if scope_record["aggregate_state"] != expected_aggregate:
             raise ContractValidationError(
-                f"expected scope {scope_key} aggregate_state is "
+                f"expected scope {scope_key_} aggregate_state is "
                 f"{scope_record['aggregate_state']!r}, expected "
                 f"{expected_aggregate!r}"
             )
-        for status_field in (
-            "implementation_status",
-            "local_test_status",
-            "runtime_validation_status",
-            "cluster_dry_run_status",
-            "cluster_proof_status",
-        ):
-            expected_status = aggregate_equal_or_mixed(
-                artifact_status_dimensions(artifact)[status_field]
-                for artifact in scope_artifacts
-            )
-            if scope_record[status_field] != expected_status:
-                raise ContractValidationError(
-                    f"expected scope {scope_key} {status_field} is "
-                    f"{scope_record[status_field]!r}, expected "
-                    f"{expected_status!r}"
-                )
+        _validate_scope_statuses(scope_record, scope_artifacts, f"expected scope {scope_key_}")
         ordered_expected_artifact_ids.extend(scope_record["artifact_ids"])
 
     if len(ordered_expected_artifact_ids) != len(set(ordered_expected_artifact_ids)):
@@ -250,49 +257,26 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
         )
 
     rollup = document["computational_rollup"]
-    observed_counts = {
-        "complete_artifact_count": 0,
-        "missing_artifact_count": 0,
-        "incomplete_artifact_count": 0,
-        "failed_artifact_count": 0,
-        "externally_unavailable_artifact_count": 0,
-    }
-    for artifact in artifacts:
-        state = artifact_rollup_state(artifact)
-        observed_counts[f"{state}_artifact_count"] += 1
     if rollup["expected_artifact_count"] != len(artifacts):
         raise ContractValidationError(
             "computational_rollup expected_artifact_count does not match "
             "the artifact array"
         )
-    for field, observed in observed_counts.items():
-        if rollup[field] != observed:
+    observed_counts = Counter(artifact_rollup_state(artifact) for artifact in artifacts)
+    for state in AGGREGATE_ARTIFACT_STATES + ("complete",):
+        field = f"{state}_artifact_count"
+        if rollup[field] != observed_counts[state]:
             raise ContractValidationError(
-                f"computational_rollup {field} is {rollup[field]}, expected {observed}"
+                f"computational_rollup {field} is {rollup[field]}, expected {observed_counts[state]}"
             )
-    for status_field in (
-        "implementation_status",
-        "local_test_status",
-        "runtime_validation_status",
-        "cluster_dry_run_status",
-        "cluster_proof_status",
-    ):
-        expected_status = aggregate_equal_or_mixed(
-            artifact_status_dimensions(artifact)[status_field] for artifact in artifacts
-        )
-        if rollup[status_field] != expected_status:
-            raise ContractValidationError(
-                f"computational_rollup {status_field} is "
-                f"{rollup[status_field]!r}, expected {expected_status!r}"
-            )
+    _validate_scope_statuses(rollup, artifacts, "computational_rollup")
 
     review = document["scientific_review"]
     if review["overall_status"] != document["science_status"]:
         raise ContractValidationError(
             "run summary science_status does not match scientific_review"
         )
-    if review["record"] is not None:
-        record = review["record"]
+    if (record := review["record"]) is not None:
         validate_scientific_review_semantics(record)
         if record["run_id"] != document["run_id"]:
             raise ContractValidationError(
@@ -317,9 +301,11 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
         matching_review_artifacts = [
             artifact
             for artifact in artifacts
-            if artifact["scope"]["step_id"] == "09c"
-            if artifact["scope"]["scope_type"] == "scientific_review"
-            and artifact["scope"]["scope_id"] == record["review_id"]
+            if scope_key(artifact["scope"]) == (
+                "09c",
+                "scientific_review",
+                record["review_id"],
+            )
             and artifact["completion_status"] == "complete"
             and artifact["source"] is not None
             and resolve_contract_path(artifact["source"]["path"])
@@ -379,17 +365,12 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 f"report table {table['table_id']!r} references a non-complete artifact"
             )
         report_sources = {
-            (
-                artifact["source"]["path"],
-                artifact["source"]["sha256"],
-            ): artifact["source"]
+            (member["path"], member["sha256"]): member
+            for member in artifact["members"]
         }
-        report_sources.update(
-            {
-                (member["path"], member["sha256"]): member
-                for member in artifact["members"]
-            }
-        )
+        source = artifact["source"]
+        if source is not None:
+            report_sources[(source["path"], source["sha256"])] = source
         source_record = report_sources.get((table["path"], table["sha256"]))
         if source_record is None:
             raise ContractValidationError(

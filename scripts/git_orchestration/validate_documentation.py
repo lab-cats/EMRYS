@@ -60,6 +60,7 @@ CANONICAL_DOCUMENTS = {
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
+    "docs/operations/TASK_START.md": "# Task-start context",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
@@ -74,7 +75,6 @@ CANONICAL_DOCUMENTS = {
 RETIRED_DOCUMENTS = (
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
-    "docs/operations/TASK_START.md",
     "src/norad/contracts/MIGRATION_MECHANICS.md",
 )
 

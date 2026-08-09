@@ -16,17 +16,24 @@ def _artifact_statuses(artifact: Mapping[str, Any]) -> dict[str, str]:
     return contracts.artifact_status_dimensions(dict(artifact))
 
 
+STATUS_FIELDS = contracts.RUN_SUMMARY_STATUS_FIELDS
+
+
+def _scope_statuses(scope_artifacts: list[dict[str, Any]]) -> dict[str, str]:
+    return {
+        field: contracts.aggregate_equal_or_mixed(
+            _artifact_statuses(artifact)[field] for artifact in scope_artifacts
+        )
+        for field in STATUS_FIELDS
+    }
+
+
 def _build_expected_scopes(
     artifacts: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     grouped: OrderedDict[tuple[str, str, str], list[dict[str, Any]]] = OrderedDict()
     for artifact in artifacts:
-        scope = artifact["scope"]
-        key = (
-            scope["step_id"],
-            scope["scope_type"],
-            scope["scope_id"],
-        )
+        key = contracts.scope_key(artifact["scope"])
         grouped.setdefault(key, []).append(artifact)
 
     expected_scopes: list[dict[str, Any]] = []
@@ -38,18 +45,7 @@ def _build_expected_scopes(
         errors = _stable_unique(
             issue for artifact in scope_artifacts for issue in artifact["errors"]
         )
-        status_values = {
-            field: contracts.aggregate_equal_or_mixed(
-                _artifact_statuses(artifact)[field] for artifact in scope_artifacts
-            )
-            for field in (
-                "implementation_status",
-                "local_test_status",
-                "runtime_validation_status",
-                "cluster_dry_run_status",
-                "cluster_proof_status",
-            )
-        }
+        status_values = _scope_statuses(scope_artifacts)
         expected_scopes.append(
             {
                 "scope": {
@@ -110,16 +106,8 @@ def _build_rollup(
         "failed_artifact_count": states["failed"],
         "externally_unavailable_artifact_count": states["externally_unavailable"],
     }
-    for field in (
-        "implementation_status",
-        "local_test_status",
-        "runtime_validation_status",
-        "cluster_dry_run_status",
-        "cluster_proof_status",
-    ):
-        result[field] = contracts.aggregate_equal_or_mixed(
-            _artifact_statuses(artifact)[field] for artifact in artifacts
-        )
+    for field, value in _scope_statuses(artifacts).items():
+        result[field] = value
     return result
 
 

@@ -68,11 +68,11 @@ inputs, and output.
 
 The validator imports the neutral
 [`references/contigs.py`](../../libraries/references/contigs.py) parser owner and
-the neutral validation-report library. An exact reference-loader failure is a
-checkout-integrity diagnostic; do not work around it by changing `PYTHONPATH`.
-Reference provenance and the final
+the neutral validation-report library through the repository-local `norad`
+package. Its bootstrap promotes the checkout's `src` root ahead of ambient
+import paths. Reference provenance and the final
 [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
-validator independently consume the same ready neutral identity; agreement,
+validator independently consume the same neutral module identity; agreement,
 aggregation, evidence, and publication remain consumer-local.
 
 ## Scheduler entry point

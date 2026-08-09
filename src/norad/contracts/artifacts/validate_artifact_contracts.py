@@ -11,13 +11,15 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+src_root = str(Path(__file__).resolve().parents[3])
+if sys.path[:1] != [src_root]:
+    if src_root in sys.path:
+        sys.path.remove(src_root)
     sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts._artifact_contracts import artifact as _artifact_owner
@@ -30,27 +32,27 @@ from norad.contracts.artifacts._artifact_contracts import (
 )
 
 REPO_ROOT = _core_owner.REPO_ROOT
+SCHEMA_FILES = _core_owner.SCHEMA_FILES
 SCHEMA_ROOT = _core_owner.SCHEMA_ROOT
 COMMON_SCHEMA_PATH = _core_owner.COMMON_SCHEMA_PATH
-SCHEMA_FILES = _core_owner.SCHEMA_FILES
 INVENTORY_HEADER = _core_owner.INVENTORY_HEADER
 SAFE_ID_RE = _core_owner.SAFE_ID_RE
 BOOLEAN_VALUES = _core_owner.BOOLEAN_VALUES
 SCOPE_TYPES = _core_owner.SCOPE_TYPES
 SCIENCE_INPUT_ROLES = _core_owner.SCIENCE_INPUT_ROLES
 SCIENCE_UPSTREAM_ROLE_CONTRACTS = _core_owner.SCIENCE_UPSTREAM_ROLE_CONTRACTS
-RUN_CONTRACT_COMPONENT_FIELDS = _core_owner.RUN_CONTRACT_COMPONENT_FIELDS
+SAFE_ID_COLUMNS = INVENTORY_HEADER[:-2]
+RECONCILE_FIELDS = ("artifact_id", "scope", "adapter", "expectation")
 ContractValidationError = _core_owner.ContractValidationError
 reject_duplicate_json_keys = _core_owner.reject_duplicate_json_keys
 reject_nonstandard_json_constant = _core_owner.reject_nonstandard_json_constant
 load_json_object = _core_owner.load_json_object
-load_schema = _core_owner.load_schema
 load_schema_registry = _core_owner.load_schema_registry
 validate_all_schemas = _core_owner.validate_all_schemas
-format_json_path = _core_owner.format_json_path
 sha256_file = _core_owner.sha256_file
-canonical_run_contract_sha256 = _core_owner.canonical_run_contract_sha256
+format_json_path = _core_owner.format_json_path
 validate_run_contract = _core_owner.validate_run_contract
+canonical_run_contract_sha256 = _core_owner.canonical_run_contract_sha256
 validate_resolved_path = _core_owner.validate_resolved_path
 validate_document_paths = _core_owner.validate_document_paths
 require_unique_key = _core_owner.require_unique_key
@@ -63,10 +65,12 @@ resolve_contract_path = _core_owner.resolve_contract_path
 validate_artifact_semantics = _artifact_owner.validate_artifact_semantics
 validate_scientific_review_semantics = _scientific_review_owner.validate_scientific_review_semantics
 artifact_rollup_state = _run_summary_owner.artifact_rollup_state
-aggregate_equal_or_mixed = _run_summary_owner.aggregate_equal_or_mixed
 aggregate_artifact_state = _run_summary_owner.aggregate_artifact_state
 artifact_status_dimensions = _run_summary_owner.artifact_status_dimensions
 validate_run_summary_semantics = _run_summary_owner.validate_run_summary_semantics
+aggregate_equal_or_mixed = _run_summary_owner.aggregate_equal_or_mixed
+RUN_SUMMARY_STATUS_FIELDS = _run_summary_owner.RUN_SUMMARY_STATUS_FIELDS
+scope_key = _run_summary_owner.scope_key
 
 
 if not (
@@ -148,14 +152,14 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     validate_document_paths(document)
     outputs = document["outputs"]
     require_unique_key(outputs, "output_id", "report outputs")
-    kinds = [output["kind"] for output in outputs]
-    if len(kinds) != len(set(kinds)):
+    output_kinds = {output["kind"] for output in outputs}
+    output_paths = {output["path"] for output in outputs}
+    if len(output_kinds) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate kinds")
-    paths = [output["path"] for output in outputs]
-    if len(paths) != len(set(paths)):
+    if len(output_paths) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate paths")
     expected_kinds = set(document["requested_formats"]) | {"run_summary_tsv"}
-    if set(kinds) != expected_kinds:
+    if output_kinds != expected_kinds:
         raise ContractValidationError(
             "report output kinds must exactly match requested formats plus "
             "run_summary_tsv"
@@ -183,13 +187,13 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
         raise ContractValidationError(
             "report publication directory name must equal run_id"
         )
-    if Path(document["input_run_summary"]["path"]).name != (
-        f"{document['run_id']}.run_summary.json"
-    ):
+    if (
+        input_run_summary_path := Path(document["input_run_summary"]["path"])
+    ).name != (f"{document['run_id']}.run_summary.json"):
         raise ContractValidationError(
             "report receipt input run-summary basename does not match run_id"
         )
-    if Path(document["input_run_summary"]["path"]).parent.name != document["run_id"]:
+    if input_run_summary_path.parent.name != document["run_id"]:
         raise ContractValidationError(
             "report receipt input run-summary directory name must equal run_id"
         )
@@ -226,6 +230,20 @@ def validate_explicit_source_path(value: str, row_number: int) -> None:
         value,
         f"Inventory row {row_number}: source_path",
     )
+
+
+def _reject_duplicate_inventory_value(
+    row_number: int,
+    field_name: str,
+    value: str,
+    seen: dict[str, int],
+) -> None:
+    if value in seen:
+        raise ContractValidationError(
+            f"Inventory row {row_number}: duplicate {field_name} "
+            f"{value!r}; first seen on row {seen[value]}"
+        )
+    seen[value] = row_number
 
 
 def validate_inventory(path: Path) -> list[dict[str, str]]:
@@ -265,7 +283,7 @@ def validate_inventory(path: Path) -> list[dict[str, str]]:
     closed_scopes: set[tuple[str, str, str]] = set()
     active_scope: tuple[str, str, str] | None = None
     for row_number, row in enumerate(rows, start=2):
-        if None in row:
+        if any(column is None for column in row):
             raise ContractValidationError(
                 f"Inventory row {row_number}: too many tab-separated fields"
             )
@@ -273,57 +291,40 @@ def validate_inventory(path: Path) -> list[dict[str, str]]:
             raise ContractValidationError(
                 f"Inventory row {row_number}: too few tab-separated fields"
             )
-        for column in INVENTORY_HEADER:
-            value = row[column]
-            if value == "":
-                raise ContractValidationError(
-                    f"Inventory row {row_number}: {column} must be non-empty"
-                )
-
-        for column in (
-            "artifact_id",
-            "step_id",
-            "scope_type",
-            "scope_id",
-            "adapter",
+        if empty_column := next(
+            (column for column, value in row.items() if value == ""),
+            None,
         ):
+            raise ContractValidationError(
+                f"Inventory row {row_number}: {empty_column} must be non-empty"
+            )
+
+        for column in SAFE_ID_COLUMNS:
             validate_safe_id(column, row[column], row_number)
 
         artifact_id = row["artifact_id"]
-        if artifact_id in seen_artifact_ids:
-            raise ContractValidationError(
-                f"Inventory row {row_number}: duplicate artifact_id "
-                f"{artifact_id!r}; first seen on row "
-                f"{seen_artifact_ids[artifact_id]}"
-            )
-        seen_artifact_ids[artifact_id] = row_number
+        _reject_duplicate_inventory_value(row_number, "artifact_id", artifact_id, seen_artifact_ids)
 
         if row["scope_type"] not in SCOPE_TYPES:
             raise ContractValidationError(
                 f"Inventory row {row_number}: scope_type must be one of "
                 f"{', '.join(sorted(SCOPE_TYPES))}; got {row['scope_type']!r}"
             )
-        scope_key = (row["step_id"], row["scope_type"], row["scope_id"])
+        scope_key_ = scope_key(row)
         if active_scope is None:
-            active_scope = scope_key
-        elif scope_key != active_scope:
+            active_scope = scope_key_
+        elif scope_key_ != active_scope:
             closed_scopes.add(active_scope)
-            if scope_key in closed_scopes:
+            if scope_key_ in closed_scopes:
                 raise ContractValidationError(
                     f"Inventory row {row_number}: artifacts for logical scope "
-                    f"{scope_key} must be contiguous"
+                    f"{scope_key_} must be contiguous"
                 )
-            active_scope = scope_key
+            active_scope = scope_key_
 
-        validate_explicit_source_path(row["source_path"], row_number)
         source_path = row["source_path"]
-        if source_path in seen_source_paths:
-            raise ContractValidationError(
-                f"Inventory row {row_number}: duplicate source_path "
-                f"{source_path!r}; first seen on row "
-                f"{seen_source_paths[source_path]}"
-            )
-        seen_source_paths[source_path] = row_number
+        validate_explicit_source_path(source_path, row_number)
+        _reject_duplicate_inventory_value(row_number, "source_path", source_path, seen_source_paths)
         canonical_source_path = resolve_contract_path(source_path)
         if canonical_source_path in seen_canonical_source_paths:
             raise ContractValidationError(
@@ -367,7 +368,7 @@ def reconcile_artifact_inventory_row(
     row: dict[str, str],
 ) -> None:
     expected = expected_artifact_from_inventory_row(row)
-    for field in ("artifact_id", "scope", "adapter", "expectation"):
+    for field in RECONCILE_FIELDS:
         if artifact[field] != expected[field]:
             raise ContractValidationError(
                 f"artifact {artifact['artifact_id']!r} {field} does not "
@@ -383,12 +384,11 @@ def reconcile_document_inventory(
 ) -> None:
     row_index = {row["artifact_id"]: row for row in rows}
     if name == "artifact-record":
-        artifact_id = document["artifact_id"]
-        if artifact_id not in row_index:
+        if document["artifact_id"] not in row_index:
             raise ContractValidationError(
-                f"artifact {artifact_id!r} is not declared by the inventory"
+                f"artifact {document['artifact_id']!r} is not declared by the inventory"
             )
-        reconcile_artifact_inventory_row(document, row_index[artifact_id])
+        reconcile_artifact_inventory_row(document, row_index[document["artifact_id"]])
         return
     if name != "run-summary":
         raise ContractValidationError(
@@ -411,35 +411,23 @@ def reconcile_document_inventory(
         )
 
     artifacts = document["artifacts"]
-    observed_artifact_ids = [artifact["artifact_id"] for artifact in artifacts]
-    expected_artifact_ids = [row["artifact_id"] for row in rows]
-    if observed_artifact_ids != expected_artifact_ids:
+    if len(artifacts) != len(rows) or any(
+        artifact["artifact_id"] != row["artifact_id"]
+        for artifact, row in zip(artifacts, rows)
+    ):
         raise ContractValidationError(
             "run summary artifacts do not exactly match inventory row order"
         )
-    for artifact, row in zip(artifacts, rows, strict=True):
+    for artifact, row in zip(artifacts, rows):
         reconcile_artifact_inventory_row(artifact, row)
 
-    scope_groups: dict[tuple[str, str, str], list[str]] = defaultdict(list)
-    scope_order: list[tuple[str, str, str]] = []
+    scope_groups: dict[tuple[str, str, str], list[str]] = {}
     for row in rows:
-        scope_key = (row["step_id"], row["scope_type"], row["scope_id"])
-        if scope_key not in scope_groups:
-            scope_order.append(scope_key)
-        scope_groups[scope_key].append(row["artifact_id"])
-    expected_scope_contract = [
-        (scope_key, scope_groups[scope_key]) for scope_key in scope_order
-    ]
+        scope_key_ = scope_key(row)
+        scope_groups.setdefault(scope_key_, []).append(row["artifact_id"])
+    expected_scope_contract = list(scope_groups.items())
     observed_scope_contract = [
-        (
-            (
-                scope["scope"]["step_id"],
-                scope["scope"]["scope_type"],
-                scope["scope"]["scope_id"],
-            ),
-            scope["artifact_ids"],
-        )
-        for scope in document["expected_scopes"]
+        (scope_key(scope["scope"]), scope["artifact_ids"]) for scope in document["expected_scopes"]
     ]
     if observed_scope_contract != expected_scope_contract:
         raise ContractValidationError(
@@ -453,12 +441,8 @@ def main() -> int:
     try:
         if args.check_schemas:
             validate_all_schemas()
-        document: dict[str, Any] | None = None
-        inventory_rows: list[dict[str, str]] | None = None
-        if args.document is not None:
-            document = validate_document(args.schema, args.document)
-        if args.inventory is not None:
-            inventory_rows = validate_inventory(args.inventory)
+        document = validate_document(args.schema, args.document) if args.document else None
+        inventory_rows = validate_inventory(args.inventory) if args.inventory else None
         if document is not None and inventory_rows is not None:
             reconcile_document_inventory(
                 args.schema,

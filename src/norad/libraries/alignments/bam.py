@@ -78,15 +78,3 @@ def bam_magic_ok(prefix: bytes) -> bool:
 
 def bai_magic_ok(prefix: bytes) -> bool:
     return prefix in BAI_MAGIC_PREFIXES
-
-
-for _public in (
-    validate_bam_bai_pair,
-    validate_bam_signature,
-    validate_samtools_readiness,
-    read_bam_prefix,
-    read_bai_prefix,
-    bam_magic_ok,
-    bai_magic_ok,
-):
-    _public.__module__ = "norad.libraries.alignments._bam"

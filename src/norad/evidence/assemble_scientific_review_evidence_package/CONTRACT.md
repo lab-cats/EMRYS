@@ -125,7 +125,7 @@ all behavior, and preserves the implementation's exit status.
 - Neutral
   [`test_review_package.py`](../../../../tests/contracts/scientific_evidence/test_review_package.py)
   independently protects the public roster, headers, vocabularies, bindings,
-  state reduction, standard-library-only boundary, and exact loader identity.
+  state reduction, standard-library-only boundary, and shared package identity.
 - Artifact, run-summary, report, and schema-parity tests protect downstream
   package-integrity, projection, and presentation boundaries.
 

@@ -127,8 +127,9 @@ new report.
 
 The validator imports general report rendering, snapshot, validation,
 locking, and publication functions from the neutral
-[`validation/report.py`](../../libraries/validation/report.py) owner. It adds no
-package identity or `sys.path` mutation.
+[`validation/report.py`](../../libraries/validation/report.py) owner through the
+repository-local `norad` package. Its bootstrap promotes the checkout's `src`
+root ahead of ambient import paths.
 
 ## Consumers
 

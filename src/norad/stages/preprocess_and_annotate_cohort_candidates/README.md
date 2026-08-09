@@ -28,8 +28,9 @@ public R program. The entry point resolves that sibling from Rscript's own
 it does not search the caller's working directory for the sibling, change that
 directory, load packages, or add another public command.
 
-No installed command, package import, compatibility wrapper, legacy path,
-symlink, ambient `PYTHONPATH`, or global `sys.path` mutation is supported.
+No installed command, supported external package API, compatibility wrapper,
+legacy path, symlink, or ambient `PYTHONPATH` contract is exposed. The Python
+validator promotes the checkout's `src` root ahead of ambient import paths.
 
 ## Producer, inputs, and scientific meaning
 
@@ -133,11 +134,12 @@ IDs and reversed site rows can pass.
 
 It imports neutral
 [`validation/report.py`](../../libraries/validation/report.py) and neutral
-[`step08.py`](../../contracts/scientific_evidence/step08.py) under separate
-private identities. The latter owns the public Step `08` manifest/table
+[`step08.py`](../../contracts/scientific_evidence/step08.py) through the
+repository-local package. The latter owns the public Step `08` manifest/table
 headers, `ContractError`/`Table` identity, and reconciliation used by this
-validator, Step `09`, Step `09c`, and artifact indexing. The shared bridge
-adds no public package API, installation step, or `sys.path` mutation.
+validator, Step `09`, Step `09c`, and artifact indexing. These consumers share
+the repository-local `norad` package identity; no installed package API is
+exposed.
 
 ## Guarded R and scheduler
 

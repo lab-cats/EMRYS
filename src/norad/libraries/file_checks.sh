@@ -74,7 +74,8 @@ read_manifest_sample_ids() {
     fi
 
     local parsed
-    if ! parsed="$(awk -F '\t' '
+    local status
+    if parsed="$(awk -F '\t' '
         NR == 1 {
             for (i = 1; i <= NF; i++) {
                 gsub(/\r$/, "", $i)
@@ -111,7 +112,10 @@ read_manifest_sample_ids() {
             }
         }
     ' "$manifest")"; then
-        return $?
+        :
+    else
+        status=$?
+        return "$status"
     fi
 
     if [[ -n "$on_sample" ]]; then
@@ -123,8 +127,11 @@ read_manifest_sample_ids() {
             if [[ -z "$sample_id" ]]; then
                 continue
             fi
-            if ! "$on_sample" "$sample_id"; then
-                return $?
+            if "$on_sample" "$sample_id"; then
+                :
+            else
+                status=$?
+                return "$status"
             fi
         done <<< "$parsed"
         return 0
@@ -143,7 +150,8 @@ read_manifest_partitions() {
     fi
 
     local parsed
-    if ! parsed="$(awk -F '\t' -v strict="$strict_mode" '
+    local status
+    if parsed="$(awk -F '\t' -v strict="$strict_mode" '
         NR == 1 {
             if (strict) {
                 if (NF != 3 || $1 != "partition_id" ||
@@ -226,7 +234,10 @@ read_manifest_partitions() {
             }
         }
     ' "$manifest")"; then
-        return $?
+        :
+    else
+        status=$?
+        return "$status"
     fi
 
     if [[ -n "$on_partition" ]]; then
@@ -235,8 +246,11 @@ read_manifest_partitions() {
         fi
         local partition_id selector_type selector_value
         while IFS=$'\t' read -r partition_id selector_type selector_value; do
-            if ! "$on_partition" "$partition_id" "$selector_type" "$selector_value"; then
-                return $?
+            if "$on_partition" "$partition_id" "$selector_type" "$selector_value"; then
+                :
+            else
+                status=$?
+                return "$status"
             fi
         done <<< "$parsed"
         return 0

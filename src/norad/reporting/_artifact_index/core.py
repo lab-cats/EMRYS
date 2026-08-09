@@ -209,8 +209,7 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
                 f"Inventory row {row_number}: adapter {adapter_id!r} does not "
                 f"accept source filename {source_name!r}"
             )
-        key = (row["step_id"], row["scope_type"], row["scope_id"])
-        grouped[key].append(row)
+        grouped[contracts.scope_key(row)].append(row)
 
     for scope, scope_rows in grouped.items():
         step_id = scope[0]

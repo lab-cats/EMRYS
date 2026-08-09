@@ -54,6 +54,7 @@ CANONICAL_H1S = {
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
+    "docs/operations/TASK_START.md": "# Task-start context",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
@@ -234,7 +235,7 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     assert result.returncode == 0, result.stderr
     assert result.stdout == (
         "PASS documentation structure "
-        "(61 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
+        "(62 Markdown documents, 1 task cards, 1 Mermaid sources)\n"
     )
     assert result.stderr == ""
     after = tuple(
@@ -302,14 +303,14 @@ def test_rejects_missing_semantic_and_cross_cutting_owner_docs(tmp_path: Path) -
 
 def test_rejects_returned_retired_document(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    retired = repository / "docs" / "operations" / "TASK_START.md"
+    retired = repository / "docs" / "operations" / "TASK_DELIVERY.md"
     retired.write_text("# Retired\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 1
     assert (
-        "retired documentation owner returned: docs/operations/TASK_START.md"
+        "retired documentation owner returned: docs/operations/TASK_DELIVERY.md"
         in result.stderr
     )
 
@@ -578,7 +579,9 @@ def test_validates_unrefined_shape_without_counting_it_as_card(tmp_path: Path) -
 
     accepted = validate(repository, cwd=tmp_path)
     assert accepted.returncode == 0, accepted.stderr
-    assert "(62 Markdown documents, 1 task cards, 1 Mermaid sources)" in accepted.stdout
+    assert (
+        "(63 Markdown documents, 1 task cards, 1 Mermaid sources)" in accepted.stdout
+    )
 
     proposal.write_text(
         proposal.read_text(encoding="utf-8")

@@ -114,10 +114,11 @@ The validator imports FASTA, `FAI`, and `DICT` parsers from the neutral
 [`references/contigs.py`](../../libraries/references/contigs.py) owner and report
 rendering, locking, and publication from the neutral
 [`validation/report.py`](../../libraries/validation/report.py) owner. Both
-lookups resolve exact repository files independently of caller CWD without
-package identity or `sys.path` mutation. Reference provenance and the final
-Step `05` validator share the same ready parser identity while this stage
-retains its per-role aggregation and agreement rows.
+lookups resolve through the repository-local `norad` package independently of
+caller CWD; the validator promotes the checkout's `src` root ahead of ambient
+import paths. Reference provenance and the final Step `05` validator share the
+same parser module identity while this stage retains its per-role aggregation
+and agreement rows.
 
 The producer sources only `resolve_executable_value` from neutral
 [`executable_resolution.sh`](../../libraries/executable_resolution.sh).
@@ -150,8 +151,7 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_validate_step_00c_reference_sidecars.py`](../../../../tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py)
   protects the five checks, ordered mismatch evidence, fail-closed structure,
   deterministic publication, lock handling, arbitrary-CWD repeatability, and
-  exact reference-owner loader failures without foreign-cache or `sys.path`
-  mutation.
+  repository-package precedence over ambient import paths.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects the wrapper's delegation, execution control, tool resolution, and
   characterized Bash 3.2 dry-run behavior with local mocks.

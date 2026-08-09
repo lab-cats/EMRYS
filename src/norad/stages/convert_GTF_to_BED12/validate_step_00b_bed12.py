@@ -9,7 +9,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+src_root = str(Path(__file__).resolve().parents[3])
+if sys.path[:1] != [src_root]:
+    if src_root in sys.path:
+        sys.path.remove(src_root)
     sys.path.insert(0, src_root)
 
 import gtf_to_bed12

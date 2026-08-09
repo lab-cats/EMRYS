@@ -143,9 +143,9 @@ group sums, assigned/unassigned arithmetic, and the rounded fraction. Exit `0`
 means five rows were rendered or published; one or more rows may still have
 `status=fail`. It does not invoke samtools, quickcheck BAMs, recount records,
 inspect flags, verify BAM/BAI correspondence, or validate sorting/read groups.
-Unsafe input, a stable-input mismatch, private-owner integrity failure, or
-unsafe publication exits `2` without a new report and preserves a valid
-predecessor when one exists.
+Unsafe input, a stable-input mismatch, or unsafe publication exits `2` without
+a new report and preserves a valid predecessor when one exists. Package-import
+failures are startup failures before validation or publication begins.
 
 The validator imports neutral
 [`validation/report.py`](../../libraries/validation/report.py) through

@@ -98,8 +98,10 @@ mkdir -p results/qc/validation/03
 
 From another CWD, use absolute interpreter, validator, input, and output paths
 for dry-run, execute, and repeat. The validator imports neutral
-[`validation/report.py`](../../libraries/validation/report.py); no package
-identity, `PYTHONPATH` change, wrapper, or compatibility import is supported.
+[`validation/report.py`](../../libraries/validation/report.py) through the
+repository-local `norad` package, with the checkout's `src` root promoted ahead
+of ambient import paths. No public helper CLI or compatibility import is
+supported.
 
 Validator exit `0` means the evidence was validly rendered or published; one
 or more rows may still have `status=fail`. Unsafe or unreadable input, invalid
@@ -107,7 +109,7 @@ arguments, a stable-input mismatch after rendering, or unsafe publication
 exits `2` without a new report and preserves a valid predecessor when one
 exists. Producer exit `0` therefore does not imply validator pass.
 
-## Scheduler and demos
+## Scheduler
 
 Submit the exact final mode-`0644` job from the checkout. Bind its six public
 overrides—`SAMPLE_ID`, `BAM`, `BED12`, `OUTPUT_DIR`,
@@ -129,10 +131,6 @@ empty dry-run argument array before producer delegation. In execute mode, a
 zero-exit child that emits nothing can rediscover a stale nonempty named report
 and let the wrapper succeed. Preserve those states; do not interpret wrapper
 success as current evidence.
-
-`make demo-step03-dry-run` and `make demo-step03` call `sbatch` with local
-defaults and create `logs/`. Test coverage uses local mocks. Neither target is
-proof of real scheduler, module, cluster, or RSeQC execution.
 
 ## Diagnostics, evidence meaning, and recovery
 

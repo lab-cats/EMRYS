@@ -165,13 +165,7 @@ def build_index_rows(
                 "completion_status": record["completion_status"],
                 "attempt_provenance_status": record["attempt_provenance_status"],
                 "selected_attempt_id": safe_tsv(record["selected_attempt_id"]),
-                "implementation_status": record["implementation"]["status"],
-                "local_test_status": record["local_testing"]["status"],
-                "runtime_validation_status": record["runtime_validation"]["status"],
-                "cluster_dry_run_status": record["cluster_validation"][
-                    "dry_run_status"
-                ],
-                "cluster_proof_status": record["cluster_validation"]["proof_status"],
+                **contracts.artifact_status_dimensions(record),
                 "science_status": safe_tsv(science.get("overall_status")),
                 "orientation_status": safe_tsv(science.get("orientation_status")),
                 "orientation_policy": safe_tsv(science.get("orientation_policy")),

@@ -19,9 +19,10 @@ The owner-private [`_scientific_review/`](_scientific_review/README.md)
 package contains cohesive implementation seams behind the public Python
 facade. It is not an additional entry point or supported package API.
 
-There is no SLURM wrapper, installed command, supported package import,
-compatibility copy, legacy executable path, symlink, ambient `PYTHONPATH`, or
-global `sys.path` mutation.
+There is no SLURM wrapper, installed command, supported external package API,
+compatibility copy, legacy executable path, symlink, or ambient `PYTHONPATH`
+contract. The Python facade promotes the checkout's `src` root ahead of
+ambient import paths.
 
 ## Inputs, evidence choices, and dry run
 

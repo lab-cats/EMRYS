@@ -45,6 +45,7 @@ documentation-check:
 	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
 
 validation-shell-contracts:
+	bash tests/libraries/test_file_checks.sh
 	bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh
 	bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh
 	bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
@@ -63,7 +64,7 @@ validation-shell-contracts:
 shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_references/contigs.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
@@ -139,6 +140,12 @@ python-coverage-check: python-coverage-measure
 		--new-shared-module src/norad/libraries/validation/report.py \
 		--new-shared-module src/norad/libraries/validation/runtime.py \
 		--new-shared-module src/norad/libraries/alignments/bam.py \
+		--new-shared-module src/norad/libraries/alignments/bed.py \
+		--new-shared-module src/norad/libraries/alignments/orientation.py \
+		--new-shared-module src/norad/libraries/alignments/star.py \
+		--new-shared-module src/norad/libraries/evidence/qc.py \
+		--new-shared-module src/norad/libraries/quality/picard.py \
+		--new-shared-module src/norad/libraries/validation/mpileup.py \
 		--new-shared-module src/norad/libraries/references/contigs.py
 
 python-coverage-baseline-update: python-coverage-measure

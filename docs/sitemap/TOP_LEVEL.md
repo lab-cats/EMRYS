@@ -13,5 +13,6 @@
 - [Documentation ownership](DOCUMENTATION_OWNERSHIP.md) — audience routes and
   canonical owners.
 
-For task orientation, use [`WORKFLOW.md`](../operations/WORKFLOW.md).
+For task orientation, use [`TASK_START.md`](../operations/TASK_START.md); for
+approved delivery, use [`WORKFLOW.md`](../operations/WORKFLOW.md).
 For repository-wide structure, run `make -s documentation-check`.

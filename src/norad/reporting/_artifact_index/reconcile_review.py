@@ -31,6 +31,32 @@ def split_native_safe_ids(value: str, field_name: str) -> list[str]:
     return values
 
 
+def _allowed_analysis_ids(plan_row: Mapping[str, str]) -> set[str]:
+    return {
+        plan_row["primary_analysis_id"],
+        *split_native_safe_ids(
+            plan_row["superseded_analysis_ids"], "superseded_analysis_ids"
+        ),
+        *split_native_safe_ids(
+            plan_row["sensitivity_analysis_ids"], "sensitivity_analysis_ids"
+        ),
+    }
+
+
+def _require_review_identity(
+    row: Mapping[str, str],
+    summary_row: Mapping[str, str],
+    allowed_analysis_ids: set[str],
+) -> None:
+    if (
+        row.get("review_id") != summary_row["review_id"]
+        or row.get("analysis_id") not in allowed_analysis_ids
+    ):
+        raise ArtifactIndexError(
+            "Step 09c review identity is outside the declared review"
+        )
+
+
 def validate_step09c_evidence_index(
     evidence_rows: Sequence[Mapping[str, str]],
     plan_row: Mapping[str, str],
@@ -38,17 +64,7 @@ def validate_step09c_evidence_index(
 ) -> dict[str, str]:
     if not evidence_rows:
         raise ArtifactIndexError("Step 09c evidence index is empty")
-    allowed_analyses = {
-        plan_row["primary_analysis_id"],
-        *split_native_safe_ids(
-            plan_row["superseded_analysis_ids"],
-            "superseded_analysis_ids",
-        ),
-        *split_native_safe_ids(
-            plan_row["sensitivity_analysis_ids"],
-            "sensitivity_analysis_ids",
-        ),
-    }
+    allowed_analysis_ids = _allowed_analysis_ids(plan_row)
     seen_evidence_ids: set[str] = set()
     category_order = {
         category: index
@@ -71,13 +87,7 @@ def validate_step09c_evidence_index(
             )
         if status not in review_package.EVIDENCE_STATUSES:
             raise ArtifactIndexError(f"Step 09c evidence status is invalid: {status!r}")
-        if (
-            row["review_id"] != summary_row["review_id"]
-            or row["analysis_id"] not in allowed_analyses
-        ):
-            raise ArtifactIndexError(
-                "Step 09c evidence identity is outside the declared review"
-            )
+        _require_review_identity(row, summary_row, allowed_analysis_ids)
         observed_order.append((category_order[category], evidence_id))
         if status in {"missing", "not_applicable"}:
             if any(
@@ -161,17 +171,7 @@ def validate_step09c_payloads(
     plan_row: Mapping[str, str],
     summary_row: Mapping[str, str],
 ) -> None:
-    allowed_analysis_ids = {
-        plan_row["primary_analysis_id"],
-        *split_native_safe_ids(
-            plan_row["superseded_analysis_ids"],
-            "superseded_analysis_ids",
-        ),
-        *split_native_safe_ids(
-            plan_row["sensitivity_analysis_ids"],
-            "sensitivity_analysis_ids",
-        ),
-    }
+    allowed_analysis_ids = _allowed_analysis_ids(plan_row)
     evidence_by_category: dict[str, list[Mapping[str, str]]] = defaultdict(list)
     for row in evidence_rows:
         evidence_by_category[row["evidence_category"]].append(row)
@@ -203,15 +203,12 @@ def validate_step09c_payloads(
             )
         for row in payload_rows:
             evidence = indexed_by_id.get(row["evidence_id"])
-            if (
-                evidence is None
-                or row["review_id"] != summary_row["review_id"]
-                or row.get("analysis_id") not in allowed_analysis_ids
-            ):
+            if evidence is None:
                 raise ArtifactIndexError(
                     f"Step 09c {category} payload identity is not declared "
                     "by the review/evidence index"
                 )
+            _require_review_identity(row, summary_row, allowed_analysis_ids)
             if (
                 "primary_analysis_id" in row
                 and row["primary_analysis_id"] != plan_row["primary_analysis_id"]

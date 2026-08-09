@@ -45,6 +45,74 @@ FIXTURE_BUILDER = (
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
+EXPECTED_PRODUCER_EVIDENCE = {
+    "00a": (
+        "src/norad/stages/construct_STAR_index/"
+        "step_00a_build_novogene_star_index.slurm",
+        "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc",
+    ),
+    "00b": (
+        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
+        "ddca3b0f11bb690fdee60f99b8885be74b64000b02dd250d7740ab9db47a9a79",
+    ),
+    "00c": (
+        "src/norad/stages/construct_FASTA_sidecars/"
+        "step_00c_prepare_gatk_reference.sh",
+        "2bb1a6d4eea5207a1b64623f303de80102370465aeddbfae430a90f4c4ef7d09",
+    ),
+    "01": (
+        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh",
+        "232025d14781419e366ca6a41f823f746d0847349f701b20f6d09aba4e7951cf",
+    ),
+    "02": (
+        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh",
+        "97873b63091134985438d9e5dcfac30f289fa914709cbbd09dc71d260fdd0442",
+    ),
+    "02b": (
+        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh",
+        "5469efa8f8c6598ce5031224c32cef6bdd84872a9c9a3d53de6824bc39cbdd8c",
+    ),
+    "03": (
+        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "step_03_infer_strandedness_and_orientation.sh",
+        "fbac2e0e184dd259b2cf0acbcecf3592d470b211e4b2fe33ea110d624d556854",
+    ),
+    "04": (
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
+        "step_04_mark_duplicates.sh",
+        "742678206a6e46172db3f464e24f6bc82385d13b505f7cd34e466c0f4d76cf21",
+    ),
+    "05": (
+        "src/norad/stages/split_N_cigar_reads_with_GATK/"
+        "step_05_split_n_cigar_reads.sh",
+        "685b2c8faf143514b4599957a315968519344c8d2a6cd303fc4d8e50a519491b",
+    ),
+    "06": (
+        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "step_06_split_bam_by_read_orientation.sh",
+        "eeaa6f175b0b162c91a40e1552e7512933e1643a5390a809a7cdc914cec8696d",
+    ),
+    "07": (
+        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
+        "c4caba1df6a4255c6281e63e42cd940782793082bba5094ea2634467a5b11074",
+    ),
+    "08": (
+        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
+        "step_08_vcf_preprocessing.sh",
+        "cd7233a3cbca17e6fb60ee5eea3d6b9176fdd616a9330644c4fcd8aab9c3f1a6",
+    ),
+    "09": (
+        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "step_09_cmh_editing_site_calling.sh",
+        "9311dc4a847e8f749c3fe033112070279b9d7beb0ff5dfaf69f67702b81f15bc",
+    ),
+    "09c": (
+        "src/norad/evidence/assemble_scientific_review_evidence_package/"
+        "step_09c_scientific_validation.py",
+        "19b44a444ffab7a76c9216e43514a43899401c6528ac790e99d0eefd81704b93",
+    ),
+}
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",
     "ref.bed12.validation": "00b",
@@ -211,8 +279,12 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
 
     evidence = ADAPTER.producer_evidence(git_commit)
 
-    assert tuple(evidence) == tuple(ADAPTER.STEP_PRODUCERS)
-    for step_id, record in evidence.items():
+    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_EVIDENCE)
+    assert tuple(ADAPTER.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
+    for step_id, (expected_path, expected_sha256) in (
+        EXPECTED_PRODUCER_EVIDENCE.items()
+    ):
+        record = evidence[step_id]
         assert record["status"] == "implemented"
         assert record["git_commit"] == git_commit
         implementation_rows = record["evidence"]
@@ -220,9 +292,8 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
         row = implementation_rows[0]
         assert row["evidence_id"] == f"implementation_{step_id}"
         assert row["role"] == "implementation"
-        source = REPO_ROOT / row["path"]
-        assert source.is_file()
-        assert row["sha256"] == ADAPTER.contracts.sha256_file(source)
+        assert row["path"] == expected_path
+        assert row["sha256"] == expected_sha256
 
 
 def test_contract_modules_are_shared_package_identities() -> None:

@@ -15,7 +15,10 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
+src_root = str(Path(__file__).resolve().parents[3])
+if sys.path[:1] != [src_root]:
+    if src_root in sys.path:
+        sys.path.remove(src_root)
     sys.path.insert(0, src_root)
 from norad.libraries import validation as report
 

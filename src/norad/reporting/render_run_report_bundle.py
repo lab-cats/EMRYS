@@ -29,7 +29,10 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pypdf import PdfReader
 
 _MODULE_PATH = Path(__file__).resolve()
-if (src_root := str(_MODULE_PATH.parents[2])) not in sys.path:
+src_root = str(_MODULE_PATH.parents[2])
+if sys.path[:1] != [src_root]:
+    if src_root in sys.path:
+        sys.path.remove(src_root)
     sys.path.insert(0, src_root)
 
 from norad.reporting import render_run_report as html_report
@@ -67,11 +70,7 @@ SUMMARY_HEADER = (
     "scope_type",
     "scope_id",
     "aggregate_state",
-    "implementation_status",
-    "local_test_status",
-    "runtime_validation_status",
-    "cluster_dry_run_status",
-    "cluster_proof_status",
+    *contracts.RUN_SUMMARY_STATUS_FIELDS,
     "warning_count",
     "error_count",
 )
@@ -423,15 +422,18 @@ def _pdf_body(context: BundleContext) -> bytes:
         "|---|---|",
     ]
     rollup = summary["computational_rollup"]
-    for label, key in (
-        ("Summary state", "summary_state"),
-        ("Implementation", "implementation_status"),
-        ("Local testing", "local_test_status"),
-        ("Runtime validation", "runtime_validation_status"),
-        ("Cluster dry-run", "cluster_dry_run_status"),
-        ("Cluster proof", "cluster_proof_status"),
-    ):
-        value = summary[key] if key == "summary_state" else rollup[key]
+    status_labels = (
+        "Summary state",
+        "Implementation",
+        "Local testing",
+        "Runtime validation",
+        "Cluster dry-run",
+        "Cluster proof",
+    )
+    status_values = (summary["summary_state"], *(
+        rollup[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS
+    ))
+    for label, value in zip(status_labels, status_values):
         lines.append(f"| {label} | `{_markdown_escape(value)}` |")
     failed_scopes = [
         item
@@ -628,11 +630,7 @@ def _summary_tsv_bytes(context: BundleContext) -> bytes:
                 scope["scope_type"],
                 scope["scope_id"],
                 item["aggregate_state"],
-                item["implementation_status"],
-                item["local_test_status"],
-                item["runtime_validation_status"],
-                item["cluster_dry_run_status"],
-                item["cluster_proof_status"],
+                *(item[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS),
                 str(len(item["warnings"])),
                 str(len(item["errors"])),
             )

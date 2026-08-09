@@ -157,9 +157,10 @@ helper CLI.
 Validator exit `0` means five rows were validly rendered or published; one or
 more rows may still have `status=fail`. Quickcheck nonzero is published as a
 failed row. Unsafe input, a required header-tool failure, a stable-input
-mismatch, an exact-owner integrity failure, or unsafe publication exits `2`
-without a new report and preserves a valid predecessor when one exists.
-Neither producer nor scheduler exit `0` implies validator pass.
+mismatch, or unsafe publication exits `2` without a new report and preserves a
+valid predecessor when one exists. Package-import failures are startup failures
+before validation or publication begins. Neither producer nor scheduler exit
+`0` implies validator pass.
 
 ## Scheduler
 

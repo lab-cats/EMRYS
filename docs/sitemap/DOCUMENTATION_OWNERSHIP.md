@@ -12,7 +12,7 @@ this file explains the human roles.
 | User | [Root README](../../README.md) | [Pipeline overview](../architecture/PIPELINE_OVERVIEW.md) |
 | Operator | [Handoff](../operations/HANDOFF.md) | [Runbook](../operations/RUNBOOK.md), owner README, and [troubleshooting](../operations/TROUBLESHOOTING.md) |
 | Scientist/reviewer | [Architecture index](../architecture/README.md) | Stage map, owner contracts, questions, and test baseline |
-| Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected card, and affected owners |
+| Maintainer | [Safety guard](../../AGENTS.md) | [Task start](../operations/TASK_START.md), selected card, affected owners, and [workflow](../operations/WORKFLOW.md) |
 | Auditor/historian | [History](../history/) | Refactor audit and test baseline recheck routes |
 
 ## Canonical roles
@@ -20,7 +20,7 @@ this file explains the human roles.
 | Subject | Owner |
 | --- | --- |
 | Product entrypoint and repository map | Root [`README.md`](../../README.md) |
-| Safety and development procedure | [`AGENTS.md`](../../AGENTS.md) and [`WORKFLOW.md`](../operations/WORKFLOW.md) |
+| Safety, context selection, and development procedure | [`AGENTS.md`](../../AGENTS.md), [`TASK_START.md`](../operations/TASK_START.md), and [`WORKFLOW.md`](../operations/WORKFLOW.md) |
 | Current evidence/blockers and roadmap/acceptance | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
 | Cross-cutting commands and common recovery | [`RUNBOOK.md`](../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | System-view routing and exact architecture | [Architecture index](../architecture/README.md) and its named children |

@@ -101,6 +101,30 @@ PYTHON_ENTRYPOINT_PATHS = {
     ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
+REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
+    {
+        "build_artifact_index.py",
+        "build_run_summary.py",
+        "reference_provenance.py",
+        "render_run_report.py",
+        "render_run_report_bundle.py",
+        "step_09c_scientific_validation.py",
+        "validate_artifact_contracts.py",
+        "validate_step_00a_star_index.py",
+        "validate_step_00b_bed12.py",
+        "validate_step_00c_reference_sidecars.py",
+        "validate_step_01_star_alignment.py",
+        "validate_step_02_canonical_bam.py",
+        "validate_step_02b_bam_qc.py",
+        "validate_step_03_rseqc_orientation.py",
+        "validate_step_04_mark_duplicates.py",
+        "validate_step_05_split_ncigar.py",
+        "validate_step_06_orientation_outputs.py",
+        "validate_step_07_mpileup_outputs.py",
+        "validate_step_08_preprocessing_outputs.py",
+        "validate_step_09_cmh_outputs.py",
+    }
+)
 PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
@@ -481,6 +505,41 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     assert "usage:" in help_result.stdout.lower()
     assert parse_failure.returncode != 0
     assert "usage:" in parse_failure.stderr.lower()
+    assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "entrypoint",
+    sorted(REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS),
+)
+def test_repository_package_bootstrap_precedes_ambient_pythonpath(
+    entrypoint: str,
+    tmp_path: Path,
+) -> None:
+    foreign_root = tmp_path / "foreign"
+    foreign_package = foreign_root / "norad"
+    foreign_package.mkdir(parents=True)
+    (foreign_package / "__init__.py").write_text(
+        "raise RuntimeError('foreign norad package imported')\n",
+        encoding="utf-8",
+    )
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (str(foreign_root), str(REPO_ROOT / "src"))
+    )
+    before = relative_snapshot(tmp_path)
+
+    result = run_command(
+        [sys.executable, str(python_entrypoint_path(entrypoint)), "--help"],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "foreign norad package imported" not in result.stderr
     assert relative_snapshot(tmp_path) == before
 
 

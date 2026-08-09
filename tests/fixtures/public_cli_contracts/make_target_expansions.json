@@ -150,6 +150,12 @@
     "\t\t--new-shared-module src/norad/libraries/validation/report.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation/runtime.py \\",
     "\t\t--new-shared-module src/norad/libraries/alignments/bam.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/bed.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/orientation.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/star.py \\",
+    "\t\t--new-shared-module src/norad/libraries/evidence/qc.py \\",
+    "\t\t--new-shared-module src/norad/libraries/quality/picard.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/mpileup.py \\",
     "\t\t--new-shared-module src/norad/libraries/references/contigs.py"
   ],
   "python-coverage-measure": [
@@ -211,6 +217,7 @@
     "\t\tbash tests/reporting/test_render_run_report.sh"
   ],
   "shell-test": [
+    "bash tests/libraries/test_file_checks.sh",
     "bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh",
     "bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh",
     "bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh",
@@ -227,7 +234,7 @@
     "bash tests/reporting/test_render_run_report.sh",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_references/contigs.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/libraries/test_reference_contigs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py",
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py",
@@ -302,6 +309,12 @@
     "\t\t--new-shared-module src/norad/libraries/validation/report.py \\",
     "\t\t--new-shared-module src/norad/libraries/validation/runtime.py \\",
     "\t\t--new-shared-module src/norad/libraries/alignments/bam.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/bed.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/orientation.py \\",
+    "\t\t--new-shared-module src/norad/libraries/alignments/star.py \\",
+    "\t\t--new-shared-module src/norad/libraries/evidence/qc.py \\",
+    "\t\t--new-shared-module src/norad/libraries/quality/picard.py \\",
+    "\t\t--new-shared-module src/norad/libraries/validation/mpileup.py \\",
     "\t\t--new-shared-module src/norad/libraries/references/contigs.py"
   ],
   "validation-report-runtime": [
@@ -323,6 +336,7 @@
     "\t\ttests/reporting/test_report_exports_v1.py"
   ],
   "validation-shell-contracts": [
+    "bash tests/libraries/test_file_checks.sh",
     "bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh",
     "bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh",
     "bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh",

@@ -36,7 +36,10 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
 _MODULE_PATH = Path(__file__).resolve()
-if (src_root := str(_MODULE_PATH.parents[2])) not in sys.path:
+src_root = str(_MODULE_PATH.parents[2])
+if sys.path[:1] != [src_root]:
+    if src_root in sys.path:
+        sys.path.remove(src_root)
     sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
@@ -50,6 +53,13 @@ CSS_TEMPLATE = _MODULE_PATH.parent / "styles" / "run_report.css"
 BODY_MARKER = "{{NORAD_REPORT_BODY}}"
 CSS_MARKER = "{{NORAD_REPORT_CSS}}"
 CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"
+COMPUTATIONAL_STATUS_FIELDS: tuple[tuple[str, str], ...] = (
+    ("Implementation", "implementation_status"),
+    ("Local testing", "local_test_status"),
+    ("Runtime validation", "runtime_validation_status"),
+    ("Cluster dry-run", "cluster_dry_run_status"),
+    ("Cluster proof", "cluster_proof_status"),
+)
 SCIENCE_BANNERS = {
     "evidence_incomplete": (
         "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION."
@@ -822,12 +832,8 @@ def _render_report_provenance(metadata: Mapping[str, str]) -> str:
 
 def _render_status_panels(summary: Mapping[str, Any]) -> str:
     rollup = summary["computational_rollup"]
-    computational_rows = (
-        ("Implementation", rollup["implementation_status"]),
-        ("Local testing", rollup["local_test_status"]),
-        ("Runtime validation", rollup["runtime_validation_status"]),
-        ("Cluster dry-run", rollup["cluster_dry_run_status"]),
-        ("Cluster proof", rollup["cluster_proof_status"]),
+    computational_rows = tuple(
+        (label, rollup[field]) for label, field in COMPUTATIONAL_STATUS_FIELDS
     )
     review = summary["scientific_review"]
     scientific_rows: list[tuple[str, Any]] = [
@@ -884,11 +890,7 @@ def _render_scope_matrix(summary: Mapping[str, Any]) -> str:
                 scope["scope_type"],
                 scope["scope_id"],
                 scope_record["aggregate_state"],
-                scope_record["implementation_status"],
-                scope_record["local_test_status"],
-                scope_record["runtime_validation_status"],
-                scope_record["cluster_dry_run_status"],
-                scope_record["cluster_proof_status"],
+                *(scope_record[field] for _, field in COMPUTATIONAL_STATUS_FIELDS),
                 ", ".join(scope_record["artifact_ids"]),
             )
         )
@@ -1188,12 +1190,9 @@ def _render_science_methods(summary: Mapping[str, Any]) -> str:
         rows=record["selection_rules"].items(),
     )
     computational = record["computational_status"]
-    status_rows = (
-        ("Implementation", computational["implementation_status"]),
-        ("Local testing", computational["local_test_status"]),
-        ("Runtime validation", computational["runtime_validation_status"]),
-        ("Cluster dry-run", computational["cluster_dry_run_status"]),
-        ("Cluster proof", computational["cluster_proof_status"]),
+    status_rows = tuple(
+        (label, computational[field])
+        for label, field in COMPUTATIONAL_STATUS_FIELDS
     )
     status_table = _key_value_table(
         table_id="science-computational-status",

@@ -16,8 +16,9 @@ This directory is the implemented native owner for semantic stage
   tests. Scheduler behavior remains independently owned by the central
   [wrapper-contract suite](../../../../tests/test_slurm_wrapper_contracts.py).
 
-No installed command, package import, compatibility wrapper, legacy path,
-symlink, ambient `PYTHONPATH`, or global `sys.path` mutation is supported.
+No installed command, supported external package API, compatibility wrapper,
+legacy path, symlink, or ambient `PYTHONPATH` contract is exposed. The Python
+validator promotes the checkout's `src` root ahead of ambient import paths.
 
 ## Producer and scientific meaning
 

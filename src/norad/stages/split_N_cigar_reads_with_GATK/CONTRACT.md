@@ -83,9 +83,10 @@ marked input, or GATK split-N-cigar semantics. It imports
 report/BAM helpers from neutral
 [`validation/report.py`](../../libraries/validation/report.py) and
 [`alignments/bam.py`](../../libraries/alignments/bam.py), and reference parsers
-from neutral [`references/contigs.py`](../../libraries/references/contigs.py). No
-package identity, `PYTHONPATH`, wrapper, compatibility import, or peer-stage
-implementation dependency is supported.
+from neutral [`references/contigs.py`](../../libraries/references/contigs.py).
+The validator promotes the checkout's `src` root ahead of ambient import paths;
+no public helper CLI, compatibility import, or peer-stage implementation
+dependency is supported.
 
 The producer sources only `resolve_executable_value` from neutral
 [`executable_resolution.sh`](../../libraries/executable_resolution.sh).
