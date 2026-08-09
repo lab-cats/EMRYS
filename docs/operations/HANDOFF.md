@@ -105,10 +105,14 @@ the committed monolith. The five implementation files total 693 lines; this is
 maintainability and local fixture evidence, not production reference proof.
 
 Step `09c` intake keeps its sibling-import surface over distinct data-model,
-support, review-plan, and evidence-manifest owners. The compatibility facade is
-42 lines and the largest extracted owner is 228 lines. Review policy, manifest
-normalization/order, hashes, evidence states, and public Step `09c` publication
-remain unchanged; this adds no completed review or production evidence.
+support, review-plan, and evidence-manifest owners. Review analysis keeps the
+same surface over sensitivity/leave-one-pair-out, candidate
+selection/adjudication, and decision/limitation owners. The compatibility
+facades are 42 and 16 lines, the review-analysis owners are no larger than 190
+lines, and all seven extracted review-analysis function bodies are
+AST-identical. Review policy, manifest normalization/order, hashes, evidence
+states, and public Step `09c` publication remain unchanged; this adds no
+completed review or production evidence.
 
 ## Cohort and preserved scientific evidence
 
