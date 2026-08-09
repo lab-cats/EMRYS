@@ -7,6 +7,18 @@ from pathlib import Path
 from norad.libraries import validation as report
 from norad.libraries.references import contigs as reference_contigs
 
+VCF_FIXED_COLUMNS = (
+    "#CHROM",
+    "POS",
+    "ID",
+    "REF",
+    "ALT",
+    "QUAL",
+    "FILTER",
+    "INFO",
+    "FORMAT",
+)
+
 
 def read_sample_ids(path: Path) -> list[str]:
     header, rows = report.read_tsv(path)
@@ -89,17 +101,7 @@ def read_vcf(path: Path) -> tuple[list[str], int]:
             continue
         if line.startswith("#CHROM\t"):
             fields = line.split("\t")
-            if fields[:9] != [
-                "#CHROM",
-                "POS",
-                "ID",
-                "REF",
-                "ALT",
-                "QUAL",
-                "FILTER",
-                "INFO",
-                "FORMAT",
-            ]:
+            if tuple(fields[:9]) != VCF_FIXED_COLUMNS:
                 raise report.ValidationError(f"Invalid VCF header: {path}")
             samples = fields[9:]
             continue

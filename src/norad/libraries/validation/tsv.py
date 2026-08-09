@@ -4,13 +4,41 @@ from __future__ import annotations
 
 import csv
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from io import StringIO
 from pathlib import Path
-from typing import TypeVar
+from typing import TextIO, TypeVar
 
 from norad.libraries.validation.report import clean
 
 T = TypeVar("T")
+
+
+def write_rows(
+    stream: TextIO,
+    header: Sequence[str],
+    rows: Iterable[Mapping[str, str]],
+) -> None:
+    """Write rows with the deterministic TSV dialect used by NORAD contracts."""
+    writer = csv.DictWriter(
+        stream,
+        fieldnames=list(header),
+        delimiter="\t",
+        lineterminator="\n",
+        extrasaction="raise",
+    )
+    writer.writeheader()
+    writer.writerows(rows)
+
+
+def tsv_bytes(
+    header: Sequence[str],
+    rows: Iterable[Mapping[str, str]],
+) -> bytes:
+    """Serialize deterministic UTF-8 TSV bytes without platform newlines."""
+    stream = StringIO(newline="")
+    write_rows(stream, header, rows)
+    return stream.getvalue().encode("utf-8")
 
 
 def read_header(path: Path) -> tuple[str, ...]:

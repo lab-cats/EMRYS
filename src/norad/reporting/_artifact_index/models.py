@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from norad.libraries.alignments import orientation as alignment_orientation
+
 from .contracts import review_package
 
 PRODUCER = "build_artifact_index"
@@ -123,19 +125,7 @@ STEP07_RECEIPT_HEADER = (
     "vcf_record_count",
 )
 
-STEP06_COUNTS_HEADER = (
-    "sample_id",
-    "input_records",
-    "flag_99_records",
-    "flag_147_records",
-    "flag_83_records",
-    "flag_163_records",
-    "fwd_like_records",
-    "rev_like_records",
-    "assigned_records",
-    "unassigned_records",
-    "assigned_fraction",
-)
+STEP06_COUNTS_HEADER = alignment_orientation.COUNTS_HEADER
 
 STEP00A_BASENAMES = (
     "genomeParameters.txt",

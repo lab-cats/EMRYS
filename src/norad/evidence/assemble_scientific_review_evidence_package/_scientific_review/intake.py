@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import csv
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
 from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.validation.tsv import write_rows
 
 from .contracts import (
     COMPUTATIONAL_VALIDATION_HEADER,
@@ -92,16 +92,7 @@ def write_tsv(
     path: Path, header: Sequence[str], rows: Iterable[Mapping[str, str]]
 ) -> None:
     with path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(
-            stream,
-            fieldnames=list(header),
-            delimiter="\t",
-            lineterminator="\n",
-            extrasaction="raise",
-        )
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(row)
+        write_rows(stream, header, rows)
 
 
 def artifact_from_table(label: str, table: Table) -> Artifact:

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -13,6 +12,7 @@ from typing import Any
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import computational_validation, review_package
+from norad.libraries.validation.tsv import tsv_bytes as _tsv_bytes
 from norad.reporting._run_summary.inputs import _resolved_path
 from norad.reporting._run_summary.transaction import _path_hash
 
@@ -196,23 +196,6 @@ def _split_ids(value: str) -> list[str]:
 
 def _nullable(value: str) -> str | None:
     return None if value == NA_VALUE else value
-
-
-def _tsv_bytes(
-    header: Sequence[str],
-    rows: Sequence[Mapping[str, str]],
-) -> bytes:
-    stream = io.StringIO(newline="")
-    writer = csv.DictWriter(
-        stream,
-        fieldnames=list(header),
-        delimiter="\t",
-        lineterminator="\n",
-        extrasaction="raise",
-    )
-    writer.writeheader()
-    writer.writerows(rows)
-    return stream.getvalue().encode("utf-8")
 
 
 def _validate_summary_artifact(

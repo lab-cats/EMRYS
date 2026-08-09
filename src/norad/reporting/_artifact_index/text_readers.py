@@ -9,6 +9,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from norad.libraries.validation.mpileup import VCF_FIXED_COLUMNS
+
 from .models import (
     ANCHOR_HASH_FIELDS,
     SHA256_RE,
@@ -260,17 +262,7 @@ def inspect_vcf(path: Path) -> tuple[int, dict[str, Any]]:
             if fields is not None:
                 raise ArtifactIndexError("VCF must contain exactly one #CHROM header")
             fields = line.split("\t")
-            if fields[:9] != [
-                "#CHROM",
-                "POS",
-                "ID",
-                "REF",
-                "ALT",
-                "QUAL",
-                "FILTER",
-                "INFO",
-                "FORMAT",
-            ]:
+            if tuple(fields[:9]) != VCF_FIXED_COLUMNS:
                 raise ArtifactIndexError("VCF fixed columns are invalid")
             samples = fields[9:]
             if not samples or any(not sample for sample in samples):

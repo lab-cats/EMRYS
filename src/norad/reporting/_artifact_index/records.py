@@ -5,11 +5,12 @@ from __future__ import annotations
 import csv
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
-from io import StringIO
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
+
+from norad.libraries.validation.tsv import tsv_bytes as render_tsv_bytes
 
 from .contracts import contracts
 from .core import canonical_digest, safe_tsv, sha256_bytes
@@ -188,19 +189,10 @@ def tsv_bytes(
     header: Sequence[str],
     rows: Iterable[Mapping[str, str]],
 ) -> bytes:
-
-    stream = StringIO(newline="")
-    writer = csv.DictWriter(
-        stream,
-        fieldnames=list(header),
-        delimiter="\t",
-        lineterminator="\n",
-        extrasaction="raise",
+    return render_tsv_bytes(
+        header,
+        ({field: safe_tsv(row[field]) for field in header} for row in rows),
     )
-    writer.writeheader()
-    for row in rows:
-        writer.writerow({field: safe_tsv(row[field]) for field in header})
-    return stream.getvalue().encode("utf-8")
 
 
 def load_existing_receipt(
