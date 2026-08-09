@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 
 from norad.libraries.alignments import orientation as alignment_orientation
 
@@ -70,8 +71,8 @@ def add_validation_report(
 
 def build_adapter_registry() -> dict[str, AdapterSpec]:
     registry: dict[str, AdapterSpec] = {}
-    add_spec(
-        registry,
+    add = partial(add_spec, registry)
+    add(
         "step00a_star_index_v1",
         "00a",
         "reference",
@@ -80,8 +81,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         basenames=STEP00A_BASENAMES,
     )
     add_validation_report(registry, "00a", "reference")
-    add_spec(
-        registry,
+    add(
         "step00b_bed12_v1",
         "00b",
         "reference",
@@ -90,8 +90,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         suffixes=(".bed",),
     )
     add_validation_report(registry, "00b", "reference")
-    add_spec(
-        registry,
+    add(
         "step00c_reference_fasta_v1",
         "00c",
         "reference",
@@ -99,8 +98,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/x-fasta",
         suffixes=(".fa", ".fasta"),
     )
-    add_spec(
-        registry,
+    add(
         "step00c_reference_fai_v1",
         "00c",
         "reference",
@@ -108,8 +106,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/tab-separated-values",
         suffixes=(".fai",),
     )
-    add_spec(
-        registry,
+    add(
         "step00c_reference_dict_v1",
         "00c",
         "reference",
@@ -118,8 +115,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         suffixes=(".dict",),
     )
     add_validation_report(registry, "00c", "reference")
-    add_spec(
-        registry,
+    add(
         "step01_star_bam_v1",
         "01",
         "sample",
@@ -133,8 +129,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step01_star_log_progress_v1", ".Log.progress.out", "text"),
         ("step01_star_sj_v1", ".SJ.out.tab", "star_sj"),
     ):
-        add_spec(
-            registry,
+        add(
             adapter_id,
             "01",
             "sample",
@@ -148,8 +143,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("04", "step04_markdup_bam_v1", "step04_markdup_bai_v1", ".markdup.bam"),
         ("05", "step05_split_bam_v1", "step05_split_bai_v1", ".split_ncigar.bam"),
     ):
-        add_spec(
-            registry,
+        add(
             bam_adapter,
             step_id,
             "sample",
@@ -157,8 +151,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/x-bam",
             suffixes=(bam_suffix,),
         )
-        add_spec(
-            registry,
+        add(
             bai_adapter,
             step_id,
             "sample",
@@ -167,8 +160,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             suffixes=(f"{bam_suffix}.bai",),
         )
     add_validation_report(registry, "02", "sample")
-    add_spec(
-        registry,
+    add(
         "step02b_quickcheck_v1",
         "02b",
         "sample",
@@ -176,8 +168,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/plain",
         suffixes=(".quickcheck.txt",),
     )
-    add_spec(
-        registry,
+    add(
         "step02b_flagstat_v1",
         "02b",
         "sample",
@@ -186,8 +177,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         suffixes=(".flagstat.txt",),
     )
     add_validation_report(registry, "02b", "sample")
-    add_spec(
-        registry,
+    add(
         "step03_rseqc_infer_v1",
         "03",
         "sample",
@@ -196,8 +186,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         suffixes=(".infer_experiment.txt",),
     )
     add_validation_report(registry, "03", "sample")
-    add_spec(
-        registry,
+    add(
         "step04_markdup_metrics_v1",
         "04",
         "sample",
@@ -212,8 +201,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         alignment_orientation.ORIENTATIONS,
         alignment_orientation.ORIENTATION_PREFIXES,
     ):
-        add_spec(
-            registry,
+        add(
             f"step06_{adapter_prefix}_bam_v1",
             "06",
             "sample",
@@ -221,8 +209,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/x-bam",
             suffixes=(f".{orientation}.bam",),
         )
-        add_spec(
-            registry,
+        add(
             f"step06_{adapter_prefix}_bai_v1",
             "06",
             "sample",
@@ -230,8 +217,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             "application/octet-stream",
             suffixes=(f".{orientation}.bam.bai",),
         )
-    add_spec(
-        registry,
+    add(
         "step06_orientation_counts_v1",
         "06",
         "sample",
@@ -242,8 +228,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=1,
         allow_header_only=False,
     )
-    add_spec(
-        registry,
+    add(
         "step07_mpileup_vcf_v1",
         "07",
         "cohort_partition",
@@ -251,8 +236,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "text/vcf",
         suffixes=(".mpileup.vcf",),
     )
-    add_spec(
-        registry,
+    add(
         "step07_mpileup_receipt_v1",
         "07",
         "cohort_partition",
@@ -264,8 +248,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         allow_header_only=False,
     )
     add_validation_report(registry, "07", "cohort_partition")
-    add_spec(
-        registry,
+    add(
         "step08_sites_v1",
         "08",
         "cohort",
@@ -274,8 +257,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         suffixes=(".step08_sites.tsv",),
         expected_header=step08.STEP08_METADATA_HEADER,
     )
-    add_spec(
-        registry,
+    add(
         "step08_inputs_v1",
         "08",
         "cohort",
@@ -285,8 +267,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         expected_header=step08.STEP08_INPUTS_HEADER,
         allow_header_only=False,
     )
-    add_spec(
-        registry,
+    add(
         "step08_summary_v1",
         "08",
         "cohort",
@@ -302,8 +283,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
         ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
     ):
-        add_spec(
-            registry,
+        add(
             adapter_id,
             "09",
             "analysis",
@@ -312,8 +292,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             suffixes=(suffix,),
             expected_header=step09.STEP09_RESULT_HEADER,
         )
-    add_spec(
-        registry,
+    add(
         "step09_cmh_summary_v1",
         "09",
         "analysis",
@@ -324,8 +303,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         exact_data_rows=1,
         allow_header_only=False,
     )
-    add_spec(
-        registry,
+    add(
         "step09_mutation_spectrum_tsv_v1",
         "09",
         "analysis",
@@ -338,8 +316,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step09_mutation_spectrum_pdf_v1", ".mutation_spectrum.pdf"),
         ("step09_depth_delta_pdf_v1", ".depth_delta.pdf"),
     ):
-        add_spec(
-            registry,
+        add(
             adapter_id,
             "09",
             "analysis",
@@ -350,8 +327,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
     add_validation_report(registry, "09", "analysis", exact_data_rows=7)
     for key, suffix in review_package.OUTPUT_SUFFIXES:
         exact_rows = 1 if key in review_package.SINGLE_ROW_OUTPUTS else None
-        add_spec(
-            registry,
+        add(
             f"step09c_{key}_v1",
             "09c",
             "scientific_review",
