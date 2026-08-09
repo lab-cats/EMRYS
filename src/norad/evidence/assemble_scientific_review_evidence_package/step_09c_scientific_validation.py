@@ -11,6 +11,7 @@ summary written last as the commit marker.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import os
 import shutil
@@ -124,10 +125,8 @@ def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
             stream.flush()
             os.fsync(stream.fileno())
     except OSError as exc:
-        try:
+        with contextlib.suppress(OSError):
             lock_path.unlink()
-        except OSError:
-            pass
         step08.fail(f"Could not write Step 09c lock metadata: {exc}")
 
 
@@ -308,15 +307,13 @@ def publish_outputs(
                 recovery = output_dir / (
                     f".{context.review_id}.step09c.{run_token}.RECOVERY.txt"
                 )
-                try:
+                with contextlib.suppress(OSError):
                     recovery.write_text(
                         "Step 09c rollback was incomplete.\n"
                         + "\n".join(rollback_failures)
                         + "\n",
                         encoding="utf-8",
                     )
-                except OSError:
-                    pass
                 step08.fail(
                     f"{exc}\nStep 09c rollback was incomplete; lock and "
                     f"recovery paths were retained: {lock_path}"
