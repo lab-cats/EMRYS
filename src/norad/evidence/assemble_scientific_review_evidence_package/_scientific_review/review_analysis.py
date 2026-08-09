@@ -115,12 +115,7 @@ def validate_leave_one_pair_out(
         summary["treatment_condition"],
     )
     replicates = set(replicate_order)
-    result_header = (
-        step09.STEP09_RESULT_HEADER
-        + tuple(f"DP__{sample}" for sample in sample_ids)
-        + tuple(f"AD__{sample}" for sample in sample_ids)
-        + tuple(f"AF__{sample}" for sample in sample_ids)
-    )
+    result_header = step08.sample_block_header(step09.STEP09_RESULT_HEADER, sample_ids)
     seen: set[tuple[str, str]] = set()
     analysis_by_replicate: dict[str, str] = {}
     for row_number, row in enumerate(rows, start=2):

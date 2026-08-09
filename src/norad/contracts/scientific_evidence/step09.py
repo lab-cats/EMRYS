@@ -237,19 +237,12 @@ def validate_step09_results(
     analysis_id: str,
     step08_sites: Sequence[Mapping[str, str]],
 ) -> Table:
-    expected_header = (
-        STEP09_RESULT_HEADER
-        + tuple(f"DP__{sample}" for sample in sample_ids)
-        + tuple(f"AD__{sample}" for sample in sample_ids)
-        + tuple(f"AF__{sample}" for sample in sample_ids)
-    )
+    expected_header = step08.sample_block_header(STEP09_RESULT_HEADER, sample_ids)
     table = read_tsv(label, value, expected_header)
     step08.ensure_unique(table.rows, "candidate_id", label)
     sites_by_id = {row["candidate_id"]: row for row in step08_sites}
     metadata_columns = step08.STEP08_METADATA_HEADER
-    sample_columns = tuple(
-        f"{prefix}__{sample}" for prefix in ("DP", "AD", "AF") for sample in sample_ids
-    )
+    sample_columns = step08.sample_block_header((), sample_ids)
     for row_number, row in enumerate(table.rows, start=2):
         if row["analysis_id"] != analysis_id:
             step08.fail(f"{label} row {row_number} has the wrong analysis_id.")
@@ -380,10 +373,10 @@ def validate_step09_summary(
         or not IS_LEGACY_ORIENTATION_POLICY(row["orientation_policy"])[0]
         or row["orientation_policy"] != step08_orientation_policy
     ):
-            step08.fail(
-                "Step 09 summary and Step 08 must use "
-                f"orientation_policy={LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
-            )
+        step08.fail(
+            "Step 09 summary and Step 08 must use "
+            f"orientation_policy={LEGACY_PROVISIONAL_ORIENTATION_POLICY}."
+        )
     if any(
         result["orientation_policy"] != row["orientation_policy"] for result in all_rows
     ):

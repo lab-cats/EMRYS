@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import math
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeVar
 
 if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
     sys.path.insert(0, src_root)
@@ -15,6 +17,8 @@ if (src_root := str(Path(__file__).resolve().parents[3])) not in sys.path:
 from norad.libraries import validation as report
 from norad.libraries.alignments import orientation as alignment_orientation
 from norad.libraries.validation.tsv import read_strict_tsv
+
+T = TypeVar("T")
 
 
 class ContractError(RuntimeError):
@@ -121,6 +125,22 @@ class Table:
 
 def fail(message: str) -> None:
     raise ContractError(message)
+
+
+def attempt(function: Callable[[], T]) -> tuple[T | None, str]:
+    """Normalize the parser failures shared by Step 08 and Step 09 CLIs."""
+    return report.attempt(
+        function, catches=(OSError, UnicodeError, csv.Error, ContractError)
+    )
+
+
+def sample_block_header(
+    base: Sequence[str], sample_ids: Sequence[str]
+) -> tuple[str, ...]:
+    """Append ordered DP, AD, and AF sample blocks to a fixed header."""
+    return tuple(base) + tuple(
+        f"{prefix}__{sample}" for prefix in ("DP", "AD", "AF") for sample in sample_ids
+    )
 
 
 def validate_safe_id(label: str, value: str) -> None:
@@ -357,12 +377,7 @@ def validate_step08_sites(
     partitions: Sequence[Mapping[str, str]],
     step08_inputs: Sequence[Mapping[str, str]],
 ) -> Table:
-    expected_header = (
-        STEP08_METADATA_HEADER
-        + tuple(f"DP__{sample}" for sample in sample_ids)
-        + tuple(f"AD__{sample}" for sample in sample_ids)
-        + tuple(f"AF__{sample}" for sample in sample_ids)
-    )
+    expected_header = sample_block_header(STEP08_METADATA_HEADER, sample_ids)
     table = read_tsv("Step 08 sites table", value, expected_header)
     ensure_unique(table.rows, "candidate_id", "Step 08 sites table")
     partition_ids = {row["partition_id"] for row in partitions}

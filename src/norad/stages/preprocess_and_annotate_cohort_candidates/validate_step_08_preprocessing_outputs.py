@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -52,13 +51,11 @@ def build(args: argparse.Namespace):
         "summary": report.lexical_path(args.summary),
     }
     snapshots = report.snapshots(paths, label="Step 08")
-    sample_result, sample_detail = report.attempt(
+    sample_result, sample_detail = step08.attempt(
         lambda: step08.validate_sample_manifest(paths["sample_manifest"]),
-        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
-    partition_table, partition_detail = report.attempt(
+    partition_table, partition_detail = step08.attempt(
         lambda: step08.validate_partition_manifest(paths["partition_manifest"]),
-        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     sample_hash = step08.sha256_file(paths["sample_manifest"])
     partition_hash = step08.sha256_file(paths["partition_manifest"])
@@ -67,19 +64,15 @@ def build(args: argparse.Namespace):
 
     expected_sites_header = None
     if sample_result is not None:
-        expected_sites_header = (
-            step08.STEP08_METADATA_HEADER
-            + tuple(f"DP__{sample}" for sample in sample_result[1])
-            + tuple(f"AD__{sample}" for sample in sample_result[1])
-            + tuple(f"AF__{sample}" for sample in sample_result[1])
+        expected_sites_header = step08.sample_block_header(
+            step08.STEP08_METADATA_HEADER, sample_result[1]
         )
-    observed_headers, header_detail = report.attempt(
+    observed_headers, header_detail = step08.attempt(
         lambda: (
             report.read_header(paths["sites"]),
             report.read_header(paths["inputs"]),
             report.read_header(paths["summary"]),
         ),
-        catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
     )
     transaction_ok = (
         observed_headers is not None
@@ -95,7 +88,7 @@ def build(args: argparse.Namespace):
     inputs_table = None
     inputs_detail = "prerequisite manifest validation failed"
     if sample_result is not None and partition_table is not None:
-        inputs_table, inputs_detail = report.attempt(
+        inputs_table, inputs_detail = step08.attempt(
             lambda: step08.validate_step08_inputs(
                 paths["inputs"],
                 sample_result[1],
@@ -103,7 +96,6 @@ def build(args: argparse.Namespace):
                 sample_hash,
                 partition_hash,
             ),
-            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
     identity_ok = False
     if inputs_table is not None:
@@ -124,14 +116,13 @@ def build(args: argparse.Namespace):
         and partition_table is not None
         and inputs_table is not None
     ):
-        sites_table, sites_detail = report.attempt(
+        sites_table, sites_detail = step08.attempt(
             lambda: step08.validate_step08_sites(
                 paths["sites"],
                 sample_result[1],
                 partition_table.rows,
                 inputs_table.rows,
             ),
-            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
 
     summary_table = None
@@ -142,7 +133,7 @@ def build(args: argparse.Namespace):
         and inputs_table is not None
         and sites_table is not None
     ):
-        summary_table, summary_detail = report.attempt(
+        summary_table, summary_detail = step08.attempt(
             lambda: step08.validate_step08_summary(
                 paths["summary"],
                 sample_result[1],
@@ -152,7 +143,6 @@ def build(args: argparse.Namespace):
                 sample_hash,
                 partition_hash,
             ),
-            catches=(OSError, UnicodeError, csv.Error, step08.ContractError),
         )
         if summary_table is not None:
             row = summary_table.rows[0]
