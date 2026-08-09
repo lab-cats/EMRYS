@@ -8,8 +8,7 @@ take priority over speed or convenience.
 
 - Use the
   [task-start context](docs/operations/TASK_START.md) to load the smallest
-  sufficient current context, then obtain approval before editing, branching,
-  installing, executing, or publishing.
+  sufficient current context.
 - Use one authoritative mutable worktree and branch. Other worktrees are
   read-only unless the user explicitly changes the authority boundary.
 - Implement only the approved outcome. Merging, rebasing, force-pushing,
