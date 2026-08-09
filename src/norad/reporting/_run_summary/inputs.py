@@ -71,6 +71,16 @@ def _resolved_path(value: str | Path) -> Path:
     return Path(os.path.abspath(os.fspath(Path(value).expanduser())))
 
 
+def _stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
 def _require_regular_file(label: str, value: str | Path) -> Path:
     path = _resolved_path(value)
     try:
@@ -115,27 +125,9 @@ def _capture_file_snapshot(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = (
-        before.st_dev,
-        before.st_ino,
-        before.st_size,
-        before.st_mtime_ns,
-        before.st_ctime_ns,
-    )
-    after_identity = (
-        after.st_dev,
-        after.st_ino,
-        after.st_size,
-        after.st_mtime_ns,
-        after.st_ctime_ns,
-    )
-    current_identity = (
-        current.st_dev,
-        current.st_ino,
-        current.st_size,
-        current.st_mtime_ns,
-        current.st_ctime_ns,
-    )
+    before_identity = _stat_identity(before)
+    after_identity = _stat_identity(after)
+    current_identity = _stat_identity(current)
     if (
         before_identity != after_identity
         or before_identity != current_identity
@@ -312,27 +304,9 @@ def _capture_report_table_snapshot(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = (
-        before.st_dev,
-        before.st_ino,
-        before.st_size,
-        before.st_mtime_ns,
-        before.st_ctime_ns,
-    )
-    after_identity = (
-        after.st_dev,
-        after.st_ino,
-        after.st_size,
-        after.st_mtime_ns,
-        after.st_ctime_ns,
-    )
-    current_identity = (
-        current.st_dev,
-        current.st_ino,
-        current.st_size,
-        current.st_mtime_ns,
-        current.st_ctime_ns,
-    )
+    before_identity = _stat_identity(before)
+    after_identity = _stat_identity(after)
+    current_identity = _stat_identity(current)
     if (
         before_identity != after_identity
         or before_identity != current_identity
