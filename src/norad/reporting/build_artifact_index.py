@@ -10,6 +10,7 @@ rollback-protected transaction.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import signal
@@ -486,15 +487,13 @@ def publish_context(context: BuildContext) -> None:
                 )
         if rollback_errors:
             rollback_failed = True
-            try:
+            with contextlib.suppress(OSError):
                 recovery_path.write_text(
                     "Artifact-index rollback was incomplete.\n"
                     f"Original error: {exc}\n"
                     f"Rollback errors: {'; '.join(rollback_errors)}\n",
                     encoding="utf-8",
                 )
-            except OSError:
-                pass
             raise ArtifactIndexError(
                 f"{exc}\nArtifact-index rollback was incomplete; preserve "
                 f"the lock and recovery paths under {context.output_dir}"
@@ -529,15 +528,13 @@ def publish_context(context: BuildContext) -> None:
                 if publication_committed
                 else "rollback completed"
             )
-            try:
+            with contextlib.suppress(OSError):
                 recovery_path.write_text(
                     f"Artifact-index {cleanup_state} but owned cleanup was "
                     "incomplete.\n"
                     f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
                     encoding="utf-8",
                 )
-            except OSError:
-                pass
             prefix = f"{active_error}\n" if active_error is not None else ""
             raise ArtifactIndexError(
                 prefix + "Artifact-index cleanup failed; preserve the lock and "
