@@ -7,11 +7,19 @@ reference.
 
 The public interface accepts an inventory, base directory, and output root; it
 derives the inventory's single reference ID rather than accepting a separate
-ID argument. Its dry run is the default and writes nothing. Supported artifact
-roles cover FASTA, FAI, dictionary, GTF, BED12, STAR chromosome-name and
-chromosome-length files, and STAR index members. The implementation reuses the
-neutral [`references/contigs.py`](../../libraries/references/contigs.py) parser
-without creating a package API.
+ID argument. Its dry run is the default and writes nothing. The 230-line
+public file owns CLI dispatch, output validation, and fault-injectable
+publication. Private modules separately own the data/error/output contracts,
+strict inventory admission, artifact observation and contig reconciliation,
+and deterministic TSV rendering; none adds a command or evidence state. The
+five implementation files total 693 lines, including import boundaries and
+module documentation, rather than concealing owner size behind the facade.
+
+Supported artifact roles cover FASTA, FAI, dictionary, GTF, BED12, STAR
+chromosome-name and chromosome-length files, and STAR index members. The
+implementation reuses the neutral
+[`references/contigs.py`](../../libraries/references/contigs.py) parser without
+creating a package API.
 
 Execute mode publishes under `<output-root>/<reference-id>/`:
 

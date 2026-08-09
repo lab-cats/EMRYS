@@ -80,6 +80,14 @@ is 251 lines and no private module exceeds 167 lines. Known characterized
 publication gaps remain unchanged; this is maintainability and local test
 evidence, not CSU batch runtime or cluster proof.
 
+Reference provenance keeps its executable, public names, CLI behavior, TSV
+bytes/order, contig reconciliation, stability recheck, and publication/fault-
+injection bindings over private contract, inventory, contig, and rendering
+owners. The public CLI/publication facade is 230 lines, no private module
+exceeds 135 lines, and all nine extracted function bodies are AST-identical to
+the committed monolith. The five implementation files total 693 lines; this is
+maintainability and local fixture evidence, not production reference proof.
+
 Step `09c` intake keeps its sibling-import surface over distinct data-model,
 support, review-plan, and evidence-manifest owners. The compatibility facade is
 42 lines and the largest extracted owner is 228 lines. Review policy, manifest
