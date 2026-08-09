@@ -30,31 +30,22 @@ def build_context(
     artifacts: dict[str, Artifact] = {}
     input_hashes: dict[Path, str] = {}
 
+    def register_table(key: str, label: str, table: step08.Table) -> None:
+        """Register one validated table in both artifact and hash indexes."""
+        register_artifact(
+            artifacts, input_hashes, key, artifact_from_table(label, table)
+        )
+
     plan_table, plan, _allowed_analyses = validate_review_plan(
         arguments.review_plan, arguments.review_id
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "review_plan",
-        artifact_from_table("Scientific review plan", plan_table),
-    )
+    register_table("review_plan", "Scientific review plan", plan_table)
     sample_table, sample_ids, sample_rows = step08.validate_sample_manifest(
         arguments.sample_manifest
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "sample_manifest",
-        artifact_from_table("Sample manifest", sample_table),
-    )
+    register_table("sample_manifest", "Sample manifest", sample_table)
     partition_table = step08.validate_partition_manifest(arguments.partition_manifest)
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "partition_manifest",
-        artifact_from_table("Partition manifest", partition_table),
-    )
+    register_table("partition_manifest", "Partition manifest", partition_table)
     sample_hash = artifacts["sample_manifest"].sha256
     partition_hash = artifacts["partition_manifest"].sha256
 
@@ -65,24 +56,14 @@ def build_context(
         sample_hash,
         partition_hash,
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step08_inputs",
-        artifact_from_table("Step 08 input receipt", step08_inputs),
-    )
+    register_table("step08_inputs", "Step 08 input receipt", step08_inputs)
     step08_sites = step08.validate_step08_sites(
         arguments.step08_sites,
         sample_ids,
         partition_table.rows,
         step08_inputs.rows,
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step08_sites",
-        artifact_from_table("Step 08 sites table", step08_sites),
-    )
+    register_table("step08_sites", "Step 08 sites table", step08_sites)
     step08_summary = step08.validate_step08_summary(
         arguments.step08_summary,
         sample_ids,
@@ -92,12 +73,7 @@ def build_context(
         sample_hash,
         partition_hash,
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step08_summary",
-        artifact_from_table("Step 08 summary", step08_summary),
-    )
+    register_table("step08_summary", "Step 08 summary", step08_summary)
 
     analysis_dir = require_directory(
         "Step 09 analysis directory", arguments.step09_analysis_dir
@@ -119,12 +95,7 @@ def build_context(
         row["candidate_id"] for row in step08_sites.rows
     ]:
         step08.fail("Step 09 all-sites candidate order/universe differs from Step 08.")
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step09_all_sites",
-        artifact_from_table("Step 09 all-sites", all_sites),
-    )
+    register_table("step09_all_sites", "Step 09 all-sites", all_sites)
     significant = step09.validate_step09_results(
         "Step 09 significant-sites",
         paths["step09_significant_sites"],
@@ -133,11 +104,8 @@ def build_context(
         step08_sites.rows,
     )
     step09.validate_significant_subset(all_sites.rows, significant.rows)
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step09_significant_sites",
-        artifact_from_table("Step 09 significant-sites", significant),
+    register_table(
+        "step09_significant_sites", "Step 09 significant-sites", significant
     )
     step09_summary_table = step09.validate_step09_summary(
         paths["step09_summary"],
@@ -159,20 +127,12 @@ def build_context(
     step09.validate_step09_result_semantics(
         all_sites.rows, step09_summary_table.rows[0], sample_rows
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step09_summary",
-        artifact_from_table("Step 09 summary", step09_summary_table),
-    )
+    register_table("step09_summary", "Step 09 summary", step09_summary_table)
     mutation = step09.validate_mutation_spectrum(
         paths["step09_mutation_spectrum"], analysis_id, all_sites.rows
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "step09_mutation_spectrum",
-        artifact_from_table("Step 09 mutation spectrum", mutation),
+    register_table(
+        "step09_mutation_spectrum", "Step 09 mutation spectrum", mutation
     )
     for key, label in (
         ("step09_mutation_spectrum_pdf", "Step 09 mutation-spectrum PDF"),
@@ -197,11 +157,8 @@ def build_context(
             input_hashes,
         )
     )
-    register_artifact(
-        artifacts,
-        input_hashes,
-        "evidence_manifest",
-        artifact_from_table("Scientific evidence manifest", evidence_manifest),
+    register_table(
+        "evidence_manifest", "Scientific evidence manifest", evidence_manifest
     )
 
     output_dir = (
