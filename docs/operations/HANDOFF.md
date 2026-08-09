@@ -31,6 +31,14 @@ and HTML versus receipt-last bundle publication have separate owners; no
 private module exceeds 445 lines. This is maintainability and local test
 evidence only and does not change the reporting evidence ceiling above.
 
+Canonical run-summary assembly likewise keeps its public command and direct
+import bindings stable over bounded private owners for document assembly,
+receipt-last publication, transaction input, validation, projection, and
+scientific-review models, I/O, package reconstruction, and evidence
+normalization. The public coordinator is 381 lines, the science compatibility
+owner is 405 lines, and no new private module exceeds 442 lines. This is also
+maintainability and local test evidence only.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:

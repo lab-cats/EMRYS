@@ -37,6 +37,9 @@ tooling does not constitute completed scientific review.
   [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 - Artifact, review, run-summary, report, runtime-preflight, reference-
   provenance, and storage contracts are implemented and locally fixture-tested.
+- Canonical run-summary assembly keeps its public command and compatibility
+  bindings over bounded private document, publication, transaction, validation,
+  projection, and scientific-review owners; no production summary exists.
 - Static HTML/PDF/TSV reporting and the populated demo are locally renderer-
   tested with synthetic inputs. Public renderer paths are thin compatibility
   facades over bounded private model, validation, projection, runtime,
