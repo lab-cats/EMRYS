@@ -63,48 +63,44 @@ def build(args: argparse.Namespace):
         report.stable_text(paths["sj_out"], "STAR splice-junction table")[0]
     )
 
-    row = report.row_builder("01", args.scope_id)
-
-    rows = [
-        row(
-            "output_files",
-            nonempty,
-            len(paths),
-            "5 nonempty explicit outputs",
-            "BAM, final/general/progress logs, and SJ table",
-        ),
-        row(
-            "bam_structure",
-            bam_valid,
-            bam_prefix.hex(),
-            "BAM or BGZF magic",
-            "alignment output container",
-        ),
-        row(
-            "final_log_structure",
-            bool(final_values),
-            len(final_values) if final_values else final_error,
-            "nonempty unique key/value rows",
-            "STAR Log.final.out structure",
-        ),
-        row(
-            "mapping_summary",
-            mapping_ok,
-            mapping_observed,
-            "three required percentages in 0..100",
-            "STAR mapping summary",
-        ),
-        row(
-            "splice_junction_structure",
-            sj_ok,
-            sj_observed,
-            "zero or more valid 9-column rows",
-            "STAR SJ.out.tab structure",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="01", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report(
+        "01",
+        args.scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "output_files": (
+                nonempty,
+                len(paths),
+                "5 nonempty explicit outputs",
+                "BAM, final/general/progress logs, and SJ table",
+            ),
+            "bam_structure": (
+                bam_valid,
+                bam_prefix.hex(),
+                "BAM or BGZF magic",
+                "alignment output container",
+            ),
+            "final_log_structure": (
+                bool(final_values),
+                len(final_values) if final_values else final_error,
+                "nonempty unique key/value rows",
+                "STAR Log.final.out structure",
+            ),
+            "mapping_summary": (
+                mapping_ok,
+                mapping_observed,
+                "three required percentages in 0..100",
+                "STAR mapping summary",
+            ),
+            "splice_junction_structure": (
+                sj_ok,
+                sj_observed,
+                "zero or more valid 9-column rows",
+                "STAR SJ.out.tab structure",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -53,36 +53,27 @@ def build(args: argparse.Namespace):
             parsed[role] = parser(paths[role])
         except reference_contigs.ReferenceContigError as exc:
             errors[role] = report.clean(exc)
-    row = report.row_builder("00c", args.scope_id)
-    rows = []
+    checks = {}
     for role in ("fasta", "fai", "dict"):
-        rows.append(
-            row(
-                f"{role}_structure",
-                role in parsed,
-                len(parsed.get(role, []))
-                if role in parsed
-                else errors.get(role, "invalid"),
-                "nonempty unique contigs",
-                f"{role.upper()} contig structure",
-            )
+        checks[f"{role}_structure"] = (
+            role in parsed,
+            len(parsed.get(role, []))
+            if role in parsed
+            else errors.get(role, "invalid"),
+            "nonempty unique contigs",
+            f"{role.upper()} contig structure",
         )
     for role in ("fai", "dict"):
         matches = (
             "fasta" in parsed and role in parsed and parsed[role] == parsed["fasta"]
         )
-        rows.append(
-            row(
-                f"{role}_contig_agreement",
-                matches,
-                len(parsed.get(role, [])) if role in parsed else "invalid",
-                len(parsed.get("fasta", [])) if "fasta" in parsed else "invalid",
-                f"ordered {role.upper()} names and lengths equal FASTA",
-            )
+        checks[f"{role}_contig_agreement"] = (
+            matches,
+            len(parsed.get(role, [])) if role in parsed else "invalid",
+            len(parsed.get("fasta", [])) if "fasta" in parsed else "invalid",
+            f"ordered {role.upper()} names and lengths equal FASTA",
         )
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="00c", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report("00c", args.scope_id, snapshots, CHECK_IDS, checks)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

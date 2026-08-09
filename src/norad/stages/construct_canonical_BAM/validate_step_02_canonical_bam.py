@@ -58,48 +58,44 @@ def build(args: argparse.Namespace):
         "read-group alignment count",
     )
 
-    row = report.row_builder("02", args.scope_id)
-
-    rows = [
-        row(
-            "bam_bai_structure",
-            structure,
-            f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
-            "BAM/BGZF and BAI/CSI magic",
-            "canonical pair containers",
-        ),
-        row(
-            "samtools_quickcheck",
-            quickcheck_ok,
-            quickcheck_detail,
-            "exit=0 with empty diagnostics",
-            "samtools quickcheck -v",
-        ),
-        row(
-            "coordinate_sorting",
-            coordinate,
-            header_detail,
-            "one @HD with SO:coordinate",
-            "canonical BAM sort order",
-        ),
-        row(
-            "read_group_header",
-            matching_rg,
-            header_detail,
-            f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
-            "sample read-group header",
-        ),
-        row(
-            "alignment_rg_tags",
-            tagged == total,
-            f"tagged={tagged} total={total}",
-            "tagged equals total",
-            "all alignments carry the sample RG tag",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="02", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report(
+        "02",
+        args.scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "bam_bai_structure": (
+                structure,
+                f"BAM={bam_magic.hex()} BAI={bai_magic.hex()}",
+                "BAM/BGZF and BAI/CSI magic",
+                "canonical pair containers",
+            ),
+            "samtools_quickcheck": (
+                quickcheck_ok,
+                quickcheck_detail,
+                "exit=0 with empty diagnostics",
+                "samtools quickcheck -v",
+            ),
+            "coordinate_sorting": (
+                coordinate,
+                header_detail,
+                "one @HD with SO:coordinate",
+                "canonical BAM sort order",
+            ),
+            "read_group_header": (
+                matching_rg,
+                header_detail,
+                f"one @RG with ID:{args.scope_id} and SM:{args.scope_id}",
+                "sample read-group header",
+            ),
+            "alignment_rg_tags": (
+                tagged == total,
+                f"tagged={tagged} total={total}",
+                "tagged equals total",
+                "all alignments carry the sample RG tag",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

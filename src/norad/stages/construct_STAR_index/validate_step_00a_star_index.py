@@ -99,51 +99,48 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
         )
     except ValueError:
         observed_overhang = None
-    row = report.row_builder("00a", args.scope_id)
-    rows = (
-        row(
-            "index_members",
-            members_pass,
-            len(REQUIRED_MEMBERS) - len(missing),
-            len(REQUIRED_MEMBERS),
-            "all required members present"
-            if members_pass
-            else "missing: " + ",".join(missing),
-        ),
-        row(
-            "fasta_identity",
-            fasta_match,
-            fasta_values[0] if len(fasta_values) == 1 else "invalid",
-            str(fasta),
-            "genomeFastaFiles resolves to the explicit FASTA",
-        ),
-        row(
-            "gtf_identity",
-            gtf_match,
-            gtf_values[0] if len(gtf_values) == 1 else "invalid",
-            str(gtf),
-            "sjdbGTFfile resolves to the explicit GTF",
-        ),
-        row(
-            "contig_names_lengths",
-            star_records == fasta_records,
-            f"{len(star_records)} STAR contigs",
-            f"{len(fasta_records)} FASTA contigs",
-            "ordered contig names and lengths agree"
-            if star_records == fasta_records
-            else "ordered contig names or lengths differ",
-        ),
-        row(
-            "sjdb_overhang",
-            observed_overhang == args.expected_sjdb_overhang,
-            observed_overhang if observed_overhang is not None else "invalid",
-            args.expected_sjdb_overhang,
-            "configured STAR splice-junction overhang",
-        ),
+    return report.build_report(
+        "00a",
+        args.scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "index_members": (
+                members_pass,
+                len(REQUIRED_MEMBERS) - len(missing),
+                len(REQUIRED_MEMBERS),
+                "all required members present"
+                if members_pass
+                else "missing: " + ",".join(missing),
+            ),
+            "fasta_identity": (
+                fasta_match,
+                fasta_values[0] if len(fasta_values) == 1 else "invalid",
+                str(fasta),
+                "genomeFastaFiles resolves to the explicit FASTA",
+            ),
+            "gtf_identity": (
+                gtf_match,
+                gtf_values[0] if len(gtf_values) == 1 else "invalid",
+                str(gtf),
+                "sjdbGTFfile resolves to the explicit GTF",
+            ),
+            "contig_names_lengths": (
+                star_records == fasta_records,
+                f"{len(star_records)} STAR contigs",
+                f"{len(fasta_records)} FASTA contigs",
+                "ordered contig names and lengths agree"
+                if star_records == fasta_records
+                else "ordered contig names or lengths differ",
+            ),
+            "sjdb_overhang": (
+                observed_overhang == args.expected_sjdb_overhang,
+                observed_overhang if observed_overhang is not None else "invalid",
+                args.expected_sjdb_overhang,
+                "configured STAR splice-junction overhang",
+            ),
+        },
     )
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="00a", check_ids=CHECK_IDS)
-    return data, snapshots
 
 
 def main(argv: Sequence[str] | None = None) -> int:

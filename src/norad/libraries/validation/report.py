@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-from collections.abc import Callable, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TypeVar
 
 from norad.libraries.validation.errors import fail
 
@@ -19,7 +20,8 @@ HEADER = (
     "detail",
 )
 
-RowBuilder = Callable[[str, bool, object, object, object], tuple[str, ...]]
+Check = tuple[bool, object, object, object]
+Snapshots = TypeVar("Snapshots")
 
 
 def add_output_arguments(parser: argparse.ArgumentParser) -> None:
@@ -53,25 +55,29 @@ def row(
     )
 
 
-def row_builder(step_id: str, scope_id: str) -> RowBuilder:
-    """Bind the repeated identity fields shared by one validator's rows."""
-
-    def build(
-        check_id: str,
-        passed: bool,
-        observed: object,
-        expected: object,
-        detail: object,
-    ) -> tuple[str, ...]:
-        return row(step_id, scope_id, check_id, passed, observed, expected, detail)
-
-    return build
-
-
 def render(rows: Sequence[Sequence[str]]) -> bytes:
     lines = ["\t".join(HEADER)]
     lines.extend("\t".join(clean(value) for value in values) for values in rows)
     return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def build_report(
+    step_id: str,
+    scope_id: str,
+    snapshots: Snapshots,
+    check_ids: set[str],
+    checks: Mapping[str, Check],
+) -> tuple[bytes, Snapshots]:
+    """Render and validate one owner's complete check set."""
+    data = render(
+        [
+            row(step_id, scope_id, check_id, *values)
+            for check_id, values in checks.items()
+        ]
+    )
+    # Keep the owner's declaration independent so omitted or misspelled checks fail.
+    validate_report(data, scope_id, step_id=step_id, check_ids=check_ids)
+    return data, snapshots
 
 
 def validate_report(

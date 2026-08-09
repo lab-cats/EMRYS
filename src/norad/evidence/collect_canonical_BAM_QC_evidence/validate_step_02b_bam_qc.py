@@ -52,48 +52,44 @@ def build(args: argparse.Namespace):
     mapped_ok = flagstat_ok and mapped >= 0
     consistent = total_ok and mapped_ok and mapped <= total
 
-    row = report.row_builder("02b", args.scope_id)
-
-    rows = [
-        row(
-            "quickcheck_structure",
-            quick_ok,
-            quick_text or "empty",
-            "exact PASS marker",
-            "captured samtools quickcheck result",
-        ),
-        row(
-            "flagstat_structure",
-            flagstat_ok,
-            "; ".join(errors) if errors else ",".join(sorted(values)),
-            "unique total and mapped rows",
-            "flagstat report structure",
-        ),
-        row(
-            "total_records",
-            total_ok,
-            total if total_ok else "invalid",
-            "nonnegative integer",
-            "QC-passed plus QC-failed total",
-        ),
-        row(
-            "mapped_records",
-            mapped_ok,
-            mapped if mapped_ok else "invalid",
-            "nonnegative integer",
-            "QC-passed plus QC-failed mapped",
-        ),
-        row(
-            "count_consistency",
-            consistent,
-            f"mapped={mapped} total={total}",
-            "mapped <= total",
-            "flagstat count reconciliation",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="02b", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report(
+        "02b",
+        args.scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "quickcheck_structure": (
+                quick_ok,
+                quick_text or "empty",
+                "exact PASS marker",
+                "captured samtools quickcheck result",
+            ),
+            "flagstat_structure": (
+                flagstat_ok,
+                "; ".join(errors) if errors else ",".join(sorted(values)),
+                "unique total and mapped rows",
+                "flagstat report structure",
+            ),
+            "total_records": (
+                total_ok,
+                total if total_ok else "invalid",
+                "nonnegative integer",
+                "QC-passed plus QC-failed total",
+            ),
+            "mapped_records": (
+                mapped_ok,
+                mapped if mapped_ok else "invalid",
+                "nonnegative integer",
+                "QC-passed plus QC-failed mapped",
+            ),
+            "count_consistency": (
+                consistent,
+                f"mapped={mapped} total={total}",
+                "mapped <= total",
+                "flagstat count reconciliation",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

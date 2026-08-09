@@ -190,6 +190,37 @@ def test_report_validator_rejects_invalid_status() -> None:
         )
 
 
+def test_build_report_preserves_snapshots_and_declared_check_identity() -> None:
+    snapshots = object()
+
+    data, returned_snapshots = REPORT.build_report(
+        STEP_ID,
+        SCOPE_ID,
+        snapshots,
+        CHECK_IDS,
+        {"publication_contract": (True, "observed", "expected", "detail")},
+    )
+
+    assert returned_snapshots is snapshots
+    REPORT.validate_report(
+        data,
+        SCOPE_ID,
+        step_id=STEP_ID,
+        check_ids=CHECK_IDS,
+    )
+
+
+def test_build_report_rejects_a_check_missing_from_owner_declaration() -> None:
+    with pytest.raises(REPORT.ValidationError, match="check IDs"):
+        REPORT.build_report(
+            STEP_ID,
+            SCOPE_ID,
+            {},
+            CHECK_IDS,
+            {"unexpected": (True, "observed", "expected", "detail")},
+        )
+
+
 def test_runtime_finish_runs_optional_pre_report_hook(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

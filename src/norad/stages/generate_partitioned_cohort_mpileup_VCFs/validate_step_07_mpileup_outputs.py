@@ -104,54 +104,51 @@ def build(args: argparse.Namespace):
 
     scope_id = f"{args.cohort_id}__{args.partition_id}"
 
-    row = report.row_builder("07", scope_id)
-
-    rows = [
-        row(
-            "receipt_structure",
-            receipt_structure,
-            f"rows={len(receipt_rows)}",
-            f"exact header; {', '.join(alignment_orientation.ORIENTATIONS)} rows",
-            "receipt transaction",
-        ),
-        row(
-            "vcf_structure",
-            vcf_structure,
-            " ".join(
-                f"{orientation}={len(samples)}"
-                for orientation, _, samples, _ in vcf_readings
-            )
-            + " samples",
-            "valid VCFs with manifest sample order",
-            "explicit VCF structure",
-        ),
-        row(
-            "selector_reconciliation",
-            selector_reconciliation,
-            f"{selector_type}={selector_value}",
-            "declared valid selector in both rows",
-            "partition selector and FAI universe",
-        ),
-        row(
-            "manifest_identity_and_sample_order",
-            manifest_identity and vcf_structure,
-            f"samples={len(sample_ids)}",
-            "manifest hashes, count, and VCF order reconcile",
-            "immutable manifest identity",
-        ),
-        row(
-            "vcf_record_counts",
-            counts_ok,
-            " ".join(
-                f"{orientation}={count}" for orientation, _, _, count in vcf_readings
+    return report.build_report(
+        "07",
+        scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "receipt_structure": (
+                receipt_structure,
+                f"rows={len(receipt_rows)}",
+                f"exact header; {', '.join(alignment_orientation.ORIENTATIONS)} rows",
+                "receipt transaction",
             ),
-            "receipt paths and counts match exact VCFs",
-            "transaction record counts",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, scope_id, step_id="07", check_ids=CHECK_IDS)
-    return data, snapshots
+            "vcf_structure": (
+                vcf_structure,
+                " ".join(
+                    f"{orientation}={len(samples)}"
+                    for orientation, _, samples, _ in vcf_readings
+                )
+                + " samples",
+                "valid VCFs with manifest sample order",
+                "explicit VCF structure",
+            ),
+            "selector_reconciliation": (
+                selector_reconciliation,
+                f"{selector_type}={selector_value}",
+                "declared valid selector in both rows",
+                "partition selector and FAI universe",
+            ),
+            "manifest_identity_and_sample_order": (
+                manifest_identity and vcf_structure,
+                f"samples={len(sample_ids)}",
+                "manifest hashes, count, and VCF order reconcile",
+                "immutable manifest identity",
+            ),
+            "vcf_record_counts": (
+                counts_ok,
+                " ".join(
+                    f"{orientation}={count}"
+                    for orientation, _, _, count in vcf_readings
+                ),
+                "receipt paths and counts match exact VCFs",
+                "transaction record counts",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

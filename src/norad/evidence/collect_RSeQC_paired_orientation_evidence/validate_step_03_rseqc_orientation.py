@@ -52,48 +52,44 @@ def build(args: argparse.Namespace):
     observed_sum = sum(value for value in fractions if value is not None)
     sum_ok = all(valid) and abs(observed_sum - 1.0) <= args.sum_tolerance
 
-    row = report.row_builder("03", args.scope_id)
-
-    rows = [
-        row(
-            "report_structure",
-            not errors,
-            "; ".join(errors) if errors else "3 unique required labels",
-            "exactly one value per required label",
-            "RSeQC report structure",
-        ),
-        row(
-            "failed_fraction",
-            valid[0],
-            fractions[0],
-            "finite 0..1",
-            "reads not assigned to an orientation",
-        ),
-        row(
-            "paired_orientation_fraction_a",
-            valid[1],
-            fractions[1],
-            "finite 0..1",
-            LABELS[1],
-        ),
-        row(
-            "paired_orientation_fraction_b",
-            valid[2],
-            fractions[2],
-            "finite 0..1",
-            LABELS[2],
-        ),
-        row(
-            "fraction_sum",
-            sum_ok,
-            f"{observed_sum:.12g}",
-            f"1 within {args.sum_tolerance:.12g}",
-            "three fractions reconcile",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="03", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report(
+        "03",
+        args.scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "report_structure": (
+                not errors,
+                "; ".join(errors) if errors else "3 unique required labels",
+                "exactly one value per required label",
+                "RSeQC report structure",
+            ),
+            "failed_fraction": (
+                valid[0],
+                fractions[0],
+                "finite 0..1",
+                "reads not assigned to an orientation",
+            ),
+            "paired_orientation_fraction_a": (
+                valid[1],
+                fractions[1],
+                "finite 0..1",
+                LABELS[1],
+            ),
+            "paired_orientation_fraction_b": (
+                valid[2],
+                fractions[2],
+                "finite 0..1",
+                LABELS[2],
+            ),
+            "fraction_sum": (
+                sum_ok,
+                f"{observed_sum:.12g}",
+                f"1 within {args.sum_tolerance:.12g}",
+                "three fractions reconcile",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

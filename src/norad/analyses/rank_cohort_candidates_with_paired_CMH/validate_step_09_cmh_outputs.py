@@ -259,71 +259,65 @@ def build(args: argparse.Namespace):
     pdf_ok = mutation_pdf_detail == depth_pdf_detail == "validated"
     scope_id = args.analysis_id
 
-    row = report.row_builder("09", scope_id)
-
-    rows = [
-        row(
-            "output_transaction",
-            transaction_ok,
-            f"headers={header_detail}; six regular snapshots",
-            "four exact TSV headers; analysis-bound basenames; one parent; "
-            "six distinct physical files",
-            "native Step 09 output transaction",
-        ),
-        row(
-            "upstream_identity_and_candidate_order",
-            (
-                id_detail == "validated"
-                and cohort_policy_ok
-                and candidate_order_ok
-                and significant_sites is not None
+    return report.build_report(
+        "09",
+        scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "output_transaction": (
+                transaction_ok,
+                f"headers={header_detail}; six regular snapshots",
+                "four exact TSV headers; analysis-bound basenames; one parent; "
+                "six distinct physical files",
+                "native Step 09 output transaction",
             ),
-            result_detail,
-            "safe analysis/cohort; provisional policy; complete ordered "
-            "Step 08 candidate universe",
-            f"ids={id_detail}; sample={sample_detail}; "
-            f"partition={partition_detail}; inputs={step08_input_detail}; "
-            f"sites={step08_sites_detail}",
-        ),
-        row(
-            "status_semantics",
-            semantic_ok,
-            semantic_detail,
-            "recomputed target/test/call, depth, AF, background, CMH, and BH",
-            "native Step 09 statistical-state contract",
-        ),
-        row(
-            "significant_subset",
-            subset_ok,
-            subset_detail,
-            "exact ordered significant subset",
-            "all-sites versus significant-sites",
-        ),
-        row(
-            "summary_count_reconciliation",
-            summary is not None,
-            summary_detail,
-            "one analysis/cohort-bound summary with exact counts and provenance",
-            "paths, hashes, pairings, context, policy, and thresholds",
-        ),
-        row(
-            "mutation_spectrum_reconciliation",
-            mutation is not None,
-            mutation_detail,
-            "canonical 12-SNV spectrum matching all-sites",
-            "mutation counts, fractions, and significant directions",
-        ),
-        row(
-            "pdf_structure",
-            pdf_ok,
-            f"mutation={mutation_pdf_detail}; depth={depth_pdf_detail}",
-            "two structurally valid PDFs",
-            "plot output containers",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, scope_id, step_id="09", check_ids=CHECK_IDS)
-    return data, snapshots
+            "upstream_identity_and_candidate_order": (
+                (
+                    id_detail == "validated"
+                    and cohort_policy_ok
+                    and candidate_order_ok
+                    and significant_sites is not None
+                ),
+                result_detail,
+                "safe analysis/cohort; provisional policy; complete ordered "
+                "Step 08 candidate universe",
+                f"ids={id_detail}; sample={sample_detail}; "
+                f"partition={partition_detail}; inputs={step08_input_detail}; "
+                f"sites={step08_sites_detail}",
+            ),
+            "status_semantics": (
+                semantic_ok,
+                semantic_detail,
+                "recomputed target/test/call, depth, AF, background, CMH, and BH",
+                "native Step 09 statistical-state contract",
+            ),
+            "significant_subset": (
+                subset_ok,
+                subset_detail,
+                "exact ordered significant subset",
+                "all-sites versus significant-sites",
+            ),
+            "summary_count_reconciliation": (
+                summary is not None,
+                summary_detail,
+                "one analysis/cohort-bound summary with exact counts and provenance",
+                "paths, hashes, pairings, context, policy, and thresholds",
+            ),
+            "mutation_spectrum_reconciliation": (
+                mutation is not None,
+                mutation_detail,
+                "canonical 12-SNV spectrum matching all-sites",
+                "mutation counts, fractions, and significant directions",
+            ),
+            "pdf_structure": (
+                pdf_ok,
+                f"mutation={mutation_pdf_detail}; depth={depth_pdf_detail}",
+                "two structurally valid PDFs",
+                "plot output containers",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -59,37 +59,31 @@ def build(args: argparse.Namespace):
         paths["counts"], args.scope_id
     )
     structure_ok = bool(values)
-    row = report.row_builder("06", args.scope_id)
-    rows = [
-        row(
-            "output_containers",
+    checks = {
+        "output_containers": (
             containers_ok,
             " ".join(f"{key}={value.hex()}" for key, value in magic.items()),
             "two BAM/BGZF and two BAI/CSI signatures",
             "orientation output containers",
         ),
-        row(
-            "counts_structure",
+        "counts_structure": (
             structure_ok,
             structure_detail,
             "one exact typed sample row",
             "orientation counts table",
         ),
-    ]
+    }
     for check_id, orientation_key in zip(
         ("fwd_count_arithmetic", "rev_count_arithmetic"), orientation.ORIENTATIONS
     ):
         count_ok, count_detail = orientation.mechanical_like_count_detail(
             values, orientation_key
         )
-        rows.append(
-            row(
-                check_id,
-                structure_ok and count_ok,
-                count_detail,
-                f"mechanical {orientation_key} counts",
-                f"mechanical {orientation_key} counts",
-            )
+        checks[check_id] = (
+            structure_ok and count_ok,
+            count_detail,
+            f"mechanical {orientation_key} counts",
+            f"mechanical {orientation_key} counts",
         )
     assigned_ok = structure_ok and (
         values["fwd_like_records"] + values["rev_like_records"]
@@ -103,23 +97,16 @@ def build(args: argparse.Namespace):
         )
         <= 0.0000005
     )
-    rows.extend(
-        [
-            row(
-                "assigned_count_arithmetic",
-                assigned_ok,
-                f"input={values.get('input_records')} "
-                f"assigned={values.get('assigned_records')} "
-                f"unassigned={values.get('unassigned_records')} "
-                f"fraction={values.get('assigned_fraction')}",
-                "groups sum; assigned + unassigned = input; fraction reconciles",
-                "complete orientation count arithmetic",
-            ),
-        ]
+    checks["assigned_count_arithmetic"] = (
+        assigned_ok,
+        f"input={values.get('input_records')} "
+        f"assigned={values.get('assigned_records')} "
+        f"unassigned={values.get('unassigned_records')} "
+        f"fraction={values.get('assigned_fraction')}",
+        "groups sum; assigned + unassigned = input; fraction reconciles",
+        "complete orientation count arithmetic",
     )
-    data = report.render(rows)
-    report.validate_report(data, args.scope_id, step_id="06", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report("06", args.scope_id, snapshots, CHECK_IDS, checks)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

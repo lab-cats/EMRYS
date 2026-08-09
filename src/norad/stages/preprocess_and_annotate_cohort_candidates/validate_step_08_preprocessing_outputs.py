@@ -157,48 +157,44 @@ def build(args: argparse.Namespace):
 
     scope_id = args.cohort_id
 
-    row = report.row_builder("08", scope_id)
-
-    rows = [
-        row(
-            "output_transaction",
-            transaction_ok,
-            header_detail,
-            "three exact Step 08 TSV headers",
-            "sites, inputs, and summary",
-        ),
-        row(
-            "manifest_annotation_identity",
-            identity_ok,
-            f"sample={sample_detail}; partition={partition_detail}",
-            "cohort, manifest hashes, annotation path/hash, provisional policy",
-            inputs_detail,
-        ),
-        row(
-            "input_receipt_reconciliation",
-            inputs_table is not None,
-            inputs_detail,
-            "complete partition x orientation receipt",
-            "ordered inputs, types, hashes, and per-row arithmetic",
-        ),
-        row(
-            "sites_order_uniqueness",
-            sites_table is not None,
-            sites_detail,
-            "typed unique candidates and per-scope counts",
-            "sites schema, sample columns, order, uniqueness, and AF arithmetic",
-        ),
-        row(
-            "summary_count_reconciliation",
-            summary_table is not None,
-            summary_detail,
-            "one exact aggregate row matching inputs and sites",
-            "three-output transaction count reconciliation",
-        ),
-    ]
-    data = report.render(rows)
-    report.validate_report(data, scope_id, step_id="08", check_ids=CHECK_IDS)
-    return data, snapshots
+    return report.build_report(
+        "08",
+        scope_id,
+        snapshots,
+        CHECK_IDS,
+        {
+            "output_transaction": (
+                transaction_ok,
+                header_detail,
+                "three exact Step 08 TSV headers",
+                "sites, inputs, and summary",
+            ),
+            "manifest_annotation_identity": (
+                identity_ok,
+                f"sample={sample_detail}; partition={partition_detail}",
+                "cohort, manifest hashes, annotation path/hash, provisional policy",
+                inputs_detail,
+            ),
+            "input_receipt_reconciliation": (
+                inputs_table is not None,
+                inputs_detail,
+                "complete partition x orientation receipt",
+                "ordered inputs, types, hashes, and per-row arithmetic",
+            ),
+            "sites_order_uniqueness": (
+                sites_table is not None,
+                sites_detail,
+                "typed unique candidates and per-scope counts",
+                "sites schema, sample columns, order, uniqueness, and AF arithmetic",
+            ),
+            "summary_count_reconciliation": (
+                summary_table is not None,
+                summary_detail,
+                "one exact aggregate row matching inputs and sites",
+                "three-output transaction count reconciliation",
+            ),
+        },
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
