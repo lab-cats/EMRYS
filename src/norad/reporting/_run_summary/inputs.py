@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from .. import _files
 from .models import FileSnapshot, RunSummaryError, adapter, contracts
 
 
@@ -71,14 +72,7 @@ def _resolved_path(value: str | Path) -> Path:
     return Path(os.path.abspath(os.fspath(Path(value).expanduser())))
 
 
-def _stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
+_stat_identity = _files.stat_identity
 
 
 def _require_regular_file(label: str, value: str | Path) -> Path:
@@ -206,17 +200,7 @@ def _load_json_bytes(
 
 
 def _reject_symlink_components(path: Path, label: str) -> None:
-    current = Path(path.anchor)
-    for part in path.parts[1:]:
-        current = current / part
-        if not os.path.lexists(current):
-            continue
-        try:
-            metadata = current.lstat()
-        except OSError as exc:
-            _fail(f"Could not inspect {label} component {current}: {exc}")
-        if stat.S_ISLNK(metadata.st_mode):
-            _fail(f"{label} must not traverse a symbolic link: {current}")
+    _files.reject_symlink_components(path, label, _fail)
 
 
 def _require_explicit_regular_file(

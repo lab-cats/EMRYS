@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from norad.reporting import build_artifact_index as adapter
+from norad.reporting._files import FileSnapshot
 contracts = adapter.contracts
 RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
 
@@ -143,17 +144,6 @@ RUN_SUMMARY_RECEIPT_HEADER = (
 
 class RunSummaryError(RuntimeError):
     """Raised when a run summary cannot be built or safely published."""
-
-
-@dataclass(frozen=True)
-class FileSnapshot:
-    path: Path
-    sha256: str
-    device: int
-    inode: int
-    size_bytes: int
-    mtime_ns: int
-    ctime_ns: int
 
 
 @dataclass(frozen=True)

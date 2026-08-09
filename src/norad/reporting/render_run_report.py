@@ -42,6 +42,7 @@ if sys.path[:1] != [src_root]:
     sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.reporting import _files
 
 PRODUCER = "render_run_report"
 PRODUCER_VERSION = "1.0.0"
@@ -147,15 +148,7 @@ class ReportRenderError(RuntimeError):
     """Raised when a run report cannot be validated or safely published."""
 
 
-@dataclass(frozen=True)
-class FileSnapshot:
-    path: Path
-    sha256: str
-    device: int
-    inode: int
-    size_bytes: int
-    mtime_ns: int
-    ctime_ns: int
+FileSnapshot = _files.FileSnapshot
 
 
 @dataclass(frozen=True)
@@ -296,17 +289,7 @@ def _explicit_path(path: Path, label: str) -> Path:
 
 
 def _reject_symlink_components(path: Path, label: str) -> None:
-    current = Path(path.anchor)
-    for part in path.parts[1:]:
-        current = current / part
-        if not os.path.lexists(current):
-            continue
-        try:
-            metadata = current.lstat()
-        except OSError as exc:
-            _fail(f"Could not inspect {label} component {current}: {exc}")
-        if stat.S_ISLNK(metadata.st_mode):
-            _fail(f"{label} must not traverse a symbolic link: {current}")
+    _files.reject_symlink_components(path, label, _fail)
 
 
 def _snapshot_regular(
@@ -342,27 +325,9 @@ def _snapshot_regular(
     finally:
         if descriptor is not None:
             os.close(descriptor)
-    before_identity = (
-        before.st_dev,
-        before.st_ino,
-        before.st_size,
-        before.st_mtime_ns,
-        before.st_ctime_ns,
-    )
-    after_identity = (
-        after.st_dev,
-        after.st_ino,
-        after.st_size,
-        after.st_mtime_ns,
-        after.st_ctime_ns,
-    )
-    current_identity = (
-        current.st_dev,
-        current.st_ino,
-        current.st_size,
-        current.st_mtime_ns,
-        current.st_ctime_ns,
-    )
+    before_identity = _files.stat_identity(before)
+    after_identity = _files.stat_identity(after)
+    current_identity = _files.stat_identity(current)
     if (
         before_identity != after_identity
         or before_identity != current_identity

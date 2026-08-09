@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad.libraries.alignments import orientation as alignment_orientation
 
+from .. import _files
 from .contracts import contracts
 from .models import (
     RUN_CONTRACT_FIELDS,
@@ -354,22 +355,8 @@ def stat_source(
                 "changed_during_hash",
                 link_target,
             )
-        before_identity = (
-            stat_result.st_dev,
-            stat_result.st_ino,
-            stat_result.st_size,
-            stat_result.st_mtime_ns,
-            stat_result.st_ctime_ns,
-            link_target,
-        )
-        after_identity = (
-            post_hash_stat.st_dev,
-            post_hash_stat.st_ino,
-            post_hash_stat.st_size,
-            post_hash_stat.st_mtime_ns,
-            post_hash_stat.st_ctime_ns,
-            post_hash_link,
-        )
+        before_identity = (*_files.stat_identity(stat_result), link_target)
+        after_identity = (*_files.stat_identity(post_hash_stat), post_hash_link)
         if before_identity != after_identity:
             return SourceSnapshot(
                 "unknown",
