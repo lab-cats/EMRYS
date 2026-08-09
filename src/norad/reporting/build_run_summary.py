@@ -18,10 +18,8 @@ from pathlib import Path
 from typing import Any
 
 src_root = str(Path(__file__).resolve().parents[2])
-if sys.path[:1] != [src_root]:
-    if src_root in sys.path:
-        sys.path.remove(src_root)
-    sys.path.insert(0, src_root)
+# Direct execution must prefer this checkout over an installed NORAD.
+sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
 from norad.reporting import _run_summary_science as science
 from norad.reporting import build_artifact_index as adapter

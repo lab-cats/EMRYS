@@ -28,10 +28,8 @@ from pypdf import PdfReader
 
 _MODULE_PATH = Path(__file__).resolve()
 src_root = str(_MODULE_PATH.parents[2])
-if sys.path[:1] != [src_root]:
-    if src_root in sys.path:
-        sys.path.remove(src_root)
-    sys.path.insert(0, src_root)
+# Direct execution must prefer this checkout over an installed NORAD.
+sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
 from norad.reporting import render_run_report as html_report
 contracts = html_report.contracts

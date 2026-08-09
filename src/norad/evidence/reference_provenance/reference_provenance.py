@@ -16,10 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 src_root = str(Path(__file__).resolve().parents[3])
-if sys.path[:1] != [src_root]:
-    if src_root in sys.path:
-        sys.path.remove(src_root)
-    sys.path.insert(0, src_root)
+# Direct execution must prefer this checkout over an installed NORAD.
+sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 from norad.libraries import validation as report
 
 PROFILE_HEADER = (
