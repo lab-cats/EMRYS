@@ -9,6 +9,7 @@ from typing import Any
 from norad.contracts.scientific_evidence import review_package
 from norad.reporting import build_artifact_index as adapter
 from norad.reporting._files import FileSnapshot
+
 contracts = adapter.contracts
 RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
 
@@ -37,8 +38,7 @@ REPORT_TABLE_APPROVALS_HEADER = (
 )
 
 REPORT_ROLE_ADAPTERS = {
-    role: f"step09c_{role}_v1"
-    for role in review_package.REPORT_TABLE_ROLES
+    role: f"step09c_{role}_v1" for role in review_package.REPORT_TABLE_ROLES
 }
 
 RUN_SUMMARY_HEADER = (
