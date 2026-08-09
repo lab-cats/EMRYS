@@ -1203,7 +1203,7 @@ def test_signal_handlers_remain_installed_through_lock_release(
         observed_custom_handler = signal.getsignal(signal.SIGTERM) != original_handler
         original_release(ownership)
 
-    monkeypatch.setattr(RENDER, "_release_lock", inspect_release)
+    monkeypatch.setattr(RENDER._owner, "_release_lock", inspect_release)
     RENDER.publish_report(context)
 
     assert observed_custom_handler
@@ -1253,7 +1253,7 @@ def test_foreign_replacement_during_rollback_retains_lock_and_recovery(
         )
 
     monkeypatch.setattr(
-        RENDER,
+        RENDER._owner,
         "validate_rendered_html",
         replace_final_then_fail,
     )
@@ -1420,7 +1420,9 @@ def test_post_commit_backup_cleanup_failure_preserves_new_report_and_lock(
                 raise OSError("synthetic post-commit backup cleanup failure")
         original_sync(path)
 
-    monkeypatch.setattr(RENDER, "_fsync_directory", fail_post_commit_backup_sync)
+    monkeypatch.setattr(
+        RENDER._owner, "_fsync_directory", fail_post_commit_backup_sync
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="cleanup failed",

@@ -1,0 +1,21 @@
+# Run-report implementation owners
+
+This private package supports the public
+[`render_run_report.py`](../render_run_report.py) and
+[`render_run_report_bundle.py`](../render_run_report_bundle.py) commands.
+Public paths remain compatibility facades; private modules own implementation
+and may change without creating another supported command surface.
+
+| Module | Owned responsibility |
+| --- | --- |
+| [`dispatch.py`](dispatch.py) | Selects the public bundle coordinator without creating a renderer import cycle. |
+| [`html.py`](html.py) | Current HTML model, projection, validation, Quarto execution, and HTML publication owner. |
+| [`bundle.py`](bundle.py) | Current PDF/summary/receipt projection and multi-output publication owner. |
+
+The bundle imports the private HTML owner directly. The HTML owner never
+imports the bundle. Public facades retain direct-import compatibility while
+decomposition proceeds behind them.
+
+Exact report inputs, deterministic bytes, accessibility checks, format
+selection, locks, rollback, recovery, and receipt-last publication remain
+protected by `tests/reporting/` and `make report-test`.

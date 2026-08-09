@@ -17,6 +17,7 @@ rerun analysis, decide scientific validity, or promote evidence.
 [`_artifact_index/`](_artifact_index/README.md),
 [`_run_summary/`](_run_summary/README.md),
 [`_run_summary_science.py`](_run_summary_science.py),
+[`_run_report/`](_run_report/README.md),
 [`templates/`](templates/README.md), and [`styles/`](styles/README.md) are
 private implementation assets, not additional public interfaces. Structural
 input starters live in
