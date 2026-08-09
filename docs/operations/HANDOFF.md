@@ -24,6 +24,13 @@ It does not prove every source passed or promote runtime, cluster, scientific,
 or biological state. Current test policy belongs to
 [`TEST_BASELINE.md`](../design/TEST_BASELINE.md).
 
+The reporting renderer now keeps its public shell and Python paths stable over
+a private, acyclic `_run_report` package. Models, input/context validation,
+HTML/PDF/receipt projection, pinned runtime execution, transaction primitives,
+and HTML versus receipt-last bundle publication have separate owners; no
+private module exceeds 445 lines. This is maintainability and local test
+evidence only and does not change the reporting evidence ceiling above.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:

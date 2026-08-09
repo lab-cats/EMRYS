@@ -11,8 +11,8 @@ rerun analysis, decide scientific validity, or promote evidence.
 | [`build_artifact_index.py`](build_artifact_index.py) | Reconciles declared workflow artifacts into an explicit artifact index. |
 | [`build_run_summary.py`](build_run_summary.py) | Projects declared run, artifact, validation, and science state into a run summary. |
 | [`render_run_report.sh`](render_run_report.sh) | Dry-run-by-default shell launcher for the report-bundle owner. |
-| [`render_run_report.py`](render_run_report.py) | Provides the public Python bundle entry point and the internal self-contained HTML core used by the bundle coordinator; it consumes one canonical summary and only its authorized supplemental tables. |
-| [`render_run_report_bundle.py`](render_run_report_bundle.py) | Publishes a selected HTML/PDF/TSV/receipt bundle, with the receipt last. |
+| [`render_run_report.py`](render_run_report.py) | Public compatibility command that dispatches selected HTML/PDF/all rendering while preserving established direct imports. |
+| [`render_run_report_bundle.py`](render_run_report_bundle.py) | Public compatibility facade for selected HTML/PDF/TSV/receipt publication, with the receipt last. |
 
 [`_artifact_index/`](_artifact_index/README.md),
 [`_run_summary/`](_run_summary/README.md),

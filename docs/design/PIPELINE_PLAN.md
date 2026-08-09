@@ -38,7 +38,9 @@ tooling does not constitute completed scientific review.
 - Artifact, review, run-summary, report, runtime-preflight, reference-
   provenance, and storage contracts are implemented and locally fixture-tested.
 - Static HTML/PDF/TSV reporting and the populated demo are locally renderer-
-  tested with synthetic inputs; no production report exists.
+  tested with synthetic inputs. Public renderer paths are thin compatibility
+  facades over bounded private model, validation, projection, runtime,
+  transaction, and publication owners; no production report exists.
 - Current audit and non-regression routes are
   [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and
   [`TEST_BASELINE.md`](TEST_BASELINE.md).
@@ -64,7 +66,8 @@ SETUP-03A + INTAKE-03A + PROFILE-03A
 relationships do not select work.
 
 Reporting remains split across characterization, contract, projection,
-usability, decomposition, and default-profile cards. Logging, validation
+usability, and default-profile cards; renderer decomposition is implemented.
+Logging, validation
 receipts, documentation maintenance, future acquisition/analysis, and
 installable-control-plane cards remain unselected. `UNREFINED` proposals are
 not actionable.

@@ -52,6 +52,19 @@ claims.
 | [`RA-027`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-027--computational-transaction-scientific-and-biological-states-must-stay-separate) | Evidence-state separation |
 | [`RA-028`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-028--unique-documentation-evidence-must-survive-any-navigation-refactor) | Unique documentation evidence preservation |
 
+## Current dispositions
+
+| Finding | Current disposition |
+| --- | --- |
+| `RA-006` | Resolved for the live reporting owner. The public renderer files are compatibility facades over one private `_run_report` package; dispatch points from HTML selection to the bundle coordinator without the former HTML-to-bundle-to-HTML cycle. Direct-import, direct-script, format, deterministic-output, signal, lock, rollback, recovery, and arbitrary-CWD contracts remain protected by `make report-test`. |
+| `RA-008` | The reporting-renderer slice is resolved; the repository-wide finding remains open for its other named owners. Reporting is decomposed by models, input/context validation, HTML/PDF/receipt projection, runtime, transaction, publication, and dispatch seams. The largest private reporting module is 445 lines; the public Python facades are 33 and 30 lines. No generic rendering framework or shared-library promotion was introduced. |
+
+The reporting package passed 157 focused report tests plus its shell contract.
+The repository coverage non-regression gate passed 1,250 tests with 18 skips at
+line `0.853753` and branch `0.746824`, above the tracked `0.838935` and
+`0.736276` baselines. These are local engineering results only; they do not
+establish runtime, cluster, scientific-review, or biological evidence.
+
 ## Current recheck triggers
 
 Re-run the applicable audit evidence before changing a disposition when:

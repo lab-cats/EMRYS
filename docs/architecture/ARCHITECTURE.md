@@ -68,6 +68,15 @@ Private bridges and colocated helper packages remain part of their public
 owner; they do not create additional pipeline components or a generic utility
 layer.
 
+Static reporting follows that rule through the private
+[`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
+The two public Python renderer paths are compatibility facades; private owners
+separate immutable models, input/context validation, HTML/PDF/receipt
+projection, pinned runtime execution, transaction primitives, and HTML versus
+receipt-last bundle publication. Bundle dispatch imports the private HTML
+owner in one direction only, so reporting has no renderer import cycle and no
+new public command surface.
+
 ## Identity, inputs, and outputs
 
 Sample identity, condition, order, and replicate pairing come from the
