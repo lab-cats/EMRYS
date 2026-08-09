@@ -20,13 +20,24 @@ This directory is the implemented native owner for semantic stage
   tests. Scheduler behavior remains independently owned by the central
   [wrapper-contract suite](../../../../tests/test_slurm_wrapper_contracts.py).
 
-The owner-private
-[`_step_08_input_contract.R`](_step_08_input_contract.R) contains only the
-argument, path, manifest, selector, and partition-admission helpers used by the
-public R program. The entry point resolves that sibling from Rscript's own
-`--file=` invocation path and loads it into the existing program environment;
-it does not search the caller's working directory for the sibling, change that
-directory, load packages, or add another public command.
+The 401-line public R coordinator loads four owner-private modules:
+
+- [`_step_08_input_contract.R`](_step_08_input_contract.R) owns arguments,
+  paths, manifests, selectors, and partition admission;
+- [`_step_08_annotation.R`](_step_08_annotation.R) owns the explicit GTF
+  annotation model and overlap mechanics;
+- [`_step_08_receipt_contract.R`](_step_08_receipt_contract.R) owns Step `07`
+  receipt reconciliation; and
+- [`_step_08_vcf_processing.R`](_step_08_vcf_processing.R) owns raw VCF/count
+  validation, allele expansion, orientation mapping, and candidate assembly.
+
+The largest private module is 570 lines. The entry point resolves these
+siblings from Rscript's own `--file=` invocation path and loads them into the
+existing program environment; it does not search the caller's working
+directory for a sibling, change that directory, load packages, or add another
+public command. The complete Step `08` R owner remains about 1,900 lines: this
+is a responsibility decomposition, not a claim that production hardening made
+the implementation intrinsically small.
 
 No installed command, supported external package API, compatibility wrapper,
 legacy path, symlink, or ambient `PYTHONPATH` contract is exposed. The Python

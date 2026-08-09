@@ -25,6 +25,13 @@ No installed command, supported external package API, compatibility wrapper,
 legacy path, symlink, or ambient `PYTHONPATH` contract is exposed. The Python
 validator promotes the checkout's `src` root ahead of ambient import paths.
 
+The 179-line public R coordinator sources owner-local common, validation,
+evaluation, and output modules. Those five R files total 1,101 lines and no
+file exceeds 279 lines. This is a bounded responsibility layout, not a claim
+that the production implementation is smaller than the historical REMORA
+analysis. The external REMORA script remains a historical algorithm reference,
+not a runtime dependency or proof of parity.
+
 ## Producer, inputs, and scientific meaning
 
 The sample manifest is the only pairing authority. Control and treatment must
