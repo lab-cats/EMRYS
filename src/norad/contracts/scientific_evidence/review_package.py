@@ -17,6 +17,9 @@ RUNTIME_VALIDATION_STATUSES = ("not_run", "blocked", "passed", "failed")
 CLUSTER_DRY_RUN_STATUSES = ("not_run", "passed", "failed")
 CLUSTER_PROOF_STATUSES = ("not_run", "proven", "failed")
 DECISION_STATUSES = ("pending", "recorded")
+EVIDENCE_RECORD_PREFIX = ("review_id", "evidence_id", "analysis_id")
+REVIEW_FIELDS = ("reviewer", "review_date")
+REVIEW_DETAIL_FIELDS = (*REVIEW_FIELDS, "detail")
 DECISION_DIMENSIONS = (
     "orientation",
     "annotation",
@@ -76,9 +79,7 @@ REVIEW_PLAN_HEADER = (
     "notes",
 )
 ORIENTATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "locus_id",
     "candidate_id",
     "partition_id",
@@ -103,15 +104,11 @@ ORIENTATION_HEADER = (
     "inverted_expected_rna_ref",
     "inverted_expected_rna_alt",
     "concordance_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 ANNOTATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "audit_id",
     "candidate_id",
     "chromosome",
@@ -135,15 +132,11 @@ ANNOTATION_HEADER = (
     "expected_is_intron",
     "assignment_status",
     "ambiguity_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 QC_FUNNEL_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "scope_type",
     "partition_id",
     "orientation",
@@ -172,9 +165,7 @@ QC_FUNNEL_HEADER = (
 )
 
 REPLICATE_EFFECTS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "candidate_id",
     "partition_id",
     "orientation",
@@ -189,15 +180,11 @@ REPLICATE_EFFECTS_HEADER = (
     "treatment_af",
     "treatment_control_difference",
     "direction_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 SENSITIVITY_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "is_primary",
     "analysis_summary_path",
     "analysis_summary_sha256",
@@ -215,9 +202,7 @@ SENSITIVITY_HEADER = (
     "significant_up_count",
     "significant_down_count",
     "comparison_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 SENSITIVITY_SUMMARY_FIELDS = SENSITIVITY_HEADER[7:19]
 
@@ -242,15 +227,11 @@ LEAVE_ONE_OUT_HEADER = (
     "primary_fdr",
     "leave_one_out_fdr",
     "direction_concordance",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 CANDIDATE_SELECTION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "selection_set",
     "rank",
     "candidate_id",
@@ -262,14 +243,11 @@ CANDIDATE_SELECTION_HEADER = (
     "source_fdr",
     "source_common_or",
     "source_delta",
-    "reviewer",
-    "review_date",
+    *REVIEW_FIELDS,
 )
 
 CANDIDATE_ADJUDICATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "candidate_id",
     "selection_set",
     "adjudication_status",
@@ -287,15 +265,12 @@ CANDIDATE_ADJUDICATION_HEADER = (
     "orthogonal_evidence_status",
     "reason",
     "supporting_evidence_ids",
-    "reviewer",
-    "review_date",
+    *REVIEW_FIELDS,
 )
 ADJUDICATION_COMPONENT_FIELDS = CANDIDATE_ADJUDICATION_HEADER[6:18]
 
 DECISIONS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "decision_id",
     "decision_dimension",
     "evidence_status",
@@ -311,9 +286,7 @@ DECISIONS_HEADER = (
 )
 
 LIMITATIONS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "limitation_id",
     "limitation_category",
     "limitation_status",
