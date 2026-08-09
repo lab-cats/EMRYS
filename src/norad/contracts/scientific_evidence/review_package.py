@@ -377,21 +377,22 @@ OUTPUT_SUFFIXES = (
     ("review_summary", "step09c_review_summary.tsv"),
 )
 
-INPUT_ARTIFACT_KEYS = (
-    "sample_manifest",
-    "partition_manifest",
-    "step08_sites",
-    "step08_inputs",
-    "step08_summary",
-    "step09_all_sites",
-    "step09_significant_sites",
-    "step09_summary",
-    "step09_mutation_spectrum",
-    "step09_mutation_spectrum_pdf",
-    "step09_depth_delta_pdf",
-    "review_plan",
-    "evidence_manifest",
-)
+INPUT_ARTIFACT_ROLES = {
+    "sample_manifest": "sample_manifest",
+    "partition_manifest": "partition_manifest",
+    "step08_sites": "step08_sites",
+    "step08_inputs": "step08_inputs",
+    "step08_summary": "step08_summary",
+    "step09_all_sites": "step09_all_sites",
+    "step09_significant_sites": "step09_significant_sites",
+    "step09_summary": "step09_summary",
+    "step09_mutation_spectrum": "step09_mutation_spectrum_tsv",
+    "step09_mutation_spectrum_pdf": "step09_mutation_spectrum_pdf",
+    "step09_depth_delta_pdf": "step09_depth_delta_pdf",
+    "review_plan": "review_plan",
+    "evidence_manifest": "evidence_manifest",
+}
+INPUT_ARTIFACT_KEYS = tuple(INPUT_ARTIFACT_ROLES)
 
 REVIEW_SUMMARY_BASE_HEADER = (
     "review_id",

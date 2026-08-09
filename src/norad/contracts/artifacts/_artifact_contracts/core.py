@@ -17,6 +17,8 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
 
+from norad.contracts.scientific_evidence import review_package
+
 _MODULE_PATH = Path(__file__).resolve()
 
 if (src_root := str(_MODULE_PATH.parents[3])) not in sys.path:
@@ -51,21 +53,7 @@ SCOPE_TYPES = {
     "analysis",
     "scientific_review",
 }
-SCIENCE_INPUT_ROLES = {
-    "sample_manifest",
-    "partition_manifest",
-    "step08_sites",
-    "step08_inputs",
-    "step08_summary",
-    "step09_all_sites",
-    "step09_significant_sites",
-    "step09_summary",
-    "step09_mutation_spectrum_tsv",
-    "step09_mutation_spectrum_pdf",
-    "step09_depth_delta_pdf",
-    "review_plan",
-    "evidence_manifest",
-}
+SCIENCE_INPUT_ROLES = set(review_package.INPUT_ARTIFACT_ROLES.values())
 SCIENCE_UPSTREAM_ROLE_CONTRACTS = {
     "step08_sites": ("08", "cohort", "step08_sites_v1", ".step08_sites.tsv"),
     "step08_inputs": ("08", "cohort", "step08_inputs_v1", ".step08_inputs.tsv"),

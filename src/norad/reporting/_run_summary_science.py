@@ -60,21 +60,7 @@ PRODUCER_VERSION = "1.0.0"
 PUBLISHED_ADAPTERS = {
     key: f"step09c_{key}_v1" for key, _ in review_package.OUTPUT_SUFFIXES
 }
-INPUT_ROLE_BY_STEP09C_KEY = {
-    "sample_manifest": "sample_manifest",
-    "partition_manifest": "partition_manifest",
-    "step08_sites": "step08_sites",
-    "step08_inputs": "step08_inputs",
-    "step08_summary": "step08_summary",
-    "step09_all_sites": "step09_all_sites",
-    "step09_significant_sites": "step09_significant_sites",
-    "step09_summary": "step09_summary",
-    "step09_mutation_spectrum": "step09_mutation_spectrum_tsv",
-    "step09_mutation_spectrum_pdf": "step09_mutation_spectrum_pdf",
-    "step09_depth_delta_pdf": "step09_depth_delta_pdf",
-    "review_plan": "review_plan",
-    "evidence_manifest": "evidence_manifest",
-}
+INPUT_ROLE_BY_STEP09C_KEY = review_package.INPUT_ARTIFACT_ROLES
 
 
 class RunSummaryScienceError(RuntimeError):
