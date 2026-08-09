@@ -46,6 +46,13 @@ separate reporting-local owners; the public facade is 279 lines. This does not
 change schemas, discovery policy, evidence states, serialized bytes, or the
 receipt-last transaction boundary.
 
+Artifact-contract Python mechanics are separated behind the unchanged neutral
+facade: definitions/error identity, closed-registry schema I/O,
+path/run/attempt identity, computational evidence, run-summary reduction, and
+record semantics have distinct private owners. The five schema resources are
+unchanged and remain one file per registered `$id`, using local `$defs`; this
+is maintainability evidence, not a schema version or evidence promotion.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:
