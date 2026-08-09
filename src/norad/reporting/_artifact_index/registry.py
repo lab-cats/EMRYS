@@ -348,96 +348,17 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             suffixes=(suffix,),
         )
     add_validation_report(registry, "09", "analysis", exact_data_rows=7)
-    step09c_specs = (
-        (
-            "step09c_review_plan_v1",
-            ".step09c_review_plan.tsv",
-            review_package.REVIEW_PLAN_HEADER,
-            1,
-        ),
-        (
-            "step09c_evidence_index_v1",
-            ".step09c_evidence_index.tsv",
-            review_package.EVIDENCE_INDEX_HEADER,
-            None,
-        ),
-        (
-            "step09c_orientation_locus_audit_v1",
-            ".step09c_orientation_locus_audit.tsv",
-            review_package.ORIENTATION_HEADER,
-            None,
-        ),
-        (
-            "step09c_annotation_audit_v1",
-            ".step09c_annotation_audit.tsv",
-            review_package.ANNOTATION_HEADER,
-            None,
-        ),
-        (
-            "step09c_qc_funnel_v1",
-            ".step09c_qc_funnel.tsv",
-            review_package.QC_FUNNEL_HEADER,
-            None,
-        ),
-        (
-            "step09c_replicate_effects_v1",
-            ".step09c_replicate_effects.tsv",
-            review_package.REPLICATE_EFFECTS_HEADER,
-            None,
-        ),
-        (
-            "step09c_sensitivity_matrix_v1",
-            ".step09c_sensitivity_matrix.tsv",
-            review_package.SENSITIVITY_HEADER,
-            None,
-        ),
-        (
-            "step09c_leave_one_pair_out_v1",
-            ".step09c_leave_one_pair_out.tsv",
-            review_package.LEAVE_ONE_OUT_HEADER,
-            None,
-        ),
-        (
-            "step09c_candidate_selection_v1",
-            ".step09c_candidate_selection.tsv",
-            review_package.CANDIDATE_SELECTION_HEADER,
-            None,
-        ),
-        (
-            "step09c_candidate_adjudication_v1",
-            ".step09c_candidate_adjudication.tsv",
-            review_package.CANDIDATE_ADJUDICATION_HEADER,
-            None,
-        ),
-        (
-            "step09c_decisions_v1",
-            ".step09c_decisions.tsv",
-            review_package.DECISIONS_HEADER,
-            None,
-        ),
-        (
-            "step09c_limitations_v1",
-            ".step09c_limitations.tsv",
-            review_package.LIMITATIONS_HEADER,
-            None,
-        ),
-        (
-            "step09c_review_summary_v1",
-            ".step09c_review_summary.tsv",
-            review_package.REVIEW_SUMMARY_HEADER,
-            1,
-        ),
-    )
-    for adapter_id, suffix, header, exact_rows in step09c_specs:
+    for key, suffix in review_package.OUTPUT_SUFFIXES:
+        exact_rows = 1 if key in review_package.SINGLE_ROW_OUTPUTS else None
         add_spec(
             registry,
-            adapter_id,
+            f"step09c_{key}_v1",
             "09c",
             "scientific_review",
             "tsv",
             "text/tab-separated-values",
-            suffixes=(suffix,),
-            expected_header=header,
+            suffixes=(f".{suffix}",),
+            expected_header=review_package.OUTPUT_HEADERS[key],
             exact_data_rows=exact_rows,
             allow_header_only=exact_rows is None,
         )

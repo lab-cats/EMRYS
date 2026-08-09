@@ -466,6 +466,13 @@ REVIEW_SUMMARY_HEADER = (
     + REVIEW_SUMMARY_ARTIFACT_HEADER
     + REVIEW_SUMMARY_TRAILING_HEADER
 )
+OUTPUT_HEADERS = {
+    "review_plan": REVIEW_PLAN_HEADER,
+    "evidence_index": EVIDENCE_INDEX_HEADER,
+    **CATEGORY_HEADERS,
+    "review_summary": REVIEW_SUMMARY_HEADER,
+}
+SINGLE_ROW_OUTPUTS = {"review_plan", "review_summary"}
 
 CONCORDANCE_STATUSES = (
     "concordant",
