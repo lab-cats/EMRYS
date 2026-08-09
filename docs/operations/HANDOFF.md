@@ -68,6 +68,13 @@ scheduler preserves copied-producer execution by exporting the packaged helper
 location before changing directories. This is maintainability and mock-
 bcftools evidence only, not real-bcftools or cluster proof.
 
+Step `06` shell keeps its exact samtools commands and ordered execution plus
+counts-last publication in a 477-line public producer. Owner-local 120- and
+84-line modules contain byte-identical final-set/rollback/cleanup/stale-path
+and generated-output/counts-contract functions. The scheduler exports their
+packaged location before changing directories. This adds no new runtime,
+cluster, mechanical-orientation, or biological evidence.
+
 Step `08` shell keeps R resolution/command construction, admitted-input
 snapshots, locks, signals, rollback, and receipt-last publication in a 461-line
 public transaction owner. Owner-local 144- and 198-line modules contain the

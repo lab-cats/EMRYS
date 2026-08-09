@@ -16,6 +16,14 @@ alias `06`). Its public assets are:
   tests. Scheduler behavior remains independently owned by the central
   [wrapper-contract suite](../../../../tests/test_slurm_wrapper_contracts.py).
 
+The 477-line public producer retains argument handling, exact samtools command
+construction, the ordered execution/publication path, locks, signals, and
+counts-last commit behavior. Sourced owner-local modules separately contain
+the byte-identical final-set/rollback/cleanup/stale-path functions (120 lines)
+and generated BAM/index validation plus counts-receipt generation (84 lines).
+They add no command or generic shell-library surface. The scheduler exports
+their packaged location before changing to the submission directory.
+
 ## Producer and mechanical meaning
 
 The producer requires a sample identifier, one Step `05` split-N-cigar BAM
