@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import review_package
+from norad.reporting._run_summary.transaction import _path_hash
 
 NA_VALUE = "NA"
 COMPUTATIONAL_SCOPE_ROLES = {
@@ -254,22 +255,6 @@ def _tsv_bytes(
     writer.writeheader()
     writer.writerows(rows)
     return stream.getvalue().encode("utf-8")
-
-
-def _source_path_hash(
-    *,
-    path: Path,
-    sha256: str,
-    row_count: int | None,
-    media_type: str,
-) -> dict[str, Any]:
-    return {
-        "path": str(path),
-        "sha256": sha256,
-        "size_bytes": path.stat().st_size,
-        "row_count": row_count,
-        "media_type": media_type,
-    }
 
 
 def _validate_summary_artifact(
@@ -679,9 +664,10 @@ def _normalize_evidence(
             )
             if row_count is None:
                 _fail(f"Scientific evidence {row['evidence_id']} lacks a row count.")
-            source = _source_path_hash(
-                path=path,
+            source = _path_hash(
+                path,
                 sha256=row["observed_sha256"],
+                size_bytes=path.stat().st_size,
                 row_count=row_count,
                 media_type="text/tab-separated-values",
             )
