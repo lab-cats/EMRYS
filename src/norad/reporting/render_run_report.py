@@ -42,6 +42,7 @@ if sys.path[:1] != [src_root]:
     sys.path.insert(0, src_root)
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.scientific_evidence import review_package
 from norad.reporting import _files
 
 PRODUCER = "render_run_report"
@@ -68,19 +69,7 @@ SCIENCE_BANNERS = {
         "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED."
     ),
 }
-KNOWN_REPORT_ROLES = {
-    "orientation_locus_audit",
-    "annotation_audit",
-    "qc_funnel",
-    "replicate_effects",
-    "sensitivity_matrix",
-    "leave_one_pair_out",
-    "candidate_selection",
-    "candidate_adjudication",
-    "decisions",
-    "evidence_index",
-    "limitations",
-}
+KNOWN_REPORT_ROLES = set(review_package.REPORT_TABLE_ROLES)
 ACTIVE_RESOURCE_ATTRIBUTES = {
     ("script", "src"),
     ("link", "href"),

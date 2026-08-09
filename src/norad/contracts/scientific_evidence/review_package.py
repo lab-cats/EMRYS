@@ -340,6 +340,8 @@ CATEGORY_HEADERS: dict[str, tuple[str, ...]] = {
 }
 CATEGORY_ORDER = tuple(CATEGORY_HEADERS)
 ALLOWED_EVIDENCE_CATEGORIES = CATEGORY_ORDER + ("computational_validation",)
+# Evidence index is reportable but is not itself an evidence category.
+REPORT_TABLE_ROLES = CATEGORY_ORDER[:-1] + ("evidence_index", CATEGORY_ORDER[-1])
 
 EVIDENCE_INDEX_HEADER = (
     "review_id",

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.scientific_evidence import review_package
 from norad.reporting import build_artifact_index as adapter
 from norad.reporting._files import FileSnapshot
 contracts = adapter.contracts
@@ -37,19 +38,7 @@ REPORT_TABLE_APPROVALS_HEADER = (
 
 REPORT_ROLE_ADAPTERS = {
     role: f"step09c_{role}_v1"
-    for role in (
-        "orientation_locus_audit",
-        "annotation_audit",
-        "qc_funnel",
-        "replicate_effects",
-        "sensitivity_matrix",
-        "leave_one_pair_out",
-        "candidate_selection",
-        "candidate_adjudication",
-        "decisions",
-        "evidence_index",
-        "limitations",
-    )
+    for role in review_package.REPORT_TABLE_ROLES
 }
 
 RUN_SUMMARY_HEADER = (
