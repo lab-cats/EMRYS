@@ -16,14 +16,35 @@ from .models import (
     AdapterSpec,
 )
 
+MEDIA_TYPE_BY_KIND = {
+    "bai": "application/octet-stream",
+    "bam": "application/x-bam",
+    "bed12": "text/bed",
+    "dict": "text/vnd.sam",
+    "fai": "text/tab-separated-values",
+    "fasta": "text/x-fasta",
+    "flagstat": "text/plain",
+    "pdf": "application/pdf",
+    "picard_metrics": "text/plain",
+    "quickcheck": "text/plain",
+    "rseqc": "text/plain",
+    "sample_blocks_tsv": "text/tab-separated-values",
+    "star_index": "application/octet-stream",
+    "star_log_final": "text/plain",
+    "star_sj": "text/plain",
+    "text": "text/plain",
+    "tsv": "text/tab-separated-values",
+    "validation_report": "text/tab-separated-values",
+    "vcf": "text/vcf",
+}
+
 
 def add_spec(
     registry: dict[str, AdapterSpec],
+    scope_type: str,
     adapter_id: str,
     step_id: str,
-    scope_type: str,
     kind: str,
-    media_type: str,
     *,
     suffixes: Sequence[str] = (),
     basenames: Sequence[str] = (),
@@ -31,12 +52,13 @@ def add_spec(
     exact_data_rows: int | None = None,
     allow_header_only: bool = True,
 ) -> None:
+    """Register one adapter, deriving its media type from inspection kind."""
     registry[adapter_id] = AdapterSpec(
         adapter_id=adapter_id,
         step_id=step_id,
         scope_type=scope_type,
         kind=kind,
-        media_type=media_type,
+        media_type=MEDIA_TYPE_BY_KIND[kind],
         suffixes=tuple(suffixes),
         basenames=tuple(basenames),
         expected_header=(
@@ -57,11 +79,10 @@ def add_validation_report(
     """Register the uniform validation-report contract for one pipeline step."""
     add_spec(
         registry,
+        scope_type,
         f"step{step_id}_validation_report_v1",
         step_id,
-        scope_type,
         "validation_report",
-        "text/tab-separated-values",
         suffixes=(".validation.tsv",),
         expected_header=VALIDATION_REPORT_HEADER,
         exact_data_rows=exact_data_rows,
@@ -71,56 +92,49 @@ def add_validation_report(
 
 def build_adapter_registry() -> dict[str, AdapterSpec]:
     registry: dict[str, AdapterSpec] = {}
-    add = partial(add_spec, registry)
-    add(
+    add_reference = partial(add_spec, registry, "reference")
+    add_sample = partial(add_spec, registry, "sample")
+    add_partition = partial(add_spec, registry, "cohort_partition")
+    add_cohort = partial(add_spec, registry, "cohort")
+    add_analysis = partial(add_spec, registry, "analysis")
+    add_review = partial(add_spec, registry, "scientific_review")
+    add_reference(
         "step00a_star_index_v1",
         "00a",
-        "reference",
         "star_index",
-        "application/octet-stream",
         basenames=STEP00A_BASENAMES,
     )
     add_validation_report(registry, "00a", "reference")
-    add(
+    add_reference(
         "step00b_bed12_v1",
         "00b",
-        "reference",
         "bed12",
-        "text/bed",
         suffixes=(".bed",),
     )
     add_validation_report(registry, "00b", "reference")
-    add(
+    add_reference(
         "step00c_reference_fasta_v1",
         "00c",
-        "reference",
         "fasta",
-        "text/x-fasta",
         suffixes=(".fa", ".fasta"),
     )
-    add(
+    add_reference(
         "step00c_reference_fai_v1",
         "00c",
-        "reference",
         "fai",
-        "text/tab-separated-values",
         suffixes=(".fai",),
     )
-    add(
+    add_reference(
         "step00c_reference_dict_v1",
         "00c",
-        "reference",
         "dict",
-        "text/vnd.sam",
         suffixes=(".dict",),
     )
     add_validation_report(registry, "00c", "reference")
-    add(
+    add_sample(
         "step01_star_bam_v1",
         "01",
-        "sample",
         "bam",
-        "application/x-bam",
         suffixes=(".bam",),
     )
     for adapter_id, suffix, kind in (
@@ -129,12 +143,10 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step01_star_log_progress_v1", ".Log.progress.out", "text"),
         ("step01_star_sj_v1", ".SJ.out.tab", "star_sj"),
     ):
-        add(
+        add_sample(
             adapter_id,
             "01",
-            "sample",
             kind,
-            "text/plain",
             suffixes=(suffix,),
         )
     add_validation_report(registry, "01", "sample")
@@ -143,55 +155,43 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("04", "step04_markdup_bam_v1", "step04_markdup_bai_v1", ".markdup.bam"),
         ("05", "step05_split_bam_v1", "step05_split_bai_v1", ".split_ncigar.bam"),
     ):
-        add(
+        add_sample(
             bam_adapter,
             step_id,
-            "sample",
             "bam",
-            "application/x-bam",
             suffixes=(bam_suffix,),
         )
-        add(
+        add_sample(
             bai_adapter,
             step_id,
-            "sample",
             "bai",
-            "application/octet-stream",
             suffixes=(f"{bam_suffix}.bai",),
         )
     add_validation_report(registry, "02", "sample")
-    add(
+    add_sample(
         "step02b_quickcheck_v1",
         "02b",
-        "sample",
         "quickcheck",
-        "text/plain",
         suffixes=(".quickcheck.txt",),
     )
-    add(
+    add_sample(
         "step02b_flagstat_v1",
         "02b",
-        "sample",
         "flagstat",
-        "text/plain",
         suffixes=(".flagstat.txt",),
     )
     add_validation_report(registry, "02b", "sample")
-    add(
+    add_sample(
         "step03_rseqc_infer_v1",
         "03",
-        "sample",
         "rseqc",
-        "text/plain",
         suffixes=(".infer_experiment.txt",),
     )
     add_validation_report(registry, "03", "sample")
-    add(
+    add_sample(
         "step04_markdup_metrics_v1",
         "04",
-        "sample",
         "picard_metrics",
-        "text/plain",
         suffixes=(".markdup.metrics.txt",),
     )
     add_validation_report(registry, "04", "sample")
@@ -201,78 +201,62 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         alignment_orientation.ORIENTATIONS,
         alignment_orientation.ORIENTATION_PREFIXES,
     ):
-        add(
+        add_sample(
             f"step06_{adapter_prefix}_bam_v1",
             "06",
-            "sample",
             "bam",
-            "application/x-bam",
             suffixes=(f".{orientation}.bam",),
         )
-        add(
+        add_sample(
             f"step06_{adapter_prefix}_bai_v1",
             "06",
-            "sample",
             "bai",
-            "application/octet-stream",
             suffixes=(f".{orientation}.bam.bai",),
         )
-    add(
+    add_sample(
         "step06_orientation_counts_v1",
         "06",
-        "sample",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".orientation_counts.tsv",),
         expected_header=STEP06_COUNTS_HEADER,
         exact_data_rows=1,
         allow_header_only=False,
     )
-    add(
+    add_partition(
         "step07_mpileup_vcf_v1",
         "07",
-        "cohort_partition",
         "vcf",
-        "text/vcf",
         suffixes=(".mpileup.vcf",),
     )
-    add(
+    add_partition(
         "step07_mpileup_receipt_v1",
         "07",
-        "cohort_partition",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".step07_outputs.tsv",),
         expected_header=STEP07_RECEIPT_HEADER,
         exact_data_rows=2,
         allow_header_only=False,
     )
     add_validation_report(registry, "07", "cohort_partition")
-    add(
+    add_cohort(
         "step08_sites_v1",
         "08",
-        "cohort",
         "sample_blocks_tsv",
-        "text/tab-separated-values",
         suffixes=(".step08_sites.tsv",),
         expected_header=step08.STEP08_METADATA_HEADER,
     )
-    add(
+    add_cohort(
         "step08_inputs_v1",
         "08",
-        "cohort",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".step08_inputs.tsv",),
         expected_header=step08.STEP08_INPUTS_HEADER,
         allow_header_only=False,
     )
-    add(
+    add_cohort(
         "step08_summary_v1",
         "08",
-        "cohort",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".step08_summary.tsv",),
         expected_header=step08.STEP08_SUMMARY_HEADER,
         exact_data_rows=1,
@@ -283,32 +267,26 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
         ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
     ):
-        add(
+        add_analysis(
             adapter_id,
             "09",
-            "analysis",
             "sample_blocks_tsv",
-            "text/tab-separated-values",
             suffixes=(suffix,),
             expected_header=step09.STEP09_RESULT_HEADER,
         )
-    add(
+    add_analysis(
         "step09_cmh_summary_v1",
         "09",
-        "analysis",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".cmh_summary.tsv",),
         expected_header=step09.STEP09_SUMMARY_HEADER,
         exact_data_rows=1,
         allow_header_only=False,
     )
-    add(
+    add_analysis(
         "step09_mutation_spectrum_tsv_v1",
         "09",
-        "analysis",
         "tsv",
-        "text/tab-separated-values",
         suffixes=(".mutation_spectrum.tsv",),
         expected_header=step09.STEP09_MUTATION_HEADER,
     )
@@ -316,23 +294,19 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         ("step09_mutation_spectrum_pdf_v1", ".mutation_spectrum.pdf"),
         ("step09_depth_delta_pdf_v1", ".depth_delta.pdf"),
     ):
-        add(
+        add_analysis(
             adapter_id,
             "09",
-            "analysis",
             "pdf",
-            "application/pdf",
             suffixes=(suffix,),
         )
     add_validation_report(registry, "09", "analysis", exact_data_rows=7)
     for key, suffix in review_package.OUTPUT_SUFFIXES:
         exact_rows = 1 if key in review_package.SINGLE_ROW_OUTPUTS else None
-        add(
+        add_review(
             f"step09c_{key}_v1",
             "09c",
-            "scientific_review",
             "tsv",
-            "text/tab-separated-values",
             suffixes=(f".{suffix}",),
             expected_header=review_package.OUTPUT_HEADERS[key],
             exact_data_rows=exact_rows,
