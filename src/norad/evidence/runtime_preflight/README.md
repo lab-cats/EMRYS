@@ -6,6 +6,12 @@ probes declared in an explicit profile. It records observations for an asserted
 dependencies, load modules, execute a workflow, validate production inputs, or
 repair a runtime.
 
+The executable remains the public compatibility and publication owner. Its
+private modules separate literal data/error contracts (`_runtime_model.py`),
+profile parsing (`_profile_contract.py`), read-only probes (`_probes.py`), and
+deterministic result rendering/validation (`_result_contract.py`). They add no
+public command and do not broaden the evidence claim.
+
 The supported probes cover tool versions, R namespaces, hash utilities, and
 absolute-path visibility. Rows report `pass`, `fail`, `blocked`, or
 `not_checked`. Dry run performs applicable read-only probes but publishes

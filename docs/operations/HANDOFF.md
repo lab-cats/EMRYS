@@ -60,6 +60,13 @@ module is 47 lines and no private owner exceeds 373 lines. The Step `09`
 shell/R CMH method and independent oracle were not changed; this adds no
 runtime, scientific-review, or biological evidence.
 
+Runtime preflight keeps its executable, CLI, TSV bytes, probe behavior, and
+publication/fault-injection bindings stable over private model, profile,
+probe, and result-contract owners. The public compatibility/publication owner
+is 251 lines and no private module exceeds 167 lines. Known characterized
+publication gaps remain unchanged; this is maintainability and local test
+evidence, not CSU batch runtime or cluster proof.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:
