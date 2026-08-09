@@ -24,7 +24,9 @@ and may change without creating another supported command surface.
 | [`bundle_models.py`](bundle_models.py) | Shared bundle constants and immutable multi-format render context. |
 | [`pdf_projection.py`](pdf_projection.py) | Deterministic PDF view, pinned Quarto invocation, and PDF validation. |
 | [`receipt_projection.py`](receipt_projection.py) | Deterministic summary TSV, receipt document/TSV, truncation disclosure, and validation. |
-| [`bundle.py`](bundle.py) | Current bundle intake and receipt-last multi-output publication owner; it retains compatibility bindings for moved helpers. |
+| [`bundle_context.py`](bundle_context.py) | Bundle predecessor/receipt validation and immutable multi-format context preparation. |
+| [`bundle_publication.py`](bundle_publication.py) | Rollback-safe multi-output publication with receipt-last commit semantics. |
+| [`bundle.py`](bundle.py) | Thin bundle command coordinator and compatibility owner for moved helpers. |
 
 The bundle imports the private HTML owner directly. The HTML owner never
 imports the bundle. Public facades retain direct-import compatibility while

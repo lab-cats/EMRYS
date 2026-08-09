@@ -531,7 +531,7 @@ def test_bundle_failure_restores_valid_html_only_predecessor(
         )
     )
     prior = context.html.output_html.read_bytes()
-    original_link = BUNDLE.os.link
+    original_link = BUNDLE._owner._publication.os.link
 
     def fail_summary_publication(
         source: str | os.PathLike[str],
@@ -543,7 +543,11 @@ def test_bundle_failure_restores_valid_html_only_predecessor(
             raise OSError("injected summary publication failure")
         original_link(source, destination, *args, **kwargs)
 
-    monkeypatch.setattr(BUNDLE.os, "link", fail_summary_publication)
+    monkeypatch.setattr(
+        BUNDLE._owner._publication.os,
+        "link",
+        fail_summary_publication,
+    )
     with pytest.raises(
         BUNDLE.html_report.ReportRenderError,
         match="injected summary publication failure",
