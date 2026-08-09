@@ -102,6 +102,15 @@ is 251 lines and no private module exceeds 167 lines. Known characterized
 publication gaps remain unchanged; this is maintainability and local test
 evidence, not CSU batch runtime or cluster proof.
 
+Storage inventory keeps its interpreter-only command, direct-import names,
+live `outputs` hook, TSV bytes, read-only measurement behavior, and
+receipt-last publication/fault-injection bindings over private contract,
+measurement/rendering, and publication owners. The public facade is 90 lines,
+no private module exceeds 212 lines, and all 12 pre-split function bodies are
+AST-identical. Focused storage/public-CLI tests passed; the full coverage gate
+was not rerun for this slice by explicit user direction. This adds no
+production storage inventory, approved retention policy, or retention action.
+
 Reference provenance keeps its executable, public names, CLI behavior, TSV
 bytes/order, contig reconciliation, stability recheck, and publication/fault-
 injection bindings over private contract, inventory, contig, and rendering

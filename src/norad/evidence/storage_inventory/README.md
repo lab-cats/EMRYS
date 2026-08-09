@@ -5,6 +5,19 @@ storage roots and records explicitly declared retention-policy state. It is
 read-only with respect to measured storage: it never deletes, moves, archives,
 compresses, cleans, repairs, or executes a retention decision.
 
+The 90-line public command preserves its direct-import names, CLI, live
+`outputs` hook, and interpreter-only file mode over private owners for:
+
+- [`_storage_contract.py`](_storage_contract.py), input models and root/policy
+  admission;
+- [`_storage_measurement.py`](_storage_measurement.py), read-only measurement
+  and deterministic evidence rendering; and
+- [`_storage_publication.py`](_storage_publication.py), locked receipt-last
+  publication and rollback.
+
+No private module exceeds 212 lines, and all 12 pre-split function bodies are
+AST-identical. The package adds no second command or retention action.
+
 The public interface accepts roots and retention-policy TSVs plus an output
 root, which must already exist in execute mode. Dry run is the default: it
 performs the declared measurements and writes nothing. The owner counts bytes,
