@@ -7,12 +7,20 @@ owner.
 
 | Module | Owned responsibility |
 | --- | --- |
-| [`core.py`](core.py) | Schema locations, the shared validation error, JSON/schema loading, path rules, run contracts, attempt graphs, and computational evidence primitives. |
+| [`core.py`](core.py) | Compatibility owner for the established shared private bindings. |
+| [`definitions.py`](definitions.py) | Schema locations, vocabularies, and the shared validation-error identity. |
+| [`schema.py`](schema.py) | Closed-registry JSON/schema loading, deterministic diagnostics, and hashing. |
+| [`identity.py`](identity.py) | Run-contract hashing, explicit paths, unique identities, and attempt graphs. |
+| [`evidence.py`](evidence.py) | Computational status and evidence-reference semantics. |
 | [`artifact.py`](artifact.py) | Artifact-record semantic validation. |
 | [`scientific_review.py`](scientific_review.py) | Scientific-review-record semantic validation. |
-| [`run_summary.py`](run_summary.py) | Run-summary status reduction and semantic validation. |
+| [`run_summary.py`](run_summary.py) | Compatibility owner for run-summary bindings. |
+| [`run_summary_status.py`](run_summary_status.py) | Run-summary status reduction. |
+| [`run_summary_validation.py`](run_summary_validation.py) | Run-summary semantic validation. |
 
 The public facade imports these modules through the `norad.contracts` package.
 It retains schema validation, report-receipt semantics,
 the semantic dispatcher, inventory reconciliation, and CLI orchestration. All
-modules share the one `ContractValidationError` defined in `core.py`.
+modules share the one `ContractValidationError` originating in
+`definitions.py`; `core.py` continues to re-export that identity for
+compatibility.
