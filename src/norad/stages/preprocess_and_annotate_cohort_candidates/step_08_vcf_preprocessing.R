@@ -371,6 +371,7 @@ load_step08_input_contract <- local({
         module_filenames <- c(
             "_step_08_annotation.R",
             "_step_08_receipt_contract.R",
+            "_step_08_vcf_counts.R",
             "_step_08_vcf_processing.R"
         )
         for (module_filename in module_filenames) {
