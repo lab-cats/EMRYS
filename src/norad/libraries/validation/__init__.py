@@ -16,6 +16,7 @@ from norad.libraries.validation.inputs import (
 from norad.libraries.validation.publication import publish
 from norad.libraries.validation.report import (
     HEADER,
+    add_output_arguments,
     clean,
     render,
     row,
@@ -29,6 +30,7 @@ __all__ = (
     "Runtime",
     "Snapshot",
     "ValidationError",
+    "add_output_arguments",
     "attempt",
     "clean",
     "fail",

@@ -37,8 +37,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--scope-id", required=True)
     parser.add_argument("--infer-report", required=True, type=Path)
     parser.add_argument("--sum-tolerance", type=float, default=0.001)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--execute", action="store_true")
+    report.add_output_arguments(parser)
     return parser.parse_args(argv)
 
 

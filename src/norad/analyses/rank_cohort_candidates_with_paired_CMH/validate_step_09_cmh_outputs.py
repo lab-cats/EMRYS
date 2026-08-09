@@ -52,8 +52,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mutation-spectrum", required=True, type=Path)
     parser.add_argument("--mutation-spectrum-pdf", required=True, type=Path)
     parser.add_argument("--depth-delta-pdf", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--execute", action="store_true")
+    report.add_output_arguments(parser)
     return parser.parse_args(argv)
 
 

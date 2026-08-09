@@ -56,8 +56,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Explicit base for relative paths recorded in genomeParameters.txt.",
     )
     parser.add_argument("--expected-sjdb-overhang", required=True, type=int)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--execute", action="store_true")
+    report.add_output_arguments(parser)
     return parser.parse_args(argv)
 
 

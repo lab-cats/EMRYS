@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 from collections.abc import Sequence
+from pathlib import Path
 
 from norad.libraries.validation.errors import fail
 
@@ -16,6 +18,11 @@ HEADER = (
     "expected",
     "detail",
 )
+
+
+def add_output_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--execute", action="store_true")
 
 
 def clean(value: object) -> str:

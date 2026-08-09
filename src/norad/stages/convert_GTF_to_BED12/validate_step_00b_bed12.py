@@ -35,8 +35,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--scope-id", required=True)
     parser.add_argument("--bed12", required=True, type=Path)
     parser.add_argument("--source-gtf", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--execute", action="store_true")
+    report.add_output_arguments(parser)
     return parser.parse_args(argv)
 
 
