@@ -9,6 +9,7 @@ declared runtime context; it is not runtime validation or cluster proof.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import hashlib
 import json
@@ -550,10 +551,8 @@ def publish(
         if staged.exists() and not staged.is_symlink():
             staged.unlink()
         os.close(descriptor)
-        try:
+        with contextlib.suppress(OSError):
             lock.unlink()
-        except OSError:
-            pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
