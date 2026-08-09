@@ -274,14 +274,7 @@ def reconcile_step08(
             "Step 08 inputs and sample-block sites must be non-empty"
         )
     partitions: dict[str, set[str]] = defaultdict(set)
-    sum_fields = (
-        "observed_vcf_record_count",
-        "observed_alt_allele_count",
-        "supported_snv_count",
-        "skipped_symbolic_count",
-        "skipped_non_snv_count",
-        "published_candidate_count",
-    )
+    sum_fields = step08.STEP08_PARTITION_COUNT_FIELDS
     observed_sums = Counter()
     receipt_paths: set[Path] = set()
     input_keys: set[tuple[str, str]] = set()

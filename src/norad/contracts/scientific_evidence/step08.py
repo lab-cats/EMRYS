@@ -93,6 +93,8 @@ STEP08_SUMMARY_HEADER = (
     "annotation_gtf_sha256",
     "orientation_policy",
 )
+STEP08_AGGREGATE_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:10]
+STEP08_PARTITION_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:11]
 
 SAMPLE_MANIFEST_REQUIRED = (
     "sample_id",
@@ -347,12 +349,7 @@ def validate_step08_inputs(
             for column in (
                 "sample_count",
                 "declared_vcf_record_count",
-                "observed_vcf_record_count",
-                "observed_alt_allele_count",
-                "supported_snv_count",
-                "skipped_symbolic_count",
-                "skipped_non_snv_count",
-                "published_candidate_count",
+                *STEP08_PARTITION_COUNT_FIELDS,
             )
         }
         if counts["sample_count"] != len(sample_ids):
@@ -511,13 +508,7 @@ def validate_step08_summary(
         "sample_count": len(sample_ids),
         "published_candidate_count": len(step08_sites),
     }
-    aggregate_columns = (
-        "observed_vcf_record_count",
-        "observed_alt_allele_count",
-        "supported_snv_count",
-        "skipped_symbolic_count",
-        "skipped_non_snv_count",
-    )
+    aggregate_columns = STEP08_AGGREGATE_COUNT_FIELDS
     for column in aggregate_columns:
         expected_counts[column] = sum(
             parse_nonnegative_int(f"Step 08 input receipt {column}", input_row[column])
