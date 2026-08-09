@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import csv
 import io
-import os
 import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -16,6 +15,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad.contracts.artifacts import validate_artifact_contracts as contracts
 from norad.contracts.scientific_evidence import review_package
+from norad.reporting._run_summary.inputs import _resolved_path
 from norad.reporting._run_summary.transaction import _path_hash
 
 NA_VALUE = "NA"
@@ -120,12 +120,8 @@ def _fail(message: str) -> None:
     raise RunSummaryScienceError(message)
 
 
-def _absolute_path(value: str | Path) -> Path:
-    return Path(os.path.abspath(os.fspath(Path(value).expanduser())))
-
-
 def _require_regular_file(label: str, value: str | Path) -> Path:
-    path = _absolute_path(value)
+    path = _resolved_path(value)
     try:
         metadata = path.lstat()
     except OSError as exc:
@@ -183,10 +179,7 @@ def _read_tsv(
 
 
 def _resolve_recorded_path(value: str) -> Path:
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    return path.resolve()
+    return _resolved_path(value).resolve()
 
 
 def _confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
