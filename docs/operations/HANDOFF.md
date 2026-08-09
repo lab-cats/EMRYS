@@ -56,9 +56,13 @@ state changed.
 Artifact-contract Python mechanics are separated behind the unchanged neutral
 facade: definitions/error identity, closed-registry schema I/O,
 path/run/attempt identity, computational evidence, run-summary reduction, and
-record semantics have distinct private owners. The five schema resources are
-unchanged and remain one file per registered `$id`, using local `$defs`; this
-is maintainability evidence, not a schema version or evidence promotion.
+artifact/scientific-review/report-receipt semantics have distinct private
+owners, as does explicit inventory reconciliation. The public CLI and live
+document/semantic-dispatch hooks remain in a 192-line facade; the new private
+owners are no larger than 246 lines, and all 12 pre-split function bodies are
+AST-identical. The five schema resources are unchanged and remain one file per
+registered `$id`, using local `$defs`; this is maintainability evidence, not a
+schema version or evidence promotion.
 
 The neutral Step `08` scientific-evidence contract keeps direct-file loading,
 its complete public parsing surface, signatures, and shared error/table
