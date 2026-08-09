@@ -76,31 +76,11 @@ execute=false
 # layout. The SLURM wrapper supplies default cluster-validation paths.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --input-bam)
-            require_value "$1" "${2:-}"
-            input_bam="$2"
-            shift 2
-            ;;
-        --bed12)
-            require_value "$1" "${2:-}"
-            bed12="$2"
-            shift 2
-            ;;
-        --output-dir)
-            require_value "$1" "${2:-}"
-            output_dir="$2"
-            shift 2
-            ;;
-        --infer-experiment-bin)
-            require_value "$1" "${2:-}"
-            infer_experiment_bin="$2"
-            shift 2
-            ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
+        --bed12) assign_option_value "$1" "${2:-}" bed12; shift 2 ;;
+        --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
+        --infer-experiment-bin) assign_option_value "$1" "${2:-}" infer_experiment_bin; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

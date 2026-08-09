@@ -75,26 +75,10 @@ num_reads=20
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --r1-fastq)
-            require_value "$1" "${2:-}"
-            r1_fastq="$2"
-            shift 2
-            ;;
-        --r2-fastq)
-            require_value "$1" "${2:-}"
-            r2_fastq="$2"
-            shift 2
-            ;;
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --num-reads)
-            require_value "$1" "${2:-}"
-            num_reads="$2"
-            shift 2
-            ;;
+        --r1-fastq) assign_option_value "$1" "${2:-}" r1_fastq; shift 2 ;;
+        --r2-fastq) assign_option_value "$1" "${2:-}" r2_fastq; shift 2 ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --num-reads) assign_option_value "$1" "${2:-}" num_reads; shift 2 ;;
         -h|--help)
             usage
             exit 0

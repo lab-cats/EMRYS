@@ -118,6 +118,15 @@ require_value() {
     fi
 }
 
+# Assign a validated option value to the owner-selected global variable.
+assign_option_value() {
+    local option="$1"
+    local value="${2:-}"
+    local target="$3"
+    require_value "$option" "$value"
+    printf -v "$target" '%s' "$value"
+}
+
 # Owner parsers call this from their catch-all branch. It deliberately updates
 # their shared execute flag; help exits before the caller advances argv.
 handle_execute_or_help() {

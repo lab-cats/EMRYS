@@ -440,51 +440,15 @@ execute=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --cohort-id)
-            require_value "$1" "${2:-}"
-            cohort_id="$2"
-            shift 2
-            ;;
-        --sample-manifest)
-            require_value "$1" "${2:-}"
-            sample_manifest="$2"
-            shift 2
-            ;;
-        --partition-manifest)
-            require_value "$1" "${2:-}"
-            partition_manifest="$2"
-            shift 2
-            ;;
-        --step07-root)
-            require_value "$1" "${2:-}"
-            step07_root="$2"
-            shift 2
-            ;;
-        --annotation-gtf)
-            require_value "$1" "${2:-}"
-            annotation_gtf="$2"
-            shift 2
-            ;;
-        --output-root)
-            require_value "$1" "${2:-}"
-            output_root="$2"
-            shift 2
-            ;;
-        --qc-root)
-            require_value "$1" "${2:-}"
-            qc_root="$2"
-            shift 2
-            ;;
-        --rscript-bin)
-            require_value "$1" "${2:-}"
-            rscript_bin_arg="$2"
-            shift 2
-            ;;
-        --r-script)
-            require_value "$1" "${2:-}"
-            r_script="$2"
-            shift 2
-            ;;
+        --cohort-id) assign_option_value "$1" "${2:-}" cohort_id; shift 2 ;;
+        --sample-manifest) assign_option_value "$1" "${2:-}" sample_manifest; shift 2 ;;
+        --partition-manifest) assign_option_value "$1" "${2:-}" partition_manifest; shift 2 ;;
+        --step07-root) assign_option_value "$1" "${2:-}" step07_root; shift 2 ;;
+        --annotation-gtf) assign_option_value "$1" "${2:-}" annotation_gtf; shift 2 ;;
+        --output-root) assign_option_value "$1" "${2:-}" output_root; shift 2 ;;
+        --qc-root) assign_option_value "$1" "${2:-}" qc_root; shift 2 ;;
+        --rscript-bin) assign_option_value "$1" "${2:-}" rscript_bin_arg; shift 2 ;;
+        --r-script) assign_option_value "$1" "${2:-}" r_script; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

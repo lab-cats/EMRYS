@@ -151,26 +151,10 @@ execute=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --reference-fasta)
-            require_value "$1" "${2:-}"
-            reference_fasta="$2"
-            shift 2
-            ;;
-        --samtools-bin)
-            require_value "$1" "${2:-}"
-            samtools_bin_arg="$2"
-            shift 2
-            ;;
-        --gatk-bin)
-            require_value "$1" "${2:-}"
-            gatk_bin_arg="$2"
-            shift 2
-            ;;
-        --java-bin)
-            require_value "$1" "${2:-}"
-            java_bin_arg="$2"
-            shift 2
-            ;;
+        --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin_arg; shift 2 ;;
+        --gatk-bin) assign_option_value "$1" "${2:-}" gatk_bin_arg; shift 2 ;;
+        --java-bin) assign_option_value "$1" "${2:-}" java_bin_arg; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

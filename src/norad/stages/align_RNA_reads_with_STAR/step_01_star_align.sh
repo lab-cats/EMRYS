@@ -58,36 +58,12 @@ execute=false
 # Parse explicit paths and execution mode from the command line.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --r1-fastq)
-            require_value "$1" "${2:-}"
-            r1_fastq="$2"
-            shift 2
-            ;;
-        --r2-fastq)
-            require_value "$1" "${2:-}"
-            r2_fastq="$2"
-            shift 2
-            ;;
-        --star-index)
-            require_value "$1" "${2:-}"
-            star_index="$2"
-            shift 2
-            ;;
-        --output-dir)
-            require_value "$1" "${2:-}"
-            output_dir="$2"
-            shift 2
-            ;;
-        --threads)
-            require_value "$1" "${2:-}"
-            threads="$2"
-            shift 2
-            ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --r1-fastq) assign_option_value "$1" "${2:-}" r1_fastq; shift 2 ;;
+        --r2-fastq) assign_option_value "$1" "${2:-}" r2_fastq; shift 2 ;;
+        --star-index) assign_option_value "$1" "${2:-}" star_index; shift 2 ;;
+        --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

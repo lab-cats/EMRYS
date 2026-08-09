@@ -80,41 +80,13 @@ execute=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --input-bam)
-            require_value "$1" "${2:-}"
-            input_bam="$2"
-            shift 2
-            ;;
-        --reference-fasta)
-            require_value "$1" "${2:-}"
-            reference_fasta="$2"
-            shift 2
-            ;;
-        --output-dir)
-            require_value "$1" "${2:-}"
-            output_dir="$2"
-            shift 2
-            ;;
-        --gatk-bin)
-            require_value "$1" "${2:-}"
-            gatk_bin_arg="$2"
-            shift 2
-            ;;
-        --samtools-bin)
-            require_value "$1" "${2:-}"
-            samtools_bin_arg="$2"
-            shift 2
-            ;;
-        --java-bin)
-            require_value "$1" "${2:-}"
-            java_bin_arg="$2"
-            shift 2
-            ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
+        --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
+        --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
+        --gatk-bin) assign_option_value "$1" "${2:-}" gatk_bin_arg; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin_arg; shift 2 ;;
+        --java-bin) assign_option_value "$1" "${2:-}" java_bin_arg; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

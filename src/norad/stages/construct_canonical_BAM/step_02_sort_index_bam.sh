@@ -58,26 +58,10 @@ execute=false
 # Keep the CLI explicit so the same script works locally and under SLURM.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --input-alignment)
-            require_value "$1" "${2:-}"
-            input_alignment="$2"
-            shift 2
-            ;;
-        --output-dir)
-            require_value "$1" "${2:-}"
-            output_dir="$2"
-            shift 2
-            ;;
-        --threads)
-            require_value "$1" "${2:-}"
-            threads="$2"
-            shift 2
-            ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --input-alignment) assign_option_value "$1" "${2:-}" input_alignment; shift 2 ;;
+        --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

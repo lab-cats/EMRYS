@@ -57,56 +57,16 @@ execute=false
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --review-id)
-            require_value "$1" "${2:-}"
-            review_id="$2"
-            shift 2
-            ;;
-        --sample-manifest)
-            require_value "$1" "${2:-}"
-            sample_manifest="$2"
-            shift 2
-            ;;
-        --partition-manifest)
-            require_value "$1" "${2:-}"
-            partition_manifest="$2"
-            shift 2
-            ;;
-        --step08-sites)
-            require_value "$1" "${2:-}"
-            step08_sites="$2"
-            shift 2
-            ;;
-        --step08-inputs)
-            require_value "$1" "${2:-}"
-            step08_inputs="$2"
-            shift 2
-            ;;
-        --step08-summary)
-            require_value "$1" "${2:-}"
-            step08_summary="$2"
-            shift 2
-            ;;
-        --step09-analysis-dir)
-            require_value "$1" "${2:-}"
-            step09_analysis_dir="$2"
-            shift 2
-            ;;
-        --review-plan)
-            require_value "$1" "${2:-}"
-            review_plan="$2"
-            shift 2
-            ;;
-        --evidence-manifest)
-            require_value "$1" "${2:-}"
-            evidence_manifest="$2"
-            shift 2
-            ;;
-        --output-root)
-            require_value "$1" "${2:-}"
-            output_root="$2"
-            shift 2
-            ;;
+        --review-id) assign_option_value "$1" "${2:-}" review_id; shift 2 ;;
+        --sample-manifest) assign_option_value "$1" "${2:-}" sample_manifest; shift 2 ;;
+        --partition-manifest) assign_option_value "$1" "${2:-}" partition_manifest; shift 2 ;;
+        --step08-sites) assign_option_value "$1" "${2:-}" step08_sites; shift 2 ;;
+        --step08-inputs) assign_option_value "$1" "${2:-}" step08_inputs; shift 2 ;;
+        --step08-summary) assign_option_value "$1" "${2:-}" step08_summary; shift 2 ;;
+        --step09-analysis-dir) assign_option_value "$1" "${2:-}" step09_analysis_dir; shift 2 ;;
+        --review-plan) assign_option_value "$1" "${2:-}" review_plan; shift 2 ;;
+        --evidence-manifest) assign_option_value "$1" "${2:-}" evidence_manifest; shift 2 ;;
+        --output-root) assign_option_value "$1" "${2:-}" output_root; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift

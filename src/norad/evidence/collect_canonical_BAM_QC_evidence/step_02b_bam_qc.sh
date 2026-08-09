@@ -48,21 +48,9 @@ execute=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --bam)
-            require_value "$1" "${2:-}"
-            bam="$2"
-            shift 2
-            ;;
-        --output-dir)
-            require_value "$1" "${2:-}"
-            output_dir="$2"
-            shift 2
-            ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --bam) assign_option_value "$1" "${2:-}" bam; shift 2 ;;
+        --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift
