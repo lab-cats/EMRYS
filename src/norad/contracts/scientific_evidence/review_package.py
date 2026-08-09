@@ -334,21 +334,8 @@ EVIDENCE_INDEX_HEADER = (
     "policy_version",
 )
 
-OUTPUT_SUFFIXES = (
-    ("review_plan", "step09c_review_plan.tsv"),
-    ("evidence_index", "step09c_evidence_index.tsv"),
-    ("orientation_locus_audit", "step09c_orientation_locus_audit.tsv"),
-    ("annotation_audit", "step09c_annotation_audit.tsv"),
-    ("qc_funnel", "step09c_qc_funnel.tsv"),
-    ("replicate_effects", "step09c_replicate_effects.tsv"),
-    ("sensitivity_matrix", "step09c_sensitivity_matrix.tsv"),
-    ("leave_one_pair_out", "step09c_leave_one_pair_out.tsv"),
-    ("candidate_selection", "step09c_candidate_selection.tsv"),
-    ("candidate_adjudication", "step09c_candidate_adjudication.tsv"),
-    ("decisions", "step09c_decisions.tsv"),
-    ("limitations", "step09c_limitations.tsv"),
-    ("review_summary", "step09c_review_summary.tsv"),
-)
+OUTPUT_KEYS = ("review_plan", "evidence_index", *CATEGORY_ORDER, "review_summary")
+OUTPUT_SUFFIXES = tuple((key, f"step09c_{key}.tsv") for key in OUTPUT_KEYS)
 
 INPUT_ARTIFACT_ROLES = {
     "sample_manifest": "sample_manifest",
