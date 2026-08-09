@@ -1090,7 +1090,7 @@ def test_interrupt_immediately_after_backup_rename_restores_prior_report(
     RENDER.publish_report(first_context)
     prior = first_context.output_html.read_bytes()
     second_context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     interrupted = False
 
     def interrupt_after_backup(
@@ -1111,7 +1111,11 @@ def test_interrupt_immediately_after_backup_rename_restores_prior_report(
             interrupted = True
             raise KeyboardInterrupt("synthetic post-backup interrupt")
 
-    monkeypatch.setattr(RENDER.os, "link", interrupt_after_backup)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        interrupt_after_backup,
+    )
     with pytest.raises(
         KeyboardInterrupt,
         match="synthetic post-backup interrupt",
@@ -1147,7 +1151,7 @@ def test_interrupt_during_lock_acquisition_cleans_lock_and_restores_handlers(
         ]
     )
     context = RENDER.prepare_context(arguments)
-    original_write = RENDER.os.write
+    original_write = RENDER._owner._transaction.os.write
     original_handlers = {
         signum: signal.getsignal(signum)
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
@@ -1162,7 +1166,11 @@ def test_interrupt_during_lock_acquisition_cleans_lock_and_restores_handlers(
             raise KeyboardInterrupt("synthetic lock-acquisition interrupt")
         return written
 
-    monkeypatch.setattr(RENDER.os, "write", interrupt_after_lock_write)
+    monkeypatch.setattr(
+        RENDER._owner._transaction.os,
+        "write",
+        interrupt_after_lock_write,
+    )
     with pytest.raises(
         KeyboardInterrupt,
         match="synthetic lock-acquisition interrupt",
@@ -1203,7 +1211,11 @@ def test_signal_handlers_remain_installed_through_lock_release(
         observed_custom_handler = signal.getsignal(signal.SIGTERM) != original_handler
         original_release(ownership)
 
-    monkeypatch.setattr(RENDER._owner, "_release_lock", inspect_release)
+    monkeypatch.setattr(
+        RENDER._owner._publication,
+        "_release_lock",
+        inspect_release,
+    )
     RENDER.publish_report(context)
 
     assert observed_custom_handler
@@ -1253,7 +1265,7 @@ def test_foreign_replacement_during_rollback_retains_lock_and_recovery(
         )
 
     monkeypatch.setattr(
-        RENDER._owner,
+        RENDER._owner._publication,
         "validate_rendered_html",
         replace_final_then_fail,
     )
@@ -1294,7 +1306,7 @@ def test_late_foreign_final_is_never_clobbered(
         ]
     )
     context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     foreign = b"late foreign final\n"
     injected = False
 
@@ -1314,7 +1326,11 @@ def test_late_foreign_final_is_never_clobbered(
             follow_symlinks=follow_symlinks,
         )
 
-    monkeypatch.setattr(RENDER.os, "link", inject_foreign_final)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        inject_foreign_final,
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="rollback was incomplete",
@@ -1351,7 +1367,7 @@ def test_late_foreign_backup_is_never_clobbered(
     RENDER.publish_report(first_context)
     prior = first_context.output_html.read_bytes()
     context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     foreign = b"late foreign backup\n"
     foreign_backup: Path | None = None
 
@@ -1372,7 +1388,11 @@ def test_late_foreign_backup_is_never_clobbered(
             follow_symlinks=follow_symlinks,
         )
 
-    monkeypatch.setattr(RENDER.os, "link", inject_foreign_backup)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        inject_foreign_backup,
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="rollback was incomplete",
@@ -1421,7 +1441,9 @@ def test_post_commit_backup_cleanup_failure_preserves_new_report_and_lock(
         original_sync(path)
 
     monkeypatch.setattr(
-        RENDER._owner, "_fsync_directory", fail_post_commit_backup_sync
+        RENDER._owner._publication,
+        "_fsync_directory",
+        fail_post_commit_backup_sync,
     )
     with pytest.raises(
         RENDER.ReportRenderError,

@@ -18,7 +18,9 @@ and may change without creating another supported command surface.
 | [`html_validation.py`](html_validation.py) | Static QMD construction plus generated-QMD, CSS, accessibility, identity, and self-containment validation. |
 | [`context.py`](context.py) | Validated, immutable render-context preparation for one explicit run summary. |
 | [`runtime.py`](runtime.py) | Closed Quarto environment, pinned-version check, deterministic epoch, timeout, and process-group lifecycle. |
-| [`html.py`](html.py) | Current HTML transaction and publication owner; it retains compatibility bindings for moved helpers. |
+| [`transaction.py`](transaction.py) | Lock ownership, stable snapshots, atomic-file primitives, fsync, cleanup, and recovery-marker mechanics. |
+| [`html_publication.py`](html_publication.py) | Quarto staging plus validated, rollback-safe publication of one HTML report. |
+| [`html.py`](html.py) | Thin HTML command coordinator and compatibility owner for moved helpers. |
 | [`bundle.py`](bundle.py) | Current PDF/summary/receipt projection and multi-output publication owner. |
 
 The bundle imports the private HTML owner directly. The HTML owner never
