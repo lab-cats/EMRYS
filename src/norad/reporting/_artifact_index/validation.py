@@ -27,6 +27,7 @@ from .records import (
     build_index_rows,
     inventory_rows_from_published_index,
     read_exact_tsv,
+    record_manifest,
     validate_record_in_memory,
 )
 
@@ -180,7 +181,6 @@ def validate_published_transaction(
         )
 
     validator = contracts.schema_validator("artifact-record")
-    record_manifest: list[dict[str, str]] = []
     validated_index_rows: list[dict[str, str]] = []
     for index_row, inventory_row in zip(index_rows, inventory_rows, strict=True):
         expected_path = records_dir / f"{inventory_row['artifact_id']}.json"
@@ -219,14 +219,9 @@ def validate_published_transaction(
                 f"{inventory_row['artifact_id']}"
             )
         validated_index_rows.append(expected_index_row)
-        record_manifest.append(
-            {
-                "artifact_id": inventory_row["artifact_id"],
-                "record_path": str(expected_path),
-                "record_sha256": observed_hash,
-            }
-        )
-    if receipt["record_set_sha256"] != canonical_digest(record_manifest):
+    if receipt["record_set_sha256"] != canonical_digest(
+        record_manifest(validated_index_rows)
+    ):
         raise ArtifactIndexError("Published record-set hash is invalid")
 
     availability = Counter(row["availability_status"] for row in validated_index_rows)

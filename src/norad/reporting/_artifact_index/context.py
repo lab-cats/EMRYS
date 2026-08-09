@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from dataclasses import replace
 from typing import Any
 
 from .contracts import contracts
@@ -37,6 +38,7 @@ from .records import (
     build_receipt_row,
     load_existing_receipt,
     producer_evidence,
+    record_manifest,
     tsv_bytes,
     validate_existing_identity,
     validate_record_in_memory,
@@ -203,15 +205,9 @@ def validate_context_in_memory(context: BuildContext) -> None:
         context.index_bytes
     ):
         raise ArtifactIndexError("Generated artifact index hash is inconsistent")
-    manifest = [
-        {
-            "artifact_id": row["artifact_id"],
-            "record_path": row["record_path"],
-            "record_sha256": row["record_sha256"],
-        }
-        for row in context.index_rows
-    ]
-    if context.receipt_row["record_set_sha256"] != canonical_digest(manifest):
+    if context.receipt_row["record_set_sha256"] != canonical_digest(
+        record_manifest(context.index_rows)
+    ):
         raise ArtifactIndexError("Generated record-set hash is inconsistent")
     if context.receipt_row["transaction_state"] != "complete":
         raise ArtifactIndexError("Generated receipt is not complete")
@@ -221,25 +217,8 @@ def source_snapshot_matches(
     expected: SourceSnapshot,
     observed: SourceSnapshot,
 ) -> bool:
-    return (
-        expected.status,
-        expected.size_bytes,
-        expected.file_type,
-        expected.link_target,
-        expected.device,
-        expected.inode,
-        expected.mtime_ns,
-        expected.ctime_ns,
-    ) == (
-        observed.status,
-        observed.size_bytes,
-        observed.file_type,
-        observed.link_target,
-        observed.device,
-        observed.inode,
-        observed.mtime_ns,
-        observed.ctime_ns,
-    )
+    # Rechecks may skip hashing, but every filesystem identity field must match.
+    return expected == replace(observed, sha256=expected.sha256)
 
 
 def recheck_inputs(context: BuildContext) -> None:

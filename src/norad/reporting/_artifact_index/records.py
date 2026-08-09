@@ -29,6 +29,20 @@ from .models import (
 from .rosters import STEP_PRODUCERS
 
 
+def record_manifest(
+    rows: Iterable[Mapping[str, str]],
+) -> list[dict[str, str]]:
+    """Project the ordered record identities committed by a receipt."""
+    return [
+        {
+            "artifact_id": row["artifact_id"],
+            "record_path": row["record_path"],
+            "record_sha256": row["record_sha256"],
+        }
+        for row in rows
+    ]
+
+
 def producer_evidence(git_commit: str) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for step_id, relative_path in STEP_PRODUCERS.items():
@@ -313,14 +327,6 @@ def build_receipt_row(
 ) -> dict[str, str]:
     availability = Counter(row["availability_status"] for row in index_rows)
     completion = Counter(row["completion_status"] for row in index_rows)
-    record_manifest = [
-        {
-            "artifact_id": row["artifact_id"],
-            "record_path": row["record_path"],
-            "record_sha256": row["record_sha256"],
-        }
-        for row in index_rows
-    ]
     required_count = sum(row["required"] == "true" for row in index_rows)
     required_missing = sum(
         row["required"] == "true" and row["availability_status"] != "present"
@@ -347,7 +353,7 @@ def build_receipt_row(
         "artifacts_index_path": str(artifacts_path),
         "artifacts_index_sha256": sha256_bytes(index_bytes),
         "artifact_record_count": str(len(index_rows)),
-        "record_set_sha256": canonical_digest(record_manifest),
+        "record_set_sha256": canonical_digest(record_manifest(index_rows)),
         "required_artifact_count": str(required_count),
         "required_missing_artifact_count": str(required_missing),
         "present_artifact_count": str(availability["present"]),
