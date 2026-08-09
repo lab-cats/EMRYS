@@ -14,7 +14,6 @@
 # and required Bioconductor packages are available.
 set -euo pipefail
 script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-export STEP08_HELPER_DIR="$script_dir"
 source "$script_dir/../../libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"

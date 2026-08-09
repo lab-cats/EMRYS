@@ -60,29 +60,6 @@ module is 47 lines and no private owner exceeds 373 lines. The Step `09`
 shell/R CMH method and independent oracle were not changed; this adds no
 runtime, scientific-review, or biological evidence.
 
-Step `07` shell keeps its exact bcftools pipelines, input snapshots, locks,
-signals, rollback, and receipt-last publication in a 468-line public producer.
-Owner-local modules contain the byte-identical partition/FAI/selector and
-generated VCF/receipt validation functions and do not exceed 211 lines. The
-scheduler preserves copied-producer execution by exporting the packaged helper
-location before changing directories. This is maintainability and mock-
-bcftools evidence only, not real-bcftools or cluster proof.
-
-Step `06` shell keeps its exact samtools commands and ordered execution plus
-counts-last publication in a 477-line public producer. Owner-local 120- and
-84-line modules contain byte-identical final-set/rollback/cleanup/stale-path
-and generated-output/counts-contract functions. The scheduler exports their
-packaged location before changing directories. This adds no new runtime,
-cluster, mechanical-orientation, or biological evidence.
-
-Step `08` shell keeps R resolution/command construction, admitted-input
-snapshots, locks, signals, rollback, and receipt-last publication in a 461-line
-public transaction owner. Owner-local 144- and 198-line modules contain the
-byte-identical Step `07` admission/stability and generated-table reconciliation
-functions; all three shell files total 803 lines. The scheduler preserves
-copied-producer execution by exporting the packaged helper location. This does
-not add production Step `07` inputs, an approved R runtime, or cluster proof.
-
 Step `08` R now retains a 401-line public coordinator over input-contract,
 annotation, Step `07` receipt, and VCF/candidate modules no larger than 570
 lines. All 23 pre-existing top-level function bodies are parse-identical to the

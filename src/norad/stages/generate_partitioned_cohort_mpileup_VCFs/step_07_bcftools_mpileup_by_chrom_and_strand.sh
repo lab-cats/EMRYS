@@ -7,8 +7,6 @@
 # Passing --execute runs both pipelines and publishes the two VCFs plus their
 # receipt as one rollback-protected output set.
 set -euo pipefail
-script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-helper_dir="${STEP07_HELPER_DIR:-$script_dir}"
 
 usage() {
     cat <<'USAGE'
@@ -71,14 +69,6 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
-for step_07_helper in \
-    step_07_partition_validation.sh \
-    step_07_output_validation.sh
-do
-    # shellcheck source=/dev/null
-    source "$helper_dir/$step_07_helper"
-done
-
 resolve_bcftools() {
     local value="${bcftools_bin_arg:-}"
     if [[ -z "$value" && -n "${BCFTOOLS_BIN_OVERRIDE:-}" ]]; then
@@ -97,6 +87,255 @@ confirm_input_manifest_hashes() {
         die "Sample manifest changed during Step 07: $sample_manifest"
     [[ "$current_partition_hash" == "$partition_manifest_sha256" ]] ||
         die "Partition manifest changed during Step 07: $partition_manifest"
+}
+
+validate_fai_structure() {
+    local fai="$1"
+    awk -F '\t' '
+        NF < 2 || $1 == "" || $2 !~ /^[1-9][0-9]*$/ {
+            printf "invalid FASTA index row %d\n", NR > "/dev/stderr"
+            invalid = 1
+            next
+        }
+        seen[$1]++ {
+            printf "duplicate FASTA index contig on row %d: %s\n", NR, $1 > "/dev/stderr"
+            invalid = 1
+        }
+        END {
+            if (!NR) {
+                print "FASTA index contains no contig rows" > "/dev/stderr"
+                invalid = 1
+            }
+            exit invalid
+        }
+    ' "$fai" || die "Reference FASTA index validation failed: $fai"
+}
+
+fai_contig_length() {
+    local fai="$1"
+    local contig="$2"
+    awk -F '\t' -v contig="$contig" '
+        $1 == contig {
+            count++
+            length_value = $2
+        }
+        END {
+            if (count != 1 || length_value !~ /^[1-9][0-9]*$/) exit 1
+            print length_value
+        }
+    ' "$fai"
+}
+
+validate_region_selector() {
+    local selector="$1"
+    local fai="$2"
+    local region
+    local contig
+    local coordinates
+    local contig_length
+    local start
+    local end
+    local regions=()
+
+    if [[ -z "$selector" ||
+          "$selector" == ,* ||
+          "$selector" == *, ||
+          "$selector" == *,,* ]]; then
+        die "Region selector contains an empty region: $selector"
+    fi
+    IFS=',' read -r -a regions <<< "$selector"
+    [[ "${#regions[@]}" -gt 0 ]] || die "Region selector is empty."
+
+    for region in "${regions[@]}"; do
+        [[ -n "$region" ]] || die "Region selector contains an empty region: $selector"
+        contig="${region%%:*}"
+        [[ -n "$contig" ]] || die "Region selector contains an empty contig: $region"
+        if ! contig_length="$(fai_contig_length "$fai" "$contig")"; then
+            die "Region selector contig is absent or duplicated in the FASTA index: $contig"
+        fi
+
+        if [[ "$region" != *:* ]]; then
+            continue
+        fi
+
+        coordinates="${region#*:}"
+        if [[ "$coordinates" =~ ^[0-9]+$ ]]; then
+            start="$coordinates"
+            end="$coordinates"
+        elif [[ "$coordinates" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            start="${BASH_REMATCH[1]}"
+            end="${BASH_REMATCH[2]}"
+        elif [[ "$coordinates" =~ ^([0-9]+)-$ ]]; then
+            start="${BASH_REMATCH[1]}"
+            end="$contig_length"
+        else
+            die "Region selector has invalid coordinates: $region"
+        fi
+
+        if ! awk -v start="$start" -v end="$end" -v length_value="$contig_length" \
+            'BEGIN { exit !(start >= 1 && end >= start && end <= length_value) }'
+        then
+            die "Region selector coordinates are outside FASTA bounds: $region (length $contig_length)"
+        fi
+    done
+}
+
+validate_regions_file_stream() {
+    local fai="$1"
+    local format="$2"
+    awk -F '\t' -v format="$format" '
+        NR == FNR {
+            lengths[$1] = $2
+            next
+        }
+        /^#/ || /^[[:space:]]*$/ {
+            next
+        }
+        {
+            sub(/\r$/, "", $NF)
+            contig = $1
+            if (!(contig in lengths)) {
+                printf "regions file contig is absent from FASTA index: %s\n", contig > "/dev/stderr"
+                invalid = 1
+                next
+            }
+
+            if (format == "bed") {
+                if (NF < 3 || $2 !~ /^[0-9]+$/ || $3 !~ /^[0-9]+$/ ||
+                    $2 < 0 || $3 <= $2 || $3 > lengths[contig]) {
+                    printf "invalid BED interval on regions file row %d\n", FNR > "/dev/stderr"
+                    invalid = 1
+                }
+            } else if (format == "vcf") {
+                if (NF < 2 || $2 !~ /^[1-9][0-9]*$/ || $2 > lengths[contig]) {
+                    printf "invalid VCF position on regions file row %d\n", FNR > "/dev/stderr"
+                    invalid = 1
+                }
+            } else {
+                row_mode = (NF == 2 ? 2 : 3)
+                if (mode && row_mode != mode) {
+                    printf "regions file mixes position and interval rows at row %d\n", FNR > "/dev/stderr"
+                    invalid = 1
+                }
+                mode = row_mode
+                if ($2 !~ /^[1-9][0-9]*$/ || $2 > lengths[contig]) {
+                    printf "invalid regions file start/position on row %d\n", FNR > "/dev/stderr"
+                    invalid = 1
+                }
+                if (row_mode == 3 &&
+                    ($3 !~ /^[1-9][0-9]*$/ || $3 < $2 || $3 > lengths[contig])) {
+                    printf "invalid regions file end on row %d\n", FNR > "/dev/stderr"
+                    invalid = 1
+                }
+            }
+            data_rows++
+        }
+        END {
+            if (!data_rows) {
+                print "regions file contains no selector rows" > "/dev/stderr"
+                invalid = 1
+            }
+            exit invalid
+        }
+    ' "$fai" -
+}
+
+validate_regions_file_selector() {
+    local path="$1"
+    local fai="$2"
+    local uncompressed_path="${path%.gz}"
+    local format="tab"
+
+    case "$uncompressed_path" in
+        *.bed) format="bed" ;;
+        *.vcf) format="vcf" ;;
+    esac
+
+    if [[ "$path" == *.gz ]]; then
+        command -v gzip >/dev/null 2>&1 ||
+            die "gzip is required to validate compressed regions file: $path"
+        if ! gzip -cd "$path" | validate_regions_file_stream "$fai" "$format"; then
+            die "Regions file validation failed: $path"
+        fi
+    elif ! validate_regions_file_stream "$fai" "$format" < "$path"; then
+        die "Regions file validation failed: $path"
+    fi
+}
+
+read_partition_selector() {
+    local manifest="$1"
+    local requested_id="$2"
+    local selected_count=0
+    local selected_type=""
+    local selected_value=""
+    local status=0
+    read_partition_record() {
+        local partition_record_id="$1"
+        local partition_record_type="$2"
+        local partition_record_value="$3"
+
+        if [[ "$partition_record_id" == "$requested_id" ]]; then
+            selected_count=$((selected_count + 1))
+            selected_type="$partition_record_type"
+            selected_value="$partition_record_value"
+        fi
+    }
+
+    if ! read_manifest_partitions "$manifest" read_partition_record; then
+        status=$?
+    fi
+    unset -f read_partition_record
+
+    if [[ "$status" -ne 0 ]]; then
+        return "$status"
+    fi
+
+    if [[ "$selected_count" -ne 1 ]]; then
+        printf "partition_id %s was not found exactly once\n" "$requested_id" >&2
+        return 7
+    fi
+
+    printf '%s\t%s\n' "$selected_type" "$selected_value"
+}
+
+validate_vcf() {
+    local label="$1"
+    local path="$2"
+    local expected_samples="$3"
+    local observed_samples
+
+    [[ -s "$path" ]] || die "$label VCF does not exist or is empty: $path"
+    "$bcftools_bin" view -h "$path" >/dev/null ||
+        die "$label VCF header validation failed: $path"
+    observed_samples="$("$bcftools_bin" query -l "$path")" ||
+        die "$label VCF sample query failed: $path"
+    if [[ "$observed_samples" != "$expected_samples" ]]; then
+        printf 'ERROR: %s VCF sample order does not match the sample manifest: %s\n' "$label" "$path" >&2
+        printf 'Expected samples:\n%s\n' "$expected_samples" >&2
+        printf 'Observed samples:\n%s\n' "$observed_samples" >&2
+        exit 1
+    fi
+}
+
+vcf_record_count() {
+    local path="$1"
+    "$bcftools_bin" view -H "$path" | awk 'END { print NR + 0 }'
+}
+
+validate_receipt() {
+    local path="$1"
+    local expected_header
+    local observed_header
+    local row_count
+
+    expected_header=$'cohort_id\tpartition_id\tselector_type\tselector_value\torientation\tvcf_path\tsample_manifest_sha256\tpartition_manifest_sha256\tsample_count\tvcf_record_count'
+    [[ -s "$path" ]] || die "Step 07 receipt does not exist or is empty: $path"
+    IFS= read -r observed_header < "$path"
+    [[ "$observed_header" == "$expected_header" ]] ||
+        die "Step 07 receipt header is invalid: $path"
+    row_count="$(awk 'END { print NR - 1 }' "$path")"
+    [[ "$row_count" == "2" ]] ||
+        die "Step 07 receipt must contain exactly two data rows; got $row_count: $path"
 }
 
 declare_required_arguments \

@@ -20,16 +20,6 @@ This directory is the implemented native owner for semantic stage
   tests. Scheduler behavior remains independently owned by the central
   [wrapper-contract suite](../../../../tests/test_slurm_wrapper_contracts.py).
 
-The 461-line public shell producer retains argument handling, R command
-construction, admitted-input snapshots, locks, signals, rollback, and
-receipt-last publication. Two sourced owner-local modules contain the
-byte-identical Step `07` receipt/VCF admission and stability functions (144
-lines) and generated sites/input-receipt/summary reconciliation (198 lines).
-The three shell files total 803 lines including their module boundaries. The
-private modules add no command, transaction state, or generic shell-library
-surface; the scheduler exports their packaged location before changing to the
-submission directory so copied-producer execution remains intact.
-
 The 401-line public R coordinator loads four owner-private modules:
 
 - [`_step_08_input_contract.R`](_step_08_input_contract.R) owns arguments,

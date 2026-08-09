@@ -12,8 +12,6 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after Step 06 has
 # produced every manifest sample's FWD_like and REV_like BAM/index pairs.
 set -euo pipefail
-script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-export STEP07_HELPER_DIR="$script_dir"
 
 export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh
