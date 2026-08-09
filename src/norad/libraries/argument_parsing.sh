@@ -117,3 +117,20 @@ require_value() {
         die "$option requires a value."
     fi
 }
+
+# Owner parsers call this from their catch-all branch. It deliberately updates
+# their shared execute flag; help exits before the caller advances argv.
+handle_execute_or_help() {
+    case "${1:-}" in
+        --execute)
+            execute=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "Unknown argument: ${1:-}. Run with --help for usage."
+            ;;
+    esac
+}

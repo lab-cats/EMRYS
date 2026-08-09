@@ -101,16 +101,9 @@ while [[ $# -gt 0 ]]; do
             infer_experiment_bin="$2"
             shift 2
             ;;
-        --execute)
-            execute=true
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
         *)
-            die "Unknown argument: $1. Run with --help for usage."
+            handle_execute_or_help "$1"
+            shift
             ;;
     esac
 done
