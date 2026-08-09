@@ -219,6 +219,7 @@ SENSITIVITY_HEADER = (
     "review_date",
     "detail",
 )
+SENSITIVITY_SUMMARY_FIELDS = SENSITIVITY_HEADER[7:19]
 
 LEAVE_ONE_OUT_HEADER = (
     "review_id",
@@ -289,6 +290,7 @@ CANDIDATE_ADJUDICATION_HEADER = (
     "reviewer",
     "review_date",
 )
+ADJUDICATION_COMPONENT_FIELDS = CANDIDATE_ADJUDICATION_HEADER[6:18]
 
 DECISIONS_HEADER = (
     "review_id",

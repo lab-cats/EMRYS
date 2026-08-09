@@ -54,20 +54,6 @@ def validate_sensitivity_matrix(
     }
     observed_ids: set[str] = set()
     primary_count = 0
-    summary_fields = (
-        "min_sample_dp",
-        "mean_dp_threshold",
-        "fdr_threshold",
-        "common_or_threshold",
-        "absolute_difference_threshold",
-        "background_condition",
-        "background_max_fraction",
-        "target_rna_change",
-        "candidate_count",
-        "successfully_tested_count",
-        "significant_up_count",
-        "significant_down_count",
-    )
     for row_number, row in enumerate(rows, start=2):
         analysis_id = row["analysis_id"]
         if analysis_id not in expected_ids:
@@ -102,7 +88,7 @@ def validate_sensitivity_matrix(
                 step08.fail("Primary sensitivity summary differs from Step 09.")
         elif analysis_id == plan["primary_analysis_id"]:
             step08.fail("The primary sensitivity row must use is_primary=TRUE.")
-        for column in summary_fields:
+        for column in review_package.SENSITIVITY_SUMMARY_FIELDS:
             if row[column] != summary[column]:
                 step08.fail(
                     f"Sensitivity matrix row {row_number} {column} "
@@ -320,20 +306,7 @@ def validate_candidate_adjudication(
             row["adjudication_status"],
             review_package.ADJUDICATION_STATUSES,
         )
-        for column in (
-            "coverage_status",
-            "base_quality_status",
-            "mapping_quality_status",
-            "read_position_status",
-            "splice_status",
-            "repeat_multimapping_status",
-            "duplicate_status",
-            "nearby_indel_status",
-            "annotation_status",
-            "polymorphism_status",
-            "matched_dna_status",
-            "orthogonal_evidence_status",
-        ):
+        for column in review_package.ADJUDICATION_COMPONENT_FIELDS:
             step08.validate_enum(
                 f"Candidate adjudication {column}",
                 row[column],
@@ -341,20 +314,7 @@ def validate_candidate_adjudication(
             )
         component_values = [
             row[column]
-            for column in (
-                "coverage_status",
-                "base_quality_status",
-                "mapping_quality_status",
-                "read_position_status",
-                "splice_status",
-                "repeat_multimapping_status",
-                "duplicate_status",
-                "nearby_indel_status",
-                "annotation_status",
-                "polymorphism_status",
-                "matched_dna_status",
-                "orthogonal_evidence_status",
-            )
+            for column in review_package.ADJUDICATION_COMPONENT_FIELDS
         ]
         if row["adjudication_status"] == "pass" and any(
             status in ("flag", "fail") for status in component_values
