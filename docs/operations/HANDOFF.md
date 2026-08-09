@@ -60,6 +60,15 @@ record semantics have distinct private owners. The five schema resources are
 unchanged and remain one file per registered `$id`, using local `$defs`; this
 is maintainability evidence, not a schema version or evidence promotion.
 
+The neutral Step `08` scientific-evidence contract keeps direct-file loading,
+its complete public parsing surface, signatures, and shared error/table
+identities over private definition, support, manifest, and table-reconciliation
+owners. The public module is 56 lines, no private owner exceeds 271 lines, and
+all 19 extracted function bodies are AST-identical. Step `08` R computation,
+Step `09` consumers, review policy, publication, and artifact reconciliation
+were not changed; this adds no runtime, scientific-review, or biological
+evidence.
+
 The neutral Step `09` scientific-evidence contract keeps its public module,
 headers, signatures, and shared Step `08` identities over private definition,
 support, table-reconciliation, and cross-table-semantic owners. The public

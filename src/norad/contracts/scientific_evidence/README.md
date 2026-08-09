@@ -11,6 +11,15 @@ publication, or independent test oracles.
 | [`review_package.py`](review_package.py) | Public Step 09c package roster, headers, vocabularies, and state reduction. |
 | [`computational_validation.py`](computational_validation.py) | Computational-validation evidence table contract. |
 
+Step 08 implementation is private and bounded:
+
+| Private module | Responsibility |
+| --- | --- |
+| [`_step08_definitions.py`](_step08_definitions.py) | Exact headers, regular expressions, shared error, and table identities. |
+| [`_step08_support.py`](_step08_support.py) | Scalar parsing, hashing, file admission, and strict TSV support. |
+| [`_step08_manifests.py`](_step08_manifests.py) | Sample- and partition-manifest validation. |
+| [`_step08_tables.py`](_step08_tables.py) | Input-receipt, candidate-site, and summary reconciliation. |
+
 Step 09 implementation is private and bounded:
 
 | Private module | Responsibility |
@@ -20,7 +29,8 @@ Step 09 implementation is private and bounded:
 | [`_step09_tables.py`](_step09_tables.py) | Result, summary, and mutation-spectrum table reconciliation. |
 | [`_step09_semantics.py`](_step09_semantics.py) | Candidate, significance, background, and global BH semantics. |
 
-The public `step09.py` module preserves the `step08`, `ContractError`, `Table`,
-constant, and function identities used by existing consumers. These modules do
-not import or implement the Step 09 shell/R CMH algorithm, and independent
-oracle tests remain independent of production contract logic.
+The public `step08.py` and `step09.py` modules preserve the `step08`,
+`ContractError`, `Table`, constant, and function identities used by existing
+consumers. These modules do not import or implement the Step 08 R algorithm or
+Step 09 shell/R CMH algorithm, and independent oracle tests remain independent
+of production contract logic.
