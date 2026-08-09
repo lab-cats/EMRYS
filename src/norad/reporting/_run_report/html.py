@@ -11,10 +11,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import csv
-import hashlib
 import os
-import re
 import shlex
 import shutil
 import signal
@@ -24,46 +21,46 @@ import sys
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, NoReturn
-
-import yaml
 
 _MODULE_PATH = Path(__file__).resolve()
 src_root = str(_MODULE_PATH.parents[3])
 # Direct execution must prefer this checkout over an installed NORAD.
 sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
-from norad.reporting import _files, _signals
+from norad.contracts.artifacts import validate_artifact_contracts as _contracts
+from norad.reporting import _signals
 
 from . import html_projection as _projection
-from .models import (
-    ACTIVE_RESOURCE_ATTRIBUTES,
-    BODY_MARKER,
-    CANDIDATE_TERMINOLOGY,
-    CSS_MARKER,
-    CSS_RESOURCE_RE,
-    CSS_TEMPLATE,
-    EXECUTABLE_QMD_RE,
-    EXPECTED_QMD_BODY,
-    EXPECTED_QMD_FRONTMATTER,
-    PRODUCER,
-    PRODUCER_VERSION,
-    QMD_TEMPLATE,
-    QUARTO_VERSION,
-    REMOTE_URI_RE,
-    REPORT_SECTION_IDS,
-    RUN_SUMMARY_SCHEMA_VERSION,
-    SAFE_RENDER_PATH,
-    SCIENCE_BANNERS,
-    ApprovedTable,
-    FileSnapshot,
-    LockOwnership,
-    RenderContext,
-    ReportRenderError,
-)
+from . import html_validation as _validation
+from . import inputs as _inputs
+from . import models as _models
+
+ACTIVE_RESOURCE_ATTRIBUTES = _models.ACTIVE_RESOURCE_ATTRIBUTES
+BODY_MARKER = _models.BODY_MARKER
+CANDIDATE_TERMINOLOGY = _models.CANDIDATE_TERMINOLOGY
+CSS_MARKER = _models.CSS_MARKER
+CSS_RESOURCE_RE = _models.CSS_RESOURCE_RE
+CSS_TEMPLATE = _models.CSS_TEMPLATE
+EXECUTABLE_QMD_RE = _models.EXECUTABLE_QMD_RE
+EXPECTED_QMD_BODY = _models.EXPECTED_QMD_BODY
+EXPECTED_QMD_FRONTMATTER = _models.EXPECTED_QMD_FRONTMATTER
+PRODUCER = _models.PRODUCER
+PRODUCER_VERSION = _models.PRODUCER_VERSION
+QMD_TEMPLATE = _models.QMD_TEMPLATE
+QUARTO_VERSION = _models.QUARTO_VERSION
+REMOTE_URI_RE = _models.REMOTE_URI_RE
+REPORT_SECTION_IDS = _models.REPORT_SECTION_IDS
+RUN_SUMMARY_SCHEMA_VERSION = _models.RUN_SUMMARY_SCHEMA_VERSION
+SAFE_RENDER_PATH = _models.SAFE_RENDER_PATH
+SCIENCE_BANNERS = _models.SCIENCE_BANNERS
+ApprovedTable = _models.ApprovedTable
+FileSnapshot = _models.FileSnapshot
+LockOwnership = _models.LockOwnership
+RenderContext = _models.RenderContext
+ReportRenderError = _models.ReportRenderError
+contracts = _contracts
 
 _artifact_overview = _projection._artifact_overview
 _category = _projection._category
@@ -98,6 +95,19 @@ _status_class = _projection._status_class
 _table = _projection._table
 _tables_for_roles = _projection._tables_for_roles
 build_report_body = _projection.build_report_body
+_assert_snapshot = _inputs._assert_snapshot
+_explicit_path = _inputs._explicit_path
+_fail = _inputs._fail
+_load_run_summary = _inputs._load_run_summary
+_read_approved_table = _inputs._read_approved_table
+_reject_symlink_components = _inputs._reject_symlink_components
+_resolve_contract_file = _inputs._resolve_contract_file
+_snapshot_regular = _inputs._snapshot_regular
+ReportHTMLInspector = _validation.ReportHTMLInspector
+_validate_css_resources = _validation._validate_css_resources
+build_qmd_bytes = _validation.build_qmd_bytes
+validate_qmd_template = _validation.validate_qmd_template
+validate_rendered_html = _validation.validate_rendered_html
 
 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -143,186 +153,20 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _fail(message: str) -> None:
-    raise ReportRenderError(message)
 
 
-def _explicit_path(path: Path, label: str) -> Path:
-    try:
-        contracts.validate_resolved_path(str(path), label)
-    except contracts.ContractValidationError as exc:
-        _fail(str(exc))
-    return path.absolute()
 
 
-def _reject_symlink_components(path: Path, label: str) -> None:
-    _files.reject_symlink_components(path, label, _fail)
 
 
-def _snapshot_regular(
-    path: Path,
-    label: str,
-    *,
-    executable: bool = False,
-) -> FileSnapshot:
-    path = _explicit_path(path, label)
-    _reject_symlink_components(path, label)
-    descriptor: int | None = None
-    try:
-        flags = os.O_RDONLY
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        descriptor = os.open(path, flags)
-        with os.fdopen(descriptor, "rb") as stream:
-            descriptor = None
-            before = os.fstat(stream.fileno())
-            if not stat.S_ISREG(before.st_mode):
-                _fail(f"{label} must be a regular non-symlink file: {path}")
-            if executable and not before.st_mode & stat.S_IXUSR:
-                _fail(f"{label} is not executable: {path}")
-            digest = hashlib.sha256()
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
-            after = os.fstat(stream.fileno())
-        current = path.lstat()
-    except ReportRenderError:
-        raise
-    except OSError as exc:
-        _fail(f"Could not inspect and hash {label} {path}: {exc}")
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-    sha256 = digest.hexdigest()
-    states = before, after, current
-    message = f"{label} changed while its snapshot was captured: {path}"
-    return _files.stable_snapshot(path, sha256, states, _fail, message)
 
 
-def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
-    current = _snapshot_regular(
-        snapshot.path,
-        label,
-        executable=(label == "Quarto executable"),
-    )
-    if current != snapshot:
-        _fail(f"{label} changed during report rendering: {snapshot.path}")
 
 
-def _load_run_summary(path: Path) -> dict[str, Any]:
-    try:
-        document = contracts.load_json_object(path, "run-summary document")
-        errors = contracts.schema_errors("run-summary", document)
-        if errors:
-            detail = "\n".join(
-                f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
-                for error in errors
-            )
-            _fail(f"run-summary document failed validation: {path}\n{detail}")
-        contracts.validate_run_summary_semantics(document)
-    except contracts.ContractValidationError as exc:
-        _fail(str(exc))
-    if document["schema_version"] != RUN_SUMMARY_SCHEMA_VERSION:
-        _fail(f"Unsupported run-summary schema version: {document['schema_version']!r}")
-    if document["candidate_terminology"] != CANDIDATE_TERMINOLOGY:
-        _fail(
-            "Run summary does not use the required candidate terminology: "
-            f"{CANDIDATE_TERMINOLOGY}"
-        )
-    if document["science_status"] not in SCIENCE_BANNERS:
-        _fail(
-            "Run summary uses an unauthorized scientific state: "
-            f"{document['science_status']!r}"
-        )
-    return document
 
 
-def _resolve_contract_file(value: str, label: str) -> Path:
-    try:
-        contracts.validate_resolved_path(value, label)
-    except contracts.ContractValidationError as exc:
-        _fail(str(exc))
-    declared = Path(value)
-    lexical = (
-        declared if declared.is_absolute() else contracts.REPO_ROOT / declared
-    ).absolute()
-    _reject_symlink_components(lexical, label)
-    resolved = contracts.resolve_contract_path(value)
-    if resolved != lexical:
-        _fail(f"{label} must not traverse a symbolic link: {value}")
-    return resolved
 
 
-def _read_approved_table(record: Mapping[str, Any]) -> ApprovedTable:
-    table_id = record["table_id"]
-    path = _resolve_contract_file(
-        record["path"],
-        f"approved report table {table_id!r}",
-    )
-    snapshot = _snapshot_regular(
-        path,
-        f"approved report table {table_id!r}",
-    )
-    if snapshot.sha256 != record["sha256"]:
-        _fail(
-            f"Approved report table {table_id!r} SHA-256 mismatch: observed "
-            f"{snapshot.sha256}; expected {record['sha256']}"
-        )
-
-    display_limit = record["display_row_limit"]
-    header: tuple[str, ...] | None = None
-    displayed: list[tuple[str, ...]] = []
-    row_count = 0
-    try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            try:
-                raw_header = next(reader)
-            except StopIteration:
-                _fail(f"Approved report table {table_id!r} is empty: {path}")
-            if not raw_header or any(not column for column in raw_header):
-                _fail(f"Approved report table {table_id!r} has a blank header column")
-            if len(raw_header) != len(set(raw_header)):
-                _fail(
-                    f"Approved report table {table_id!r} has duplicate header columns"
-                )
-            header = tuple(raw_header)
-            for row_number, row in enumerate(reader, start=2):
-                if len(row) != len(header):
-                    _fail(
-                        f"Approved report table {table_id!r} row {row_number} "
-                        f"has {len(row)} fields; expected {len(header)}"
-                    )
-                row_count += 1
-                if display_limit is None or len(displayed) < display_limit:
-                    displayed.append(tuple(row))
-    except ReportRenderError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not parse approved report table {table_id!r}: {exc}")
-
-    if row_count != record["row_count"]:
-        _fail(
-            f"Approved report table {table_id!r} row-count mismatch: observed "
-            f"{row_count}; expected {record['row_count']}"
-        )
-    _assert_snapshot(snapshot, f"approved report table {table_id!r}")
-    assert header is not None
-    return ApprovedTable(
-        table_id=table_id,
-        artifact_id=record["artifact_id"],
-        role=record["role"],
-        title=record["title"],
-        path=path,
-        sha256=snapshot.sha256,
-        row_count=row_count,
-        display_row_limit=display_limit,
-        approval_policy_version=record["approval"]["policy_version"],
-        approved_by=record["approval"]["approved_by"],
-        approved_at=record["approval"]["approved_at"],
-        header=header,
-        display_rows=tuple(displayed),
-        snapshot=snapshot,
-    )
 
 
 def _sanitized_tool_environment() -> dict[str, str]:
@@ -361,404 +205,14 @@ def _quarto_version(path: Path) -> str:
     return lines[0]
 
 
-def build_qmd_bytes(
-    summary: Mapping[str, Any],
-    tables: Sequence[ApprovedTable],
-    *,
-    template_bytes: bytes | None = None,
-    css_bytes: bytes | None = None,
-    render_metadata: Mapping[str, str] | None = None,
-) -> bytes:
-    if template_bytes is None:
-        try:
-            template_bytes = QMD_TEMPLATE.read_bytes()
-        except OSError as exc:
-            _fail(f"Could not read report QMD template {QMD_TEMPLATE}: {exc}")
-    try:
-        template = template_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report QMD template is not UTF-8: {exc}")
-    if css_bytes is None:
-        try:
-            css_bytes = CSS_TEMPLATE.read_bytes()
-        except OSError as exc:
-            _fail(f"Could not read report CSS template {CSS_TEMPLATE}: {exc}")
-    try:
-        css = css_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report CSS template is not UTF-8: {exc}")
-    _validate_css_resources(css, "Report CSS template")
-    if re.search(r"</?style\b|<script\b", css, re.IGNORECASE):
-        _fail("Report CSS template contains an unsafe raw HTML boundary")
-    validate_qmd_template(template)
-    qmd = template.replace(
-        CSS_MARKER,
-        '<style id="norad-report-styles">\n' + css + "\n</style>",
-    ).replace(
-        BODY_MARKER,
-        build_report_body(summary, tables, render_metadata),
-    )
-    if EXECUTABLE_QMD_RE.search(qmd):
-        _fail("Generated QMD contains an executable fenced cell")
-    return qmd.encode("utf-8")
 
 
-def validate_qmd_template(template: str) -> None:
-    if template.count(BODY_MARKER) != 1:
-        _fail(f"Report QMD template must contain exactly one {BODY_MARKER!r} marker")
-    if template.count(CSS_MARKER) != 1:
-        _fail(f"Report QMD template must contain exactly one {CSS_MARKER!r} marker")
-    if EXECUTABLE_QMD_RE.search(template):
-        _fail("Report QMD template contains an executable fenced cell")
-    match = re.fullmatch(r"---\n(.*?)\n---(\n.*)", template, re.DOTALL)
-    if match is None:
-        _fail("Report QMD template must contain one closed YAML frontmatter block")
-
-    class UniqueKeyLoader(yaml.SafeLoader):
-        pass
-
-    def construct_unique_mapping(
-        loader: yaml.SafeLoader,
-        node: yaml.nodes.MappingNode,
-        deep: bool = False,
-    ) -> dict[Any, Any]:
-        mapping: dict[Any, Any] = {}
-        for key_node, value_node in node.value:
-            key = loader.construct_object(key_node, deep=deep)
-            if key in mapping:
-                raise yaml.YAMLError(f"duplicate YAML key: {key!r}")
-            mapping[key] = loader.construct_object(value_node, deep=deep)
-        return mapping
-
-    UniqueKeyLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_unique_mapping,
-    )
-    try:
-        frontmatter = yaml.load(match.group(1), Loader=UniqueKeyLoader)
-    except (TypeError, yaml.YAMLError) as exc:
-        _fail(f"Report QMD frontmatter is invalid: {exc}")
-    if frontmatter != EXPECTED_QMD_FRONTMATTER:
-        _fail("Report QMD frontmatter differs from the closed static HTML allowlist")
-    if match.group(2) != EXPECTED_QMD_BODY:
-        _fail(
-            "Report QMD body must contain only the tracked static-contract "
-            "comment and the report-body marker"
-        )
 
 
-def _validate_css_resources(css: str, label: str) -> None:
-    for match in CSS_RESOURCE_RE.finditer(css):
-        resource = (match.group(2) or match.group(4) or "").strip()
-        if resource.startswith(("data:", "#")):
-            continue
-        _fail(f"{label} contains a non-embedded CSS resource: {resource!r}")
 
 
-class ReportHTMLInspector(HTMLParser):
-    """Collect local structural and active-resource facts from rendered HTML."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.html_lang: str | None = None
-        self.title_count = 0
-        self.title_depth = 0
-        self.title_text: list[str] = []
-        self.main_count = 0
-        self.main_depth = 0
-        self.main_attributes: list[dict[str, str | None]] = []
-        self.heading_levels: list[int] = []
-        self.ids: set[str] = set()
-        self.duplicate_ids: set[str] = set()
-        self.active_resource_errors: list[str] = []
-        self.norad_table_depth = 0
-        self.norad_tables = 0
-        self.current_table_has_caption = False
-        self.current_table_bad_headers = 0
-        self.table_errors: list[str] = []
-        self.svg_depth = 0
-        self.accessible_svgs = 0
-        self.banner_depth = 0
-        self.banner_count = 0
-        self.banner_text: list[str] = []
-        self.base_count = 0
-        self.style_depth = 0
-        self.style_text: list[str] = []
-        self.meta_refreshes: list[str] = []
-        self.image_errors: list[str] = []
-
-    @staticmethod
-    def _classes(attributes: Mapping[str, str | None]) -> set[str]:
-        return set((attributes.get("class") or "").split())
-
-    @staticmethod
-    def _resource_values(name: str, value: str) -> list[str]:
-        if name != "srcset":
-            return [value]
-        stripped_value = value.strip()
-        if stripped_value.startswith("data:"):
-            if re.fullmatch(
-                r"data:[^\s]+(?:\s+\d+(?:\.\d+)?[wx])?",
-                stripped_value,
-            ):
-                return [stripped_value.split()[0]]
-            return ["invalid-or-multiple-data-srcset"]
-        values = []
-        for candidate in value.split(","):
-            stripped = candidate.strip()
-            if stripped:
-                values.append(stripped.split()[0])
-        return values
-
-    def handle_starttag(
-        self,
-        tag: str,
-        attrs: list[tuple[str, str | None]],
-    ) -> None:
-        attributes = dict(attrs)
-        if tag == "html":
-            self.html_lang = attributes.get("lang")
-        if tag == "title" and not self.svg_depth:
-            self.title_count += 1
-            self.title_depth = 1
-        elif self.title_depth:
-            self.title_depth += 1
-        if tag == "base":
-            self.base_count += 1
-        if tag == "script":
-            self.active_resource_errors.append(
-                "<script> is not permitted in a static NORAD report"
-            )
-        if tag in {"iframe", "object", "embed"}:
-            self.active_resource_errors.append(
-                f"<{tag}> is not permitted in a static NORAD report"
-            )
-        if tag == "img" and not (
-            attributes.get("alt")
-            or (
-                attributes.get("role") == "presentation" and attributes.get("alt") == ""
-            )
-        ):
-            self.image_errors.append("<img> lacks non-empty alternative text")
-        if tag == "meta" and (attributes.get("http-equiv") or "").lower() == "refresh":
-            self.meta_refreshes.append(attributes.get("content") or "")
-        element_id = attributes.get("id")
-        if element_id:
-            if element_id in self.ids:
-                self.duplicate_ids.add(element_id)
-            self.ids.add(element_id)
-        if tag == "main":
-            self.main_count += 1
-            self.main_depth += 1
-            self.main_attributes.append(attributes)
-        elif self.main_depth and re.fullmatch(r"h[1-6]", tag):
-            self.heading_levels.append(int(tag[1]))
-
-        classes = self._classes(attributes)
-        if tag == "table" and "norad-table" in classes:
-            self.norad_table_depth = 1
-            self.norad_tables += 1
-            self.current_table_has_caption = False
-            self.current_table_bad_headers = 0
-        elif self.norad_table_depth:
-            self.norad_table_depth += 1
-            if tag == "caption":
-                self.current_table_has_caption = True
-            if tag == "th" and attributes.get("scope") not in {"col", "row"}:
-                self.current_table_bad_headers += 1
-
-        if tag == "svg":
-            self.svg_depth += 1
-            if attributes.get("role") == "img" and (
-                attributes.get("aria-label") or attributes.get("aria-labelledby")
-            ):
-                self.accessible_svgs += 1
-        elif self.svg_depth:
-            self.svg_depth += 1
-
-        if "state-banner" in classes:
-            self.banner_count += 1
-            self.banner_depth = 1
-        elif self.banner_depth:
-            self.banner_depth += 1
-
-        if tag == "style":
-            self.style_depth = 1
-        elif self.style_depth:
-            self.style_depth += 1
-        inline_style = attributes.get("style")
-        if inline_style:
-            try:
-                _validate_css_resources(inline_style, f"<{tag}> style")
-            except ReportRenderError as exc:
-                self.active_resource_errors.append(str(exc))
-
-        for name, value in attrs:
-            if value is None or (tag, name) not in ACTIVE_RESOURCE_ATTRIBUTES:
-                continue
-            for resource in self._resource_values(name, value):
-                if REMOTE_URI_RE.match(resource):
-                    self.active_resource_errors.append(
-                        f"<{tag}> {name} uses remote resource {resource!r}"
-                    )
-                elif not (
-                    resource.startswith(("data:", "#"))
-                    or resource == ""
-                ):
-                    self.active_resource_errors.append(
-                        f"<{tag}> {name} is not embedded: {resource!r}"
-                    )
-
-    def handle_startendtag(
-        self,
-        tag: str,
-        attrs: list[tuple[str, str | None]],
-    ) -> None:
-        self.handle_starttag(tag, attrs)
-        self.handle_endtag(tag)
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "main" and self.main_depth:
-            self.main_depth -= 1
-        if self.norad_table_depth:
-            self.norad_table_depth -= 1
-            if tag == "table" and self.norad_table_depth == 0:
-                if not self.current_table_has_caption:
-                    self.table_errors.append("NORAD table lacks a caption")
-                if self.current_table_bad_headers:
-                    self.table_errors.append(
-                        "NORAD table has header cells without scope"
-                    )
-        if self.svg_depth:
-            self.svg_depth -= 1
-        if self.banner_depth:
-            self.banner_depth -= 1
-        if self.style_depth:
-            self.style_depth -= 1
-            if tag == "style" and self.style_depth == 0:
-                try:
-                    _validate_css_resources(
-                        "".join(self.style_text),
-                        "rendered <style>",
-                    )
-                except ReportRenderError as exc:
-                    self.active_resource_errors.append(str(exc))
-                self.style_text = []
-        if self.title_depth:
-            self.title_depth -= 1
-
-    def handle_data(self, data: str) -> None:
-        if self.banner_depth:
-            self.banner_text.append(data)
-        if self.style_depth:
-            self.style_text.append(data)
-        if self.title_depth:
-            self.title_text.append(data)
 
 
-def validate_rendered_html(
-    path: Path,
-    *,
-    expected_banner: str | None,
-    expected_identity: Mapping[str, str] | None = None,
-) -> None:
-    snapshot = _snapshot_regular(path, "rendered HTML report")
-    if snapshot.size_bytes == 0:
-        _fail(f"Rendered HTML report is empty: {path}")
-    try:
-        content = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        _fail(f"Could not read rendered HTML report {path}: {exc}")
-    if not re.match(r"\s*<!doctype\s+html", content, re.IGNORECASE):
-        _fail("Rendered report does not begin with an HTML doctype")
-    inspector = ReportHTMLInspector()
-    try:
-        inspector.feed(content)
-        inspector.close()
-    except Exception as exc:
-        _fail(f"Could not parse rendered HTML report: {exc}")
-    if inspector.html_lang != "en":
-        _fail("Rendered report must declare html lang='en'")
-    observed_title = " ".join("".join(inspector.title_text).split())
-    if inspector.title_count != 1 or not observed_title:
-        _fail("Rendered report must contain exactly one non-empty document title")
-    if inspector.main_count != 1:
-        _fail(
-            f"Rendered report must contain exactly one main landmark; found "
-            f"{inspector.main_count}"
-        )
-    if not inspector.heading_levels or inspector.heading_levels[0] != 1:
-        _fail("Rendered report must begin its main heading sequence with h1")
-    for previous, current in zip(
-        inspector.heading_levels,
-        inspector.heading_levels[1:],
-    ):
-        if current > previous + 1:
-            _fail(f"Rendered report heading order jumps from h{previous} to h{current}")
-    if inspector.duplicate_ids:
-        _fail(
-            "Rendered report contains duplicate element IDs: "
-            + ", ".join(sorted(inspector.duplicate_ids))
-        )
-    if inspector.base_count:
-        _fail("Rendered report must not contain a <base> element")
-    if inspector.meta_refreshes:
-        _fail("Rendered report must not contain meta refresh navigation")
-    if inspector.active_resource_errors:
-        _fail(
-            "Rendered report contains non-embedded active resources:\n- "
-            + "\n- ".join(inspector.active_resource_errors)
-        )
-    if inspector.image_errors:
-        _fail(
-            "Rendered report image accessibility validation failed: "
-            + "; ".join(inspector.image_errors)
-        )
-    if inspector.norad_tables == 0 or inspector.table_errors:
-        _fail(
-            "Rendered report table accessibility validation failed: "
-            + "; ".join(inspector.table_errors or ["no NORAD tables found"])
-        )
-    if inspector.accessible_svgs < 1:
-        _fail("Rendered report lacks an accessible embedded figure")
-    observed_banner = " ".join("".join(inspector.banner_text).split())
-    if inspector.banner_count != 1:
-        _fail("Rendered report must contain exactly one scientific-state banner")
-    if expected_banner is None:
-        allowed_banners = {
-            " ".join(value.split()) for value in SCIENCE_BANNERS.values()
-        }
-        if observed_banner not in allowed_banners:
-            _fail(
-                "Existing report does not contain exactly one recognized "
-                "scientific-state banner"
-            )
-    elif observed_banner != " ".join(expected_banner.split()):
-        _fail(
-            f"Rendered report does not contain the required state banner: "
-            f"{expected_banner}"
-        )
-    if expected_identity is not None:
-        missing_sections = REPORT_SECTION_IDS - inspector.ids
-        if missing_sections:
-            _fail(
-                "Rendered report lacks required report sections: "
-                + ", ".join(sorted(missing_sections))
-            )
-        if CANDIDATE_TERMINOLOGY not in content:
-            _fail(
-                "Rendered report lacks the fixed candidate terminology: "
-                f"{CANDIDATE_TERMINOLOGY}"
-            )
-        main_attributes = inspector.main_attributes[0]
-        for attribute, expected in expected_identity.items():
-            if main_attributes.get(attribute) != expected:
-                _fail(
-                    "Rendered report provenance binding differs from the "
-                    f"prepared context for {attribute}: observed "
-                    f"{main_attributes.get(attribute)!r}; expected {expected!r}"
-                )
-    _assert_snapshot(snapshot, "rendered HTML report")
 
 
 def _expected_html_identity(context: RenderContext) -> dict[str, str]:
