@@ -68,6 +68,14 @@ scheduler preserves copied-producer execution by exporting the packaged helper
 location before changing directories. This is maintainability and mock-
 bcftools evidence only, not real-bcftools or cluster proof.
 
+Step `08` shell keeps R resolution/command construction, admitted-input
+snapshots, locks, signals, rollback, and receipt-last publication in a 461-line
+public transaction owner. Owner-local 144- and 198-line modules contain the
+byte-identical Step `07` admission/stability and generated-table reconciliation
+functions; all three shell files total 803 lines. The scheduler preserves
+copied-producer execution by exporting the packaged helper location. This does
+not add production Step `07` inputs, an approved R runtime, or cluster proof.
+
 Step `08` R now retains a 401-line public coordinator over input-contract,
 annotation, Step `07` receipt, and VCF/candidate modules no larger than 570
 lines. All 23 pre-existing top-level function bodies are parse-identical to the
