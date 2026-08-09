@@ -58,49 +58,49 @@ EXPECTED_PRODUCER_EVIDENCE = {
     "00c": (
         "src/norad/stages/construct_FASTA_sidecars/"
         "step_00c_prepare_gatk_reference.sh",
-        "5824cf30f26043e29926696533e4f071bd04294f175b5a30da5d2f27ec0c03c4",
+        "a78a5769d47a638e486d1ef82582331f91689baad99fef01962d16e6d3f991bf",
     ),
     "01": (
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh",
-        "850498518f2c659cd68ca8fc1d1cc37708301636075685c971d2cc3b0513ff40",
+        "dd275a60c7ed6d5f74d9d5e3296c15e0fddb0ff93b6b1f0ea09e83483360e2d0",
     ),
     "02": (
         "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh",
-        "ac9fe356f3c20bf8e16c9607e7ecf45ad7017fbe0975020e2fa1c95bc6a44f41",
+        "3e8cd58d7d6d0fea34c9e5e3b283394886db787c236965b529a482ab9f735b6d",
     ),
     "02b": (
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh",
-        "c14eeac273cf1b2116c955ce528377448f362401d0573cebcd6d471ff8775989",
+        "43730e4c06aaaf7f6d9d48ef1177bbc3b90f82ca16606b63fd3aa3aa81c1d5a9",
     ),
     "03": (
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.sh",
-        "a1d514d9bd85980083e8e20d369cd1af744f7d239217804c1d46d093adad8601",
+        "0ee478b58419ba1a1b535d8397fd107fc0f8610afb45e43adffc3b57dd2406c7",
     ),
     "04": (
         "src/norad/stages/mark_BAM_duplicates_with_Picard/"
         "step_04_mark_duplicates.sh",
-        "edf37ec2f14744d5f54b5eb8e26e841dd29eb0bf8a5c203cca8500891b06c531",
+        "d99ab505094595c233ba3a9b37a08a06d214d0501aa634b842f57f88217bf733",
     ),
     "05": (
         "src/norad/stages/split_N_cigar_reads_with_GATK/"
         "step_05_split_n_cigar_reads.sh",
-        "1f5ed40a3ea00f27acc078eb940b59e36e0c57a58f13847e1788746476c78412",
+        "e4d1b5f16bb42b670bfb617455f61e969fdd0b3012cccfe93344ea24a0b4e5e4",
     ),
     "06": (
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
-        "434e4ff6892e1f5f6029616eefcfc94178a7fb54209174534a0bc0821cf5df4d",
+        "f3b4e11b65b469ab45bff0359b87ba87c5d6c6a68564c045426dc291cce9c6a0",
     ),
     "07": (
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "fec0bbb7ecaefd6d247b206518c62cfba1cbf9423253d7a521b05902a58f7d83",
+        "715791da0337cc4561eeb71bb30c2518c0de7c53e2c21d3d4418551349c29858",
     ),
     "08": (
         "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
         "step_08_vcf_preprocessing.sh",
-        "e82f2ef9f63f9bdb8a334dd926f02045aaf2c5fb4f6d077ce8b266cbbccc15e8",
+        "7389b26302241ed1f8f075dd220e363223f4735a029380d564d3b02fd6e94769",
     ),
     "09": (
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
