@@ -131,6 +131,7 @@ EOF_INFER
 chmod +x "$fake_bin/infer_experiment.py"
 
 export PATH="$fake_bin:$PATH"
+unset FAKE_INFER_MODE
 
 fixture_dir="$tmp_dir/fixtures"
 mkdir -p "$fixture_dir"

@@ -2,8 +2,8 @@
 # Step 03: infer RNA-seq library strandedness and read orientation with RSeQC.
 #
 # This step uses RSeQC infer_experiment.py on the canonical Step 02 sorted BAM.
-# The result tells later strand-aware workflow steps whether the library behaves
-# like forward-stranded, reverse-stranded, or unstranded RNA-seq data.
+# The report records mechanical paired-read orientation fractions. It does not
+# infer biological strand or update the sample's declared strandedness.
 #
 # Dry-run mode intentionally validates the requested inputs and prints the exact
 # infer_experiment.py command, but does not create the output directory or run
@@ -91,7 +91,6 @@ require_arguments
 # missing Step 02 outputs and missing RSeQC setup without launching compute.
 [[ -f "$input_bam" ]] || die "BAM does not exist or is not a file: $input_bam"
 
-bam_index=""
 # samtools commonly writes either sample.bam.bai or sample.bai; accept both so
 # Step 03 can consume canonical BAMs from either convention.
 if [[ -f "$input_bam.bai" ]]; then
@@ -103,7 +102,7 @@ else
 fi
 
 [[ -f "$bed12" ]] || die "BED12 annotation does not exist or is not a file: $bed12"
-infer_experiment_bin_print="$infer_experiment_bin"
+requested_infer_experiment_bin="$infer_experiment_bin"
 infer_experiment_bin="$(resolve_executable_value "infer_experiment.py" "$infer_experiment_bin" "infer_experiment.py")"
 
 output_file="$output_dir/${sample_id}.infer_experiment.txt"
@@ -122,7 +121,7 @@ printf '  BAM index found: %s\n' "$bam_index"
 printf '  BED12 annotation: %s\n' "$bed12"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Output file: %s\n' "$output_file"
-printf '  infer_experiment.py: %s\n' "$infer_experiment_bin_print"
+printf '  infer_experiment.py: %s\n' "$requested_infer_experiment_bin"
 printf '  Mode: %s\n' "$mode"
 
 infer_command=(
