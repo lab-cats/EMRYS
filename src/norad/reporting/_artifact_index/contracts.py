@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package, step08, step09
 
 if step09.step08 is not step08:

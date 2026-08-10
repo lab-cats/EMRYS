@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.artifacts import api as contracts
 from norad.reporting import _files
 
 from .models import (

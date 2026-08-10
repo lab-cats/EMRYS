@@ -19,7 +19,7 @@ src_root = str(_MODULE_PATH.parents[3])
 # Direct execution must prefer this checkout over an installed NORAD.
 sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
-from norad.contracts.artifacts import validate_artifact_contracts as _contracts
+from norad.contracts.artifacts import api as _contracts
 
 from . import context as _context
 from . import html_projection as _projection

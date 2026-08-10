@@ -6,17 +6,19 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from .core import (
+from .definitions import (
     BOOLEAN_VALUES,
     INVENTORY_HEADER,
     SAFE_ID_RE,
     SCOPE_TYPES,
     ContractValidationError,
+)
+from .identity import (
     resolve_contract_path,
-    sha256_file,
     validate_resolved_path,
 )
 from .run_summary_status import scope_key
+from .schema import sha256_file
 
 SAFE_ID_COLUMNS = INVENTORY_HEADER[:-2]
 RECONCILE_FIELDS = ("artifact_id", "scope", "adapter", "expectation")

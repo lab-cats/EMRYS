@@ -6,6 +6,14 @@ It does not discover artifacts, build indexes, render reports, repair inputs,
 or promote evidence. Private implementation is under
 [`_artifact_contracts/`](_artifact_contracts/README.md).
 
+The executable remains the current CLI coordinator. Reporting code imports the
+curated [`api.py`](api.py) library surface instead: one shared module identity
+exposes only the contract definitions and operations used by artifact indexing,
+run-summary assembly, and report rendering. The private implementation owners
+remain responsible for schema I/O, identity, evidence, record semantics,
+inventory reconciliation, and status reduction; the former `core.py`
+compatibility layer is retired.
+
 Validate the schemas and starter inventory:
 
 ```bash

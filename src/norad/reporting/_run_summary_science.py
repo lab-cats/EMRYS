@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package
 from norad.reporting._run_summary import science_evidence as _evidence
 from norad.reporting._run_summary import science_io as _io

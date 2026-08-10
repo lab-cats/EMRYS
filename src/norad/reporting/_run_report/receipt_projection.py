@@ -36,7 +36,7 @@ def _validate_receipt(document: Mapping[str, Any]) -> None:
         location = "$" + "".join(f"[{part!r}]" for part in first.path)
         _fail(f"Report receipt schema validation failed at {location}: {first.message}")
     try:
-        contracts.validate_document_semantics("report-receipt", dict(document))
+        contracts.validate_report_receipt_semantics(dict(document))
     except contracts.ContractValidationError as exc:
         _fail(f"Report receipt semantic validation failed: {exc}")
 

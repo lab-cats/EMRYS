@@ -4,17 +4,28 @@ from __future__ import annotations
 
 import copy
 import csv
-import importlib.util
 import json
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+
+from norad.contracts.artifacts import api as contracts
+from norad.contracts.artifacts import (
+    validate_artifact_contracts as contract_cli,
+)
+from norad.contracts.artifacts._artifact_contracts import (
+    artifact,
+    definitions,
+    identity,
+    run_summary_status,
+    run_summary_validation,
+    scientific_review,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = (
@@ -42,44 +53,25 @@ FIXTURES = {
     "run-summary": FIXTURE_ROOT / "run_summary.json",
     "report-receipt": FIXTURE_ROOT / "report_receipt.json",
 }
+EXPECTED_INVENTORY_ARTIFACT_COUNT = 81
 
 
-def load_contract_module() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "norad_artifact_contract_validator",
-        SCRIPT,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load artifact validator: {SCRIPT}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-CONTRACT = load_contract_module()
-
-
-def test_contract_facade_uses_the_packaged_owners() -> None:
+def test_contract_api_uses_the_packaged_owners() -> None:
+    assert contracts.ContractValidationError is definitions.ContractValidationError
+    assert contracts.validate_artifact_semantics is artifact.validate_artifact_semantics
     assert (
-        CONTRACT.ContractValidationError is CONTRACT._core_owner.ContractValidationError
+        contracts.validate_scientific_review_semantics
+        is scientific_review.validate_scientific_review_semantics
     )
     assert (
-        CONTRACT.validate_artifact_semantics
-        is CONTRACT._artifact_owner.validate_artifact_semantics
+        contracts.validate_run_summary_semantics
+        is run_summary_validation.validate_run_summary_semantics
     )
-    assert (
-        CONTRACT.validate_scientific_review_semantics
-        is CONTRACT._scientific_review_owner.validate_scientific_review_semantics
-    )
-    assert (
-        CONTRACT.validate_run_summary_semantics
-        is CONTRACT._run_summary_validation_owner.validate_run_summary_semantics
-    )
-    assert CONTRACT.scope_key is CONTRACT._run_summary_status_owner.scope_key
+    assert contracts.scope_key is run_summary_status.scope_key
+    assert contract_cli.api is contracts
 
 
-def test_validate_document_and_dispatcher_use_live_facade_hooks(
+def test_validate_document_and_dispatcher_use_live_api_hooks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     document_calls: list[tuple[str, dict[str, Any]]] = []
@@ -88,8 +80,8 @@ def test_validate_document_and_dispatcher_use_live_facade_hooks(
         document_calls.append((name, document))
 
     with monkeypatch.context() as patch:
-        patch.setattr(CONTRACT, "validate_document_semantics", record_document)
-        document = CONTRACT.validate_document(
+        patch.setattr(contracts, "validate_document_semantics", record_document)
+        document = contract_cli.validate_document(
             "artifact-record",
             FIXTURES["artifact-record"],
         )
@@ -98,8 +90,8 @@ def test_validate_document_and_dispatcher_use_live_facade_hooks(
 
     artifact_calls: list[dict[str, Any]] = []
     with monkeypatch.context() as patch:
-        patch.setattr(CONTRACT, "validate_artifact_semantics", artifact_calls.append)
-        CONTRACT.validate_document_semantics("artifact-record", document)
+        patch.setattr(contracts, "validate_artifact_semantics", artifact_calls.append)
+        contracts.validate_document_semantics("artifact-record", document)
 
     assert artifact_calls == [document]
 
@@ -142,7 +134,7 @@ def run_summary_with_complete_artifact() -> dict[str, Any]:
 
 
 def schema_errors(name: str, document: dict[str, Any]) -> list[str]:
-    schemas, registry = CONTRACT.load_schema_registry()
+    schemas, registry = contracts.load_schema_registry()
     validator = Draft202012Validator(
         schemas[name],
         registry=registry,
@@ -180,12 +172,12 @@ def assert_contract_failure(
     document: dict[str, Any],
     token: str,
 ) -> None:
-    with pytest.raises(CONTRACT.ContractValidationError, match=token):
-        CONTRACT.validate_document_semantics(name, document)
+    with pytest.raises(contracts.ContractValidationError, match=token):
+        contracts.validate_document_semantics(name, document)
 
 
 def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
-    schemas, _ = CONTRACT.load_schema_registry()
+    schemas, _ = contracts.load_schema_registry()
 
     assert set(schemas) == {
         "common",
@@ -226,7 +218,7 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
     help_result = run_cli("--help")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.count("Schema passed Draft 2020-12") == 5
+    assert result.stdout.count("Schema passed Draft 2020-12") == len(FIXTURES) + 1
     assert "Artifacts: 81" in result.stdout
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
@@ -281,7 +273,7 @@ def test_artifact_schema_supports_explicit_unavailable_attempt_provenance() -> N
     )
 
     assert_schema_valid("artifact-record", artifact)
-    CONTRACT.validate_document_semantics("artifact-record", artifact)
+    contracts.validate_document_semantics("artifact-record", artifact)
 
 
 def test_artifact_semantics_reject_duplicate_unknown_and_cyclic_attempts() -> None:
@@ -494,8 +486,8 @@ def test_artifact_attempt_source_and_failed_rollup_are_consistent() -> None:
         }
     ]
     assert_schema_valid("artifact-record", failed_missing)
-    CONTRACT.validate_document_semantics("artifact-record", failed_missing)
-    assert CONTRACT.artifact_rollup_state(failed_missing) == "failed"
+    contracts.validate_document_semantics("artifact-record", failed_missing)
+    assert contracts.artifact_rollup_state(failed_missing) == "failed"
 
 
 def test_artifact_rejects_absent_source_claimed_by_member() -> None:
@@ -564,7 +556,7 @@ def test_attempt_states_are_temporally_and_graph_consistent() -> None:
 def test_run_contract_digest_is_canonical_and_recomputed() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
     assert (
-        CONTRACT.canonical_run_contract_sha256(artifact["run_contract"])
+        identity.canonical_run_contract_sha256(artifact["run_contract"])
         == artifact["run_contract"]["run_contract_sha256"]
     )
 
@@ -640,7 +632,7 @@ def test_scientific_review_source_free_evidence_allows_null_date() -> None:
         }
     )
     assert_schema_valid("scientific-review-record", missing)
-    CONTRACT.validate_document_semantics("scientific-review-record", missing)
+    contracts.validate_document_semantics("scientific-review-record", missing)
 
     not_applicable = copy.deepcopy(review)
     not_applicable_record = {
@@ -661,7 +653,7 @@ def test_scientific_review_source_free_evidence_allows_null_date() -> None:
         }
     )
     assert_schema_valid("scientific-review-record", not_applicable)
-    CONTRACT.validate_document_semantics("scientific-review-record", not_applicable)
+    contracts.validate_document_semantics("scientific-review-record", not_applicable)
 
     complete_without_date = copy.deepcopy(review)
     complete_without_date["evidence_records"][0]["evidence_date"] = None
@@ -679,7 +671,7 @@ def test_scientific_review_allows_human_names_but_rejects_unsafe_policy_ids() ->
     review["evidence_records"][0]["reviewer"] = "Jane Doe"
     review["evidence_records"][0]["owner"] = "Scientific Review Team"
     assert_schema_valid("scientific-review-record", review)
-    CONTRACT.validate_document_semantics("scientific-review-record", review)
+    contracts.validate_document_semantics("scientific-review-record", review)
 
     unsafe_policy = copy.deepcopy(review)
     unsafe_policy["evidence_records"][0]["policy_version"] = "policy v1"
@@ -773,7 +765,7 @@ def test_scientific_review_pending_decision_can_preserve_review_context() -> Non
     )
 
     assert_schema_valid("scientific-review-record", review)
-    CONTRACT.validate_document_semantics("scientific-review-record", review)
+    contracts.validate_document_semantics("scientific-review-record", review)
 
 
 def test_scientific_review_computational_references_can_name_payload_evidence() -> None:
@@ -782,7 +774,7 @@ def test_scientific_review_computational_references_can_name_payload_evidence() 
     reference["path"] = "results/runtime/validated-runtime.log"
     reference["sha256"] = "a" * 64
     assert_schema_valid("scientific-review-record", review)
-    CONTRACT.validate_document_semantics("scientific-review-record", review)
+    contracts.validate_document_semantics("scientific-review-record", review)
 
     duplicate = copy.deepcopy(review)
     duplicate_reference = copy.deepcopy(reference)
@@ -965,7 +957,7 @@ def test_scientific_review_category_analysis_and_na_aggregation() -> None:
         }
     )
     assert_schema_valid("scientific-review-record", mixed)
-    CONTRACT.validate_document_semantics("scientific-review-record", mixed)
+    contracts.validate_document_semantics("scientific-review-record", mixed)
 
 
 def test_exploratory_science_requires_selection_adjudication_and_decisions() -> None:
@@ -1028,14 +1020,14 @@ def test_run_summary_supports_multiple_physical_artifacts_per_scope() -> None:
     summary["computational_rollup"]["missing_artifact_count"] = 2
 
     assert_schema_valid("run-summary", summary)
-    CONTRACT.validate_document_semantics("run-summary", summary)
+    contracts.validate_document_semantics("run-summary", summary)
 
 
 def test_run_summary_reconciles_artifact_and_run_attempt_histories() -> None:
     summary = run_summary_with_complete_artifact()
 
     assert_schema_valid("run-summary", summary)
-    CONTRACT.validate_document_semantics("run-summary", summary)
+    contracts.validate_document_semantics("run-summary", summary)
 
     disconnected = copy.deepcopy(summary)
     disconnected["attempts"] = []
@@ -1070,7 +1062,7 @@ def test_run_summary_reconciles_artifact_and_run_attempt_histories() -> None:
     forest["inventory"]["row_count"] = 2
     forest["computational_rollup"]["expected_artifact_count"] = 2
     forest["computational_rollup"]["complete_artifact_count"] = 2
-    CONTRACT.validate_document_semantics("run-summary", forest)
+    contracts.validate_document_semantics("run-summary", forest)
 
 
 def test_run_summary_rejects_cross_artifact_physical_path_conflicts() -> None:
@@ -1136,7 +1128,7 @@ def test_run_summary_rejects_duplicate_ids_and_unapproved_report_sources() -> No
             "role": "review_summary",
             "title": "Missing review",
             "path": "results/scientific_validation/missing.tsv",
-            "sha256": "1515151515151515151515151515151515151515151515151515151515151515",
+            "sha256": "15" * 32,
             "row_count": 1,
             "display_row_limit": None,
             "approval": {
@@ -1346,7 +1338,7 @@ def inventory_rows() -> tuple[list[str], list[dict[str, str]]]:
 def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> (
     None
 ):
-    rows = CONTRACT.validate_inventory(INVENTORY)
+    rows = contracts.validate_inventory(INVENTORY)
 
     assert Counter(row["step_id"] for row in rows) == {
         "00a": 16,
@@ -1366,8 +1358,12 @@ def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c()
     }
     assert all(row["required"] == "true" for row in rows)
     assert all(not any(token in row["source_path"] for token in "*?[]") for row in rows)
-    assert len({row["artifact_id"] for row in rows}) == 81
-    assert len({row["source_path"] for row in rows}) == 81
+    assert (
+        len({row["artifact_id"] for row in rows}) == EXPECTED_INVENTORY_ARTIFACT_COUNT
+    )
+    assert (
+        len({row["source_path"] for row in rows}) == EXPECTED_INVENTORY_ARTIFACT_COUNT
+    )
 
 
 @pytest.mark.parametrize(
@@ -1399,8 +1395,8 @@ def test_inventory_rejects_implicit_or_ambiguous_rows(
 
     inventory = tmp_path / "inventory.tsv"
     write_inventory(inventory, header, rows)
-    with pytest.raises(CONTRACT.ContractValidationError, match=token):
-        CONTRACT.validate_inventory(inventory)
+    with pytest.raises(contracts.ContractValidationError, match=token):
+        contracts.validate_inventory(inventory)
 
 
 def test_inventory_allows_multiple_physical_artifacts_per_scope(
@@ -1414,7 +1410,7 @@ def test_inventory_allows_multiple_physical_artifacts_per_scope(
     inventory = tmp_path / "inventory.tsv"
     write_inventory(inventory, header, rows)
 
-    assert len(CONTRACT.validate_inventory(inventory)) == 2
+    assert len(contracts.validate_inventory(inventory)) == len(rows)
 
 
 def test_inventory_rejects_canonical_aliases_and_interleaved_scopes(
@@ -1431,10 +1427,10 @@ def test_inventory_rejects_canonical_aliases_and_interleaved_scopes(
     alias_inventory = tmp_path / "alias.tsv"
     write_inventory(alias_inventory, header, alias_rows)
     with pytest.raises(
-        CONTRACT.ContractValidationError,
+        contracts.ContractValidationError,
         match="redundant path separators",
     ):
-        CONTRACT.validate_inventory(alias_inventory)
+        contracts.validate_inventory(alias_inventory)
 
     interleaved = [
         copy.deepcopy(rows[0]),
@@ -1443,8 +1439,8 @@ def test_inventory_rejects_canonical_aliases_and_interleaved_scopes(
     ]
     interleaved_inventory = tmp_path / "interleaved.tsv"
     write_inventory(interleaved_inventory, header, interleaved)
-    with pytest.raises(CONTRACT.ContractValidationError, match="contiguous"):
-        CONTRACT.validate_inventory(interleaved_inventory)
+    with pytest.raises(contracts.ContractValidationError, match="contiguous"):
+        contracts.validate_inventory(interleaved_inventory)
 
 
 def inventory_row_for_artifact(
@@ -1478,7 +1474,7 @@ def test_artifact_record_reconciles_every_inventory_field(
 ) -> None:
     artifact = read_json(FIXTURES["artifact-record"])
     row = inventory_row_for_artifact(artifact)
-    CONTRACT.reconcile_artifact_inventory_row(artifact, row)
+    contracts.reconcile_artifact_inventory_row(artifact, row)
 
     changed = row.copy()
     changed[field] = {
@@ -1490,13 +1486,13 @@ def test_artifact_record_reconciles_every_inventory_field(
         "required": "false",
     }[field]
     with pytest.raises(
-        CONTRACT.ContractValidationError,
+        contracts.ContractValidationError,
         match="explicit inventory row",
     ):
-        CONTRACT.reconcile_artifact_inventory_row(artifact, changed)
+        contracts.reconcile_artifact_inventory_row(artifact, changed)
 
     inventory = tmp_path / "inventory.tsv"
-    write_inventory(inventory, list(CONTRACT.INVENTORY_HEADER), [row])
+    write_inventory(inventory, list(contracts.INVENTORY_HEADER), [row])
     document = tmp_path / "artifact.json"
     write_json(document, artifact)
     result = run_cli(
@@ -1517,17 +1513,17 @@ def test_run_summary_reconciles_inventory_hash_order_and_scope(
     summary = read_json(FIXTURES["run-summary"])
     row = inventory_row_for_artifact(summary["artifacts"][0])
     inventory = tmp_path / "inventory.tsv"
-    write_inventory(inventory, list(CONTRACT.INVENTORY_HEADER), [row])
+    write_inventory(inventory, list(contracts.INVENTORY_HEADER), [row])
     summary["inventory"].update(
         {
             "path": str(inventory),
-            "sha256": CONTRACT.sha256_file(inventory),
+            "sha256": contracts.sha256_file(inventory),
             "size_bytes": inventory.stat().st_size,
             "row_count": 1,
         }
     )
 
-    CONTRACT.reconcile_document_inventory(
+    contracts.reconcile_document_inventory(
         "run-summary",
         summary,
         [row],
@@ -1536,8 +1532,8 @@ def test_run_summary_reconciles_inventory_hash_order_and_scope(
 
     wrong_hash = copy.deepcopy(summary)
     wrong_hash["inventory"]["sha256"] = "f" * 64
-    with pytest.raises(CONTRACT.ContractValidationError, match="hash"):
-        CONTRACT.reconcile_document_inventory(
+    with pytest.raises(contracts.ContractValidationError, match="hash"):
+        contracts.reconcile_document_inventory(
             "run-summary",
             wrong_hash,
             [row],
@@ -1553,12 +1549,15 @@ def test_inventory_header_order_and_unrelated_files_are_fail_closed(
     swapped[0], swapped[1] = swapped[1], swapped[0]
     wrong_header = tmp_path / "wrong_header.tsv"
     write_inventory(wrong_header, swapped, rows)
-    with pytest.raises(CONTRACT.ContractValidationError, match="header"):
-        CONTRACT.validate_inventory(wrong_header)
+    with pytest.raises(contracts.ContractValidationError, match="header"):
+        contracts.validate_inventory(wrong_header)
 
     unrelated = tmp_path / "unrelated.step09c_review_summary.tsv"
     unrelated.write_text("must\tnot\nbe\tread\n", encoding="utf-8")
-    assert len(CONTRACT.validate_inventory(INVENTORY)) == 81
+    assert (
+        len(contracts.validate_inventory(INVENTORY))
+        == EXPECTED_INVENTORY_ARTIFACT_COUNT
+    )
 
 
 def test_duplicate_json_keys_are_rejected_before_schema_validation(

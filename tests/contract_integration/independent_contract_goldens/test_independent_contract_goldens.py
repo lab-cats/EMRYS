@@ -16,6 +16,7 @@ import pytest
 from norad.analyses.paired_cmh_candidate_ranking import (
     validator as STEP09_VALIDATOR,
 )
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as SCIENTIFIC_REVIEW,
 )
@@ -89,6 +90,9 @@ REVIEW_PACKAGE_CONTRACT_LOADERS = (
 
 
 def test_contract_consumers_share_packaged_module_identities() -> None:
+    assert all(
+        loader.contracts is ARTIFACT_CONTRACTS for loader in ARTIFACT_CONTRACT_LOADERS
+    )
     assert SCIENTIFIC_REVIEW.step08 is STEP08_CONTRACT
     assert STEP08_VALIDATOR.step08 is STEP08_CONTRACT
     assert STEP09_VALIDATOR.step08 is STEP08_CONTRACT

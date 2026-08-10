@@ -5,11 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .core import (
-    ContractValidationError,
-    require_unique_key,
-    validate_document_paths,
-)
+from .definitions import ContractValidationError
+from .identity import require_unique_key, validate_document_paths
 
 
 def validate_report_receipt_semantics(document: dict[str, Any]) -> None:

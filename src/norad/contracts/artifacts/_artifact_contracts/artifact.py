@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from .core import (
-    ContractValidationError,
+from .definitions import ContractValidationError
+from .evidence import validate_computational_statuses
+from .identity import (
     require_unique_key,
     resolve_contract_path,
     validate_attempt_graph,
-    validate_computational_statuses,
     validate_document_paths,
     validate_run_contract,
 )

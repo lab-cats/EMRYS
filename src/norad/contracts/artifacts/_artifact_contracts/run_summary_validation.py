@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from .artifact import validate_artifact_semantics
-from .core import (
+from .definitions import (
     SCIENCE_UPSTREAM_ROLE_CONTRACTS,
     ContractValidationError,
+)
+from .identity import (
     require_unique_key,
     resolve_contract_path,
     validate_attempt_graph,

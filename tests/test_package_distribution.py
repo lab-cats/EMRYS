@@ -22,6 +22,7 @@ from tests.evidence.scientific_review_package import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_USAGE_ERROR = 2
+PRIVATE_FILE_MODE = 0o644
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
@@ -31,6 +32,24 @@ RESOURCE_PATHS = (
     "norad/reporting/styles/run_report.css",
     "norad/reporting/templates/run_report.qmd",
     "norad/reporting/templates/run_report_pdf.qmd",
+)
+ARTIFACT_CONTRACT_PACKAGE_PATHS = frozenset(
+    {
+        "norad/contracts/artifacts/__init__.py",
+        "norad/contracts/artifacts/_artifact_contracts/__init__.py",
+        "norad/contracts/artifacts/_artifact_contracts/artifact.py",
+        "norad/contracts/artifacts/_artifact_contracts/definitions.py",
+        "norad/contracts/artifacts/_artifact_contracts/evidence.py",
+        "norad/contracts/artifacts/_artifact_contracts/identity.py",
+        "norad/contracts/artifacts/_artifact_contracts/inventory.py",
+        "norad/contracts/artifacts/_artifact_contracts/report_receipt.py",
+        "norad/contracts/artifacts/_artifact_contracts/run_summary_status.py",
+        "norad/contracts/artifacts/_artifact_contracts/run_summary_validation.py",
+        "norad/contracts/artifacts/_artifact_contracts/schema.py",
+        "norad/contracts/artifacts/_artifact_contracts/scientific_review.py",
+        "norad/contracts/artifacts/api.py",
+        "norad/contracts/artifacts/validate_artifact_contracts.py",
+    }
 )
 EVIDENCE_PACKAGE_PATHS = frozenset(
     {
@@ -260,6 +279,11 @@ def _assert_wheel_contents(wheel: Path) -> None:
             for member in members
             if member.startswith("norad/") and not member.endswith(".py")
         } == set(RESOURCE_PATHS)
+        assert {
+            member
+            for member in members
+            if member.startswith("norad/contracts/artifacts/")
+        } == ARTIFACT_CONTRACT_PACKAGE_PATHS
         assert "norad/ingestion/__init__.py" in members
         assert "norad/ingestion/sample_manifest_admission/__init__.py" in members
         assert "norad/ingestion/sample_manifest_admission/validator.py" in members
@@ -2193,6 +2217,12 @@ def _assert_installed_commands(
 
 
 def _assert_private_source_layout() -> None:
+    artifact_contract_source = REPO_ROOT / "src/norad/contracts/artifacts"
+    assert not (artifact_contract_source / "_artifact_contracts/core.py").exists()
+    assert (
+        artifact_contract_source / "api.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+
     manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"
     assert not (manifest_owner / "validate_manifest.py").exists()
     assert (manifest_owner / "validator.py").stat().st_mode & 0o111 == 0

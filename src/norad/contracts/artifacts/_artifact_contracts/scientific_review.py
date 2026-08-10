@@ -5,12 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .core import (
+from .definitions import (
     SCIENCE_INPUT_ROLES,
     SCIENCE_UPSTREAM_ROLE_CONTRACTS,
     ContractValidationError,
+)
+from .evidence import validate_computational_statuses
+from .identity import (
     require_unique_key,
-    validate_computational_statuses,
     validate_document_paths,
     validate_run_contract,
 )

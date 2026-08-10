@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package
 from norad.libraries.validation.tsv import tsv_bytes as _tsv_bytes
 

@@ -6,7 +6,7 @@ import stat
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from norad.contracts.artifacts import validate_artifact_contracts as contracts
+from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import step08
 from norad.libraries.validation.tsv import read_strict_tsv as _read_strict_tsv
 from norad.reporting._run_summary.inputs import _resolved_path
