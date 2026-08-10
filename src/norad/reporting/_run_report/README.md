@@ -8,7 +8,6 @@ and may change without creating another supported command surface.
 
 | Module | Owned responsibility |
 | --- | --- |
-| [`dispatch.py`](dispatch.py) | Selects the public bundle coordinator without creating a renderer import cycle. |
 | [`models.py`](models.py) | Shared immutable report constants, value objects, and renderer error type. |
 | [`html_components.py`](html_components.py) | Escaped HTML primitives and approved-table rendering. |
 | [`html_computational.py`](html_computational.py) | Computational status, provenance, attempt, artifact, tool, and issue sections. |
