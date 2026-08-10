@@ -3,7 +3,7 @@
 This directory owns local protection for evidence collection, reconciliation,
 availability, inventory, and review-package owners.
 
-- [`collect_canonical_BAM_QC_evidence/`](collect_canonical_BAM_QC_evidence/README.md)
+- [`canonical_bam_qc/`](canonical_bam_qc/README.md)
   and
   [`collect_RSeQC_paired_orientation_evidence/`](collect_RSeQC_paired_orientation_evidence/README.md)
   protect numbered mechanical-evidence operations.

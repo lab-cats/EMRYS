@@ -26,10 +26,7 @@ VALIDATOR_PATHS = {
     "00c": Path("src/norad/stages/fasta_sidecars/validator.py"),
     "01": Path("src/norad/stages/star_alignment/validator.py"),
     "02": Path("src/norad/stages/canonical_bam/validator.py"),
-    "02b": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "validate_step_02b_bam_qc.py"
-    ),
+    "02b": Path("src/norad/evidence/canonical_bam_qc/validator.py"),
     "03": Path(
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "validate_step_03_rseqc_orientation.py"

@@ -66,7 +66,7 @@ CONTRACTS = {
         submit_cwd="caller",
     ),
     "step_02b_bam_qc.slurm": contract(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh",
+        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("load samtools/1.19.2", "list"),

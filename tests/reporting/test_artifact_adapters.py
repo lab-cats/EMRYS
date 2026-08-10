@@ -67,8 +67,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "a38ec7a8018bfda9dcd057b68290a1451bce0018b571fc938fa1a61c15988702",
     ),
     "02b": (
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh",
-        "43730e4c06aaaf7f6d9d48ef1177bbc3b90f82ca16606b63fd3aa3aa81c1d5a9",
+        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+        "8ab25a216d3e8a3bbe574bb6b7b9160b7755102b01d5c36205f13ae79f5a2bc4",
     ),
     "03": (
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"

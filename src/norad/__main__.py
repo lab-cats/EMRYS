@@ -9,6 +9,9 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import cast
 
+from norad.evidence.canonical_bam_qc import (
+    validator as canonical_bam_qc_validation_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
@@ -118,6 +121,15 @@ def build_parser() -> argparse.ArgumentParser:
     canonical_bam_validation_command.configure_parser(canonical_bam_parser)
     canonical_bam_parser.set_defaults(
         _command_handler=canonical_bam_validation_command.validate_from_args
+    )
+    canonical_bam_qc_parser = validation_parsers.add_parser(
+        "canonical-bam-qc",
+        help="Validate canonical-BAM quickcheck and flagstat evidence.",
+        description=canonical_bam_qc_validation_command.DESCRIPTION,
+    )
+    canonical_bam_qc_validation_command.configure_parser(canonical_bam_qc_parser)
+    canonical_bam_qc_parser.set_defaults(
+        _command_handler=canonical_bam_qc_validation_command.validate_from_args
     )
     fasta_sidecars_parser = validation_parsers.add_parser(
         "fasta-sidecars",

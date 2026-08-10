@@ -26,6 +26,47 @@ RESOURCE_PATHS = (
     "norad/reporting/templates/run_report.qmd",
     "norad/reporting/templates/run_report_pdf.qmd",
 )
+EVIDENCE_PACKAGE_PATHS = frozenset(
+    {
+        "norad/evidence/__init__.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/__init__.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/__init__.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_evidence_manifest.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_intake_models.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_intake_support.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_review_candidates.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_review_decisions.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_review_plan.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/_review_sensitivity.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/audits.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/context.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/contracts.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/evidence.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "_scientific_review/intake.py",
+        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "step_09c_scientific_validation.py",
+        "norad/evidence/canonical_bam_qc/__init__.py",
+        "norad/evidence/canonical_bam_qc/validator.py",
+        "norad/evidence/storage_inventory/__init__.py",
+        "norad/evidence/storage_inventory/_storage_contract.py",
+        "norad/evidence/storage_inventory/_storage_measurement.py",
+        "norad/evidence/storage_inventory/_storage_publication.py",
+        "norad/evidence/storage_inventory/storage_inventory.py",
+    }
+)
 STAR_INDEX_MEMBERS = (
     "genomeParameters.txt",
     "Genome",
@@ -172,6 +213,9 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/ingestion/sample_manifest_admission/validate_manifest.py"
             not in members
         )
+        assert {
+            member for member in members if member.startswith("norad/evidence/")
+        } == EVIDENCE_PACKAGE_PATHS
         assert {member for member in members if member.startswith("norad/stages/")} == {
             "norad/stages/canonical_bam/__init__.py",
             "norad/stages/canonical_bam/validator.py",
@@ -664,6 +708,90 @@ def _assert_installed_canonical_bam_validation(
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
 
+def _build_canonical_bam_qc_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path]:
+    input_directory = working_directory / "canonical-bam-qc-inputs"
+    input_directory.mkdir()
+    quickcheck_path = input_directory / "wheel_fixture.quickcheck.txt"
+    quickcheck_path.write_text(
+        "PASS: samtools quickcheck completed with no errors.\n",
+        encoding="utf-8",
+    )
+    flagstat_path = input_directory / "wheel_fixture.flagstat.txt"
+    flagstat_path.write_text(
+        "10 + 0 in total (QC-passed reads + QC-failed reads)\n"
+        "8 + 0 mapped (80.00% : N/A)\n",
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "canonical-bam-qc-validation"
+    validation_directory.mkdir()
+    return (
+        quickcheck_path,
+        flagstat_path,
+        validation_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_canonical_bam_qc_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    quickcheck_path, flagstat_path, output_path = _build_canonical_bam_qc_fixture(
+        working_directory
+    )
+    input_paths = (quickcheck_path, flagstat_path)
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "canonical-bam-qc-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "canonical-bam-qc",
+        "--scope-id",
+        "wheel_fixture",
+        "--quickcheck",
+        str(quickcheck_path),
+        "--flagstat",
+        str(flagstat_path),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("02b\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "quickcheck_structure",
+        "flagstat_structure",
+        "total_records",
+        "mapped_records",
+        "count_consistency",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -736,6 +864,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_canonical_bam_qc_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -783,6 +916,16 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/stages/construct_canonical_BAM").exists()
     assert (REPO_ROOT / "tests/stages/canonical_bam").is_dir()
+
+    canonical_bam_qc_owner = REPO_ROOT / "src/norad/evidence/canonical_bam_qc"
+    assert not (
+        REPO_ROOT / "src/norad/evidence/collect_canonical_BAM_QC_evidence"
+    ).exists()
+    assert not (canonical_bam_qc_owner / "validate_step_02b_bam_qc.py").exists()
+    assert (canonical_bam_qc_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (REPO_ROOT / "tests/evidence/collect_canonical_BAM_QC_evidence").exists()
+    assert (REPO_ROOT / "tests/evidence/canonical_bam_qc").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

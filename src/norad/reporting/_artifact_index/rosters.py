@@ -111,7 +111,7 @@ STEP_PRODUCERS = {
     "00c": ("src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
     "01": ("src/norad/stages/star_alignment/step_01_star_align.sh"),
     "02": ("src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"),
-    "02b": ("src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"),
+    "02b": "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
     "03": (
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
         "step_03_infer_strandedness_and_orientation.sh"

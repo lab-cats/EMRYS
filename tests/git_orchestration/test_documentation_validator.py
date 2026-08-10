@@ -56,11 +56,12 @@ SEMANTIC_OWNERS = (
     ("stage", "STAGE-09"),
     ("stage", "STAGE-10"),
     ("analysis", "ANALYSIS-01"),
-    ("evidence", "EVIDENCE-01"),
+    ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "EVIDENCE-02"),
     ("evidence", "EVIDENCE-03"),
 )
 SOURCE_OWNER_DIRECTORIES = {
+    ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_canonical_BAM"): "canonical_bam",
     ("stage", "construct_STAR_index"): "star_index",

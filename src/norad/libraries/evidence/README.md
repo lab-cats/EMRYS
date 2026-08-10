@@ -6,7 +6,7 @@ does not decide evidence state, sample identity, scientific meaning, or
 publication.
 
 The
-[`canonical-BAM QC`](../../evidence/collect_canonical_BAM_QC_evidence/README.md)
+[`canonical-BAM QC`](../../evidence/canonical_bam_qc/README.md)
 and
 [`RSeQC orientation`](../../evidence/collect_RSeQC_paired_orientation_evidence/README.md)
 evidence owners consume these helpers and retain their own contracts. Direct

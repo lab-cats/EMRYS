@@ -3,8 +3,9 @@
 This document records the observed current contract of historical Step `02b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native source owner; it remains deliberately without a
-Python package identity.
+is the lowercase physical owner for that frozen semantic identity. Its shell
+producer and scheduler remain repository-path interfaces, while its private
+Python validator is exposed only through the grouped package command.
 
 Historical Step `02b` is classified as an independently runnable evidence
 operation associated with the canonical-BAM stage, not as a peer scientific
@@ -107,10 +108,11 @@ producer.
 
 ## Validation interface
 
-[`validate_step_02b_bam_qc.py`](validate_step_02b_bam_qc.py)
-accepts an explicit scope, quickcheck file, flagstat file, and output path. It
-does not receive the source BAM, BAI, samtools identity, or an attempt receipt.
-Validation is dry-run by default; `--execute` publishes
+The grouped route `python -I -m norad validate canonical-bam-qc`, implemented
+by private [`validator.py`](validator.py), accepts an explicit scope,
+quickcheck file, flagstat file, and output path. It does not receive the source
+BAM, BAI, samtools identity, or an attempt receipt. Validation is dry-run by
+default; `--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
 contract.
 
@@ -155,11 +157,11 @@ make it a prerequisite for later computation.
 
 ## Protected behavior and evidence
 
-- [`test_step_02b_bam_qc.sh`](../../../../tests/evidence/collect_canonical_BAM_QC_evidence/test_step_02b_bam_qc.sh)
+- [`test_step_02b_bam_qc.sh`](../../../../tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh)
   protects the public CLI, both index-name conventions, PATH absence, dry-run
   directory side effect, exact paths, silent/nonempty success, and the two
   predecessor-bearing mixed-attempt faults.
-- [`test_validate_step_02b_bam_qc.py`](../../../../tests/evidence/collect_canonical_BAM_QC_evidence/test_validate_step_02b_bam_qc.py)
+- [`test_validate_step_02b_bam_qc.py`](../../../../tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py)
   protects dry-run, five checks, marker/count mismatch evidence, arbitrary-CWD
   repeatability, post-build input mutation, publication, and foreign-lock
   preservation.
