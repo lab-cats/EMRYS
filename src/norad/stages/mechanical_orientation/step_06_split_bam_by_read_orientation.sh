@@ -57,16 +57,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
-resolve_samtools() {
-    local value="${samtools_bin_arg:-}"
-    if [[ -z "$value" && -n "${SAMTOOLS_BIN_OVERRIDE:-}" ]]; then
-        value="$SAMTOOLS_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "samtools" "$value" "samtools"
-}
-
 declare_required_arguments sample_id input_bam output_dir qc_dir threads
-samtools_bin_arg=""
+requested_samtools_bin=""
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -76,7 +68,7 @@ while [[ $# -gt 0 ]]; do
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         --qc-dir) assign_option_value "$1" "${2:-}" qc_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
-        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin_arg; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -91,7 +83,8 @@ validate_positive_integer "--threads" "$threads"
 # Step 05 publishes indexes as <bam>.bai. Keep Step 06 strict so stale or
 # incomplete upstream split-N-cigar outputs fail before any orientation work.
 input_bai="$input_bam.bai"
-samtools_bin="$(resolve_samtools)"
+samtools_bin="$(resolve_overridable_executable \
+    "samtools" "$requested_samtools_bin" SAMTOOLS_BIN_OVERRIDE samtools)"
 run_token="${SLURM_JOB_ID:-$$}"
 
 # The four BAM/BAI outputs and counts TSV are a single downstream contract.
@@ -259,18 +252,6 @@ rev_count_command=(
     "$samtools_bin"
     view
     -c
-    "$tmp_rev_bam"
-)
-
-quickcheck_fwd_command=(
-    "$samtools_bin"
-    quickcheck
-    "$tmp_fwd_bam"
-)
-
-quickcheck_rev_command=(
-    "$samtools_bin"
-    quickcheck
     "$tmp_rev_bam"
 )
 
@@ -657,11 +638,6 @@ final_publish_complete=true
 rm -f "$backup_fwd_bam" "$backup_fwd_bai"
 rm -f "$backup_rev_bam" "$backup_rev_bai"
 rm -f "$backup_counts_tsv"
-fwd_bam_backed_up=false
-fwd_bai_backed_up=false
-rev_bam_backed_up=false
-rev_bai_backed_up=false
-counts_tsv_backed_up=false
 
 printf 'Step 06 read-orientation output details:\n'
 ls -lh "$output_fwd_bam" "$output_fwd_bai" "$output_rev_bam" "$output_rev_bai" "$output_counts_tsv"

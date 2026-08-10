@@ -8,6 +8,20 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
 JOB="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm"
 
+unset \
+    FAKE_COUNT_FAIL_MATCH FAKE_COUNT_FAIL_STATUS \
+    FAKE_FILTER_FAIL_FLAG FAKE_FILTER_FAIL_STATUS FAKE_FILTER_TERM_PARENT \
+    FAKE_FINAL_QUICKCHECK_FAIL_PATH \
+    FAKE_FLAG_147_COUNT FAKE_FLAG_163_COUNT FAKE_FLAG_83_COUNT FAKE_FLAG_99_COUNT \
+    FAKE_INDEX_EMPTY_MATCH FAKE_INDEX_FAIL_MATCH FAKE_INDEX_FAIL_STATUS \
+    FAKE_INPUT_COUNT FAKE_MERGE_COUNT FAKE_MERGE_COUNT_MATCH \
+    FAKE_MERGE_FAIL_MATCH FAKE_MERGE_FAIL_STATUS FAKE_MUTATE_ADMITTED_INPUTS \
+    FAKE_MV_BARRIER_DELAY FAKE_MV_BARRIER_DIR FAKE_MV_BARRIER_WAIT_FOR_FILE \
+    FAKE_MV_COMPLETE_MARKER FAKE_MV_FAIL_MARKER FAKE_MV_FAIL_ONCE_DEST_MATCH \
+    FAKE_MV_RESTORE_FAIL_SOURCE FAKE_MV_RESTORE_FAIL_STATUS \
+    FAKE_QUICKCHECK_FAIL_MATCH FAKE_ZERO_MERGE_MATCH \
+    SAMTOOLS_BIN_OVERRIDE SLURM_JOB_ID
+
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
     exit 1
@@ -72,11 +86,9 @@ assert_exits() {
 assert_file_equals() {
     local path="$1"
     local expected="$2"
-    local actual
 
     [[ -f "$path" ]] || fail "file does not exist: $path"
-    actual="$(cat "$path")"
-    [[ "$actual" == "$expected" ]] || fail "unexpected contents for $path: $actual"
+    printf '%s' "$expected" | cmp -s - "$path" || fail "unexpected contents for $path"
 }
 
 assert_line_before() {
@@ -150,8 +162,8 @@ assert_child_failure_state() {
 
     assert_no_step06_final_set ABE_EV_2 "$output_dir" "$qc_dir"
     assert_not_exists "$output_dir/.ABE_EV_2.step06.lock"
-    assert_file_equals "$output_dir/unrelated.txt" "unrelated output bytes"
-    assert_file_equals "$qc_dir/unrelated.txt" "unrelated qc bytes"
+    assert_file_equals "$output_dir/unrelated.txt" $'unrelated output bytes\n'
+    assert_file_equals "$qc_dir/unrelated.txt" $'unrelated qc bytes\n'
     assert_no_step06_scratch "$output_dir" "$qc_dir"
     assert_no_step06_attempt_marker "$output_dir" "$qc_dir"
 }
@@ -186,6 +198,7 @@ run_step06() {
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
+export TMPDIR="$tmp_dir"
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
@@ -768,8 +781,8 @@ mismatch_counts="$mismatch_qc/ABE_EV_2.orientation_counts.tsv"
 [[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam" ]] || fail "mismatch run did not publish REV_like BAM"
 [[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "mismatch run did not publish REV_like BAI"
 assert_contains "$mismatch_counts" $'ABE_EV_2\t20\t5\t6\t4\t3\t12\t7\t19\t1\t0.950000'
-assert_file_equals "$mismatch_dir/unrelated.txt" "unrelated mismatch output bytes"
-assert_file_equals "$mismatch_qc/unrelated.txt" "unrelated mismatch qc bytes"
+assert_file_equals "$mismatch_dir/unrelated.txt" $'unrelated mismatch output bytes\n'
+assert_file_equals "$mismatch_qc/unrelated.txt" $'unrelated mismatch qc bytes\n'
 assert_contains "$mismatch_output" "Step 06 read-orientation output details:"
 assert_not_exists "$mismatch_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$mismatch_dir" "$mismatch_qc"
@@ -792,7 +805,7 @@ assert_fails "$lock_output" env SLURM_JOB_ID=lock001 bash "$SCRIPT" \
 assert_contains "$lock_output" "Step 06 lock already exists"
 assert_contains "$lock_output" "run_token=other-job"
 [[ -d "$lock_dir/.ABE_EV_2.step06.lock" ]] || fail "foreign lock should remain"
-assert_file_equals "$lock_dir/.ABE_EV_2.step06.lock/owner" "run_token=other-job"
+assert_file_equals "$lock_dir/.ABE_EV_2.step06.lock/owner" $'run_token=other-job\n'
 assert_no_step06_scratch "$lock_dir" "$lock_qc_dir"
 
 printf 'Running validation failure cleanup check...\n'
@@ -847,7 +860,7 @@ assert_fails "$stale_output" env SLURM_JOB_ID=stale001 bash "$SCRIPT" \
     --samtools-bin "$fake_bin/samtools" \
     --execute
 assert_contains "$stale_output" "Refusing to reuse stale Step 06 path"
-assert_file_equals "$stale_dir/.ABE_EV_2.step06.stale001.99.tmp.bam" "stale temp"
+assert_file_equals "$stale_dir/.ABE_EV_2.step06.stale001.99.tmp.bam" $'stale temp\n'
 assert_not_exists "$stale_dir/.ABE_EV_2.step06.lock"
 
 printf 'Running rollback preserves previous final outputs check...\n'
@@ -914,13 +927,13 @@ assert_fails "$incomplete_output" env SLURM_JOB_ID=incomplete001 bash "$SCRIPT" 
     --samtools-bin "$fake_bin/samtools" \
     --execute
 assert_contains "$incomplete_output" "Step 06 final outputs are inconsistent"
-assert_file_equals "$incomplete_dir/ABE_EV_2.FWD_like.bam" "lone prior FWD BAM bytes"
+assert_file_equals "$incomplete_dir/ABE_EV_2.FWD_like.bam" $'lone prior FWD BAM bytes\n'
 assert_not_exists "$incomplete_dir/ABE_EV_2.FWD_like.bam.bai"
 assert_not_exists "$incomplete_dir/ABE_EV_2.REV_like.bam"
 assert_not_exists "$incomplete_dir/ABE_EV_2.REV_like.bam.bai"
 assert_not_exists "$incomplete_qc/ABE_EV_2.orientation_counts.tsv"
-assert_file_equals "$incomplete_dir/unrelated.txt" "unrelated incomplete output bytes"
-assert_file_equals "$incomplete_qc/unrelated.txt" "unrelated incomplete qc bytes"
+assert_file_equals "$incomplete_dir/unrelated.txt" $'unrelated incomplete output bytes\n'
+assert_file_equals "$incomplete_qc/unrelated.txt" $'unrelated incomplete qc bytes\n'
 assert_not_exists "$incomplete_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$incomplete_dir" "$incomplete_qc"
 assert_no_step06_attempt_marker "$incomplete_dir" "$incomplete_qc"
@@ -950,13 +963,13 @@ assert_fails "$final_revalidation_output" env \
     --execute
 assert_contains "$final_revalidation_output" "fake final-path quickcheck forced failure"
 assert_contains "$final_revalidation_output" "Rolling back Step 06"
-assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam" "prior final-check FWD BAM bytes"
-assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam.bai" "prior final-check FWD BAI bytes"
-assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam" "prior final-check REV BAM bytes"
-assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam.bai" "prior final-check REV BAI bytes"
-assert_file_equals "$final_revalidation_qc/ABE_EV_2.orientation_counts.tsv" "prior final-check counts bytes"
-assert_file_equals "$final_revalidation_dir/unrelated.txt" "unrelated final-check output bytes"
-assert_file_equals "$final_revalidation_qc/unrelated.txt" "unrelated final-check qc bytes"
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam" $'prior final-check FWD BAM bytes\n'
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.FWD_like.bam.bai" $'prior final-check FWD BAI bytes\n'
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam" $'prior final-check REV BAM bytes\n'
+assert_file_equals "$final_revalidation_dir/ABE_EV_2.REV_like.bam.bai" $'prior final-check REV BAI bytes\n'
+assert_file_equals "$final_revalidation_qc/ABE_EV_2.orientation_counts.tsv" $'prior final-check counts bytes\n'
+assert_file_equals "$final_revalidation_dir/unrelated.txt" $'unrelated final-check output bytes\n'
+assert_file_equals "$final_revalidation_qc/unrelated.txt" $'unrelated final-check qc bytes\n'
 assert_not_exists "$final_revalidation_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$final_revalidation_dir" "$final_revalidation_qc"
 assert_no_step06_attempt_marker "$final_revalidation_dir" "$final_revalidation_qc"
@@ -991,12 +1004,12 @@ assert_contains "$restore_failure_output" "fake mv forced failure for destinatio
 assert_contains "$restore_failure_output" "Rolling back Step 06"
 assert_contains "$restore_failure_output" "fake mv forced restore failure for source"
 assert_not_exists "$restore_failure_dir/ABE_EV_2.FWD_like.bam"
-assert_file_equals "$restore_failure_dir/ABE_EV_2.FWD_like.bam.bai" "prior restore-failure FWD BAI bytes"
-assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam" "prior restore-failure REV BAM bytes"
-assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam.bai" "prior restore-failure REV BAI bytes"
-assert_file_equals "$restore_failure_qc/ABE_EV_2.orientation_counts.tsv" "prior restore-failure counts bytes"
-assert_file_equals "$restore_failure_dir/unrelated.txt" "unrelated restore-failure output bytes"
-assert_file_equals "$restore_failure_qc/unrelated.txt" "unrelated restore-failure qc bytes"
+assert_file_equals "$restore_failure_dir/ABE_EV_2.FWD_like.bam.bai" $'prior restore-failure FWD BAI bytes\n'
+assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam" $'prior restore-failure REV BAM bytes\n'
+assert_file_equals "$restore_failure_dir/ABE_EV_2.REV_like.bam.bai" $'prior restore-failure REV BAI bytes\n'
+assert_file_equals "$restore_failure_qc/ABE_EV_2.orientation_counts.tsv" $'prior restore-failure counts bytes\n'
+assert_file_equals "$restore_failure_dir/unrelated.txt" $'unrelated restore-failure output bytes\n'
+assert_file_equals "$restore_failure_qc/unrelated.txt" $'unrelated restore-failure qc bytes\n'
 assert_not_exists "$restore_failure_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$restore_failure_dir" "$restore_failure_qc"
 assert_no_step06_attempt_marker "$restore_failure_dir" "$restore_failure_qc"
@@ -1013,15 +1026,15 @@ printf 'unrelated mutation qc bytes\n' >"$mutation_qc/unrelated.txt"
 FAKE_MUTATE_ADMITTED_INPUTS=1 \
 SLURM_JOB_ID=mutation001 \
     run_step06 ABE_EV_2 "$mutation_input_bam" "$mutation_dir" "$mutation_qc" --execute >"$mutation_output" 2>&1
-assert_file_equals "$mutation_input_bam" $'INPUT_BAM\nCOUNT:20\nmutated input bam'
-assert_file_equals "$mutation_input_bam.bai" $'fake step05 split-n-cigar bai\nmutated input bai'
+assert_file_equals "$mutation_input_bam" $'INPUT_BAM\nCOUNT:20\nmutated input bam\n'
+assert_file_equals "$mutation_input_bam.bai" $'fake step05 split-n-cigar bai\nmutated input bai\n'
 [[ -s "$mutation_dir/ABE_EV_2.FWD_like.bam" ]] || fail "input-mutation run did not publish FWD_like BAM"
 [[ -s "$mutation_dir/ABE_EV_2.FWD_like.bam.bai" ]] || fail "input-mutation run did not publish FWD_like BAI"
 [[ -s "$mutation_dir/ABE_EV_2.REV_like.bam" ]] || fail "input-mutation run did not publish REV_like BAM"
 [[ -s "$mutation_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "input-mutation run did not publish REV_like BAI"
 assert_contains "$mutation_qc/ABE_EV_2.orientation_counts.tsv" $'ABE_EV_2\t20\t5\t6\t4\t3\t11\t7\t18\t2\t0.900000'
-assert_file_equals "$mutation_dir/unrelated.txt" "unrelated mutation output bytes"
-assert_file_equals "$mutation_qc/unrelated.txt" "unrelated mutation qc bytes"
+assert_file_equals "$mutation_dir/unrelated.txt" $'unrelated mutation output bytes\n'
+assert_file_equals "$mutation_qc/unrelated.txt" $'unrelated mutation qc bytes\n'
 assert_contains "$mutation_output" "Step 06 read-orientation output details:"
 assert_not_exists "$mutation_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$mutation_dir" "$mutation_qc"
@@ -1050,13 +1063,13 @@ assert_exits 143 "$signal_output" env \
     --threads 2 \
     --samtools-bin "$fake_bin/samtools" \
     --execute
-assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam" "prior signal FWD BAM bytes"
-assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam.bai" "prior signal FWD BAI bytes"
-assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam" "prior signal REV BAM bytes"
-assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam.bai" "prior signal REV BAI bytes"
-assert_file_equals "$signal_qc/ABE_EV_2.orientation_counts.tsv" "prior signal counts bytes"
-assert_file_equals "$signal_dir/unrelated.txt" "unrelated signal output bytes"
-assert_file_equals "$signal_qc/unrelated.txt" "unrelated signal qc bytes"
+assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam" $'prior signal FWD BAM bytes\n'
+assert_file_equals "$signal_dir/ABE_EV_2.FWD_like.bam.bai" $'prior signal FWD BAI bytes\n'
+assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam" $'prior signal REV BAM bytes\n'
+assert_file_equals "$signal_dir/ABE_EV_2.REV_like.bam.bai" $'prior signal REV BAI bytes\n'
+assert_file_equals "$signal_qc/ABE_EV_2.orientation_counts.tsv" $'prior signal counts bytes\n'
+assert_file_equals "$signal_dir/unrelated.txt" $'unrelated signal output bytes\n'
+assert_file_equals "$signal_qc/unrelated.txt" $'unrelated signal qc bytes\n'
 assert_not_exists "$signal_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$signal_dir" "$signal_qc"
 assert_no_step06_attempt_marker "$signal_dir" "$signal_qc"
@@ -1134,9 +1147,9 @@ assert_contains "$collision_a_dir/ABE_EV_2.REV_like.bam" "COUNT:7"
 assert_contains "$collision_b_dir/ABE_EV_2.FWD_like.bam" "COUNT:5"
 assert_contains "$collision_b_dir/ABE_EV_2.REV_like.bam" "COUNT:9"
 assert_contains "$collision_qc/ABE_EV_2.orientation_counts.tsv" $'ABE_EV_2\t20\t2\t3\t4\t5\t5\t9\t14\t6\t0.700000'
-assert_file_equals "$collision_a_dir/unrelated.txt" "unrelated collision A bytes"
-assert_file_equals "$collision_b_dir/unrelated.txt" "unrelated collision B bytes"
-assert_file_equals "$collision_qc/unrelated.txt" "unrelated collision QC bytes"
+assert_file_equals "$collision_a_dir/unrelated.txt" $'unrelated collision A bytes\n'
+assert_file_equals "$collision_b_dir/unrelated.txt" $'unrelated collision B bytes\n'
+assert_file_equals "$collision_qc/unrelated.txt" $'unrelated collision QC bytes\n'
 assert_contains "$collision_a_output" "Step 06 read-orientation output details:"
 assert_contains "$collision_b_output" "Step 06 read-orientation output details:"
 assert_not_exists "$collision_a_dir/.ABE_EV_2.step06.lock"

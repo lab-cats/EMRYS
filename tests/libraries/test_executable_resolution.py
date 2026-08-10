@@ -34,8 +34,8 @@ CONSUMERS = {
     "stages/split_n_cigar/step_05_split_n_cigar_reads.sh": (0o644, 0, 3, 1),
     "stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh": (
         0o755,
-        1,
         0,
+        1,
         1,
     ),
     "stages/generate_partitioned_cohort_mpileup_VCFs/"

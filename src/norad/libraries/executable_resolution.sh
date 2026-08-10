@@ -1,4 +1,4 @@
-# Neutral executable-value resolution shared by named Bash stage producers.
+# Neutral executable-value resolution shared by named Bash consumers.
 
 resolve_overridable_executable() {
     local label="$1"

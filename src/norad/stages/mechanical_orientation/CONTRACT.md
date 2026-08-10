@@ -129,9 +129,10 @@ scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `norad.libraries.validation`.
-- The producer sources only `resolve_executable_value` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
-  samtools precedence, checks, and commands remain owned here.
+- The producer uses `resolve_overridable_executable` from neutral
+  [`executable_resolution.sh`](../../libraries/executable_resolution.sh); the
+  explicit argument, `SAMTOOLS_BIN_OVERRIDE`, and PATH selection policy,
+  samtools checks, and commands remain owned here.
 - Native completion and transaction semantics lack attempt and input identity.
   Restoration is best-effort, cleanup can erase recovery evidence, and the
   output-directory lock does not serialize writers to a shared QC directory.

@@ -86,7 +86,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     "06": (
         "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
-        "57b88315cd7e39995b1410cb448f0efdf5cd525ad23e4d63d11e819334b0aaac",
+        "4cc744dd7b97e8688ed59b9786e1b1e48af6994ac6a234c626e0cd8f152a3cb3",
     ),
     "07": (
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
