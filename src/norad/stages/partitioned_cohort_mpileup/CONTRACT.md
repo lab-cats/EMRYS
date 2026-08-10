@@ -160,10 +160,6 @@ cluster, scientific-review, or biological evidence.
   asymmetric. The validator may publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
-- The producer's partition-selector wrapper currently loses a nonzero manifest
-  callback status before applying its exact-one-row check, so some underlying
-  manifest failures can collapse into the retained not-found-exactly-once
-  diagnostic.
 - The scheduler retains warning-only unusable-tool preflight, submit-CWD and
   body-level log mutations, version-command failure, one-CPU defaults, and
   stale-three-file false success as characterized defects rather than

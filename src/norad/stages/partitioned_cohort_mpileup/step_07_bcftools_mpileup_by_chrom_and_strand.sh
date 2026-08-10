@@ -273,14 +273,9 @@ read_partition_selector() {
         fi
     }
 
-    if ! read_manifest_partitions "$manifest" read_partition_record; then
-        status=$?
-    fi
+    read_manifest_partitions "$manifest" read_partition_record || status=$?
     unset -f read_partition_record
-
-    if [[ "$status" -ne 0 ]]; then
-        return "$status"
-    fi
+    [[ "$status" -eq 0 ]] || return "$status"
 
     if [[ "$selected_count" -ne 1 ]]; then
         printf "partition_id %s was not found exactly once\n" "$requested_id" >&2

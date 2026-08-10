@@ -91,7 +91,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     "07": (
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "0c5383b6fb5f63faec5e745bc0b541febdfe425db0bc133f640a9752eb191732",
+        "9cdb0034b94a1606a72764d5ec0be7ff202ce15990243b1d7e4b2a1f5fee0fb7",
     ),
     "08": (
         "src/norad/stages/preprocess_and_annotate_cohort_candidates/"

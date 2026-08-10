@@ -514,7 +514,9 @@ run_expect_status 1 "$test_root/bad-partition.out" "$test_root/bad-partition.err
     --reference-fasta "$bad_partition_fixture/reference.fa" \
     --output-root "$bad_partition_fixture/output" \
     --bcftools-bin "$fake_bcftools"
-assert_contains "$test_root/bad-partition.err" "duplicate partition_id"
+assert_file_equals "$test_root/bad-partition.err" \
+    $'duplicate partition_id in partition manifest: 1\n'\
+"ERROR: Partition manifest validation failed: $bad_partition_fixture/partitions.tsv"$'\n'
 
 missing_partition_fixture="$test_root/missing-partition"
 cp -R "$fixture" "$missing_partition_fixture"
@@ -529,7 +531,9 @@ run_expect_status 1 "$test_root/missing-partition.out" "$test_root/missing-parti
     --reference-fasta "$missing_partition_fixture/reference.fa" \
     --output-root "$missing_partition_fixture/output" \
     --bcftools-bin "$fake_bcftools"
-assert_contains "$test_root/missing-partition.err" "partition_id absent was not found exactly once"
+assert_file_equals "$test_root/missing-partition.err" \
+    $'partition_id absent was not found exactly once\n'\
+"ERROR: Partition manifest validation failed: $missing_partition_fixture/partitions.tsv"$'\n'
 assert_not_exists "$missing_partition_fixture/output"
 
 missing_fai_fixture="$test_root/missing-fai"
