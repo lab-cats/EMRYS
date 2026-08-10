@@ -61,10 +61,6 @@ validate_hash <- function(label, value) {
     tolower(value)
 }
 
-same_path <- function(left, right) {
-    identical(normalize_existing_path(left), normalize_existing_path(right))
-}
-
 sha256_file <- function(path) {
     sha256_file_with_fallback(
         path,

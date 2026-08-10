@@ -337,62 +337,57 @@ main <- function() {
     )
 }
 
-load_step08_input_contract <- local({
-    owner_filename <- "_step_08_input_contract.R"
-
-    function() {
-        invocation <- commandArgs(trailingOnly = FALSE)
-        file_options <- invocation[startsWith(invocation, "--file=")]
-        if (length(file_options) != 1L) {
-            stop("Could not resolve the Step 08 R entry point from --file=.",
-                 call. = FALSE)
-        }
-        entry_value <- substring(file_options[[1L]], nchar("--file=") + 1L)
-        if (!nzchar(entry_value)) {
-            stop("The Step 08 --file= entry point is empty.", call. = FALSE)
-        }
-        entry_path <- normalizePath(
-            entry_value,
-            winslash = "/",
-            mustWork = TRUE
-        )
-        shared_path <- file.path(
-            dirname(entry_path), "../../libraries/input_contract.R"
-        )
-        owner_path <- file.path(dirname(entry_path), owner_filename)
-        owner_info <- file.info(owner_path)
-        if (!file.exists(owner_path) || isTRUE(owner_info$isdir) ||
-            is.na(owner_info$size) || owner_info$size <= 0L) {
-            stop("Step 08 input-contract owner is unavailable: ", owner_path,
-                 call. = FALSE)
-        }
-        sys.source(shared_path, envir = globalenv(), keep.source = FALSE)
-        sys.source(owner_path, envir = globalenv(), keep.source = FALSE)
-        module_filenames <- c(
-            "_step_08_annotation.R",
-            "_step_08_receipt_contract.R",
-            "_step_08_vcf_counts.R",
-            "_step_08_vcf_processing.R"
-        )
-        for (module_filename in module_filenames) {
-            module_path <- file.path(dirname(entry_path), module_filename)
-            module_info <- file.info(module_path)
-            if (!file.exists(module_path) || isTRUE(module_info$isdir) ||
-                is.na(module_info$size) || module_info$size <= 0L) {
-                stop(
-                    "Step 08 owner module is unavailable: ", module_path,
-                    call. = FALSE
-                )
-            }
-            sys.source(module_path, envir = globalenv(), keep.source = FALSE)
-        }
-        invisible(owner_path)
+load_step08_owner_modules <- function() {
+    invocation <- commandArgs(trailingOnly = FALSE)
+    file_options <- invocation[startsWith(invocation, "--file=")]
+    if (length(file_options) != 1L) {
+        stop("Could not resolve the Step 08 R entry point from --file=.",
+             call. = FALSE)
     }
-})
+    entry_value <- substring(file_options[[1L]], nchar("--file=") + 1L)
+    if (!nzchar(entry_value)) {
+        stop("The Step 08 --file= entry point is empty.", call. = FALSE)
+    }
+    entry_path <- normalizePath(
+        entry_value,
+        winslash = "/",
+        mustWork = TRUE
+    )
+    owner_directory <- dirname(entry_path)
+    shared_path <- file.path(owner_directory, "../../libraries/input_contract.R")
+    owner_path <- file.path(owner_directory, "_step_08_input_contract.R")
+    owner_info <- file.info(owner_path)
+    if (!file.exists(owner_path) || isTRUE(owner_info$isdir) ||
+        is.na(owner_info$size) || owner_info$size <= 0L) {
+        stop("Step 08 input-contract owner is unavailable: ", owner_path,
+             call. = FALSE)
+    }
+    sys.source(shared_path, envir = globalenv(), keep.source = FALSE)
+    sys.source(owner_path, envir = globalenv(), keep.source = FALSE)
+    module_filenames <- c(
+        "_step_08_annotation.R",
+        "_step_08_receipt_contract.R",
+        "_step_08_vcf_counts.R",
+        "_step_08_vcf_processing.R"
+    )
+    for (module_filename in module_filenames) {
+        module_path <- file.path(owner_directory, module_filename)
+        module_info <- file.info(module_path)
+        if (!file.exists(module_path) || isTRUE(module_info$isdir) ||
+            is.na(module_info$size) || module_info$size <= 0L) {
+            stop(
+                "Step 08 owner module is unavailable: ", module_path,
+                call. = FALSE
+            )
+        }
+        sys.source(module_path, envir = globalenv(), keep.source = FALSE)
+    }
+    invisible(owner_path)
+}
 
 tryCatch(
     {
-        load_step08_input_contract()
+        load_step08_owner_modules()
         main()
     },
     error = function(error) {
