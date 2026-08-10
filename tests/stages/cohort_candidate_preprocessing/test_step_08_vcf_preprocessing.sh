@@ -5,7 +5,7 @@ set -euo pipefail
 # belongs to the separate real-R fixture suite when an R runtime is available.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-owner_path="src/norad/stages/preprocess_and_annotate_cohort_candidates"
+owner_path="src/norad/stages/cohort_candidate_preprocessing"
 script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
 job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
 test_root="$(mktemp -d)"

@@ -19,6 +19,9 @@ from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
+from norad.stages.cohort_candidate_preprocessing import (
+    validator as cohort_candidate_preprocessing_validation_command,
+)
 from norad.stages.duplicate_marking import (
     validator as duplicate_marking_validation_command,
 )
@@ -143,6 +146,19 @@ def build_parser() -> argparse.ArgumentParser:
     canonical_bam_qc_validation_command.configure_parser(canonical_bam_qc_parser)
     canonical_bam_qc_parser.set_defaults(
         _command_handler=canonical_bam_qc_validation_command.validate_from_args
+    )
+    cohort_candidate_preprocessing_parser = validation_parsers.add_parser(
+        "cohort-candidate-preprocessing",
+        help="Validate one cohort candidate preprocessing transaction.",
+        description=cohort_candidate_preprocessing_validation_command.DESCRIPTION,
+    )
+    cohort_candidate_preprocessing_validation_command.configure_parser(
+        cohort_candidate_preprocessing_parser
+    )
+    cohort_candidate_preprocessing_parser.set_defaults(
+        _command_handler=(
+            cohort_candidate_preprocessing_validation_command.validate_from_args
+        )
     )
     duplicate_marking_parser = validation_parsers.add_parser(
         "duplicate-marking",

@@ -1,8 +1,9 @@
 # Cohort-candidate preprocessing tests
 
-This directory protects Step 08 shell and R input policy, candidate processing,
-three-output publication and recovery, and Python validator behavior. The
-[stage owner](../../../src/norad/stages/preprocess_and_annotate_cohort_candidates/README.md)
+This directory protects Step 08 repository shell/R input policy, candidate
+processing, three-output publication and recovery, and the behavior of the
+grouped private validator. The
+[stage owner](../../../src/norad/stages/cohort_candidate_preprocessing/README.md)
 owns commands, provisional orientation policy, and exact evidence limits.
 
 The guarded-R runner may skip without an acceptable R runtime; a skip supplies

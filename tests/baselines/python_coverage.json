@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 99,
+      "covered_lines": 103,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 99,
+      "num_statements": 103,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1393,6 +1393,24 @@
       "line_rate": "1.000000",
       "num_branches": 0,
       "num_statements": 0,
+      "path": "src/norad/stages/cohort_candidate_preprocessing/__init__.py"
+    },
+    {
+      "branch_rate": "0.875000",
+      "covered_branches": 14,
+      "covered_lines": 58,
+      "line_rate": "1.000000",
+      "num_branches": 16,
+      "num_statements": 58,
+      "path": "src/norad/stages/cohort_candidate_preprocessing/validator.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
       "path": "src/norad/stages/duplicate_marking/__init__.py"
     },
     {
@@ -1486,15 +1504,6 @@
       "path": "src/norad/stages/partitioned_cohort_mpileup/validator.py"
     },
     {
-      "branch_rate": "0.888889",
-      "covered_branches": 16,
-      "covered_lines": 66,
-      "line_rate": "1.000000",
-      "num_branches": 18,
-      "num_statements": 66,
-      "path": "src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py"
-    },
-    {
       "branch_rate": "1.000000",
       "covered_branches": 0,
       "covered_lines": 0,
@@ -1582,11 +1591,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748869",
-    "covered_branches": 3310,
-    "covered_lines": 10306,
-    "line_rate": "0.860842",
-    "num_branches": 4420,
-    "num_statements": 11972
+    "branch_rate": "0.748755",
+    "covered_branches": 3308,
+    "covered_lines": 10302,
+    "line_rate": "0.860795",
+    "num_branches": 4418,
+    "num_statements": 11968
   }
 }

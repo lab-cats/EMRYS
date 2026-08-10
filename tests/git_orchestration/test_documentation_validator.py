@@ -54,7 +54,7 @@ SEMANTIC_OWNERS = (
     ("stage", "split_N_cigar_reads_with_GATK"),
     ("stage", "partition_BAM_by_mechanical_read_orientation"),
     ("stage", "generate_partitioned_cohort_mpileup_VCFs"),
-    ("stage", "STAGE-10"),
+    ("stage", "preprocess_and_annotate_cohort_candidates"),
     ("analysis", "ANALYSIS-01"),
     ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "collect_RSeQC_paired_orientation_evidence"),
@@ -77,6 +77,10 @@ SOURCE_OWNER_DIRECTORIES = {
         "stage",
         "generate_partitioned_cohort_mpileup_VCFs",
     ): "partitioned_cohort_mpileup",
+    (
+        "stage",
+        "preprocess_and_annotate_cohort_candidates",
+    ): "cohort_candidate_preprocessing",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 CROSS_CUTTING_DOCS = (

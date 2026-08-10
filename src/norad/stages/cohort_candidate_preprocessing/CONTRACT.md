@@ -104,11 +104,11 @@ execution gating, delegation, and final path checks.
 
 ## Validation interface
 
-[`validate_step_08_preprocessing_outputs.py`](validate_step_08_preprocessing_outputs.py)
-accepts explicit cohort, manifests, annotation GTF, the three outputs, and a
-report path. It does not invoke R. Dry-run prints the common report;
-`--execute` snapshot-rechecks inputs and uses the neutral validation-report
-publisher.
+The grouped `python -I -m norad validate cohort-candidate-preprocessing` route,
+implemented by private [`validator.py`](validator.py), accepts explicit cohort,
+manifests, annotation GTF, the three outputs, and a report path. It does not
+invoke R. Dry-run prints the common report; `--execute` snapshot-rechecks inputs
+and uses the neutral validation-report publisher.
 
 Exact checks are:
 
@@ -129,6 +129,10 @@ candidate IDs or prove deterministic row order.
 
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
+
+Package selection is owned by the grouped command; direct execution of private
+`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
+peer-stage implementation dependencies are not supported interfaces.
 
 ## Consumers and protected evidence
 

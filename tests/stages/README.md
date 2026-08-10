@@ -16,7 +16,7 @@ This directory mirrors the ten computational stage owners.
 - Cohort processing:
   [`partitioned_cohort_mpileup/`](partitioned_cohort_mpileup/README.md)
   and
-  [`preprocess_and_annotate_cohort_candidates/`](preprocess_and_annotate_cohort_candidates/README.md).
+  [`cohort_candidate_preprocessing/`](cohort_candidate_preprocessing/README.md).
 
 The [stage-owner router](../../src/norad/stages/README.md) owns exact identities,
 commands, transactions, recovery, and cross-stage placement. Protection here

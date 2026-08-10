@@ -32,7 +32,7 @@ else
     exit 0
 fi
 
-step08_engine="$repo_root/src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R"
+step08_engine="$repo_root/src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
 foreign_help_cwd="$(mktemp -d "${TMPDIR:-/tmp}/norad-step08-help.XXXXXX")"
 cleanup_help_cwd() {
     rmdir "$foreign_help_cwd" 2>/dev/null || true
@@ -70,4 +70,4 @@ if (length(missing) > 0L) {
     exit 1
 fi
 
-"$rscript_bin" tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.R "$rscript_bin"
+"$rscript_bin" tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R "$rscript_bin"

@@ -3,7 +3,7 @@
 # Step 08: validate the complete declared Step 07 VCF set, expand alternate
 # alleles, apply the provisional legacy orientation policy, annotate candidates,
 # and write deterministic cohort-level TSVs. Publication and locking belong to
-# src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh; this program writes only its three
+# src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh; this program writes only its three
 # explicitly supplied output paths.
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)

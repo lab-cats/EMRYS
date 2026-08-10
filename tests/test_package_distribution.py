@@ -222,6 +222,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
         assert {member for member in members if member.startswith("norad/stages/")} == {
             "norad/stages/canonical_bam/__init__.py",
             "norad/stages/canonical_bam/validator.py",
+            "norad/stages/cohort_candidate_preprocessing/__init__.py",
+            "norad/stages/cohort_candidate_preprocessing/validator.py",
             "norad/stages/duplicate_marking/__init__.py",
             "norad/stages/duplicate_marking/validator.py",
             "norad/stages/fasta_sidecars/__init__.py",
@@ -1281,6 +1283,166 @@ def _assert_installed_partitioned_cohort_mpileup_validation(
     )
 
 
+def _build_cohort_candidate_preprocessing_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path, Path, Path, Path]:
+    input_directory = working_directory / "cohort-candidate-preprocessing-inputs"
+    input_directory.mkdir()
+    sample_manifest_path = input_directory / "samples.tsv"
+    sample_manifest_path.write_text(
+        "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate\n"
+        "S\t/r1\t/r2\treverse\tcontrol\t1\n",
+        encoding="utf-8",
+    )
+    partition_manifest_path = input_directory / "partitions.tsv"
+    partition_manifest_path.write_text(
+        "partition_id\tselector_type\tselector_value\np1\tregion\t1\n",
+        encoding="utf-8",
+    )
+    annotation_path = input_directory / "annotation.gtf"
+    annotation_path.write_text(
+        '1\ts\tgene\t1\t10\t.\t+\t.\tgene_id "g";\n',
+        encoding="utf-8",
+    )
+    sample_manifest_sha256 = hashlib.sha256(
+        sample_manifest_path.read_bytes()
+    ).hexdigest()
+    partition_manifest_sha256 = hashlib.sha256(
+        partition_manifest_path.read_bytes()
+    ).hexdigest()
+    annotation_sha256 = hashlib.sha256(annotation_path.read_bytes()).hexdigest()
+
+    sites_path = input_directory / "wheel_cohort.step08_sites.tsv"
+    sites_path.write_text(
+        "partition_id\tcandidate_id\torientation\tchromosome\tposition\talt_index\t"
+        "genomic_ref\tgenomic_alt\trna_ref\trna_alt\tannotation_strand\tgene_ids\t"
+        "transcript_ids\tis_cds\tis_five_prime_utr\tis_three_prime_utr\tis_exon\t"
+        "is_intron\tqual\tfilter\tinfo_alt_depth\torientation_policy\tDP__S\tAD__S\t"
+        "AF__S\n"
+        "p1\tc1\tFWD_like\t1\t2\t1\tA\tG\tA\tG\t+\tg\tt\tTRUE\tFALSE\tFALSE\t"
+        "TRUE\tFALSE\t60\tPASS\t4\tlegacy_provisional_v1\t10\t2\t0.2\n"
+        "p1\tc2\tREV_like\t1\t3\t1\tC\tT\tG\tA\t-\tg\tt\tTRUE\tFALSE\tFALSE\t"
+        "TRUE\tFALSE\t50\tPASS\t3\tlegacy_provisional_v1\t8\t1\t0.125\n",
+        encoding="utf-8",
+    )
+    inputs_path = input_directory / "wheel_cohort.step08_inputs.tsv"
+    inputs_path.write_text(
+        "cohort_id\tpartition_id\tselector_type\tselector_value\torientation\t"
+        "step07_receipt_path\tstep07_receipt_sha256\tvcf_path\tvcf_sha256\t"
+        "sample_manifest_sha256\tpartition_manifest_sha256\tannotation_gtf\t"
+        "annotation_gtf_sha256\tsample_count\tdeclared_vcf_record_count\t"
+        "observed_vcf_record_count\tobserved_alt_allele_count\tsupported_snv_count\t"
+        "skipped_symbolic_count\tskipped_non_snv_count\tpublished_candidate_count\t"
+        "orientation_policy\n"
+        f"wheel_cohort\tp1\tregion\t1\tFWD_like\t/step07/receipt.tsv\t{'1' * 64}\t"
+        f"/step07/fwd.vcf\t{'2' * 64}\t{sample_manifest_sha256}\t"
+        f"{partition_manifest_sha256}\t{annotation_path.resolve()}\t"
+        f"{annotation_sha256}\t1\t1\t1\t1\t1\t0\t0\t1\tlegacy_provisional_v1\n"
+        f"wheel_cohort\tp1\tregion\t1\tREV_like\t/step07/receipt.tsv\t{'1' * 64}\t"
+        f"/step07/rev.vcf\t{'2' * 64}\t{sample_manifest_sha256}\t"
+        f"{partition_manifest_sha256}\t{annotation_path.resolve()}\t"
+        f"{annotation_sha256}\t1\t1\t1\t1\t1\t0\t0\t1\tlegacy_provisional_v1\n",
+        encoding="utf-8",
+    )
+    summary_path = input_directory / "wheel_cohort.step08_summary.tsv"
+    summary_path.write_text(
+        "cohort_id\tpartition_count\tstep07_receipt_count\tinput_vcf_count\t"
+        "sample_count\tobserved_vcf_record_count\tobserved_alt_allele_count\t"
+        "supported_snv_count\tskipped_symbolic_count\tskipped_non_snv_count\t"
+        "published_candidate_count\tsample_manifest_sha256\t"
+        "partition_manifest_sha256\tannotation_gtf\tannotation_gtf_sha256\t"
+        "orientation_policy\n"
+        f"wheel_cohort\t1\t1\t2\t1\t2\t2\t2\t0\t0\t2\t{sample_manifest_sha256}\t"
+        f"{partition_manifest_sha256}\t{annotation_path.resolve()}\t"
+        f"{annotation_sha256}\tlegacy_provisional_v1\n",
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "cohort-candidate-preprocessing-output"
+    validation_directory.mkdir()
+    return (
+        sample_manifest_path,
+        partition_manifest_path,
+        annotation_path,
+        sites_path,
+        inputs_path,
+        summary_path,
+        validation_directory / "wheel_cohort.validation.tsv",
+    )
+
+
+def _assert_installed_cohort_candidate_preprocessing_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    (
+        sample_manifest_path,
+        partition_manifest_path,
+        annotation_path,
+        sites_path,
+        inputs_path,
+        summary_path,
+        output_path,
+    ) = _build_cohort_candidate_preprocessing_fixture(working_directory)
+    input_paths = (
+        sample_manifest_path,
+        partition_manifest_path,
+        annotation_path,
+        sites_path,
+        inputs_path,
+        summary_path,
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "cohort-candidate-preprocessing-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "cohort-candidate-preprocessing",
+        "--cohort-id",
+        "wheel_cohort",
+        "--sample-manifest",
+        str(sample_manifest_path),
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--annotation-gtf",
+        str(annotation_path),
+        "--sites",
+        str(sites_path),
+        "--inputs",
+        str(inputs_path),
+        "--summary",
+        str(summary_path),
+        "--output",
+        str(output_path),
+    )
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="08",
+        expected_check_ids={
+            "output_transaction",
+            "manifest_annotation_identity",
+            "input_receipt_reconciliation",
+            "sites_order_uniqueness",
+            "summary_count_reconciliation",
+        },
+    )
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1383,6 +1545,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_cohort_candidate_preprocessing_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1447,6 +1614,11 @@ def _assert_private_source_layout() -> None:
             "stages/partitioned_cohort_mpileup",
             "stages/generate_partitioned_cohort_mpileup_VCFs",
             "validate_step_07_mpileup_outputs.py",
+        ),
+        (
+            "stages/cohort_candidate_preprocessing",
+            "stages/preprocess_and_annotate_cohort_candidates",
+            "validate_step_08_preprocessing_outputs.py",
         ),
     )
     for current_relative, retired_relative, retired_validator in normalized_owners:

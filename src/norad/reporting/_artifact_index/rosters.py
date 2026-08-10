@@ -127,8 +127,7 @@ STEP_PRODUCERS = {
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "09": (
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"

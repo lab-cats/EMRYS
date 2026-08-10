@@ -8,7 +8,8 @@ three-output transaction, retained defects, consumers, and evidence semantics.
 
 - producer: [`step_08_vcf_preprocessing.sh`](step_08_vcf_preprocessing.sh)
 - R implementation: [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
-- validator: [`validate_step_08_preprocessing_outputs.py`](validate_step_08_preprocessing_outputs.py)
+- validator: grouped `python -I -m norad validate cohort-candidate-preprocessing`,
+  implemented by private [`validator.py`](validator.py)
 - scheduler: [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
 
 Private R modules split input admission, annotation, receipt reconciliation,
@@ -20,7 +21,7 @@ not additional commands or package APIs.
 Producer no-write dry-run:
 
 ```bash
-src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
+src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -44,7 +45,7 @@ Validator dry-run:
 
 ```bash
 cohort=NORAD_EV_PUM1
-.venv/bin/python src/norad/stages/preprocess_and_annotate_cohort_candidates/validate_step_08_preprocessing_outputs.py \
+python -I -m norad validate cohort-candidate-preprocessing \
   --cohort-id "$cohort" \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -55,15 +56,16 @@ cohort=NORAD_EV_PUM1
   --output "results/qc/validation/08/$cohort.validation.tsv"
 ```
 
-Create the parent and add `--execute`. Exit `0` permits failed rows. The
-validator does not rerun R/annotation, recompute candidate IDs/order, or reopen
-Step `07` inputs to establish scientific correctness.
+Create the parent and add `--execute`. Exit `0` permits failed rows. Private
+`validator.py` is not a direct repository command or supported import surface.
+The validator does not rerun R/annotation, recompute candidate IDs/order, or
+reopen Step `07` inputs to establish scientific correctness.
 
 ```bash
 cd /absolute/path/to/norad
 mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rscript \
-  src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm
+  src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm
 ```
 
 Change only `EXECUTE=1` after review. Three stale finals can produce false
@@ -77,12 +79,12 @@ Never combine attempts or reuse ambiguous roots; failed restoration can lose
 its recovery marker.
 
 ```bash
-bash tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
+bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_step08.py \
-  tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
+  tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
-  bash tests/stages/preprocess_and_annotate_cohort_candidates/run_step_08_vcf_preprocessing_tests.sh
+  bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 .venv/bin/python -m pytest -q \
   tests/test_slurm_wrapper_contracts.py -k step_08_vcf_preprocessing
 ```

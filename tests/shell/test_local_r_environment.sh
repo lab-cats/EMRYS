@@ -142,7 +142,7 @@ grep -Fq 'scripts/restore_r_environment.R' "$fake_log" ||
     fail "r-restore did not invoke the restore script"
 grep -Fq 'scripts/check_r_environment.R' "$fake_log" ||
     fail "r-check did not invoke the check script"
-grep -Fq 'tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.R' "$fake_log" ||
+grep -Fq 'tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R' "$fake_log" ||
     fail "local-real-r-test did not run Step 08 fixtures"
 grep -Fq 'tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.R' "$fake_log" ||
     fail "local-real-r-test did not run Step 09 fixtures"

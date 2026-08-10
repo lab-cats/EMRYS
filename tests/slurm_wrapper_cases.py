@@ -105,8 +105,7 @@ CONTRACTS = {
         module_calls=("list", "load CBI bcftools/1.21", "list"),
     ),
     "step_08_vcf_preprocessing.slurm": contract(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"

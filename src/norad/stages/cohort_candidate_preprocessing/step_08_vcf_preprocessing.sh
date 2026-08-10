@@ -11,7 +11,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
+  src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
     --cohort-id COHORT_ID \
     --sample-manifest SAMPLE_MANIFEST \
     --partition-manifest PARTITION_MANIFEST \
@@ -41,7 +41,7 @@ Options:
   --rscript-bin        Rscript executable/path. Resolution order: argument,
                        RSCRIPT_BIN_OVERRIDE, PATH.
   --r-script           R implementation (default:
-                       src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R; override with
+                       src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R; override with
                        STEP08_R_SCRIPT).
   --execute            Run R and publish validated outputs.
   -h, --help           Show this help message and exit.

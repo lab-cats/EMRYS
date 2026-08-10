@@ -745,7 +745,7 @@ engine <- if (length(arguments) >= 2L) {
         "src",
         "norad",
         "stages",
-        "preprocess_and_annotate_cohort_candidates",
+        "cohort_candidate_preprocessing",
         "step_08_vcf_preprocessing.R"
     )
 }

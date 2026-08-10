@@ -21,7 +21,7 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
 	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
-	src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
+	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
 	src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh \
 	src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
 
@@ -39,7 +39,7 @@ SLURM_SYNTAX_PATHS := \
 	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm \
 	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
-	src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm \
+	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
 	src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm
 
 documentation-check:
@@ -56,7 +56,7 @@ validation-shell-contracts:
 	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
 	bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh
 	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
-	bash tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
+	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 	bash tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_editing_site_calling.sh
 	bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
@@ -79,11 +79,11 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
 
 real-r-test:
-	bash tests/stages/preprocess_and_annotate_cohort_candidates/run_step_08_vcf_preprocessing_tests.sh
+	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/analyses/rank_cohort_candidates_with_paired_CMH/run_step_09_cmh_tests.sh
 
 r-restore:

@@ -11,7 +11,7 @@ ARGUMENT_NAMES <- c(
 usage <- function() {
     cat(paste0(
         "Usage:\n",
-        "  Rscript src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.R \\\n",
+        "  Rscript src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R \\\n",
         "    --cohort-id COHORT_ID \\\n",
         "    --sample-manifest SAMPLE_MANIFEST \\\n",
         "    --partition-manifest PARTITION_MANIFEST \\\n",

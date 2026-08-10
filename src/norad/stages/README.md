@@ -17,7 +17,7 @@ grouped module interface.
 | `05` | [`split_N_cigar_reads_with_GATK`](split_n_cigar/README.md) |
 | `06` | [`partition_BAM_by_mechanical_read_orientation`](mechanical_orientation/README.md) |
 | `07` | [`generate_partitioned_cohort_mpileup_VCFs`](partitioned_cohort_mpileup/README.md) |
-| `08` | [`preprocess_and_annotate_cohort_candidates`](preprocess_and_annotate_cohort_candidates/README.md) |
+| `08` | [`preprocess_and_annotate_cohort_candidates`](cohort_candidate_preprocessing/README.md) |
 
 The canonical identities and dependency edges live in
 [`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b`, `03`,
@@ -55,10 +55,10 @@ exposing its private validator as
 `python -I -m norad validate mechanical-orientation`. Step `07` likewise keeps
 its shell producer and scheduler as repository-path
 interfaces while exposing its private validator as
-`python -I -m norad validate partitioned-cohort-mpileup`. For `08`, the shell
-transaction owner delegates its scientific transform to the adjacent Rscript
-implementation; its interfaces remain repository paths, not installed
-commands or import APIs.
+`python -I -m norad validate partitioned-cohort-mpileup`. Step `08` keeps its
+shell producer, R implementation, and scheduler as repository-path interfaces
+while exposing its private validator as
+`python -I -m norad validate cohort-candidate-preprocessing`.
 
 Each owner declares and governs the outputs produced through its interfaces,
 normally under ignored `results/` or declared reference storage. A file,

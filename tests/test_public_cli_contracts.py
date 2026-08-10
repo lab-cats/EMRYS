@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_08_preprocessing_outputs.py": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "validate_step_08_preprocessing_outputs.py"
-    ),
     "validate_step_09_cmh_outputs.py": Path(
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
         "validate_step_09_cmh_outputs.py"
@@ -66,7 +62,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_08_preprocessing_outputs.py",
         "validate_step_09_cmh_outputs.py",
     }
 )
@@ -89,6 +84,10 @@ NORAD_COMMANDS = (
     (
         ("validate", "canonical-bam-qc"),
         "usage: norad validate canonical-bam-qc",
+    ),
+    (
+        ("validate", "cohort-candidate-preprocessing"),
+        "usage: norad validate cohort-candidate-preprocessing",
     ),
     (
         ("validate", "duplicate-marking"),
@@ -149,8 +148,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
@@ -175,8 +173,7 @@ R_ENTRYPOINT_PATHS = {
     "check_r_environment.R": Path("scripts/check_r_environment.R"),
     "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
     "step_08_vcf_preprocessing.R": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.R"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
     "step_09_cmh_editing_site_calling.R": Path(
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"

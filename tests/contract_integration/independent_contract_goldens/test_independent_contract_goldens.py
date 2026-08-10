@@ -14,6 +14,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
+from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
@@ -52,12 +53,6 @@ SCIENTIFIC_REVIEW = load_exact_test_module(
     REPO_ROOT
     / "src/norad/evidence/assemble_scientific_review_evidence_package"
     / "step_09c_scientific_validation.py",
-)
-STEP08_VALIDATOR = load_exact_test_module(
-    "_independent_step08_validator",
-    REPO_ROOT
-    / "src/norad/stages/preprocess_and_annotate_cohort_candidates"
-    / "validate_step_08_preprocessing_outputs.py",
 )
 STEP09_VALIDATOR = load_exact_test_module(
     "_independent_step09_validator",

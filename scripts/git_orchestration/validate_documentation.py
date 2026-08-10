@@ -86,6 +86,10 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
         "stage",
         "generate_partitioned_cohort_mpileup_VCFs",
     ): "partitioned_cohort_mpileup",
+    (
+        "stage",
+        "preprocess_and_annotate_cohort_candidates",
+    ): "cohort_candidate_preprocessing",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 

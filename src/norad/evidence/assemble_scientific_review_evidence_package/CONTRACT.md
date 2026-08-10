@@ -18,7 +18,7 @@ upstream artifacts, or execute requested reruns.
 
 Required inputs are a safe review ID, exact sample and partition manifests,
 all three outputs from the final
-[`preprocess_and_annotate_cohort_candidates`](../../stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+[`preprocess_and_annotate_cohort_candidates`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
 owner, the Step `09` analysis directory produced by the final
 [`rank_cohort_candidates_with_paired_CMH`](../../analyses/rank_cohort_candidates_with_paired_CMH/CONTRACT.md)
 owner and named by the plan's `primary_analysis_id`, a one-row review plan, an

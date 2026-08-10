@@ -9,7 +9,7 @@ uses that public slug and is now the implemented source location.
 ## Responsibility and execution dependencies
 
 Consume the committed
-[`preprocess_and_annotate_cohort_candidates`](../../stages/preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+[`preprocess_and_annotate_cohort_candidates`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
 cohort candidates, construct explicit paired
 control/treatment replicate strata, run cohort-wide paired Cochran–Mantel–
 Haenszel analysis for a requested RNA substitution, apply one Benjamini–

@@ -25,7 +25,7 @@ require Step `06` counts, validation evidence, or a native completion marker.
 Distinct partitions may run
 independently when they use distinct output locks and immutable shared inputs.
 The
-[`preprocess_and_annotate_cohort_candidates`](../preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+[`preprocess_and_annotate_cohort_candidates`](../cohort_candidate_preprocessing/CONTRACT.md)
 owner is the cohort barrier and consumes the complete declared partition-by-
 orientation result set regardless of partition completion order.
 
@@ -124,7 +124,7 @@ controlled exit-`2` boundary.
 ## Consumers and protected evidence
 
 - The final
-  [`preprocess_and_annotate_cohort_candidates`](../preprocess_and_annotate_cohort_candidates/CONTRACT.md)
+  [`preprocess_and_annotate_cohort_candidates`](../cohort_candidate_preprocessing/CONTRACT.md)
   contract consumes the declared Step `07` VCF/receipt transactions; it does
   not rediscover partitions or orientations from filenames.
 - Artifact adapters register both VCFs, the receipt, and
