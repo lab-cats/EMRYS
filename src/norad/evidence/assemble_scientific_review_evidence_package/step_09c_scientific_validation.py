@@ -42,7 +42,13 @@ from norad.evidence.assemble_scientific_review_evidence_package._scientific_revi
     intake as _intake_owner,
 )
 from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    review_analysis as _review_analysis_owner,
+    _review_candidates as _review_candidates_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    _review_decisions as _review_decisions_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
+    _review_sensitivity as _review_sensitivity_owner,
 )
 
 step08 = _contract_owner.step08
@@ -86,14 +92,14 @@ validate_qc_funnel = _audit_owner.validate_qc_funnel
 validate_replicate_effects = _audit_owner.validate_replicate_effects
 
 validate_analysis_file_reference = (
-    _review_analysis_owner.validate_analysis_file_reference
+    _review_sensitivity_owner.validate_analysis_file_reference
 )
-validate_sensitivity_matrix = _review_analysis_owner.validate_sensitivity_matrix
-validate_leave_one_pair_out = _review_analysis_owner.validate_leave_one_pair_out
-validate_candidate_selection = _review_analysis_owner.validate_candidate_selection
-validate_candidate_adjudication = _review_analysis_owner.validate_candidate_adjudication
-validate_decisions = _review_analysis_owner.validate_decisions
-validate_limitations = _review_analysis_owner.validate_limitations
+validate_sensitivity_matrix = _review_sensitivity_owner.validate_sensitivity_matrix
+validate_leave_one_pair_out = _review_sensitivity_owner.validate_leave_one_pair_out
+validate_candidate_selection = _review_candidates_owner.validate_candidate_selection
+validate_candidate_adjudication = _review_candidates_owner.validate_candidate_adjudication
+validate_decisions = _review_decisions_owner.validate_decisions
+validate_limitations = _review_decisions_owner.validate_limitations
 
 validate_computational_evidence = _evidence_owner.validate_computational_evidence
 validate_evidence_payloads = _evidence_owner.validate_evidence_payloads

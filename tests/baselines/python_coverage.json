@@ -226,15 +226,6 @@
       "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/intake.py"
     },
     {
-      "branch_rate": "0.655738",
-      "covered_branches": 80,
-      "covered_lines": 160,
-      "line_rate": "0.792079",
-      "num_branches": 122,
-      "num_statements": 202,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/review_analysis.py"
-    },
-    {
       "branch_rate": "0.857143",
       "covered_branches": 72,
       "covered_lines": 242,
@@ -790,11 +781,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.736276",
-    "covered_branches": 3353,
-    "covered_lines": 9485,
-    "line_rate": "0.838935",
-    "num_branches": 4554,
-    "num_statements": 11306
+    "branch_rate": "0.738493",
+    "covered_branches": 3273,
+    "covered_lines": 9325,
+    "line_rate": "0.839787",
+    "num_branches": 4432,
+    "num_statements": 11104
   }
 }

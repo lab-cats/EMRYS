@@ -23,12 +23,16 @@ from .contracts import (
     step09,
 )
 from .intake import ReviewContext, category_is_complete, validate_iso_date
-from .review_analysis import (
+from ._review_candidates import (
     validate_candidate_adjudication,
     validate_candidate_selection,
+)
+from ._review_decisions import (
     validate_decisions,
-    validate_leave_one_pair_out,
     validate_limitations,
+)
+from ._review_sensitivity import (
+    validate_leave_one_pair_out,
     validate_sensitivity_matrix,
 )
 

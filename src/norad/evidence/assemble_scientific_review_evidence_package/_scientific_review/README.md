@@ -9,9 +9,9 @@ identity; intake models and support; review-plan validation; evidence-manifest
 validation; scientific audit checks; sensitivity and candidate review;
 computational evidence and state assembly; and explicit context construction.
 `intake.py` remains the internal compatibility facade used by its siblings.
-`review_analysis.py` likewise preserves its sibling-import surface over
-separate sensitivity/leave-one-pair-out, candidate selection/adjudication, and
-decision/limitation owners.
+The public script and evidence assembly import the separate
+sensitivity/leave-one-pair-out, candidate selection/adjudication, and
+decision/limitation owners directly.
 These modules do not form a generic stage framework or a public library.
 
 Locking, staging, final rereads, stable-input checks, summary-last publication,
